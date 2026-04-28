@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Chinese Silver Grass"><title>Chinese Silver Grass — Miscanthus sinensis</title>
+  
+    <path d="M 30 80 L 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 70 80 Z" fill="#B2664A"></path>
+    <rect x="28" y="77" width="44" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 64 98 L 36 98 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="79.5" rx="18" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+    <g transform="translate(50 74) rotate(-30)">
+      <path d="M 0 0 Q 3 -24 7.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q 3 -24 7.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(50 74) rotate(-18)">
+      <path d="M 0 0 Q 1.8 -24 4.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q 1.8 -24 4.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(50 74) rotate(-6)">
+      <path d="M 0 0 Q 0.6000000000000001 -24 1.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q 0.6000000000000001 -24 1.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(50 74) rotate(6)">
+      <path d="M 0 0 Q -0.6000000000000001 -24 -1.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q -0.6000000000000001 -24 -1.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(50 74) rotate(18)">
+      <path d="M 0 0 Q -1.8 -24 -4.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q -1.8 -24 -4.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(50 74) rotate(30)">
+      <path d="M 0 0 Q -3 -24 -7.5 -52" stroke="#4A7C4E" stroke-width="1.3" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 0 Q -3 -24 -7.5 -52" stroke="#A5C68F" stroke-width="0.4" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+  
+  
+      <g transform="translate(34.7 31.9)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+      <g transform="translate(40.3 25.8)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+      <g transform="translate(46.4 22.5)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+      <g transform="translate(53.6 22.5)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+      <g transform="translate(59.7 25.8)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+      <g transform="translate(65.3 31.9)">
+        <ellipse cx="0" cy="-3" rx="3" ry="6" fill="#A5C68F" opacity="0.85"></ellipse>
+        <path d="M 0 2 L -2 -8 M 0 2 L 2 -8 M 0 2 L 0 -10 M 0 2 L -3 -6 M 0 2 L 3 -6" stroke="#FBF7EE" stroke-width="0.6" stroke-linecap="round"></path>
+      </g>
+    
+</svg>
