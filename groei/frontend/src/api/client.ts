@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardData, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardData, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary, CanvasData } from '../types'
 
 const API = '/api'
 
@@ -91,6 +91,37 @@ export async function fetchDashboard(): Promise<DashboardData> {
 export async function fetchMaps(): Promise<MapInfo[]> {
   const res = await fetch(`${API}/maps`)
   await ensureOk(res, 'Failed to load maps')
+  return res.json()
+}
+
+export async function createMap(name: string): Promise<MapInfo> {
+  const res = await fetch(`${API}/maps`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  await ensureOk(res, 'Failed to create map')
+  return res.json()
+}
+
+export async function updateMap(id: number, data: { name?: string; canvas_data?: string }): Promise<MapInfo> {
+  const res = await fetch(`${API}/maps/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  await ensureOk(res, 'Failed to update map')
+  return res.json()
+}
+
+export async function deleteMap(id: number): Promise<void> {
+  const res = await fetch(`${API}/maps/${id}`, { method: 'DELETE' })
+  await ensureOk(res, 'Failed to delete map')
+}
+
+export async function fetchMapById(id: number): Promise<MapInfo> {
+  const res = await fetch(`${API}/maps/by-id/${id}`)
+  await ensureOk(res, 'Failed to load map')
   return res.json()
 }
 

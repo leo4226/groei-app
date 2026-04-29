@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ObjectShapeType, ObjectType } from '../../types'
+import type { ObjectShapeType, ObjectType, ObjectCategory } from '../../types'
 import { createObject } from '../../api/client'
 
 interface Props {
@@ -17,14 +17,24 @@ interface Preset {
   depth_cm?: number
   material: string
   color: string
+  category: ObjectCategory
+  preset?: string
 }
 
-const PRESETS: Preset[] = [
-  { label: 'Round pot', object_type: 'pot', shape: 'circle', diameter_cm: 30, material: 'terracotta', color: '#B7654B' },
-  { label: 'Square pot', object_type: 'pot', shape: 'square', width_cm: 30, material: 'plastic', color: '#888888' },
-  { label: 'Planter', object_type: 'planter', shape: 'rectangle', width_cm: 80, depth_cm: 30, material: 'wood', color: '#8B6914' },
-  { label: 'Corten ring', object_type: 'pot', shape: 'circle', diameter_cm: 100, material: 'corten', color: '#A0522D' },
-  { label: 'Raised bed', object_type: 'raised_bed', shape: 'rectangle', width_cm: 200, depth_cm: 80, material: 'wood', color: '#8B5A30' },
+const CONTAINER_PRESETS: Preset[] = [
+  { label: 'Round pot', object_type: 'pot', shape: 'circle', diameter_cm: 30, material: 'terracotta', color: '#B7654B', category: 'container' },
+  { label: 'Square pot', object_type: 'pot', shape: 'square', width_cm: 30, material: 'plastic', color: '#888888', category: 'container' },
+  { label: 'Planter', object_type: 'planter', shape: 'rectangle', width_cm: 80, depth_cm: 30, material: 'wood', color: '#8B6914', category: 'container' },
+  { label: 'Corten ring', object_type: 'pot', shape: 'circle', diameter_cm: 100, material: 'corten', color: '#A0522D', category: 'container' },
+  { label: 'Raised bed', object_type: 'raised_bed', shape: 'rectangle', width_cm: 200, depth_cm: 80, material: 'wood', color: '#8B5A30', category: 'container' },
+]
+
+const HARDSCAPE_PRESETS: Preset[] = [
+  { label: 'Stepping stone', object_type: 'furniture', shape: 'rectangle', width_cm: 60, depth_cm: 40, material: 'stone', color: '#a8a090', category: 'hardscape', preset: 'stepping_stone' },
+  { label: 'Bench', object_type: 'furniture', shape: 'rectangle', width_cm: 180, depth_cm: 40, material: 'wood', color: '#8b7355', category: 'hardscape', preset: 'bench' },
+  { label: 'Table', object_type: 'furniture', shape: 'rectangle', width_cm: 80, depth_cm: 80, material: 'wood', color: '#8b7355', category: 'hardscape', preset: 'table' },
+  { label: 'Chair', object_type: 'furniture', shape: 'rectangle', width_cm: 50, depth_cm: 50, material: 'wood', color: '#8b7355', category: 'hardscape', preset: 'chair' },
+  { label: 'Rain barrel', object_type: 'furniture', shape: 'circle', diameter_cm: 60, material: 'plastic', color: '#3d5a6b', category: 'utility', preset: 'rain_barrel' },
 ]
 
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
@@ -40,6 +50,10 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
   const [material, setMaterial] = useState('terracotta')
   const [color, setColor] = useState('#B7654B')
   const [saving, setSaving] = useState(false)
+  const [category, setCategory] = useState<ObjectCategory>('container')
+  const [presetKey, setPresetKey] = useState<string | undefined>(undefined)
+
+  const isContainer = category === 'container'
 
   const applyPreset = (preset: Preset) => {
     setName(preset.label)
@@ -50,6 +64,8 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
     if (preset.depth_cm) setDepthCm(preset.depth_cm)
     setMaterial(preset.material)
     setColor(preset.color)
+    setCategory(preset.category)
+    setPresetKey(preset.preset)
   }
 
   const handleSubmit = async () => {
@@ -63,11 +79,14 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
         diameter_cm: shape === 'circle' ? diameterCm : undefined,
         width_cm: shape !== 'circle' ? widthCm : undefined,
         depth_cm: shape === 'rectangle' ? depthCm : undefined,
-        material,
+        material: isContainer ? material : undefined,
         color,
         map_id: mapId,
         map_x: 300,
         map_y: 300,
+        category,
+        label: !isContainer ? name.trim() : undefined,
+        preset: presetKey,
       })
       onCreated()
     } catch (e) {
@@ -87,9 +106,29 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
         <div className="px-5 overflow-y-auto flex-1">
           <h3 className="text-lg font-semibold text-text mb-4">Add object</h3>
 
-          {/* Presets */}
-          <div className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1">
-            {PRESETS.map((preset) => (
+          {/* Container presets */}
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Containers</span>
+          <div className="flex gap-2 overflow-x-auto pb-2 mt-1 mb-3 -mx-1 px-1">
+            {CONTAINER_PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => applyPreset(preset)}
+                className="shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: preset.color + '22',
+                  color: preset.color,
+                  border: `1.5px solid ${preset.color}44`,
+                }}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Hardscape & utility presets */}
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Hardscape & Utility</span>
+          <div className="flex gap-2 overflow-x-auto pb-3 mt-1 mb-4 -mx-1 px-1">
+            {HARDSCAPE_PRESETS.map((preset) => (
               <button
                 key={preset.label}
                 onClick={() => applyPreset(preset)}
@@ -117,23 +156,25 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
             />
           </label>
 
-          {/* Shape */}
-          <div className="mb-3">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Shape</span>
-            <div className="flex gap-2 mt-1">
-              {(['circle', 'square', 'rectangle'] as ObjectShapeType[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setShape(s)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    shape === s ? 'bg-primary text-white' : 'bg-bg text-text-muted'
-                  }`}
-                >
-                  {s === 'circle' ? 'Round' : s === 'square' ? 'Square' : 'Rect'}
-                </button>
-              ))}
+          {/* Shape — containers only */}
+          {isContainer && (
+            <div className="mb-3">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Shape</span>
+              <div className="flex gap-2 mt-1">
+                {(['circle', 'square', 'rectangle'] as ObjectShapeType[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setShape(s)}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                      shape === s ? 'bg-primary text-white' : 'bg-bg text-text-muted'
+                    }`}
+                  >
+                    {s === 'circle' ? 'Round' : s === 'square' ? 'Square' : 'Rect'}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Dimensions */}
           <div className="mb-3">
@@ -176,39 +217,45 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
             </div>
           </div>
 
-          {/* Material */}
-          <label className="block mb-3">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Material</span>
-            <select
-              value={material}
-              onChange={(e) => setMaterial(e.target.value)}
-              className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
-            >
-              {MATERIALS.map((m) => (
-                <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-              ))}
-            </select>
-          </label>
+          {/* Material — containers only */}
+          {isContainer && (
+            <label className="block mb-3">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Material</span>
+              <select
+                value={material}
+                onChange={(e) => setMaterial(e.target.value)}
+                className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
+              >
+                {MATERIALS.map((m) => (
+                  <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                ))}
+              </select>
+            </label>
+          )}
 
-          {/* Color */}
-          <div className="mb-5">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Color</span>
-            <div className="flex gap-2 mt-1.5 flex-wrap">
-              {COLOR_SWATCHES.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full transition-transform"
-                  style={{
-                    backgroundColor: c,
-                    outline: color === c ? '2px solid white' : 'none',
-                    outlineOffset: '2px',
-                    transform: color === c ? 'scale(1.15)' : 'scale(1)',
-                  }}
-                />
-              ))}
+          {/* Color — containers only */}
+          {isContainer && (
+            <div className="mb-5">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Color</span>
+              <div className="flex gap-2 mt-1.5 flex-wrap">
+                {COLOR_SWATCHES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setColor(c)}
+                    className="w-8 h-8 rounded-full transition-transform"
+                    style={{
+                      backgroundColor: c,
+                      outline: color === c ? '2px solid white' : 'none',
+                      outlineOffset: '2px',
+                      transform: color === c ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {!isContainer && <div className="mb-5" />}
 
         </div>
 

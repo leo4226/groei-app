@@ -19,17 +19,23 @@ interface Props {
   isResizing: boolean
   activeHandle: string | null
   onHandlePointerDown: (e: React.PointerEvent, handle: string) => void
+  showRotate?: boolean
+  isRotating?: boolean
+  liveRotation?: number
+  onRotatePointerDown?: (e: React.PointerEvent) => void
 }
 
 export default function SelectionOverlay({
   object, x, y, currentDimensions, isResizing, activeHandle, onHandlePointerDown,
+  showRotate, isRotating, liveRotation, onRotatePointerDown,
 }: Props) {
   const dims = currentDimensions
   const handles = getHandlePositions(object.shape, dims)
   const color = object.color || '#888888'
+  const effectiveRotation = liveRotation ?? (object.rotation || 0)
 
   return (
-    <g transform={`translate(${x}, ${y}) rotate(${object.rotation || 0})`}>
+    <g transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}>
       {/* Dashed selection border */}
       {renderSelectionBorder(object.shape, dims, color)}
 
@@ -47,8 +53,71 @@ export default function SelectionOverlay({
 
       {/* Dimension labels during resize */}
       {isResizing && renderDimensionLabels(object.shape, dims)}
+
+      {/* Rotation handle — hardscape/utility only */}
+      {showRotate && onRotatePointerDown && (() => {
+        const { hx, hy } = getRotateHandlePos(object.shape, dims)
+        return (
+          <g
+            transform={`translate(${hx}, ${hy})`}
+            onPointerDown={(e) => { e.stopPropagation(); onRotatePointerDown(e) }}
+            style={{ cursor: 'grab', touchAction: 'none' }}
+          >
+            {/* Hit area */}
+            <circle r={14} fill="transparent" />
+            {/* Handle circle */}
+            <circle
+              r={7}
+              fill={isRotating ? '#2563eb' : '#4A90D9'}
+              stroke="white"
+              strokeWidth={1.5}
+            />
+            {/* Rotation arrow icon */}
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="8"
+              fill="white"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              ↻
+            </text>
+          </g>
+        )
+      })()}
+
+      {/* Rotation angle label during rotate */}
+      {isRotating && liveRotation !== undefined && (() => {
+        const { hx, hy } = getRotateHandlePos(object.shape, dims)
+        return (
+          <g transform={`translate(${hx + 16}, ${hy})`}>
+            <rect x={-1} y={-8} width={34} height={16} rx={4} fill="rgba(0,0,0,0.6)" />
+            <text
+              textAnchor="middle"
+              dominantBaseline="central"
+              x={16}
+              fontSize="9"
+              fill="white"
+              fontWeight="600"
+              style={{ pointerEvents: 'none' }}
+            >
+              {Math.round(liveRotation)}°
+            </text>
+          </g>
+        )
+      })()}
     </g>
   )
+}
+
+function getRotateHandlePos(shape: string, dims: ResizeDimensions): { hx: number; hy: number } {
+  if (shape === 'circle') {
+    const r = ((dims.diameter_cm || 30) * PX_PER_CM) / 2
+    return { hx: r * 0.707 + 14, hy: -(r * 0.707 + 14) }
+  }
+  const hw = ((dims.width_cm || 30) * PX_PER_CM) / 2
+  const hd = ((shape === 'square' ? (dims.width_cm || 30) : (dims.depth_cm || 40)) * PX_PER_CM) / 2
+  return { hx: hw + 14, hy: -hd - 14 }
 }
 
 function renderSelectionBorder(shape: string, dims: ResizeDimensions, color: string) {

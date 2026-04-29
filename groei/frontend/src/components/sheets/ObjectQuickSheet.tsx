@@ -27,13 +27,29 @@ const SHAPE_LABELS: Record<string, string> = {
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
 const COLOR_SWATCHES = ['#B7654B', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#5B9A6F', '#333333', '#D4A843']
 
+const CATEGORY_ICONS: Record<string, string> = {
+  container: '\u{1FAB4}',
+  hardscape: '\u{1FAA8}',
+  utility: '\u{1F6E2}️',
+}
+
+const PRESET_LABELS: Record<string, string> = {
+  stepping_stone: 'Stepping stone',
+  bench: 'Bench',
+  table: 'Table',
+  chair: 'Chair',
+  rain_barrel: 'Rain barrel',
+}
+
 export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction }: Props) {
   const [showPlantPicker, setShowPlantPicker] = useState(false)
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const isContainer = (object.category || 'container') === 'container'
+
   // Edit state
-  const [name, setName] = useState(object.name)
+  const [name, setName] = useState(object.label || object.name)
   const [shape, setShape] = useState<ObjectShapeType>(object.shape)
   const [diameterCm, setDiameterCm] = useState(object.diameter_cm || 30)
   const [widthCm, setWidthCm] = useState(object.width_cm || 30)
@@ -52,12 +68,13 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
     try {
       await updateObject(object.id, {
         name,
-        shape,
+        shape: isContainer ? shape : undefined,
         diameter_cm: shape === 'circle' ? diameterCm : undefined,
         width_cm: shape !== 'circle' ? widthCm : undefined,
         depth_cm: shape === 'rectangle' ? depthCm : undefined,
-        material,
-        color,
+        material: isContainer ? material : undefined,
+        color: isContainer ? color : undefined,
+        label: !isContainer ? name : undefined,
       } as any)
       onAction()
     } catch (e) {
@@ -117,14 +134,17 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                   className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
                   style={{ backgroundColor: (object.color || '#888') + '22' }}
                 >
-                  🪴
+                  {CATEGORY_ICONS[object.category || 'container'] || '\u{1FAB4}'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-text truncate">{object.name}</h3>
+                  <h3 className="text-lg font-semibold text-text truncate">{object.label || object.name}</h3>
                   <p className="text-sm text-text-muted">
-                    {SHAPE_LABELS[object.shape] || object.shape} {object.object_type} — {dimensions}
+                    {isContainer
+                      ? `${SHAPE_LABELS[object.shape] || object.shape} ${object.object_type} — ${dimensions}`
+                      : `${PRESET_LABELS[object.preset || ''] || object.object_type} — ${dimensions}`
+                    }
                   </p>
-                  {object.material && (
+                  {isContainer && object.material && (
                     <p className="text-xs text-text-muted mt-0.5">
                       {MATERIAL_LABELS[object.material] || object.material}
                     </p>
@@ -132,8 +152,8 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 </div>
               </div>
 
-              {/* Contained plants */}
-              {object.contained_plants.length > 0 && (
+              {/* Contained plants — containers only */}
+              {isContainer && object.contained_plants.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
                     Plants inside ({object.contained_plants.length})
@@ -165,8 +185,8 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 </div>
               )}
 
-              {/* Plant picker */}
-              {showPlantPicker && (
+              {/* Plant picker — containers only */}
+              {isContainer && showPlantPicker && (
                 <div className="mb-4">
                   <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
                     Assign a plant
@@ -193,12 +213,14 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
 
               {/* Actions */}
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowPlantPicker(!showPlantPicker)}
-                  className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
-                >
-                  🌱 {showPlantPicker ? 'Hide' : 'Add plant'}
-                </button>
+                {isContainer && (
+                  <button
+                    onClick={() => setShowPlantPicker(!showPlantPicker)}
+                    className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+                  >
+                    🌱 {showPlantPicker ? 'Hide' : 'Add plant'}
+                  </button>
+                )}
                 <button
                   onClick={() => setEditing(true)}
                   className="flex-1 bg-bg text-text rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
@@ -216,10 +238,14 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
           ) : (
             <>
               {/* Edit mode */}
-              <h3 className="text-lg font-semibold text-text mb-4">Edit object</h3>
+              <h3 className="text-lg font-semibold text-text mb-4">
+                {isContainer ? 'Edit object' : 'Edit ' + (PRESET_LABELS[object.preset || ''] || 'object')}
+              </h3>
 
               <label className="block mb-3">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Name</span>
+                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  {isContainer ? 'Name' : 'Label'}
+                </span>
                 <input
                   type="text"
                   value={name}
@@ -228,23 +254,25 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 />
               </label>
 
-              {/* Shape */}
-              <div className="mb-3">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Shape</span>
-                <div className="flex gap-2 mt-1">
-                  {(['circle', 'square', 'rectangle'] as ObjectShapeType[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setShape(s)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                        shape === s ? 'bg-primary text-white' : 'bg-bg text-text-muted'
-                      }`}
-                    >
-                      {s === 'circle' ? 'Round' : s === 'square' ? 'Square' : 'Rect'}
-                    </button>
-                  ))}
+              {/* Shape — containers only */}
+              {isContainer && (
+                <div className="mb-3">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Shape</span>
+                  <div className="flex gap-2 mt-1">
+                    {(['circle', 'square', 'rectangle'] as ObjectShapeType[]).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setShape(s)}
+                        className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                          shape === s ? 'bg-primary text-white' : 'bg-bg text-text-muted'
+                        }`}
+                      >
+                        {s === 'circle' ? 'Round' : s === 'square' ? 'Square' : 'Rect'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Dimensions */}
               <div className="mb-3">
@@ -287,39 +315,45 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 </div>
               </div>
 
-              {/* Material */}
-              <label className="block mb-3">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Material</span>
-                <select
-                  value={material}
-                  onChange={(e) => setMaterial(e.target.value)}
-                  className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
-                >
-                  {MATERIALS.map((m) => (
-                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-                  ))}
-                </select>
-              </label>
+              {/* Material — containers only */}
+              {isContainer && (
+                <label className="block mb-3">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Material</span>
+                  <select
+                    value={material}
+                    onChange={(e) => setMaterial(e.target.value)}
+                    className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
+                  >
+                    {MATERIALS.map((m) => (
+                      <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-              {/* Color */}
-              <div className="mb-5">
-                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Color</span>
-                <div className="flex gap-2 mt-1.5 flex-wrap">
-                  {COLOR_SWATCHES.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setColor(c)}
-                      className="w-8 h-8 rounded-full transition-transform"
-                      style={{
-                        backgroundColor: c,
-                        outline: color === c ? '2px solid white' : 'none',
-                        outlineOffset: '2px',
-                        transform: color === c ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                    />
-                  ))}
+              {/* Color — containers only */}
+              {isContainer && (
+                <div className="mb-5">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Color</span>
+                  <div className="flex gap-2 mt-1.5 flex-wrap">
+                    {COLOR_SWATCHES.map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setColor(c)}
+                        className="w-8 h-8 rounded-full transition-transform"
+                        style={{
+                          backgroundColor: c,
+                          outline: color === c ? '2px solid white' : 'none',
+                          outlineOffset: '2px',
+                          transform: color === c ? 'scale(1.15)' : 'scale(1)',
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {!isContainer && <div className="mb-5" />}
 
               {/* Save / Cancel */}
               <div className="flex gap-2">

@@ -11,6 +11,8 @@ import EditPlant from './pages/EditPlant'
 import PlantCareDetail from './pages/PlantCareDetail'
 import Settings from './pages/Settings'
 import PlanningCalendar from './pages/PlanningCalendar'
+import MapsListPage from './pages/MapsListPage'
+import LayoutEditorPage from './pages/LayoutEditorPage'
 
 export default function App() {
   const load = useGroeiStore((s) => s.load)
@@ -32,7 +34,9 @@ export default function App() {
 
       <main className="flex-1 pb-20">
         <Routes>
-          <Route path="/" element={<Navigate to="/map/garden" replace />} />
+          <Route path="/" element={<Navigate to="/maps" replace />} />
+          <Route path="/maps" element={<MapsListPage />} />
+          <Route path="/maps/:id/edit-layout" element={<LayoutEditorPage />} />
           <Route path="/map/:slug" element={<MapPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/plants" element={<Plants />} />

@@ -7,6 +7,7 @@ import { screenToSVG, resolveDropTarget } from '../../utils/svgCoords'
 import type { DropTarget } from '../../utils/svgCoords'
 import { useMapSelection } from '../../hooks/useMapSelection'
 import { useResize } from '../../hooks/useResize'
+import { useRotate } from '../../hooks/useRotate'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { GARDEN_CLIP, GARDEN_FLOOR } from '../../utils/gardenStructures'
@@ -66,6 +67,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
 
   const { selection, dispatch } = useMapSelection()
   const { resizeDims, startResize, updateResize, endResize } = useResize()
+  const { liveRotation, startRotate, updateRotate, endRotate } = useRotate()
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
 
@@ -165,7 +167,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
   }, [selection.mode])
 
   const handleObjectPointerDown = useCallback((e: React.PointerEvent, object: MapObject) => {
-    if (selection.mode === 'resizing') return
+    if (selection.mode === 'resizing' || selection.mode === 'rotating') return
     e.stopPropagation()
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
     const key = `object-${object.id}`
@@ -176,6 +178,18 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return
+
+    // Rotation takes priority
+    if (selection.mode === 'rotating') {
+      const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
+      if (!pt || !selection.selectedId) return
+      const objId = parseInt(selection.selectedId.replace('object-', ''))
+      const obj = objects.find((o) => o.id === objId)
+      if (!obj) return
+      const center = dragPositions[selection.selectedId] ?? { x: obj.map_x ?? 0, y: obj.map_y ?? 0 }
+      updateRotate(center, pt)
+      return
+    }
 
     // Resize takes priority
     if (selection.mode === 'resizing') {
@@ -213,9 +227,27 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     if (dragging.type === 'plant') {
       setDropTarget(resolveDropTarget(pt.x, pt.y, objects, groundZones))
     }
-  }, [dragging, selection.mode, updateResize, objects, groundZones])
+  }, [dragging, selection.mode, updateResize, updateRotate, dragPositions, objects, groundZones])
 
   const handlePointerUp = useCallback(async () => {
+    // End rotation
+    if (selection.mode === 'rotating') {
+      const finalRot = endRotate()
+      dispatch({ type: 'END_ROTATE' })
+      if (finalRot !== null && selection.selectedId) {
+        const objId = parseInt(selection.selectedId.replace('object-', ''))
+        const obj = objects.find((o) => o.id === objId)
+        const pos = dragPositions[selection.selectedId] ?? { x: obj?.map_x ?? 0, y: obj?.map_y ?? 0 }
+        try {
+          await updateObjectPosition(objId, { map_x: pos.x, map_y: pos.y, rotation: finalRot })
+          onPositionUpdate?.()
+        } catch (err) {
+          console.error('Failed to update rotation:', err)
+        }
+      }
+      return
+    }
+
     // End resize
     if (selection.mode === 'resizing') {
       if (plantResizeRef.current && plantResizeRadiusRef.current !== null) {
@@ -283,7 +315,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
-  }, [dragging, dragPositions, map.id, dropTarget, onPositionUpdate, selection, endResize, dispatch])
+  }, [dragging, dragPositions, map.id, dropTarget, onPositionUpdate, selection, endResize, endRotate, objects, dispatch])
 
   // --- Handle pointer down on resize handle ---
   const handleResizePointerDown = useCallback((e: React.PointerEvent, handle: string) => {
@@ -301,6 +333,21 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     dispatch({ type: 'START_RESIZE', handle })
     startResize(obj, handle, pt)
   }, [selection.selectedId, objects, dispatch, startResize])
+
+  // --- Rotation handle ---
+  const handleRotatePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation()
+    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    if (!svgRef.current || !selection.selectedId) return
+    const objId = parseInt(selection.selectedId.replace('object-', ''))
+    const obj = objects.find((o) => o.id === objId)
+    if (!obj) return
+    const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
+    if (!pt) return
+    const center = dragPositions[selection.selectedId] ?? { x: obj.map_x ?? 0, y: obj.map_y ?? 0 }
+    dispatch({ type: 'START_ROTATE' })
+    startRotate(center, obj.rotation || 0, pt)
+  }, [selection.selectedId, objects, dragPositions, dispatch, startRotate])
 
   // --- Plant resize handles ---
   const handlePlantResizeDown = useCallback((e: React.PointerEvent, handle: string) => {
@@ -466,6 +513,8 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
             heatmapCells={heatmapCells}
             onObjectTap={(obj) => handleItemSelect('object', obj.id)}
             onPointerDown={handleObjectPointerDown}
+            liveRotationId={selection.mode === 'rotating' ? selection.selectedId ?? undefined : undefined}
+            liveRotation={liveRotation ?? undefined}
           />
           {/* Plants layer on top */}
           <PlantsLayer
@@ -493,6 +542,10 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
               isResizing={selection.mode === 'resizing'}
               activeHandle={selection.resizeHandle}
               onHandlePointerDown={handleResizePointerDown}
+              showRotate={(selectedObject.category || 'container') !== 'container'}
+              isRotating={selection.mode === 'rotating'}
+              liveRotation={liveRotation ?? undefined}
+              onRotatePointerDown={handleRotatePointerDown}
             />
           )}
 

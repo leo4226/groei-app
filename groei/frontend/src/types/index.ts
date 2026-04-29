@@ -116,6 +116,29 @@ export interface MapInfo {
   viewbox: string
   scale_info: string | null
   sort_order: number
+  canvas_data: string | null
+}
+
+// --- Map Editor ---
+
+export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure'
+
+export interface EditorZone {
+  id: string
+  type: ZoneStyleType
+  shape: 'rect'
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+}
+
+export interface CanvasData {
+  zones: EditorZone[]
+  scale_px_per_m: number
+  canvas_w: number
+  canvas_h: number
 }
 
 export interface Zone {
@@ -196,6 +219,8 @@ export interface MapPlant {
 export type ObjectType = 'pot' | 'planter' | 'raised_bed' | 'furniture'
 export type ObjectShapeType = 'circle' | 'square' | 'rectangle'
 export type ObjectMaterial = 'terracotta' | 'plastic' | 'wood' | 'corten' | 'stone'
+export type ObjectCategory = 'container' | 'hardscape' | 'utility'
+export type HardscapePreset = 'stepping_stone' | 'bench' | 'table' | 'chair' | 'rain_barrel'
 
 export interface MapObject {
   id: number
@@ -216,6 +241,9 @@ export interface MapObject {
   created_at: string | null
   updated_at: string | null
   contained_plants: MapPlant[]
+  category: ObjectCategory
+  label: string | null
+  preset: string | null
 }
 
 export interface ObjectCreateInput {
@@ -232,6 +260,9 @@ export interface ObjectCreateInput {
   map_y?: number
   rotation?: number
   notes?: string
+  category?: ObjectCategory
+  label?: string
+  preset?: string
 }
 
 export interface MapItems {

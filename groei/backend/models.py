@@ -156,6 +156,15 @@ class DashboardResponse(BaseModel):
 
 # --- Maps ---
 
+class MapCreate(BaseModel):
+    name: str
+
+
+class MapUpdate(BaseModel):
+    name: str | None = None
+    canvas_data: str | None = None
+
+
 class MapOut(BaseModel):
     id: int
     name: str
@@ -164,6 +173,7 @@ class MapOut(BaseModel):
     viewbox: str
     scale_info: str | None = None
     sort_order: int = 0
+    canvas_data: str | None = None
 
 
 class ZoneOut(BaseModel):
@@ -252,6 +262,9 @@ class ObjectCreate(BaseModel):
     map_y: float | None = None
     rotation: float = 0
     notes: str | None = None
+    category: str = "container"
+    label: str | None = None
+    preset: str | None = None
 
 
 class ObjectUpdate(BaseModel):
@@ -265,6 +278,9 @@ class ObjectUpdate(BaseModel):
     color: str | None = None
     rotation: float | None = None
     notes: str | None = None
+    category: str | None = None
+    label: str | None = None
+    preset: str | None = None
 
 
 class ObjectPositionUpdate(BaseModel):
@@ -291,6 +307,9 @@ class ObjectOut(BaseModel):
     is_active: bool = True
     created_at: str | None = None
     updated_at: str | None = None
+    category: str = "container"
+    label: str | None = None
+    preset: str | None = None
 
 
 class MapObjectOut(ObjectOut):

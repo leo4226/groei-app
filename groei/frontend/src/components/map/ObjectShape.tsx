@@ -1,4 +1,4 @@
-import type { MapObject } from '../../types'
+import type { MapObject, HardscapePreset } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { STATUS_COLORS, StatusBadge } from './PlantMarker'
 import { getPlantStatus } from '../../hooks/usePlantStatus'
@@ -18,18 +18,72 @@ interface Props {
   heatmapCells?: HeatmapCell[]
   onTap: (object: MapObject) => void
   onPointerDown: (e: React.PointerEvent, object: MapObject) => void
+  liveRotation?: number
 }
 
 function labelForObject(obj: MapObject): string {
+  if (obj.category !== 'container') return obj.label || obj.name
   const plants = obj.contained_plants
   if (!plants || plants.length === 0) return obj.name
   if (plants.length === 1) return plants[0].name
   return `${plants[0].name} +${plants.length - 1}`
 }
 
-export default function ObjectShape({ object, x, y, isDragging, isSelected, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown }: Props) {
+function renderHardscapeShape(preset: HardscapePreset, color: string, w: number, h: number, sw: number) {
+  switch (preset) {
+    case 'stepping_stone':
+      return (
+        <rect
+          x={-w / 2} y={-h / 2}
+          width={w} height={h}
+          rx={8} ry={8}
+          fill={color} fillOpacity={0.85}
+          stroke="#8a8070" strokeWidth={sw}
+        />
+      )
+    case 'bench':
+      return (
+        <g>
+          <rect x={-w / 2} y={-h / 2} width={w} height={h} fill={color} rx={3} />
+          <rect x={-w / 2} y={-h / 2 - 6} width={8} height={h + 12} rx={2} fill={color} />
+          <rect x={w / 2 - 8} y={-h / 2 - 6} width={8} height={h + 12} rx={2} fill={color} />
+        </g>
+      )
+    case 'chair':
+      return (
+        <g>
+          <rect x={-w / 2} y={-h * 0.65 / 2} width={w} height={h * 0.65} fill={color} rx={3} />
+          <rect x={-w / 2} y={-h * 0.65 / 2 - h * 0.3} width={w} height={h * 0.3}
+            fill={color} fillOpacity={0.7} rx={2} />
+        </g>
+      )
+    case 'table':
+      return (
+        <g>
+          <rect x={-w / 2} y={-h / 2} width={w} height={h} fill={color} rx={4} />
+          <rect x={-w / 2 + 4} y={-h / 2 + 4} width={w - 8} height={h - 8}
+            fill="none" stroke="#fff" strokeOpacity={0.2} strokeWidth={1} rx={2} />
+        </g>
+      )
+    case 'rain_barrel': {
+      const r = w / 2
+      return (
+        <g>
+          <circle r={r} fill={color} />
+          <line x1={-r + 4} x2={r - 4} y1={-r * 0.3} y2={-r * 0.3}
+            stroke="#fff" strokeOpacity={0.2} strokeWidth={1.5} />
+          <line x1={-r + 4} x2={r - 4} y1={r * 0.3} y2={r * 0.3}
+            stroke="#fff" strokeOpacity={0.2} strokeWidth={1.5} />
+        </g>
+      )
+    }
+  }
+}
+
+export default function ObjectShape({ object, x, y, isDragging, isSelected, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, liveRotation }: Props) {
   const counterRot = useMapRotation()
   const color = object.color || '#888888'
+  const effectiveRotation = liveRotation ?? (object.rotation || 0)
   const fill = color + '33'
   const stroke = color
   const sw = isDragging ? 2 : isSelected ? 1.8 : 1.2
@@ -135,7 +189,7 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
 
   return (
     <g
-      transform={`translate(${x}, ${y}) rotate(${object.rotation || 0})`}
+      transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}
       onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(object) }}
       onPointerDown={(e) => onPointerDown(e, object)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -143,10 +197,20 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
       {/* Transparent hit area */}
       <circle r={hitR} fill="transparent" />
 
-      {renderShape()}
+      {object.category !== 'container' && object.preset
+        ? renderHardscapeShape(
+            object.preset as HardscapePreset, color,
+            object.shape === 'circle'
+              ? (object.diameter_cm || 60) * PX_PER_CM
+              : (object.width_cm || 80) * PX_PER_CM,
+            (object.depth_cm || object.width_cm || 60) * PX_PER_CM,
+            sw,
+          )
+        : renderShape()
+      }
 
       {/* Pulsing highlight ring when a plant is dragged over this container */}
-      {isHoverTarget && (() => {
+      {isHoverTarget && object.category === 'container' && (() => {
         const pad = 4
         switch (object.shape) {
           case 'circle': {
@@ -177,11 +241,11 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
         }
       })()}
 
-      {renderContainedPlants()}
+      {object.category === 'container' && renderContainedPlants()}
 
       {/* Label: counter-rotate by object's own rotation + SVG orientation so text is always upright */}
-      {showLabel && (
-        <g transform={`rotate(${counterRot - (object.rotation || 0)})`}>
+      {showLabel && object.category === 'container' && (
+        <g transform={`rotate(${counterRot - effectiveRotation})`}>
           <text
             y={getShapeBound(object) + 12}
             textAnchor="middle"
@@ -213,7 +277,7 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
         if (!worstFit) return null
         const pillY = getShapeBound(object) + 28
         return (
-          <g transform={`rotate(${counterRot - (object.rotation || 0)})`}>
+          <g transform={`rotate(${counterRot - effectiveRotation})`}>
             <rect x={-54} y={pillY - 9} width={108} height={18} rx={9}
               fill={SUN_FIT_COLORS[worstFit]} opacity={0.92} />
             <text

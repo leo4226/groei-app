@@ -76,11 +76,13 @@ async def create_object(data: ObjectCreate):
     async with get_db() as db:
         cursor = await db.execute(
             """INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm,
-               material, color, map_id, map_x, map_y, rotation, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               material, color, map_id, map_x, map_y, rotation, notes,
+               category, label, preset)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.name, data.object_type, data.shape, data.diameter_cm,
              data.width_cm, data.depth_cm, data.material, data.color,
-             data.map_id, data.map_x, data.map_y, data.rotation, data.notes),
+             data.map_id, data.map_x, data.map_y, data.rotation, data.notes,
+             data.category, data.label, data.preset),
         )
         await db.commit()
         object_id = cursor.lastrowid

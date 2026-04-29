@@ -1,11 +1,20 @@
 import json
 
+import re
+import os
+
 from fastapi import APIRouter, HTTPException
 from datetime import date
 
 from database import get_db
-from models import MapOut, MapDetailOut, ZoneOut, MapPlantOut, MostUrgent, MapObjectOut, MapItemsOut
+from models import MapOut, MapDetailOut, ZoneOut, MapPlantOut, MostUrgent, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
 from routers.plant_care import _get_temp_data
+from services.svg_renderer import render_canvas_data
+
+# Path to frontend public/maps — SVGs land here so Vite serves them in dev
+_MAPS_PUBLIC = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "maps")
+)
 
 router = APIRouter(tags=["maps"])
 
@@ -14,7 +23,7 @@ router = APIRouter(tags=["maps"])
 async def list_maps():
     async with get_db() as db:
         rows = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order FROM maps ORDER BY sort_order"
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps ORDER BY sort_order"
         )
         return [dict(r) for r in rows]
 
@@ -23,7 +32,7 @@ async def list_maps():
 async def get_map(slug: str):
     async with get_db() as db:
         row = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order FROM maps WHERE slug = ?",
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE slug = ?",
             (slug,),
         )
         if not row:
@@ -229,3 +238,123 @@ async def get_map_items(slug: str):
             objects.append(obj)
 
         return {"plants": plants, "objects": objects}
+
+
+def _slugify(name: str) -> str:
+    slug = name.lower().strip()
+    slug = re.sub(r'[^a-z0-9]+', '-', slug).strip('-')
+    return slug or 'map'
+
+
+@router.get("/maps/by-id/{map_id}", response_model=MapOut)
+async def get_map_by_id(map_id: int):
+    async with get_db() as db:
+        rows = await db.execute_fetchall(
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            (map_id,),
+        )
+        if not rows:
+            raise HTTPException(404, "Map not found")
+        return dict(rows[0])
+
+
+@router.post("/maps", response_model=MapOut)
+async def create_map(data: MapCreate):
+    async with get_db() as db:
+        base_slug = _slugify(data.name)
+        slug = base_slug
+        # Ensure unique slug
+        n = 1
+        while True:
+            existing = await db.execute_fetchall("SELECT id FROM maps WHERE slug = ?", (slug,))
+            if not existing:
+                break
+            n += 1
+            slug = f"{base_slug}-{n}"
+
+        max_order = await db.execute_fetchall("SELECT COALESCE(MAX(sort_order), 0) as m FROM maps")
+        next_order = max_order[0]["m"] + 1
+
+        canvas_data = json.dumps({"zones": [], "scale_px_per_m": 46, "canvas_w": 680, "canvas_h": 680})
+
+        cursor = await db.execute(
+            """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data)
+               VALUES (?, ?, 'blank.svg', '0 0 680 680', '{"px_per_meter": 46}', ?, ?)""",
+            (data.name, slug, next_order, canvas_data),
+        )
+        await db.commit()
+        map_id = cursor.lastrowid
+        rows = await db.execute_fetchall(
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            (map_id,),
+        )
+        return dict(rows[0])
+
+
+@router.put("/maps/{map_id}", response_model=MapOut)
+async def update_map(map_id: int, data: MapUpdate):
+    async with get_db() as db:
+        existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ?", (map_id,))
+        if not existing:
+            raise HTTPException(404, "Map not found")
+
+        updates = []
+        params = []
+        if data.name is not None:
+            updates.append("name = ?")
+            params.append(data.name)
+        if data.canvas_data is not None:
+            updates.append("canvas_data = ?")
+            params.append(data.canvas_data)
+
+        if updates:
+            params.append(map_id)
+            await db.execute(f"UPDATE maps SET {', '.join(updates)} WHERE id = ?", params)
+            await db.commit()
+
+        rows = await db.execute_fetchall(
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            (map_id,),
+        )
+        return dict(rows[0])
+
+
+@router.post("/maps/{map_id}/render-svg")
+async def render_map_svg(map_id: int):
+    async with get_db() as db:
+        rows = await db.execute_fetchall(
+            "SELECT id, name, slug, canvas_data FROM maps WHERE id = ?", (map_id,)
+        )
+        if not rows:
+            raise HTTPException(404, "Map not found")
+        row = dict(rows[0])
+        if not row["canvas_data"]:
+            raise HTTPException(400, "Map has no canvas data to render")
+
+        svg_content = render_canvas_data(row["canvas_data"], row["name"])
+        svg_filename = f"{row['slug']}.svg"
+        svg_path = os.path.join(_MAPS_PUBLIC, svg_filename)
+
+        os.makedirs(_MAPS_PUBLIC, exist_ok=True)
+        with open(svg_path, "w", encoding="utf-8") as f:
+            f.write(svg_content)
+
+        await db.execute(
+            "UPDATE maps SET svg_file = ? WHERE id = ?",
+            (svg_filename, map_id),
+        )
+        await db.commit()
+        return {"svg_file": svg_filename}
+
+
+@router.delete("/maps/{map_id}")
+async def delete_map(map_id: int):
+    async with get_db() as db:
+        existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ?", (map_id,))
+        if not existing:
+            raise HTTPException(404, "Map not found")
+        if map_id == 1:
+            raise HTTPException(400, "Cannot delete the default garden map")
+        await db.execute("DELETE FROM maps WHERE id = ?", (map_id,))
+        await db.commit()
+        return {"ok": True}

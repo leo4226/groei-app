@@ -2,8 +2,8 @@ import { NavLink } from 'react-router-dom'
 
 const tabs = [
   {
-    to: '/map/garden',
-    label: 'Map',
+    to: '/maps',
+    label: 'Maps',
     icon: (active: boolean) => (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
         <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
@@ -67,7 +67,7 @@ export default function BottomNav() {
         <NavLink
           key={tab.to}
           to={tab.to}
-          end={tab.to === '/map/garden'}
+          end={tab.to === '/maps'}
           className={({ isActive }) =>
             `flex flex-col items-center justify-center gap-0.5 px-3 pt-2 pb-1 text-[10px] transition-colors min-w-[64px] ${
               tab.to === '/plants/add'

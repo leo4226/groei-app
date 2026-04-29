@@ -145,6 +145,20 @@ async def init_db():
             );
         """)
 
+        # Add canvas_data column to maps (for map editor)
+        map_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(maps)")}
+        if "canvas_data" not in map_cols:
+            await db.execute("ALTER TABLE maps ADD COLUMN canvas_data TEXT")
+
+        # Add hardscape/utility columns to objects (idempotent)
+        obj_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(objects)")}
+        if "category" not in obj_cols:
+            await db.execute("ALTER TABLE objects ADD COLUMN category TEXT NOT NULL DEFAULT 'container'")
+        if "label" not in obj_cols:
+            await db.execute("ALTER TABLE objects ADD COLUMN label TEXT")
+        if "preset" not in obj_cols:
+            await db.execute("ALTER TABLE objects ADD COLUMN preset TEXT")
+
         # Add map columns to plants (idempotent)
         cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(plants)")}
         if "map_id" not in cols:

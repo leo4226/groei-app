@@ -12,9 +12,11 @@ interface Props {
   heatmapCells?: HeatmapCell[]
   onObjectTap: (object: MapObject) => void
   onPointerDown: (e: React.PointerEvent, object: MapObject) => void
+  liveRotationId?: string
+  liveRotation?: number
 }
 
-export default function ObjectsLayer({ objects, dragPositions, draggingKey, selectedId, hoveredContainerId, showLabels = true, heatmapCells, onObjectTap, onPointerDown }: Props) {
+export default function ObjectsLayer({ objects, dragPositions, draggingKey, selectedId, hoveredContainerId, showLabels = true, heatmapCells, onObjectTap, onPointerDown, liveRotationId, liveRotation }: Props) {
   return (
     <g>
       {objects.map((obj) => {
@@ -33,6 +35,7 @@ export default function ObjectsLayer({ objects, dragPositions, draggingKey, sele
             heatmapCells={heatmapCells}
             onTap={onObjectTap}
             onPointerDown={onPointerDown}
+            liveRotation={liveRotationId === key ? liveRotation : undefined}
           />
         )
       })}
