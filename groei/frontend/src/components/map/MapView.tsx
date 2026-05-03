@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback, type ReactNode } from 'react'
-import type { MapDetail, MapPlant, MapObject, GroundZone } from '../../types'
+import { useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
+import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { updatePlantPosition, updateObjectPosition, updateObject, updatePlantContainer, updatePlantDisplayRadius, updatePlantGroundZone } from '../../api/client'
@@ -22,6 +22,7 @@ import PlantSuitabilityLayer from '../sun/PlantSuitabilityLayer'
 import FixedPlantsLayer from './FixedPlantsLayer'
 import GroundZonesLayer from './GroundZonesLayer'
 import GardenCompass from './GardenCompass'
+import CanvasZonesLayer from './CanvasZonesLayer'
 import { MapRotationContext } from '../../context/MapRotationContext'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
@@ -220,8 +221,12 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     if (!pt) return
     didDrag.current = true
     const key = `${dragging.type}-${dragging.id}`
-    const clampedX = Math.max(GARDEN_FLOOR[0][0], Math.min(GARDEN_FLOOR[1][0], pt.x))
-    const clampedY = Math.max(GARDEN_FLOOR[0][1], Math.min(GARDEN_FLOOR[2][1], pt.y))
+    const clampedX = isHouseMap && canvasData
+      ? Math.max(0, Math.min(canvasData.canvas_w, pt.x))
+      : Math.max(GARDEN_FLOOR[0][0], Math.min(GARDEN_FLOOR[1][0], pt.x))
+    const clampedY = isHouseMap && canvasData
+      ? Math.max(0, Math.min(canvasData.canvas_h, pt.y))
+      : Math.max(GARDEN_FLOOR[0][1], Math.min(GARDEN_FLOOR[2][1], pt.y))
     setDragPositions((prev) => ({ ...prev, [key]: { x: clampedX, y: clampedY } }))
 
     if (dragging.type === 'plant') {
@@ -368,6 +373,13 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     dispatch({ type: 'START_RESIZE', handle })
   }, [selection.selectedId, plants, dispatch])
 
+  // --- Parse canvas_data for house maps (live zone rendering) ---
+  const canvasData = useMemo<CanvasData | null>(() => {
+    if (!map.canvas_data) return null
+    try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
+  }, [map.canvas_data])
+  const isHouseMap = !!canvasData
+
   // --- Background tap: cancel pending single-click, dismiss remove button, deselect ---
   const handleMapClick = useCallback(() => {
     // Cancel any pending single-click-to-open-sheet
@@ -406,7 +418,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
 
   return (
     <div ref={containerRef} className="relative w-full h-full" onClick={handleMapClick}>
-      <GardenCompass isMobile={isMobile} />
+      {!isHouseMap && <GardenCompass isMobile={isMobile} />}
       {cw > 0 && ch > 0 && (
       <div
         style={{
@@ -438,7 +450,11 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
 
       <svg
         ref={svgRef}
-        viewBox={`${GARDEN_CLIP.x - 15} ${GARDEN_CLIP.y - 15} ${GARDEN_CLIP.width + 30} ${GARDEN_CLIP.height + 30}`}
+        viewBox={
+          isHouseMap && canvasData
+            ? `0 0 ${canvasData.canvas_w} ${canvasData.canvas_h}`
+            : `${GARDEN_CLIP.x - 15} ${GARDEN_CLIP.y - 15} ${GARDEN_CLIP.width + 30} ${GARDEN_CLIP.height + 30}`
+        }
         preserveAspectRatio="xMidYMid meet"
         className="absolute"
         style={{
@@ -456,11 +472,14 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         onPointerUp={handlePointerUp}
       >
       <MapRotationContext.Provider value={isMobile ? 90 : 0}>
-        {/* Background image inside SVG so it shares the viewBox */}
-        {(() => {
-          const [,, w, h] = map.viewbox.split(' ').map(Number)
-          return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
-        })()}
+        {/* Background: live canvas zones (house maps) or static SVG (garden maps) */}
+        {isHouseMap && canvasData
+          ? <CanvasZonesLayer canvasData={canvasData} />
+          : (() => {
+              const [,, w, h] = map.viewbox.split(' ').map(Number)
+              return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
+            })()
+        }
         <g style={{ pointerEvents: 'all' }}>
           {/* Sun shadow overlay (behind everything interactive) */}
           {sunModeActive && shadows && shadows.length > 0 && (

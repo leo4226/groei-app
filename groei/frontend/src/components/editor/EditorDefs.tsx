@@ -27,6 +27,9 @@ export const ZONE_TYPE_ORDER: ZoneStyleType[] = [
   'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure',
 ]
 
+export const GARDEN_ZONE_TYPES: ZoneStyleType[] = ['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'structure']
+export const HOUSE_ZONE_TYPES: ZoneStyleType[] = ['room', 'wall', 'structure']
+
 export default function EditorDefs() {
   return (
     <defs>

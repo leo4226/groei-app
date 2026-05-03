@@ -122,6 +122,17 @@ export interface MapInfo {
 // --- Map Editor ---
 
 export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure'
+export type WallThickness = 'exterior' | 'interior'
+export type RoomEdge = 'top' | 'right' | 'bottom' | 'left'
+export type MapType = 'garden' | 'house'
+
+export type CornerPosition = 'tl' | 'tr' | 'bl' | 'br'
+
+export interface CornerCut {
+  corner: CornerPosition
+  widthPx: number   // pixels, same coordinate space as zone.width
+  heightPx: number  // pixels
+}
 
 export interface EditorZone {
   id: string
@@ -132,13 +143,29 @@ export interface EditorZone {
   width: number
   height: number
   label: string
+  wallThickness?: WallThickness
+  roomHeightM?: number   // physical ceiling height in metres (informational only)
+  cornerCut?: CornerCut  // single rectangular notch cut from one corner
+}
+
+export interface WallElement {
+  id: string
+  type: 'door' | 'window'
+  zoneId: string
+  edge: RoomEdge
+  position: number
+  widthCm: number
+  swingSide?: 'left' | 'right'
+  swingDirection?: 'inward' | 'outward'
 }
 
 export interface CanvasData {
   zones: EditorZone[]
+  wallElements?: WallElement[]
   scale_px_per_m: number
   canvas_w: number
   canvas_h: number
+  mapType?: MapType
 }
 
 export interface Zone {

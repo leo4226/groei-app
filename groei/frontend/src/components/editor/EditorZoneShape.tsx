@@ -1,13 +1,61 @@
-import type { EditorZone } from '../../types'
+import type { EditorZone, WallElement } from '../../types'
 import { ZONE_STYLES } from './EditorDefs'
+import { WALL_COLOR } from '../../constants/mapDefaults'
+import RoomWallRenderer from './RoomWallRenderer'
 
 interface Props {
   zone: EditorZone
+  zones: EditorZone[]          // all zones — forwarded to RoomWallRenderer
   isSelected: boolean
+  scalePxPerM: number
+  wallElements: WallElement[]
+  selectedWallElementId: string | null
   onPointerDown: (e: React.PointerEvent, zoneId: string) => void
+  onSelectWallElement: (id: string) => void
+  onWallElementPointerDown: (e: React.PointerEvent, elementId: string) => void
 }
 
-export default function EditorZoneShape({ zone, isSelected, onPointerDown }: Props) {
+export default function EditorZoneShape({ zone, zones, isSelected, scalePxPerM, wallElements, selectedWallElementId, onPointerDown, onSelectWallElement, onWallElementPointerDown }: Props) {
+  if (zone.type === 'room' || zone.type === 'structure') {
+    return (
+      <RoomWallRenderer
+        zone={zone}
+        zones={zones}
+        scalePxPerM={scalePxPerM}
+        wallElements={wallElements}
+        isSelected={isSelected}
+        onPointerDown={onPointerDown}
+        onSelectWallElement={onSelectWallElement}
+        onWallElementPointerDown={onWallElementPointerDown}
+        selectedWallElementId={selectedWallElementId}
+      />
+    )
+  }
+
+  // Wall zones render as a solid architectural wall block
+  if (zone.type === 'wall') {
+    return (
+      <g>
+        <rect
+          x={zone.x} y={zone.y}
+          width={zone.width} height={zone.height}
+          fill={WALL_COLOR}
+          onPointerDown={(e) => onPointerDown(e, zone.id)}
+          style={{ cursor: 'pointer' }}
+        />
+        {isSelected && (
+          <rect
+            x={zone.x} y={zone.y}
+            width={zone.width} height={zone.height}
+            fill="none" stroke="#4A90D9"
+            strokeWidth={2} strokeDasharray="6 3"
+            pointerEvents="none"
+          />
+        )}
+      </g>
+    )
+  }
+
   const style = ZONE_STYLES[zone.type]
 
   return (
