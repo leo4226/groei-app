@@ -162,7 +162,12 @@ interface DrawState {
 }
 
 interface DragState {
-  zoneId: string; startSvgX: number; startSvgY: number; origX: number; origY: number
+  zoneId: string
+  startSvgX: number
+  startSvgY: number
+  origX: number
+  origY: number
+  children: Array<{ zoneId: string; origX: number; origY: number }>
 }
 
 interface ResizeState {
@@ -240,7 +245,20 @@ export default function EditorCanvas({
       const zone = zones.find((z) => z.id === zoneId)
       if (zone) {
         ;(e.target as Element).setPointerCapture(e.pointerId)
-        setDragging({ zoneId, startSvgX: pt.x, startSvgY: pt.y, origX: zone.x, origY: zone.y })
+        const children: DragState['children'] =
+          zone.type === 'structure'
+            ? zones
+                .filter(
+                  (z) =>
+                    z.id !== zoneId &&
+                    z.x >= zone.x &&
+                    z.y >= zone.y &&
+                    z.x + z.width <= zone.x + zone.width &&
+                    z.y + z.height <= zone.y + zone.height,
+                )
+                .map((z) => ({ zoneId: z.id, origX: z.x, origY: z.y }))
+            : []
+        setDragging({ zoneId, startSvgX: pt.x, startSvgY: pt.y, origX: zone.x, origY: zone.y, children })
       }
     } else {
       onSelectZone(zoneId)
@@ -317,6 +335,12 @@ export default function EditorCanvas({
         const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, xTargets, yTargets)
         setSnapLines(lines)
         onUpdateZone(dragging.zoneId, { x: Math.round(x), y: Math.round(y) })
+        for (const child of dragging.children) {
+          const childZone = zones.find((z) => z.id === child.zoneId)
+          const childRawX = Math.max(0, Math.min(CANVAS_W - (childZone?.width ?? 0), child.origX + dx))
+          const childRawY = Math.max(0, Math.min(CANVAS_H - (childZone?.height ?? 0), child.origY + dy))
+          onUpdateZone(child.zoneId, { x: Math.round(childRawX), y: Math.round(childRawY) })
+        }
       }
       return
     }
