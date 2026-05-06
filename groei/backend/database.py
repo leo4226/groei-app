@@ -7,6 +7,17 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "groei.db")
 
 @asynccontextmanager
 async def get_db():
+    """Async context manager for use with 'async with'. Used by init_db and scripts."""
+    db = await aiosqlite.connect(DB_PATH)
+    db.row_factory = aiosqlite.Row
+    try:
+        yield db
+    finally:
+        await db.close()
+
+
+async def db_dep():
+    """Async generator for FastAPI Depends injection. Enables test overrides."""
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
     try:

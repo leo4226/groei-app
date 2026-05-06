@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from database import get_db
+from fastapi import APIRouter, Depends
+from database import db_dep
 from models import DashboardResponse, CareTask
 from datetime import date
 
@@ -7,30 +7,29 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard():
+async def get_dashboard(db = Depends(db_dep)):
     today = str(date.today())
 
-    async with get_db() as db:
-        cursor = await db.execute("""
-            SELECT
-                cs.id as schedule_id,
-                cs.plant_id,
-                p.name as plant_name,
-                p.photo_path as plant_photo,
-                l.name as location,
-                cs.care_type,
-                cs.next_due,
-                cs.last_done_by,
-                u.name as last_done_by_name,
-                cs.last_done as last_done_at
-            FROM care_schedules cs
-            JOIN plants p ON cs.plant_id = p.id
-            LEFT JOIN locations l ON p.location_id = l.id
-            LEFT JOIN users u ON cs.last_done_by = u.id
-            WHERE cs.is_active = 1 AND p.is_active = 1
-            ORDER BY cs.next_due ASC
-        """)
-        rows = await cursor.fetchall()
+    cursor = await db.execute("""
+        SELECT
+            cs.id as schedule_id,
+            cs.plant_id,
+            p.name as plant_name,
+            p.photo_path as plant_photo,
+            l.name as location,
+            cs.care_type,
+            cs.next_due,
+            cs.last_done_by,
+            u.name as last_done_by_name,
+            cs.last_done as last_done_at
+        FROM care_schedules cs
+        JOIN plants p ON cs.plant_id = p.id
+        LEFT JOIN locations l ON p.location_id = l.id
+        LEFT JOIN users u ON cs.last_done_by = u.id
+        WHERE cs.is_active = 1 AND p.is_active = 1
+        ORDER BY cs.next_due ASC
+    """)
+    rows = await cursor.fetchall()
 
     overdue = []
     due_today = []

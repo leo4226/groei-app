@@ -1,20 +1,19 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from database import get_db
+from database import db_dep
 from threshold_service import generate_thresholds
 
 router = APIRouter(tags=["admin"])
 
 
 @router.post("/admin/backfill-thresholds")
-async def backfill_thresholds():
+async def backfill_thresholds(db = Depends(db_dep)):
     """One-time tool: generate care_thresholds for all plants that don't have them yet."""
-    async with get_db() as db:
-        rows = await db.execute_fetchall(
-            "SELECT id, name, species FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
-        )
+    rows = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
+    )
 
     processed = len(rows)
     succeeded = 0
@@ -26,12 +25,11 @@ async def backfill_thresholds():
         species = row["species"]
         try:
             thresholds = await generate_thresholds(name, species)
-            async with get_db() as db:
-                await db.execute(
-                    "UPDATE plants SET care_thresholds = ? WHERE id = ?",
-                    (json.dumps(thresholds), plant_id),
-                )
-                await db.commit()
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                (json.dumps(thresholds), plant_id),
+            )
+            await db.commit()
             succeeded += 1
             print(f"  ✓ Thresholds generated for plant {plant_id} ({name})")
         except Exception as exc:

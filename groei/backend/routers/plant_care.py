@@ -3,10 +3,10 @@ import os
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from database import get_db
+from database import db_dep
 
 router = APIRouter()
 
@@ -348,124 +348,123 @@ Geef alleen geldige JSON terug met dit formaat:
 # ── endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/plants/{plant_id}/care-info")
-async def get_plant_care_info(plant_id: int):
-    async with get_db() as db:
-        row = await db.execute_fetchall(
-            "SELECT species, notes FROM plants WHERE id = ?", (plant_id,)
-        )
-        if not row:
-            raise HTTPException(status_code=404, detail="Plant not found")
+async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
+    row = await db.execute_fetchall(
+        "SELECT species, notes FROM plants WHERE id = ?", (plant_id,)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Plant not found")
 
-        scientific_name = row[0]["species"]
-        plant_notes     = row[0]["notes"]
-        if not scientific_name:
-            return {"source": "not_found", "scientific_name": None, "plant_notes": plant_notes}
+    scientific_name = row[0]["species"]
+    plant_notes     = row[0]["notes"]
+    if not scientific_name:
+        return {"source": "not_found", "scientific_name": None, "plant_notes": plant_notes}
 
-        # Cache check — 30 days
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        cached = await db.execute_fetchall(
-            "SELECT * FROM plant_care_cache WHERE scientific_name = ? AND fetched_at > ?",
-            (scientific_name, cutoff),
-        )
-        if cached:
-            c = cached[0]
-            return {
-                "scientific_name": scientific_name,
-                "common_name":     c["common_name"],
-                "family":          c["family"],
-                "duration":        c["duration"],
-                "leaf_retention":  bool(c["leaf_retention"]) if c["leaf_retention"] is not None else None,
-                "light_label":     c["light_label"],
-                "light_raw":       c["light_raw"],
-                "precip_min_mm":   c["precip_min_mm"],
-                "precip_max_mm":   c["precip_max_mm"],
-                "bloom_months":    json.loads(c["bloom_months"]) if c["bloom_months"] else [],
-                "flower_colors":   json.loads(c["flower_colors"]) if c["flower_colors"] else [],
-                "avg_height_cm":   c["avg_height_cm"],
-                "toxicity":        c["toxicity"],
-                "edible":          bool(c["edible"]) if c["edible"] is not None else None,
-                "image_url":       c["image_url"],
-                "source":          "cache",
-                "cached_at":       c["fetched_at"],
-                "plant_notes":     plant_notes,
-            }
-
-        # Fetch from Trefle (or use curated fallback if token missing)
-        if not TREFLE_TOKEN:
-            curated = _CURATED.get(scientific_name)
-            if curated:
-                data = {"trefle_slug": None, "common_name": None, "family": None,
-                        "humidity_raw": None, "image_url": None, **curated}
-            else:
-                data = await _fetch_claude_species(scientific_name)
-            if not data:
-                return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
-        else:
-            data = await _fetch_trefle(scientific_name)
-
-        if not data:
-            # Trefle found nothing — try curated, then Claude
-            curated = _CURATED.get(scientific_name)
-            if curated:
-                data = {"trefle_slug": None, "common_name": None, "family": None,
-                        "humidity_raw": None, "image_url": None, **curated}
-            else:
-                data = await _fetch_claude_species(scientific_name)
-            if not data:
-                return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
-
-        fetched_at = datetime.now(timezone.utc).isoformat()
-        await db.execute(
-            """INSERT OR REPLACE INTO plant_care_cache
-               (scientific_name, trefle_slug, common_name, family, duration,
-                leaf_retention, light_raw, light_label, humidity_raw,
-                precip_min_mm, precip_max_mm, bloom_months, flower_colors,
-                avg_height_cm, max_height_cm, toxicity, edible, image_url, fetched_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                scientific_name,
-                data["trefle_slug"],
-                data["common_name"],
-                data["family"],
-                data["duration"],
-                data["leaf_retention"],
-                data["light_raw"],
-                data["light_label"],
-                data["humidity_raw"],
-                data["precip_min_mm"],
-                data["precip_max_mm"],
-                json.dumps(data["bloom_months"]),
-                json.dumps(data["flower_colors"]),
-                data["avg_height_cm"],
-                data["max_height_cm"],
-                data["toxicity"],
-                data["edible"],
-                data["image_url"],
-                fetched_at,
-            ),
-        )
-        await db.commit()
-
+    # Cache check — 30 days
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    cached = await db.execute_fetchall(
+        "SELECT * FROM plant_care_cache WHERE scientific_name = ? AND fetched_at > ?",
+        (scientific_name, cutoff),
+    )
+    if cached:
+        c = cached[0]
         return {
             "scientific_name": scientific_name,
-            "common_name":     data["common_name"],
-            "family":          data["family"],
-            "duration":        data["duration"],
-            "leaf_retention":  data["leaf_retention"],
-            "light_label":     data["light_label"],
-            "light_raw":       data["light_raw"],
-            "precip_min_mm":   data["precip_min_mm"],
-            "precip_max_mm":   data["precip_max_mm"],
-            "bloom_months":    data["bloom_months"],
-            "flower_colors":   data["flower_colors"],
-            "avg_height_cm":   data["avg_height_cm"],
-            "toxicity":        data["toxicity"],
-            "edible":          data["edible"],
-            "image_url":       data["image_url"],
-            "source":          "trefle",
-            "cached_at":       fetched_at,
+            "common_name":     c["common_name"],
+            "family":          c["family"],
+            "duration":        c["duration"],
+            "leaf_retention":  bool(c["leaf_retention"]) if c["leaf_retention"] is not None else None,
+            "light_label":     c["light_label"],
+            "light_raw":       c["light_raw"],
+            "precip_min_mm":   c["precip_min_mm"],
+            "precip_max_mm":   c["precip_max_mm"],
+            "bloom_months":    json.loads(c["bloom_months"]) if c["bloom_months"] else [],
+            "flower_colors":   json.loads(c["flower_colors"]) if c["flower_colors"] else [],
+            "avg_height_cm":   c["avg_height_cm"],
+            "toxicity":        c["toxicity"],
+            "edible":          bool(c["edible"]) if c["edible"] is not None else None,
+            "image_url":       c["image_url"],
+            "source":          "cache",
+            "cached_at":       c["fetched_at"],
             "plant_notes":     plant_notes,
         }
+
+    # Fetch from Trefle (or use curated fallback if token missing)
+    if not TREFLE_TOKEN:
+        curated = _CURATED.get(scientific_name)
+        if curated:
+            data = {"trefle_slug": None, "common_name": None, "family": None,
+                    "humidity_raw": None, "image_url": None, **curated}
+        else:
+            data = await _fetch_claude_species(scientific_name)
+        if not data:
+            return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
+    else:
+        data = await _fetch_trefle(scientific_name)
+
+    if not data:
+        # Trefle found nothing — try curated, then Claude
+        curated = _CURATED.get(scientific_name)
+        if curated:
+            data = {"trefle_slug": None, "common_name": None, "family": None,
+                    "humidity_raw": None, "image_url": None, **curated}
+        else:
+            data = await _fetch_claude_species(scientific_name)
+        if not data:
+            return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
+
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    await db.execute(
+        """INSERT OR REPLACE INTO plant_care_cache
+           (scientific_name, trefle_slug, common_name, family, duration,
+            leaf_retention, light_raw, light_label, humidity_raw,
+            precip_min_mm, precip_max_mm, bloom_months, flower_colors,
+            avg_height_cm, max_height_cm, toxicity, edible, image_url, fetched_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            scientific_name,
+            data["trefle_slug"],
+            data["common_name"],
+            data["family"],
+            data["duration"],
+            data["leaf_retention"],
+            data["light_raw"],
+            data["light_label"],
+            data["humidity_raw"],
+            data["precip_min_mm"],
+            data["precip_max_mm"],
+            json.dumps(data["bloom_months"]),
+            json.dumps(data["flower_colors"]),
+            data["avg_height_cm"],
+            data["max_height_cm"],
+            data["toxicity"],
+            data["edible"],
+            data["image_url"],
+            fetched_at,
+        ),
+    )
+    await db.commit()
+
+    return {
+        "scientific_name": scientific_name,
+        "common_name":     data["common_name"],
+        "family":          data["family"],
+        "duration":        data["duration"],
+        "leaf_retention":  data["leaf_retention"],
+        "light_label":     data["light_label"],
+        "light_raw":       data["light_raw"],
+        "precip_min_mm":   data["precip_min_mm"],
+        "precip_max_mm":   data["precip_max_mm"],
+        "bloom_months":    data["bloom_months"],
+        "flower_colors":   data["flower_colors"],
+        "avg_height_cm":   data["avg_height_cm"],
+        "toxicity":        data["toxicity"],
+        "edible":          data["edible"],
+        "image_url":       data["image_url"],
+        "source":          "trefle",
+        "cached_at":       fetched_at,
+        "plant_notes":     plant_notes,
+    }
 
 
 class GrowHereRequest(BaseModel):
@@ -646,15 +645,14 @@ async def get_last_garden_watered() -> date | None:
 
 
 @router.post("/garden/water-log")
-async def log_garden_watering(body: WaterLogCreate):
+async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
     watered_at = (body.watered_at or date.today()).isoformat()
-    async with get_db() as db:
-        await db.execute("DELETE FROM garden_water_log")
-        await db.execute(
-            "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
-            (watered_at, body.watered_by),
-        )
-        await db.commit()
+    await db.execute("DELETE FROM garden_water_log")
+    await db.execute(
+        "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
+        (watered_at, body.watered_by),
+    )
+    await db.commit()
     return {"watered_at": watered_at}
 
 
@@ -715,12 +713,11 @@ async def get_garden_water_status():
 
 
 @router.delete("/garden/water-log/latest")
-async def delete_latest_garden_watering():
-    async with get_db() as db:
-        rows = await db.execute_fetchall(
-            "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
-        )
-        if rows:
-            await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
-            await db.commit()
+async def delete_latest_garden_watering(db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+    )
+    if rows:
+        await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
+        await db.commit()
     return {"ok": True}
