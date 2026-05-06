@@ -335,10 +335,13 @@ export default function EditorCanvas({
         const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, xTargets, yTargets)
         setSnapLines(lines)
         onUpdateZone(dragging.zoneId, { x: Math.round(x), y: Math.round(y) })
+        // Children use raw dx/dy (not snap-adjusted), so relative positions stay
+        // consistent. Minor drift can occur at canvas edges when the parent snaps.
         for (const child of dragging.children) {
           const childZone = zones.find((z) => z.id === child.zoneId)
-          const childRawX = Math.max(0, Math.min(CANVAS_W - (childZone?.width ?? 0), child.origX + dx))
-          const childRawY = Math.max(0, Math.min(CANVAS_H - (childZone?.height ?? 0), child.origY + dy))
+          if (!childZone) continue
+          const childRawX = Math.max(0, Math.min(CANVAS_W - childZone.width,  child.origX + dx))
+          const childRawY = Math.max(0, Math.min(CANVAS_H - childZone.height, child.origY + dy))
           onUpdateZone(child.zoneId, { x: Math.round(childRawX), y: Math.round(childRawY) })
         }
       }
