@@ -67,6 +67,11 @@ export async function archivePlant(id: number): Promise<void> {
   await ensureOk(res, 'Failed to archive plant')
 }
 
+export async function restorePlant(id: number): Promise<void> {
+  const res = await fetch(`${API}/plants/${id}/restore`, { method: 'PATCH' })
+  await ensureOk(res, 'Failed to restore plant')
+}
+
 export async function uploadPlantPhoto(plantId: number, file: File): Promise<Plant> {
   const form = new FormData()
   form.append('file', file)
@@ -192,6 +197,11 @@ export async function updateObjectPosition(id: number, data: { map_x: number; ma
 export async function archiveObject(id: number): Promise<void> {
   const res = await fetch(`${API}/objects/${id}`, { method: 'DELETE' })
   await ensureOk(res, 'Failed to archive object')
+}
+
+export async function restoreObject(id: number): Promise<void> {
+  const res = await fetch(`${API}/objects/${id}/restore`, { method: 'PATCH' })
+  await ensureOk(res, 'Failed to restore object')
 }
 
 export async function updatePlantContainer(plantId: number, containerId: number | null): Promise<void> {
