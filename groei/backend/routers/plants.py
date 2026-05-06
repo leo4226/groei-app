@@ -288,6 +288,17 @@ async def archive_plant(plant_id: int):
         return {"ok": True}
 
 
+@router.patch("/plants/{plant_id}/restore")
+async def restore_plant(plant_id: int):
+    async with get_db() as db:
+        await db.execute(
+            "UPDATE plants SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (plant_id,),
+        )
+        await db.commit()
+        return {"ok": True}
+
+
 @router.post("/plants/{plant_id}/photo", response_model=PlantOut)
 async def upload_photo(plant_id: int, file: UploadFile = File(...)):
     # Verify plant exists

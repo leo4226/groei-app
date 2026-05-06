@@ -151,3 +151,14 @@ async def archive_object(object_id: int):
         )
         await db.commit()
         return {"ok": True}
+
+
+@router.patch("/objects/{object_id}/restore")
+async def restore_object(object_id: int):
+    async with get_db() as db:
+        await db.execute(
+            "UPDATE objects SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (object_id,),
+        )
+        await db.commit()
+        return {"ok": True}
