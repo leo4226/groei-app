@@ -3,7 +3,6 @@ import type { User, Location, Plant, DashboardData, PlantCreateInput, MapInfo } 
 import * as api from '../api/client'
 
 interface GroeiStore {
-  // State
   users: User[]
   locations: Location[]
   maps: MapInfo[]
@@ -13,8 +12,8 @@ interface GroeiStore {
   isLoading: boolean
   error: string | null
 
-  // Actions
   load: () => Promise<void>
+  loadMaps: () => Promise<void>
   loadDashboard: () => Promise<void>
   loadPlants: () => Promise<void>
   addPlant: (data: PlantCreateInput) => Promise<Plant>
@@ -23,6 +22,8 @@ interface GroeiStore {
   uploadPhoto: (plantId: number, file: File) => Promise<void>
   markCareDone: (plantId: number, careType: string, notes?: string) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
+  createMap: (name: string) => Promise<MapInfo>
+  deleteMap: (id: number) => Promise<void>
   setActiveUser: (id: number) => void
   clearError: () => void
 }
@@ -32,6 +33,18 @@ const STORAGE_KEY = 'groei-active-user'
 function getSavedUserId(): number | null {
   const saved = localStorage.getItem(STORAGE_KEY)
   return saved ? parseInt(saved, 10) : null
+}
+
+/** Surgically remove a care task from the dashboard's buckets. */
+function _removeDashboardTask(dashboard: DashboardData | null, plantId: number, careType: string): DashboardData | null {
+  if (!dashboard) return null
+  const remove = (tasks: typeof dashboard.overdue) =>
+    tasks.filter(t => !(t.plant_id === plantId && t.care_type === careType))
+  return {
+    overdue: remove(dashboard.overdue),
+    due_today: remove(dashboard.due_today),
+    upcoming: remove(dashboard.upcoming),
+  }
 }
 
 export const useGroeiStore = create<GroeiStore>((set, get) => ({
@@ -54,7 +67,6 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
         api.fetchPlants(),
       ])
       const state: Partial<GroeiStore> = { users, locations, maps, plants, isLoading: false }
-      // Default to first user if none selected
       if (!get().activeUserId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))
@@ -62,6 +74,15 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
       set(state)
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false })
+    }
+  },
+
+  loadMaps: async () => {
+    try {
+      const maps = await api.fetchMaps()
+      set({ maps })
+    } catch (e) {
+      set({ error: (e as Error).message })
     }
   },
 
@@ -108,15 +129,33 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
     await api.markCareDone(plantId, careType, userId, notes)
-    // Refresh dashboard and plants
-    await Promise.all([get().loadDashboard(), get().loadPlants()])
+    // Surgical update: adjust the plant's care_status and remove task from dashboard
+    set((s) => ({
+      plants: s.plants.map((p) =>
+        p.id === plantId ? { ...p, care_status: 'good' as const, most_urgent: undefined } : p,
+      ),
+      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
+    }))
   },
 
   skipCare: async (plantId, careType) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
     await api.skipCare(plantId, careType, userId)
-    await Promise.all([get().loadDashboard(), get().loadPlants()])
+    set((s) => ({
+      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
+    }))
+  },
+
+  createMap: async (name) => {
+    const map = await api.createMap(name)
+    set((s) => ({ maps: [...s.maps, map] }))
+    return map
+  },
+
+  deleteMap: async (id) => {
+    await api.deleteMap(id)
+    set((s) => ({ maps: s.maps.filter((m) => m.id !== id) }))
   },
 
   setActiveUser: (id) => {
