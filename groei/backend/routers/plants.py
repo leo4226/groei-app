@@ -9,6 +9,7 @@ from database import get_db
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
+from services.plant_reader import enrich_plant_full
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
@@ -20,7 +21,7 @@ PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 @router.get("/plants", response_model=list[PlantOut])
 async def list_plants():
     async with get_db() as db:
-        cursor = await db.execute("""
+        rows = await db.execute_fetchall("""
             SELECT p.*, l.name as location_name, l.icon as location_icon,
                    s.phenology_json
             FROM plants p
@@ -29,21 +30,35 @@ async def list_plants():
             WHERE p.is_active = 1
             ORDER BY p.name
         """)
-        plants = [dict(row) for row in await cursor.fetchall()]
+        plants = [dict(r) for r in rows]
+
+        # Batch load all schedules (single query, fixes N+1)
+        plant_ids = [p["id"] for p in plants]
+        if plant_ids:
+            placeholders = ",".join("?" for _ in plant_ids)
+            sched_rows = await db.execute_fetchall(
+                f"""SELECT cs.*, u.name as last_done_by_name
+                    FROM care_schedules cs
+                    LEFT JOIN users u ON cs.last_done_by = u.id
+                    WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1""",
+                plant_ids,
+            )
+            by_plant = {}
+            for row in sched_rows:
+                r = dict(row)
+                pid = r["plant_id"]
+                if pid not in by_plant:
+                    by_plant[pid] = []
+                by_plant[pid].append(r)
+        else:
+            by_plant = {}
 
         for plant in plants:
+            plant["care_schedules"] = by_plant.get(plant["id"], [])
             if plant.get("phenology_json"):
                 plant["phenology"] = json.loads(plant.pop("phenology_json"))
             else:
                 plant.pop("phenology_json", None)
-
-            sched_cursor = await db.execute("""
-                SELECT cs.*, u.name as last_done_by_name
-                FROM care_schedules cs
-                LEFT JOIN users u ON cs.last_done_by = u.id
-                WHERE cs.plant_id = ? AND cs.is_active = 1
-            """, (plant["id"],))
-            plant["care_schedules"] = [dict(row) for row in await sched_cursor.fetchall()]
 
         return plants
 
@@ -62,22 +77,8 @@ async def get_plant(plant_id: int):
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Plant not found")
-
-        plant = dict(row)
-        if plant.get("phenology_json"):
-            plant["phenology"] = json.loads(plant.pop("phenology_json"))
-        else:
-            plant.pop("phenology_json", None)
-
-        sched_cursor = await db.execute("""
-            SELECT cs.*, u.name as last_done_by_name
-            FROM care_schedules cs
-            LEFT JOIN users u ON cs.last_done_by = u.id
-            WHERE cs.plant_id = ? AND cs.is_active = 1
-        """, (plant_id,))
-        plant["care_schedules"] = [dict(row) for row in await sched_cursor.fetchall()]
-
-        return plant
+        today = date.today().isoformat()
+        return await enrich_plant_full(db, dict(row), today)
 
 
 @router.post("/plants", response_model=PlantOut)
