@@ -1,5 +1,4 @@
 import json
-
 import re
 import os
 
@@ -7,9 +6,10 @@ from fastapi import APIRouter, HTTPException
 from datetime import date
 
 from database import get_db
-from models import MapOut, MapDetailOut, ZoneOut, MapPlantOut, MostUrgent, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
+from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
 from routers.plant_care import _get_temp_data
 from services.svg_renderer import render_canvas_data
+from services.plant_reader import enrich_plant, enrich_plants
 
 # Path to frontend public/maps — SVGs land here so Vite serves them in dev
 _MAPS_PUBLIC = os.path.normpath(
@@ -23,7 +23,7 @@ router = APIRouter(tags=["maps"])
 async def list_maps():
     async with get_db() as db:
         rows = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps ORDER BY sort_order"
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps ORDER BY sort_order"
         )
         return [dict(r) for r in rows]
 
@@ -32,25 +32,18 @@ async def list_maps():
 async def get_map(slug: str):
     async with get_db() as db:
         row = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE slug = ?",
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE slug = ?",
             (slug,),
         )
         if not row:
             raise HTTPException(404, "Map not found")
         map_data = dict(row[0])
-
-        zones = await db.execute_fetchall(
-            "SELECT id, map_id, name, zone_type, sun_exposure, boundary, color, sort_order FROM zones WHERE map_id = ? ORDER BY sort_order",
-            (map_data["id"],),
-        )
-        map_data["zones"] = [dict(z) for z in zones]
         return map_data
 
 
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
 async def get_map_plants(slug: str):
     async with get_db() as db:
-        # Verify map exists
         map_row = await db.execute_fetchall(
             "SELECT id FROM maps WHERE slug = ?", (slug,)
         )
@@ -58,130 +51,21 @@ async def get_map_plants(slug: str):
             raise HTTPException(404, "Map not found")
         map_id = map_row[0]["id"]
 
-        # Get plants on this map
-        plants = await db.execute_fetchall(
-            """SELECT id, name, species, map_x, map_y, photo_path, sun_requirement, plant_type, icon_key
-               FROM plants
-               WHERE map_id = ? AND is_active = 1 AND map_x IS NOT NULL AND map_y IS NOT NULL""",
+        plant_rows = await db.execute_fetchall(
+            """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
+                      p.container_id, p.ground_zone_id, p.display_radius_cm,
+                      p.sun_requirement, p.plant_type, p.icon_key, p.species_id,
+                      p.is_locked, p.care_thresholds,
+                      s.phenology_json
+               FROM plants p
+               LEFT JOIN plant_species s ON p.species_id = s.id
+               WHERE p.map_id = ? AND p.is_active = 1 AND p.map_x IS NOT NULL AND p.map_y IS NOT NULL""",
             (map_id,),
         )
-
         today = date.today().isoformat()
-        result = []
-        for p in plants:
-            plant = dict(p)
-
-            # Compute care status from schedules
-            schedules = await db.execute_fetchall(
-                """SELECT cs.care_type, cs.next_due, u.name as last_done_by_name
-                   FROM care_schedules cs
-                   LEFT JOIN users u ON cs.last_done_by = u.id
-                   WHERE cs.plant_id = ? AND cs.is_active = 1
-                   ORDER BY cs.next_due ASC""",
-                (plant["id"],),
-            )
-
-            care_status = "good"
-            most_urgent = None
-
-            for s in schedules:
-                s = dict(s)
-                next_due = s["next_due"]
-                if next_due < today:
-                    care_status = "overdue"
-                    days = (date.fromisoformat(today) - date.fromisoformat(next_due)).days
-                    most_urgent = MostUrgent(
-                        care_type=s["care_type"],
-                        days_overdue=days,
-                        last_done_by=s["last_done_by_name"],
-                    )
-                    break
-                elif next_due == today:
-                    if care_status != "overdue":
-                        care_status = "due_today"
-                        most_urgent = MostUrgent(
-                            care_type=s["care_type"],
-                            days_overdue=0,
-                            last_done_by=s["last_done_by_name"],
-                        )
-
-            plant["care_status"] = care_status
-            plant["most_urgent"] = most_urgent
-            result.append(plant)
-
-        return result
+        return await enrich_plants(db, plant_rows, today)
 
 
-def _compute_temp_status(care_thresholds_json: str | None, temp_data: dict) -> str:
-    """Derive a temperature status string from care thresholds + current week's weather."""
-    if not care_thresholds_json:
-        return "comfortable"
-    try:
-        thresholds = json.loads(care_thresholds_json)
-    except (json.JSONDecodeError, TypeError):
-        return "comfortable"
-
-    days = temp_data.get("days") or []
-    if not days:
-        return "comfortable"
-
-    week_min = min(d["min"] for d in days)
-    week_max = max(d["max"] for d in days)
-    min_temp = thresholds.get("min_temp_c")
-    max_temp = thresholds.get("max_temp_c")
-
-    if min_temp is not None:
-        if week_min <= min_temp:
-            return "freezing"
-        if week_min <= min_temp + 3:
-            return "chilling"
-
-    if max_temp is not None and week_max >= max_temp:
-        return "heatstress"
-
-    return "comfortable"
-
-
-def _compute_care_status(schedules, today):
-    """Shared helper to compute care_status and most_urgent from schedule rows."""
-    care_status = "good"
-    most_urgent = None
-    for s in schedules:
-        s = dict(s)
-        next_due = s["next_due"]
-        if next_due < today:
-            care_status = "overdue"
-            days = (date.fromisoformat(today) - date.fromisoformat(next_due)).days
-            most_urgent = MostUrgent(
-                care_type=s["care_type"], days_overdue=days, last_done_by=s.get("last_done_by_name"),
-            )
-            break
-        elif next_due == today:
-            if care_status != "overdue":
-                care_status = "due_today"
-                most_urgent = MostUrgent(
-                    care_type=s["care_type"], days_overdue=0, last_done_by=s.get("last_done_by_name"),
-                )
-    return care_status, most_urgent
-
-
-async def _plant_with_care(db, plant_row, today, temp_data: dict | None = None):
-    """Enrich a plant dict with care_status, most_urgent, temp_status, and parsed phenology."""
-    plant = dict(plant_row)
-    schedules = await db.execute_fetchall(
-        """SELECT cs.care_type, cs.next_due, u.name as last_done_by_name
-           FROM care_schedules cs
-           LEFT JOIN users u ON cs.last_done_by = u.id
-           WHERE cs.plant_id = ? AND cs.is_active = 1
-           ORDER BY cs.next_due ASC""",
-        (plant["id"],),
-    )
-    plant["care_status"], plant["most_urgent"] = _compute_care_status(schedules, today)
-    care_thresholds = plant.pop("care_thresholds", None)
-    plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data or {})
-    phenology_json = plant.pop("phenology_json", None)
-    plant["phenology"] = json.loads(phenology_json) if phenology_json else None
-    return plant
 
 
 @router.get("/maps/{slug}/items", response_model=MapItemsOut)
@@ -206,7 +90,7 @@ async def get_map_items(slug: str):
                  AND p.container_id IS NULL""",
             (map_id,),
         )
-        plants = [await _plant_with_care(db, p, today, temp_data) for p in plant_rows]
+        plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data)
 
         # Objects on this map
         obj_rows = await db.execute_fetchall(
@@ -227,13 +111,10 @@ async def get_map_items(slug: str):
                    WHERE p.container_id = ? AND p.is_active = 1""",
                 (obj["id"],),
             )
-            contained = []
-            for cp in contained_rows:
-                p = await _plant_with_care(db, cp, today, temp_data)
-                # Ensure map_x/map_y are set for the model (contained plants inherit from container)
+            contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data)
+            for p in contained:
                 p["map_x"] = p["map_x"] or 0
                 p["map_y"] = p["map_y"] or 0
-                contained.append(p)
             obj["contained_plants"] = contained
             objects.append(obj)
 
@@ -250,7 +131,7 @@ def _slugify(name: str) -> str:
 async def get_map_by_id(map_id: int):
     async with get_db() as db:
         rows = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
             (map_id,),
         )
         if not rows:
@@ -275,17 +156,17 @@ async def create_map(data: MapCreate):
         max_order = await db.execute_fetchall("SELECT COALESCE(MAX(sort_order), 0) as m FROM maps")
         next_order = max_order[0]["m"] + 1
 
-        canvas_data = json.dumps({"zones": [], "scale_px_per_m": 46, "canvas_w": 680, "canvas_h": 680})
+        canvas_data = json.dumps({"zones": [], "scale_px_per_m": 46, "canvas_w": 680, "canvas_h": 680, "mapType": data.map_type})
 
         cursor = await db.execute(
-            """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data)
-               VALUES (?, ?, 'blank.svg', '0 0 680 680', '{"px_per_meter": 46}', ?, ?)""",
-            (data.name, slug, next_order, canvas_data),
+            """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing)
+               VALUES (?, ?, 'blank.svg', '0 0 680 680', '{"px_per_meter": 46}', ?, ?, ?, ?, ?, ?)""",
+            (data.name, slug, next_order, canvas_data, data.map_type, data.lat, data.lon, data.bearing),
         )
         await db.commit()
         map_id = cursor.lastrowid
         rows = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
             (map_id,),
         )
         return dict(rows[0])
@@ -306,6 +187,36 @@ async def update_map(map_id: int, data: MapUpdate):
         if data.canvas_data is not None:
             updates.append("canvas_data = ?")
             params.append(data.canvas_data)
+            # Compute tight viewbox from zone bounding box (ADR-0001)
+            try:
+                cd = json.loads(data.canvas_data)
+                zones = cd.get("zones", [])
+                if zones:
+                    pad = 20
+                    min_x = min(z["x"] for z in zones)
+                    min_y = min(z["y"] for z in zones)
+                    max_x = max(z["x"] + z["width"] for z in zones)
+                    max_y = max(z["y"] + z["height"] for z in zones)
+                    vb = f"{min_x - pad} {min_y - pad} {max_x - min_x + pad * 2} {max_y - min_y + pad * 2}"
+                else:
+                    w, h = cd.get("canvas_w", 680), cd.get("canvas_h", 680)
+                    vb = f"0 0 {w} {h}"
+                updates.append("viewbox = ?")
+                params.append(vb)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        if data.map_type is not None:
+            updates.append("map_type = ?")
+            params.append(data.map_type)
+        if data.lat is not None:
+            updates.append("lat = ?")
+            params.append(data.lat)
+        if data.lon is not None:
+            updates.append("lon = ?")
+            params.append(data.lon)
+        if data.bearing is not None:
+            updates.append("bearing = ?")
+            params.append(data.bearing)
 
         if updates:
             params.append(map_id)
@@ -313,7 +224,7 @@ async def update_map(map_id: int, data: MapUpdate):
             await db.commit()
 
         rows = await db.execute_fetchall(
-            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data FROM maps WHERE id = ?",
+            "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
             (map_id,),
         )
         return dict(rows[0])
