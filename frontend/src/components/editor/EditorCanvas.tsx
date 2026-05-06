@@ -441,28 +441,6 @@ export default function EditorCanvas({
           />
         ))}
 
-        {/* Dimension labels */}
-        {!previewMode && zones.map((zone) => {
-          if (zone.width < 60 || zone.height < 60) return null
-          const wM = (zone.width  / scalePxPerM).toFixed(1)
-          const hM = (zone.height / scalePxPerM).toFixed(1)
-          return (
-            <text
-              key={`dim-${zone.id}`}
-              x={zone.x + zone.width  / 2}
-              y={zone.y + zone.height / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#94a3b8"
-              fontSize={11}
-              fontFamily="sans-serif"
-              pointerEvents="none"
-            >
-              {wM}m × {hM}m
-            </text>
-          )
-        })}
-
         {/* Resize overlay on selected zone */}
         {!previewMode && selectedZone && activeTool === 'select' && (
           <EditorResizeOverlay
