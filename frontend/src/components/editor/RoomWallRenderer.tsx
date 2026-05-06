@@ -421,6 +421,23 @@ export default function RoomWallRenderer({
         <rect key={`cw-${i}`} {...r} fill={WALL_COLOR} pointerEvents="none" />
       ))}
 
+      {/* Structure label above the top outer wall */}
+      {isStructure && w > 40 && (
+        <text
+          x={x + w / 2}
+          y={y - 6}
+          textAnchor="middle"
+          dominantBaseline="auto"
+          fill="#d4b896"
+          fontSize={9.5}
+          fontWeight={600}
+          fontFamily="sans-serif"
+          pointerEvents="none"
+        >
+          {zone.label ? `${zone.label} · ${widthM} × ${heightM} m` : `${widthM} × ${heightM} m`}
+        </text>
+      )}
+
       {/* Room label + dimensions + area — fits dynamically inside the interior */}
       {!isStructure && (
         <g pointerEvents="none">
