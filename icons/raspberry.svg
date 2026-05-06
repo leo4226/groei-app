@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Raspberry"><title>Raspberry — Rubus idaeus</title>
+  
+    <path d="M 30 80 L 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 70 80 Z" fill="#B2664A"></path>
+    <rect x="28" y="77" width="44" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 64 98 L 36 98 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="79.5" rx="18" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+  <path d="M 50 72 Q 48 60 44 48 Q 42 38 44 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 72 Q 52 60 56 48 Q 58 38 56 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 72 Q 50 58 50 38" stroke="#6B4A35" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  
+    <g transform="translate(36 56) rotate(-30)">
+      <path d="M 0 0 Q -8 -4 -8 -12 Q -4 -16 0 -12 Q 4 -16 8 -12 Q 8 -4 0 0 Z" fill="#2F5D3A"></path>
+      <path d="M -10 -2 Q -16 -4 -16 -10 Q -13 -13 -10 -11 Q -7 -13 -7 -8 Q -7 -4 -10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M 10 -2 Q 16 -4 16 -10 Q 13 -13 10 -11 Q 7 -13 7 -8 Q 7 -4 10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M -3 -8 L 3 -8 M -2 -5 L 2 -5 M -2 -11 L 2 -11" stroke="#4A7C4E" stroke-width="0.5" opacity="0.6"></path>
+    </g>
+  
+    <g transform="translate(64 54) rotate(30)">
+      <path d="M 0 0 Q -8 -4 -8 -12 Q -4 -16 0 -12 Q 4 -16 8 -12 Q 8 -4 0 0 Z" fill="#2F5D3A"></path>
+      <path d="M -10 -2 Q -16 -4 -16 -10 Q -13 -13 -10 -11 Q -7 -13 -7 -8 Q -7 -4 -10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M 10 -2 Q 16 -4 16 -10 Q 13 -13 10 -11 Q 7 -13 7 -8 Q 7 -4 10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M -3 -8 L 3 -8 M -2 -5 L 2 -5 M -2 -11 L 2 -11" stroke="#4A7C4E" stroke-width="0.5" opacity="0.6"></path>
+    </g>
+  
+    <g transform="translate(38 40) rotate(-20)">
+      <path d="M 0 0 Q -8 -4 -8 -12 Q -4 -16 0 -12 Q 4 -16 8 -12 Q 8 -4 0 0 Z" fill="#2F5D3A"></path>
+      <path d="M -10 -2 Q -16 -4 -16 -10 Q -13 -13 -10 -11 Q -7 -13 -7 -8 Q -7 -4 -10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M 10 -2 Q 16 -4 16 -10 Q 13 -13 10 -11 Q 7 -13 7 -8 Q 7 -4 10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M -3 -8 L 3 -8 M -2 -5 L 2 -5 M -2 -11 L 2 -11" stroke="#4A7C4E" stroke-width="0.5" opacity="0.6"></path>
+    </g>
+  
+    <g transform="translate(62 40) rotate(20)">
+      <path d="M 0 0 Q -8 -4 -8 -12 Q -4 -16 0 -12 Q 4 -16 8 -12 Q 8 -4 0 0 Z" fill="#2F5D3A"></path>
+      <path d="M -10 -2 Q -16 -4 -16 -10 Q -13 -13 -10 -11 Q -7 -13 -7 -8 Q -7 -4 -10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M 10 -2 Q 16 -4 16 -10 Q 13 -13 10 -11 Q 7 -13 7 -8 Q 7 -4 10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M -3 -8 L 3 -8 M -2 -5 L 2 -5 M -2 -11 L 2 -11" stroke="#4A7C4E" stroke-width="0.5" opacity="0.6"></path>
+    </g>
+  
+    <g transform="translate(50 28) rotate(0)">
+      <path d="M 0 0 Q -8 -4 -8 -12 Q -4 -16 0 -12 Q 4 -16 8 -12 Q 8 -4 0 0 Z" fill="#2F5D3A"></path>
+      <path d="M -10 -2 Q -16 -4 -16 -10 Q -13 -13 -10 -11 Q -7 -13 -7 -8 Q -7 -4 -10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M 10 -2 Q 16 -4 16 -10 Q 13 -13 10 -11 Q 7 -13 7 -8 Q 7 -4 10 -2 Z" fill="#4A7C4E"></path>
+      <path d="M -3 -8 L 3 -8 M -2 -5 L 2 -5 M -2 -11 L 2 -11" stroke="#4A7C4E" stroke-width="0.5" opacity="0.6"></path>
+    </g>
+  
+  
+  
+    <g transform="translate(42 58)">
+      <circle cx="-2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="-2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="0" r="1.8" fill="#E88AA8"></circle>
+      <circle cx="-2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <circle cx="2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <path d="M -1 -4 L 0 -2 L 1 -4" stroke="#2F5D3A" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(58 58)">
+      <circle cx="-2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="-2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="0" r="1.8" fill="#E88AA8"></circle>
+      <circle cx="-2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <circle cx="2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <path d="M -1 -4 L 0 -2 L 1 -4" stroke="#2F5D3A" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+    <g transform="translate(48 46)">
+      <circle cx="-2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="2" cy="0" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="-2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="2" r="1.8" fill="#D94A3D"></circle>
+      <circle cx="0" cy="0" r="1.8" fill="#E88AA8"></circle>
+      <circle cx="-2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <circle cx="2" cy="0" r="0.5" fill="#E88AA8" opacity="0.7"></circle>
+      <path d="M -1 -4 L 0 -2 L 1 -4" stroke="#2F5D3A" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+    </g>
+  
+</svg>

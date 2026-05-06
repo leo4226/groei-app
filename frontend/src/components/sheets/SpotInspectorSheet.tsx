@@ -1,0 +1,136 @@
+import type { SpotInspectorResult, SpeciesSuggestion } from '../../hooks/useSpotInspector'
+
+const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+const MONTH_NAMES_NL = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
+
+interface Props {
+  result: SpotInspectorResult
+  loading: boolean
+  onClose: () => void
+}
+
+export default function SpotInspectorSheet({ result, loading, onClose }: Props) {
+  const currentMonth = new Date().getMonth()
+  const maxSun = Math.max(...result.sunByMonth, 1)
+  const suitable = result.species.filter(s => s.tier === 'suitable')
+  const marginal = result.species.filter(s => s.tier === 'marginal')
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up max-h-[80vh] overflow-y-auto">
+        <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 mb-1" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 sticky top-0 bg-surface border-b border-border">
+          <div>
+            <h2 className="font-semibold text-text">Plek inspectie</h2>
+            <p className="text-xs text-text-muted">
+              {result.sunByMonth[currentMonth].toFixed(1)}u zon nu · {suitable.length} geschikt
+            </p>
+          </div>
+          <button onClick={onClose} className="text-text-muted hover:text-text text-xl leading-none">✕</button>
+        </div>
+
+        <div className="px-5 pb-5">
+          {/* Sun bar chart */}
+          <div className="mt-3 mb-4">
+            <p className="text-xs font-medium text-text-muted mb-2">Zon per maand op deze plek</p>
+            <div className="flex items-end gap-0.5 h-14">
+              {result.sunByMonth.map((sun, i) => {
+                const height = (sun / maxSun) * 100
+                const isNow = i === currentMonth
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+                    <div
+                      className={`w-full rounded-sm ${isNow ? 'bg-pumpkin-swirl' : 'bg-pumpkin-swirl/40'}`}
+                      style={{ height: `${Math.max(height, 2)}%` }}
+                      title={`${MONTH_LABELS[i]}: ${sun.toFixed(1)}u`}
+                    />
+                    <span className="text-[8px] text-text-muted">{MONTH_LABELS[i]}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {loading && (
+            <div className="text-center py-6 text-text-muted text-sm">Laden...</div>
+          )}
+
+          {!loading && result.error && (
+            <p className="text-sm text-overdue text-center py-4">{result.error}</p>
+          )}
+
+          {!loading && !result.error && (
+            <>
+              {suitable.length > 0 && (
+                <section className="mb-4">
+                  <p className="text-xs font-semibold text-good mb-2">Geschikt ({suitable.length})</p>
+                  <div className="space-y-2">
+                    {suitable.map(s => <SpeciesCard key={s.species_id} species={s} />)}
+                  </div>
+                </section>
+              )}
+
+              {marginal.length > 0 && (
+                <section className="mb-4">
+                  <p className="text-xs font-semibold text-due mb-2">Marginaal ({marginal.length})</p>
+                  <div className="space-y-2">
+                    {marginal.map(s => <SpeciesCard key={s.species_id} species={s} />)}
+                  </div>
+                </section>
+              )}
+
+              {suitable.length === 0 && marginal.length === 0 && (
+                <p className="text-sm text-text-muted text-center py-6">
+                  Geen geschikte planten gevonden voor deze plek.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
+  const fmt = (months: number[]) => months.map(m => MONTH_NAMES_NL[m - 1]).join(', ')
+
+  return (
+    <div className="bg-bg rounded-xl px-3 py-2.5">
+      <p className="text-sm font-medium text-text">{species.common_name_nl}</p>
+      {species.latin_name && (
+        <p className="text-[10px] text-text-muted italic">{species.latin_name}</p>
+      )}
+      <div className="flex flex-wrap gap-1 mt-1.5">
+        {species.sow_window.length > 0 && (
+          <span className="text-[9px] bg-emerald-green/15 text-emerald-green px-1.5 py-0.5 rounded-full">
+            Zaai: {fmt(species.sow_window)}
+          </span>
+        )}
+        {species.transplant_window.length > 0 && (
+          <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">
+            Plant: {fmt(species.transplant_window)}
+          </span>
+        )}
+        {species.harvest_window.length > 0 && (
+          <span className="text-[9px] bg-pumpkin-swirl/15 text-pumpkin-swirl px-1.5 py-0.5 rounded-full">
+            Oogst: {fmt(species.harvest_window)}
+          </span>
+        )}
+        {species.frost_sensitive && (
+          <span className="text-[9px] bg-aqua-glow/10 text-midnight-ink px-1.5 py-0.5 rounded-full">
+            Vorstgevoelig
+          </span>
+        )}
+      </div>
+      {species.avg_shortfall_hours > 0 && (
+        <p className="text-[9px] text-due mt-1">
+          ~{species.avg_shortfall_hours.toFixed(1)}u/dag tekort in groeiseizoen
+        </p>
+      )}
+    </div>
+  )
+}

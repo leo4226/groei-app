@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Colors — Handsome Frank palette */
+  --color-midnight-ink: #160572;
+  --color-fiery-red: #ea0706;
+  --color-warm-ginger: #e29675;
+  --color-terracotta-orange: #d64e2e;
+  --color-crimson-edge: #df1a19;
+  --color-aqua-glow: #24e3dc;
+  --color-sunny-marigold: #f9e44d;
+  --color-warm-canvas-yellow: #fffac2;
+  --color-illustrator-blue: #2544a0;
+  --color-pumpkin-swirl: #ff7701;
+  --color-violet-berry: #4b0f4d;
+  --color-rose-bloom: #d98199;
+  --color-emerald-green: #24e34c;
+  --color-melon-hue: #eea883;
+  --color-fog-canvas: #f2ebe6;
+  --color-sky-haze: #eef4fb;
+  --color-cream-canvas: #fef9ee;
+  --color-dark-wolf: #2c2c2c;
+  --color-ash-gray: #636160;
+  --color-midtone-gray: #909090;
+
+  /* Semantic mappings */
+  --color-bg: #fef9ee;
+  --color-surface: #ffffff;
+  --color-primary: #160572;
+  --color-primary-light: #2544a0;
+  --color-secondary: #ff7701;
+  --color-secondary-light: #e29675;
+  --color-text: #2c2c2c;
+  --color-text-muted: #909090;
+  --color-overdue: #ea0706;
+  --color-due: #ff7701;
+  --color-good: #24e34c;
+  --color-border: #f2ebe6;
+
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Border Radius */
+  --radius-pill: 30px;
+  --radius-body: 10px;
+
+  /* Spacing */
+  --spacing-element: 20px;
+  --spacing-section: 24px;
+  --spacing-card-pad: 24px;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+h1 {
+  letter-spacing: -0.02em;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide scrollbar for filter pills */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth transitions for interactive elements */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Input focus styles */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+}
+
+/* Card base style — flat surfaces, no shadows */
+.card {
+  background: var(--color-surface);
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-border) 25%, #fef9ee 50%, var(--color-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 0.5rem;
+}
+
+/* Bottom sheet slide-up animation */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}

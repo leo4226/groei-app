@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Begonia"><title>Begonia — Begonia semperflorens</title>
+  
+    <path d="M 29 78 L 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 71 78 Z" fill="#B2664A"></path>
+    <rect x="27" y="75" width="46" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 65 96 L 35 96 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="77.5" rx="19" ry="1.8" fill="#4A3429"></ellipse>
+  
+  <path d="M 50 74 Q 50 60 50 48" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  <path d="M 50 64 Q 34 58 28 68 Q 36 72 50 68 Z" fill="#2F5D3A"></path>
+  <path d="M 50 64 Q 66 58 72 68 Q 64 72 50 68 Z" fill="#2F5D3A"></path>
+  <path d="M 50 52 Q 40 46 38 54 Q 46 58 50 56 Z" fill="#2F5D3A"></path>
+  <path d="M 50 52 Q 60 46 62 54 Q 54 58 50 56 Z" fill="#2F5D3A"></path>
+  
+  
+    <ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(42 42) rotate(0)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(42 42) rotate(72)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(42 42) rotate(144)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(42 42) rotate(216)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(42 42) rotate(288)"></ellipse>
+    <circle cx="42" cy="42" r="0.8" fill="#F4C542"></circle>
+  
+    <ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(50 36) rotate(0)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(50 36) rotate(72)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(50 36) rotate(144)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(50 36) rotate(216)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(50 36) rotate(288)"></ellipse>
+    <circle cx="50" cy="36" r="0.8" fill="#F4C542"></circle>
+  
+    <ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(58 42) rotate(0)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(58 42) rotate(72)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(58 42) rotate(144)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(58 42) rotate(216)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(58 42) rotate(288)"></ellipse>
+    <circle cx="58" cy="42" r="0.8" fill="#F4C542"></circle>
+  
+    <ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(46 32) rotate(0)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(46 32) rotate(72)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(46 32) rotate(144)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(46 32) rotate(216)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(46 32) rotate(288)"></ellipse>
+    <circle cx="46" cy="32" r="0.8" fill="#F4C542"></circle>
+  
+    <ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(54 32) rotate(0)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(54 32) rotate(72)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(54 32) rotate(144)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(54 32) rotate(216)"></ellipse><ellipse cx="0" cy="-2.4" rx="1.8" ry="2.6" fill="#E88AA8" transform="translate(54 32) rotate(288)"></ellipse>
+    <circle cx="54" cy="32" r="0.8" fill="#F4C542"></circle>
+  
+</svg>
