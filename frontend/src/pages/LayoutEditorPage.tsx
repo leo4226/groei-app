@@ -8,7 +8,7 @@ import EditorToolbar from '../components/editor/EditorToolbar'
 import EditorLegendPanel from '../components/editor/EditorLegendPanel'
 import ZonePropertiesPanel from '../components/editor/ZonePropertiesPanel'
 import WallElementPropertiesPanel from '../components/editor/WallElementPropertiesPanel'
-import { TOOLBAR_NL, OPSLAAN_NL, KAART_TYPE_NL, EDITOR_NL } from '../utils/editorStrings.nl'
+import { TOOLBAR_NL, OPSLAAN_NL, EDITOR_NL } from '../utils/editorStrings.nl'
 
 export default function LayoutEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -130,30 +130,6 @@ export default function LayoutEditorPage() {
         </button>
         <h1 className="text-sm font-semibold text-text flex-1 truncate">{map.name}</h1>
 
-        {/* Map type toggle */}
-        <div className="flex items-center gap-0.5 shrink-0 bg-bg border border-border rounded-lg p-0.5">
-          <button
-            onClick={() => editor.setMapType('garden')}
-            className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
-              editor.mapType === 'garden'
-                ? 'bg-primary text-white'
-                : 'text-text-muted'
-            }`}
-          >
-            {KAART_TYPE_NL.tuin}
-          </button>
-          <button
-            onClick={() => editor.setMapType('house')}
-            className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
-              editor.mapType === 'house'
-                ? 'bg-primary text-white'
-                : 'text-text-muted'
-            }`}
-          >
-            {KAART_TYPE_NL.huis}
-          </button>
-        </div>
-
         {/* Undo button */}
         <button
           onClick={editor.undo}
@@ -196,7 +172,6 @@ export default function LayoutEditorPage() {
           activeTool={editor.activeTool}
           selectedZoneId={editor.selectedZoneId}
           selectedWallElementId={editor.selectedWallElementId}
-          mapType={editor.mapType}
           onSetTool={editor.setTool}
           onDelete={handleDelete}
         />
@@ -229,6 +204,7 @@ export default function LayoutEditorPage() {
               mapType={editor.mapType}
               onSetZoneType={editor.setZoneType}
               onSetTool={editor.setTool}
+              onSetMapType={(t) => editor.setMapType(t as import('../types').MapType)}
             />
             {selectedZone && !selectedWallElement && (
               <ZonePropertiesPanel
