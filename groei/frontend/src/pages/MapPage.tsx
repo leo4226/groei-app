@@ -1,11 +1,8 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { MapDetail, MapPlant, MapObject } from '../types'
-import { fetchMapDetail, fetchMapItems, fetchGroundZones, archiveObject, archivePlant, duplicatePlant, updatePlantPosition, fetchGardenWaterStatus, logGardenWatering, deleteLatestGardenWatering } from '../api/client'
-import type { GardenWaterStatus } from '../api/client'
+import type { MapPlant, MapObject } from '../types'
 import { aggregatePlantStatuses } from '../hooks/usePlantStatus'
 import { WaterStatusIcon, TempStatusIcon } from '../components/PlantStatusIcon'
-import type { GroundZone } from '../types'
 import MapView from '../components/map/MapView'
 import MapLegend from '../components/map/MapLegend'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
@@ -13,89 +10,44 @@ import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
 import AddObjectSheet from '../components/sheets/AddObjectSheet'
 import FixedPlantSheet from '../components/sheets/FixedPlantSheet'
 import type { FixedPlant } from '../constants/fixedPlants'
-import SunControls, { type SunViewMode } from '../components/sun/SunControls'
+import SunControls from '../components/sun/SunControls'
 import GrowHereSheet from '../components/sheets/GrowHereSheet'
 import SpotInspectorSheet from '../components/sheets/SpotInspectorSheet'
-import { useSunPosition } from '../hooks/useSunPosition'
-import { useSunHeatmap } from '../hooks/useSunHeatmap'
-import { useSpotInspector } from '../hooks/useSpotInspector'
-import type { HeatmapCell } from '../utils/heatmapCalc'
-import { shadowCastersToObstructions } from '../utils/heatmapCalc'
-import type { PlantSunProfile } from '../utils/plantSunRequirements'
-import type { HeatmapLayer } from '../utils/lightQuality'
-import { SHADOW_CASTERS } from '../utils/gardenStructures'
+import { useSunVisualization } from '../hooks/useSunVisualization'
 import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
+import { useMapData } from '../hooks/useMapData'
+import { useGardenWater } from '../hooks/useGardenWater'
+import { useUndoableRemove } from '../hooks/useUndoableRemove'
 
 export default function MapPage() {
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
-  const [map, setMap] = useState<MapDetail | null>(null)
-  const [plants, setPlants] = useState<MapPlant[]>([])
-  const [objects, setObjects] = useState<MapObject[]>([])
-  const [groundZones, setGroundZones] = useState<GroundZone[]>([])
-  const [loading, setLoading] = useState(true)
-  const [gardenWater, setGardenWater] = useState<GardenWaterStatus | null>(null)
-  const [watering, setWatering] = useState(false)
-  const [showWaterPicker, setShowWaterPicker] = useState(false)
-  const [pickerDate, setPickerDate] = useState('')
+
+  const mapData = useMapData(slug)
+  const water = useGardenWater()
+  const undo = useUndoableRemove()
+
+  const { map, plants, objects, groundZones, loading } = mapData
+
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
   const [showAddObject, setShowAddObject] = useState(false)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
-  const {
-    sunModeActive, toggleSunMode,
-    selectedMonth, setSelectedMonth,
-    selectedHour, setSelectedHour,
-    sunPosition, shadows, setToNow,
-  } = useSunPosition()
-  const [sunViewMode, setSunViewMode] = useState<SunViewMode>('live')
-  const [heatmapLayer, setHeatmapLayer] = useState<HeatmapLayer>('sun_hours')
-  const [selectedProfile, setSelectedProfile] = useState<PlantSunProfile | null>(null)
   const [showLabels, setShowLabels] = useState(true)
-  const [tappedCell, setTappedCell] = useState<HeatmapCell | null>(null)
-  const [showGrowHere, setShowGrowHere] = useState(false)
-  const [inspectorMode, setInspectorMode] = useState(false)
-  const { result: inspectorResult, loading: inspectorLoading, inspect, clear: clearInspector } = useSpotInspector()
-  const isHeatmapActive = sunModeActive && sunViewMode === 'heatmap'
-  const { cells: heatmapCells, isCalculating: heatmapCalculating } = useSunHeatmap(selectedMonth, isHeatmapActive)
 
-  // Obstructions for debug SVF overlay — stable reference, only changes if geometry changes
-  const gardenObstructions = useMemo(() => shadowCastersToObstructions(SHADOW_CASTERS), [])
+  const isOutdoor = !map || map.map_type !== 'indoor'
+  const mapLat = map?.lat ?? undefined
+  const mapLon = map?.lon ?? undefined
 
-  const loadData = useCallback(async () => {
-    try {
-      const [mapData, itemsData, zonesData, waterStatus] = await Promise.all([
-        fetchMapDetail(slug),
-        fetchMapItems(slug),
-        fetchGroundZones(slug),
-        fetchGardenWaterStatus().catch(() => null),
-      ])
-      setMap(mapData)
-      setPlants(itemsData.plants)
-      setObjects(itemsData.objects)
-      setGroundZones(zonesData)
-      setGardenWater(waterStatus)
-    } catch (err) {
-      console.error('Failed to load map data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [slug])
+  const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon })
 
-  useEffect(() => {
-    setLoading(true)
-    loadData()
-  }, [loadData])
-
-  // Double-tap on selected item opens the sheet (via MapView callbacks)
   const handlePlantTap = (plant: MapPlant) => {
     setSelectedObject(null)
     setSelectedPlant(plant)
   }
 
   const handleObjectTap = (object: MapObject) => {
-    // If exactly one plant lives in this container, open the plant directly
     if (object.contained_plants?.length === 1) {
       setSelectedObject(null)
       setSelectedPlant(object.contained_plants[0])
@@ -121,73 +73,32 @@ export default function MapPage() {
   }
 
   const handleCareAction = async () => {
-    await loadData()
+    await mapData.refresh()
     setSelectedPlant(null)
   }
 
   const handlePositionUpdate = async () => {
-    await loadData()
+    await mapData.refresh()
   }
 
   const handleObjectCreated = async () => {
     setShowAddObject(false)
-    await loadData()
+    await mapData.refresh()
   }
 
   const handleObjectAction = async () => {
     setSelectedObject(null)
-    await loadData()
+    await mapData.refresh()
   }
 
-  // --- Remove with undo toast ---
-  const [removeToast, setRemoveToast] = useState<{ label: string; undoFn: (() => void) | null } | null>(null)
-  const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const handleRemoveItem = useCallback(async (type: 'plant' | 'object', id: number) => {
-    const item = type === 'plant'
-      ? plants.find((p) => p.id === id)
-      : objects.find((o) => o.id === id)
-    if (!item) return
+    const info = await mapData.remove(type, id)
+    if (info) undo.trigger(info)
+  }, [mapData, undo])
 
-    const label = item.name
-    const containedCount = type === 'object' ? (item as MapObject).contained_plants?.length ?? 0 : 0
-
-    if (containedCount > 0) {
-      const ok = confirm(`Remove "${label}" and ${containedCount} plant${containedCount !== 1 ? 's' : ''} inside?`)
-      if (!ok) return
-    }
-
-    try {
-      if (type === 'plant') {
-        await archivePlant(id)
-      } else {
-        await archiveObject(id)
-      }
-      await loadData()
-
-      // Show undo toast (undo not implemented on backend — just informational)
-      setRemoveToast({ label, undoFn: null })
-      if (removeTimerRef.current) clearTimeout(removeTimerRef.current)
-      removeTimerRef.current = setTimeout(() => setRemoveToast(null), 4000)
-    } catch (err) {
-      console.error('Failed to remove item:', err)
-    }
-  }, [plants, objects, loadData])
-
-  // --- Duplicate plant ---
   const handleDuplicate = useCallback(async (plantId: number) => {
-    try {
-      const newPlant = await duplicatePlant(plantId)
-      // Place the duplicate at map center
-      if (map) {
-        const [, , vw, vh] = map.viewbox.split(' ').map(Number)
-        await updatePlantPosition(newPlant.id, { map_id: map.id, map_x: vw / 2, map_y: vh / 2 })
-      }
-      await loadData()
-    } catch (err) {
-      console.error('Failed to duplicate plant:', err)
-    }
-  }, [map, loadData])
+    await mapData.duplicate(plantId)
+  }, [mapData])
 
   if (loading) {
     return (
@@ -211,23 +122,25 @@ export default function MapPage() {
       <div className="flex items-center justify-between mb-2 shrink-0">
         <h1 className="text-xl font-bold text-text">{map.name}</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={toggleSunMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              sunModeActive
-                ? 'bg-amber-500/30 text-amber-300'
-                : 'bg-amber-500/15 text-amber-500 hover:bg-amber-500/25'
-            }`}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-            <span>Zon</span>
-          </button>
+          {isOutdoor && (
+            <button
+              onClick={sun.toggle}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                sun.active
+                  ? 'bg-pumpkin-swirl/30 text-pumpkin-swirl'
+                  : 'bg-pumpkin-swirl/15 text-pumpkin-swirl hover:bg-pumpkin-swirl/25'
+              }`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+              <span>Zon</span>
+            </button>
+          )}
           <button
             onClick={() => setShowLabels(v => !v)}
             title={showLabels ? 'Verberg namen' : 'Toon namen'}
@@ -244,11 +157,11 @@ export default function MapPage() {
             </svg>
           </button>
           <button
-            onClick={() => { setInspectorMode(m => !m); clearInspector() }}
+            onClick={sun.toggleInspectorMode}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              inspectorMode
-                ? 'bg-emerald-500/30 text-emerald-400'
-                : 'bg-emerald-500/10 text-emerald-500/70 hover:bg-emerald-500/20'
+              sun.inspectorMode
+                ? 'bg-emerald-green/30 text-emerald-green'
+                : 'bg-emerald-green/10 text-emerald-green/70 hover:bg-emerald-green/20'
             }`}
           >
             <span>Inspecteer</span>
@@ -275,41 +188,13 @@ export default function MapPage() {
         const hasUrgent = counts.freezing > 0 || counts.heatstress > 0
         const hasWarning = counts.chilling > 0
 
-        const gardenWaterStatus = gardenWater?.status ?? 'dry'
-        const wateredLabel = gardenWater?.watered_at
-          ? new Date(gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+        const gardenWaterStatus = water.gardenWater?.status ?? 'dry'
+        const wateredLabel = water.gardenWater?.watered_at
+          ? new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
           : null
-        const rainLabel = gardenWater != null
-          ? `${gardenWater.rain_7day_mm}mm / ${gardenWater.weekly_budget_mm}mm deze week`
+        const rainLabel = water.gardenWater != null
+          ? `${water.gardenWater.rain_7day_mm}mm / ${water.gardenWater.weekly_budget_mm}mm deze week`
           : null
-
-        function openPicker() {
-          setPickerDate(gardenWater?.watered_at ?? new Date().toISOString().slice(0, 10))
-          setShowWaterPicker(v => !v)
-        }
-
-        async function handleSave() {
-          if (!pickerDate) return
-          setWatering(true)
-          try {
-            await logGardenWatering(pickerDate)
-            setGardenWater(await fetchGardenWaterStatus().catch(() => null))
-            setShowWaterPicker(false)
-          } finally {
-            setWatering(false)
-          }
-        }
-
-        async function handleDelete() {
-          setWatering(true)
-          try {
-            await deleteLatestGardenWatering()
-            setGardenWater(await fetchGardenWaterStatus().catch(() => null))
-            setShowWaterPicker(false)
-          } finally {
-            setWatering(false)
-          }
-        }
 
         const statusChips: { key: string; label: string; count: number; urgent: boolean }[] = [
           { key: 'freezing',   label: 'Vrieskou', count: counts.freezing,   urgent: true  },
@@ -320,12 +205,11 @@ export default function MapPage() {
         return (
           <div className="mb-2 shrink-0">
             <div className="flex gap-2 items-stretch">
-              {/* Status icon row */}
               {statusChips.length > 0 ? (
                 <div
-                  className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl ${
-                    hasUrgent ? 'bg-red-50 border border-red-200' :
-                    hasWarning ? 'bg-orange-50 border border-orange-200' :
+                  className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-[10px] ${
+                    hasUrgent ? 'bg-fiery-red/10 border border-fiery-red/20' :
+                    hasWarning ? 'bg-pumpkin-swirl/10 border border-pumpkin-swirl/20' :
                     'bg-surface border border-border'
                   }`}
                 >
@@ -337,7 +221,7 @@ export default function MapPage() {
                       title={chip.label}
                     >
                       <TempStatusIcon status={chip.key as 'chilling' | 'freezing' | 'heatstress'} size={18} />
-                      <span className={`text-xs font-bold ${chip.urgent ? 'text-red-600' : 'text-orange-500'}`}>
+                      <span className={`text-xs font-bold ${chip.urgent ? 'text-fiery-red' : 'text-pumpkin-swirl'}`}>
                         {chip.count}
                       </span>
                     </button>
@@ -349,13 +233,12 @@ export default function MapPage() {
                 </div>
               )}
 
-              {/* Garden water button — status driven by rainfall + manual watering */}
               <button
-                onClick={openPicker}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                  gardenWaterStatus === 'hydrated' ? 'bg-green-100 text-green-700' :
-                  gardenWaterStatus === 'thirsty'  ? 'bg-amber-100 text-amber-700' :
-                  'bg-red-50 text-red-600 hover:bg-red-100'
+                onClick={water.openPicker}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-colors ${
+                  gardenWaterStatus === 'hydrated' ? 'bg-emerald-green/15 text-emerald-green' :
+                  gardenWaterStatus === 'thirsty'  ? 'bg-pumpkin-swirl/15 text-pumpkin-swirl' :
+                  'bg-fiery-red/10 text-fiery-red hover:bg-fiery-red/15'
                 }`}
               >
                 <WaterStatusIcon status={gardenWaterStatus} size={18} />
@@ -366,26 +249,26 @@ export default function MapPage() {
               </button>
             </div>
 
-            {showWaterPicker && (
+            {water.showPicker && (
               <div className="mt-1.5 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
                 <input
                   type="date"
-                  value={pickerDate}
+                  value={water.pickerDate}
                   max={new Date().toISOString().slice(0, 10)}
-                  onChange={e => setPickerDate(e.target.value)}
+                  onChange={e => water.setPickerDate(e.target.value)}
                   className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
                 />
                 <button
-                  onClick={handleSave}
-                  disabled={watering || !pickerDate}
+                  onClick={water.save}
+                  disabled={water.watering || !water.pickerDate}
                   className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
                 >
-                  {watering ? '…' : 'Opslaan'}
+                  {water.watering ? '…' : 'Opslaan'}
                 </button>
-                {gardenWater?.watered_at && (
+                {water.gardenWater?.watered_at && (
                   <button
-                    onClick={handleDelete}
-                    disabled={watering}
+                    onClick={water.deleteLast}
+                    disabled={water.watering}
                     className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
                   >
                     Wis
@@ -398,8 +281,7 @@ export default function MapPage() {
       })()}
 
       <div className="flex gap-3 flex-1 min-h-0">
-        {/* Map */}
-        <div className="flex-1 min-w-0 min-h-0 rounded-2xl overflow-hidden shadow-lg border border-border">
+        <div className="flex-1 min-w-0 min-h-0 rounded-2xl overflow-hidden border border-border">
           <MapView
             map={map}
             plants={plants}
@@ -413,69 +295,45 @@ export default function MapPage() {
             onFixedPlantTap={setSelectedFixedPlant}
             showLabels={showLabels}
             groundZones={groundZones}
-            sunModeActive={sunModeActive && sunViewMode === 'live'}
-            shadows={shadows}
-            sunPosition={sunPosition}
-            heatmapCells={isHeatmapActive ? heatmapCells : undefined}
-            heatmapCalculating={isHeatmapActive ? heatmapCalculating : undefined}
-            heatmapLayer={heatmapLayer}
-            heatmapProfile={isHeatmapActive ? selectedProfile : undefined}
-            onHeatmapCellTap={isHeatmapActive ? (cell) => {
-              if (inspectorMode) {
-                inspect(cell.x + cell.w / 2, cell.y + cell.h / 2)
-              } else {
-                setTappedCell(cell)
-              }
-            } : undefined}
+            sunModeActive={sun.isLiveActive}
+            shadows={sun.shadows}
+            sunPosition={sun.sunPosition}
+            heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
+            heatmapCalculating={sun.isHeatmapActive ? sun.isCalculating : undefined}
+            heatmapLayer={sun.layer}
+            heatmapProfile={sun.isHeatmapActive ? sun.profile : undefined}
+            onHeatmapCellTap={sun.isHeatmapActive ? sun.handleCellTap : undefined}
             debugOverlay={
               new URLSearchParams(window.location.search).has('debug') &&
               new URLSearchParams(window.location.search).get('debug') === 'sun'
-                ? <SunDebugOverlay sunPosition={sunPosition} />
-                : isHeatmapActive && tappedCell
-                  ? <DebugSvfOverlay cell={tappedCell} obstructions={gardenObstructions} />
+                ? <SunDebugOverlay sunPosition={sun.sunPosition} />
+                : sun.isHeatmapActive && sun.tappedCell
+                  ? <DebugSvfOverlay cell={sun.tappedCell} obstructions={sun.gardenObstructions} />
                   : undefined
             }
           />
         </div>
 
-        {/* Legend */}
         <div className="hidden sm:flex sm:flex-col shrink-0 min-h-0 overflow-y-auto">
-          <MapLegend plants={plants} objects={objects} onPlantTap={handlePlantTap} heatmapCells={isHeatmapActive ? heatmapCells : undefined} />
+          <MapLegend plants={plants} objects={objects} onPlantTap={handlePlantTap} heatmapCells={sun.isHeatmapActive ? sun.cells : undefined} />
         </div>
       </div>
 
-      {sunModeActive && (
-        <SunControls
-          viewMode={sunViewMode}
-          onViewModeChange={(mode) => { setSunViewMode(mode); setTappedCell(null); setSelectedProfile(null) }}
-          selectedMonth={selectedMonth}
-          selectedHour={selectedHour}
-          sunPosition={sunPosition}
-          onMonthChange={(m) => { setSelectedMonth(m); setTappedCell(null); setShowGrowHere(false) }}
-          onHourChange={setSelectedHour}
-          onNow={setToNow}
-          heatmapLayer={heatmapLayer}
-          onHeatmapLayerChange={(layer) => { setHeatmapLayer(layer); setTappedCell(null) }}
-          isCalculating={heatmapCalculating}
-          tappedCell={tappedCell}
-          selectedProfile={selectedProfile}
-          onProfileChange={setSelectedProfile}
-          onGrowHere={() => setShowGrowHere(true)}
-        />
+      {isOutdoor && sun.active && (
+        <SunControls sun={sun} />
       )}
 
-      {/* Inspector mode hint */}
-      {inspectorMode && !inspectorResult && !inspectorLoading && (
+      {sun.inspectorMode && !sun.inspectorResult && !sun.inspectorLoading && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black/70 text-white text-xs px-4 py-2 rounded-full pointer-events-none">
           Zet de zonkaart aan en tik op een plek in de tuin
         </div>
       )}
 
-      {inspectorResult && (
+      {sun.inspectorResult && (
         <SpotInspectorSheet
-          result={inspectorResult}
-          loading={inspectorLoading}
-          onClose={() => { clearInspector() }}
+          result={sun.inspectorResult}
+          loading={sun.inspectorLoading}
+          onClose={sun.clearInspector}
         />
       )}
 
@@ -484,7 +342,7 @@ export default function MapPage() {
           plant={selectedPlant}
           objects={objects}
           groundZones={groundZones}
-          heatmapCells={isHeatmapActive ? heatmapCells : undefined}
+          heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
           onAction={handleCareAction}
@@ -509,13 +367,13 @@ export default function MapPage() {
         />
       )}
 
-      {showGrowHere && tappedCell && (
+      {sun.showGrowHere && sun.tappedCell && (
         <GrowHereSheet
-          tappedCell={tappedCell}
-          selectedMonth={selectedMonth}
+          tappedCell={sun.tappedCell}
+          selectedMonth={sun.month}
           mapPlants={plants}
           mapId={map?.id ?? null}
-          onClose={() => setShowGrowHere(false)}
+          onClose={sun.closeGrowHere}
         />
       )}
 
@@ -527,10 +385,17 @@ export default function MapPage() {
         />
       )}
 
-      {/* Remove toast */}
-      {removeToast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border rounded-xl px-4 py-2.5 shadow-lg flex items-center gap-3 animate-slide-up">
-          <span className="text-sm text-text">Removed <strong>{removeToast.label}</strong></span>
+      {undo.toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border rounded-full px-4 py-2.5 flex items-center gap-3 animate-slide-up">
+          <span className="text-sm text-text">Verwijderd: <strong>{undo.toast.label}</strong></span>
+          {undo.toast.canUndo && (
+            <button
+              onClick={undo.undo}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              Ongedaan maken
+            </button>
+          )}
         </div>
       )}
     </div>
