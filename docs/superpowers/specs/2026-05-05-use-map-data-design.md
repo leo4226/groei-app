@@ -1,7 +1,7 @@
 # useMapData refactor — design spec
 
 Date: 2026-05-05  
-Status: approved
+Status: implemented
 
 ## Problem
 
