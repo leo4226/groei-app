@@ -1,4 +1,4 @@
-import type { ZoneStyleType, MapType } from '../../types'
+import type { ZoneStyleType } from '../../types'
 import type { EditorTool } from '../../hooks/useEditorState'
 import { ZONE_STYLES, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
 import { ZONE_NL, KAART_TYPE_NL, TOOLBAR_NL } from '../../utils/editorStrings.nl'
@@ -6,10 +6,10 @@ import { ZONE_NL, KAART_TYPE_NL, TOOLBAR_NL } from '../../utils/editorStrings.nl
 interface Props {
   activeZoneType: ZoneStyleType
   activeTool: EditorTool
-  mapType: MapType
+  mapType: string
   onSetZoneType: (type: ZoneStyleType) => void
   onSetTool: (tool: EditorTool) => void
-  onSetMapType: (type: MapType) => void
+  onSetMapType: (type: string) => void
 }
 
 export default function EditorLegendPanel({
