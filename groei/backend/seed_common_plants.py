@@ -1163,16 +1163,86 @@ PLANTS.append({
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Species-level care thresholds (shared across all plants of this species).
+# drought_mm_per_week, waterlog_mm_per_week, min_temp_c, max_temp_c,
+# bring_inside_below_c (null = fully hardy), fertilise_months, fertilise_tip
+_THRESHOLDS = {
+    "Hortensia": (10, 30, -15, 30, None, [4,5,6,7], 'Hortensiamest voor blauwe of roze bloemen, geen kalk'),
+    "Rhododendron": (12, 25, -20, 30, None, [4,5,6], 'Rododendronmest, zure grond essentieel, geen kalk'),
+    "Pioenroos": (8, 25, -25, 32, None, [3,4,5], 'Kaliumrijke mest in voorjaar, niet te diep planten'),
+    "Dahlia": (10, 30, 0, 35, None, [5,6,7,8], 'Wekelijks kaliumrijke mest tijdens bloeiperiode'),
+    "Zonnehoed": (5, 25, -30, 35, None, [4,5,6], 'Weinig mest, te rijke grond geeft slappe stengels'),
+    "Vlambloem": (10, 25, -30, 32, None, [4,5,6], 'Compost en organische mest in voorjaar voor rijke bloei'),
+    "Herfstaster": (8, 25, -25, 32, None, [4,5,6], 'Compost in voorjaar, kalium in juni voor rijke bloei'),
+    "Bellenplant": (10, 25, -5, 30, 0, [5,6,7,8], 'Wekelijks vloeibare mest tijdens de bloei'),
+    "Ooievaarsbek": (5, 25, -25, 30, None, [4,5], 'Compost in voorjaar, stelt weinig eisen'),
+    "Vetkruid": (3, 30, -30, 38, None, [4], 'Niet bemesten, vetplant heeft arme droge grond nodig'),
+    "Tulp": (5, 15, -20, 28, None, [3,4], 'Bollenmest bij planten in oktober-november'),
+    "Narcis": (5, 20, -20, 28, None, [3,4], 'Bollenmest direct na de bloei, blad laten afsterven'),
+    "Krokus": (5, 15, -25, 28, None, [3], 'Bollenmest direct na de bloei'),
+    "Hyacint": (5, 20, -20, 28, None, [3,4], 'Bollenmest bij het planten in de herfst'),
+    "Iris": (5, 20, -25, 35, None, [3,4,5], 'Weinig mest nodig, kaliumarm, teveel geeft blad zonder bloemen'),
+    "Lelie": (8, 20, -20, 30, None, [4,5,6], 'Kaliumrijke mest bij opkomst, niet op de bol strooien'),
+    "Sierui": (5, 20, -20, 30, None, [4,5], 'Bollenmest direct na de bloei voor volgend jaar'),
+    "Clematis": (10, 25, -20, 32, None, [4,5,6,7], 'Organische mest in voorjaar, kaliumrijk in juni voor bloei'),
+    "Kamperfoelie": (8, 25, -20, 33, None, [4,5,6], 'Compost in voorjaar volstaat, teveel mest geeft blad zonder bloemen'),
+    "Klimop": (5, 35, -25, 33, None, [4,5], 'Nauwelijks bemesting nodig, groeit op alle grondsoorten'),
+    "Salie": (3, 25, -15, 35, None, [4,5], 'Spaarzaam bemesten, teveel stikstof vermindert het aroma'),
+    "Tijm": (3, 20, -15, 35, None, [4,5], 'Geen mest, mediterrane plant heeft arme grond nodig'),
+    "Rozemarijn": (3, 20, -10, 38, -5, [4,5,6], 'Mediterrane mest, spaarzaam, arme grond geeft meer aroma'),
+    "Munt": (8, 30, -25, 32, None, [5,6,7], 'Weinig mest nodig, woekert sowieso, compost in voorjaar'),
+    "Bieslook": (5, 30, -25, 35, None, [4,5,6], 'Weinig mest nodig, beetje compost in voorjaar'),
+    "Oregano": (3, 25, -25, 35, None, [4,5], 'Geen mest, arme grond geeft pittigere smaak'),
+    "Peterselie": (8, 25, -10, 30, None, [5,6,7], 'Stikstofarme mest, teveel stikstof vermindert smaak'),
+    "Dille": (5, 20, 0, 32, None, [5,6], 'Weinig mest, teveel stikstof vermindert het aroma'),
+    "Koriander": (5, 20, 2, 32, None, [5,6], 'Weinig mest, rijke grond geeft minder aromatisch blad'),
+    "Basilicum": (10, 25, 5, 35, 10, [5,6,7,8], 'Vloeibare kruidenmest om de 2 weken, niet teveel stikstof'),
+    "Sla": (15, 30, -2, 28, None, [5,6], 'Stikstofrijke grond, niet op arme grond telen'),
+    "Courgette": (15, 30, 5, 35, None, [5,6,7,8], 'Compostrijke grond, wekelijks vloeibare mest tijdens oogst'),
+    "Paprika": (15, 25, 8, 35, None, [5,6,7,8], 'Kaliumrijke mest wekelijks tijdens vruchtgroei'),
+    "Boerenkool": (10, 35, -15, 30, None, [4,5,6], 'Stikstofrijke mest bij aanplant, niet bemesten na augustus'),
+    "Wortel": (10, 25, -5, 30, None, [4,5], 'Kaliumrijke mest, teveel stikstof geeft vertakte wortels'),
+    "Prei": (10, 35, -10, 30, None, [5,6,7], 'Stikstofrijke mest bij aanplant en in de zomer'),
+    "Aardappel": (15, 40, -1, 30, None, [4,5], 'Organische mest voor poten, niet teveel stikstof'),
+    "Komkommer": (20, 30, 10, 35, None, [6,7,8], 'Wekelijks vloeibare mest tijdens vruchtgroei'),
+    "Lepelplant": (10, 20, 12, 32, 15, [4,5,6,7,8], 'Vloeibare bloeiplantenmest elke 2 weken in lente en zomer'),
+    "Gatenplant": (8, 20, 12, 35, 12, [4,5,6,7,8], 'Groeneplantenmest elke 2 weken in lente en zomer'),
+    "Vrouwentongen": (2, 10, 10, 40, 12, [5,6,7], 'Cactussenmest eenmaal per maand, alleen in de zomer'),
+    "Pannenkoekenplant": (5, 20, 10, 30, 12, [4,5,6,7,8], 'Kamerplantenmest elke 2 weken in groeiseizoen'),
+    "Drakenklimop": (3, 20, 10, 38, 12, [4,5,6,7,8], 'Vloeibare plantenmest elke 2 weken in groeiseizoen'),
+    "Rubberplant": (5, 20, 12, 35, 12, [4,5,6,7,8], 'Groeneplantenmest elke 2 weken, blad afnemen tegen stof'),
+    "Orchidee": (3, 10, 15, 32, 15, [4,5,6,7,8], 'Orchideeenmest eenmaal per maand, niet op droge wortels'),
+    "Flamingoplant": (10, 20, 15, 35, 15, [4,5,6,7,8], 'Orchideeenmest elke 2 weken, hoge luchtvochtigheid'),
+    "Krulvaren": (15, 25, 10, 30, 10, [4,5,6,7], 'Varenmest elke 2 weken, niet op droge kluit bemesten'),
+    "Graslelie": (5, 25, 5, 35, 5, [4,5,6,7], 'Spaarzaam bemesten, teveel mest geeft bruine bladpunten'),
+    "Aloe vera": (2, 15, 5, 40, 10, [5,6,7], 'Cactussenmest eenmaal per maand in de zomer'),
+    "Zamioculcas": (3, 15, 12, 38, 12, [5,6,7], 'Spaarzaam bemesten, eenmaal per maand in de zomer'),
+}
+
+
+def _make_thresholds(data):
+    return json.dumps({
+        "drought_mm_per_week": data[0],
+        "waterlog_mm_per_week": data[1],
+        "min_temp_c": data[2],
+        "max_temp_c": data[3],
+        "bring_inside_below_c": data[4],
+        "fertilise_months": data[5],
+        "fertilise_tip": data[6],
+    }, ensure_ascii=False)
+
+
 async def main():
     async with aiosqlite.connect("groei.db") as db:
         inserted = 0
         for p in PLANTS:
+            thresholds = _make_thresholds(_THRESHOLDS[p["common_name_nl"]]) if p["common_name_nl"] in _THRESHOLDS else None
             cursor = await db.execute(
                 """INSERT OR IGNORE INTO plant_species
-                   (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                   (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone, care_thresholds)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (p["slug"], p["common_name_nl"], p["common_name_en"],
-                 p["latin_name"], p["phenology_json"], p["climate_zone"]),
+                 p["latin_name"], p["phenology_json"], p["climate_zone"], thresholds),
             )
             if cursor.rowcount > 0:
                 inserted += 1

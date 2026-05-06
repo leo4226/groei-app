@@ -255,6 +255,11 @@ async def init_db():
             );
         """)
 
+        # Add care_thresholds to plant_species (cached species-level defaults)
+        sp_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(plant_species)")}
+        if "care_thresholds" not in sp_cols:
+            await db.execute("ALTER TABLE plant_species ADD COLUMN care_thresholds TEXT")
+
         # Add species_id FK to plants (idempotent)
         if "species_id" not in cols:
             await db.execute(

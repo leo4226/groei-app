@@ -120,15 +120,31 @@ async def create_plant(data: PlantCreate):
         except Exception as exc:
             print(f"Warning: could not generate species data for {data.name}: {exc}")
 
-        # Generate care thresholds (non-fatal if Claude is unavailable)
+        # Use cached care thresholds from species if available, else generate via Claude
         try:
-            thresholds = await generate_thresholds(data.name, data.species)
-            async with get_db() as db2:
-                await db2.execute(
-                    "UPDATE plants SET care_thresholds = ? WHERE id = ?",
-                    (json.dumps(thresholds), plant_id),
+            cached = None
+            if species_id:
+                sp_rows = await db.execute_fetchall(
+                    "SELECT care_thresholds FROM plant_species WHERE id = ?",
+                    (species_id,),
                 )
-                await db2.commit()
+                if sp_rows and sp_rows[0]["care_thresholds"]:
+                    cached = sp_rows[0]["care_thresholds"]
+
+            if cached:
+                await db.execute(
+                    "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                    (cached, plant_id),
+                )
+                await db.commit()
+            else:
+                async with get_db() as db2:
+                    thresholds = await generate_thresholds(data.name, data.species)
+                    await db2.execute(
+                        "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                        (json.dumps(thresholds), plant_id),
+                    )
+                    await db2.commit()
         except Exception as exc:
             print(f"Warning: could not generate thresholds for {data.name}: {exc}")
 
