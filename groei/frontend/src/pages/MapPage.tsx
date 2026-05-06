@@ -72,33 +72,36 @@ export default function MapPage() {
     }
   }
 
-  const handleCareAction = async () => {
-    await mapData.refresh()
+  const { remove: mapRemove, duplicate: mapDuplicate, refresh } = mapData
+  const { trigger: undoTrigger } = undo
+
+  const handleCareAction = useCallback(async () => {
+    await refresh()
     setSelectedPlant(null)
-  }
+  }, [refresh])
 
-  const handlePositionUpdate = async () => {
-    await mapData.refresh()
-  }
+  const handlePositionUpdate = useCallback(async () => {
+    await refresh()
+  }, [refresh])
 
-  const handleObjectCreated = async () => {
+  const handleObjectCreated = useCallback(async () => {
     setShowAddObject(false)
-    await mapData.refresh()
-  }
+    await refresh()
+  }, [refresh])
 
-  const handleObjectAction = async () => {
+  const handleObjectAction = useCallback(async () => {
     setSelectedObject(null)
-    await mapData.refresh()
-  }
+    await refresh()
+  }, [refresh])
 
   const handleRemoveItem = useCallback(async (type: 'plant' | 'object', id: number) => {
-    const info = await mapData.remove(type, id)
-    if (info) undo.trigger(info)
-  }, [mapData, undo])
+    const info = await mapRemove(type, id)
+    if (info) undoTrigger(info)
+  }, [mapRemove, undoTrigger])
 
   const handleDuplicate = useCallback(async (plantId: number) => {
-    await mapData.duplicate(plantId)
-  }, [mapData])
+    await mapDuplicate(plantId)
+  }, [mapDuplicate])
 
   if (loading) {
     return (
