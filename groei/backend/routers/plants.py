@@ -107,6 +107,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep)):
     await db.commit()
 
     # Link or create species (non-fatal if Claude is unavailable)
+    species_id = None
     try:
         species_id = await get_or_create_species(db, data.name)
         await db.execute(
@@ -145,7 +146,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep)):
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
 
     # Return the created plant
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)
 
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)
@@ -170,7 +171,7 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep)):
     )
     await db.commit()
 
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)
 
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
@@ -188,7 +189,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
         (data.map_id, data.map_x, data.map_y, data.ground_zone_id, new_icon, plant_id),
     )
     await db.commit()
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)
 
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
@@ -207,7 +208,7 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
         (data.container_id, new_icon, plant_id),
     )
     await db.commit()
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)
 
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
@@ -225,7 +226,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
         (data.ground_zone_id, data.map_x, data.map_y, new_icon, plant_id),
     )
     await db.commit()
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)
 
 
 @router.post("/plants/{plant_id}/duplicate", response_model=PlantOut)
@@ -268,7 +269,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep)):
         )
 
     await db.commit()
-    return await get_plant(new_id)
+    return await get_plant(new_id, db=db)
 
 
 @router.patch("/plants/{plant_id}/lock")
@@ -328,4 +329,4 @@ async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends
     )
     await db.commit()
 
-    return await get_plant(plant_id)
+    return await get_plant(plant_id, db=db)

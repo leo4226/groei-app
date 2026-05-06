@@ -1,0 +1,167 @@
+"""Prove the database dependency injection seam works.
+   Tests can override db_dep with an in-memory SQLite."""
+import pytest
+import aiosqlite
+from fastapi.testclient import TestClient
+from main import app
+from database import db_dep
+
+
+@pytest.fixture
+def _db_cache():
+    """Singleton in-memory db shared by all override calls in one test."""
+    async def _init():
+        db = await aiosqlite.connect(":memory:")
+        db.row_factory = aiosqlite.Row
+        await db.executescript("""
+            CREATE TABLE plants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL, species TEXT, location_id INTEGER,
+                map_id INTEGER, map_x REAL, map_y REAL, photo_path TEXT,
+                acquired_date TEXT, pot_size_cm INTEGER, last_repotted TEXT,
+                notes TEXT, is_active INTEGER DEFAULT 1, is_locked INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                sun_requirement TEXT, plant_type TEXT, icon_key TEXT,
+                species_id INTEGER, container_id INTEGER, ground_zone_id TEXT,
+                display_radius_cm INTEGER, care_thresholds TEXT
+            );
+            CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0);
+            CREATE TABLE care_schedules (
+                id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
+                interval_days INTEGER, next_due TEXT, is_active INTEGER DEFAULT 1,
+                last_done_by INTEGER, last_done TEXT, notes TEXT,
+                season_adjust TEXT, created_at TEXT
+            );
+            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT);
+            CREATE TABLE plant_species (
+                id INTEGER PRIMARY KEY, slug TEXT UNIQUE, common_name_nl TEXT,
+                common_name_en TEXT, latin_name TEXT, phenology_json TEXT,
+                climate_zone TEXT DEFAULT 'temperate', care_thresholds TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE maps (
+                id INTEGER PRIMARY KEY, name TEXT, slug TEXT UNIQUE,
+                svg_file TEXT, viewbox TEXT, scale_info TEXT,
+                sort_order INTEGER DEFAULT 0, canvas_data TEXT,
+                map_type TEXT DEFAULT 'outdoor', lat REAL, lon REAL, bearing REAL DEFAULT 0,
+                created_at TEXT
+            );
+            CREATE TABLE objects (
+                id INTEGER PRIMARY KEY, name TEXT, object_type TEXT,
+                shape TEXT, diameter_cm INTEGER, width_cm INTEGER, depth_cm INTEGER,
+                material TEXT, color TEXT, map_id INTEGER, map_x REAL, map_y REAL,
+                rotation REAL DEFAULT 0, notes TEXT, is_active INTEGER DEFAULT 1,
+                category TEXT DEFAULT 'container', label TEXT, preset TEXT,
+                created_at TEXT, updated_at TEXT
+            );
+            CREATE TABLE ground_zones (
+                id TEXT PRIMARY KEY, map_id INTEGER, name TEXT,
+                zone_type TEXT, polygon TEXT, soil_note TEXT, created_at TEXT
+            );
+            INSERT INTO users (id, name) VALUES (1, 'Test User');
+            INSERT INTO locations (id, name) VALUES (1, 'Test Location');
+        """)
+        await db.commit()
+        return db
+
+    class _Cache:
+        _db = None
+        @staticmethod
+        async def get():
+            if _Cache._db is None:
+                import asyncio
+                _Cache._db = await _init()
+            return _Cache._db
+
+    return _Cache
+
+
+@pytest.fixture(autouse=True)
+def override_db(_db_cache):
+    """Override db_dep — every request reuses the SAME in-memory db."""
+    async def _mem_db():
+        db = await _db_cache.get()
+        yield db
+        # We do NOT close the db — it's shared across requests
+
+    app.dependency_overrides[db_dep] = _mem_db
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+# ── Tests ──
+
+def test_list_plants_empty(client):
+    """GET /api/plants with empty in-memory DB returns empty list."""
+    resp = client.get("/api/plants")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_create_and_get_plant(client):
+    """POST /api/plants inserts into in-memory DB, GET returns it."""
+    resp = client.post("/api/plants", json={
+        "name": "Test Monstera",
+        "species": "Monstera deliciosa",
+        "location_id": 1,
+    })
+    assert resp.status_code == 200
+    plant = resp.json()
+    assert plant["name"] == "Test Monstera"
+    assert plant["id"] == 1
+
+    # GET should return it
+    resp2 = client.get(f"/api/plants/{plant['id']}")
+    assert resp2.status_code == 200
+    assert resp2.json()["name"] == "Test Monstera"
+
+
+def test_get_plant_not_found(client):
+    """404 for non-existent plant."""
+    resp = client.get("/api/plants/999")
+    assert resp.status_code == 404
+
+
+def test_update_plant(client):
+    """PUT updates a plant via in-memory DB."""
+    # Create first
+    client.post("/api/plants", json={
+        "name": "Update Me",
+        "species": "Testus updatus",
+        "location_id": 1,
+    })
+
+    resp = client.put("/api/plants/1", json={"name": "Updated Name"})
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Updated Name"
+
+
+def test_archive_plant(client):
+    """DELETE soft-deletes a plant."""
+    client.post("/api/plants", json={
+        "name": "Archive Me",
+        "location_id": 1,
+    })
+    resp = client.delete("/api/plants/1")
+    assert resp.status_code == 200
+
+    # Should be 404 after soft-delete
+    resp2 = client.get("/api/plants/1")
+    assert resp2.status_code == 404
+
+
+def test_dashboard_empty(client):
+    """GET /api/dashboard with no data returns empty buckets."""
+    resp = client.get("/api/dashboard")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["overdue"] == []
+    assert data["due_today"] == []
+    assert data["upcoming"] == []
