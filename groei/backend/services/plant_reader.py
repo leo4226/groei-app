@@ -100,6 +100,7 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
     )
     plant["care_schedules"] = [dict(row) for row in sched_rows]
 
+    care_thresholds = plant.pop("care_thresholds", None)
     phenology_json = plant.pop("phenology_json", None)
     plant["phenology"] = json.loads(phenology_json) if phenology_json else None
 
@@ -113,9 +114,6 @@ async def enrich_plants(db, plant_rows, today, temp_data=None):
 
     plants = [dict(r) for r in plant_rows]
     plant_ids = [p["id"] for p in plants]
-
-    # Build lookup
-    by_id = {p["id"]: p for p in plants}
 
     # Single batch query for all schedules
     placeholders = ",".join("?" for _ in plant_ids)
