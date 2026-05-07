@@ -1,6 +1,14 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardData, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary, CanvasData } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardData, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary } from '../types'
 
-const API = '/api'
+const BASE = '/api'
+
+// ── Generic typed API client ──
+
+type ApiOptions = {
+  body?: unknown
+  form?: FormData
+  params?: Record<string, string>
+}
 
 async function ensureOk(res: Response, fallback: string): Promise<void> {
   if (res.ok) return
@@ -12,268 +20,30 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   throw new Error(msg)
 }
 
-// --- Users ---
-
-export async function fetchUsers(): Promise<User[]> {
-  const res = await fetch(`${API}/users`)
-  await ensureOk(res, 'Failed to load users')
+async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
+  const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
+  const init: RequestInit = { method }
+  if (options.form) {
+    init.body = options.form
+  } else if (options.body !== undefined) {
+    init.headers = { 'Content-Type': 'application/json' }
+    init.body = JSON.stringify(options.body)
+  }
+  const res = await fetch(url, init)
+  await ensureOk(res, `Failed: ${method} ${path}`)
+  if (res.status === 204) return undefined as T
   return res.json()
 }
 
-// --- Locations ---
+// ── Local types ──
 
-export async function fetchLocations(): Promise<Location[]> {
-  const res = await fetch(`${API}/locations`)
-  await ensureOk(res, 'Failed to load locations')
-  return res.json()
+export interface GardenWaterStatus {
+  status: 'hydrated' | 'thirsty' | 'dry'
+  rain_7day_mm: number
+  weekly_budget_mm: number
+  season: string
+  watered_at: string | null
 }
-
-// --- Plants ---
-
-export async function fetchPlants(): Promise<Plant[]> {
-  const res = await fetch(`${API}/plants`)
-  await ensureOk(res, 'Failed to load plants')
-  return res.json()
-}
-
-export async function fetchPlant(id: number): Promise<Plant> {
-  const res = await fetch(`${API}/plants/${id}`)
-  await ensureOk(res, 'Failed to load plant')
-  return res.json()
-}
-
-export async function createPlant(data: PlantCreateInput): Promise<Plant> {
-  const res = await fetch(`${API}/plants`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to create plant')
-  return res.json()
-}
-
-export async function updatePlant(id: number, data: Partial<Plant>): Promise<Plant> {
-  const res = await fetch(`${API}/plants/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to update plant')
-  return res.json()
-}
-
-export async function archivePlant(id: number): Promise<void> {
-  const res = await fetch(`${API}/plants/${id}`, { method: 'DELETE' })
-  await ensureOk(res, 'Failed to archive plant')
-}
-
-export async function restorePlant(id: number): Promise<void> {
-  const res = await fetch(`${API}/plants/${id}/restore`, { method: 'PATCH' })
-  await ensureOk(res, 'Failed to restore plant')
-}
-
-export async function uploadPlantPhoto(plantId: number, file: File): Promise<Plant> {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await fetch(`${API}/plants/${plantId}/photo`, {
-    method: 'POST',
-    body: form,
-  })
-  await ensureOk(res, 'Failed to upload photo')
-  return res.json()
-}
-
-// --- Dashboard ---
-
-export async function fetchDashboard(): Promise<DashboardData> {
-  const res = await fetch(`${API}/dashboard`)
-  await ensureOk(res, 'Failed to load dashboard')
-  return res.json()
-}
-
-// --- Maps ---
-
-export async function fetchMaps(): Promise<MapInfo[]> {
-  const res = await fetch(`${API}/maps`)
-  await ensureOk(res, 'Failed to load maps')
-  return res.json()
-}
-
-export async function createMap(name: string): Promise<MapInfo> {
-  const res = await fetch(`${API}/maps`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  })
-  await ensureOk(res, 'Failed to create map')
-  return res.json()
-}
-
-export async function updateMap(id: number, data: { name?: string; canvas_data?: string }): Promise<MapInfo> {
-  const res = await fetch(`${API}/maps/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to update map')
-  return res.json()
-}
-
-export async function deleteMap(id: number): Promise<void> {
-  const res = await fetch(`${API}/maps/${id}`, { method: 'DELETE' })
-  await ensureOk(res, 'Failed to delete map')
-}
-
-export async function fetchMapById(id: number): Promise<MapInfo> {
-  const res = await fetch(`${API}/maps/by-id/${id}`)
-  await ensureOk(res, 'Failed to load map')
-  return res.json()
-}
-
-export async function fetchMapDetail(slug: string): Promise<MapDetail> {
-  const res = await fetch(`${API}/maps/${slug}`)
-  await ensureOk(res, 'Failed to load map')
-  return res.json()
-}
-
-export async function fetchMapPlants(slug: string): Promise<MapPlant[]> {
-  const res = await fetch(`${API}/maps/${slug}/plants`)
-  await ensureOk(res, 'Failed to load map plants')
-  return res.json()
-}
-
-export async function updatePlantPosition(plantId: number, data: { map_id: number; map_x: number; map_y: number }): Promise<void> {
-  const res = await fetch(`${API}/plants/${plantId}/position`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to update plant position')
-}
-
-export async function fetchMapItems(slug: string): Promise<MapItems> {
-  const res = await fetch(`${API}/maps/${slug}/items`)
-  await ensureOk(res, 'Failed to load map items')
-  return res.json()
-}
-
-// --- Objects ---
-
-export async function fetchObjects(): Promise<MapObject[]> {
-  const res = await fetch(`${API}/objects`)
-  await ensureOk(res, 'Failed to load objects')
-  return res.json()
-}
-
-export async function createObject(data: ObjectCreateInput): Promise<MapObject> {
-  const res = await fetch(`${API}/objects`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to create object')
-  return res.json()
-}
-
-export async function updateObject(id: number, data: Partial<MapObject>): Promise<MapObject> {
-  const res = await fetch(`${API}/objects/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to update object')
-  return res.json()
-}
-
-export async function updateObjectPosition(id: number, data: { map_x: number; map_y: number; rotation?: number }): Promise<void> {
-  const res = await fetch(`${API}/objects/${id}/position`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  await ensureOk(res, 'Failed to update object position')
-}
-
-export async function archiveObject(id: number): Promise<void> {
-  const res = await fetch(`${API}/objects/${id}`, { method: 'DELETE' })
-  await ensureOk(res, 'Failed to archive object')
-}
-
-export async function restoreObject(id: number): Promise<void> {
-  const res = await fetch(`${API}/objects/${id}/restore`, { method: 'PATCH' })
-  await ensureOk(res, 'Failed to restore object')
-}
-
-export async function updatePlantContainer(plantId: number, containerId: number | null): Promise<void> {
-  const res = await fetch(`${API}/plants/${plantId}/container`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ container_id: containerId }),
-  })
-  await ensureOk(res, 'Failed to update plant container')
-}
-
-export async function duplicatePlant(plantId: number): Promise<Plant> {
-  const res = await fetch(`${API}/plants/${plantId}/duplicate`, { method: 'POST' })
-  await ensureOk(res, 'Failed to duplicate plant')
-  return res.json()
-}
-
-export async function fetchGroundZones(slug: string): Promise<GroundZone[]> {
-  const res = await fetch(`${API}/maps/${slug}/ground-zones`)
-  await ensureOk(res, 'Failed to load ground zones')
-  return res.json()
-}
-
-export async function updatePlantGroundZone(
-  plantId: number,
-  groundZoneId: string | null,
-  mapX: number | null,
-  mapY: number | null,
-): Promise<void> {
-  const res = await fetch(`${API}/plants/${plantId}/ground-zone`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ground_zone_id: groundZoneId, map_x: mapX, map_y: mapY }),
-  })
-  await ensureOk(res, 'Failed to update plant ground zone')
-}
-
-export async function updatePlantDisplayRadius(plantId: number, display_radius_cm: number | null): Promise<void> {
-  const res = await fetch(`${API}/plants/${plantId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display_radius_cm }),
-  })
-  await ensureOk(res, 'Failed to update plant size')
-}
-
-export async function updatePlantLock(plantId: number, locked: boolean): Promise<void> {
-  const res = await fetch(`${API}/plants/${plantId}/lock?locked=${locked}`, { method: 'PATCH' })
-  await ensureOk(res, 'Failed to update plant lock')
-}
-
-// --- Care ---
-
-export async function markCareDone(plantId: number, careType: string, userId: number, notes?: string): Promise<void> {
-  const res = await fetch(`${API}/care/done`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plant_id: plantId, care_type: careType, user_id: userId, notes }),
-  })
-  await ensureOk(res, 'Failed to mark care as done')
-}
-
-export async function skipCare(plantId: number, careType: string, userId: number): Promise<void> {
-  const res = await fetch(`${API}/care/skip`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plant_id: plantId, care_type: careType, user_id: userId }),
-  })
-  await ensureOk(res, 'Failed to skip care')
-}
-
-// --- Grow Here ---
 
 export interface AISuggestion {
   commonName: string
@@ -284,98 +54,82 @@ export interface AISuggestion {
   caveat: string | null
   companionNote: string | null
 }
+export interface GrowHereResponse { suggestions: AISuggestion[]; spotSummary: string }
 
-export interface GrowHereResponse {
-  suggestions: AISuggestion[]
-  spotSummary: string
-}
+// ── Users ──
 
-export async function fetchGrowHereSuggestions(
-  sunHours: number,
-  selectedMonth: number,
-  existingPlants: string[],
-): Promise<GrowHereResponse> {
-  const res = await fetch(`${API}/garden/grow-here`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants }),
-  })
-  await ensureOk(res, 'AI suggesties ophalen mislukt')
-  return res.json()
-}
+export const fetchUsers            = ()                    => api<User[]>('GET', '/users')
+export const fetchLocations        = ()                    => api<Location[]>('GET', '/locations')
 
-export async function deleteCareSchedule(scheduleId: number): Promise<void> {
-  const res = await fetch(`${API}/care/schedules/${scheduleId}`, { method: 'DELETE' })
-  await ensureOk(res, 'Failed to delete care schedule')
-}
+// ── Plants ──
 
-export async function fetchCareLog(plantId: number): Promise<CareLogEntry[]> {
-  const res = await fetch(`${API}/care/log/${plantId}`)
-  await ensureOk(res, 'Failed to load care log')
-  return res.json()
-}
+export const fetchPlants           = ()                    => api<Plant[]>('GET', '/plants')
+export const fetchPlant            = (id: number)          => api<Plant>('GET', `/plants/${id}`)
+export const createPlant           = (data: PlantCreateInput) => api<Plant>('POST', '/plants', { body: data })
+export const updatePlant           = (id: number, data: Partial<Plant>) => api<Plant>('PUT', `/plants/${id}`, { body: data })
+export const archivePlant          = (id: number)          => api<void>('DELETE', `/plants/${id}`)
+export const restorePlant          = (id: number)          => api<void>('PATCH', `/plants/${id}/restore`)
+export const uploadPlantPhoto      = (plantId: number, file: File) => { const f = new FormData(); f.append('file', file); return api<Plant>('POST', `/plants/${plantId}/photo`, { form: f }) }
+export const updatePlantPosition   = (plantId: number, data: { map_id: number; map_x: number; map_y: number }) => api<void>('PUT', `/plants/${plantId}/position`, { body: data })
+export const updatePlantContainer  = (plantId: number, containerId: number | null) => api<void>('PUT', `/plants/${plantId}/container`, { body: { container_id: containerId } })
+export const updatePlantGroundZone = (plantId: number, groundZoneId: string | null, mapX: number | null, mapY: number | null) => api<void>('PUT', `/plants/${plantId}/ground-zone`, { body: { ground_zone_id: groundZoneId, map_x: mapX, map_y: mapY } })
+export const updatePlantDisplayRadius = (plantId: number, display_radius_cm: number | null) => api<void>('PUT', `/plants/${plantId}`, { body: { display_radius_cm } })
+export const updatePlantLock       = (plantId: number, locked: boolean) => api<void>('PATCH', `/plants/${plantId}/lock`, { params: { locked: String(locked) } })
+export const duplicatePlant        = (plantId: number)    => api<Plant>('POST', `/plants/${plantId}/duplicate`)
+export const fetchPlantAlerts      = (plantId: number)    => api<PlantAlert[]>('GET', `/plants/${plantId}/alerts`)
 
-// --- Alerts ---
+// ── Dashboard ──
 
-export async function fetchLatestGardenWatering(): Promise<string | null> {
-  const res = await fetch(`${API}/garden/water-log/latest`)
-  await ensureOk(res, 'Failed to load garden water log')
-  const data = await res.json()
-  return data.watered_at ?? null
-}
+export const fetchDashboard        = ()                    => api<DashboardData>('GET', '/dashboard')
 
-export interface GardenWaterStatus {
-  status: 'hydrated' | 'thirsty' | 'dry'
-  rain_7day_mm: number
-  weekly_budget_mm: number
-  season: string
-  watered_at: string | null
-}
+// ── Maps ──
 
-export async function fetchGardenWaterStatus(): Promise<GardenWaterStatus> {
-  const res = await fetch(`${API}/garden/water-status`)
-  await ensureOk(res, 'Failed to load garden water status')
-  return res.json()
-}
+export const fetchMaps             = ()                    => api<MapInfo[]>('GET', '/maps')
+export const createMap             = (name: string)        => api<MapInfo>('POST', '/maps', { body: { name } })
+export const updateMap             = (id: number, data: { name?: string; canvas_data?: string }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data })
+export const deleteMap             = (id: number)          => api<void>('DELETE', `/maps/${id}`)
+export const fetchMapById          = (id: number)          => api<MapInfo>('GET', `/maps/by-id/${id}`)
+export const fetchMapDetail        = (slug: string)        => api<MapDetail>('GET', `/maps/${slug}`)
+export const fetchMapPlants        = (slug: string)        => api<MapPlant[]>('GET', `/maps/${slug}/plants`)
+export const fetchMapItems         = (slug: string)        => api<MapItems>('GET', `/maps/${slug}/items`)
 
-export async function logGardenWatering(wateredAt?: string, userId?: number): Promise<string> {
-  const res = await fetch(`${API}/garden/water-log`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ watered_at: wateredAt ?? null, watered_by: userId ?? null }),
-  })
-  await ensureOk(res, 'Failed to log garden watering')
-  const data = await res.json()
-  return data.watered_at
-}
+// ── Objects ──
 
-export async function deleteLatestGardenWatering(): Promise<void> {
-  const res = await fetch(`${API}/garden/water-log/latest`, { method: 'DELETE' })
-  await ensureOk(res, 'Failed to delete garden watering')
-}
+export const fetchObjects          = ()                    => api<MapObject[]>('GET', '/objects')
+export const createObject          = (data: ObjectCreateInput) => api<MapObject>('POST', '/objects', { body: data })
+export const updateObject          = (id: number, data: Partial<MapObject>) => api<MapObject>('PUT', `/objects/${id}`, { body: data })
+export const updateObjectPosition  = (id: number, data: { map_x: number; map_y: number; rotation?: number }) => api<void>('PUT', `/objects/${id}/position`, { body: data })
+export const archiveObject         = (id: number)          => api<void>('DELETE', `/objects/${id}`)
+export const restoreObject         = (id: number)          => api<void>('PATCH', `/objects/${id}/restore`)
 
-export async function fetchPlantAlerts(plantId: number): Promise<PlantAlert[]> {
-  const res = await fetch(`${API}/plants/${plantId}/alerts`)
-  await ensureOk(res, 'Failed to load plant alerts')
-  return res.json()
-}
+// ── Ground Zones ──
 
-export async function fetchAlertSummary(): Promise<AlertSummary> {
-  const res = await fetch(`${API}/alerts/summary`)
-  await ensureOk(res, 'Failed to load alert summary')
-  return res.json()
-}
+export const fetchGroundZones      = (slug: string)        => api<GroundZone[]>('GET', `/maps/${slug}/ground-zones`)
 
-// --- Icons ---
+// ── Care ──
 
-export async function fetchIconCatalog(): Promise<PlantIcon[]> {
-  const res = await fetch(`${API}/icon-catalog`)
-  await ensureOk(res, 'Failed to load icon catalog')
-  return res.json()
-}
+export const markCareDone          = (plantId: number, careType: string, userId: number, notes?: string) => api<void>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes } })
+export const skipCare              = (plantId: number, careType: string, userId: number) => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } })
+export const deleteCareSchedule    = (scheduleId: number)  => api<void>('DELETE', `/care/schedules/${scheduleId}`)
+export const fetchCareLog          = (plantId: number)    => api<CareLogEntry[]>('GET', `/care/log/${plantId}`)
 
-export async function syncIcons(): Promise<IconSyncResult> {
-  const res = await fetch(`${API}/icon-catalog/sync`, { method: 'POST' })
-  await ensureOk(res, 'Failed to sync icons')
-  return res.json()
-}
+// ── Garden Water ──
+
+export const fetchLatestGardenWatering  = ()               => api<{ watered_at: string | null }>('GET', '/garden/water-log/latest').then(d => d.watered_at ?? null)
+export const fetchGardenWaterStatus     = ()               => api<GardenWaterStatus>('GET', '/garden/water-status')
+export const logGardenWatering          = (wateredAt?: string, userId?: number) => api<{ watered_at: string }>('POST', '/garden/water-log', { body: { watered_at: wateredAt ?? null, watered_by: userId ?? null } }).then(d => d.watered_at)
+export const deleteLatestGardenWatering = ()               => api<void>('DELETE', '/garden/water-log/latest')
+
+// ── Alerts ──
+
+export const fetchAlertSummary     = ()                    => api<AlertSummary>('GET', '/alerts/summary')
+
+// ── Icons ──
+
+export const fetchIconCatalog      = ()                    => api<PlantIcon[]>('GET', '/icon-catalog')
+export const syncIcons             = ()                    => api<IconSyncResult>('POST', '/icon-catalog/sync')
+
+// ── Grow Here ──
+
+export const fetchGrowHereSuggestions = (sunHours: number, selectedMonth: number, existingPlants: string[]) =>
+  api<GrowHereResponse>('POST', '/garden/grow-here', { body: { sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants } })

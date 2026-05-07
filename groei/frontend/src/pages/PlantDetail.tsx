@@ -2,27 +2,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
-import type { CareLogEntry, Phenology, PlantAlert } from '../types'
-import { fetchPlant, fetchCareLog, deleteCareSchedule, duplicatePlant, fetchPlantAlerts } from '../api/client'
+import type { Phenology, PlantAlert } from '../types'
+import { fetchPlant, deleteCareSchedule, duplicatePlant, fetchPlantAlerts } from '../api/client'
+import { useCareLog } from '../hooks/useCareLog'
 import PlantCareInfo from '../components/PlantCareInfo'
-import { getSunHoursAtPosition } from '../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
-import { computeSuitability } from '../utils/suitability'
-
-const MONTH_LABELS  = ['J','F','M','A','M','J','J','A','S','O','N','D']
-const MONTH_NL      = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
-
-const PHASE_COLORS: Record<string, string> = {
-  dormant:      '#94a3b8',
-  dying_back:   '#cbd5e1',
-  establishing: '#86efac',
-  growing:      '#22c55e',
-  flowering:    '#f472b6',
-  fruiting:     '#fb923c',
-  harvest:      '#eab308',
-  evergreen:    '#16a34a',
-  unknown:      '#e2e8f0',
-}
+import PhaseCalendar from '../components/PhaseCalendar'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -33,93 +18,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Jaarkalender({ phenology, sunHours }: { phenology: Phenology; sunHours: number | null }) {
-  const currentMonth = new Date().getMonth() + 1
-  const suitability  = computeSuitability(phenology, sunHours ?? 0, currentMonth)
-  const fmtMonths = (months: number[]) => months.map(m => MONTH_NL[m - 1]).join(', ')
-
-  return (
-    <Section title="Jaarkalender">
-      {/* Phase strips */}
-      <div className="flex gap-0.5 mb-1">
-        {MONTH_LABELS.map((lbl, i) => {
-          const month = i + 1
-          const data  = phenology.months.find(m => m.month === month)
-          const phase = data?.phase ?? 'unknown'
-          const isCurrent = month === currentMonth
-          return (
-            <div key={month} className="flex-1 flex flex-col items-center" title={data?.phase_label_nl ?? ''}>
-              <div
-                className={`w-full h-5 rounded-sm ${isCurrent ? 'ring-2 ring-offset-1 ring-primary' : ''}`}
-                style={{ backgroundColor: PHASE_COLORS[phase] ?? PHASE_COLORS.unknown }}
-              />
-              <span className="text-[8px] text-text-muted mt-0.5">{lbl}</span>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Current month callout */}
-      <div className="mt-2 p-3 bg-surface rounded-xl border border-border">
-        <p className="text-sm font-semibold text-text">
-          Nu ({MONTH_NL[currentMonth - 1]}): {suitability.phaseLabel || '—'}
-        </p>
-        {suitability.detailLabel && (
-          <p className="text-xs text-text-muted mt-0.5">{suitability.detailLabel}</p>
-        )}
-        {suitability.actions.length > 0 && (
-          <ul className="mt-2 space-y-0.5">
-            {suitability.actions.map((action, i) => (
-              <li key={i} className="text-xs text-text-muted">→ {action}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Planting windows */}
-      {(phenology.sow_window?.length > 0 || phenology.transplant_window?.length > 0 || phenology.harvest_window?.length > 0) && (
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          {phenology.sow_window?.length > 0 && (
-            <div className="bg-green-50 rounded-xl p-2">
-              <p className="text-xs font-semibold text-green-700">Zaaien</p>
-              <p className="text-xs text-green-600 mt-0.5">{fmtMonths(phenology.sow_window)}</p>
-            </div>
-          )}
-          {phenology.transplant_window?.length > 0 && (
-            <div className="bg-blue-50 rounded-xl p-2">
-              <p className="text-xs font-semibold text-blue-700">Uitplanten</p>
-              <p className="text-xs text-blue-600 mt-0.5">{fmtMonths(phenology.transplant_window)}</p>
-            </div>
-          )}
-          {phenology.harvest_window?.length > 0 && (
-            <div className="bg-amber-50 rounded-xl p-2">
-              <p className="text-xs font-semibold text-amber-700">Oogst</p>
-              <p className="text-xs text-amber-600 mt-0.5">{fmtMonths(phenology.harvest_window)}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Interesting fact */}
-      {phenology.interesting_facts_nl && (
-        <p className="text-xs text-text-muted italic mt-3 border-t border-border pt-3">
-          💡 {phenology.interesting_facts_nl}
-        </p>
-      )}
-    </Section>
-  )
-}
-
 const ALERT_BORDER: Record<PlantAlert['severity'], string> = {
-  urgent:  'border-l-red-500',
-  warning: 'border-l-orange-400',
-  info:    'border-l-blue-400',
+  urgent:  'border-l-fiery-red',
+  warning: 'border-l-pumpkin-swirl',
+  info:    'border-l-aqua-glow',
 }
 
 const ALERT_BG: Record<PlantAlert['severity'], string> = {
-  urgent:  'bg-red-50',
-  warning: 'bg-orange-50',
-  info:    'bg-blue-50',
+  urgent:  'bg-fiery-red/8',
+  warning: 'bg-pumpkin-swirl/8',
+  info:    'bg-aqua-glow/8',
 }
 
 function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Phenology | null }) {
@@ -167,45 +75,48 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
 export default function PlantDetail() {
   const { id }     = useParams<{ id: string }>()
   const navigate   = useNavigate()
+  const plants = useGroeiStore(s => s.plants)
+  const loadPlants = useGroeiStore(s => s.loadPlants)
   const { markCareDone, archivePlant } = useGroeiStore()
 
-  const [plant, setPlant]         = useState<Awaited<ReturnType<typeof fetchPlant>> | null>(null)
-  const [careLog, setCareLog]     = useState<CareLogEntry[]>([])
+  const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [duplicating, setDuplicating] = useState(false)
   const [sunHours, setSunHours]   = useState<number | null>(null)
 
   const plantId = Number(id)
+  const careLog = useCareLog(plantId)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [p, log] = await Promise.all([fetchPlant(plantId), fetchCareLog(plantId)])
+    // Use cached plant from store if available, else fetch directly
+    const cached = plants.find(p => p.id === plantId)
+    if (cached) {
+      setPlant(cached)
+      setLoading(false)
+    } else {
+      fetchPlant(plantId).then(p => {
         setPlant(p)
-        setCareLog(log)
-        if (p.map_x != null && p.map_y != null) {
-          const month = new Date().getMonth() + 1
-          setSunHours(getSunHoursAtPosition(p.map_x, p.map_y, month))
-        }
-      } catch {
-        navigate('/plants')
-      } finally {
         setLoading(false)
-      }
+      }).catch(() => navigate('/plants'))
     }
-    load()
-  }, [plantId, navigate])
+  }, [plantId, plants, navigate])
+
+  // Keep local plant in sync with store updates (e.g. after markCareDone)
+  useEffect(() => {
+    if (plant) {
+      const updated = plants.find(p => p.id === plantId)
+      if (updated && updated !== plant) setPlant(updated)
+    }
+  }, [plants, plantId])
 
   async function handleQuickAction(careType: string) {
     await markCareDone(plantId, careType)
-    const [p, log] = await Promise.all([fetchPlant(plantId), fetchCareLog(plantId)])
-    setPlant(p)
-    setCareLog(log)
+    careLog.invalidate()
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
     await deleteCareSchedule(scheduleId)
-    setPlant(await fetchPlant(plantId))
+    await loadPlants() // store.sync effect picks up the updated plant
   }
 
   async function handleArchive() {
@@ -256,7 +167,7 @@ export default function PlantDetail() {
         {plant.photo_path ? (
           <img src={plant.photo_path} alt={plant.name} className="w-full h-52 object-cover" />
         ) : plant.icon_key ? (
-          <div className="w-full h-52 flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #FDFAF1 0%, #EDE5D1 100%)' }}>
+          <div className="w-full h-52 flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)' }}>
             <img src={`/api/icons/${plant.icon_key}.svg`} alt={plant.name} className="h-40 w-40 object-contain" />
           </div>
         ) : (
@@ -265,7 +176,7 @@ export default function PlantDetail() {
 
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-sm text-text"
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text"
         >
           ←
         </button>
@@ -274,14 +185,14 @@ export default function PlantDetail() {
           <button
             onClick={handleDuplicate}
             disabled={duplicating}
-            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-sm text-text-muted disabled:opacity-50"
+            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text-muted disabled:opacity-50"
             title="Kopieer plant"
           >
             {duplicating ? '…' : '⎘'}
           </button>
           <Link
             to={`/plants/${plantId}/edit`}
-            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center shadow-sm no-underline text-primary font-semibold text-sm"
+            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center no-underline text-primary font-semibold text-sm"
           >
             Edit
           </Link>
@@ -345,7 +256,9 @@ export default function PlantDetail() {
 
         {/* Jaarkalender */}
         {plant.phenology && (
-          <Jaarkalender phenology={plant.phenology} sunHours={sunHours} />
+          <Section title="Jaarkalender">
+            <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
+          </Section>
         )}
 
         {/* Weather alerts */}
@@ -362,7 +275,7 @@ export default function PlantDetail() {
                   <button
                     key={sched.id}
                     onClick={() => handleQuickAction(sched.care_type)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform shadow-sm"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
                   >
                     {info?.icon ?? '🌿'} {info?.label ?? sched.care_type}
                   </button>
@@ -411,10 +324,10 @@ export default function PlantDetail() {
         </div>
 
         {/* Care history */}
-        {careLog.length > 0 && (
+        {careLog.data && careLog.data.length > 0 && (
           <Section title="Zorggeschiedenis">
             <div className="card divide-y divide-border/50">
-              {careLog.map((entry) => {
+              {careLog.data.map((entry) => {
                 const info = CARE_TYPE_INFO[entry.care_type as keyof typeof CARE_TYPE_INFO]
                 return (
                   <div key={entry.id} className="flex items-center gap-3 px-4 py-3">

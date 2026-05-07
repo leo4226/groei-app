@@ -1,5 +1,16 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import type { LocalPlant } from '../data/plants-dataset'
+
+const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
+  vaste_plant: 'herb',
+  heester: 'shrub',
+  klimmer: 'climber',
+  gras: 'grass',
+  bol: 'bulb',
+  eenjarig: 'flower',
+  boom: 'tree',
+}
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
@@ -11,15 +22,28 @@ const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase(
 
 export default function AddPlant() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefill = location.state?.prefill as LocalPlant | { name: string } | undefined
+  const isFromDatabase = !!(prefill && 'latinName' in prefill)
   const { locations, maps, addPlant, uploadPhoto } = useGroeiStore()
 
-  const [name, setName] = useState('')
-  const [species, setSpecies] = useState('')
+  const [name, setName] = useState(
+    prefill
+      ? 'latinName' in prefill
+        ? prefill.dutchName
+        : prefill.name
+      : ''
+  )
+  const [species, setSpecies] = useState(
+    prefill && 'latinName' in prefill ? prefill.latinName : ''
+  )
   const [locationId, setLocationId] = useState<number | undefined>()
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
   const [notes, setNotes] = useState('')
-  const [sunRequirement, setSunRequirement] = useState<string | null>(null)
+  const [sunRequirement, setSunRequirement] = useState<string | null>(
+    prefill && 'latinName' in prefill ? (prefill as LocalPlant).sunRequirement : null
+  )
   const [iconKey, setIconKey] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -99,8 +123,9 @@ export default function AddPlant() {
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
         acquired_date: acquiredDate || undefined,
         notes: notes.trim() || undefined,
-        sun_requirement: sunRequirement ?? undefined,
         icon_key: iconKey ?? undefined,
+        plant_type: isFromDatabase ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type) : undefined,
+        sun_requirement: sunRequirement ?? undefined,
         care_schedules: careSchedules,
       })
 
@@ -183,6 +208,13 @@ export default function AddPlant() {
           <label className="block text-sm font-medium text-text-muted mb-1.5">Icoon</label>
           <IconPicker value={iconKey} onChange={setIconKey} />
         </div>
+
+        {isFromDatabase && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
+            <span className="text-base">📋</span>
+            <span>Ingevuld uit plantendatabase — pas aan waar nodig</span>
+          </div>
+        )}
 
         {/* Sun requirement */}
         <div>

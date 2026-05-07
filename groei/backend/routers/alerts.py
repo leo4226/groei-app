@@ -1,9 +1,9 @@
 import json
 from datetime import date, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
-from database import get_db
+from database import db_dep
 from routers.plant_care import _get_rain_data, _get_temp_data, get_last_garden_watered
 
 router = APIRouter(tags=["alerts"])
@@ -137,12 +137,11 @@ def _compute_alerts(thresholds: dict, rain: dict, temp: dict, last_watered: date
 
 
 @router.get("/plants/{plant_id}/alerts")
-async def get_plant_alerts(plant_id: int):
-    async with get_db() as db:
-        rows = await db.execute_fetchall(
-            "SELECT care_thresholds FROM plants WHERE id = ? AND is_active = 1",
-            (plant_id,),
-        )
+async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT care_thresholds FROM plants WHERE id = ? AND is_active = 1",
+        (plant_id,),
+    )
     if not rows:
         raise HTTPException(status_code=404, detail="Plant not found")
 
@@ -157,11 +156,10 @@ async def get_plant_alerts(plant_id: int):
 
 
 @router.get("/alerts/summary")
-async def get_alerts_summary():
-    async with get_db() as db:
-        rows = await db.execute_fetchall(
-            "SELECT id, care_thresholds FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1"
-        )
+async def get_alerts_summary(db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id, care_thresholds FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1"
+    )
 
     if not rows:
         return {"total_count": 0, "worst_severity": None, "plant_ids_with_alerts": []}

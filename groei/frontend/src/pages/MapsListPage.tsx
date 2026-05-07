@@ -1,26 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchMaps, createMap, deleteMap } from '../api/client'
+import { useGroeiStore } from '../store/useGroeiStore'
 import type { MapInfo } from '../types'
 
 export default function MapsListPage() {
-  const [maps, setMaps] = useState<MapInfo[]>([])
-  const [loading, setLoading] = useState(true)
+  const maps = useGroeiStore(s => s.maps)
+  const isLoading = useGroeiStore(s => s.isLoading)
+  const loadMaps = useGroeiStore(s => s.loadMaps)
+  const createMap = useGroeiStore(s => s.createMap)
+  const deleteMap = useGroeiStore(s => s.deleteMap)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
-  async function load() {
-    try {
-      setMaps(await fetchMaps())
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
+  useEffect(() => { loadMaps() }, [loadMaps])
 
   async function handleCreate() {
     if (!newName.trim() || creating) return
@@ -43,13 +38,12 @@ export default function MapsListPage() {
     setError(null)
     try {
       await deleteMap(map.id)
-      load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete map')
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return <div className="p-6 text-text-muted text-center">Loading maps...</div>
   }
 
