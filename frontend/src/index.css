@@ -161,3 +161,12 @@ input:focus, select:focus, textarea:focus {
 .animate-slide-up {
   animation: slide-up 0.25s ease-out;
 }
+
+/* Card icon hover animation */
+.card:hover .card-icon {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.card:hover .card-index {
+  opacity: 0.7;
+}

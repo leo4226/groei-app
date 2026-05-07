@@ -2,16 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { PLANT_ICONS } from '../constants/plantIcons'
-<<<<<<< Updated upstream
-import type { Plant } from '../types'
-import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
-import type { LocalPlant } from '../data/plants-dataset'
-import { fetchAlertSummary } from '../api/client'
-=======
 import { CATEGORY_LABELS, PLANT_TYPE_LABELS, FORM_LABELS } from '../constants/plantLabels'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
->>>>>>> Stashed changes
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -43,15 +36,11 @@ export default function Plants() {
   const navigate = useNavigate()
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
-<<<<<<< Updated upstream
-  const [showPicker, setShowPicker] = useState(false)
-=======
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
   }, [])
->>>>>>> Stashed changes
 
   useEffect(() => {
     if (alertsOnly) {
@@ -171,25 +160,6 @@ export default function Plants() {
             Een botanische gids voor je plantencollectie — binnen en buiten.
           </p>
         </div>
-<<<<<<< Updated upstream
-        <button
-          onClick={() => setShowPicker(true)}
-          style={{
-            background: 'var(--color-primary)',
-            color: '#fff',
-            padding: '9px 18px',
-            borderRadius: 100,
-            fontWeight: 600,
-            fontSize: 13,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          + Toevoegen
-        </button>
-      </div>
-=======
         <div style={{ display: 'flex', gap: 28 }}>
           <div style={{ textAlign: 'right' }}>
             <span style={{
@@ -229,7 +199,6 @@ export default function Plants() {
           </div>
         </div>
       </header>
->>>>>>> Stashed changes
 
       {/* Search bar */}
       <div style={{ padding: '20px 24px 0', display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -480,20 +449,6 @@ export default function Plants() {
           </div>
         )}
       </div>
-
-      {showPicker && (
-        <PlantPickerSheet
-          onClose={() => setShowPicker(false)}
-          onSelectPlant={(plant: LocalPlant) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: { prefill: plant } })
-          }}
-          onCustomName={(name) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -558,119 +513,178 @@ function Count({ children }: { children: React.ReactNode }) {
   )
 }
 
-function getStatusColor(plant: Plant): string | null {
-  if (plant.care_schedules.length === 0) return null
-  const today = new Date().toISOString().slice(0, 10)
-  for (const sched of plant.care_schedules) {
-    if (sched.next_due < today) return 'var(--color-overdue)'
-    if (sched.next_due === today) return 'var(--color-due)'
-  }
-  return 'var(--color-good)'
-}
-
-function PlantIconWell({ plant }: { plant: Plant }) {
+function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, PlantIcon> }) {
+  // Has custom SVG icon
   if (plant.icon_key) {
     return (
       <div style={{
         aspectRatio: '1',
-        background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)',
-        borderBottom: '1px solid var(--color-border)',
+        background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
+        borderBottom: '1px solid var(--color-border-soft)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16%',
+        position: 'relative',
       }}>
         <img
           src={`/api/icons/${plant.icon_key}.svg`}
           alt={plant.name}
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
+          className="card-icon"
         />
       </div>
     )
   }
 
+  // Fallback: warm gradient base + subtle type color accent bar
   const type = plant.plant_type || 'unknown'
-  const bg = TYPE_BG[type] || TYPE_BG.unknown
+  const accentColor = TYPE_BG[type] || TYPE_BG.unknown
   const iconBody = PLANT_ICONS[type] || PLANT_ICONS['unknown']
 
   return (
     <div style={{
       aspectRatio: '1',
-      background: `linear-gradient(145deg, ${bg}cc, ${bg})`,
+      background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
+      borderBottom: '1px solid var(--color-border-soft)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20%',
+      padding: '18%',
+      position: 'relative',
     }}>
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        background: accentColor,
+        opacity: 0.4,
+        borderRadius: '0 0 0 3px',
+      }} />
       <svg
         viewBox="0 0 100 100"
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
+        className="card-icon"
         dangerouslySetInnerHTML={{ __html: iconBody }}
       />
     </div>
   )
 }
 
-function PlantCard({ plant }: { plant: Plant }) {
-  const statusColor = getStatusColor(plant)
-  const rawType = plant.plant_type || plant.icon_key?.split('_')[0] || null
-  const typeLabel = rawType ? rawType.charAt(0).toUpperCase() + rawType.slice(1) : null
+function PlantCard({ plant, iconMap, index }: { plant: Plant; iconMap: Map<string, PlantIcon>; index: number }) {
+  const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
+  const typeLabel = icon?.cat || plant.plant_type || null
+  const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null
+  const formLabel = icon?.form || null
+  const familyName = icon?.family || null
 
   return (
     <Link
       to={`/plants/${plant.id}`}
-      className="card no-underline block"
-      style={{ borderRadius: 16, overflow: 'hidden' }}
+      className="card card-glow no-underline block"
+      style={{ borderRadius: 14, overflow: 'hidden', color: 'inherit', textDecoration: 'none' }}
     >
       <div style={{ position: 'relative' }}>
-        <PlantIconWell plant={plant} />
+        <PlantIconWell plant={plant} iconMap={iconMap} />
 
-        {typeLabel && (
+        {/* Category tag — top left */}
+        {typeDisplay && (
           <span style={{
             position: 'absolute',
             top: 8,
             left: 8,
-            fontSize: 9,
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 8,
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
             color: 'var(--color-text-muted)',
-            background: 'rgba(253,250,241,0.92)',
+            background: 'rgba(251,247,238,0.92)',
             padding: '2px 7px',
             borderRadius: 5,
-            border: '1px solid rgba(232,224,214,0.7)',
+            border: '1px solid var(--color-border-soft)',
           }}>
             {typeLabel}
           </span>
         )}
 
-        {statusColor && (
+        {/* Index number — top right, visible on hover */}
+        <span style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          color: 'var(--color-text-muted)',
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        }} className="card-index">
+          {String(index).padStart(2, '0')}
+        </span>
+
+        {/* Form tag — bottom right */}
+        {formLabel && (
           <span style={{
             position: 'absolute',
-            top: 8,
+            bottom: 8,
             right: 8,
-            width: 9,
-            height: 9,
-            borderRadius: '50%',
-            background: statusColor,
-            border: '1.5px solid rgba(255,255,255,0.9)',
-            display: 'block',
-          }} />
+            fontFamily: 'var(--font-mono)',
+            fontSize: 8,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            color: formLabel === 'potted' ? 'var(--color-primary)' : 'var(--color-secondary)',
+            background: 'rgba(251,247,238,0.92)',
+            padding: '2px 7px',
+            borderRadius: 5,
+            border: '1px solid var(--color-border-soft)',
+          }}>
+            {formLabel}
+          </span>
         )}
       </div>
 
-      <div style={{ padding: '10px 12px 12px' }}>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>
+      <div style={{ padding: '12px 14px 14px' }}>
+        <h3 style={{
+          margin: 0,
+          fontFamily: 'var(--font-heading)',
+          fontWeight: 500,
+          fontSize: 16,
+          lineHeight: 1.15,
+          color: 'var(--color-text)',
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
           {plant.name}
-        </p>
+        </h3>
         {plant.species && (
-          <p style={{ margin: '2px 0 0', fontSize: 11, fontStyle: 'italic', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <p style={{
+            margin: '2px 0 0',
+            fontFamily: 'var(--font-heading)',
+            fontStyle: 'italic',
+            fontSize: 12,
+            color: 'var(--color-text-soft)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
             {plant.species}
           </p>
         )}
-        {plant.location_name && (
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {plant.location_icon} {plant.location_name}
+        {familyName && (
+          <p style={{
+            margin: '10px 0 0',
+            paddingTop: 8,
+            borderTop: '1px dashed var(--color-border)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            color: 'var(--color-text-muted)',
+          }}>
+            {familyName}
           </p>
         )}
       </div>
