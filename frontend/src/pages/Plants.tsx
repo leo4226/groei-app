@@ -2,9 +2,16 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { PLANT_ICONS } from '../constants/plantIcons'
+<<<<<<< Updated upstream
+import type { Plant } from '../types'
+import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import type { LocalPlant } from '../data/plants-dataset'
+import { fetchAlertSummary } from '../api/client'
+=======
 import { CATEGORY_LABELS, PLANT_TYPE_LABELS, FORM_LABELS } from '../constants/plantLabels'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
+>>>>>>> Stashed changes
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -36,11 +43,15 @@ export default function Plants() {
   const navigate = useNavigate()
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
+<<<<<<< Updated upstream
+  const [showPicker, setShowPicker] = useState(false)
+=======
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
   }, [])
+>>>>>>> Stashed changes
 
   useEffect(() => {
     if (alertsOnly) {
@@ -160,6 +171,25 @@ export default function Plants() {
             Een botanische gids voor je plantencollectie — binnen en buiten.
           </p>
         </div>
+<<<<<<< Updated upstream
+        <button
+          onClick={() => setShowPicker(true)}
+          style={{
+            background: 'var(--color-primary)',
+            color: '#fff',
+            padding: '9px 18px',
+            borderRadius: 100,
+            fontWeight: 600,
+            fontSize: 13,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          + Toevoegen
+        </button>
+      </div>
+=======
         <div style={{ display: 'flex', gap: 28 }}>
           <div style={{ textAlign: 'right' }}>
             <span style={{
@@ -199,6 +229,7 @@ export default function Plants() {
           </div>
         </div>
       </header>
+>>>>>>> Stashed changes
 
       {/* Search bar */}
       <div style={{ padding: '20px 24px 0', display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -405,13 +436,13 @@ export default function Plants() {
 
         {/* Loading skeleton */}
         {isLoading && (
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="card overflow-hidden" style={{ borderRadius: 16 }}>
-                <div className="skeleton" style={{ aspectRatio: '1', borderRadius: 0 }} />
-                <div className="p-3 space-y-2">
-                  <div className="skeleton h-4 w-24" />
-                  <div className="skeleton h-3 w-16" />
+              <div key={i} className="card" style={{ borderRadius: 14 }}>
+                <div className="skeleton" style={{ aspectRatio: '1', borderRadius: '12px 12px 0 0' }} />
+                <div style={{ padding: '12px 14px 14px' }}>
+                  <div className="skeleton" style={{ height: 16, width: '70%', marginBottom: 6 }} />
+                  <div className="skeleton" style={{ height: 12, width: '50%' }} />
                 </div>
               </div>
             ))}
@@ -420,10 +451,15 @@ export default function Plants() {
 
         {/* Empty state */}
         {!isLoading && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '64px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🌱</div>
-            <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)', margin: '0 0 6px' }}>
-              {query ? 'Niets gevonden' : 'Nog geen planten'}
+          <div style={{ textAlign: 'center', padding: '80px 20px', gridColumn: '1 / -1' }}>
+            <p style={{
+              fontFamily: 'var(--font-heading)',
+              fontStyle: 'italic',
+              fontSize: 16,
+              color: 'var(--color-text-soft)',
+              margin: '0 0 6px',
+            }}>
+              {query ? 'Niets gevonden in deze hoek van de tuin.' : 'Nog geen planten in deze collectie.'}
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
               {query ? 'Probeer een andere zoekopdracht' : 'Voeg je eerste plant toe via + Toevoegen'}
@@ -433,43 +469,90 @@ export default function Plants() {
 
         {/* Plant grid */}
         {!isLoading && filtered.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+          <div className="plants-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: 16,
+          }}>
             {filtered.map((plant) => (
-              <PlantCard key={plant.id} plant={plant} />
+              <PlantCard key={plant.id} plant={plant} iconMap={iconMap} index={plants.indexOf(plant) + 1} />
             ))}
           </div>
         )}
       </div>
+
+      {showPicker && (
+        <PlantPickerSheet
+          onClose={() => setShowPicker(false)}
+          onSelectPlant={(plant: LocalPlant) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: { prefill: plant } })
+          }}
+          onCustomName={(name) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function FilterChip({
+  active,
+  onClick,
+  children,
+  label,
+  count,
+  disabled,
+  variant,
+}: {
+  active?: boolean
+  onClick?: () => void
+  children?: React.ReactNode
+  label?: string
+  count?: number
+  disabled?: boolean
+  variant?: 'green' | 'terra'
+}) {
+  // Support both old API (children) and new API (label + count)
+  const display = children ?? (
+    <>
+      {label}
+      {count !== undefined && <Count>{count}</Count>}
+    </>
+  )
+
+  const activeBg = variant === 'terra' ? 'var(--color-secondary)' : 'var(--color-primary)'
+  const activeBorder = variant === 'terra' ? 'var(--color-secondary)' : 'var(--color-primary)'
+
   return (
     <button
       onClick={onClick}
-      className="whitespace-nowrap"
+      disabled={disabled}
       style={{
-        padding: '7px 14px',
+        padding: variant === 'terra' ? '5px 12px' : '7px 15px',
         borderRadius: 100,
-        fontSize: 13,
+        fontSize: variant === 'terra' ? 11 : 13,
         fontWeight: 500,
-        border: active ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-        background: active ? 'var(--color-primary)' : 'transparent',
-        color: active ? '#fff' : 'var(--color-text-muted)',
-        cursor: 'pointer',
+        fontFamily: 'var(--font-body)',
+        border: active ? `1px solid ${activeBorder}` : '1px solid var(--color-border)',
+        background: active ? activeBg : 'transparent',
+        color: active ? 'var(--color-surface)' : 'var(--color-text-soft)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.15s ease',
-        flexShrink: 0,
+        opacity: disabled && !active ? 0.35 : 1,
+        whiteSpace: 'nowrap',
       }}
     >
-      {children}
+      {display}
     </button>
   )
 }
 
 function Count({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ marginLeft: 4, opacity: 0.65, fontVariantNumeric: 'tabular-nums' }}>
+    <span style={{ marginLeft: 5, opacity: 0.65, fontVariantNumeric: 'tabular-nums' }}>
       {children}
     </span>
   )
