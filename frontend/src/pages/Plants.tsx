@@ -5,6 +5,8 @@ import { PLANT_ICONS } from '../constants/plantIcons'
 import { CATEGORY_LABELS, PLANT_TYPE_LABELS, FORM_LABELS } from '../constants/plantLabels'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
+import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import type { LocalPlant } from '../data/plants-dataset'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -37,6 +39,7 @@ export default function Plants() {
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
@@ -262,8 +265,8 @@ export default function Plants() {
             {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K'}
           </span>
         </div>
-        <Link
-          to="/plants/add"
+        <button
+          onClick={() => setShowPicker(true)}
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
@@ -276,12 +279,14 @@ export default function Plants() {
             whiteSpace: 'nowrap',
             transition: 'all 0.15s',
             flexShrink: 0,
+            background: 'transparent',
+            cursor: 'pointer',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)'; }}
         >
           + Toevoegen
-        </Link>
+        </button>
       </div>
 
       {/* Filter row 1: Locatie */}
@@ -463,6 +468,19 @@ export default function Plants() {
           </div>
         )}
       </div>
+      {showPicker && (
+        <PlantPickerSheet
+          onClose={() => setShowPicker(false)}
+          onSelectPlant={(plant: LocalPlant) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: { prefill: plant } })
+          }}
+          onCustomName={(name) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
+          }}
+        />
+      )}
     </div>
   )
 }
