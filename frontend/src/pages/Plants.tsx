@@ -107,6 +107,20 @@ export default function Plants() {
     return true
   })
 
+  // Keyboard shortcut: Ctrl/Cmd+K focuses search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        const input = document.querySelector<HTMLInputElement>('#plant-search')
+        input?.focus()
+        input?.select()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   const categoryCount = new Set(plants.map(p => p.plant_type).filter(Boolean)).size
 
   return (

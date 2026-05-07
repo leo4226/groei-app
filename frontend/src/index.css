@@ -170,3 +170,16 @@ input:focus, select:focus, textarea:focus {
 .card:hover .card-index {
   opacity: 0.7;
 }
+
+/* Responsive — Plants page */
+@media (max-width: 720px) {
+  .plants-header {
+    padding: 24px 16px 14px !important;
+  }
+
+  .plants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: 10px !important;
+    padding: 0 16px !important;
+  }
+}
