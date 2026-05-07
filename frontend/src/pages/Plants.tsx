@@ -107,38 +107,102 @@ export default function Plants() {
     return true
   })
 
+  const categoryCount = new Set(plants.map(p => p.plant_type).filter(Boolean)).size
+
   return (
-    <div className="pb-24">
+    <div style={{ paddingBottom: 80 }}>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 flex justify-between items-end">
+      <header className="plants-header" style={{
+        padding: '40px 24px 20px',
+        borderBottom: '1px solid var(--color-border)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        flexWrap: 'wrap',
+        gap: 20,
+      }}>
         <div>
-          <p style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-text-muted)', margin: '0 0 4px 0', fontFamily: 'monospace' }}>
-            Mijn Tuin
+          <p style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            color: 'var(--color-text-muted)',
+            margin: '0 0 8px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}>
+            <span style={{ width: 24, height: 1, background: 'var(--color-border)', flex: 'none' }} />
+            Mijn Tuin · Est. 2026
+            <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 800, lineHeight: 1, color: 'var(--color-text)', margin: 0 }}>
-            Planten
+          <h1 style={{
+            fontFamily: 'var(--font-heading)',
+            fontWeight: 500,
+            fontSize: 'clamp(36px, 5vw, 56px)',
+            lineHeight: 0.95,
+            letterSpacing: '-0.02em',
+            color: 'var(--color-text)',
+            margin: 0,
+          }}>
+            Planten <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>Icons</em>.
           </h1>
+          <p style={{
+            fontFamily: 'var(--font-heading)',
+            fontStyle: 'italic',
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: 'var(--color-text-soft)',
+            maxWidth: 440,
+            margin: '8px 0 0 0',
+          }}>
+            Een botanische gids voor je plantencollectie — binnen en buiten.
+          </p>
         </div>
-        <Link
-          to="/plants/add"
-          className="no-underline"
-          style={{
-            background: 'var(--color-primary)',
-            color: '#fff',
-            padding: '9px 18px',
-            borderRadius: 100,
-            fontWeight: 600,
-            fontSize: 13,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-          }}
-        >
-          + Toevoegen
-        </Link>
-      </div>
+        <div style={{ display: 'flex', gap: 28 }}>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 34,
+              fontWeight: 500,
+              lineHeight: 1,
+              color: 'var(--color-primary)',
+              display: 'block',
+            }}>{plants.length}</span>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+              color: 'var(--color-text-muted)',
+              marginTop: 4,
+            }}>Planten</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 34,
+              fontWeight: 500,
+              lineHeight: 1,
+              color: 'var(--color-primary)',
+              display: 'block',
+            }}>{categoryCount}</span>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 9,
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+              color: 'var(--color-text-muted)',
+              marginTop: 4,
+            }}>Categorieen</span>
+          </div>
+        </div>
+      </header>
 
       {/* Search bar */}
-      <div className="px-4 mb-3">
-        <div style={{ position: 'relative' }}>
+      <div style={{ padding: '20px 24px 0', display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ flex: 1, position: 'relative' }}>
           <svg
             style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}
             width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -146,40 +210,64 @@ export default function Plants() {
             <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
           </svg>
           <input
+            id="plant-search"
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Zoek op naam of soort…"
             style={{
               width: '100%',
-              paddingLeft: 40,
-              paddingRight: 16,
-              paddingTop: 12,
-              paddingBottom: 12,
+              padding: '13px 50px 13px 42px',
               borderRadius: 100,
               border: '1px solid var(--color-border)',
               background: 'var(--color-surface)',
               color: 'var(--color-text)',
-              fontSize: 14,
-              fontFamily: 'var(--font-body)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              fontSize: 15,
+              fontFamily: 'var(--font-heading)',
+              boxShadow: '0 1px 2px rgba(31,42,30,0.04)',
               boxSizing: 'border-box',
+              outline: 'none',
             }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(47,93,58,0.12), 0 1px 2px rgba(31,42,30,0.04)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(31,42,30,0.04)'; }}
           />
+          <span style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 9,
+            color: 'var(--color-text-muted)',
+            background: 'var(--color-bg-warm)',
+            padding: '3px 7px',
+            borderRadius: 5,
+            border: '1px solid var(--color-border)',
+            pointerEvents: 'none',
+          }}>
+            {typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K'}
+          </span>
         </div>
-      </div>
-
-      {/* Area filter chips */}
-      <div className="flex gap-2 px-4 pb-3">
-        <FilterChip active={filterArea === 'all'} onClick={() => setFilterArea('all')}>
-          Alle <Count>{plants.length}</Count>
-        </FilterChip>
-        <FilterChip active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')}>
-          🌿 Tuin <Count>{tuinCount}</Count>
-        </FilterChip>
-        <FilterChip active={filterArea === 'huis'} onClick={() => setFilterArea('huis')}>
-          🏠 Huis <Count>{huisCount}</Count>
-        </FilterChip>
+        <Link
+          to="/plants/add"
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--color-primary)',
+            textDecoration: 'none',
+            padding: '10px 16px',
+            border: '1px solid var(--color-primary)',
+            borderRadius: 100,
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s',
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+        >
+          + Toevoegen
+        </Link>
       </div>
 
       <div className="px-4">
