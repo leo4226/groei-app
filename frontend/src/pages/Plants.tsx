@@ -270,16 +270,94 @@ export default function Plants() {
         </Link>
       </div>
 
-      <div className="px-4">
+      {/* Filter row 1: Locatie */}
+      <div style={{ padding: '14px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.2em',
+          color: 'var(--color-text-muted)',
+          flexShrink: 0,
+          minWidth: 48,
+        }}>Locatie</span>
+        <FilterChip label="Alle" count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
+        <FilterChip label="🏠 Huis" count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
+        <FilterChip label="🌿 Tuin" count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
+      </div>
+
+      {/* Filter row 2: Plant type */}
+      <div style={{ padding: '6px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.2em',
+          color: 'var(--color-text-muted)',
+          flexShrink: 0,
+          minWidth: 48,
+        }}>Type</span>
+        <FilterChip label="Alle" count={typeCounts.all} active={filterType === 'all'} onClick={() => setFilterType('all')} />
+        {Object.entries(PLANT_TYPE_LABELS).map(([key, label]) => {
+          const count = typeCounts[key] || 0
+          if (count === 0) return null
+          return (
+            <FilterChip
+              key={key}
+              label={label}
+              count={count}
+              active={filterType === key}
+              onClick={() => setFilterType(filterType === key ? 'all' : key)}
+            />
+          )
+        })}
+      </div>
+
+      {/* Filter row 3: Form */}
+      <div style={{ padding: '6px 24px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.2em',
+          color: 'var(--color-text-muted)',
+          flexShrink: 0,
+          minWidth: 48,
+        }}>Vorm</span>
+        {Object.entries(FORM_LABELS).map(([key, label]) => {
+          const count = formCounts[key] || 0
+          const disabled = count === 0 && key !== 'all'
+          return (
+            <FilterChip
+              key={key}
+              label={label}
+              count={count}
+              active={filterForm === key}
+              onClick={() => setFilterForm(filterForm === key ? 'all' : key)}
+              disabled={disabled}
+              variant="terra"
+            />
+          )
+        })}
+      </div>
+
+      <div style={{ padding: '0 24px' }}>
         {/* Alert filter banner */}
         {alertsOnly && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', marginBottom: 12, background: '#fffac2', borderRadius: 10, border: '1px solid #ff7701' }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#2c2c2c' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '8px 12px', marginBottom: 12, marginTop: 12,
+            background: '#fffac2', borderRadius: 10, border: '1px solid var(--color-due)',
+          }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
               ⚠️ Planten met weeralerts
             </p>
             <button
               onClick={() => navigate('/plants')}
-              style={{ fontSize: 12, color: '#2c2c2c', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+              style={{
+                fontSize: 12, color: 'var(--color-text)', background: 'none',
+                border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline',
+              }}
             >
               Alles tonen
             </button>
@@ -288,22 +366,40 @@ export default function Plants() {
 
         {/* Results bar */}
         {!isLoading && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 0 16px', borderBottom: '1px solid var(--color-border)', marginBottom: 16 }}>
-            <p style={{ margin: 0, fontSize: 13, fontStyle: 'italic', color: 'var(--color-text-muted)' }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            padding: '16px 0 18px',
+            borderBottom: '1px solid var(--color-border)',
+            marginBottom: 18,
+          }}>
+            <p style={{
+              margin: 0,
+              fontFamily: 'var(--font-heading)',
+              fontStyle: 'italic',
+              fontSize: 15,
+              color: 'var(--color-text-soft)',
+            }}>
               {query ? (
-                <>Gevonden: <strong style={{ fontStyle: 'normal', color: 'var(--color-text)' }}>{filtered.length}</strong></>
+                <>Gevonden: <strong style={{ fontStyle: 'normal', fontWeight: 600, color: 'var(--color-text)' }}>{filtered.length}</strong></>
               ) : (
-                <>Toon <strong style={{ color: 'var(--color-text)' }}>{filtered.length}</strong> planten</>
+                <>Toon <strong style={{ fontStyle: 'normal', fontWeight: 600, color: 'var(--color-text)' }}>alle {filtered.length}</strong> planten</>
               )}
             </p>
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                style={{ fontSize: 12, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                Wis zoekopdracht ✕
-              </button>
-            )}
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              color: 'var(--color-text-muted)',
+            }}>
+              {query
+                ? '§ Zoekresultaten'
+                : filterArea === 'tuin' ? '§ De Tuin'
+                : filterArea === 'huis' ? '§ Huis'
+                : filterType !== 'all' ? `§ ${PLANT_TYPE_LABELS[filterType] || filterType}`
+                : '§ De Collectie'
+              }
+            </span>
           </div>
         )}
 
