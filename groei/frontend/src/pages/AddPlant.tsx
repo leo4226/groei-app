@@ -1,6 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
+
+const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
+  vaste_plant: 'herb',
+  heester: 'shrub',
+  klimmer: 'climber',
+  gras: 'grass',
+  bol: 'bulb',
+  eenjarig: 'flower',
+  boom: 'tree',
+}
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
@@ -114,7 +124,7 @@ export default function AddPlant() {
         acquired_date: acquiredDate || undefined,
         notes: notes.trim() || undefined,
         icon_key: iconKey ?? undefined,
-        plant_type: isFromDatabase ? (prefill as LocalPlant).type : undefined,
+        plant_type: isFromDatabase ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type) : undefined,
         sun_requirement: sunRequirement ?? undefined,
         care_schedules: careSchedules,
       })
