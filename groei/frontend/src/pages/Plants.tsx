@@ -3,6 +3,8 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { PLANT_ICONS } from '../constants/plantIcons'
 import type { Plant } from '../types'
+import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import type { LocalPlant } from '../data/plants-dataset'
 import { fetchAlertSummary } from '../api/client'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
@@ -33,6 +35,7 @@ export default function Plants() {
   const navigate = useNavigate()
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     if (alertsOnly) {
@@ -73,9 +76,8 @@ export default function Plants() {
             Planten
           </h1>
         </div>
-        <Link
-          to="/plants/add"
-          className="no-underline"
+        <button
+          onClick={() => setShowPicker(true)}
           style={{
             background: 'var(--color-primary)',
             color: '#fff',
@@ -84,10 +86,12 @@ export default function Plants() {
             fontWeight: 600,
             fontSize: 13,
             boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+            border: 'none',
+            cursor: 'pointer',
           }}
         >
           + Toevoegen
-        </Link>
+        </button>
       </div>
 
       {/* Search bar */}
@@ -210,6 +214,20 @@ export default function Plants() {
           </div>
         )}
       </div>
+
+      {showPicker && (
+        <PlantPickerSheet
+          onClose={() => setShowPicker(false)}
+          onSelectPlant={(plant: LocalPlant) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: { prefill: plant } })
+          }}
+          onCustomName={(name) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
+          }}
+        />
+      )}
     </div>
   )
 }
