@@ -31,7 +31,9 @@ export default function AddPlant() {
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
   const [notes, setNotes] = useState('')
-  const [sunRequirement, setSunRequirement] = useState<string | null>(null)
+  const [sunRequirement, setSunRequirement] = useState<string | null>(
+    prefill && 'latinName' in prefill ? (prefill as LocalPlant).sunRequirement : null
+  )
   const [iconKey, setIconKey] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -113,7 +115,7 @@ export default function AddPlant() {
         notes: notes.trim() || undefined,
         icon_key: iconKey ?? undefined,
         plant_type: isFromDatabase ? (prefill as LocalPlant).type : undefined,
-        sun_requirement: isFromDatabase ? (prefill as LocalPlant).sunRequirement : (sunRequirement ?? undefined),
+        sun_requirement: sunRequirement ?? undefined,
         care_schedules: careSchedules,
       })
 
