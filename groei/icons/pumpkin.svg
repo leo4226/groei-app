@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Pumpkin"><title>Pumpkin — Cucurbita pepo</title>
+  <path d="M 44 22 Q 38 16 40 10 Q 44 8 46 14" stroke="#4A7C4E" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
+  <path d="M 56 20 Q 68 14 72 22 Q 66 28 56 24 Z" fill="#4A7C4E"></path>
+  <path d="M 48 22 L 52 22 L 53 32 L 47 32 Z" fill="#3D5C3A"></path>
+  <ellipse cx="50" cy="56" rx="30" ry="24" fill="#E88A3D"></ellipse>
+  <ellipse cx="32" cy="56" rx="10" ry="22" fill="#E88A3D"></ellipse>
+  <ellipse cx="68" cy="56" rx="10" ry="22" fill="#E88A3D"></ellipse>
+  <path d="M 40 36 Q 36 56 40 76" stroke="#A8342A" stroke-width="1" opacity="0.5" fill="none"></path>
+  <path d="M 50 32 Q 48 56 50 80" stroke="#A8342A" stroke-width="1" opacity="0.5" fill="none"></path>
+  <path d="M 60 36 Q 64 56 60 76" stroke="#A8342A" stroke-width="1" opacity="0.5" fill="none"></path>
+  <ellipse cx="42" cy="44" rx="3" ry="8" fill="#FFF" opacity="0.3"></ellipse>
+</svg>

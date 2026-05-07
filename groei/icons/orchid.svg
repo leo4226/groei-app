@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Moth Orchid"><title>Moth Orchid — Phalaenopsis amabilis</title>
+  
+    <path d="M 29 78 L 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 71 78 Z" fill="#B2664A"></path>
+    <rect x="27" y="75" width="46" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 65 96 L 35 96 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="77.5" rx="19" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+  <path d="M 44 72 Q 38 66 36 58 Q 44 60 46 68 Z" fill="#2F5D3A"></path>
+  <path d="M 56 72 Q 62 66 64 58 Q 56 60 54 68 Z" fill="#2F5D3A"></path>
+  
+  <path d="M 50 70 Q 58 50 62 28" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  
+    <g transform="translate(62 28)">
+      <ellipse cx="-4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="-3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="0" cy="0" rx="2.5" ry="3" fill="#C96487"></ellipse>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(58 38)">
+      <ellipse cx="-4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="-3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="0" cy="0" rx="2.5" ry="3" fill="#C96487"></ellipse>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(66 46)">
+      <ellipse cx="-4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="4" cy="-2" rx="4" ry="3" fill="#E88AA8"></ellipse>
+      <ellipse cx="-3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="3" cy="3" rx="3.5" ry="2.5" fill="#E88AA8"></ellipse>
+      <ellipse cx="0" cy="0" rx="2.5" ry="3" fill="#C96487"></ellipse>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Tulip"><title>Tulip — Tulipa gesneriana</title>
+  
+  <path d="M 50 85 L 50 42" stroke="#4A7C4E" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+  
+  <path d="M 50 68 Q 34 60 30 46 Q 42 52 50 64 Z" fill="#4A7C4E"></path>
+  <path d="M 50 60 Q 66 52 72 38 Q 58 44 50 56 Z" fill="#6DA86F"></path>
+  
+  <path d="M 38 40 Q 38 22 50 20 Q 62 22 62 40 Q 58 32 54 30 Q 52 36 50 36 Q 48 36 46 30 Q 42 32 38 40 Z" fill="#D94A3D"></path>
+  <path d="M 44 26 Q 46 22 50 22" stroke="#A8342A" stroke-width="0.8" fill="none"></path>
+</svg>

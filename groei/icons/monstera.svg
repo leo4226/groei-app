@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Monstera"><title>Monstera — Monstera deliciosa</title>
+  
+    <path d="M 27 75 L 31 95 Q 31 97 33 97 L 67 97 Q 69 97 69 95 L 73 75 Z" fill="#B2664A"></path>
+    <rect x="25" y="72" width="50" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 31 95 Q 31 97 33 97 L 67 97 Q 69 97 69 95 L 67 93 L 33 93 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="74.5" rx="21" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+  <path d="M 50 75 Q 50 60 50 46" stroke="#3D5C3A" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 70 Q 44 64 40 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 70 Q 56 64 60 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  <g transform="translate(40 52) rotate(-18)">
+    <path d="M 0 0 Q -20 -8 -24 -22 Q -20 -30 -10 -26 Q -4 -20 0 -14 Q 4 -20 10 -26 Q 20 -30 24 -22 Q 20 -8 0 0 Z" fill="#2F5D3A"></path>
+    <path d="M -16 -16 L -10 -10 M 14 -14 L 8 -10 M 10 -22 L 6 -16 M -8 -22 L -4 -16" stroke="#4A7C4E" stroke-width="2" stroke-linecap="round"></path>
+  </g>
+  
+  <g transform="translate(50 46) rotate(10)">
+    <path d="M 0 2 Q -24 -6 -28 -26 Q -22 -36 -12 -30 Q -4 -22 0 -14 Q 4 -22 12 -30 Q 22 -36 28 -26 Q 24 -6 0 2 Z" fill="#4A7C4E"></path>
+    <path d="M -18 -20 L -8 -14" stroke="#2F5D3A" stroke-width="2.4" stroke-linecap="round"></path>
+    <path d="M 18 -20 L 8 -14" stroke="#2F5D3A" stroke-width="2.4" stroke-linecap="round"></path>
+    <path d="M -12 -28 L -4 -20" stroke="#2F5D3A" stroke-width="2.4" stroke-linecap="round"></path>
+    <path d="M 12 -28 L 4 -20" stroke="#2F5D3A" stroke-width="2.4" stroke-linecap="round"></path>
+    <ellipse cx="-10" cy="-18" rx="1.6" ry="2.4" fill="#B2664A"></ellipse>
+    <ellipse cx="10" cy="-18" rx="1.6" ry="2.4" fill="#B2664A"></ellipse>
+    <path d="M 0 -2 Q 0 -20 0 -32" stroke="#2F5D3A" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
+  </g>
+</svg>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Teunisbloem"><title>Teunisbloem — Oenothera biennis</title>
+  
+  <path d="M 50 90 Q 48 60 50 30" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  
+    <g transform="translate(50 80) rotate(-60) scale(1)">
+      <path d="M 0 0 Q 3 -8 0 -18 Q -3 -8 0 0 Z" fill="#4A7C4E"></path>
+      <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.4"></path>
+    </g>
+  
+    <g transform="translate(50 68) rotate(55) scale(1)">
+      <path d="M 0 0 Q 3 -8 0 -18 Q -3 -8 0 0 Z" fill="#4A7C4E"></path>
+      <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.4"></path>
+    </g>
+  
+    <g transform="translate(50 56) rotate(-50) scale(0.9)">
+      <path d="M 0 0 Q 3 -8 0 -18 Q -3 -8 0 0 Z" fill="#4A7C4E"></path>
+      <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.4"></path>
+    </g>
+  
+    <g transform="translate(50 46) rotate(45) scale(0.9)">
+      <path d="M 0 0 Q 3 -8 0 -18 Q -3 -8 0 0 Z" fill="#4A7C4E"></path>
+      <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.4"></path>
+    </g>
+  
+    <g transform="translate(50 38) rotate(-40) scale(0.8)">
+      <path d="M 0 0 Q 3 -8 0 -18 Q -3 -8 0 0 Z" fill="#4A7C4E"></path>
+      <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.4"></path>
+    </g>
+  
+  
+  
+  <g transform="translate(34 36) rotate(-25)">
+    <ellipse cx="0" cy="0" rx="2" ry="4" fill="#F4C542"></ellipse>
+    <path d="M -1.5 -2 Q 0 -5 1.5 -2" stroke="#4A7C4E" stroke-width="0.5" fill="none"></path>
+  </g>
+  
+  <g transform="translate(50 22)">
+    
+    
+      <path d="M 0 0 Q -10 -4 -10 -12 Q -6 -16 0 -14 Q 6 -16 10 -12 Q 10 -4 0 0 Z" fill="#F4C542" transform="rotate(0)"></path>
+    
+      <path d="M 0 0 Q -10 -4 -10 -12 Q -6 -16 0 -14 Q 6 -16 10 -12 Q 10 -4 0 0 Z" fill="#F4C542" transform="rotate(90)"></path>
+    
+      <path d="M 0 0 Q -10 -4 -10 -12 Q -6 -16 0 -14 Q 6 -16 10 -12 Q 10 -4 0 0 Z" fill="#F4C542" transform="rotate(180)"></path>
+    
+      <path d="M 0 0 Q -10 -4 -10 -12 Q -6 -16 0 -14 Q 6 -16 10 -12 Q 10 -4 0 0 Z" fill="#F4C542" transform="rotate(270)"></path>
+    
+    
+      <path d="M 0 -2 Q -4 -6 0 -10" stroke="#D9A418" stroke-width="0.5" fill="none" transform="rotate(0)" opacity="0.6"></path>
+    
+      <path d="M 0 -2 Q -4 -6 0 -10" stroke="#D9A418" stroke-width="0.5" fill="none" transform="rotate(90)" opacity="0.6"></path>
+    
+      <path d="M 0 -2 Q -4 -6 0 -10" stroke="#D9A418" stroke-width="0.5" fill="none" transform="rotate(180)" opacity="0.6"></path>
+    
+      <path d="M 0 -2 Q -4 -6 0 -10" stroke="#D9A418" stroke-width="0.5" fill="none" transform="rotate(270)" opacity="0.6"></path>
+    
+    
+    <circle cx="0" cy="0" r="3" fill="#D9A418"></circle>
+    
+      <line x1="0" y1="0" x2="0" y2="-5" stroke="#D9A418" stroke-width="0.6" transform="rotate(45)"></line>
+      <circle cx="0" cy="-5" r="0.6" fill="#F0E4C8" transform="rotate(45)"></circle>
+    
+      <line x1="0" y1="0" x2="0" y2="-5" stroke="#D9A418" stroke-width="0.6" transform="rotate(135)"></line>
+      <circle cx="0" cy="-5" r="0.6" fill="#F0E4C8" transform="rotate(135)"></circle>
+    
+      <line x1="0" y1="0" x2="0" y2="-5" stroke="#D9A418" stroke-width="0.6" transform="rotate(225)"></line>
+      <circle cx="0" cy="-5" r="0.6" fill="#F0E4C8" transform="rotate(225)"></circle>
+    
+      <line x1="0" y1="0" x2="0" y2="-5" stroke="#D9A418" stroke-width="0.6" transform="rotate(315)"></line>
+      <circle cx="0" cy="-5" r="0.6" fill="#F0E4C8" transform="rotate(315)"></circle>
+    
+    <circle cx="0" cy="0" r="1" fill="#E88A3D"></circle>
+  </g>
+  
+  <g transform="translate(66 36) rotate(20)">
+    
+      <ellipse cx="0" cy="-5" rx="4" ry="5" fill="#F4C542" transform="rotate(0)"></ellipse>
+    
+      <ellipse cx="0" cy="-5" rx="4" ry="5" fill="#F4C542" transform="rotate(90)"></ellipse>
+    
+      <ellipse cx="0" cy="-5" rx="4" ry="5" fill="#F4C542" transform="rotate(180)"></ellipse>
+    
+      <ellipse cx="0" cy="-5" rx="4" ry="5" fill="#F4C542" transform="rotate(270)"></ellipse>
+    
+    <circle cx="0" cy="0" r="1.6" fill="#D9A418"></circle>
+  </g>
+  <path d="M 30 94 Q 50 92 70 94" stroke="#6B4A35" stroke-width="0.8" fill="none" opacity="0.3" stroke-dasharray="1.5 2"></path>
+</svg>
