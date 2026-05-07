@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { PLANT_ICONS } from '../constants/plantIcons'
-import type { Plant } from '../types'
-import { fetchAlertSummary } from '../api/client'
+import { CATEGORY_LABELS, PLANT_TYPE_LABELS, FORM_LABELS } from '../constants/plantLabels'
+import type { Plant, PlantIcon } from '../types'
+import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -28,11 +29,18 @@ const TYPE_BG: Record<string, string> = {
 export default function Plants() {
   const { plants, isLoading } = useGroeiStore()
   const [filterArea, setFilterArea] = useState<'all' | 'tuin' | 'huis'>('all')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [filterForm, setFilterForm] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
+  const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+
+  useEffect(() => {
+    fetchIconCatalog().then(setIconCatalog).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (alertsOnly) {
@@ -44,13 +52,51 @@ export default function Plants() {
     }
   }, [alertsOnly])
 
+  // Build icon_key -> PlantIcon lookup for form + family data
+  const iconMap = useMemo(() => {
+    const m = new Map<string, PlantIcon>()
+    iconCatalog.forEach(icon => m.set(icon.id, icon))
+    return m
+  }, [iconCatalog])
+
   const tuinCount = plants.filter(isTuin).length
   const huisCount = plants.filter(p => !isTuin(p)).length
 
+  // Compute available plant types from current plants
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    plants.forEach(p => {
+      const t = p.plant_type || 'unknown'
+      counts[t] = (counts[t] || 0) + 1
+    })
+    counts.all = plants.length
+    return counts
+  }, [plants])
+
+  // Compute form counts from icon catalog
+  const formCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    plants.forEach(p => {
+      if (!p.icon_key) return
+      const icon = iconMap.get(p.icon_key)
+      const form = icon?.form || 'other'
+      counts[form] = (counts[form] || 0) + 1
+    })
+    counts.all = plants.length
+    return counts
+  }, [plants, iconMap])
+
+  // Build filtered list
   const filtered = plants.filter((p) => {
     if (alertsOnly && alertPlantIds !== null && !alertPlantIds.includes(p.id)) return false
     if (filterArea === 'tuin' && !isTuin(p)) return false
     if (filterArea === 'huis' && isTuin(p)) return false
+    if (filterType !== 'all' && (p.plant_type || 'unknown') !== filterType) return false
+    if (filterForm !== 'all') {
+      const icon = p.icon_key ? iconMap.get(p.icon_key) : null
+      const form = icon?.form || 'other'
+      if (form !== filterForm) return false
+    }
     if (query) {
       const q = query.toLowerCase()
       return (
