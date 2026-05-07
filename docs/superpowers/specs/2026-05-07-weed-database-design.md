@@ -28,7 +28,7 @@ Four composed groups:
 **Appearance** (sub-type `WeedAppearance`):
 | Field | Type | Description |
 |---|---|---|
-| `flowerColor` | `FlowerColor` | `'geel' \| 'wit' \| 'paars' \| 'roze' \| 'groen' \| 'bruin'` |
+| `flowerColor` | `FlowerColor` | `'geel' \| 'wit' \| 'paars' \| 'roze' \| 'rood' \| 'groen' \| 'bruin'` |
 | `flowerShape` | `string` | Brief visual description |
 | `leafShape` | `string` | e.g. "Gelobd", "Lancetvormig" |
 | `growthForm` | `GrowthForm` | `'staand' \| 'kruipend' \| 'rozettend' \| 'klimmend' \| 'polvormend'` |
