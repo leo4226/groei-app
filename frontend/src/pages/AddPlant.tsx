@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import type { LocalPlant } from '../data/plants-dataset'
 import { useGroeiStore } from '../store/useGroeiStore'
 import IconPicker from '../components/IconPicker'
 
@@ -19,13 +20,19 @@ const MAP_TYPE_LABEL: Record<string, string> = {
 
 export default function AddPlant() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefill = location.state?.prefill as LocalPlant | { name: string } | undefined
   const { maps, addPlant } = useGroeiStore()
 
-  const [name, setName] = useState('')
-  const [species, setSpecies] = useState('')
+  const [name, setName] = useState(prefill?.name ?? '')
+  const [species, setSpecies] = useState(
+    prefill && 'latinName' in prefill ? prefill.latinName : ''
+  )
   const [iconKey, setIconKey] = useState<string | null>(null)
   const [mapId, setMapId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const isFromDatabase = prefill && 'latinName' in prefill
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,6 +50,8 @@ export default function AddPlant() {
         map_id: selectedMap?.id,
         map_x: mapPos?.x,
         map_y: mapPos?.y,
+        plant_type: isFromDatabase ? (prefill as LocalPlant).type : undefined,
+        sun_requirement: isFromDatabase ? (prefill as LocalPlant).sunRequirement : undefined,
         care_schedules: [],
       })
 
@@ -99,6 +108,13 @@ export default function AddPlant() {
           <label className="block text-sm font-medium text-text-muted mb-1.5">Icoon</label>
           <IconPicker value={iconKey} onChange={setIconKey} />
         </div>
+
+        {isFromDatabase && (
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
+            <span className="text-base">📋</span>
+            <span>Ingevuld uit plantendatabase — pas aan waar nodig</span>
+          </div>
+        )}
 
         {/* Map picker */}
         <div>
