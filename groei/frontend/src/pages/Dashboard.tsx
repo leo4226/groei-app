@@ -382,6 +382,18 @@ function MapCard({ map }: { map: MapInfo }) {
         }}>
           {map.name}
         </h3>
+        <p style={{
+          margin: '2px 0 0',
+          fontFamily: 'var(--font-heading)',
+          fontStyle: 'italic',
+          fontSize: 12,
+          color: 'var(--color-text-soft)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {dimensionsLabel}
+        </p>
       </div>
     </Link>
   )
@@ -403,7 +415,7 @@ function NewMapCard() {
         justifyContent: 'center',
         color: 'var(--color-text-muted)',
         textDecoration: 'none',
-        aspectRatio: '4 / 3.4',
+        aspectRatio: '4 / 3',
       }}
     >
       <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
