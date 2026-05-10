@@ -754,8 +754,143 @@ function CalmEmptyState() {
 }
 
 // Stubs — replaced in Tasks 7 and 8
-function TodayGrid(_p: { overdue: CareTask[]; dueToday: CareTask[] }) {
-  return <p style={{ padding: '20px 24px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', color: 'var(--color-text-muted)' }}>Vandaag laden…</p>
+function TodayGrid({ overdue, dueToday }: { overdue: CareTask[]; dueToday: CareTask[] }) {
+  const allDue = [...overdue, ...dueToday]
+  const waterTasks = allDue.filter(t => t.care_type === 'water')
+  const attnTasks  = allDue.filter(t => t.care_type !== 'water')
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr 1fr',
+      border: '1px solid var(--color-border)', borderRadius: 14,
+      overflow: 'hidden', marginBottom: 24,
+    }}>
+      {/* Column headers */}
+      <TodayColHead label="Water" count={waterTasks.length} pip="overdue" />
+      <TodayColHead label="Aandacht" count={attnTasks.length} pip="due" borderLeft />
+
+      {/* Task rows */}
+      <div style={{ borderRight: '1px solid var(--color-border-soft)' }}>
+        {waterTasks.length === 0
+          ? <EmptyCol />
+          : waterTasks.map(t => <TodayTaskRow key={t.schedule_id} task={t} />)}
+      </div>
+      <div>
+        {attnTasks.length === 0
+          ? <EmptyCol />
+          : attnTasks.map(t => <TodayTaskRow key={t.schedule_id} task={t} />)}
+      </div>
+    </div>
+  )
+}
+
+function TodayColHead({ label, count, pip, borderLeft }: { label: string; count: number; pip: 'overdue' | 'due'; borderLeft?: boolean }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '12px 16px 10px',
+      borderBottom: '1px solid var(--color-border-soft)',
+      borderLeft: borderLeft ? '1px solid var(--color-border-soft)' : 'none',
+      fontFamily: 'var(--font-mono)', fontSize: 10,
+      textTransform: 'uppercase', letterSpacing: '0.18em',
+      color: 'var(--color-text-muted)',
+    }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+        background: pip === 'overdue' ? 'var(--color-overdue)' : 'var(--color-due)',
+      }} />
+      {label}
+      <span style={{
+        marginLeft: 'auto', fontFamily: 'var(--font-heading)',
+        fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)',
+        textTransform: 'none', letterSpacing: 0,
+      }}>{count}</span>
+    </div>
+  )
+}
+
+function EmptyCol() {
+  return (
+    <div style={{ padding: '20px 16px', textAlign: 'center' }}>
+      <span style={{
+        fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+        fontSize: 13, color: 'var(--color-text-muted)',
+      }}>Niets — alles op schema.</span>
+    </div>
+  )
+}
+
+function TodayTaskRow({ task }: { task: CareTask }) {
+  const markCareDone = useGroeiStore(s => s.markCareDone)
+  const careLabel = CARE_LABEL_NL[task.care_type] ?? task.care_type
+  const isOverdue = task.days_overdue > 0
+
+  const taskHaloColor: string | null =
+    task.care_type === 'water' && task.days_overdue > 0  ? HALO_COLORS.dry :
+    task.care_type === 'water' && task.days_overdue === 0 ? HALO_COLORS.thirsty :
+    null
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '44px 1fr auto',
+      gap: 10, alignItems: 'center',
+      padding: '12px 14px',
+      borderBottom: '1px dashed var(--color-border-soft)',
+    }}>
+      {/* Icon */}
+      <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+        {taskHaloColor && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 10,
+            background: `radial-gradient(circle, ${taskHaloColor} 0%, transparent 70%)`,
+            opacity: 0.5, pointerEvents: 'none',
+          }} />
+        )}
+        {task.plant_photo ? (
+          <img src={task.plant_photo} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', display: 'block', position: 'relative' }} />
+        ) : (
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)' }} />
+        )}
+      </div>
+
+      {/* Meta */}
+      <Link to={`/plants/${task.plant_id}`} style={{ minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+        <p style={{
+          margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 14,
+          color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{task.plant_name}</p>
+        <p style={{
+          margin: '2px 0 0', fontFamily: 'var(--font-mono)', fontSize: 8,
+          textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)',
+        }}>
+          {careLabel}{task.location ? ` · ${task.location}` : ''}
+        </p>
+        {isOverdue && (
+          <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-overdue)' }}>
+            {task.days_overdue}d te laat
+          </p>
+        )}
+        {!isOverdue && (
+          <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-due)' }}>
+            Vandaag
+          </p>
+        )}
+      </Link>
+
+      {/* Done button */}
+      <button
+        onClick={() => markCareDone(task.plant_id, task.care_type)}
+        style={{
+          fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 500,
+          color: 'var(--color-primary)', border: '1px solid var(--color-primary)',
+          borderRadius: 100, background: 'transparent', padding: '6px 10px',
+          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)' }}
+      >Gedaan</button>
+    </div>
+  )
 }
 function LogboekSection(_p: { entries: RecentLogEntry[] }) { return null }
 function WeatherCard(_p: { weather: WeatherData | null }) { return null }
