@@ -14,6 +14,8 @@ interface Props {
   showLabel?: boolean
   heatmapCells?: HeatmapCell[]
   onTap: (object: MapObject) => void
+  onPointerDown?: (e: React.PointerEvent, object: MapObject) => void
+  isDragging?: boolean
 }
 
 function labelForObject(obj: MapObject): string {
@@ -75,7 +77,7 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
   }
 }
 
-export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap }: Props) {
+export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
   const counterRot = useMapRotation()
   const color = object.color || '#888888'
   const effectiveRotation = object.rotation || 0
@@ -155,7 +157,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               r={iconHalf + 3}
               fill="none"
               stroke={SUN_FIT_COLORS[sunFit]}
-              strokeWidth={isDragging ? 2 : 1.2}
+              strokeWidth={1.2}
               strokeDasharray={sunFit === 'good' ? 'none' : '2 2'}
               opacity={0.85}
             />
@@ -182,8 +184,13 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
   return (
     <g
       transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}
-      onClick={(e) => { e.stopPropagation(); onTap(object) }}
-      style={{ cursor: 'pointer' }}
+      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(object) }}
+      onPointerDown={onPointerDown ? (e) => { e.stopPropagation(); onPointerDown(e, object) } : undefined}
+      style={{
+        cursor: onPointerDown ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
+        touchAction: onPointerDown ? 'none' : undefined,
+        opacity: isDragging ? 0.75 : 1,
+      }}
     >
       {/* Transparent hit area */}
       <circle r={hitR} fill="transparent" />
