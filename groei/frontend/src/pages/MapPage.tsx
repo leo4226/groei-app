@@ -1,13 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject } from '../types'
+import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import { aggregatePlantStatuses } from '../hooks/usePlantStatus'
 import { WaterStatusIcon, TempStatusIcon } from '../components/PlantStatusIcon'
 import MapView from '../components/map/MapView'
 import MapLegend from '../components/map/MapLegend'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
 import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
-import AddObjectSheet from '../components/sheets/AddObjectSheet'
 import FixedPlantSheet from '../components/sheets/FixedPlantSheet'
 import type { FixedPlant } from '../constants/fixedPlants'
 import SunControls from '../components/sun/SunControls'
@@ -19,28 +18,83 @@ import SunDebugOverlay from '../components/map/SunDebugOverlay'
 import { useMapData } from '../hooks/useMapData'
 import { useGardenWater } from '../hooks/useGardenWater'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
+import { useGroeiStore } from '../store/useGroeiStore'
+import { CONTAINER_PRESETS } from '../hooks/useEditorState'
+import type { ObjectPreset } from '../hooks/useEditorState'
+import { createObject } from '../api/client'
 
 export default function MapPage() {
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
+  const setShowPlantPicker = useGroeiStore((s) => s.setShowPlantPicker)
 
   const mapData = useMapData(slug)
   const water = useGardenWater()
   const undo = useUndoableRemove()
 
-  const { map, plants, objects, groundZones, loading } = mapData
+  const { map, plants, objects, loading } = mapData
 
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
-  const [showAddObject, setShowAddObject] = useState(false)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
   const [showLabels, setShowLabels] = useState(true)
+  const [showPotPicker, setShowPotPicker] = useState(false)
+
+  async function handleCreateContainer(preset: ObjectPreset) {
+    if (!map) return
+    setShowPotPicker(false)
+    const parts = map.viewbox.trim().split(/\s+/).map(Number)
+    const cx = parts.length === 4 ? parts[0] + parts[2] / 2 : 200
+    const cy = parts.length === 4 ? parts[1] + parts[3] / 2 : 200
+    await createObject({
+      name: preset.label,
+      object_type: preset.object_type,
+      shape: preset.shape,
+      category: preset.category,
+      material: preset.material,
+      color: preset.color,
+      map_id: map.id,
+      map_x: Math.round(cx),
+      map_y: Math.round(cy),
+      ...(preset.diameter_cm != null ? { diameter_cm: preset.diameter_cm } : {}),
+      ...(preset.width_cm != null ? { width_cm: preset.width_cm } : {}),
+      ...(preset.depth_cm != null ? { depth_cm: preset.depth_cm } : {}),
+    })
+    await refresh()
+  }
 
   const isOutdoor = !map || map.map_type !== 'indoor'
   const mapLat = map?.lat ?? undefined
   const mapLon = map?.lon ?? undefined
+  const mapBearing = map?.bearing ?? undefined
 
-  const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon })
+  // Parse canvas_data (must come before any useMemo that references it)
+  const canvasData = useMemo((): CanvasData | null => {
+    if (!map?.canvas_data) return null
+    try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
+  }, [map?.canvas_data])
+
+  // Derive plantable soil zones from canvas_data
+  const soilGroundZones = useMemo((): GroundZone[] => {
+    if (!canvasData) return []
+    return canvasData.zones
+      .filter(z => z.type === 'soil')
+      .map(z => ({
+        id: z.id,
+        map_id: map!.id,
+        name: z.label || 'Grond',
+        zone_type: 'soil' as const,
+        polygon: JSON.stringify([
+          [z.x, z.y],
+          [z.x + z.width, z.y],
+          [z.x + z.width, z.y + z.height],
+          [z.x, z.y + z.height],
+        ]),
+        soil_note: null,
+      }))
+  }, [canvasData, map])
+
+  const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData })
 
   const handlePlantTap = (plant: MapPlant) => {
     setSelectedObject(null)
@@ -84,11 +138,6 @@ export default function MapPage() {
     await refresh()
   }, [refresh])
 
-  const handleObjectCreated = useCallback(async () => {
-    setShowAddObject(false)
-    await refresh()
-  }, [refresh])
-
   const handleObjectAction = useCallback(async () => {
     setSelectedObject(null)
     await refresh()
@@ -103,7 +152,7 @@ export default function MapPage() {
     await mapDuplicate(plantId)
   }, [mapDuplicate])
 
-  if (loading) {
+  if (loading && !map) {
     return (
       <div className="flex flex-col h-[calc(100dvh-4rem)] p-4 overflow-hidden">
         <div className="h-8 w-32 bg-surface rounded-lg animate-pulse mb-4 shrink-0" />
@@ -125,6 +174,16 @@ export default function MapPage() {
       <div className="flex items-center justify-between mb-2 shrink-0">
         <h1 className="text-xl font-bold text-text">{map.name}</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/maps/${map.id}/settings`)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
+            title="Kaart instellingen"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
           {isOutdoor && (
             <button
               onClick={sun.toggle}
@@ -170,18 +229,18 @@ export default function MapPage() {
             <span>Inspecteer</span>
           </button>
           <button
-            onClick={() => navigate('/plants/add')}
+            onClick={() => setShowPotPicker(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 text-amber-700 rounded-full text-sm font-medium hover:bg-amber-500/25 transition-colors"
+          >
+            <span className="text-lg leading-none">+</span>
+            <span>Pot</span>
+          </button>
+          <button
+            onClick={() => setShowPlantPicker(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
           >
             <span className="text-lg leading-none">+</span>
             <span>Plant</span>
-          </button>
-          <button
-            onClick={() => setShowAddObject(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
-          >
-            <span className="text-lg leading-none">+</span>
-            <span>Object</span>
           </button>
         </div>
       </div>
@@ -297,7 +356,6 @@ export default function MapPage() {
             onRemoveItem={handleRemoveItem}
             onFixedPlantTap={setSelectedFixedPlant}
             showLabels={showLabels}
-            groundZones={groundZones}
             sunModeActive={sun.isLiveActive}
             shadows={sun.shadows}
             sunPosition={sun.sunPosition}
@@ -306,10 +364,13 @@ export default function MapPage() {
             heatmapLayer={sun.layer}
             heatmapProfile={sun.isHeatmapActive ? sun.profile : undefined}
             onHeatmapCellTap={sun.isHeatmapActive ? sun.handleCellTap : undefined}
+            gardenPerimeter={sun.gardenPerimeter}
+            gardenBounds={sun.gardenBounds}
+            gardenViewBox={sun.gardenViewBox}
             debugOverlay={
               new URLSearchParams(window.location.search).has('debug') &&
               new URLSearchParams(window.location.search).get('debug') === 'sun'
-                ? <SunDebugOverlay sunPosition={sun.sunPosition} />
+                ? <SunDebugOverlay sunPosition={sun.sunPosition} bearing={mapBearing} />
                 : sun.isHeatmapActive && sun.tappedCell
                   ? <DebugSvfOverlay cell={sun.tappedCell} obstructions={sun.gardenObstructions} />
                   : undefined
@@ -344,7 +405,7 @@ export default function MapPage() {
         <PlantQuickSheet
           plant={selectedPlant}
           objects={objects}
-          groundZones={groundZones}
+          soilGroundZones={soilGroundZones}
           heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
@@ -370,6 +431,50 @@ export default function MapPage() {
         />
       )}
 
+      {showPotPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          onClick={() => setShowPotPicker(false)}
+        >
+          <div
+            className="w-full bg-bg rounded-t-2xl border-t border-border p-4 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-text">Pot toevoegen</h2>
+              <button
+                onClick={() => setShowPotPicker(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {CONTAINER_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  onClick={() => handleCreateContainer(preset)}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-surface text-left transition-colors"
+                >
+                  <span
+                    className="w-8 h-8 rounded-full shrink-0"
+                    style={{ backgroundColor: preset.color ?? '#888' }}
+                  />
+                  <div>
+                    <div className="text-sm font-semibold text-text">{preset.label}</div>
+                    <div className="text-xs text-text-muted">
+                      {preset.shape === 'circle'
+                        ? `⌀ ${preset.diameter_cm} cm`
+                        : `${preset.width_cm} × ${preset.depth_cm ?? preset.width_cm} cm`}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {sun.showGrowHere && sun.tappedCell && (
         <GrowHereSheet
           tappedCell={sun.tappedCell}
@@ -377,14 +482,6 @@ export default function MapPage() {
           mapPlants={plants}
           mapId={map?.id ?? null}
           onClose={sun.closeGrowHere}
-        />
-      )}
-
-      {showAddObject && map && (
-        <AddObjectSheet
-          mapId={map.id}
-          onClose={() => setShowAddObject(false)}
-          onCreated={handleObjectCreated}
         />
       )}
 
