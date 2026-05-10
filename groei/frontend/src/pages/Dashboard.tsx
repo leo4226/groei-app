@@ -27,11 +27,16 @@ function parseMapDimensions(viewbox: string): { w: number; h: number } | null {
 type DecorIcon = { name: string; left: string; top: string; size: number; rotate: number; opacity: number }
 
 const PAGE_DECOR: DecorIcon[] = [
-  { name: 'oak',           left: '68%',  top: '180px',  size: 180, rotate: -8,  opacity: 0.07 },
-  { name: 'daisy',         left: '82%',  top: '50px',   size: 50,  rotate: -20, opacity: 0.06 },
-  { name: 'foxglove',      left: '-2%',  top: '420px',  size: 90,  rotate:  12, opacity: 0.07 },
-  { name: 'sunflower',     left: '88%',  top: '740px',  size: 100, rotate: -10, opacity: 0.08 },
-  { name: 'lavender_bare', left: '-1%',  top: '1140px', size: 70,  rotate:  15, opacity: 0.08 },
+  { name: 'oak',              left: '68%',  top: '180px',  size: 180, rotate: -8,  opacity: 0.07 },
+  { name: 'daisy',            left: '82%',  top: '50px',   size: 50,  rotate: -20, opacity: 0.06 },
+  { name: 'crocus',           left: '-2%',  top: '120px',  size: 44,  rotate:   8, opacity: 0.06 },
+  { name: 'foxglove',         left: '-2%',  top: '420px',  size: 90,  rotate:  12, opacity: 0.07 },
+  { name: 'poppy',            left: '70%',  top: '480px',  size: 65,  rotate:  14, opacity: 0.07 },
+  { name: 'peony',            left: '4%',   top: '660px',  size: 80,  rotate:  -8, opacity: 0.07 },
+  { name: 'sunflower',        left: '88%',  top: '740px',  size: 100, rotate: -10, opacity: 0.08 },
+  { name: 'maple',            left: '74%',  top: '1080px', size: 150, rotate:   8, opacity: 0.06 },
+  { name: 'lavender_bare',    left: '-1%',  top: '1140px', size: 70,  rotate:  15, opacity: 0.08 },
+  { name: 'silvergrass_bare', left: '78%',  top: '1480px', size: 110, rotate: -12, opacity: 0.06 },
 ]
 
 function PageDecor() {
