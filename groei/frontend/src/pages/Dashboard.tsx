@@ -24,6 +24,46 @@ function parseMapDimensions(viewbox: string): { w: number; h: number } | null {
   return { w: Math.round(wPx / PX_PER_M), h: Math.round(hPx / PX_PER_M) }
 }
 
+type DecorIcon = { name: string; left: string; top: string; size: number; rotate: number; opacity: number }
+
+const PAGE_DECOR: DecorIcon[] = [
+  { name: 'oak',           left: '68%',  top: '180px',  size: 180, rotate: -8,  opacity: 0.07 },
+  { name: 'daisy',         left: '82%',  top: '50px',   size: 50,  rotate: -20, opacity: 0.06 },
+  { name: 'foxglove',      left: '-2%',  top: '420px',  size: 90,  rotate:  12, opacity: 0.07 },
+  { name: 'sunflower',     left: '88%',  top: '740px',  size: 100, rotate: -10, opacity: 0.08 },
+  { name: 'lavender_bare', left: '-1%',  top: '1140px', size: 70,  rotate:  15, opacity: 0.08 },
+]
+
+function PageDecor() {
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute',
+      inset: 0,
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      zIndex: 0,
+    }}>
+      {PAGE_DECOR.map((d) => (
+        <img
+          key={d.name}
+          src={`/api/icons/${d.name}.svg`}
+          alt=""
+          style={{
+            position: 'absolute',
+            left: d.left,
+            top: d.top,
+            width: d.size,
+            height: d.size,
+            transform: `rotate(${d.rotate}deg)`,
+            opacity: d.opacity,
+            userSelect: 'none',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 6) return 'Goedenacht'
@@ -69,7 +109,9 @@ export default function Dashboard() {
   const totalTasks = overdueCount + dueTodayCount + upcomingCount
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div style={{ paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
+      <PageDecor />
+      <div style={{ position: 'relative', zIndex: 1 }}>
       {/* ── Hero ── */}
       <header className="home-header" style={{
         padding: '40px 24px 20px',
@@ -248,6 +290,7 @@ export default function Dashboard() {
           </article>
         </section>
       )}
+      </div>
     </div>
   )
 }
