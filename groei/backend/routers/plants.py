@@ -9,7 +9,7 @@ from database import db_dep
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
-from services.plant_reader import enrich_plant_full
+from services.plant_reader import enrich_plant_full, enrich_plants
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
@@ -22,62 +22,15 @@ PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 async def list_plants(db = Depends(db_dep)):
     rows = await db.execute_fetchall("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
-               s.phenology_json
+               s.phenology_json, p.care_thresholds
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id
         WHERE p.is_active = 1
         ORDER BY p.name
     """)
-    plants = [dict(r) for r in rows]
     today = date.today().isoformat()
-
-    # Batch load all schedules (single query, fixes N+1)
-    plant_ids = [p["id"] for p in plants]
-    if plant_ids:
-        placeholders = ",".join("?" for _ in plant_ids)
-        sched_rows = await db.execute_fetchall(
-            f"""SELECT cs.*, u.name as last_done_by_name
-                FROM care_schedules cs
-                LEFT JOIN users u ON cs.last_done_by = u.id
-                WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
-                ORDER BY cs.plant_id, cs.next_due ASC""",
-            plant_ids,
-        )
-        by_plant = {}
-        for row in sched_rows:
-            r = dict(row)
-            pid = r["plant_id"]
-            if pid not in by_plant:
-                by_plant[pid] = []
-            by_plant[pid].append(r)
-    else:
-        by_plant = {}
-
-    for plant in plants:
-        plant["care_schedules"] = by_plant.get(plant["id"], [])
-
-        # Compute care_status from schedules
-        care_status = "good"
-        for sched in plant["care_schedules"]:
-            next_due = sched.get("next_due")
-            if next_due < today:
-                care_status = "overdue"
-                break
-            elif next_due == today:
-                if care_status != "overdue":
-                    care_status = "due_today"
-        plant["care_status"] = care_status
-
-        # Set temp_status (full computation would need weather data, skipped for now)
-        plant["temp_status"] = "comfortable"
-
-        if plant.get("phenology_json"):
-            plant["phenology"] = json.loads(plant.pop("phenology_json"))
-        else:
-            plant.pop("phenology_json", None)
-
-    return plants
+    return await enrich_plants(db, rows, today)
 
 
 @router.get("/plants/{plant_id}", response_model=PlantOut)

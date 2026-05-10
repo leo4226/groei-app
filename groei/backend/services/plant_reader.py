@@ -101,17 +101,7 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
     )
     plant["care_schedules"] = [dict(row) for row in sched_rows]
 
-    # Compute care_status from schedules
-    care_status = "good"
-    for sched in plant["care_schedules"]:
-        next_due = sched.get("next_due")
-        if next_due < today:
-            care_status = "overdue"
-            break
-        elif next_due == today:
-            if care_status != "overdue":
-                care_status = "due_today"
-    plant["care_status"] = care_status
+    plant["care_status"], _ = _compute_care_status(plant["care_schedules"], today)
 
     # Compute temp_status
     care_thresholds = plant.pop("care_thresholds", None)
