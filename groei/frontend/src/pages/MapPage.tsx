@@ -446,7 +446,7 @@ export default function MapPage() {
                 onClick={() => setShowPotPicker(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface"
               >
-                ×
+                ✕
               </button>
             </div>
             <div className="flex flex-col gap-2">
