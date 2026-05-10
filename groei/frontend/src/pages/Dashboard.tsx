@@ -4,6 +4,7 @@ import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
 import type { CareTask, MapInfo } from '../types'
 import UserSwitcher from '../components/UserSwitcher'
+import { HALO_COLORS } from '../hooks/usePlantStatus'
 
 const CARE_LABEL_NL: Record<string, string> = {
   water: 'Water',
@@ -388,7 +389,7 @@ function MapCard({ map }: { map: MapInfo }) {
       className="card card-glow"
       style={{
         flexShrink: 0,
-        width: 176,
+        width: 260,
         borderRadius: 14,
         overflow: 'hidden',
         textDecoration: 'none',
@@ -465,7 +466,7 @@ function NewMapCard() {
       to="/maps"
       style={{
         flexShrink: 0,
-        width: 176,
+        width: 260,
         borderRadius: 14,
         border: '1px dashed var(--color-border)',
         background: 'var(--color-surface)',
@@ -514,6 +515,11 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
     tone === 'due' ? 'var(--color-due)' :
     'var(--color-border)'
 
+  const taskHaloColor: string | null =
+    task.care_type === 'water' && task.days_overdue > 0  ? HALO_COLORS.dry :
+    task.care_type === 'water' && task.days_overdue === 0 ? HALO_COLORS.thirsty :
+    null
+
   return (
     <div className="card" style={{
       borderRadius: 14,
@@ -523,24 +529,37 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
       alignItems: 'center',
       gap: 14,
     }}>
-      {task.plant_photo ? (
-        <img src={task.plant_photo} alt="" style={{
-          width: 44,
-          height: 44,
-          borderRadius: 10,
-          objectFit: 'cover',
-          flexShrink: 0,
-        }} />
-      ) : (
-        <div style={{
-          width: 44,
-          height: 44,
-          borderRadius: 10,
-          background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
-          border: '1px solid var(--color-border-soft)',
-          flexShrink: 0,
-        }} />
-      )}
+      {/* Thumbnail with optional halo */}
+      <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+        {taskHaloColor && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 10,
+            background: `radial-gradient(circle, ${taskHaloColor} 0%, transparent 70%)`,
+            opacity: 0.5,
+            pointerEvents: 'none',
+          }} />
+        )}
+        {task.plant_photo ? (
+          <img src={task.plant_photo} alt="" style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            objectFit: 'cover',
+            display: 'block',
+            position: 'relative',
+          }} />
+        ) : (
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
+            border: '1px solid var(--color-border-soft)',
+          }} />
+        )}
+      </div>
 
       <Link to={`/plants/${task.plant_id}`} style={{
         flex: 1,
