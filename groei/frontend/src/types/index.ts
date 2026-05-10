@@ -50,6 +50,8 @@ export interface Plant {
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
+  care_status: 'overdue' | 'due_today' | 'good'
+  temp_status: 'comfortable' | 'chilling' | 'freezing' | 'heatstress'
 }
 
 export interface CareLogEntry {
@@ -117,14 +119,19 @@ export interface MapInfo {
   scale_info: string | null
   sort_order: number
   canvas_data: string | null
+  map_type: 'outdoor' | 'indoor'
+  lat: number | null
+  lon: number | null
+  bearing: number
 }
 
 // --- Map Editor ---
 
-export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure'
+export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure' | 'fence'
 export type WallThickness = 'exterior' | 'interior'
+export type FenceMaterial = 'wood' | 'brick'
 export type RoomEdge = 'top' | 'right' | 'bottom' | 'left'
-export type MapType = 'garden' | 'house'
+export type MapType = 'outdoor' | 'indoor'
 
 export type CornerPosition = 'tl' | 'tr' | 'bl' | 'br'
 
@@ -146,6 +153,7 @@ export interface EditorZone {
   wallThickness?: WallThickness
   roomHeightM?: number   // physical ceiling height in metres (informational only)
   cornerCut?: CornerCut  // single rectangular notch cut from one corner
+  fenceMaterial?: FenceMaterial  // wood or brick, only for fence type
 }
 
 export interface WallElement {
@@ -168,20 +176,7 @@ export interface CanvasData {
   mapType?: MapType
 }
 
-export interface Zone {
-  id: number
-  map_id: number
-  name: string
-  zone_type: string
-  sun_exposure: string | null
-  boundary: string
-  color: string | null
-  sort_order: number
-}
-
-export interface MapDetail extends MapInfo {
-  zones: Zone[]
-}
+export interface MapDetail extends MapInfo {}
 
 export interface MostUrgent {
   care_type: string
@@ -338,6 +333,14 @@ export interface IconSyncResult {
   matches: { plant_id: number; plant_name: string; icon_key: string }[]
   unmatched_plants: number
   unmatched: { plant_id: number; plant_name: string }[]
+}
+
+export interface PlantFactOut {
+  plant_id: number
+  plant_name: string
+  icon_key: string | null
+  fact_nl: string
+  species_name: string | null
 }
 
 export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; defaultIndoor: number; defaultOutdoor: number }> = {

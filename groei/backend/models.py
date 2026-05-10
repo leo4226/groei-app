@@ -103,6 +103,8 @@ class PlantOut(BaseModel):
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []
+    care_status: str = "good"
+    temp_status: str = "comfortable"
 
 
 # --- Alerts ---
@@ -158,11 +160,19 @@ class DashboardResponse(BaseModel):
 
 class MapCreate(BaseModel):
     name: str
+    map_type: str = 'outdoor'  # 'garden' | 'indoor'
+    lat: float | None = None
+    lon: float | None = None
+    bearing: float = 0
 
 
 class MapUpdate(BaseModel):
     name: str | None = None
     canvas_data: str | None = None
+    map_type: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    bearing: float | None = None
 
 
 class MapOut(BaseModel):
@@ -174,21 +184,14 @@ class MapOut(BaseModel):
     scale_info: str | None = None
     sort_order: int = 0
     canvas_data: str | None = None
-
-
-class ZoneOut(BaseModel):
-    id: int
-    map_id: int
-    name: str
-    zone_type: str
-    sun_exposure: str | None = None
-    boundary: str
-    color: str | None = None
-    sort_order: int = 0
+    map_type: str = 'outdoor'
+    lat: float | None = None
+    lon: float | None = None
+    bearing: float = 0
 
 
 class MapDetailOut(MapOut):
-    zones: list[ZoneOut] = []
+    pass
 
 
 class MostUrgent(BaseModel):
@@ -353,3 +356,13 @@ class PlantSpeciesOut(BaseModel):
     latin_name: str | None = None
     climate_zone: str = "temperate"
     phenology: PhenologyData | None = None
+
+
+# --- Home / Plant Fact ---
+
+class PlantFactOut(BaseModel):
+    plant_id: int
+    plant_name: str
+    icon_key: str | None = None
+    fact_nl: str
+    species_name: str | None = None
