@@ -9,7 +9,7 @@ from database import db_dep
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
-from services.plant_reader import enrich_plant_full, enrich_plants
+from services.plant_reader import enrich_plant_full, _compute_care_status
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
@@ -22,7 +22,7 @@ PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 async def list_plants(db = Depends(db_dep)):
     rows = await db.execute_fetchall("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
-               s.phenology_json, p.care_thresholds
+               s.phenology_json
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id
@@ -30,7 +30,38 @@ async def list_plants(db = Depends(db_dep)):
         ORDER BY p.name
     """)
     today = date.today().isoformat()
-    return await enrich_plants(db, rows, today)
+    plants = [dict(r) for r in rows]
+
+    plant_ids = [p["id"] for p in plants]
+    if plant_ids:
+        placeholders = ",".join("?" for _ in plant_ids)
+        sched_rows = await db.execute_fetchall(
+            f"""SELECT cs.*, u.name as last_done_by_name
+                FROM care_schedules cs
+                LEFT JOIN users u ON cs.last_done_by = u.id
+                WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
+                ORDER BY cs.plant_id, cs.next_due ASC""",
+            plant_ids,
+        )
+        by_plant: dict[int, list] = {}
+        for row in sched_rows:
+            r = dict(row)
+            pid = r["plant_id"]
+            by_plant.setdefault(pid, []).append(r)
+    else:
+        by_plant = {}
+
+    for plant in plants:
+        schedules = by_plant.get(plant["id"], [])
+        plant["care_schedules"] = schedules
+        plant["care_status"], _ = _compute_care_status(schedules, today)
+        plant["temp_status"] = "comfortable"
+        if plant.get("phenology_json"):
+            plant["phenology"] = json.loads(plant.pop("phenology_json"))
+        else:
+            plant.pop("phenology_json", None)
+
+    return plants
 
 
 @router.get("/plants/{plant_id}", response_model=PlantOut)
