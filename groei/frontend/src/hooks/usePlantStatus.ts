@@ -30,3 +30,23 @@ export function aggregatePlantStatuses(plants: MapPlant[]) {
   }
   return counts
 }
+
+export type HaloStatus = 'freezing' | 'dry' | 'chilling' | 'thirsty' | null
+
+export const HALO_COLORS: Record<NonNullable<HaloStatus>, string> = {
+  freezing: '#2544a0',
+  dry:      '#FF7A2E',
+  chilling: '#24e3dc',
+  thirsty:  '#FFC233',
+}
+
+export function getHaloStatus(plant: { care_status?: string | null; temp_status?: string | null }): HaloStatus {
+  const temp  = plant.temp_status  ?? ''
+  const water = plant.care_status  ?? ''
+  if (temp  === 'freezing')   return 'freezing'
+  if (water === 'overdue')    return 'dry'
+  if (temp  === 'heatstress') return 'dry'
+  if (temp  === 'chilling')   return 'chilling'
+  if (water === 'due_today')  return 'thirsty'
+  return null
+}
