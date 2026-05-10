@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
 import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut } from '../types'
-import type { WeatherData } from '../hooks/useWeather'
+import type { WeatherData, WeatherIcon } from '../hooks/useWeather'
 import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
 import { HALO_COLORS } from '../hooks/usePlantStatus'
@@ -375,30 +375,6 @@ function StatusBanner({ counts }: { counts: { total: number; on_schedule: number
   )
 }
 
-function HeroStat({ count, label }: { count: number; label: string }) {
-  const isZero = count === 0
-  return (
-    <div style={{ textAlign: 'right' }}>
-      <span style={{
-        fontFamily: 'var(--font-heading)',
-        fontSize: 34,
-        fontWeight: 500,
-        lineHeight: 1,
-        color: isZero ? 'var(--color-text-muted)' : 'var(--color-primary)',
-        display: 'block',
-      }}>{count}</span>
-      <span style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 9,
-        textTransform: 'uppercase',
-        letterSpacing: '0.15em',
-        color: 'var(--color-text-muted)',
-        marginTop: 4,
-        display: 'block',
-      }}>{label}</span>
-    </div>
-  )
-}
 
 function SectionHeader({
   leftLede,
@@ -892,7 +868,209 @@ function TodayTaskRow({ task }: { task: CareTask }) {
     </div>
   )
 }
-function LogboekSection(_p: { entries: RecentLogEntry[] }) { return null }
-function WeatherCard(_p: { weather: WeatherData | null }) { return null }
-function CareTipCard(_p: { fact: PlantFactOut }) { return null }
-function UnderConstructionCard(_p: { icon: string; title: string; description: string }) { return null }
+const LOG_TAG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  water:       { label: 'water',      color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
+  fertilize:   { label: 'bemesten',   color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
+  repot_check: { label: 'verpotten',  color: 'var(--color-text-soft)', bg: 'rgba(74,90,71,.06)',  border: 'var(--color-border)' },
+  prune:       { label: 'snoeien',    color: 'var(--color-text-soft)', bg: 'rgba(74,90,71,.06)',  border: 'var(--color-border)' },
+  mist:        { label: 'sproeien',   color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
+  rotate:      { label: 'draaien',    color: 'var(--color-text-muted)', bg: 'rgba(138,148,130,.08)', border: 'var(--color-border-soft)' },
+}
+
+function LogboekSection({ entries }: { entries: RecentLogEntry[] }) {
+  return (
+    <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24 }}>
+      {entries.map((entry, i) => {
+        const tag = LOG_TAG[entry.care_type] ?? LOG_TAG.water
+        const dateStr = new Date(entry.done_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })
+        const timeStr = new Date(entry.done_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+        const actionLabel = CARE_LABEL_NL[entry.care_type] ?? entry.care_type
+
+        return (
+          <div key={entry.id} style={{
+            display: 'grid', gridTemplateColumns: '56px 1fr auto',
+            gap: 14, padding: '16px 18px', alignItems: 'flex-start',
+            borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none',
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 8,
+              background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)',
+              border: '1px solid var(--color-border-soft)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', flexShrink: 0,
+            }}>
+              {entry.icon_key ? (
+                <img src={`/api/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>
+              )}
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 3 }}>
+                {dateStr} · {timeStr}
+              </div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--color-text)', marginBottom: 2 }}>
+                {actionLabel} · <em style={{ color: 'var(--color-primary)' }}>{entry.plant_name}</em>
+              </div>
+              {entry.notes && (
+                <p style={{
+                  margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+                  fontSize: 12, color: 'var(--color-text-soft)', lineHeight: 1.45,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>{entry.notes}</p>
+              )}
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+              letterSpacing: '0.15em', color: tag.color, background: tag.bg,
+              padding: '3px 8px', borderRadius: 99, border: `1px solid ${tag.border}`,
+              whiteSpace: 'nowrap', flexShrink: 0,
+            }}>{tag.label}</span>
+          </div>
+        )
+      })}
+      <div style={{
+        borderTop: '1px solid var(--color-border-soft)', padding: '12px 18px',
+        display: 'flex', justifyContent: 'flex-end',
+      }}>
+        <Link to="/plants" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-primary)', textDecoration: 'none' }}>
+          Volledig logboek →
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function WeatherIcon({ icon, size = 22 }: { icon: WeatherIcon; size?: number }) {
+  if (icon === 'sun') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#D9A418" strokeWidth="1.6" strokeLinecap="round">
+      <circle cx="12" cy="12" r="4" fill="#F4C542" stroke="none"/>
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>
+    </svg>
+  )
+  if (icon === 'snow') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#6B8FCA" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19" opacity=".5"/>
+      <circle cx="12" cy="12" r="2" fill="#6B8FCA" stroke="none"/>
+    </svg>
+  )
+  if (icon === 'rain' || icon === 'thunder') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#6B8FCA" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 7a4 4 0 0 1 0 8H6z" fill="#C5D4ED" stroke="#6B8FCA"/>
+      <path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3"/>
+    </svg>
+  )
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#8A9482" strokeWidth="1.6" strokeLinecap="round">
+      <circle cx="9" cy="10" r="3" fill="#F4C542" stroke="#D9A418"/>
+      <path d="M8 16a4 4 0 1 1 1-7.9A5 5 0 0 1 19 9a4 4 0 0 1 0 8H8z" fill="#E8E0CC" stroke="#8A9482"/>
+    </svg>
+  )
+}
+
+function WeatherCard({ weather }: { weather: WeatherData | null }) {
+  const DAYS_NL = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za']
+  return (
+    <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+      <div style={{ padding: '16px 18px 6px' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>§ Weer &amp; sensoren</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+          {weather ? (
+            <><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.</>
+          ) : 'Weer laden…'}
+        </div>
+      </div>
+      {weather && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--color-border-soft)', borderBottom: '1px solid var(--color-border-soft)' }}>
+            {[
+              { v: `${weather.currentHumidity}%`, l: 'Lucht' },
+              { v: '—', l: 'Bodem' },
+              { v: '—', l: 'Licht' },
+            ].map((cell, i) => (
+              <div key={i} style={{ padding: '10px 0', textAlign: 'center', borderRight: i < 2 ? '1px solid var(--color-border-soft)' : 'none' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, color: 'var(--color-text)', display: 'block' }}>{cell.v}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)' }}>{cell.l}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '12px 8px 14px' }}>
+            {weather.forecast.map((day, i) => {
+              const d = new Date(day.date)
+              return (
+                <div key={day.date} style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: i === 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)', marginBottom: 4 }}>
+                    {DAYS_NL[d.getDay()]}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
+                    <WeatherIcon icon={day.icon} size={18} />
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: i === 0 ? 'var(--color-overdue)' : 'var(--color-text)', fontWeight: i === 0 ? 500 : 400 }}>
+                    {day.maxTemp}°
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function CareTipCard({ fact }: { fact: PlantFactOut }) {
+  return (
+    <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+      <div style={{ padding: '16px 18px 6px' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>§ Wist je dat</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+          <em style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--color-primary)' }}>{fact.plant_name}</em>.
+        </div>
+      </div>
+      <div style={{ padding: '10px 18px 18px', borderTop: '1px solid var(--color-border-soft)', marginTop: 8 }}>
+        <p style={{
+          fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+          fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-soft)',
+          margin: '0 0 14px', position: 'relative',
+        }}>
+          <span style={{ color: 'var(--color-overdue)', fontSize: 32, lineHeight: 0, position: 'relative', top: 10, marginRight: 3, fontStyle: 'normal' }}>"</span>
+          {fact.fact_nl}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {fact.icon_key && (
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <img src={`/api/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
+            </div>
+          )}
+          <div>
+            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--color-text)' }}>{fact.plant_name}</div>
+            {fact.species_name && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)' }}>{fact.species_name}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnderConstructionCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+  return (
+    <div style={{
+      borderRadius: 14, overflow: 'hidden', marginBottom: 18,
+      border: '1px solid var(--color-border)',
+      background: 'repeating-linear-gradient(45deg, var(--color-surface) 0px, var(--color-surface) 8px, var(--color-background) 8px, var(--color-background) 16px)',
+      padding: '18px 18px',
+    }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
+        🚧 Binnenkort
+      </div>
+      <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
+        {icon} {title}
+      </div>
+      <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+        {description}
+      </p>
+    </div>
+  )
+}
