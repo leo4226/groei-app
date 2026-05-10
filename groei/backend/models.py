@@ -156,6 +156,32 @@ class DashboardResponse(BaseModel):
     upcoming: list[CareTask] = []
 
 
+class StatusCounts(BaseModel):
+    total: int
+    on_schedule: int
+    thirsty: int
+    dry: int
+
+
+class RecentLogEntry(BaseModel):
+    id: int
+    plant_id: int
+    plant_name: str
+    icon_key: str | None
+    care_type: str
+    done_at: str
+    notes: str | None
+
+
+class DashboardV2Response(BaseModel):
+    overdue: list[CareTask] = []
+    due_today: list[CareTask] = []
+    upcoming: list[CareTask] = []
+    status_counts: StatusCounts
+    recent_log: list[RecentLogEntry] = []
+    plant_fact: 'PlantFactOut | None' = None
+
+
 # --- Maps ---
 
 class MapCreate(BaseModel):
