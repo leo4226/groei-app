@@ -3,21 +3,16 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { computeSuitability } from '../../utils/suitability'
 import { useMapRotation } from '../../context/MapRotationContext'
-import { getPlantStatus } from '../../hooks/usePlantStatus'
-
-export const STATUS_COLORS: Record<string, string> = {
-  overdue: '#C1443E',
-  due_today: '#D4A843',
-  good: '#5B9A6F',
-}
+import { getHaloStatus, HALO_COLORS } from '../../hooks/usePlantStatus'
+import { getCareDisplay } from '../../utils/careDisplay'
 
 const SUITABILITY_RING_COLORS: Record<string, string> = {
-  good:        '#5B9A6F',
-  too_little:  '#C1443E',
-  too_much:    '#D4A843',
-  dormant:     '#94a3b8',
-  not_planted: '#60a5fa',
-  unknown:     '#e2e8f0',
+  good:        '#24e34c',
+  too_little:  '#ea0706',
+  too_much:    '#ff7701',
+  dormant:     '#909090',
+  not_planted: '#24e3dc',
+  unknown:     '#f2ebe6',
 }
 
 interface Props {
@@ -34,38 +29,13 @@ interface Props {
 
 const PX_PER_CM = 0.46
 
-// Temperature-only status badge rendered inside the SVG map context.
-// Exported so ObjectShape can reuse it for contained plants.
-// Only shown when temp is not comfortable — water state is shown garden-wide in the banner.
-export function StatusBadge({ cx, cy, tempStatus }: { cx: number; cy: number; tempStatus: string }) {
-  if (tempStatus === 'comfortable') return null
-
-  const r = 7
-  const bgColor =
-    tempStatus === 'freezing'   ? '#3b82f6' :
-    tempStatus === 'chilling'   ? '#93c5fd' :
-    '#f97316' // heatstress
-
-  const emoji =
-    tempStatus === 'freezing'   ? '❄' :
-    tempStatus === 'chilling'   ? '🥶' :
-    '🔥'
-
-  return (
-    <g style={{ pointerEvents: 'none' }}>
-      <circle cx={cx} cy={cy} r={r} fill={bgColor} opacity={0.9} />
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize="7" style={{ pointerEvents: 'none' }}>
-        {emoji}
-      </text>
-    </g>
-  )
-}
 
 export default function PlantMarker({ plant, x, y, isDragging, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
   const counterRot = useMapRotation()
   const rot = counterRot ? `rotate(${counterRot})` : undefined
-  const color = STATUS_COLORS[plant.care_status] ?? STATUS_COLORS.good
-  const { tempStatus } = getPlantStatus(plant)
+  const { badgeColor: color } = getCareDisplay(plant)
+  const haloStatus = getHaloStatus(plant)
+  const haloColor  = haloStatus ? HALO_COLORS[haloStatus] : null
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
@@ -113,6 +83,18 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
     // ── Locked plant: capped icon, tiny top-right lock badge as sole tap target ──
     return (
       <g transform={`translate(${x}, ${y})`} style={{ pointerEvents: 'none' }}>
+        {/* Status halo */}
+        {haloColor && (
+          <>
+            <defs>
+              <radialGradient id={`halo-${plant.id}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor={haloColor} stopOpacity={0.70} />
+                <stop offset="100%" stopColor={haloColor} stopOpacity={0}    />
+              </radialGradient>
+            </defs>
+            <circle r={lockedIconR * 1.6} fill={`url(#halo-${plant.id})`} style={{ pointerEvents: 'none' }} />
+          </>
+        )}
         <g transform={rot}>
         {/* Plant icon — capped size so it stays within the map frame */}
         {plant.icon_key ? (
@@ -158,8 +140,6 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
           </text>
         </g>
 
-        {/* Status badge — bottom-right */}
-        <StatusBadge cx={lockBadgeOffset} cy={lockBadgeOffset} tempStatus={tempStatus} />
       </g>
     )
   }
@@ -172,6 +152,19 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
       onPointerDown={(e) => onPointerDown(e, plant)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
     >
+      {/* Status halo */}
+      {haloColor && (
+        <>
+          <defs>
+            <radialGradient id={`halo-${plant.id}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor={haloColor} stopOpacity={0.70} />
+              <stop offset="100%" stopColor={haloColor} stopOpacity={0}    />
+            </radialGradient>
+          </defs>
+          <circle r={iconR * 1.6} fill={`url(#halo-${plant.id})`} style={{ pointerEvents: 'none' }} />
+        </>
+      )}
+
       {/* Transparent hit area for mobile tap targets */}
       <circle r={hitR} fill="transparent" />
 
@@ -224,9 +217,6 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
           {plant.name}
         </text>
       )}
-
-      {/* Status badge — bottom-right of icon */}
-      <StatusBadge cx={iconR * 0.72} cy={iconR * 0.72} tempStatus={tempStatus} />
 
       {/* Drag pill */}
       {isDragging && ringColor && badgeLabel && sunHoursAtPos !== null && (

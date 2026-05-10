@@ -1,7 +1,6 @@
 import type { MapObject, HardscapePreset } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { STATUS_COLORS, StatusBadge } from './PlantMarker'
-import { getPlantStatus } from '../../hooks/usePlantStatus'
+import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { useMapRotation } from '../../context/MapRotationContext'
 
@@ -11,14 +10,10 @@ interface Props {
   object: MapObject
   x: number
   y: number
-  isDragging: boolean
-  isSelected?: boolean
   isHoverTarget?: boolean
   showLabel?: boolean
   heatmapCells?: HeatmapCell[]
   onTap: (object: MapObject) => void
-  onPointerDown: (e: React.PointerEvent, object: MapObject) => void
-  liveRotation?: number
 }
 
 function labelForObject(obj: MapObject): string {
@@ -80,13 +75,13 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
   }
 }
 
-export default function ObjectShape({ object, x, y, isDragging, isSelected, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, liveRotation }: Props) {
+export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap }: Props) {
   const counterRot = useMapRotation()
   const color = object.color || '#888888'
-  const effectiveRotation = liveRotation ?? (object.rotation || 0)
+  const effectiveRotation = object.rotation || 0
   const fill = color + '33'
   const stroke = color
-  const sw = isDragging ? 2 : isSelected ? 1.8 : 1.2
+  const sw = 1.2
 
   const renderShape = () => {
     switch (object.shape) {
@@ -148,12 +143,10 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
 
     return plants.map((plant, i) => {
       const pos = positions[i]
-      const dotColor = STATUS_COLORS[plant.care_status] ?? STATUS_COLORS.good
+      const dotColor = getCareDisplay(plant).badgeColor
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
-      const { tempStatus } = getPlantStatus(plant)
-      const badgeOffset = iconHalf * 0.72
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Sun-fit ring — only visible in Zonkaart mode */}
@@ -181,7 +174,6 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
-          <StatusBadge cx={badgeOffset} cy={badgeOffset} tempStatus={tempStatus} />
         </g>
       )
     })
@@ -190,9 +182,8 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
   return (
     <g
       transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}
-      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(object) }}
-      onPointerDown={(e) => onPointerDown(e, object)}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+      onClick={(e) => { e.stopPropagation(); onTap(object) }}
+      style={{ cursor: 'pointer' }}
     >
       {/* Transparent hit area */}
       <circle r={hitR} fill="transparent" />
@@ -265,38 +256,6 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
         </g>
       )}
 
-      {/* Drag pill — worst sun-fit among contained plants */}
-      {isDragging && heatCell && (() => {
-        const plants = (object.contained_plants ?? []).filter(p => p.sun_requirement)
-        if (plants.length === 0) return null
-        const fits = plants.map(p => getSunFit(p.sun_requirement!, heatCell.sunHours))
-        const order = { poor: 0, partial: 1, good: 2 }
-        const worstFit = fits.reduce((a, b) =>
-          (order[a ?? 'good'] ?? 2) <= (order[b ?? 'good'] ?? 2) ? a : b
-        )
-        if (!worstFit) return null
-        const pillY = getShapeBound(object) + 28
-        return (
-          <g transform={`rotate(${counterRot - effectiveRotation})`}>
-            <rect x={-54} y={pillY - 9} width={108} height={18} rx={9}
-              fill={SUN_FIT_COLORS[worstFit]} opacity={0.92} />
-            <text
-              y={pillY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="white"
-              fontSize="9"
-              fontWeight="600"
-              style={{ pointerEvents: 'none' }}
-            >
-              {`~${heatCell.sunHours.toFixed(1)}u · ${
-                worstFit === 'good' ? 'Goed' :
-                worstFit === 'partial' ? 'Deels' : 'Te weinig'
-              }`}
-            </text>
-          </g>
-        )
-      })()}
     </g>
   )
 }
