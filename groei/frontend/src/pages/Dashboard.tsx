@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
-import type { CareTask, MapInfo } from '../types'
+import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut } from '../types'
+import type { WeatherData } from '../hooks/useWeather'
+import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
 import { HALO_COLORS } from '../hooks/usePlantStatus'
 
@@ -101,207 +103,277 @@ function summaryLede(overdue: number, due: number, upcoming: number): string {
 }
 
 export default function Dashboard() {
-  const { dashboard, activeUserId, users, maps, plantFact, loadDashboard, loadPlantFact, isLoading } = useGroeiStore()
+  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading } = useGroeiStore()
   const activeUser = users.find((u) => u.id === activeUserId)
 
-  useEffect(() => {
-    loadDashboard()
-    loadPlantFact()
-  }, [loadDashboard, loadPlantFact])
+  const outdoorMap = maps.find((m) => m.map_type === 'outdoor')
+  const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
 
-  const overdueCount = dashboard?.overdue.length ?? 0
-  const dueTodayCount = dashboard?.due_today.length ?? 0
-  const upcomingCount = dashboard?.upcoming.length ?? 0
+  useEffect(() => {
+    loadDashboardV2()
+  }, [loadDashboardV2])
+
+  const overdueCount = dashboardV2?.overdue.length ?? 0
+  const dueTodayCount = dashboardV2?.due_today.length ?? 0
+  const upcomingCount = dashboardV2?.upcoming.length ?? 0
   const totalTasks = overdueCount + dueTodayCount + upcomingCount
+  const nextCareTask = dashboardV2?.overdue[0] ?? dashboardV2?.due_today[0] ?? null
 
   return (
     <div style={{ paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
       <PageDecor />
       <div style={{ position: 'relative', zIndex: 1 }}>
-      {/* ── Hero ── */}
-      <header className="home-header" style={{
-        padding: '40px 24px 20px',
-        borderBottom: '1px solid var(--color-border)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        flexWrap: 'wrap',
-        gap: 20,
-      }}>
-        <div style={{ flex: 1, minWidth: 240 }}>
-          <p style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'var(--color-text-muted)',
-            margin: '0 0 8px 0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            <span style={{ width: 24, height: 1, background: 'var(--color-border)', flex: 'none' }} />
-            {getGreeting()} · {getDutchDate()}
-            <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-          </p>
-          <h1 style={{
-            fontFamily: 'var(--font-heading)',
-            fontWeight: 500,
-            fontSize: 'clamp(36px, 5vw, 56px)',
-            lineHeight: 0.95,
-            letterSpacing: '-0.02em',
-            color: 'var(--color-text)',
-            margin: 0,
-          }}>
-            {getGreeting()},{' '}
-            <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>
-              {activeUser?.name ?? '...'}
-            </em>.
-          </h1>
-          <p style={{
-            fontFamily: 'var(--font-heading)',
-            fontStyle: 'italic',
-            fontSize: 15,
-            lineHeight: 1.5,
-            color: 'var(--color-text-soft)',
-            maxWidth: 440,
-            margin: '8px 0 0 0',
-          }}>
-            {leadCopy(overdueCount, dueTodayCount)}
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
-          <UserSwitcher />
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 28 }}>
-            <HeroStat count={overdueCount} label="Te laat" />
-            <HeroStat count={dueTodayCount} label="Vandaag" />
-            <HeroStat count={upcomingCount} label="Op komst" />
-          </div>
-        </div>
-      </header>
 
-      {/* ── Mijn Tuinen ── */}
-      <section style={{ padding: '0 24px' }}>
-        <SectionHeader
-          leftLede={maps.length === 0 ? 'Nog geen tuinen' : maps.length === 1 ? 'Toon je tuin' : `Toon alle ${maps.length} tuinen`}
-          rightMarker="§ Mijn Tuinen"
-          rightAction={{ to: '/maps', label: 'Beheer →' }}
+        {/* ── Header ── */}
+        <DashboardHeader
+          greeting={getGreeting()}
+          userName={activeUser?.name ?? '…'}
+          date={getDutchDate()}
+          lede={leadCopy(overdueCount, dueTodayCount)}
+          weather={weather}
+          nextCareTask={nextCareTask}
         />
-        {maps.length > 0 ? (
-          <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '0 24px 8px' }}>
-            {maps.map((map) => <MapCard key={map.id} map={map} />)}
-            <NewMapCard />
-          </div>
-        ) : (
-          <Link to="/maps" style={{
-            display: 'flex',
-            width: '100%',
-            height: 132,
-            border: '1px dashed var(--color-border)',
-            borderRadius: 14,
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-text-muted)',
-            background: 'var(--color-surface)',
-            textDecoration: 'none',
-            marginBottom: 18,
-          }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>Voeg een tuin toe</span>
-          </Link>
-        )}
-      </section>
 
-      {/* ── Vandaag ── */}
-      <section style={{ padding: '0 24px' }}>
-        <SectionHeader
-          leftLede={summaryLede(overdueCount, dueTodayCount, upcomingCount)}
-          rightMarker="§ Vandaag"
-        />
-        {isLoading && <TaskSkeletons />}
-        {!isLoading && totalTasks === 0 && <CalmEmptyState />}
-        {!isLoading && dashboard && totalTasks > 0 && (
-          <>
-            {overdueCount > 0 && <TaskGroup label="Te laat" tone="overdue" tasks={dashboard.overdue} />}
-            {dueTodayCount > 0 && <TaskGroup label="Vandaag" tone="due" tasks={dashboard.due_today} />}
-            {upcomingCount > 0 && <TaskGroup label="Op komst" tone="upcoming" tasks={dashboard.upcoming} />}
-          </>
+        {/* ── Status Banner ── */}
+        {dashboardV2 && (
+          <StatusBanner counts={dashboardV2.status_counts} />
         )}
-      </section>
 
-      {/* ── Wist je dat ── */}
-      {plantFact && (
-        <section style={{ padding: '0 24px' }}>
-          <SectionHeader leftLede="" rightMarker="§ Wist je dat" />
-          <article className="card" style={{
-            borderRadius: 14,
-            padding: '24px 24px 20px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            {plantFact.icon_key && (
-              <img
-                src={`/api/icons/${plantFact.icon_key}.svg`}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  top: -12,
-                  right: -12,
-                  width: 96,
-                  height: 96,
-                  opacity: 0.18,
-                  pointerEvents: 'none',
-                }}
+        {/* ── Responsive grid: main + sidebar ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: 0,
+        }}
+          className="dashboard-grid"
+        >
+          {/* MAIN column */}
+          <div>
+            {/* Mijn Tuinen */}
+            <section style={{ padding: '0 24px' }}>
+              <SectionHeader
+                leftLede={maps.length === 0 ? 'Nog geen tuinen' : maps.length === 1 ? 'Toon je tuin' : `Toon alle ${maps.length} tuinen`}
+                rightMarker="§ Mijn Tuinen"
+                rightAction={{ to: '/maps', label: 'Beheer →' }}
               />
+              {maps.length > 0 ? (
+                <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '0 24px 8px' }}>
+                  {maps.map((map) => <MapCard key={map.id} map={map} />)}
+                  <NewMapCard />
+                </div>
+              ) : (
+                <Link to="/maps" style={{
+                  display: 'flex', width: '100%', height: 132,
+                  border: '1px dashed var(--color-border)', borderRadius: 14,
+                  flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--color-text-muted)', background: 'var(--color-surface)',
+                  textDecoration: 'none', marginBottom: 18,
+                }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>Voeg een tuin toe</span>
+                </Link>
+              )}
+            </section>
+
+            {/* Vandaag */}
+            <section style={{ padding: '0 24px' }}>
+              <SectionHeader
+                leftLede={summaryLede(overdueCount, dueTodayCount, upcomingCount)}
+                rightMarker="§ Vandaag"
+              />
+              {isLoading && <TaskSkeletons />}
+              {!isLoading && totalTasks === 0 && <CalmEmptyState />}
+              {!isLoading && dashboardV2 && totalTasks > 0 && (
+                <TodayGrid
+                  overdue={dashboardV2.overdue}
+                  dueToday={dashboardV2.due_today}
+                />
+              )}
+            </section>
+
+            {/* Logboek */}
+            {dashboardV2 && dashboardV2.recent_log.length > 0 && (
+              <section style={{ padding: '0 24px' }}>
+                <SectionHeader leftLede="" rightMarker="§ Logboek" />
+                <LogboekSection entries={dashboardV2.recent_log} />
+              </section>
             )}
-            <p style={{
-              fontFamily: 'var(--font-heading)',
-              fontStyle: 'italic',
-              fontSize: 22,
-              color: 'var(--color-primary)',
-              lineHeight: 1.1,
-              margin: '0 0 12px',
-            }}>
-              Wist je dat…
-            </p>
-            <p style={{
-              fontFamily: 'var(--font-heading)',
-              fontStyle: 'italic',
-              fontSize: 15,
-              lineHeight: 1.55,
-              color: 'var(--color-text-soft)',
-              margin: '0 0 18px',
-            }}>
-              {plantFact.fact_nl}
-            </p>
-            <div style={{
-              paddingTop: 12,
-              borderTop: '1px dashed var(--color-border)',
-            }}>
-              <Link
-                to={`/plants/${plantFact.plant_id}`}
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'var(--color-primary)',
-                  textDecoration: 'none',
-                }}
-              >
-                Meer over {plantFact.plant_name} →
-              </Link>
-            </div>
-          </article>
-        </section>
-      )}
+          </div>
+
+          {/* SIDEBAR column */}
+          <div className="dashboard-sidebar" style={{ padding: '0 24px' }}>
+            <WeatherCard weather={weather} />
+            {dashboardV2?.plant_fact && (
+              <CareTipCard fact={dashboardV2.plant_fact} />
+            )}
+            <UnderConstructionCard
+              icon="🌿"
+              title="Detectie"
+              description="Onkruid & ziektes herkennen — binnenkort beschikbaar."
+            />
+            <UnderConstructionCard
+              icon="📷"
+              title="Foto-identificatie"
+              description="Richt de camera op een plant — binnenkort beschikbaar."
+            />
+          </div>
+        </div>
+
       </div>
+
+      <style>{`
+        @media (min-width: 900px) {
+          .dashboard-grid {
+            grid-template-columns: 1fr 340px !important;
+            align-items: start;
+            padding: 0 24px;
+            gap: 28px;
+          }
+          .dashboard-sidebar {
+            padding: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
 
 // ── Helper components ──
+
+function DashboardHeader({
+  greeting, userName, date, lede, weather, nextCareTask,
+}: {
+  greeting: string
+  userName: string
+  date: string
+  lede: string
+  weather: WeatherData | null
+  nextCareTask: CareTask | null
+}) {
+  const sunrise = weather ? new Date(weather.sunrise).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '—'
+  const sunset  = weather ? new Date(weather.sunset).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '—'
+  const temp    = weather ? `${weather.currentTemp}°C` : '—'
+  const nextCare = nextCareTask
+    ? `${nextCareTask.plant_name}${nextCareTask.days_overdue > 0 ? ` · ${nextCareTask.days_overdue}d te laat` : ' · vandaag'}`
+    : 'Alles op schema'
+
+  return (
+    <header style={{
+      padding: '40px 24px 20px',
+      borderBottom: '1px solid var(--color-border)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      flexWrap: 'wrap',
+      gap: 20,
+    }}>
+      <div style={{ flex: 1, minWidth: 240 }}>
+        {/* Eyebrow */}
+        <p style={{
+          fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em',
+          textTransform: 'uppercase', color: 'var(--color-text-muted)',
+          margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <span style={{ width: 24, height: 1, background: 'var(--color-border)', flex: 'none' }} />
+          {greeting} · {date}
+          <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+        </p>
+
+        {/* H1 */}
+        <h1 style={{
+          fontFamily: 'var(--font-heading)', fontWeight: 500,
+          fontSize: 'clamp(36px, 5vw, 56px)', lineHeight: 0.95,
+          letterSpacing: '-0.02em', color: 'var(--color-text)', margin: 0,
+        }}>
+          {greeting},{' '}
+          <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>
+            {userName}
+          </em>.
+        </h1>
+
+        {/* Lede */}
+        <p style={{
+          fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+          fontSize: 15, lineHeight: 1.5, color: 'var(--color-text-soft)',
+          maxWidth: 440, margin: '8px 0 16px 0',
+        }}>
+          {lede}
+        </p>
+
+        {/* Almanac 2×2 grid */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden',
+          maxWidth: 440,
+        }}>
+          {[
+            { label: 'Zonsopkomst', value: sunrise },
+            { label: 'Zonsondergang', value: sunset },
+            { label: 'Buitentemperatuur', value: temp },
+            { label: 'Volgende verzorging', value: nextCare },
+          ].map((row, i) => (
+            <div key={row.label} style={{
+              padding: '10px 14px',
+              borderRight: i % 2 === 0 ? '1px solid var(--color-border)' : 'none',
+              borderBottom: i < 2 ? '1px solid var(--color-border)' : 'none',
+              background: 'var(--color-surface)',
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 9,
+                textTransform: 'uppercase', letterSpacing: '0.18em',
+                color: 'var(--color-text-muted)', marginBottom: 3,
+              }}>{row.label}</div>
+              <div style={{
+                fontFamily: 'var(--font-heading)', fontSize: 14,
+                color: i === 2 ? 'var(--color-overdue)' : 'var(--color-text)',
+                fontWeight: 500,
+              }}>{row.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16, paddingTop: 4 }}>
+        <UserSwitcher />
+      </div>
+    </header>
+  )
+}
+
+function StatusBanner({ counts }: { counts: { total: number; on_schedule: number; thirsty: number; dry: number } }) {
+  const cells = [
+    { label: 'Collectie', value: counts.total, color: 'var(--color-text)' },
+    { label: 'In schema', value: counts.on_schedule, color: 'var(--color-primary)' },
+    { label: 'Dorstig', value: counts.thirsty, color: counts.thirsty > 0 ? 'var(--color-due)' : 'var(--color-text-muted)' },
+    { label: 'Droog', value: counts.dry, color: counts.dry > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)' },
+  ]
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
+      border: '1px solid var(--color-border)',
+      borderLeft: 'none', borderRight: 'none',
+      background: 'var(--color-surface)',
+      margin: '0 0 4px',
+    }}>
+      {cells.map((cell, i) => (
+        <div key={cell.label} style={{
+          padding: '14px 16px', textAlign: 'center',
+          borderRight: i < cells.length - 1 ? '1px solid var(--color-border-soft)' : 'none',
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: 9,
+            textTransform: 'uppercase', letterSpacing: '0.18em',
+            color: 'var(--color-text-muted)', marginBottom: 5,
+          }}>{cell.label}</div>
+          <div style={{
+            fontFamily: 'var(--font-heading)', fontSize: 28,
+            fontWeight: 500, lineHeight: 1, color: cell.color,
+          }}>{cell.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function HeroStat({ count, label }: { count: number; label: string }) {
   const isZero = count === 0
@@ -680,3 +752,12 @@ function CalmEmptyState() {
     </div>
   )
 }
+
+// Stubs — replaced in Tasks 7 and 8
+function TodayGrid(_p: { overdue: CareTask[]; dueToday: CareTask[] }) {
+  return <p style={{ padding: '20px 24px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', color: 'var(--color-text-muted)' }}>Vandaag laden…</p>
+}
+function LogboekSection(_p: { entries: RecentLogEntry[] }) { return null }
+function WeatherCard(_p: { weather: WeatherData | null }) { return null }
+function CareTipCard(_p: { fact: PlantFactOut }) { return null }
+function UnderConstructionCard(_p: { icon: string; title: string; description: string }) { return null }
