@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardData, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
 const BASE = '/api'
 
@@ -81,6 +81,7 @@ export const fetchPlantAlerts      = (plantId: number)    => api<PlantAlert[]>('
 // ── Dashboard ──
 
 export const fetchDashboard        = ()                    => api<DashboardData>('GET', '/dashboard')
+export const fetchDashboardV2      = ()                    => api<DashboardV2Data>('GET', '/dashboard/v2')
 
 // ── Maps ──
 
@@ -128,6 +129,10 @@ export const fetchAlertSummary     = ()                    => api<AlertSummary>(
 
 export const fetchIconCatalog      = ()                    => api<PlantIcon[]>('GET', '/icon-catalog')
 export const syncIcons             = ()                    => api<IconSyncResult>('POST', '/icon-catalog/sync')
+
+// ── Plant Fact ──
+
+export const fetchPlantFact      = ()                    => api<PlantFactOut>('GET', '/plant-fact')
 
 // ── Grow Here ──
 

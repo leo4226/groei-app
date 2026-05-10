@@ -83,6 +83,32 @@ export interface DashboardData {
   upcoming: CareTask[]
 }
 
+export interface StatusCounts {
+  total: number
+  on_schedule: number
+  thirsty: number
+  dry: number
+}
+
+export interface RecentLogEntry {
+  id: number
+  plant_id: number
+  plant_name: string
+  icon_key: string | null
+  care_type: string
+  done_at: string
+  notes: string | null
+}
+
+export interface DashboardV2Data {
+  overdue: CareTask[]
+  due_today: CareTask[]
+  upcoming: CareTask[]
+  status_counts: StatusCounts
+  recent_log: RecentLogEntry[]
+  plant_fact: PlantFactOut | null
+}
+
 export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot_check' | 'prune'
 
 export interface CareScheduleInput {
