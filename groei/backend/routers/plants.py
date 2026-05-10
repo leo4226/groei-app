@@ -30,6 +30,7 @@ async def list_plants(db = Depends(db_dep)):
         ORDER BY p.name
     """)
     plants = [dict(r) for r in rows]
+    today = date.today().isoformat()
 
     # Batch load all schedules (single query, fixes N+1)
     plant_ids = [p["id"] for p in plants]
@@ -39,7 +40,8 @@ async def list_plants(db = Depends(db_dep)):
             f"""SELECT cs.*, u.name as last_done_by_name
                 FROM care_schedules cs
                 LEFT JOIN users u ON cs.last_done_by = u.id
-                WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1""",
+                WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
+                ORDER BY cs.plant_id, cs.next_due ASC""",
             plant_ids,
         )
         by_plant = {}
@@ -54,6 +56,22 @@ async def list_plants(db = Depends(db_dep)):
 
     for plant in plants:
         plant["care_schedules"] = by_plant.get(plant["id"], [])
+
+        # Compute care_status from schedules
+        care_status = "good"
+        for sched in plant["care_schedules"]:
+            next_due = sched.get("next_due")
+            if next_due < today:
+                care_status = "overdue"
+                break
+            elif next_due == today:
+                if care_status != "overdue":
+                    care_status = "due_today"
+        plant["care_status"] = care_status
+
+        # Set temp_status (full computation would need weather data, skipped for now)
+        plant["temp_status"] = "comfortable"
+
         if plant.get("phenology_json"):
             plant["phenology"] = json.loads(plant.pop("phenology_json"))
         else:

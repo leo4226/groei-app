@@ -95,12 +95,31 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
         """SELECT cs.*, u.name as last_done_by_name
            FROM care_schedules cs
            LEFT JOIN users u ON cs.last_done_by = u.id
-           WHERE cs.plant_id = ? AND cs.is_active = 1""",
+           WHERE cs.plant_id = ? AND cs.is_active = 1
+           ORDER BY cs.next_due ASC""",
         (plant["id"],),
     )
     plant["care_schedules"] = [dict(row) for row in sched_rows]
 
+    # Compute care_status from schedules
+    care_status = "good"
+    for sched in plant["care_schedules"]:
+        next_due = sched.get("next_due")
+        if next_due < today:
+            care_status = "overdue"
+            break
+        elif next_due == today:
+            if care_status != "overdue":
+                care_status = "due_today"
+    plant["care_status"] = care_status
+
+    # Compute temp_status
     care_thresholds = plant.pop("care_thresholds", None)
+    if temp_data is not None:
+        plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
+    else:
+        plant["temp_status"] = "comfortable"
+
     phenology_json = plant.pop("phenology_json", None)
     plant["phenology"] = json.loads(phenology_json) if phenology_json else None
 
