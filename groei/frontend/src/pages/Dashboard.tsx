@@ -14,6 +14,16 @@ const CARE_LABEL_NL: Record<string, string> = {
   prune: 'Snoeien',
 }
 
+const PX_PER_M = 46
+
+function parseMapDimensions(viewbox: string): { w: number; h: number } | null {
+  const parts = viewbox.trim().split(/\s+/).map(Number)
+  if (parts.length !== 4 || parts.some(Number.isNaN)) return null
+  const [, , wPx, hPx] = parts
+  if (wPx <= 0 || hPx <= 0) return null
+  return { w: Math.round(wPx / PX_PER_M), h: Math.round(hPx / PX_PER_M) }
+}
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 6) return 'Goedenacht'
@@ -321,7 +331,9 @@ function SectionHeader({
 }
 
 function MapCard({ map }: { map: MapInfo }) {
-  const dimensionsLabel = map.map_type === 'outdoor' ? 'Buiten' : 'Binnen'
+  const typeLabel = map.map_type === 'outdoor' ? 'Buiten' : 'Binnen'
+  const dims = parseMapDimensions(map.viewbox)
+  const subLine = dims ? `${typeLabel} · ${dims.w} m × ${dims.h} m` : typeLabel
   return (
     <Link
       to={`/map/${map.slug}`}
@@ -365,7 +377,7 @@ function MapCard({ map }: { map: MapInfo }) {
         borderRadius: 5,
         border: '1px solid var(--color-border-soft)',
       }}>
-        {dimensionsLabel}
+        {typeLabel}
       </span>
       <div style={{ padding: '12px 14px 14px' }}>
         <h3 style={{
@@ -392,7 +404,7 @@ function MapCard({ map }: { map: MapInfo }) {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
-          {dimensionsLabel}
+          {subLine}
         </p>
       </div>
     </Link>
