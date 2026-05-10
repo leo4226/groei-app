@@ -1,24 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #FAF6F1;
-  --color-surface: #FFFFFF;
-  --color-primary: #2D6A4F;
-  --color-primary-light: #40916C;
-  --color-secondary: #B7654B;
-  --color-secondary-light: #D4856B;
-  --color-text: #2C2C2C;
-  --color-text-muted: #8B8577;
-  --color-overdue: #C1443E;
-  --color-due: #D4A843;
-  --color-good: #5B9A6F;
-  --color-border: #E8E0D6;
+  /* Botanical palette — warm paper + green/terra accents */
+  --color-bg: #F5F0E3;
+  --color-surface: #FBF7EE;
+  --color-bg-warm: #EDE5D1;
+  --color-primary: #2F5D3A;
+  --color-primary-dark: #1E3F26;
+  --color-primary-highlight: #8FA882;
+  --color-secondary: #B2664A;
+  --color-text: #1F2A1E;
+  --color-text-soft: #4A5A44;
+  --color-text-muted: #8A9482;
+  --color-overdue: #B2664A;
+  --color-due: #D9A418;
+  --color-good: #2F5D3A;
+  --color-border: #D9CFB8;
+  --color-border-soft: #E5DCC3;
 
-  --font-heading: 'Nunito', sans-serif;
+  /* Legacy type colors — kept for fallback icon accents only */
+  --color-type-tree: #160572;
+  --color-type-shrub: #2544a0;
+  --color-type-grass: #24e34c;
+  --color-type-herb: #24e3dc;
+  --color-type-flower: #d98199;
+  --color-type-bulb: #d64e2e;
+  --color-type-succulent: #e29675;
+  --color-type-fern: #4b0f4d;
+  --color-type-edible: #ff7701;
+  --color-type-houseplant: #160572;
+  --color-type-cactus: #f9e44d;
+  --color-type-climber: #2544a0;
+  --color-type-unknown: #909090;
+
+  /* Typography */
+  --font-heading: 'Fraunces', serif;
   --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  /* Border Radius */
+  --radius-pill: 30px;
+  --radius-body: 10px;
+
+  /* Spacing */
+  --spacing-element: 20px;
+  --spacing-section: 24px;
+  --spacing-card-pad: 24px;
 }
 
 body {
@@ -29,11 +56,19 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(circle at 10% 0%, rgba(143, 168, 130, 0.10), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 500;
+}
+
+h1 {
+  letter-spacing: -0.02em;
+  line-height: 0.95;
 }
 
 #root {
@@ -64,14 +99,44 @@ input:focus, select:focus, textarea:focus {
 /* Card base style */
 .card {
   background: var(--color-surface);
-  border-radius: 1rem;
-  box-shadow: var(--shadow-card);
-  border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-  transition: box-shadow 0.2s ease;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(31, 42, 30, 0.04);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+  border-color: var(--color-primary-highlight);
+  box-shadow: 0 2px 6px rgba(31, 42, 30, 0.08), 0 16px 40px rgba(31, 42, 30, 0.10);
+}
+
+/* Card hover glow overlay */
+.card-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(143, 168, 130, 0.08), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+/* Wave animation for greeting emoji */
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(10deg); }
+  75% { transform: rotate(-10deg); }
 }
 
 /* Skeleton loading animation */
@@ -81,7 +146,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--color-border) 25%, #f0ebe4 50%, var(--color-border) 75%);
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite ease-in-out;
   border-radius: 0.5rem;
@@ -95,4 +160,30 @@ input:focus, select:focus, textarea:focus {
 
 .animate-slide-up {
   animation: slide-up 0.25s ease-out;
+}
+
+/* Card icon hover animation */
+.card:hover .card-icon {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.card:hover .card-index {
+  opacity: 0.7;
+}
+
+/* Responsive — Plants page */
+@media (max-width: 720px) {
+  .plants-header {
+    padding: 24px 16px 14px !important;
+  }
+
+  .plants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: 10px !important;
+    padding: 0 16px !important;
+  }
+
+  .home-header {
+    padding: 24px 16px 14px !important;
+  }
 }
