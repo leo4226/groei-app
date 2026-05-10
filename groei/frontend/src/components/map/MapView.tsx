@@ -285,6 +285,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         console.error('Failed to update position:', err)
       }
     }
+    if (dragging.type === 'container') {
+      setDragPositions((prev) => {
+        const { [key]: _, ...rest } = prev
+        return rest
+      })
+    }
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
