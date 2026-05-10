@@ -40,7 +40,7 @@ export const HALO_COLORS: Record<NonNullable<HaloStatus>, string> = {
   thirsty:  '#FFC233',
 }
 
-export function getHaloStatus(plant: { care_status?: string | null; temp_status?: string | null }): HaloStatus {
+export function getHaloStatus(plant: { care_status?: 'overdue' | 'due_today' | 'good' | null; temp_status?: TempStatus | null }): HaloStatus {
   const temp  = plant.temp_status  ?? ''
   const water = plant.care_status  ?? ''
   if (temp  === 'freezing')   return 'freezing'
