@@ -3,6 +3,7 @@ import random
 
 from fastapi import APIRouter, Depends
 from database import db_dep
+from auth import get_current_account
 from models import DashboardResponse, DashboardV2Response, StatusCounts, RecentLogEntry, CareTask, PlantFactOut
 from datetime import date
 
@@ -10,7 +11,7 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(db = Depends(db_dep)):
+async def get_dashboard(db = Depends(db_dep), account = Depends(get_current_account)):
     today = str(date.today())
 
     cursor = await db.execute("""
@@ -29,9 +30,9 @@ async def get_dashboard(db = Depends(db_dep)):
         JOIN plants p ON cs.plant_id = p.id
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN users u ON cs.last_done_by = u.id
-        WHERE cs.is_active = 1 AND p.is_active = 1
+        WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
         ORDER BY cs.next_due ASC
-    """)
+    """, (account["household_id"],))
     rows = await cursor.fetchall()
 
     overdue = []
@@ -68,13 +69,13 @@ async def get_dashboard(db = Depends(db_dep)):
 
 
 @router.get("/plant-fact", response_model=PlantFactOut)
-async def get_plant_fact(db = Depends(db_dep)):
+async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall("""
         SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
         FROM plants p
         JOIN plant_species ps ON p.species_id = ps.id
-        WHERE p.is_active = 1 AND p.species_id IS NOT NULL
-    """)
+        WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
+    """, (account["household_id"],))
 
     candidates = []
     for row in rows:
@@ -104,7 +105,7 @@ async def get_plant_fact(db = Depends(db_dep)):
 
 
 @router.get("/dashboard/v2", response_model=DashboardV2Response)
-async def get_dashboard_v2(db = Depends(db_dep)):
+async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_account)):
     # ── Task lists (same logic as /dashboard) ──
     cursor = await db.execute("""
         SELECT
@@ -122,9 +123,9 @@ async def get_dashboard_v2(db = Depends(db_dep)):
         JOIN plants p ON cs.plant_id = p.id
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN users u ON cs.last_done_by = u.id
-        WHERE cs.is_active = 1 AND p.is_active = 1
+        WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
         ORDER BY cs.next_due ASC
-    """)
+    """, (account["household_id"],))
     rows = await cursor.fetchall()
 
     overdue, due_today, upcoming = [], [], []
@@ -161,20 +162,20 @@ async def get_dashboard_v2(db = Depends(db_dep)):
             SUM(CASE WHEN CAST(julianday('now') - julianday(cs.next_due) AS INTEGER) >= 3 THEN 1 ELSE 0 END) as dry
         FROM care_schedules cs
         JOIN plants p ON cs.plant_id = p.id
-        WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1
-    """)
+        WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
+    """, (account["household_id"],))
     thirsty = int(water_rows[0]["thirsty"] or 0) if water_rows else 0
     dry = int(water_rows[0]["dry"] or 0) if water_rows else 0
 
     on_schedule_rows = await db.execute_fetchall("""
         SELECT COUNT(DISTINCT p.id) as n
         FROM plants p
-        WHERE p.is_active = 1
+        WHERE p.is_active = 1 AND p.household_id = ?
         AND p.id NOT IN (
             SELECT DISTINCT plant_id FROM care_schedules
             WHERE is_active = 1 AND next_due < date('now')
         )
-    """)
+    """, (account["household_id"],))
     on_schedule = on_schedule_rows[0]["n"] if on_schedule_rows else 0
 
     status_counts = StatusCounts(total=total, on_schedule=on_schedule, thirsty=thirsty, dry=dry)
@@ -185,10 +186,10 @@ async def get_dashboard_v2(db = Depends(db_dep)):
                cl.care_type, cl.done_at, cl.notes
         FROM care_log cl
         JOIN plants p ON cl.plant_id = p.id
-        WHERE cl.skipped = 0
+        WHERE cl.skipped = 0 AND p.household_id = ?
         ORDER BY cl.done_at DESC
         LIMIT 5
-    """)
+    """, (account["household_id"],))
     recent_log = [
         RecentLogEntry(
             id=r["id"],
@@ -207,8 +208,8 @@ async def get_dashboard_v2(db = Depends(db_dep)):
         SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
         FROM plants p
         JOIN plant_species ps ON p.species_id = ps.id
-        WHERE p.is_active = 1 AND p.species_id IS NOT NULL
-    """)
+        WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
+    """, (account["household_id"],))
     candidates = []
     for row in fact_rows:
         phen_str = row["phenology_json"]
