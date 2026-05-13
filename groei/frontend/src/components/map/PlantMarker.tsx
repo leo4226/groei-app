@@ -3,7 +3,7 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { computeSuitability } from '../../utils/suitability'
 import { useMapRotation } from '../../context/MapRotationContext'
-import { getHaloStatus, HALO_COLORS } from '../../hooks/usePlantStatus'
+import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 
 const SUITABILITY_RING_COLORS: Record<string, string> = {
@@ -34,8 +34,8 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
   const counterRot = useMapRotation()
   const rot = counterRot ? `rotate(${counterRot})` : undefined
   const { badgeColor: color } = getCareDisplay(plant)
-  const haloStatus = getHaloStatus(plant)
-  const haloColor  = haloStatus ? HALO_COLORS[haloStatus] : null
+  const haloColor = getHaloColor(plant)
+  const alertIcon = plant.top_alert?.icon ?? null
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
@@ -235,6 +235,30 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
         </g>
       )}
       </g>
+
+      {/* Alert badge — top-right corner, shows alert type icon */}
+      {alertIcon && (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle
+            cx={iconR * 0.72}
+            cy={-(iconR * 0.72)}
+            r={7}
+            fill="white"
+            stroke={haloColor ?? '#888'}
+            strokeWidth={1.5}
+          />
+          <text
+            x={iconR * 0.72}
+            y={-(iconR * 0.72)}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={8}
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {alertIcon}
+          </text>
+        </g>
+      )}
     </g>
   )
 }
