@@ -173,14 +173,38 @@ export default function MapPage() {
       <div className="flex items-center justify-between mb-2 shrink-0">
         <h1 className="text-xl font-bold text-text">{map.name}</h1>
         <div className="flex items-center gap-2">
+          {/* Garden water — compact status badge, tap to log */}
           <button
-            onClick={() => navigate(`/maps/${map.id}/settings`)}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
-            title="Kaart instellingen"
+            onClick={water.openPicker}
+            title={water.gardenWater?.watered_at
+              ? `Laatst bewaterd: ${new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL')}`
+              : 'Registreer tuin bewatering'}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              (water.gardenWater?.status ?? 'dry') === 'hydrated' ? 'bg-emerald-green/15 text-emerald-green' :
+              (water.gardenWater?.status ?? 'dry') === 'thirsty'  ? 'bg-pumpkin-swirl/15 text-pumpkin-swirl' :
+              'bg-fiery-red/10 text-fiery-red hover:bg-fiery-red/15'
+            }`}
+          >
+            <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
+            <span>
+              {water.gardenWater?.watered_at
+                ? new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+                : 'Water'}
+            </span>
+          </button>
+          <button
+            onClick={() => setShowLabels(v => !v)}
+            title={showLabels ? 'Verberg namen' : 'Toon namen'}
+            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-colors ${
+              showLabels
+                ? 'bg-surface text-text-muted hover:bg-surface/80'
+                : 'bg-primary/20 text-primary hover:bg-primary/30'
+            }`}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              <rect x="3" y="5" width="18" height="4" rx="1" />
+              <rect x="3" y="11" width="12" height="4" rx="1" />
+              <rect x="3" y="17" width="8" height="4" rx="1" />
             </svg>
           </button>
           {isOutdoor && (
@@ -203,21 +227,6 @@ export default function MapPage() {
             </button>
           )}
           <button
-            onClick={() => setShowLabels(v => !v)}
-            title={showLabels ? 'Verberg namen' : 'Toon namen'}
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-colors ${
-              showLabels
-                ? 'bg-surface text-text-muted hover:bg-surface/80'
-                : 'bg-primary/20 text-primary hover:bg-primary/30'
-            }`}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="18" height="4" rx="1" />
-              <rect x="3" y="11" width="12" height="4" rx="1" />
-              <rect x="3" y="17" width="8" height="4" rx="1" />
-            </svg>
-          </button>
-          <button
             onClick={sun.toggleInspectorMode}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               sun.inspectorMode
@@ -226,6 +235,16 @@ export default function MapPage() {
             }`}
           >
             <span>Inspecteer</span>
+          </button>
+          <button
+            onClick={() => navigate(`/maps/${map.id}/settings`)}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
+            title="Kaart instellingen"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
           <button
             onClick={() => setShowPotPicker(true)}
@@ -244,64 +263,33 @@ export default function MapPage() {
         </div>
       </div>
 
-      {(() => {
-        const gardenWaterStatus = water.gardenWater?.status ?? 'dry'
-        const wateredLabel = water.gardenWater?.watered_at
-          ? new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
-          : null
-        const rainLabel = water.gardenWater != null
-          ? `${water.gardenWater.rain_7day_mm}mm / ${water.gardenWater.weekly_budget_mm}mm deze week`
-          : null
-
-        return (
-          <div className="mb-2 shrink-0">
-            <div className="flex gap-2 items-stretch">
-              <button
-                onClick={water.openPicker}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-colors ${
-                  gardenWaterStatus === 'hydrated' ? 'bg-emerald-green/15 text-emerald-green' :
-                  gardenWaterStatus === 'thirsty'  ? 'bg-pumpkin-swirl/15 text-pumpkin-swirl' :
-                  'bg-fiery-red/10 text-fiery-red hover:bg-fiery-red/15'
-                }`}
-              >
-                <WaterStatusIcon status={gardenWaterStatus} size={18} />
-                <span className="flex flex-col items-start leading-tight">
-                  <span>{wateredLabel ?? 'Nog niet bewaterd'}</span>
-                  {rainLabel && <span className="text-[10px] font-normal opacity-70">{rainLabel}</span>}
-                </span>
-              </button>
-            </div>
-
-            {water.showPicker && (
-              <div className="mt-1.5 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
-                <input
-                  type="date"
-                  value={water.pickerDate}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={e => water.setPickerDate(e.target.value)}
-                  className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
-                />
-                <button
-                  onClick={water.save}
-                  disabled={water.watering || !water.pickerDate}
-                  className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-                >
-                  {water.watering ? '…' : 'Opslaan'}
-                </button>
-                {water.gardenWater?.watered_at && (
-                  <button
-                    onClick={water.deleteLast}
-                    disabled={water.watering}
-                    className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
-                  >
-                    Wis
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      {water.showPicker && (
+        <div className="mb-2 p-3 bg-surface rounded-xl border border-border flex items-center gap-2 shrink-0">
+          <input
+            type="date"
+            value={water.pickerDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => water.setPickerDate(e.target.value)}
+            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
+          />
+          <button
+            onClick={water.save}
+            disabled={water.watering || !water.pickerDate}
+            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {water.watering ? '…' : 'Opslaan'}
+          </button>
+          {water.gardenWater?.watered_at && (
+            <button
+              onClick={water.deleteLast}
+              disabled={water.watering}
+              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              Wis
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3 flex-1 min-h-0">
         <div className="flex-1 min-w-0 min-h-0 rounded-2xl overflow-hidden border border-border">
