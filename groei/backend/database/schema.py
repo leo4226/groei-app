@@ -151,4 +151,32 @@ async def apply(db):
             image_url       TEXT,
             fetched_at      DATETIME NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS weed_species (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug             TEXT UNIQUE NOT NULL,
+            common_name_nl   TEXT NOT NULL,
+            latin_name       TEXT NOT NULL,
+            family           TEXT,
+            common_names     TEXT,
+            appearance_json  TEXT,
+            habitat_json     TEXT,
+            removal_json     TEXT,
+            edible           BOOLEAN DEFAULT 0,
+            edible_note      TEXT,
+            interesting      TEXT,
+            native_to_nl     BOOLEAN DEFAULT 1,
+            created_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS weed_sightings (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            weed_id     INTEGER NOT NULL REFERENCES weed_species(id),
+            map_id      INTEGER NOT NULL REFERENCES maps(id),
+            map_x       REAL NOT NULL,
+            map_y       REAL NOT NULL,
+            notes       TEXT,
+            sighted_at  DATE NOT NULL DEFAULT (date('now')),
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     """)
