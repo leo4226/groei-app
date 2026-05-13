@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 
 # --- Users ---
@@ -9,11 +9,11 @@ class UserOut(BaseModel):
     id: int
     name: str
     avatar: str | None = None
-    language: str = 'nl'
+    language: Literal['nl', 'en'] = 'nl'
 
 
 class UserLanguageUpdate(BaseModel):
-    language: str  # 'nl' | 'en'
+    language: Literal['nl', 'en']
 
 
 # --- Locations ---
