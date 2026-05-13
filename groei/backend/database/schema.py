@@ -179,4 +179,20 @@ async def apply(db):
             sighted_at  DATE NOT NULL DEFAULT (date('now')),
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS households (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT NOT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS accounts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            household_id    INTEGER NOT NULL REFERENCES households(id),
+            email           TEXT NOT NULL UNIQUE,
+            name            TEXT NOT NULL,
+            password_hash   TEXT NOT NULL,
+            avatar          TEXT,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     """)
