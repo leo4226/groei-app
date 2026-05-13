@@ -3,6 +3,7 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { useMapRotation } from '../../context/MapRotationContext'
+import { getHaloColor } from '../../hooks/usePlantStatus'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -13,7 +14,7 @@ interface Props {
   isHoverTarget?: boolean
   showLabel?: boolean
   heatmapCells?: HeatmapCell[]
-  onTap: (object: MapObject) => void
+  onTap?: (object: MapObject) => void
   onPointerDown?: (e: React.PointerEvent, object: MapObject) => void
   isDragging?: boolean
 }
@@ -149,8 +150,22 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
+      const haloColor = getHaloColor(plant)
+      const alertIcon = plant.top_alert?.icon ?? null
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
+          {/* Status halo — extends beyond pot outline to shine through */}
+          {haloColor && (
+            <>
+              <defs>
+                <radialGradient id={`halo-${plant.id}`} cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={haloColor} stopOpacity={0.70} />
+                  <stop offset="100%" stopColor={haloColor} stopOpacity={0}    />
+                </radialGradient>
+              </defs>
+              <circle r={iconHalf * 1.6} fill={`url(#halo-${plant.id})`} style={{ pointerEvents: 'none' }} />
+            </>
+          )}
           {/* Sun-fit ring — only visible in Zonkaart mode */}
           {sunFit && (
             <circle
@@ -176,24 +191,50 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
+          {/* Alert badge — top-right corner, shows alert type icon */}
+          {alertIcon && (
+            <g style={{ pointerEvents: 'none' }}>
+              <circle
+                cx={iconHalf * 0.72}
+                cy={-(iconHalf * 0.72)}
+                r={6}
+                fill="white"
+                stroke={haloColor ?? '#888'}
+                strokeWidth={1.5}
+              />
+              <text
+                x={iconHalf * 0.72}
+                y={-(iconHalf * 0.72)}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={7}
+                style={{ pointerEvents: 'none', userSelect: 'none' }}
+              >
+                {alertIcon}
+              </text>
+            </g>
+          )}
         </g>
       )
     })
   }
 
+  const interactive = !!(onTap || onPointerDown)
+
   return (
     <g
       transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}
-      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(object) }}
+      onClick={onTap ? (e) => { e.stopPropagation(); if (!isDragging) onTap(object) } : undefined}
       onPointerDown={onPointerDown ? (e) => { e.stopPropagation(); onPointerDown(e, object) } : undefined}
       style={{
-        cursor: onPointerDown ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
+        cursor: onPointerDown ? (isDragging ? 'grabbing' : 'grab') : onTap ? 'pointer' : undefined,
         touchAction: onPointerDown ? 'none' : undefined,
         opacity: isDragging ? 0.75 : 1,
+        pointerEvents: interactive ? undefined : 'none',
       }}
     >
-      {/* Transparent hit area */}
-      <circle r={hitR} fill="transparent" />
+      {/* Transparent hit area — only when interactive */}
+      {interactive && <circle r={hitR} fill="transparent" />}
 
       {object.category !== 'container' && object.preset
         ? renderHardscapeShape(
