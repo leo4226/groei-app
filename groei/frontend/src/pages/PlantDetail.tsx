@@ -12,7 +12,7 @@ import PhaseCalendar from '../components/PhaseCalendar'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-6">
-      <p className="text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">{title}</p>
+      <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">{title}</p>
       {children}
     </section>
   )
@@ -204,32 +204,31 @@ export default function PlantDetail() {
         <div className="card p-4 mb-5">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-extrabold leading-tight">{plant.name}</h1>
-              {plant.species && <p className="text-sm text-text-muted italic mt-0.5">{plant.species}</p>}
+              {(plant.location_name || plant.plant_type) && (
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted mb-1">
+                  {[
+                    plant.location_icon && plant.location_name
+                      ? `${plant.location_icon} ${plant.location_name}`
+                      : plant.location_name,
+                    plant.plant_type,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              <h1 className="font-heading text-2xl font-medium leading-tight tracking-tight">{plant.name}</h1>
+              {plant.species && (
+                <p className="font-heading italic text-sm text-text-muted mt-0.5">{plant.species}</p>
+              )}
+              {(plant.pot_size_cm || plant.acquired_date) && (
+                <p className="font-mono text-[10px] text-text-muted mt-1.5">
+                  {[
+                    plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
+                    plant.acquired_date
+                      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}`
+                      : null,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-3">
-            {plant.plant_type && (
-              <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium capitalize">
-                {plant.plant_type}
-              </span>
-            )}
-            {plant.location_name && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                {plant.location_icon} {plant.location_name}
-              </span>
-            )}
-            {plant.pot_size_cm && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                🪴 {plant.pot_size_cm} cm
-              </span>
-            )}
-            {plant.acquired_date && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                📅 {plant.acquired_date}
-              </span>
-            )}
           </div>
 
           {plant.notes && (

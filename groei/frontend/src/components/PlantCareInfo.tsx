@@ -16,7 +16,7 @@ const TEMP_BADGE: Record<string, { label: string; className: string }> = {
   warm: { label: 'Warm',  className: 'bg-secondary/15 text-secondary' },
   mild: { label: 'Zacht', className: 'bg-good/15 text-good' },
   cool: { label: 'Fris',  className: 'bg-due/15 text-due' },
-  cold: { label: 'Koud',  className: 'bg-blue-400/15 text-blue-400' },
+  cold: { label: 'Koud',  className: 'bg-aqua-glow/15 text-midnight-ink' },
 }
 
 const RAIN_BADGE: Record<string, { label: string; className: string }> = {
@@ -56,10 +56,10 @@ export default function PlantCareInfo({ plantId }: Props) {
   const noData    = !care.loading && care.data?.source === 'not_found'
 
   return (
-    <div className="mt-4 rounded-xl bg-bg overflow-hidden">
+    <div className="mt-4">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <span className="text-sm font-semibold text-text">🌱 Verzorgingsinfo</span>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">Verzorgingsinfo</p>
         {!isLoading && !noData && care.data && (
           <button
             onClick={() => setExpanded(e => !e)}
@@ -70,7 +70,7 @@ export default function PlantCareInfo({ plantId }: Props) {
         )}
       </div>
 
-      <div className="px-4 py-3 space-y-2.5">
+      <div className="card px-4 py-3 space-y-2.5">
         {isLoading ? (
           <><SkeletonRow /><SkeletonRow /><SkeletonRow /></>
         ) : care.error ? (
@@ -85,7 +85,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                 <span className="text-sm shrink-0">☀️</span>
                 <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-amber-400 rounded-full"
+                    className="h-full bg-pumpkin-swirl rounded-full"
                     style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
                   />
                 </div>
@@ -204,7 +204,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                     <div className="w-full flex items-end" style={{ height: `${CHART_H}px` }}>
                       <div className="relative w-full rounded-sm overflow-hidden" style={{ height: `${fullH}px` }}>
                         <div className="absolute bottom-0 w-full bg-amber-300/30" style={{ height: `${minH}px` }} />
-                        <div className="absolute w-full bg-amber-400/75" style={{ bottom: `${minH}px`, height: `${rangeH}px` }} />
+                        <div className="absolute w-full bg-pumpkin-swirl/75" style={{ bottom: `${minH}px`, height: `${rangeH}px` }} />
                       </div>
                     </div>
                     <span className="text-[8px] text-text-muted/70 font-medium leading-none">{day.min}°</span>
