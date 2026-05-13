@@ -180,6 +180,8 @@ export interface EditorZone {
   roomHeightM?: number   // physical ceiling height in metres (informational only)
   cornerCut?: CornerCut  // single rectangular notch cut from one corner
   fenceMaterial?: FenceMaterial  // wood or brick, only for fence type
+  fenceHeightM?: number  // fence height in metres (affects shadow casting)
+  structureHeightM?: number  // structure/shed height in metres (affects shadow casting)
 }
 
 export interface WallElement {
@@ -193,6 +195,11 @@ export interface WallElement {
   swingDirection?: 'inward' | 'outward'
 }
 
+export type ShadowCaster =
+  | { id: string; label: string; type: 'rect'; x: number; y: number; width: number; height: number; heightCm: number; opacity?: number }
+  | { id: string; label: string; type: 'circle'; cx: number; cy: number; radius: number; heightCm: number; opacity?: number }
+  | { id: string; label: string; type: 'polygon'; points: [number, number][]; heightCm: number; opacity?: number }
+
 export interface CanvasData {
   zones: EditorZone[]
   wallElements?: WallElement[]
@@ -200,6 +207,7 @@ export interface CanvasData {
   canvas_w: number
   canvas_h: number
   mapType?: MapType
+  shadowCasters?: ShadowCaster[]  // external casters (buildings, trees) stored alongside zone data
 }
 
 export interface MapDetail extends MapInfo {}
@@ -241,6 +249,12 @@ export interface Phenology {
   climate_zone: string
 }
 
+export interface TopAlert {
+  alert_type: string  // overdue_water | due_today | drought | waterlog | cold | heat | bring_inside | fertilise
+  severity: 'urgent' | 'warning' | 'info'
+  icon: string
+}
+
 export interface MapPlant {
   id: number
   name: string
@@ -259,7 +273,8 @@ export interface MapPlant {
   icon_key: string | null
   species_id: number | null
   phenology: Phenology | null
-  is_locked: boolean
+  is_locked: boolean,
+  top_alert: TopAlert | null
 }
 
 // --- Objects ---
