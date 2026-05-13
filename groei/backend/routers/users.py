@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from database import db_dep
 from auth import get_current_account
 from models import UserOut, UserLanguageUpdate
@@ -33,4 +33,6 @@ async def update_user_language(
         (user_id, account["household_id"])
     )
     row = await cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="User not found")
     return dict(row)
