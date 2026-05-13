@@ -173,13 +173,21 @@ class RecentLogEntry(BaseModel):
     notes: str | None
 
 
+class PlantFactOut(BaseModel):
+    plant_id: int
+    plant_name: str
+    icon_key: str | None = None
+    fact_nl: str
+    species_name: str | None = None
+
+
 class DashboardV2Response(BaseModel):
     overdue: list[CareTask] = []
     due_today: list[CareTask] = []
     upcoming: list[CareTask] = []
     status_counts: StatusCounts
     recent_log: list[RecentLogEntry] = []
-    plant_fact: 'PlantFactOut | None' = None
+    plant_fact: PlantFactOut | None = None
 
 
 # --- Maps ---
@@ -384,11 +392,84 @@ class PlantSpeciesOut(BaseModel):
     phenology: PhenologyData | None = None
 
 
-# --- Home / Plant Fact ---
+# --- Home / Plant Fact (PlantFactOut defined above, before DashboardV2Response) ---
 
-class PlantFactOut(BaseModel):
-    plant_id: int
-    plant_name: str
-    icon_key: str | None = None
-    fact_nl: str
-    species_name: str | None = None
+
+# ── Weeds ──
+
+class WeedAppearanceOut(BaseModel):
+    flower_color: str
+    flower_shape: str
+    leaf_shape: str
+    growth_form: str
+    max_height_cm: int
+    distinguishing: str
+    look_alikes: list[str] = []
+
+
+class WeedHabitatOut(BaseModel):
+    places: list[str] = []
+    soil_types: list[str] = []
+    active_months: list[int] = []
+    bloom_months: list[int] = []
+    sun_preference: str
+
+
+class WeedRemovalOut(BaseModel):
+    root_type: str
+    reproduces_via: list[str] = []
+    removal_method: str
+    removal_difficulty: str
+    urgency: str
+    removal_tip: str
+    prevention: str
+
+
+class WeedSpeciesOut(BaseModel):
+    id: int
+    slug: str
+    common_name_nl: str
+    latin_name: str
+    family: str | None = None
+    common_names: list[str] = []
+    appearance: WeedAppearanceOut | None = None
+    habitat: WeedHabitatOut | None = None
+    removal: WeedRemovalOut | None = None
+    edible: bool = False
+    edible_note: str | None = None
+    interesting: str | None = None
+    native_to_nl: bool = True
+
+
+class WeedSpeciesListItem(BaseModel):
+    id: int
+    slug: str
+    common_name_nl: str
+    latin_name: str
+    family: str | None = None
+    flower_color: str | None = None
+    places: list[str] = []
+
+
+class WeedSightingCreate(BaseModel):
+    weed_id: int
+    map_id: int
+    map_x: float
+    map_y: float
+    notes: str | None = None
+    sighted_at: str | None = None  # date string
+
+
+class WeedSightingOut(BaseModel):
+    id: int
+    weed_id: int
+    weed_name: str | None = None
+    weed_slug: str | None = None
+    latin_name: str | None = None
+    removal_difficulty: str | None = None
+    map_id: int
+    map_x: float
+    map_y: float
+    notes: str | None = None
+    sighted_at: str
+    created_at: str | None = None
