@@ -51,7 +51,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
-    <div className="flex flex-col min-h-dvh bg-bg">
+      <div className="flex flex-col min-h-dvh bg-bg">
       {error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
           <span>{error}</span>
@@ -176,7 +176,7 @@ export default function App() {
           onCustomName={handleCustomName}
         />
       )}
-    </div>
+      </div>
     </LanguageProvider>
   )
 }
