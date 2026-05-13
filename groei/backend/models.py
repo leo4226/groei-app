@@ -116,6 +116,12 @@ class PlantAlert(BaseModel):
     icon: str
 
 
+class TopAlert(BaseModel):
+    alert_type: str   # overdue_water | due_today | drought | waterlog | cold | heat | bring_inside | fertilise
+    severity: str     # urgent | warning | info
+    icon: str
+
+
 # --- Care ---
 
 class CareAction(BaseModel):
@@ -253,6 +259,7 @@ class MapPlantOut(BaseModel):
     species_id: int | None = None
     phenology: Any | None = None
     is_locked: bool = False
+    top_alert: TopAlert | None = None
 
 
 class PlantPositionUpdate(BaseModel):
