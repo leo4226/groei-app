@@ -6,7 +6,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from database import db_dep
+from database import db_dep, get_db
 
 router = APIRouter()
 
@@ -554,18 +554,25 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
     return result
 
 
+_RAIN_FALLBACK = {"days": [], "total_7day_mm": 0.0, "assessment": "unknown"}
+_TEMP_FALLBACK = {"days": [], "avg_max_7day": 0.0, "assessment": "unknown"}
+
+
 async def _get_rain_data() -> dict:
-    """Fetch (or return cached) 7-day rainfall data."""
+    """Fetch (or return cached) 7-day rainfall data. Returns fallback on error."""
     global _rain_cache
     now = datetime.now(timezone.utc)
 
     if _rain_cache.get("fetched_at") and (now - _rain_cache["fetched_at"]) < timedelta(hours=1):
         return _rain_cache["data"]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(OPEN_METEO_URL)
-        resp.raise_for_status()
-        raw = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(OPEN_METEO_URL)
+            resp.raise_for_status()
+            raw = resp.json()
+    except Exception:
+        return _rain_cache.get("data", _RAIN_FALLBACK)
 
     daily  = raw.get("daily", {})
     times  = daily.get("time", [])
@@ -581,17 +588,20 @@ async def _get_rain_data() -> dict:
 
 
 async def _get_temp_data() -> dict:
-    """Fetch (or return cached) 7-day temperature data."""
+    """Fetch (or return cached) 7-day temperature data. Returns fallback on error."""
     global _temp_cache
     now = datetime.now(timezone.utc)
 
     if _temp_cache.get("fetched_at") and (now - _temp_cache["fetched_at"]) < timedelta(hours=1):
         return _temp_cache["data"]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(OPEN_METEO_TEMP_URL)
-        resp.raise_for_status()
-        raw = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(OPEN_METEO_TEMP_URL)
+            resp.raise_for_status()
+            raw = resp.json()
+    except Exception:
+        return _temp_cache.get("data", _TEMP_FALLBACK)
 
     daily   = raw.get("daily", {})
     times   = daily.get("time", [])

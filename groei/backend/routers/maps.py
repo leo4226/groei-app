@@ -42,7 +42,7 @@ async def get_map(slug: str, account = Depends(get_current_account), db = Depend
 
 
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
-async def get_map_plants(slug: str, db = Depends(db_dep)):
+async def get_map_plants(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     map_row = await db.execute_fetchall(
         "SELECT id, map_type FROM maps WHERE slug = ?", (slug,)
     )
@@ -72,7 +72,7 @@ async def get_map_plants(slug: str, db = Depends(db_dep)):
 
 
 @router.get("/maps/{slug}/items", response_model=MapItemsOut)
-async def get_map_items(slug: str, db = Depends(db_dep)):
+async def get_map_items(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     map_row = await db.execute_fetchall("SELECT id, map_type FROM maps WHERE slug = ?", (slug,))
     if not map_row:
         raise HTTPException(404, "Map not found")
