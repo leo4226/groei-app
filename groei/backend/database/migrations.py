@@ -63,3 +63,13 @@ async def apply(db):
         await db.execute("DROP TABLE IF EXISTS plant_care_cache")
         await db.commit()
         # schema.py will re-create with the correct schema on next init_db
+
+    # ── auth: household_id on maps, plants, locations, users ──
+    for table in ("maps", "plants", "locations", "users"):
+        cols = {row[1] for row in await db.execute_fetchall(f"PRAGMA table_info({table})")}
+        if "household_id" not in cols:
+            await db.execute(
+                f"ALTER TABLE {table} ADD COLUMN household_id INTEGER REFERENCES households(id)"
+            )
+
+    await db.commit()
