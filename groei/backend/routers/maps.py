@@ -8,10 +8,9 @@ from datetime import date
 from database import db_dep
 from auth import get_current_account
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
-from routers.plant_care import _get_temp_data, _get_rain_data
+from routers.plant_care import _get_temp_data, _get_rain_data, get_last_garden_watered
 from services.svg_renderer import render_canvas_data
 from services.plant_reader import enrich_plant, enrich_plants
-from routers.alerts import get_last_garden_watered
 
 # Path to backend static/maps — served by /api/maps-static
 _MAPS_DIR = os.path.normpath(

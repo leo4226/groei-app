@@ -109,6 +109,7 @@ def compute_top_alert(
     temp: dict | None,
     last_watered: date | None,
     map_type: str = "outdoor",
+    most_urgent_care_type: str | None = None,
 ) -> dict | None:
     """Return the single worst alert (alert_type, severity, icon) for map marker display.
 
@@ -117,9 +118,11 @@ def compute_top_alert(
     alerts = []
 
     if care_status == "overdue":
-        alerts.append({"alert_type": "overdue_water", "severity": "urgent", "icon": "💧"})
+        alert_type = f"overdue_{most_urgent_care_type}" if most_urgent_care_type else "overdue"
+        alerts.append({"alert_type": alert_type, "severity": "urgent", "icon": "💧"})
     elif care_status == "due_today":
-        alerts.append({"alert_type": "due_today", "severity": "info", "icon": "💧"})
+        alert_type = f"due_{most_urgent_care_type}" if most_urgent_care_type else "due"
+        alerts.append({"alert_type": alert_type, "severity": "info", "icon": "💧"})
 
     if care_thresholds_json and rain and temp:
         try:

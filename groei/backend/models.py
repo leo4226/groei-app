@@ -200,7 +200,7 @@ class DashboardV2Response(BaseModel):
 
 class MapCreate(BaseModel):
     name: str
-    map_type: str = 'outdoor'  # 'garden' | 'indoor'
+    map_type: str = 'outdoor'  # 'outdoor' | 'indoor'
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0

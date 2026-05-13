@@ -161,6 +161,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             temp=temp_data,
             last_watered=last_watered,
             map_type=map_type,
+            most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
         )
 
         phenology_json = plant.pop("phenology_json", None)

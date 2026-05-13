@@ -29,7 +29,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
     water_interval = thresholds.get("water_interval_days")
     fertilise_months = thresholds.get("fertilise_months") or []
 
-    if water_interval:
+    if water_interval and water_interval > 0:
         existing = await db.execute_fetchall(
             "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'water' AND is_active = 1",
             (plant_id,),
@@ -191,6 +191,13 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
                 (thresholds_json, plant_id),
             )
             await db.commit()
+            # Cache thresholds on species for future plants
+            if species_id:
+                await db.execute(
+                    "UPDATE plant_species SET care_thresholds = ? WHERE id = ?",
+                    (thresholds_json, species_id),
+                )
+                await db.commit()
             await _seed_care_schedules(db, plant_id, thresholds_json)
     except Exception as exc:
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
