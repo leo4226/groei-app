@@ -27,10 +27,11 @@ interface GroeiStore {
   uploadPhoto: (plantId: number, file: File) => Promise<void>
   markCareDone: (plantId: number, careType: string, notes?: string) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
-  createMap: (name: string) => Promise<MapInfo>
+  createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
   setActiveUser: (id: number) => void
   setShowPlantPicker: (show: boolean) => void
+  updateUserLanguage: (userId: number, language: 'nl' | 'en') => Promise<void>
   clearError: () => void
 }
 
@@ -160,6 +161,8 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
         upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
       } : null,
     }))
+    // Refetch to get correct status_counts
+    get().loadDashboardV2()
   },
 
   skipCare: async (plantId, careType) => {
@@ -175,10 +178,11 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
         upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
       } : null,
     }))
+    get().loadDashboardV2()
   },
 
-  createMap: async (name) => {
-    const map = await api.createMap(name)
+  createMap: async (data) => {
+    const map = await api.createMap(data)
     set((s) => ({ maps: [...s.maps, map] }))
     return map
   },
@@ -203,6 +207,11 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
   },
 
   setShowPlantPicker: (show) => set({ showPlantPicker: show }),
+
+  updateUserLanguage: async (userId, language) => {
+    const updated = await api.updateUserLanguage(userId, language)
+    set((s) => ({ users: s.users.map((u) => (u.id === userId ? updated : u)) }))
+  },
 
   clearError: () => set({ error: null }),
 }))

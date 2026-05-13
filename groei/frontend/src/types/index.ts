@@ -2,6 +2,7 @@ export interface User {
   id: number
   name: string
   avatar: string | null
+  language: 'nl' | 'en'
 }
 
 export interface Location {
@@ -47,6 +48,8 @@ export interface Plant {
   sun_requirement: string | null
   plant_type: string | null
   icon_key: string | null
+  icon_requested: boolean
+  phase: 'seed' | 'seedling' | 'mature'
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -70,6 +73,7 @@ export interface CareTask {
   plant_name: string
   plant_photo: string | null
   location: string | null
+  map_type: string | null
   care_type: string
   days_overdue: number
   last_done_by: string | null
@@ -131,6 +135,7 @@ export interface PlantCreateInput {
   sun_requirement?: string
   plant_type?: string
   icon_key?: string
+  phase?: 'seed' | 'seedling' | 'mature'
   care_schedules: CareScheduleInput[]
 }
 
@@ -362,6 +367,8 @@ export interface PlantIcon {
   sci: string
   cat: string
   form: string
+  phase?: string
+  variant_of?: string
   family: string
   file: string
 }
@@ -374,6 +381,20 @@ export interface IconSyncResult {
   matches: { plant_id: number; plant_name: string; icon_key: string }[]
   unmatched_plants: number
   unmatched: { plant_id: number; plant_name: string }[]
+}
+
+export interface IconGapItem {
+  id?: number
+  name: string
+  latin?: string
+  sci?: string
+  species?: string | null
+}
+
+export interface IconGapReport {
+  requested: IconGapItem[]
+  species_without_icon: IconGapItem[]
+  icons_without_species: IconGapItem[]
 }
 
 export interface PlantFactOut {

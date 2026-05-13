@@ -74,6 +74,7 @@ export interface GrowHereResponse { suggestions: AISuggestion[]; spotSummary: st
 
 export const fetchUsers            = ()                    => api<User[]>('GET', '/users')
 export const fetchLocations        = ()                    => api<Location[]>('GET', '/locations')
+export const updateUserLanguage    = (userId: number, language: 'nl' | 'en') => api<User>('PATCH', `/users/${userId}/language`, { body: { language } })
 
 // ── Plants ──
 
