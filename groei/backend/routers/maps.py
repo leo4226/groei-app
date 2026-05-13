@@ -43,13 +43,14 @@ async def get_map(slug: str, account = Depends(get_current_account), db = Depend
 
 
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
-async def get_map_plants(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
+async def get_map_plants(slug: str, db = Depends(db_dep)):
     map_row = await db.execute_fetchall(
-        "SELECT id FROM maps WHERE slug = ?", (slug,)
+        "SELECT id, map_type FROM maps WHERE slug = ?", (slug,)
     )
     if not map_row:
         raise HTTPException(404, "Map not found")
     map_id = map_row[0]["id"]
+    map_type = map_row[0]["map_type"] or "outdoor"
 
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
@@ -63,19 +64,25 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
         (map_id,),
     )
     today = date.today().isoformat()
-    return await enrich_plants(db, plant_rows, today)
+    temp_data = await _get_temp_data()
+    rain_data = await _get_rain_data()
+    last_watered = await get_last_garden_watered()
+    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
 
 
 
 
 @router.get("/maps/{slug}/items", response_model=MapItemsOut)
-async def get_map_items(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
-    map_row = await db.execute_fetchall("SELECT id FROM maps WHERE slug = ?", (slug,))
+async def get_map_items(slug: str, db = Depends(db_dep)):
+    map_row = await db.execute_fetchall("SELECT id, map_type FROM maps WHERE slug = ?", (slug,))
     if not map_row:
         raise HTTPException(404, "Map not found")
     map_id = map_row[0]["id"]
+    map_type = map_row[0]["map_type"] or "outdoor"
     today = date.today().isoformat()
     temp_data = await _get_temp_data()
+    rain_data = await _get_rain_data()
+    last_watered = await get_last_garden_watered()
 
     # Free-standing + ground-zone plants (not inside a container)
     plant_rows = await db.execute_fetchall(
@@ -89,7 +96,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
              AND p.container_id IS NULL""",
         (map_id,),
     )
-    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data)
+    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
 
     # Objects on this map
     obj_rows = await db.execute_fetchall(
@@ -110,7 +117,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
                WHERE p.container_id = ? AND p.is_active = 1""",
             (obj["id"],),
         )
-        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data)
+        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
         for p in contained:
             p["map_x"] = p["map_x"] or 0
             p["map_y"] = p["map_y"] or 0

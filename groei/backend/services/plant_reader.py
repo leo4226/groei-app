@@ -2,6 +2,7 @@ import json
 from datetime import date
 
 from models import MostUrgent
+from services.alert_service import compute_top_alert
 
 
 def _compute_care_status(schedules, today):
@@ -116,7 +117,7 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
     return plant
 
 
-async def enrich_plants(db, plant_rows, today, temp_data=None):
+async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, last_watered=None, map_type="outdoor"):
     """Batch-enrich plant dicts. Single query for all schedules (fixes N+1)."""
     if not plant_rows:
         return []
@@ -124,7 +125,6 @@ async def enrich_plants(db, plant_rows, today, temp_data=None):
     plants = [dict(r) for r in plant_rows]
     plant_ids = [p["id"] for p in plants]
 
-    # Single batch query for all schedules
     placeholders = ",".join("?" for _ in plant_ids)
     sched_rows = await db.execute_fetchall(
         f"""SELECT cs.care_type, cs.next_due, cs.plant_id, u.name as last_done_by_name
@@ -135,7 +135,6 @@ async def enrich_plants(db, plant_rows, today, temp_data=None):
         plant_ids,
     )
 
-    # Group schedules by plant_id
     schedules_by_plant = {}
     for row in sched_rows:
         r = dict(row)
@@ -144,7 +143,6 @@ async def enrich_plants(db, plant_rows, today, temp_data=None):
             schedules_by_plant[pid] = []
         schedules_by_plant[pid].append(r)
 
-    # Enrich each plant
     for plant in plants:
         pid = plant["id"]
         schedules = schedules_by_plant.get(pid, [])
@@ -155,6 +153,15 @@ async def enrich_plants(db, plant_rows, today, temp_data=None):
             plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
         else:
             plant["temp_status"] = "comfortable"
+
+        plant["top_alert"] = compute_top_alert(
+            care_status=plant["care_status"],
+            care_thresholds_json=care_thresholds,
+            rain=rain_data,
+            temp=temp_data,
+            last_watered=last_watered,
+            map_type=map_type,
+        )
 
         phenology_json = plant.pop("phenology_json", None)
         plant["phenology"] = json.loads(phenology_json) if phenology_json else None
