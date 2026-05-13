@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useGroeiStore } from './store/useGroeiStore'
+import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
@@ -49,6 +50,7 @@ export default function App() {
   }
 
   return (
+    <LanguageProvider>
     <div className="flex flex-col min-h-dvh bg-bg">
       {error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
@@ -175,5 +177,6 @@ export default function App() {
         />
       )}
     </div>
+    </LanguageProvider>
   )
 }
