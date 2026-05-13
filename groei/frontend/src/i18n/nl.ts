@@ -65,6 +65,8 @@ export const nl: Translations = {
       humidity: 'Lucht',
       soil: 'Bodem',
       light: 'Licht',
+      rain: 'Regen',
+      tonight: 'Nacht',
       loading: 'Weer laden…',
     },
     comingSoon: 'Binnenkort',

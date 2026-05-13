@@ -65,6 +65,8 @@ export const en: Translations = {
       humidity: 'Air',
       soil: 'Soil',
       light: 'Light',
+      rain: 'Rain',
+      tonight: 'Tonight',
       loading: 'Loading weather…',
     },
     comingSoon: 'Coming soon',

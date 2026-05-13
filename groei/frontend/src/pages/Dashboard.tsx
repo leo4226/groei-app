@@ -107,7 +107,7 @@ export default function Dashboard() {
   const date = new Date().toLocaleDateString(t.locale, { weekday: 'long', day: 'numeric', month: 'long' })
 
   function leadCopy(overdue: number, due: number): string {
-    if (overdue > 0) return `${overdue} ${overdue === 1 ? 'plant' : 'planten'} ${t.dashboard.tasks.overdue.toLowerCase()}.`
+    if (overdue > 0) return `${overdue} ${overdue === 1 ? 'plant' : t.dashboard.status.collection.toLowerCase()} ${t.dashboard.tasks.overdue.toLowerCase()}.`
     if (due > 0) return t.dashboard.tasks.calm
     return t.dashboard.tasks.calm
   }
@@ -1142,7 +1142,7 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
           {weather ? (
             <><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.<br />
             <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)', fontWeight: 400 }}>
-              Nacht: {weather.tonightMin}°
+              {t.dashboard.weather.tonight}: {weather.tonightMin}°
             </span></>
           ) : t.dashboard.weather.loading}
         </div>
@@ -1155,7 +1155,7 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
               const rainOk = weather.todayRainMm >= need
               const cells = [
                 { v: `${weather.currentHumidity}%`, l: t.dashboard.weather.humidity, color: 'var(--color-text)' },
-                { v: `${weather.todayRainMm} / ~${need.toFixed(1)} mm`, l: 'Regen', color: rainOk ? RAIN_OK : RAIN_DRY },
+                { v: `${weather.todayRainMm} / ~${need.toFixed(1)} mm`, l: t.dashboard.weather.rain, color: rainOk ? RAIN_OK : RAIN_DRY },
                 { v: `${weather.windSpeedKmh} km/u`, l: 'Wind', color: 'var(--color-text)' },
               ]
               return cells.map((cell, i) => (

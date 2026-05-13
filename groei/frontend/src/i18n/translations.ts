@@ -63,6 +63,8 @@ export type Translations = {
       humidity: string
       soil: string
       light: string
+      rain: string
+      tonight: string
       loading: string
     }
     comingSoon: string
