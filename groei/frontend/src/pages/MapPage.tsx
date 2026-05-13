@@ -193,7 +193,7 @@ export default function MapPage() {
             title={water.gardenWater?.watered_at
               ? `Laatst bewaterd: ${new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bewatering'}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-600 rounded-full text-sm font-medium hover:bg-blue-500/25 transition-colors"
           >
             <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
             <span>Bewater</span>
@@ -204,7 +204,7 @@ export default function MapPage() {
             title={fertilize.fertilize?.fertilized_at
               ? `Laatst bemest: ${new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bemesting'}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-green/15 text-emerald-green rounded-full text-sm font-medium hover:bg-emerald-green/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-600 rounded-full text-sm font-medium hover:bg-emerald-500/25 transition-colors"
           >
             <span className="text-sm leading-none">🌿</span>
             <span>Bemest</span>
@@ -247,8 +247,8 @@ export default function MapPage() {
             onClick={sun.toggleInspectorMode}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               sun.inspectorMode
-                ? 'bg-emerald-green/30 text-emerald-green'
-                : 'bg-emerald-green/10 text-emerald-green/70 hover:bg-emerald-green/20'
+                ? 'bg-purple-500/30 text-purple-600'
+                : 'bg-purple-500/15 text-purple-500 hover:bg-purple-500/25'
             }`}
           >
             <span>Inspecteer</span>
