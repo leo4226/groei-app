@@ -1,7 +1,7 @@
 import json
 import os
 import time
-from datetime import date
+from datetime import date as _date, timedelta as _timedelta
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
@@ -19,6 +19,50 @@ router = APIRouter(tags=["plants"])
 PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 
 
+async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
+    """Create care_schedules for a plant from its threshold data. Idempotent — skips if schedule exists."""
+    try:
+        thresholds = json.loads(thresholds_json)
+    except (json.JSONDecodeError, TypeError):
+        return
+
+    water_interval = thresholds.get("water_interval_days")
+    fertilise_months = thresholds.get("fertilise_months") or []
+
+    if water_interval:
+        existing = await db.execute_fetchall(
+            "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'water' AND is_active = 1",
+            (plant_id,),
+        )
+        if not existing:
+            await db.execute(
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, date('now'))",
+                (plant_id, int(water_interval)),
+            )
+
+    if fertilise_months:
+        existing = await db.execute_fetchall(
+            "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'fertilize' AND is_active = 1",
+            (plant_id,),
+        )
+        if not existing:
+            today = _date.today()
+            current_month = today.month
+            sorted_months = sorted(fertilise_months)
+            next_month = next((m for m in sorted_months if m >= current_month), sorted_months[0])
+            if next_month >= current_month:
+                next_due = _date(today.year, next_month, 1)
+            else:
+                next_due = _date(today.year + 1, next_month, 1)
+            interval = max(30, 365 // len(fertilise_months))
+            await db.execute(
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'fertilize', ?, ?)",
+                (plant_id, interval, str(next_due)),
+            )
+
+    await db.commit()
+
+
 @router.get("/plants", response_model=list[PlantOut])
 async def list_plants(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall("""
@@ -30,7 +74,7 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
         WHERE p.is_active = 1 AND p.household_id = ?
         ORDER BY p.name
     """, (account["household_id"],))
-    today = date.today().isoformat()
+    today = _date.today().isoformat()
     plants = [dict(r) for r in rows]
 
     plant_ids = [p["id"] for p in plants]
@@ -78,7 +122,7 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    today = date.today().isoformat()
+    today = _date.today().isoformat()
     return await enrich_plant_full(db, dict(row), today)
 
 
@@ -138,13 +182,16 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
                 (cached, plant_id),
             )
             await db.commit()
+            await _seed_care_schedules(db, plant_id, cached)
         else:
             thresholds = await generate_thresholds(data.name, data.species)
+            thresholds_json = json.dumps(thresholds)
             await db.execute(
                 "UPDATE plants SET care_thresholds = ? WHERE id = ?",
-                (json.dumps(thresholds), plant_id),
+                (thresholds_json, plant_id),
             )
             await db.commit()
+            await _seed_care_schedules(db, plant_id, thresholds_json)
     except Exception as exc:
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
 
@@ -157,7 +204,7 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     # Build SET clause from non-None fields
     updates = {}
     for field, value in data.model_dump(exclude_unset=True).items():
-        if value is not None and isinstance(value, date):
+        if value is not None and isinstance(value, _date):
             updates[field] = str(value)
         else:
             updates[field] = value
