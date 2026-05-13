@@ -110,6 +110,19 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def override_auth():
+    """Inject a fake account (household_id=1) for all tests."""
+    from auth import get_current_account
+    from main import app
+
+    async def _fake_account():
+        return {"account_id": 1, "household_id": 1}
+
+    app.dependency_overrides[get_current_account] = _fake_account
+    yield
+
+
 # ── Tests ──
 
 def test_list_plants_empty(client):
@@ -248,4 +261,16 @@ def test_login_wrong_password_returns_401(client):
     resp = client.post("/api/auth/login", json={
         "email": "wrong@example.com", "password": "incorrect",
     })
+    assert resp.status_code == 401
+
+
+def test_plants_require_auth(client):
+    """GET /api/plants without token returns 401."""
+    from auth import get_current_account
+    from main import app
+    # Remove the auth override for this test
+    saved = app.dependency_overrides.pop(get_current_account, None)
+    resp = client.get("/api/plants")
+    if saved:
+        app.dependency_overrides[get_current_account] = saved
     assert resp.status_code == 401

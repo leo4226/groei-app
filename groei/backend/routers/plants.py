@@ -6,6 +6,7 @@ from datetime import date
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
 from database import db_dep
+from auth import get_current_account
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
@@ -19,16 +20,16 @@ PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 
 
 @router.get("/plants", response_model=list[PlantOut])
-async def list_plants(db = Depends(db_dep)):
+async def list_plants(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
                s.phenology_json
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id
-        WHERE p.is_active = 1
+        WHERE p.is_active = 1 AND p.household_id = ?
         ORDER BY p.name
-    """)
+    """, (account["household_id"],))
     today = date.today().isoformat()
     plants = [dict(r) for r in rows]
 
@@ -65,7 +66,7 @@ async def list_plants(db = Depends(db_dep)):
 
 
 @router.get("/plants/{plant_id}", response_model=PlantOut)
-async def get_plant(plant_id: int, db = Depends(db_dep)):
+async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
                s.phenology_json
@@ -82,14 +83,14 @@ async def get_plant(plant_id: int, db = Depends(db_dep)):
 
 
 @router.post("/plants", response_model=PlantOut)
-async def create_plant(data: PlantCreate, db = Depends(db_dep)):
+async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute(
-        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
          str(data.acquired_date) if data.acquired_date else None,
          data.pot_size_cm, data.notes,
-         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key),
+         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key, account["household_id"]),
     )
     plant_id = cursor.lastrowid
 
@@ -152,7 +153,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep)):
 
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)
-async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep)):
+async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
     # Build SET clause from non-None fields
     updates = {}
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -177,7 +178,7 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep)):
 
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
-async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep)):
+async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     row = await cursor.fetchone()
     if not row:
@@ -195,7 +196,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
 
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
-async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep)):
+async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     row = await cursor.fetchone()
     if not row:
@@ -214,7 +215,7 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
 
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
-async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep)):
+async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     row = await cursor.fetchone()
     if not row:
@@ -232,7 +233,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
 
 
 @router.post("/plants/{plant_id}/duplicate", response_model=PlantOut)
-async def duplicate_plant(plant_id: int, db = Depends(db_dep)):
+async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     """Duplicate a plant: copies name, species, type, watering schedules, notes, photo ref, display_radius_cm.
     Does NOT copy: position, container, care log."""
     cursor = await db.execute("""
@@ -248,11 +249,11 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep)):
 
     new_cursor = await db.execute(
         """INSERT INTO plants (name, species, species_id, location_id, photo_path, pot_size_cm, notes,
-           map_id, display_radius_cm, sun_requirement, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+           map_id, display_radius_cm, sun_requirement, is_active, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
         (src["name"], src["species"], src.get("species_id"), src["location_id"], src["photo_path"],
          src["pot_size_cm"], src["notes"], src["map_id"], src.get("display_radius_cm"),
-         src.get("sun_requirement")),
+         src.get("sun_requirement"), account["household_id"]),
     )
     new_id = new_cursor.lastrowid
 
@@ -275,7 +276,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep)):
 
 
 @router.patch("/plants/{plant_id}/lock")
-async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep)):
+async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -288,7 +289,7 @@ async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep)):
 
 
 @router.delete("/plants/{plant_id}")
-async def archive_plant(plant_id: int, db = Depends(db_dep)):
+async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     await db.execute(
         "UPDATE plants SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
@@ -298,7 +299,7 @@ async def archive_plant(plant_id: int, db = Depends(db_dep)):
 
 
 @router.patch("/plants/{plant_id}/restore")
-async def restore_plant(plant_id: int, db = Depends(db_dep)):
+async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     await db.execute(
         "UPDATE plants SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
@@ -308,7 +309,7 @@ async def restore_plant(plant_id: int, db = Depends(db_dep)):
 
 
 @router.post("/plants/{plant_id}/photo", response_model=PlantOut)
-async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends(db_dep)):
+async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends(db_dep), account = Depends(get_current_account)):
     # Verify plant exists
     cursor = await db.execute("SELECT id FROM plants WHERE id = ?", (plant_id,))
     if not await cursor.fetchone():
