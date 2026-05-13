@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { syncIcons } from '../api/client'
+import { clearToken } from '../api/auth'
 import type { IconSyncResult } from '../types'
 
 export default function Settings() {
   const { users, locations, activeUserId, setActiveUser } = useGroeiStore()
+  const navigate = useNavigate()
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -75,7 +78,7 @@ export default function Settings() {
           <button
             onClick={handleSyncIcons}
             disabled={syncing}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             {syncing ? (
               <>
@@ -88,7 +91,7 @@ export default function Settings() {
           </button>
 
           {syncError && (
-            <p className="text-sm text-red-500">{syncError}</p>
+            <p className="text-sm text-fiery-red">{syncError}</p>
           )}
 
           {syncResult && (
@@ -138,6 +141,15 @@ export default function Settings() {
             Plant care for Leon & Lisbeth 🌱
           </p>
         </div>
+      </section>
+
+      <section className="mt-8 mb-4">
+        <button
+          onClick={() => { clearToken(); navigate('/login') }}
+          className="w-full py-3 rounded-xl border border-red-400/30 text-red-400 font-semibold text-sm active:scale-[0.98] transition-transform"
+        >
+          Log uit
+        </button>
       </section>
     </div>
   )
