@@ -188,11 +188,7 @@ export default function MapPage() {
             }`}
           >
             <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
-            <span>
-              {water.gardenWater?.watered_at
-                ? new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
-                : 'Water'}
-            </span>
+            <span>Bewater</span>
           </button>
           {/* Garden fertilize — compact status badge, tap to log */}
           <button
@@ -203,11 +199,7 @@ export default function MapPage() {
             className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium bg-emerald-green/10 text-emerald-green hover:bg-emerald-green/20 transition-colors"
           >
             <span className="text-sm leading-none">🌿</span>
-            <span>
-              {fertilize.fertilize?.fertilized_at
-                ? new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
-                : 'Bemest'}
-            </span>
+            <span>Bemest</span>
           </button>
           <button
             onClick={() => setShowLabels(v => !v)}
