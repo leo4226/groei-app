@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
-import { aggregatePlantStatuses } from '../hooks/usePlantStatus'
-import { WaterStatusIcon, TempStatusIcon } from '../components/PlantStatusIcon'
+import { WaterStatusIcon } from '../components/PlantStatusIcon'
 import MapView from '../components/map/MapView'
 import MapLegend from '../components/map/MapLegend'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
@@ -246,10 +245,6 @@ export default function MapPage() {
       </div>
 
       {(() => {
-        const counts = aggregatePlantStatuses(plants)
-        const hasUrgent = counts.freezing > 0 || counts.heatstress > 0
-        const hasWarning = counts.chilling > 0
-
         const gardenWaterStatus = water.gardenWater?.status ?? 'dry'
         const wateredLabel = water.gardenWater?.watered_at
           ? new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
@@ -258,43 +253,9 @@ export default function MapPage() {
           ? `${water.gardenWater.rain_7day_mm}mm / ${water.gardenWater.weekly_budget_mm}mm deze week`
           : null
 
-        const statusChips: { key: string; label: string; count: number; urgent: boolean }[] = [
-          { key: 'freezing',   label: 'Vrieskou', count: counts.freezing,   urgent: true  },
-          { key: 'chilling',   label: 'Koud',     count: counts.chilling,   urgent: false },
-          { key: 'heatstress', label: 'Hitte',    count: counts.heatstress, urgent: true  },
-        ].filter(c => c.count > 0)
-
         return (
           <div className="mb-2 shrink-0">
             <div className="flex gap-2 items-stretch">
-              {statusChips.length > 0 ? (
-                <div
-                  className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-[10px] ${
-                    hasUrgent ? 'bg-fiery-red/10 border border-fiery-red/20' :
-                    hasWarning ? 'bg-pumpkin-swirl/10 border border-pumpkin-swirl/20' :
-                    'bg-surface border border-border'
-                  }`}
-                >
-                  {statusChips.map(chip => (
-                    <button
-                      key={chip.key}
-                      onClick={() => navigate('/plants?alerts=1')}
-                      className="flex items-center gap-1 shrink-0"
-                      title={chip.label}
-                    >
-                      <TempStatusIcon status={chip.key as 'chilling' | 'freezing' | 'heatstress'} size={18} />
-                      <span className={`text-xs font-bold ${chip.urgent ? 'text-fiery-red' : 'text-pumpkin-swirl'}`}>
-                        {chip.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border">
-                  <span className="text-xs font-medium text-good">Geen temperatuuralerts</span>
-                </div>
-              )}
-
               <button
                 onClick={water.openPicker}
                 className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold transition-colors ${

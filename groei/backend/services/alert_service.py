@@ -10,6 +10,12 @@ _SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 _MANUAL_WATER_DAYS = 3
 _INDOOR_SKIP = {"drought", "waterlog", "bring_inside"}
 
+# Tiebreaker: at the same severity, temperature alerts beat weather alerts beat schedule alerts
+_ALERT_TYPE_PRIORITY = {
+    "cold": 3, "heat": 3, "bring_inside": 3,
+    "drought": 2, "waterlog": 2,
+}
+
 
 def _fmt_date_nl(d: date) -> str:
     MONTHS = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"]
@@ -135,5 +141,5 @@ def compute_top_alert(
     if not alerts:
         return None
 
-    alerts.sort(key=lambda a: _SEVERITY_ORDER.get(a["severity"], 0), reverse=True)
+    alerts.sort(key=lambda a: (_SEVERITY_ORDER.get(a["severity"], 0), _ALERT_TYPE_PRIORITY.get(a["alert_type"], 0)), reverse=True)
     return alerts[0]
