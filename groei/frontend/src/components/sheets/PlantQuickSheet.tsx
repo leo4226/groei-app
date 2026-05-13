@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject, GroundZone, Phenology } from '../../types'
+import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { useGroeiStore } from '../../store/useGroeiStore'
-import { updatePlantContainer, updatePlantGroundZone, updatePlantLock } from '../../api/client'
-import { CARE_TYPE_INFO } from '../../types'
-import PlantCareInfo from '../PlantCareInfo'
+import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
+
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { getSunHoursAtPosition } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
-import { computeSuitability } from '../../utils/suitability'
+
 
 interface Props {
   plant: MapPlant
   objects: MapObject[]
-  groundZones?: GroundZone[]
+  soilGroundZones?: GroundZone[]
   heatmapCells?: HeatmapCell[]
   onClose: () => void
   onCareAction: () => void
@@ -22,133 +20,17 @@ interface Props {
   onRemove?: (plantId: number) => void
 }
 
-const MONTH_LABELS = ['J','F','M','A','M','J','J','A','S','O','N','D']
-const MONTH_NAMES_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
-const PHASE_COLORS: Record<string, string> = {
-  dormant:      '#94a3b8',
-  dying_back:   '#cbd5e1',
-  establishing: '#86efac',
-  growing:      '#22c55e',
-  flowering:    '#f472b6',
-  fruiting:     '#fb923c',
-  harvest:      '#eab308',
-  evergreen:    '#16a34a',
-  unknown:      '#e2e8f0',
-}
-
-function PlantingWindows({ phenology }: { phenology: Phenology }) {
-  const fmt = (months: number[]) => months.map(m => MONTH_NAMES_NL[m - 1]).join(', ')
-  if (!phenology.sow_window?.length && !phenology.transplant_window?.length && !phenology.harvest_window?.length) return null
-  return (
-    <div className="mt-2 grid grid-cols-3 gap-1 text-center">
-      {phenology.sow_window?.length > 0 && (
-        <div className="bg-green-50 rounded p-1">
-          <p className="text-[9px] font-medium text-green-700">Zaaien</p>
-          <p className="text-[9px] text-green-600">{fmt(phenology.sow_window)}</p>
-        </div>
-      )}
-      {phenology.transplant_window?.length > 0 && (
-        <div className="bg-blue-50 rounded p-1">
-          <p className="text-[9px] font-medium text-blue-700">Uitplanten</p>
-          <p className="text-[9px] text-blue-600">{fmt(phenology.transplant_window)}</p>
-        </div>
-      )}
-      {phenology.harvest_window?.length > 0 && (
-        <div className="bg-yellow-50 rounded p-1">
-          <p className="text-[9px] font-medium text-yellow-700">Oogst</p>
-          <p className="text-[9px] text-yellow-600">{fmt(phenology.harvest_window)}</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LifecycleBar({ phenology, sunHoursAtPos }: { phenology: Phenology; sunHoursAtPos: number | null }) {
-  const currentMonth = new Date().getMonth() + 1
-  const suitability = computeSuitability(phenology, sunHoursAtPos ?? 0, currentMonth)
-
-  return (
-    <div className="mt-4 bg-bg rounded-xl px-4 py-3">
-      <h3 className="text-xs font-semibold text-text-muted mb-2">Jaarkalender</h3>
-
-      {/* Month phase strips */}
-      <div className="flex gap-0.5 mb-1">
-        {MONTH_LABELS.map((label, i) => {
-          const month = i + 1
-          const monthData = phenology.months.find(m => m.month === month)
-          const phase = monthData?.phase ?? 'unknown'
-          const isCurrentMonth = month === currentMonth
-          return (
-            <div key={month} className="flex-1 flex flex-col items-center" title={monthData?.phase_label_nl ?? ''}>
-              <div
-                className={`w-full h-5 rounded-sm ${isCurrentMonth ? 'ring-2 ring-offset-1 ring-blue-500' : ''}`}
-                style={{ backgroundColor: PHASE_COLORS[phase] ?? PHASE_COLORS.unknown }}
-              />
-              <span className="text-[8px] text-text-muted mt-0.5">{label}</span>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Current month callout */}
-      <div className="mt-2 p-2 bg-surface rounded-lg border border-border">
-        <p className="text-xs font-medium text-text">
-          Nu ({MONTH_NAMES_NL[currentMonth - 1]}): {suitability.phaseLabel || '—'}
-        </p>
-        <p className="text-xs text-text-muted mt-0.5">{suitability.detailLabel}</p>
-        {suitability.actions.length > 0 && (
-          <ul className="mt-1 space-y-0.5">
-            {suitability.actions.map((action, i) => (
-              <li key={i} className="text-xs text-text-muted">→ {action}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Planting windows */}
-      <PlantingWindows phenology={phenology} />
-
-      {/* Interesting fact */}
-      {phenology.interesting_facts_nl && (
-        <p className="text-[10px] text-text-muted italic mt-2 border-t border-border pt-2">
-          💡 {phenology.interesting_facts_nl}
-        </p>
-      )}
-    </div>
-  )
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  overdue: 'Needs attention',
-  due_today: 'Due today',
-  good: 'All good',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  overdue: 'text-overdue',
-  due_today: 'text-due',
-  good: 'text-good',
-}
-
-export default function PlantQuickSheet({ plant, objects, groundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
+export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
   const navigate = useNavigate()
   const markCareDone = useGroeiStore((s) => s.markCareDone)
   const [locked, setLocked] = useState(plant.is_locked)
+  const [detail, setDetail] = useState<Plant | null>(null)
 
-  // Fallback sun hours: compute from position when heatmap isn't active
-  const [computedSunHours, setComputedSunHours] = useState<number | null>(null)
   useEffect(() => {
-    if (heatmapCells) return // will use heatmapCells directly
-    const container = plant.container_id ? objects.find(o => o.id === plant.container_id) : null
-    const px = container ? (container.map_x ?? plant.map_x) : plant.map_x
-    const py = container ? (container.map_y ?? plant.map_y) : plant.map_y
-    if (px == null || py == null) return
-    const month = new Date().getMonth() + 1
-    // Defer so the sheet renders immediately, then fills in the value
-    const handle = setTimeout(() => setComputedSunHours(getSunHoursAtPosition(px, py, month)), 0)
-    return () => clearTimeout(handle)
-  }, [plant.id, heatmapCells, objects, plant.container_id, plant.map_x, plant.map_y])
+    setDetail(null)
+    fetchPlant(plant.id).then(setDetail).catch(() => {})
+  }, [plant.id])
 
   const handleToggleLock = async () => {
     const next = !locked
@@ -175,7 +57,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     : null
 
   const groundZone = plant.ground_zone_id
-    ? groundZones.find(z => z.id === plant.ground_zone_id)
+    ? soilGroundZones.find(z => z.id === plant.ground_zone_id)
     : null
 
   const sunFitInfo = (() => {
@@ -185,16 +67,12 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
       : { x: plant.map_x, y: plant.map_y }
     if (pos.x == null || pos.y == null) return null
 
-    let sunHours: number | null = null
-    if (heatmapCells) {
-      const cell = heatmapCells.find(c =>
-        (pos.x as number) >= c.x && (pos.x as number) < c.x + c.w &&
-        (pos.y as number) >= c.y && (pos.y as number) < c.y + c.h
-      )
-      sunHours = cell?.sunHours ?? null
-    } else {
-      sunHours = computedSunHours
-    }
+    if (!heatmapCells) return null
+    const cell = heatmapCells.find(c =>
+      (pos.x as number) >= c.x && (pos.x as number) < c.x + c.w &&
+      (pos.y as number) >= c.y && (pos.y as number) < c.y + c.h
+    )
+    const sunHours = cell?.sunHours ?? null
 
     if (sunHours === null) return null // still computing
     const fit = getSunFit(plant.sun_requirement, sunHours)
@@ -211,9 +89,6 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     await updatePlantGroundZone(plant.id, null, plant.map_x, plant.map_y)
     onAction()
   }
-
-  const urgentInfo = plant.most_urgent
-  const careTypeInfo = urgentInfo ? CARE_TYPE_INFO[urgentInfo.care_type as keyof typeof CARE_TYPE_INFO] : null
 
   return (
     <>
@@ -253,9 +128,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
               {plant.species && (
                 <p className="text-sm text-text-muted italic">{plant.species}</p>
               )}
-              <p className={`text-sm font-medium mt-0.5 ${STATUS_COLORS[plant.care_status]}`}>
-                {STATUS_LABELS[plant.care_status]}
-              </p>
+
             </div>
             <div className="flex gap-1.5 shrink-0">
               {onDuplicate && (
@@ -297,17 +170,67 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
             </div>
           </div>
 
-          {/* Care info */}
-          {urgentInfo && (
-            <div className="bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
-              {careTypeInfo?.icon} Needs {careTypeInfo?.label.toLowerCase() ?? urgentInfo.care_type}
-              {urgentInfo.days_overdue > 0 && (
-                <span className="text-overdue font-medium"> — {urgentInfo.days_overdue} day{urgentInfo.days_overdue !== 1 ? 's' : ''} overdue</span>
-              )}
-              {urgentInfo.last_done_by && (
-                <span className="block mt-1">Last by {urgentInfo.last_done_by}</span>
-              )}
+          {/* Care schedules */}
+          {detail?.care_schedules && detail.care_schedules.length > 0 ? (
+            <div className="flex flex-col gap-2 mb-4">
+              {detail.care_schedules.map(sched => {
+                const nextDue = new Date(sched.next_due)
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const diffMs = nextDue.getTime() - today.getTime()
+                const daysUntil = Math.round(diffMs / 86400000)
+                const isOverdue = daysUntil < 0
+                const isDueToday = daysUntil === 0
+
+                const CARE_ICONS: Record<string, string> = {
+                  water: '💧', fertilize: '🌿', prune: '✂️', repot: '🪴',
+                }
+                const CARE_LABELS: Record<string, string> = {
+                  water: 'Gieten', fertilize: 'Bemesten', prune: 'Snoeien', repot: 'Verpotten',
+                }
+                const icon = CARE_ICONS[sched.care_type] ?? '📋'
+                const label = CARE_LABELS[sched.care_type] ?? sched.care_type
+
+                let statusText: string
+                let statusColor: string
+                if (isOverdue) {
+                  statusText = `${Math.abs(daysUntil)} dag${Math.abs(daysUntil) === 1 ? '' : 'en'} te laat`
+                  statusColor = 'var(--color-overdue)'
+                } else if (isDueToday) {
+                  statusText = 'vandaag'
+                  statusColor = 'var(--color-due)'
+                } else {
+                  statusText = `over ${daysUntil} dag${daysUntil === 1 ? '' : 'en'}`
+                  statusColor = 'var(--color-text-muted)'
+                }
+
+                return (
+                  <div
+                    key={sched.id}
+                    className="flex items-center gap-2.5 px-3 py-2 bg-bg rounded-xl border border-border-soft"
+                    style={{
+                      borderColor: isOverdue ? 'var(--color-overdue)' : undefined,
+                    }}
+                  >
+                    <span className="text-lg">{icon}</span>
+                    <span className="flex-1 text-text text-sm">
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs" style={{ color: statusColor }}>
+                      {statusText}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
+          ) : (
+            // Fallback: show most_urgent if detail not yet loaded
+            plant.most_urgent && (
+              <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
+                <span>💧</span>
+                <span>{plant.most_urgent.care_type} · {plant.most_urgent.days_overdue > 0 ? `${plant.most_urgent.days_overdue}d te laat` : 'vandaag'}</span>
+              </div>
+            )
           )}
 
           {/* Container info */}
