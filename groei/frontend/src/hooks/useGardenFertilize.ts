@@ -8,8 +8,7 @@ export interface UseGardenFertilizeReturn {
   showPicker: boolean
   pickerDate: string
   setPickerDate: (date: string) => void
-  openPicker: () => void
-  closePicker: () => void
+  togglePicker: () => void
   save: () => Promise<void>
   deleteLast: () => Promise<void>
 }
@@ -25,13 +24,13 @@ export function useGardenFertilize(): UseGardenFertilizeReturn {
       .then(data => setFertilize(data ?? null))
   }, [])
 
-  const openPicker = () => {
-    setPickerDate(fertilize?.fertilized_at ?? new Date().toISOString().slice(0, 10))
-    setShowPicker(true)
-  }
-
-  const closePicker = () => {
-    setShowPicker(false)
+  const togglePicker = () => {
+    if (showPicker) {
+      setShowPicker(false)
+    } else {
+      setPickerDate(fertilize?.fertilized_at ?? new Date().toISOString().slice(0, 10))
+      setShowPicker(true)
+    }
   }
 
   const save = async () => {
@@ -65,8 +64,7 @@ export function useGardenFertilize(): UseGardenFertilizeReturn {
     showPicker,
     pickerDate,
     setPickerDate,
-    openPicker,
-    closePicker,
+    togglePicker,
     save,
     deleteLast,
   }

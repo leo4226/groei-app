@@ -177,7 +177,7 @@ export default function MapPage() {
         <div className="flex items-center gap-2">
           {/* Garden water — compact status badge, tap to log */}
           <button
-            onClick={water.openPicker}
+            onClick={water.togglePicker}
             title={water.gardenWater?.watered_at
               ? `Laatst bewaterd: ${new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bewatering'}
@@ -192,7 +192,7 @@ export default function MapPage() {
           </button>
           {/* Garden fertilize — compact status badge, tap to log */}
           <button
-            onClick={fertilize.openPicker}
+            onClick={fertilize.togglePicker}
             title={fertilize.fertilize?.fertilized_at
               ? `Laatst bemest: ${new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bemesting'}
