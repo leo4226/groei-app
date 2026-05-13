@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
@@ -7,15 +7,8 @@ import type { WeatherData, WeatherIcon } from '../hooks/useWeather'
 import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
 import { HALO_COLORS } from '../hooks/usePlantStatus'
-
-const CARE_LABEL_NL: Record<string, string> = {
-  water: 'Water',
-  fertilize: 'Bemesten',
-  mist: 'Sproeien',
-  rotate: 'Draaien',
-  repot_check: 'Verpotten',
-  prune: 'Snoeien',
-}
+import { useT } from '../context/LanguageContext'
+import type { Translations } from '../i18n/translations'
 
 const PX_PER_M = 46
 
@@ -72,39 +65,31 @@ function PageDecor() {
   )
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 6) return 'Goedenacht'
-  if (hour < 12) return 'Goedemorgen'
-  if (hour < 18) return 'Goedemiddag'
-  return 'Goedenavond'
+
+const WEEKLY_BUDGET: Record<string, number> = {
+  winter: 5, spring: 18, summer: 25, autumn: 10,
+}
+function dailyWaterNeedMm(): number {
+  const m = new Date().getMonth() // 0=Jan
+  const season = m < 2 || m === 11 ? 'winter' : m < 5 ? 'spring' : m < 8 ? 'summer' : 'autumn'
+  return WEEKLY_BUDGET[season] / 7
 }
 
-function getDutchDate(): string {
-  return new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })
-}
-
-function leadCopy(overdue: number, due: number): string {
-  if (overdue > 0) {
-    return `${overdue} ${overdue === 1 ? 'plant vraagt' : 'planten vragen'} je aandacht vandaag.`
-  }
-  if (due > 0) {
-    return `Een paar taken op de planning voor vandaag.`
-  }
-  return `Een rustige dag in de tuin — binnen en buiten.`
-}
-
-function summaryLede(overdue: number, due: number, upcoming: number): string {
-  const parts: string[] = []
-  if (overdue > 0) parts.push(`${overdue} ${overdue === 1 ? 'taak' : 'taken'} te laat`)
-  if (due > 0) parts.push(`${due} vandaag`)
-  if (upcoming > 0) parts.push(`${upcoming} op komst`)
-  return parts.join(' · ')
-}
+const RAIN_OK = 'var(--color-primary)'   // green
+const RAIN_DRY = 'var(--color-overdue)'  // red
 
 export default function Dashboard() {
   const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading } = useGroeiStore()
   const activeUser = users.find((u) => u.id === activeUserId)
+  const t = useT()
+
+  const greeting = (() => {
+    const hour = new Date().getHours()
+    if (hour < 6) return t.dashboard.greeting.night
+    if (hour < 12) return t.dashboard.greeting.morning
+    if (hour < 18) return t.dashboard.greeting.afternoon
+    return t.dashboard.greeting.evening
+  })()
 
   const outdoorMap = maps.find((m) => m.map_type === 'outdoor')
   const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
@@ -119,6 +104,22 @@ export default function Dashboard() {
   const totalTasks = overdueCount + dueTodayCount + upcomingCount
   const nextCareTask = dashboardV2?.overdue[0] ?? dashboardV2?.due_today[0] ?? null
 
+  const date = new Date().toLocaleDateString(t.locale, { weekday: 'long', day: 'numeric', month: 'long' })
+
+  function leadCopy(overdue: number, due: number): string {
+    if (overdue > 0) return `${overdue} ${overdue === 1 ? 'plant' : 'planten'} ${t.dashboard.tasks.overdue.toLowerCase()}.`
+    if (due > 0) return t.dashboard.tasks.calm
+    return t.dashboard.tasks.calm
+  }
+
+  function summaryLede(overdue: number, due: number, upcoming: number): string {
+    const parts: string[] = []
+    if (overdue > 0) parts.push(`${overdue} ${t.dashboard.tasks.overdue.toLowerCase()}`)
+    if (due > 0) parts.push(`${due} ${t.dashboard.tasks.today.toLowerCase()}`)
+    if (upcoming > 0) parts.push(`${upcoming} ${t.dashboard.tasks.upcoming.toLowerCase()}`)
+    return parts.join(' · ')
+  }
+
   return (
     <div style={{ paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
       <PageDecor />
@@ -126,9 +127,10 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <DashboardHeader
-          greeting={getGreeting()}
+          t={t}
+          greeting={greeting}
           userName={activeUser?.name ?? '…'}
-          date={getDutchDate()}
+          date={date}
           lede={leadCopy(overdueCount, dueTodayCount)}
           weather={weather}
           nextCareTask={nextCareTask}
@@ -136,7 +138,7 @@ export default function Dashboard() {
 
         {/* ── Status Banner ── */}
         {dashboardV2 && (
-          <StatusBanner counts={dashboardV2.status_counts} />
+          <StatusBanner t={t} counts={dashboardV2.status_counts} />
         )}
 
         {/* ── Responsive grid: main + sidebar ── */}
@@ -152,14 +154,14 @@ export default function Dashboard() {
             {/* Mijn Tuinen */}
             <section style={{ padding: '0 24px' }}>
               <SectionHeader
-                leftLede={maps.length === 0 ? 'Nog geen tuinen' : maps.length === 1 ? 'Toon je tuin' : `Toon alle ${maps.length} tuinen`}
-                rightMarker="§ Mijn Tuinen"
-                rightAction={{ to: '/maps', label: 'Beheer →' }}
+                leftLede={maps.length === 0 ? t.dashboard.actions.addGarden : maps.length === 1 ? t.dashboard.actions.view : `${t.dashboard.actions.view} (${maps.length})`}
+                rightMarker={t.dashboard.sections.myGardens}
+                rightAction={{ to: '/maps', label: t.dashboard.actions.manage }}
               />
               {maps.length > 0 ? (
-                <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '0 24px 8px' }}>
-                  {maps.map((map) => <MapCard key={map.id} map={map} />)}
-                  <NewMapCard />
+                <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '4px 24px 16px' }}>
+                  {maps.map((map) => <MapCard key={map.id} map={map} t={t} />)}
+                  <NewMapCard t={t} />
                 </div>
               ) : (
                 <Link to="/maps" style={{
@@ -170,7 +172,7 @@ export default function Dashboard() {
                   textDecoration: 'none', marginBottom: 18,
                 }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>Voeg een tuin toe</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>{t.dashboard.actions.addGarden}</span>
                 </Link>
               )}
             </section>
@@ -179,12 +181,13 @@ export default function Dashboard() {
             <section style={{ padding: '0 24px' }}>
               <SectionHeader
                 leftLede={summaryLede(overdueCount, dueTodayCount, upcomingCount)}
-                rightMarker="§ Vandaag"
+                rightMarker={t.dashboard.sections.today}
               />
               {isLoading && <TaskSkeletons />}
-              {!isLoading && totalTasks === 0 && <CalmEmptyState />}
+              {!isLoading && totalTasks === 0 && <CalmEmptyState t={t} />}
               {!isLoading && dashboardV2 && totalTasks > 0 && (
                 <TodayGrid
+                  t={t}
                   overdue={dashboardV2.overdue}
                   dueToday={dashboardV2.due_today}
                 />
@@ -194,27 +197,29 @@ export default function Dashboard() {
             {/* Logboek */}
             {dashboardV2 && dashboardV2.recent_log.length > 0 && (
               <section style={{ padding: '0 24px' }}>
-                <SectionHeader leftLede="" rightMarker="§ Logboek" />
-                <LogboekSection entries={dashboardV2.recent_log} />
+                <SectionHeader leftLede="" rightMarker={t.dashboard.sections.logbook} />
+                <LogboekSection t={t} entries={dashboardV2.recent_log} />
               </section>
             )}
           </div>
 
           {/* SIDEBAR column */}
           <div className="dashboard-sidebar" style={{ padding: '0 24px' }}>
-            <WeatherCard weather={weather} />
+            <WeatherCard t={t} weather={weather} />
             {dashboardV2?.plant_fact && (
-              <CareTipCard fact={dashboardV2.plant_fact} />
+              <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
             <UnderConstructionCard
+              t={t}
               icon="🌿"
               title="Detectie"
-              description="Onkruid & ziektes herkennen — binnenkort beschikbaar."
+              description={`Onkruid & ziektes herkennen — ${t.dashboard.comingSoon.toLowerCase()} beschikbaar.`}
             />
             <UnderConstructionCard
+              t={t}
               icon="📷"
               title="Foto-identificatie"
-              description="Richt de camera op een plant — binnenkort beschikbaar."
+              description={`Richt de camera op een plant — ${t.dashboard.comingSoon.toLowerCase()} beschikbaar.`}
             />
           </div>
         </div>
@@ -241,8 +246,9 @@ export default function Dashboard() {
 // ── Helper components ──
 
 function DashboardHeader({
-  greeting, userName, date, lede, weather, nextCareTask,
+  t, greeting, userName, date, lede, weather, nextCareTask,
 }: {
+  t: Translations
   greeting: string
   userName: string
   date: string
@@ -250,12 +256,12 @@ function DashboardHeader({
   weather: WeatherData | null
   nextCareTask: CareTask | null
 }) {
-  const sunrise = weather ? new Date(weather.sunrise).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '—'
-  const sunset  = weather ? new Date(weather.sunset).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '—'
+  const sunrise = weather ? new Date(weather.sunrise).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' }) : '—'
+  const sunset  = weather ? new Date(weather.sunset).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' }) : '—'
   const temp    = weather ? `${weather.currentTemp}°C` : '—'
   const nextCare = nextCareTask
-    ? `${nextCareTask.plant_name}${nextCareTask.days_overdue > 0 ? ` · ${nextCareTask.days_overdue}d te laat` : ' · vandaag'}`
-    : 'Alles op schema'
+    ? `${nextCareTask.plant_name}${nextCareTask.days_overdue > 0 ? ` · ${t.dashboard.tasks.daysLate(nextCareTask.days_overdue)}` : ` · ${t.dashboard.tasks.today}`}`
+    : t.dashboard.almanac.onTrack
 
   return (
     <header style={{
@@ -307,10 +313,10 @@ function DashboardHeader({
           maxWidth: 440,
         }}>
           {[
-            { label: 'Zonsopkomst', value: sunrise },
-            { label: 'Zonsondergang', value: sunset },
-            { label: 'Buitentemperatuur', value: temp },
-            { label: 'Volgende verzorging', value: nextCare },
+            { label: t.dashboard.almanac.sunrise, value: sunrise },
+            { label: t.dashboard.almanac.sunset, value: sunset },
+            { label: t.dashboard.almanac.temp, value: temp },
+            { label: t.dashboard.almanac.nextCare, value: nextCare },
           ].map((row, i) => (
             <div key={row.label} style={{
               padding: '10px 14px',
@@ -340,12 +346,12 @@ function DashboardHeader({
   )
 }
 
-function StatusBanner({ counts }: { counts: { total: number; on_schedule: number; thirsty: number; dry: number } }) {
+function StatusBanner({ t, counts }: { t: Translations; counts: { total: number; on_schedule: number; thirsty: number; dry: number } }) {
   const cells = [
-    { label: 'Collectie', value: counts.total, color: 'var(--color-text)' },
-    { label: 'In schema', value: counts.on_schedule, color: 'var(--color-primary)' },
-    { label: 'Dorstig', value: counts.thirsty, color: counts.thirsty > 0 ? 'var(--color-due)' : 'var(--color-text-muted)' },
-    { label: 'Droog', value: counts.dry, color: counts.dry > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)' },
+    { label: t.dashboard.status.collection, value: counts.total, color: 'var(--color-text)' },
+    { label: t.dashboard.status.onSchedule, value: counts.on_schedule, color: 'var(--color-primary)' },
+    { label: t.dashboard.status.thirsty, value: counts.thirsty, color: counts.thirsty > 0 ? 'var(--color-due)' : 'var(--color-text-muted)' },
+    { label: t.dashboard.status.dry, value: counts.dry, color: counts.dry > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)' },
   ]
   return (
     <div style={{
@@ -353,7 +359,7 @@ function StatusBanner({ counts }: { counts: { total: number; on_schedule: number
       border: '1px solid var(--color-border)',
       borderLeft: 'none', borderRight: 'none',
       background: 'var(--color-surface)',
-      margin: '0 0 4px',
+      margin: '0 0 20px',
     }}>
       {cells.map((cell, i) => (
         <div key={cell.label} style={{
@@ -427,56 +433,62 @@ function SectionHeader({
   )
 }
 
-function MapCard({ map }: { map: MapInfo }) {
-  const typeLabel = map.map_type === 'outdoor' ? 'Buiten' : 'Binnen'
+function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
+  const typeLabel = map.map_type === 'outdoor' ? t.dashboard.actions.mapTypeOutdoor : t.dashboard.actions.mapTypeIndoor
   const dims = parseMapDimensions(map.viewbox)
   const subLine = dims ? `${typeLabel} · ${dims.w} m × ${dims.h} m` : typeLabel
   return (
-    <Link
-      to={`/map/${map.slug}`}
-      className="card card-glow"
+    <div
+      className="card"
       style={{
         flexShrink: 0,
-        width: 260,
+        width: 300,
         borderRadius: 14,
         overflow: 'hidden',
-        textDecoration: 'none',
-        color: 'inherit',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <div style={{
-        aspectRatio: '4 / 3',
-        background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
-        borderBottom: '1px solid var(--color-border-soft)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '14%',
-      }}>
-        <img
-          src={`/api/maps-static/${map.svg_file}`}
-          alt={map.name}
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-        />
-      </div>
-      <span style={{
-        position: 'absolute',
-        top: 8,
-        left: 8,
-        fontFamily: 'var(--font-mono)',
-        fontSize: 8,
-        textTransform: 'uppercase',
-        letterSpacing: '0.1em',
-        color: 'var(--color-text-muted)',
-        background: 'rgba(251,247,238,0.92)',
-        padding: '2px 7px',
-        borderRadius: 5,
-        border: '1px solid var(--color-border-soft)',
-      }}>
-        {typeLabel}
-      </span>
-      <div style={{ padding: '12px 14px 14px' }}>
+      {/* Thumbnail — click to view */}
+      <Link
+        to={`/map/${map.slug}`}
+        style={{ display: 'block', textDecoration: 'none', color: 'inherit', position: 'relative' }}
+      >
+        <div style={{
+          aspectRatio: '4 / 3',
+          background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '14%',
+        }}>
+          <img
+            src={`/api/maps-static/${map.svg_file}`}
+            alt={map.name}
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
+        </div>
+        <span style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 8,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: 'var(--color-text-muted)',
+          background: 'rgba(251,247,238,0.92)',
+          padding: '2px 7px',
+          borderRadius: 5,
+          border: '1px solid var(--color-border-soft)',
+        }}>
+          {typeLabel}
+        </span>
+      </Link>
+
+      {/* Name + dimensions */}
+      <div style={{ padding: '12px 14px 10px', borderTop: '1px solid var(--color-border-soft)' }}>
         <h3 style={{
           margin: 0,
           fontFamily: 'var(--font-heading)',
@@ -504,17 +516,71 @@ function MapCard({ map }: { map: MapInfo }) {
           {subLine}
         </p>
       </div>
-    </Link>
+
+      {/* Action bar */}
+      <div style={{
+        display: 'flex',
+        borderTop: '1px solid var(--color-border-soft)',
+        marginTop: 'auto',
+      }}>
+        <Link
+          to={`/map/${map.slug}`}
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            padding: '9px 0',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--color-primary)',
+            textDecoration: 'none',
+            borderRight: '1px solid var(--color-border-soft)',
+          }}
+        >
+          {t.dashboard.actions.view}
+        </Link>
+        <Link
+          to={`/maps/${map.id}/edit-layout`}
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            padding: '9px 0',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--color-text-soft)',
+            textDecoration: 'none',
+            borderRight: '1px solid var(--color-border-soft)',
+          }}
+        >
+          {t.dashboard.actions.edit}
+        </Link>
+        <Link
+          to={`/maps/${map.id}/settings`}
+          title="Instellingen"
+          style={{
+            padding: '9px 14px',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--color-text-soft)',
+            textDecoration: 'none',
+          }}
+        >
+          ⚙
+        </Link>
+      </div>
+    </div>
   )
 }
 
-function NewMapCard() {
+function NewMapCard({ t }: { t: Translations }) {
   return (
     <Link
       to="/maps"
       style={{
         flexShrink: 0,
-        width: 260,
+        width: 300,
         borderRadius: 14,
         border: '1px dashed var(--color-border)',
         background: 'var(--color-surface)',
@@ -528,7 +594,7 @@ function NewMapCard() {
       }}
     >
       <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>Nieuwe tuin</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>{t.dashboard.actions.newGarden}</span>
     </Link>
   )
 }
@@ -548,7 +614,7 @@ function TaskGroup({ label, tone, tasks }: { label: string; tone: 'overdue' | 'd
         <span style={{ opacity: 0.65, marginLeft: 6 }}>{tasks.length}</span>
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {tasks.map((t) => <TaskCard key={t.schedule_id} task={t} tone={tone} />)}
+        {tasks.map((task) => <TaskCard key={task.schedule_id} task={task} tone={tone} />)}
       </div>
     </div>
   )
@@ -556,7 +622,8 @@ function TaskGroup({ label, tone, tasks }: { label: string; tone: 'overdue' | 'd
 
 function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'upcoming' }) {
   const markCareDone = useGroeiStore((s) => s.markCareDone)
-  const careLabel = CARE_LABEL_NL[task.care_type] ?? CARE_TYPE_INFO[task.care_type as keyof typeof CARE_TYPE_INFO]?.label ?? task.care_type
+  const t = useT()
+  const careLabel = t.care[task.care_type as keyof typeof t.care] ?? CARE_TYPE_INFO[task.care_type as keyof typeof CARE_TYPE_INFO]?.label ?? task.care_type
 
   const accentColor =
     tone === 'overdue' ? 'var(--color-overdue)' :
@@ -643,7 +710,7 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
             fontSize: 12,
             color: 'var(--color-overdue)',
           }}>
-            {task.days_overdue} {task.days_overdue === 1 ? 'dag' : 'dagen'} te laat
+            {t.dashboard.tasks.daysLate(task.days_overdue)}
           </p>
         )}
         {tone === 'upcoming' && task.days_overdue < 0 && (
@@ -654,7 +721,7 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
             fontSize: 12,
             color: 'var(--color-text-muted)',
           }}>
-            over {-task.days_overdue} {-task.days_overdue === 1 ? 'dag' : 'dagen'}
+            {t.dashboard.tasks.inDays(-task.days_overdue)}
           </p>
         )}
       </Link>
@@ -679,7 +746,7 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)' }}
         >
-          Gedaan
+          {t.dashboard.actions.done}
         </button>
       )}
     </div>
@@ -703,7 +770,7 @@ function TaskSkeletons() {
   )
 }
 
-function CalmEmptyState() {
+function CalmEmptyState({ t }: { t: Translations }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 20px' }}>
       <p style={{
@@ -713,7 +780,7 @@ function CalmEmptyState() {
         color: 'var(--color-text-soft)',
         margin: '0 0 8px',
       }}>
-        Een rustige dag in de tuin.
+        {t.dashboard.tasks.calm}
       </p>
       <p style={{
         fontFamily: 'var(--font-mono)',
@@ -723,17 +790,106 @@ function CalmEmptyState() {
         color: 'var(--color-text-muted)',
         margin: 0,
       }}>
-        Geen taken op dit moment
+        {t.dashboard.tasks.noTasks}
       </p>
     </div>
   )
 }
 
-// Stubs — replaced in Tasks 7 and 8
-function TodayGrid({ overdue, dueToday }: { overdue: CareTask[]; dueToday: CareTask[] }) {
+function classifyTaskLocation(task: CareTask): 'buiten' | 'binnen' {
+  if (task.location === 'Tuin') return 'buiten'
+  if (task.location === 'Huis') return 'binnen'
+  if (task.map_type === 'outdoor') return 'buiten'
+  if (task.map_type === 'indoor') return 'binnen'
+  return 'buiten'
+}
+
+// Location group icons (labels are provided from t in TodayGrid)
+const LOCATION_ICON = {
+  buiten: '🌿',
+  binnen: '🏠',
+} as const
+
+function LocationGroup({
+  label,
+  icon,
+  tasks,
+  tone,
+  t,
+}: {
+  label: string
+  icon: string
+  tasks: CareTask[]
+  tone: 'overdue' | 'due' | 'upcoming'
+  t: Translations
+}) {
+  const [open, setOpen] = useState(tasks.length > 0)
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          width: '100%', padding: '8px 14px',
+          border: 'none', borderBottom: '1px solid var(--color-border-soft)',
+          background: 'var(--color-surface)',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 15, width: 22, textAlign: 'center' }}>{icon}</span>
+        <span style={{
+          fontFamily: 'var(--font-heading)',
+          fontStyle: 'italic',
+          fontSize: 13,
+          color: 'var(--color-text-soft)',
+          flex: 1,
+          textAlign: 'left',
+        }}>{label}</span>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: 'var(--color-text-muted)',
+        }}>{tasks.length}</span>
+        <span style={{
+          fontSize: 9,
+          color: 'var(--color-text-muted)',
+          transform: open ? 'rotate(90deg)' : 'none',
+          transition: 'transform 0.15s',
+        }}>▶</span>
+      </button>
+      {open && (
+        tasks.length === 0 ? (
+          <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+              fontSize: 12, color: 'var(--color-text-muted)',
+            }}>{t.dashboard.almanac.onTrack}</span>
+          </div>
+        ) : (
+          tasks.map(task => <TodayTaskRow key={task.schedule_id} task={task} t={t} />)
+        )
+      )}
+    </div>
+  )
+}
+
+function TodayGrid({ overdue, dueToday, t }: { overdue: CareTask[]; dueToday: CareTask[]; t: Translations }) {
   const allDue = [...overdue, ...dueToday]
-  const waterTasks = allDue.filter(t => t.care_type === 'water')
-  const attnTasks  = allDue.filter(t => t.care_type !== 'water')
+  const waterTasks = allDue.filter(task => task.care_type === 'water')
+  const attnTasks  = allDue.filter(task => task.care_type !== 'water')
+
+  function groupByLocation(tasks: CareTask[]) {
+    const buiten = tasks.filter(task => classifyTaskLocation(task) === 'buiten')
+    const binnen  = tasks.filter(task => classifyTaskLocation(task) === 'binnen')
+    return { buiten, binnen }
+  }
+
+  const waterGroups = groupByLocation(waterTasks)
+  const attnGroups  = groupByLocation(attnTasks)
 
   return (
     <div style={{
@@ -742,19 +898,27 @@ function TodayGrid({ overdue, dueToday }: { overdue: CareTask[]; dueToday: CareT
       overflow: 'hidden', marginBottom: 24,
     }}>
       {/* Column headers */}
-      <TodayColHead label="Water" count={waterTasks.length} pip="overdue" />
-      <TodayColHead label="Aandacht" count={attnTasks.length} pip="due" borderLeft />
+      <TodayColHead label={t.care.water} count={waterTasks.length} pip="overdue" />
+      <TodayColHead label={t.dashboard.tasks.attention} count={attnTasks.length} pip="due" borderLeft />
 
-      {/* Task rows */}
+      {/* Water column */}
       <div style={{ borderRight: '1px solid var(--color-border-soft)' }}>
-        {waterTasks.length === 0
-          ? <EmptyCol />
-          : waterTasks.map(t => <TodayTaskRow key={t.schedule_id} task={t} />)}
+        {waterTasks.length === 0 ? <EmptyCol t={t} /> : (
+          <>
+            <LocationGroup label={t.dashboard.actions.mapTypeOutdoor} icon={LOCATION_ICON.buiten} tasks={waterGroups.buiten} tone="due" t={t} />
+            <LocationGroup label={t.dashboard.actions.mapTypeIndoor} icon={LOCATION_ICON.binnen} tasks={waterGroups.binnen} tone="due" t={t} />
+          </>
+        )}
       </div>
+
+      {/* Aandacht column */}
       <div>
-        {attnTasks.length === 0
-          ? <EmptyCol />
-          : attnTasks.map(t => <TodayTaskRow key={t.schedule_id} task={t} />)}
+        {attnTasks.length === 0 ? <EmptyCol t={t} /> : (
+          <>
+            <LocationGroup label={t.dashboard.actions.mapTypeOutdoor} icon={LOCATION_ICON.buiten} tasks={attnGroups.buiten} tone="due" t={t} />
+            <LocationGroup label={t.dashboard.actions.mapTypeIndoor} icon={LOCATION_ICON.binnen} tasks={attnGroups.binnen} tone="due" t={t} />
+          </>
+        )}
       </div>
     </div>
   )
@@ -785,20 +949,20 @@ function TodayColHead({ label, count, pip, borderLeft }: { label: string; count:
   )
 }
 
-function EmptyCol() {
+function EmptyCol({ t }: { t: Translations }) {
   return (
     <div style={{ padding: '20px 16px', textAlign: 'center' }}>
       <span style={{
         fontFamily: 'var(--font-heading)', fontStyle: 'italic',
         fontSize: 13, color: 'var(--color-text-muted)',
-      }}>Niets — alles op schema.</span>
+      }}>{t.dashboard.almanac.onTrack}</span>
     </div>
   )
 }
 
-function TodayTaskRow({ task }: { task: CareTask }) {
+function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
   const markCareDone = useGroeiStore(s => s.markCareDone)
-  const careLabel = CARE_LABEL_NL[task.care_type] ?? task.care_type
+  const careLabel = t.care[task.care_type as keyof typeof t.care] ?? task.care_type
   const isOverdue = task.days_overdue > 0
 
   const taskHaloColor: string | null =
@@ -843,12 +1007,12 @@ function TodayTaskRow({ task }: { task: CareTask }) {
         </p>
         {isOverdue && (
           <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-overdue)' }}>
-            {task.days_overdue}d te laat
+            {t.dashboard.tasks.daysLate(task.days_overdue)}
           </p>
         )}
         {!isOverdue && (
           <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-due)' }}>
-            Vandaag
+            {t.dashboard.tasks.today}
           </p>
         )}
       </Link>
@@ -864,27 +1028,28 @@ function TodayTaskRow({ task }: { task: CareTask }) {
         }}
         onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)' }}
-      >Gedaan</button>
+      >{t.dashboard.actions.done}</button>
     </div>
   )
 }
-const LOG_TAG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  water:       { label: 'water',      color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
-  fertilize:   { label: 'bemesten',   color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
-  repot_check: { label: 'verpotten',  color: 'var(--color-text-soft)', bg: 'rgba(74,90,71,.06)',  border: 'var(--color-border)' },
-  prune:       { label: 'snoeien',    color: 'var(--color-text-soft)', bg: 'rgba(74,90,71,.06)',  border: 'var(--color-border)' },
-  mist:        { label: 'sproeien',   color: 'var(--color-primary)',  bg: 'rgba(47,93,58,.08)',   border: 'rgba(47,93,58,.2)' },
-  rotate:      { label: 'draaien',    color: 'var(--color-text-muted)', bg: 'rgba(138,148,130,.08)', border: 'var(--color-border-soft)' },
+
+const LOG_TAG: Record<string, { color: string; bg: string; border: string }> = {
+  water:       { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
+  fertilize:   { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
+  repot_check: { color: 'var(--color-text-soft)',  bg: 'rgba(74,90,71,.06)',      border: 'var(--color-border)' },
+  prune:       { color: 'var(--color-text-soft)',  bg: 'rgba(74,90,71,.06)',      border: 'var(--color-border)' },
+  mist:        { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
+  rotate:      { color: 'var(--color-text-muted)', bg: 'rgba(138,148,130,.08)',  border: 'var(--color-border-soft)' },
 }
 
-function LogboekSection({ entries }: { entries: RecentLogEntry[] }) {
+function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translations }) {
   return (
     <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24 }}>
       {entries.map((entry, i) => {
         const tag = LOG_TAG[entry.care_type] ?? LOG_TAG.water
-        const dateStr = new Date(entry.done_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })
-        const timeStr = new Date(entry.done_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-        const actionLabel = CARE_LABEL_NL[entry.care_type] ?? entry.care_type
+        const dateStr = new Date(entry.done_at).toLocaleDateString(t.locale, { day: 'numeric', month: 'long' })
+        const timeStr = new Date(entry.done_at).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })
+        const actionLabel = t.care[entry.care_type as keyof typeof t.care] ?? entry.care_type
 
         return (
           <div key={entry.id} style={{
@@ -925,7 +1090,7 @@ function LogboekSection({ entries }: { entries: RecentLogEntry[] }) {
               letterSpacing: '0.15em', color: tag.color, background: tag.bg,
               padding: '3px 8px', borderRadius: 99, border: `1px solid ${tag.border}`,
               whiteSpace: 'nowrap', flexShrink: 0,
-            }}>{tag.label}</span>
+            }}>{actionLabel}</span>
           </div>
         )
       })}
@@ -934,7 +1099,7 @@ function LogboekSection({ entries }: { entries: RecentLogEntry[] }) {
         display: 'flex', justifyContent: 'flex-end',
       }}>
         <Link to="/plants" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-primary)', textDecoration: 'none' }}>
-          Volledig logboek →
+          {t.dashboard.actions.fullLog}
         </Link>
       </div>
     </div>
@@ -968,45 +1133,55 @@ function WeatherIcon({ icon, size = 22 }: { icon: WeatherIcon; size?: number }) 
   )
 }
 
-function WeatherCard({ weather }: { weather: WeatherData | null }) {
-  const DAYS_NL = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za']
+function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translations }) {
   return (
     <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
       <div style={{ padding: '16px 18px 6px' }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>§ Weer &amp; sensoren</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.weather}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
           {weather ? (
-            <><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.</>
-          ) : 'Weer laden…'}
+            <><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.<br />
+            <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)', fontWeight: 400 }}>
+              Nacht: {weather.tonightMin}°
+            </span></>
+          ) : t.dashboard.weather.loading}
         </div>
       </div>
       {weather && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--color-border-soft)', borderBottom: '1px solid var(--color-border-soft)' }}>
-            {[
-              { v: `${weather.currentHumidity}%`, l: 'Lucht' },
-              { v: '—', l: 'Bodem' },
-              { v: '—', l: 'Licht' },
-            ].map((cell, i) => (
+            {(() => {
+              const need = dailyWaterNeedMm()
+              const rainOk = weather.todayRainMm >= need
+              const cells = [
+                { v: `${weather.currentHumidity}%`, l: t.dashboard.weather.humidity, color: 'var(--color-text)' },
+                { v: `${weather.todayRainMm} / ~${need.toFixed(1)} mm`, l: 'Regen', color: rainOk ? RAIN_OK : RAIN_DRY },
+                { v: `${weather.windSpeedKmh} km/u`, l: 'Wind', color: 'var(--color-text)' },
+              ]
+              return cells.map((cell, i) => (
               <div key={i} style={{ padding: '10px 0', textAlign: 'center', borderRight: i < 2 ? '1px solid var(--color-border-soft)' : 'none' }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, color: 'var(--color-text)', display: 'block' }}>{cell.v}</span>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, color: cell.color, display: 'block' }}>{cell.v}</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)' }}>{cell.l}</span>
               </div>
-            ))}
+            ))})()}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '12px 8px 14px' }}>
             {weather.forecast.map((day, i) => {
               const d = new Date(day.date)
+              const dayLabel = d.toLocaleDateString(t.locale, { weekday: 'short' }).slice(0, 2).toLowerCase()
               return (
                 <div key={day.date} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.12em', color: i === 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)', marginBottom: 4 }}>
-                    {DAYS_NL[d.getDay()]}
+                    {dayLabel}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 3 }}>
                     <WeatherIcon icon={day.icon} size={18} />
                   </div>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: i === 0 ? 'var(--color-overdue)' : 'var(--color-text)', fontWeight: i === 0 ? 500 : 400 }}>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: i === 0 ? 'var(--color-overdue)' : 'var(--color-text)', fontWeight: i === 0 ? 500 : 400, lineHeight: 1.1 }}>
                     {day.maxTemp}°
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 400, lineHeight: 1.1 }}>
+                    {day.minTemp}°
                   </div>
                 </div>
               )
@@ -1018,11 +1193,11 @@ function WeatherCard({ weather }: { weather: WeatherData | null }) {
   )
 }
 
-function CareTipCard({ fact }: { fact: PlantFactOut }) {
+function CareTipCard({ fact, t }: { fact: PlantFactOut; t: Translations }) {
   return (
     <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
       <div style={{ padding: '16px 18px 6px' }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>§ Wist je dat</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.didYouKnow}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
           <em style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--color-primary)' }}>{fact.plant_name}</em>.
         </div>
@@ -1054,7 +1229,7 @@ function CareTipCard({ fact }: { fact: PlantFactOut }) {
   )
 }
 
-function UnderConstructionCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function UnderConstructionCard({ icon, title, description, t }: { icon: string; title: string; description: string; t: Translations }) {
   return (
     <div style={{
       borderRadius: 14, overflow: 'hidden', marginBottom: 18,
@@ -1063,7 +1238,7 @@ function UnderConstructionCard({ icon, title, description }: { icon: string; tit
       padding: '18px 18px',
     }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
-        🚧 Binnenkort
+        🚧 {t.dashboard.comingSoon}
       </div>
       <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
         {icon} {title}
