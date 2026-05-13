@@ -743,3 +743,86 @@ async def delete_latest_garden_watering(db = Depends(db_dep)):
         await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
         await db.commit()
     return {"ok": True}
+
+
+# ── Garden fertilize log ──────────────────────────────────────────────────────
+
+
+async def get_last_garden_fertilized() -> date | None:
+    """Return the most recent garden fertilize date, or None."""
+    async with get_db() as db:
+        rows = await db.execute_fetchall(
+            "SELECT id, fertilized_at FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
+        )
+    if not rows:
+        return None
+    return date.fromisoformat(rows[0]["fertilized_at"])
+
+
+class FertilizeLogCreate(BaseModel):
+    fertilized_by: int | None = None
+    fertilized_at: date | None = None
+
+
+@router.post("/garden/fertilize-log")
+async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep)):
+    """Log a garden-wide fertilize and mark all active fertilize schedules as done."""
+    fertilized_at = (body.fertilized_at or date.today()).isoformat()
+
+    # Log the garden fertilize event
+    await db.execute("DELETE FROM garden_fertilize_log")
+    await db.execute(
+        "INSERT INTO garden_fertilize_log (fertilized_at, fertilized_by) VALUES (?, ?)",
+        (fertilized_at, body.fertilized_by),
+    )
+
+    # Mark all active fertilize schedules as done
+    from services.scheduling import calculate_next_due
+    schedules = await db.execute_fetchall(
+        """SELECT cs.id, cs.interval_days, cs.season_adjust
+           FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1"""
+    )
+    today_str = date.today().isoformat()
+    updated = 0
+    for s in schedules:
+        next_due = calculate_next_due(
+            date.today(), s["interval_days"], s["season_adjust"]
+        )
+        await db.execute(
+            "UPDATE care_schedules SET last_done = ?, next_due = ? WHERE id = ?",
+            (today_str, str(next_due), s["id"]),
+        )
+        updated += 1
+
+    await db.commit()
+    return {"fertilized_at": fertilized_at, "schedules_updated": updated}
+
+
+@router.get("/garden/fertilize-status")
+async def get_garden_fertilize_status():
+    """Return garden-wide fertilize status and count of pending schedules."""
+    last = await get_last_garden_fertilized()
+    async with get_db() as db:
+        pending = await db.execute_fetchall(
+            """SELECT COUNT(*) as cnt FROM care_schedules cs
+               JOIN plants p ON cs.plant_id = p.id
+               WHERE cs.care_type = 'fertilize' AND cs.is_active = 1
+               AND p.is_active = 1 AND cs.next_due <= date('now')"""
+        )
+    return {
+        "fertilized_at": last.isoformat() if last else None,
+        "pending_count": pending[0]["cnt"] if pending else 0,
+    }
+
+
+@router.delete("/garden/fertilize-log/latest")
+async def delete_latest_garden_fertilizing(db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
+    )
+    if rows:
+        await db.execute("DELETE FROM garden_fertilize_log WHERE id = ?", (rows[0]["id"],))
+        await db.commit()
+    return {"ok": True}

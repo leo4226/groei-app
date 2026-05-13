@@ -16,6 +16,7 @@ import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
 import { useMapData } from '../hooks/useMapData'
 import { useGardenWater } from '../hooks/useGardenWater'
+import { useGardenFertilize } from '../hooks/useGardenFertilize'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
@@ -29,6 +30,7 @@ export default function MapPage() {
 
   const mapData = useMapData(slug)
   const water = useGardenWater()
+  const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
 
   const { map, plants, objects, loading } = mapData
@@ -192,6 +194,21 @@ export default function MapPage() {
                 : 'Water'}
             </span>
           </button>
+          {/* Garden fertilize — compact status badge, tap to log */}
+          <button
+            onClick={fertilize.openPicker}
+            title={fertilize.fertilize?.fertilized_at
+              ? `Laatst bemest: ${new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL')}`
+              : 'Registreer tuin bemesting'}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium bg-emerald-green/10 text-emerald-green hover:bg-emerald-green/20 transition-colors"
+          >
+            <span className="text-sm leading-none">🌿</span>
+            <span>
+              {fertilize.fertilize?.fertilized_at
+                ? new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+                : 'Bemest'}
+            </span>
+          </button>
           <button
             onClick={() => setShowLabels(v => !v)}
             title={showLabels ? 'Verberg namen' : 'Toon namen'}
@@ -283,6 +300,35 @@ export default function MapPage() {
             <button
               onClick={water.deleteLast}
               disabled={water.watering}
+              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
+            >
+              Wis
+            </button>
+          )}
+        </div>
+      )}
+
+      {fertilize.showPicker && (
+        <div className="mb-2 p-3 bg-surface rounded-xl border border-border flex items-center gap-2 shrink-0">
+          <span className="text-sm shrink-0">🌿</span>
+          <input
+            type="date"
+            value={fertilize.pickerDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => fertilize.setPickerDate(e.target.value)}
+            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
+          />
+          <button
+            onClick={async () => { await fertilize.save(); }}
+            disabled={fertilize.fertilizing || !fertilize.pickerDate}
+            className="px-3 py-1.5 bg-emerald-green text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          >
+            {fertilize.fertilizing ? '…' : 'Opslaan'}
+          </button>
+          {fertilize.fertilize?.fertilized_at && (
+            <button
+              onClick={fertilize.deleteLast}
+              disabled={fertilize.fertilizing}
               className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
             >
               Wis

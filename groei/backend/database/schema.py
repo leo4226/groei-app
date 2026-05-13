@@ -129,6 +129,13 @@ async def apply(db):
             created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS garden_fertilize_log (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            fertilized_at DATE NOT NULL,
+            fertilized_by INTEGER REFERENCES users(id),
+            created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS plant_care_cache (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             scientific_name TEXT UNIQUE NOT NULL,

@@ -135,6 +135,14 @@ export const fetchGardenWaterStatus     = ()               => api<GardenWaterSta
 export const logGardenWatering          = (wateredAt?: string, userId?: number) => api<{ watered_at: string }>('POST', '/garden/water-log', { body: { watered_at: wateredAt ?? null, watered_by: userId ?? null } }).then(d => d.watered_at)
 export const deleteLatestGardenWatering = ()               => api<void>('DELETE', '/garden/water-log/latest')
 
+export interface GardenFertilizeStatus {
+  fertilized_at: string | null
+  pending_count: number
+}
+export const fetchGardenFertilizeStatus     = ()               => api<GardenFertilizeStatus>('GET', '/garden/fertilize-status')
+export const logGardenFertilizing           = (fertilizedAt?: string, userId?: number) => api<{ fertilized_at: string; schedules_updated: number }>('POST', '/garden/fertilize-log', { body: { fertilized_at: fertilizedAt ?? null, fertilized_by: userId ?? null } })
+export const deleteLatestGardenFertilizing  = ()               => api<void>('DELETE', '/garden/fertilize-log/latest')
+
 // ── Alerts ──
 
 export const fetchAlertSummary     = ()                    => api<AlertSummary>('GET', '/alerts/summary')
