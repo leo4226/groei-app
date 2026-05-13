@@ -173,30 +173,38 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
-        <h1 className="text-xl font-bold text-text">{map.name}</h1>
         <div className="flex items-center gap-2">
-          {/* Garden water — compact status badge, tap to log */}
+          <h1 className="text-xl font-bold text-text">{map.name}</h1>
+          <button
+            onClick={() => navigate(`/maps/${map.id}/settings`)}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
+            title="Kaart instellingen"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {/* Bewater */}
           <button
             onClick={water.togglePicker}
             title={water.gardenWater?.watered_at
               ? `Laatst bewaterd: ${new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bewatering'}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              (water.gardenWater?.status ?? 'dry') === 'hydrated' ? 'bg-emerald-green/15 text-emerald-green' :
-              (water.gardenWater?.status ?? 'dry') === 'thirsty'  ? 'bg-pumpkin-swirl/15 text-pumpkin-swirl' :
-              'bg-fiery-red/10 text-fiery-red hover:bg-fiery-red/15'
-            }`}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
           >
             <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
             <span>Bewater</span>
           </button>
-          {/* Garden fertilize — compact status badge, tap to log */}
+          {/* Bemest */}
           <button
             onClick={fertilize.togglePicker}
             title={fertilize.fertilize?.fertilized_at
               ? `Laatst bemest: ${new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL')}`
               : 'Registreer tuin bemesting'}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-medium bg-emerald-green/10 text-emerald-green hover:bg-emerald-green/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-green/15 text-emerald-green rounded-full text-sm font-medium hover:bg-emerald-green/20 transition-colors"
           >
             <span className="text-sm leading-none">🌿</span>
             <span>Bemest</span>
@@ -221,8 +229,8 @@ export default function MapPage() {
               onClick={sun.toggle}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 sun.active
-                  ? 'bg-pumpkin-swirl/30 text-pumpkin-swirl'
-                  : 'bg-pumpkin-swirl/15 text-pumpkin-swirl hover:bg-pumpkin-swirl/25'
+                  ? 'bg-amber-400/30 text-amber-700'
+                  : 'bg-amber-400/15 text-amber-600 hover:bg-amber-400/25'
               }`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -244,16 +252,6 @@ export default function MapPage() {
             }`}
           >
             <span>Inspecteer</span>
-          </button>
-          <button
-            onClick={() => navigate(`/maps/${map.id}/settings`)}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
-            title="Kaart instellingen"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
           </button>
           <button
             onClick={() => setShowPotPicker(true)}
