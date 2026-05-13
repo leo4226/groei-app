@@ -473,3 +473,32 @@ class WeedSightingOut(BaseModel):
     notes: str | None = None
     sighted_at: str
     created_at: str | None = None
+
+
+# --- Auth ---
+
+class RegisterInput(BaseModel):
+    email: str
+    password: str
+    name: str
+    household_name: str = ""
+
+
+class LoginInput(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    account_id: int
+    household_id: int
+    name: str
+
+
+class AccountOut(BaseModel):
+    id: int
+    household_id: int
+    email: str
+    name: str
+    avatar: str | None = None

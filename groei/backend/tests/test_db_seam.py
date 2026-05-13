@@ -24,16 +24,30 @@ def _db_cache():
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 sun_requirement TEXT, plant_type TEXT, icon_key TEXT,
                 species_id INTEGER, container_id INTEGER, ground_zone_id TEXT,
-                display_radius_cm INTEGER, care_thresholds TEXT
+                display_radius_cm INTEGER, care_thresholds TEXT, household_id INTEGER
             );
-            CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0);
+            CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0, household_id INTEGER);
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, next_due TEXT, is_active INTEGER DEFAULT 1,
                 last_done_by INTEGER, last_done TEXT, notes TEXT,
                 season_adjust TEXT, created_at TEXT
             );
-            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT);
+            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER);
+            CREATE TABLE households (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                household_id INTEGER NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                avatar TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE plant_species (
                 id INTEGER PRIMARY KEY, slug TEXT UNIQUE, common_name_nl TEXT,
                 common_name_en TEXT, latin_name TEXT, phenology_json TEXT,
@@ -46,7 +60,7 @@ def _db_cache():
                 svg_file TEXT, viewbox TEXT, scale_info TEXT,
                 sort_order INTEGER DEFAULT 0, canvas_data TEXT,
                 map_type TEXT DEFAULT 'outdoor', lat REAL, lon REAL, bearing REAL DEFAULT 0,
-                created_at TEXT
+                created_at TEXT, household_id INTEGER
             );
             CREATE TABLE objects (
                 id INTEGER PRIMARY KEY, name TEXT, object_type TEXT,
@@ -183,3 +197,55 @@ def test_create_and_decode_token():
     payload = decode_token(token)
     assert payload["account_id"] == 1
     assert payload["household_id"] == 7
+
+
+# -- Auth endpoints --
+
+def test_register_creates_account_and_household(client):
+    resp = client.post("/api/auth/register", json={
+        "email": "test@example.com",
+        "password": "password123",
+        "name": "Test User",
+        "household_name": "Test Garden",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "token" in data
+    assert data["name"] == "Test User"
+    assert data["account_id"] >= 1
+    assert data["household_id"] >= 1
+
+
+def test_register_duplicate_email_returns_409(client):
+    client.post("/api/auth/register", json={
+        "email": "dup@example.com", "password": "password123",
+        "name": "A", "household_name": "AH",
+    })
+    resp = client.post("/api/auth/register", json={
+        "email": "dup@example.com", "password": "other123",
+        "name": "B", "household_name": "BH",
+    })
+    assert resp.status_code == 409
+
+
+def test_login_returns_token(client):
+    client.post("/api/auth/register", json={
+        "email": "login@example.com", "password": "password123",
+        "name": "Login User", "household_name": "Login Garden",
+    })
+    resp = client.post("/api/auth/login", json={
+        "email": "login@example.com", "password": "password123",
+    })
+    assert resp.status_code == 200
+    assert "token" in resp.json()
+
+
+def test_login_wrong_password_returns_401(client):
+    client.post("/api/auth/register", json={
+        "email": "wrong@example.com", "password": "correct123",
+        "name": "W", "household_name": "WH",
+    })
+    resp = client.post("/api/auth/login", json={
+        "email": "wrong@example.com", "password": "incorrect",
+    })
+    assert resp.status_code == 401
