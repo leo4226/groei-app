@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { PLANT_ICONS } from '../constants/plantIcons'
-import { CATEGORY_LABELS, PLANT_TYPE_LABELS, FORM_LABELS } from '../constants/plantLabels'
+import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/plantLabels'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
 import { getHaloStatus, HALO_COLORS } from '../hooks/usePlantStatus'
@@ -29,6 +29,9 @@ const TYPE_BG: Record<string, string> = {
 }
 
 export default function Plants() {
+  const CATEGORY_LABELS = useCategoryLabels()
+  const PLANT_TYPE_LABELS = useTypeLabels()
+  const FORM_LABELS = useFormLabels()
   const { plants, isLoading, setShowPlantPicker } = useGroeiStore()
   const [filterArea, setFilterArea] = useState<'all' | 'tuin' | 'huis'>('all')
   const [filterType, setFilterType] = useState<string>('all')
@@ -613,6 +616,7 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
 }
 
 function PlantCard({ plant, iconMap, index }: { plant: Plant; iconMap: Map<string, PlantIcon>; index: number }) {
+  const CATEGORY_LABELS = useCategoryLabels()
   const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
   const typeLabel = icon?.cat || plant.plant_type || null
   const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null

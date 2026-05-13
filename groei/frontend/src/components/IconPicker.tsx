@@ -1,36 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import type { PlantIcon } from '../types'
 import { fetchIconCatalog } from '../api/client'
+import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
 
 interface Props {
   value: string | null
   onChange: (iconKey: string | null) => void
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  houseplant: '🪴 Kamerplant',
-  fern: '🌿 Varen',
-  succulent: '🌵 Vetplant',
-  flower: '🌸 Bloem',
-  bulb: '🧅 Bol',
-  herb: '🌱 Kruid',
-  shrub: '🌳 Struik',
-  tree: '🌲 Boom',
-  edible: '🥕 Eetbaar',
-  grass: '🎋 Gras',
-  bamboo: '🎍 Bamboe',
-  cactus: '🌵 Cactus',
-  unknown: '❓ Overig',
-}
-
-const FORM_LABELS: Record<string, string> = {
-  all: 'Alle',
-  potted: '🪴 In pot',
-  bare: '🌿 Zonder pot',
-  other: '🌸 Overig',
-}
-
 export default function IconPicker({ value, onChange }: Props) {
+  const CATEGORY_LABELS = useCategoryLabels()
+  const FORM_LABELS = useFormLabels()
   const [open, setOpen] = useState(false)
   const [icons, setIcons] = useState<PlantIcon[]>([])
   const [search, setSearch] = useState('')
