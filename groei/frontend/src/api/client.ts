@@ -22,14 +22,26 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
 
 async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
   const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
-  const init: RequestInit = { method }
+  const token = localStorage.getItem('groei-token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const init: RequestInit = { method, headers }
   if (options.form) {
     init.body = options.form
   } else if (options.body !== undefined) {
-    init.headers = { 'Content-Type': 'application/json' }
+    headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(options.body)
   }
+
   const res = await fetch(url, init)
+
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem('groei-token')
+    window.location.href = '/login'
+    throw new Error('Session expired — redirecting to login')
+  }
+
   await ensureOk(res, `Failed: ${method} ${path}`)
   if (res.status === 204) return undefined as T
   return res.json()
@@ -86,8 +98,8 @@ export const fetchDashboardV2      = ()                    => api<DashboardV2Dat
 // ── Maps ──
 
 export const fetchMaps             = ()                    => api<MapInfo[]>('GET', '/maps')
-export const createMap             = (name: string)        => api<MapInfo>('POST', '/maps', { body: { name } })
-export const updateMap             = (id: number, data: { name?: string; canvas_data?: string }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data })
+export const createMap             = (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('POST', '/maps', { body: data })
+export const updateMap             = (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data })
 export const deleteMap             = (id: number)          => api<void>('DELETE', `/maps/${id}`)
 export const fetchMapById          = (id: number)          => api<MapInfo>('GET', `/maps/by-id/${id}`)
 export const fetchMapDetail        = (slug: string)        => api<MapDetail>('GET', `/maps/${slug}`)
