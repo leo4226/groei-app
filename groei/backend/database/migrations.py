@@ -77,4 +77,9 @@ async def apply(db):
                 f"ALTER TABLE {table} ADD COLUMN household_id INTEGER REFERENCES households(id)"
             )
 
+    # ── users: language preference ──
+    user_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(users)")}
+    if "language" not in user_cols:
+        await db.execute("ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'nl'")
+
     await db.commit()

@@ -9,6 +9,11 @@ class UserOut(BaseModel):
     id: int
     name: str
     avatar: str | None = None
+    language: str = 'nl'
+
+
+class UserLanguageUpdate(BaseModel):
+    language: str  # 'nl' | 'en'
 
 
 # --- Locations ---
@@ -47,6 +52,7 @@ class PlantCreate(BaseModel):
     sun_requirement: str | None = None  # 'full_sun' | 'partial_sun' | 'shade'
     plant_type: str | None = None  # 'tree' | 'shrub' | 'grass' | 'herb' | 'flower' | etc.
     icon_key: str | None = None   # icon filename without extension, e.g. 'oak', 'raspberry'
+    phase: str = 'mature'          # 'seed' | 'seedling' | 'mature'
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -62,6 +68,8 @@ class PlantUpdate(BaseModel):
     sun_requirement: str | None = None
     plant_type: str | None = None
     icon_key: str | None = None
+    icon_requested: bool | None = None   # None = don't change
+    phase: str | None = None             # 'seed' | 'seedling' | 'mature'
 
 
 class CareScheduleOut(BaseModel):
@@ -100,6 +108,8 @@ class PlantOut(BaseModel):
     sun_requirement: str | None = None
     plant_type: str | None = None
     icon_key: str | None = None
+    icon_requested: bool = False
+    phase: str = 'mature'
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []
@@ -149,6 +159,7 @@ class CareTask(BaseModel):
     plant_name: str
     plant_photo: str | None = None
     location: str | None = None
+    map_type: str | None = None
     care_type: str
     days_overdue: int
     last_done_by: str | None = None
