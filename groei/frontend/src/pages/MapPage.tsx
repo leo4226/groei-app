@@ -247,15 +247,15 @@ export default function MapPage() {
             onClick={sun.toggleInspectorMode}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               sun.inspectorMode
-                ? 'bg-purple-500/30 text-purple-600'
-                : 'bg-purple-500/15 text-purple-500 hover:bg-purple-500/25'
+                ? 'bg-orange-500/30 text-orange-600'
+                : 'bg-orange-500/15 text-orange-500 hover:bg-orange-500/25'
             }`}
           >
             <span>Inspecteer</span>
           </button>
           <button
             onClick={() => setShowPotPicker(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 text-amber-700 rounded-full text-sm font-medium hover:bg-amber-500/25 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700/15 text-amber-800 rounded-full text-sm font-medium hover:bg-amber-700/25 transition-colors"
           >
             <span className="text-lg leading-none">+</span>
             <span>Pot</span>
