@@ -165,3 +165,21 @@ def test_dashboard_empty(client):
     assert data["overdue"] == []
     assert data["due_today"] == []
     assert data["upcoming"] == []
+
+
+# ── Auth helpers ──
+
+def test_password_hash_and_verify():
+    from auth import hash_password, verify_password
+    hashed = hash_password("secret123")
+    assert hashed != "secret123"
+    assert verify_password("secret123", hashed)
+    assert not verify_password("wrong", hashed)
+
+
+def test_create_and_decode_token():
+    from auth import create_token, decode_token
+    token = create_token(account_id=1, household_id=7)
+    payload = decode_token(token)
+    assert payload["account_id"] == 1
+    assert payload["household_id"] == 7
