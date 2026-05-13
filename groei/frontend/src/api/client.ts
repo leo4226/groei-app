@@ -146,6 +146,18 @@ export const syncIcons             = ()                    => api<IconSyncResult
 
 export const fetchPlantFact      = ()                    => api<PlantFactOut>('GET', '/plant-fact')
 
+// ── Admin ──
+
+export interface AdminAccount {
+  id: number
+  email: string
+  name: string
+  created_at: string
+  household_name: string
+}
+
+export const fetchAdminAccounts = () => api<AdminAccount[]>('GET', '/admin/accounts')
+
 // ── Grow Here ──
 
 export const fetchGrowHereSuggestions = (sunHours: number, selectedMonth: number, existingPlants: string[]) =>

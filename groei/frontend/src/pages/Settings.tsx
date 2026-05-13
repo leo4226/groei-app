@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
-import { syncIcons } from '../api/client'
+import { syncIcons, fetchAdminAccounts, type AdminAccount } from '../api/client'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult } from '../types'
 
@@ -11,6 +11,13 @@ export default function Settings() {
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
+
+  useEffect(() => {
+    fetchAdminAccounts()
+      .then(setAdminAccounts)
+      .catch(() => setAdminAccounts(null))
+  }, [])
 
   async function handleSyncIcons() {
     setSyncing(true)
@@ -130,6 +137,24 @@ export default function Settings() {
           )}
         </div>
       </section>
+
+      {adminAccounts && adminAccounts.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-base font-bold mb-3">Accounts ({adminAccounts.length})</h2>
+          <div className="card divide-y divide-border/50">
+            {adminAccounts.map((acct) => (
+              <div key={acct.id} className="px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-sm">{acct.name}</span>
+                  <span className="text-[10px] text-text-muted">{acct.created_at?.slice(0, 10)}</span>
+                </div>
+                <p className="text-xs text-text-muted mt-0.5">{acct.email}</p>
+                <p className="text-[10px] text-primary/60 mt-0.5">{acct.household_name}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-base font-bold mb-3">About</h2>

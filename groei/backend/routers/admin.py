@@ -1,8 +1,9 @@
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
+from auth import get_current_account
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
 
@@ -65,3 +66,23 @@ async def backfill_care_schedules(db = Depends(db_dep)):
             print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
 
     return {"checked": len(rows), "seeded": seeded}
+
+
+ADMIN_EMAIL = "leon_korbee@hotmail.com"
+
+
+@router.get("/admin/accounts")
+async def list_accounts(account = Depends(get_current_account), db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id, email, name FROM accounts WHERE id = ?", (account["account_id"],)
+    )
+    if not rows or rows[0]["email"] != ADMIN_EMAIL:
+        raise HTTPException(403, "Forbidden")
+
+    accounts = await db.execute_fetchall("""
+        SELECT a.id, a.email, a.name, a.created_at, h.name as household_name
+        FROM accounts a
+        JOIN households h ON a.household_id = h.id
+        ORDER BY a.created_at DESC
+    """)
+    return [dict(r) for r in accounts]
