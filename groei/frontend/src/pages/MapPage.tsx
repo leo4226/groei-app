@@ -379,7 +379,7 @@ export default function MapPage() {
         </div>
 
         <div className="hidden sm:flex sm:flex-col shrink-0 min-h-0 overflow-y-auto">
-          <MapLegend plants={plants} objects={objects} onPlantTap={handlePlantTap} heatmapCells={sun.isHeatmapActive ? sun.cells : undefined} />
+          <MapLegend plants={plants} objects={objects} onPlantTap={handlePlantTap} />
         </div>
       </div>
 
