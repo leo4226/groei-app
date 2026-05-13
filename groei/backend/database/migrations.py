@@ -57,6 +57,11 @@ async def apply(db):
     if "care_thresholds" not in sp_cols:
         await db.execute("ALTER TABLE plant_species ADD COLUMN care_thresholds TEXT")
 
+    # ── plant_species: water_interval_days ──
+    sp_cols2 = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(plant_species)")}
+    if "water_interval_days" not in sp_cols2:
+        await db.execute("ALTER TABLE plant_species ADD COLUMN water_interval_days INTEGER")
+
     # ── plant_care_cache: drop old Perenual schema if trefle_slug missing ──
     existing_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(plant_care_cache)")}
     if existing_cols and "trefle_slug" not in existing_cols:
