@@ -52,6 +52,15 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
     }
   }
 
+  const handleFertilize = async () => {
+    try {
+      await markCareDone(plant.id, 'fertilize')
+      onCareAction()
+    } catch (e) {
+      console.error('Failed to mark fertilize done:', e)
+    }
+  }
+
   const container = plant.container_id
     ? objects.find(o => o.id === plant.container_id)
     : null
@@ -296,6 +305,12 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
               className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
               💧 Water
+            </button>
+            <button
+              onClick={handleFertilize}
+              className="flex-1 bg-emerald-green/15 text-emerald-green rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+            >
+              🌿 Bemesten
             </button>
             <button
               onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
