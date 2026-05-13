@@ -35,7 +35,7 @@ export default function App() {
   const isLoginPage = location.pathname === '/login'
 
   useEffect(() => {
-    load()
+    if (getToken()) load()
   }, [load])
 
   const handleSelectPlant = (plant: LocalPlant) => {
