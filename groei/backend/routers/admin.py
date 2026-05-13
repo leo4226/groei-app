@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from database import db_dep
 from threshold_service import generate_thresholds
+from routers.plants import _seed_care_schedules
 
 router = APIRouter(tags=["admin"])
 
@@ -42,3 +43,25 @@ async def backfill_thresholds(db = Depends(db_dep)):
         "failed": len(failures),
         "failures": failures,
     }
+
+
+@router.post("/admin/backfill-care-schedules")
+async def backfill_care_schedules(db = Depends(db_dep)):
+    """Seed care_schedules for all active plants that have thresholds but no water schedule."""
+    rows = await db.execute_fetchall(
+        """SELECT p.id, p.care_thresholds FROM plants p
+           WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
+           AND p.id NOT IN (
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+           )"""
+    )
+
+    seeded = 0
+    for row in rows:
+        try:
+            await _seed_care_schedules(db, row["id"], row["care_thresholds"])
+            seeded += 1
+        except Exception as exc:
+            print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
+
+    return {"checked": len(rows), "seeded": seeded}
