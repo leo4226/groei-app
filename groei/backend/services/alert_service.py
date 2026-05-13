@@ -28,10 +28,18 @@ def compute_alerts(
     temp: dict,
     last_watered: date | None = None,
     map_type: str = "outdoor",
+    in_ground: bool = False,
 ) -> list[dict]:
-    """Return all active alerts for a plant. Skips weather alerts irrelevant to indoor maps."""
+    """Return all active alerts for a plant. Skips weather alerts irrelevant to indoor maps.
+
+    For in-ground outdoor plants, uses a 14-day effective-weekly rainfall
+    (total_14day / 2) since established roots access deeper soil moisture.
+    Container plants use the tighter 7-day window.
+    """
     alerts = []
-    total_mm = rain["total_7day_mm"]
+    # In-ground plants: wider rain window reflects soil moisture reality
+    total_mm = (rain.get("total_14day_mm", rain["total_7day_mm"]) / 2) if in_ground else rain["total_7day_mm"]
+    total_mm = round(total_mm, 1)
     temp_days = temp["days"]
     current_month = datetime.now().month
     skip = _INDOOR_SKIP if map_type == "indoor" else set()
@@ -116,6 +124,7 @@ def compute_top_alert(
     last_watered: date | None,
     map_type: str = "outdoor",
     most_urgent_care_type: str | None = None,
+    in_ground: bool = False,
 ) -> dict | None:
     """Return the single worst alert (alert_type, severity, icon) for map marker display.
 
@@ -135,7 +144,7 @@ def compute_top_alert(
             thresholds = json.loads(care_thresholds_json)
         except (json.JSONDecodeError, TypeError):
             thresholds = {}
-        for a in compute_alerts(thresholds, rain, temp, last_watered, map_type):
+        for a in compute_alerts(thresholds, rain, temp, last_watered, map_type, in_ground=in_ground):
             alerts.append({"alert_type": a["type"], "severity": a["severity"], "icon": a["icon"]})
 
     if not alerts:

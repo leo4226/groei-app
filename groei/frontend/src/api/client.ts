@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, PlantAlert, AlertSummary, PlantFactOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
 const BASE = '/api'
 
@@ -52,7 +52,9 @@ async function api<T>(method: string, path: string, options: ApiOptions = {}): P
 export interface GardenWaterStatus {
   status: 'hydrated' | 'thirsty' | 'dry'
   rain_7day_mm: number
+  rain_14day_mm: number
   weekly_budget_mm: number
+  biweekly_budget_mm: number
   season: string
   watered_at: string | null
 }
@@ -141,6 +143,8 @@ export const fetchAlertSummary     = ()                    => api<AlertSummary>(
 
 export const fetchIconCatalog      = ()                    => api<PlantIcon[]>('GET', '/icon-catalog')
 export const syncIcons             = ()                    => api<IconSyncResult>('POST', '/icon-catalog/sync')
+export const fetchIconGaps         = ()                    => api<IconGapReport>('GET', '/icon-catalog/gaps')
+export const requestIcon           = (plantId: number)     => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`)
 
 // ── Plant Fact ──
 

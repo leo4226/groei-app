@@ -154,6 +154,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
         else:
             plant["temp_status"] = "comfortable"
 
+        in_ground = map_type == "outdoor" and plant.get("container_id") is None
         plant["top_alert"] = compute_top_alert(
             care_status=plant["care_status"],
             care_thresholds_json=care_thresholds,
@@ -162,6 +163,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             last_watered=last_watered,
             map_type=map_type,
             most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
+            in_ground=in_ground,
         )
 
         phenology_json = plant.pop("phenology_json", None)

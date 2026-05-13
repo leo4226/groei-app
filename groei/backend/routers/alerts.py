@@ -13,7 +13,10 @@ router = APIRouter(tags=["alerts"])
 @router.get("/plants/{plant_id}/alerts")
 async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT care_thresholds FROM plants WHERE id = ? AND is_active = 1",
+        """SELECT p.care_thresholds, p.container_id, m.map_type
+           FROM plants p
+           LEFT JOIN maps m ON p.map_id = m.id
+           WHERE p.id = ? AND p.is_active = 1""",
         (plant_id,),
     )
     if not rows:
@@ -25,8 +28,10 @@ async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
 
     thresholds = json.loads(raw)
     rain, temp, last_watered = await _get_rain_data(), await _get_temp_data(), await get_last_garden_watered()
+    map_type = rows[0]["map_type"] or "outdoor"
+    in_ground = map_type == "outdoor" and rows[0]["container_id"] is None
 
-    return compute_alerts(thresholds, rain, temp, last_watered)
+    return compute_alerts(thresholds, rain, temp, last_watered, map_type=map_type, in_ground=in_ground)
 
 
 @router.get("/alerts/summary")

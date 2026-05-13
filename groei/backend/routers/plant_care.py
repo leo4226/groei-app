@@ -21,7 +21,7 @@ OPEN_METEO_URL = (
     "https://api.open-meteo.com/v1/forecast"
     "?latitude=52.3715&longitude=4.8499"
     "&daily=precipitation_sum"
-    "&past_days=7&forecast_days=0"
+    "&past_days=14&forecast_days=0"
     "&timezone=Europe%2FAmsterdam"
 )
 
@@ -191,11 +191,12 @@ def _normalise_duration(duration) -> str | None:
 
 
 def _assessment(total_mm: float) -> str:
-    if total_mm >= 15:
+    """Categorise 14-day rainfall total for Dutch growing conditions."""
+    if total_mm >= 30:
         return "well_watered"
-    if total_mm >= 8:
+    if total_mm >= 16:
         return "moderate"
-    if total_mm >= 2:
+    if total_mm >= 5:
         return "dry"
     return "very_dry"
 
@@ -554,12 +555,12 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
     return result
 
 
-_RAIN_FALLBACK = {"days": [], "total_7day_mm": 0.0, "assessment": "unknown"}
+_RAIN_FALLBACK = {"days": [], "total_7day_mm": 0.0, "total_14day_mm": 0.0, "assessment": "unknown"}
 _TEMP_FALLBACK = {"days": [], "avg_max_7day": 0.0, "assessment": "unknown"}
 
 
 async def _get_rain_data() -> dict:
-    """Fetch (or return cached) 7-day rainfall data. Returns fallback on error."""
+    """Fetch (or return cached) 14-day rainfall data with both 7d and 14d totals."""
     global _rain_cache
     now = datetime.now(timezone.utc)
 
@@ -580,9 +581,15 @@ async def _get_rain_data() -> dict:
 
     days  = [{"date": t, "mm": round(p, 1) if p is not None else 0.0}
              for t, p in zip(times, precip)]
-    total = round(sum(d["mm"] for d in days), 1)
+    total_14d = round(sum(d["mm"] for d in days), 1)
+    total_7d  = round(sum(d["mm"] for d in days[-7:]), 1) if len(days) >= 7 else total_14d
 
-    result = {"days": days, "total_7day_mm": total, "assessment": _assessment(total)}
+    result = {
+        "days": days,
+        "total_7day_mm": total_7d,
+        "total_14day_mm": total_14d,
+        "assessment": _assessment(total_14d),
+    }
     _rain_cache = {"fetched_at": now, "data": result}
     return result
 
@@ -684,11 +691,13 @@ def _get_weekly_et_budget(season: str) -> float:
     return _WEEKLY_ET_BUDGET[season]
 
 
-def _compute_water_status(rain_7d: float, days_since_watered: int | None) -> dict:
+def _compute_water_status(rain_14d: float, rain_7d: float, days_since_watered: int | None) -> dict:
+    """Compute garden water status from 14-day rainfall against a biweekly ET budget."""
     from services.scheduling import get_current_season
     season = get_current_season()
-    budget = _get_weekly_et_budget(season)
-    covered = rain_7d / budget if budget else 1.0
+    weekly_budget = _get_weekly_et_budget(season)
+    biweekly_budget = weekly_budget * 2
+    covered = rain_14d / biweekly_budget if biweekly_budget else 1.0
     watered_recently = days_since_watered is not None and days_since_watered <= 3
 
     if covered >= 0.8 or (covered >= 0.5 and watered_recently):
@@ -701,7 +710,9 @@ def _compute_water_status(rain_7d: float, days_since_watered: int | None) -> dic
     return {
         "status": status,
         "rain_7day_mm": round(rain_7d, 1),
-        "weekly_budget_mm": budget,
+        "rain_14day_mm": round(rain_14d, 1),
+        "weekly_budget_mm": weekly_budget,
+        "biweekly_budget_mm": biweekly_budget,
         "season": season,
     }
 
@@ -714,10 +725,11 @@ async def get_garden_water_status():
     """
     rain         = await _get_rain_data()
     last_watered = await get_last_garden_watered()
-    total_mm     = rain.get("total_7day_mm", 0)
+    total_14d    = rain.get("total_14day_mm", 0)
+    total_7d     = rain.get("total_7day_mm", 0)
     days_since   = (date.today() - last_watered).days if last_watered else None
 
-    result = _compute_water_status(total_mm, days_since)
+    result = _compute_water_status(total_14d, total_7d, days_since)
     result["watered_at"] = last_watered.isoformat() if last_watered else None
     return result
 
