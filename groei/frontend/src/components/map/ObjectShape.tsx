@@ -194,20 +194,30 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
-          {/* Alert badges — top-right, stacked rightward */}
-          {alerts.length > 0 && alerts.map((a, i) => (
+          {/* Alert badges — arc around top of plant */}
+          {alerts.length > 0 && alerts.map((a, i) => {
+            const count = alerts.length
+            const totalArc = Math.min(count * 30, 140)
+            const startDeg = -(totalArc / 2)
+            const step = count > 1 ? totalArc / (count - 1) : 0
+            const deg = startDeg + i * step
+            const rad = (deg * Math.PI) / 180
+            const orbitR = iconHalf + 4
+            const bx = orbitR * Math.sin(rad)
+            const by = -(orbitR * Math.cos(rad))
+            return (
             <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
               <circle
-                cx={iconHalf * 0.72 + i * 12}
-                cy={-(iconHalf * 0.72)}
+                cx={bx}
+                cy={by}
                 r={6}
                 fill="white"
                 stroke={haloColor ?? '#888'}
                 strokeWidth={1.5}
               />
               <text
-                x={iconHalf * 0.72 + i * 12}
-                y={-(iconHalf * 0.72)}
+                x={bx}
+                y={by}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={7}
@@ -216,7 +226,8 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
                 {a.icon}
               </text>
             </g>
-          ))}
+            )
+          })}
         </g>
       )
     })

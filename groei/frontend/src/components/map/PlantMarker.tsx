@@ -245,20 +245,30 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
       )}
       </g>
 
-      {/* Alert badges — top-right, stacked rightward */}
-      {alerts.length > 0 && alerts.map((a, i) => (
+      {/* Alert badges — arc around top of plant */}
+      {alerts.length > 0 && alerts.map((a, i) => {
+        const count = alerts.length
+        const totalArc = Math.min(count * 30, 140) // degrees
+        const startDeg = -(totalArc / 2)
+        const step = count > 1 ? totalArc / (count - 1) : 0
+        const deg = startDeg + i * step
+        const rad = (deg * Math.PI) / 180
+        const orbitR = iconR + 5
+        const bx = orbitR * Math.sin(rad)
+        const by = -(orbitR * Math.cos(rad))
+        return (
         <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
           <circle
-            cx={iconR * 0.72 + i * 14}
-            cy={-(iconR * 0.72)}
+            cx={bx}
+            cy={by}
             r={7}
             fill="white"
             stroke={haloColor ?? '#888'}
             strokeWidth={1.5}
           />
           <text
-            x={iconR * 0.72 + i * 14}
-            y={-(iconR * 0.72)}
+            x={bx}
+            y={by}
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={8}
@@ -267,8 +277,8 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
             {a.icon}
           </text>
         </g>
-      ))}
-      )}
+        )
+      })}
     </g>
   )
 }
