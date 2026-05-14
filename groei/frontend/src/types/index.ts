@@ -282,6 +282,7 @@ export interface MapPlant {
   phenology: Phenology | null
   is_locked: boolean,
   top_alert: TopAlert | null
+  alerts: TopAlert[]
 }
 
 // --- Objects ---

@@ -151,7 +151,10 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
       const haloColor = getHaloColor(plant)
-      const alertIcon = plant.top_alert?.icon ?? null
+      const alerts = plant.alerts ?? []
+      if (!alerts.length && plant.top_alert) {
+        alerts.push(plant.top_alert)
+      }
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Status halo — extends beyond pot outline to shine through */}
@@ -191,11 +194,11 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
-          {/* Alert badge — top-right corner, shows alert type icon */}
-          {alertIcon && (
-            <g style={{ pointerEvents: 'none' }}>
+          {/* Alert badges — top-right, stacked rightward */}
+          {alerts.length > 0 && alerts.map((a, i) => (
+            <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
               <circle
-                cx={iconHalf * 0.72}
+                cx={iconHalf * 0.72 + i * 12}
                 cy={-(iconHalf * 0.72)}
                 r={6}
                 fill="white"
@@ -203,17 +206,17 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
                 strokeWidth={1.5}
               />
               <text
-                x={iconHalf * 0.72}
+                x={iconHalf * 0.72 + i * 12}
                 y={-(iconHalf * 0.72)}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={7}
                 style={{ pointerEvents: 'none', userSelect: 'none' }}
               >
-                {alertIcon}
+                {a.icon}
               </text>
             </g>
-          )}
+          ))}
         </g>
       )
     })

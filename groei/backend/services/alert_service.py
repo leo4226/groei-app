@@ -1,7 +1,8 @@
 """Alert computation service.
 
-Provides compute_alerts (full Dutch messages, map-type-aware) and
-compute_top_alert (single worst alert for map marker display).
+Provides compute_alerts (full Dutch messages, map-type-aware),
+compute_top_alert (single worst alert for map marker display), and
+compute_all_alerts (all alerts for multi-badge display).
 """
 import json
 from datetime import date, datetime
@@ -63,9 +64,7 @@ def compute_alerts(
             and (date.today() - last_watered).days < _MANUAL_WATER_DAYS
         )
         if recently_watered:
-            alerts.append({"type": "drought", "severity": "info",
-                "message_nl": f"Weinig regen ({total_mm}mm), maar je hebt op {_fmt_date_nl(last_watered)} water gegeven — voorlopig in orde.",
-                "icon": "💧"})
+            pass  # manual watering covers it — no drought alert
         elif total_mm < drought_thresh * 0.5:
             alerts.append({"type": "drought", "severity": "urgent",
                 "message_nl": f"Zeer weinig regen deze week ({total_mm}mm). Geef direct extra water.",
@@ -90,11 +89,11 @@ def compute_alerts(
         if week_min < min_temp:
             alerts.append({"type": "cold", "severity": "urgent",
                 "message_nl": f"Temperatuur daalde tot {week_min}°C, onder de stressgrens van {min_temp}°C.",
-                "icon": "🥶"})
+                "icon": "❄️"})
         elif week_min < min_temp + 3:
             alerts.append({"type": "cold", "severity": "warning",
                 "message_nl": f"Minimum temperatuur ({week_min}°C) nadert de stressgrens ({min_temp}°C).",
-                "icon": "🥶"})
+                "icon": "❄️"})
 
     if max_temp is not None and temp_days:
         week_max = max(d["max"] for d in temp_days)
@@ -121,7 +120,7 @@ def compute_alerts(
     return alerts
 
 
-def compute_top_alert(
+def _collect_alerts(
     care_status: str,
     care_thresholds_json: str | None,
     rain: dict | None,
@@ -130,11 +129,8 @@ def compute_top_alert(
     map_type: str = "outdoor",
     most_urgent_care_type: str | None = None,
     in_ground: bool = False,
-) -> dict | None:
-    """Return the single worst alert (alert_type, severity, icon) for map marker display.
-
-    Returns None when the plant has no active alerts.
-    """
+) -> list[dict]:
+    """Collect all active alerts for a plant. Returns list of {alert_type, severity, icon}."""
     alerts = []
 
     if care_status == "overdue":
@@ -154,8 +150,34 @@ def compute_top_alert(
         for a in compute_alerts(thresholds, rain, temp, last_watered, map_type, in_ground=in_ground):
             alerts.append({"alert_type": a["type"], "severity": a["severity"], "icon": a["icon"]})
 
-    if not alerts:
-        return None
-
     alerts.sort(key=lambda a: (_SEVERITY_ORDER.get(a["severity"], 0), _ALERT_TYPE_PRIORITY.get(a["alert_type"], 0)), reverse=True)
-    return alerts[0]
+    return alerts
+
+
+def compute_top_alert(
+    care_status: str,
+    care_thresholds_json: str | None,
+    rain: dict | None,
+    temp: dict | None,
+    last_watered: date | None,
+    map_type: str = "outdoor",
+    most_urgent_care_type: str | None = None,
+    in_ground: bool = False,
+) -> dict | None:
+    """Return the single worst alert for map marker display (backward-compatible)."""
+    alerts = _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, map_type, most_urgent_care_type, in_ground)
+    return alerts[0] if alerts else None
+
+
+def compute_all_alerts(
+    care_status: str,
+    care_thresholds_json: str | None,
+    rain: dict | None,
+    temp: dict | None,
+    last_watered: date | None,
+    map_type: str = "outdoor",
+    most_urgent_care_type: str | None = None,
+    in_ground: bool = False,
+) -> list[dict]:
+    """Return all active alerts for a plant, sorted by severity then priority."""
+    return _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, map_type, most_urgent_care_type, in_ground)

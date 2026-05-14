@@ -285,6 +285,7 @@ class MapPlantOut(BaseModel):
     phenology: Any | None = None
     is_locked: bool = False
     top_alert: TopAlert | None = None
+    alerts: list[TopAlert] = []
 
 
 class PlantPositionUpdate(BaseModel):

@@ -6,6 +6,12 @@ import { useMapRotation } from '../../context/MapRotationContext'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 
+export const STATUS_COLORS: Record<string, string> = {
+  overdue:   'var(--color-overdue)',
+  due_today: 'var(--color-due)',
+  good:      'var(--color-good)',
+}
+
 const SUITABILITY_RING_COLORS: Record<string, string> = {
   good:        '#24e34c',
   too_little:  '#ea0706',
@@ -35,7 +41,10 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
   const rot = counterRot ? `rotate(${counterRot})` : undefined
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = getHaloColor(plant)
-  const alertIcon = plant.top_alert?.icon ?? null
+  const alerts = plant.alerts ?? []
+  if (!alerts.length && plant.top_alert) {
+    alerts.push(plant.top_alert)
+  }
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
@@ -236,11 +245,11 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
       )}
       </g>
 
-      {/* Alert badge — top-right corner, shows alert type icon */}
-      {alertIcon && (
-        <g style={{ pointerEvents: 'none' }}>
+      {/* Alert badges — top-right, stacked rightward */}
+      {alerts.length > 0 && alerts.map((a, i) => (
+        <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
           <circle
-            cx={iconR * 0.72}
+            cx={iconR * 0.72 + i * 14}
             cy={-(iconR * 0.72)}
             r={7}
             fill="white"
@@ -248,16 +257,17 @@ export default function PlantMarker({ plant, x, y, isDragging, isSelected, showL
             strokeWidth={1.5}
           />
           <text
-            x={iconR * 0.72}
+            x={iconR * 0.72 + i * 14}
             y={-(iconR * 0.72)}
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={8}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
-            {alertIcon}
+            {a.icon}
           </text>
         </g>
+      ))}
       )}
     </g>
   )

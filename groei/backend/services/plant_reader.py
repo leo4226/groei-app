@@ -2,7 +2,7 @@ import json
 from datetime import date
 
 from models import MostUrgent
-from services.alert_service import compute_top_alert
+from services.alert_service import compute_top_alert, compute_all_alerts
 
 
 def _compute_care_status(schedules, today):
@@ -165,6 +165,19 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
             in_ground=in_ground,
         )
+        plant["alerts"] = [
+            {"alert_type": a["alert_type"], "severity": a["severity"], "icon": a["icon"]}
+            for a in compute_all_alerts(
+                care_status=plant["care_status"],
+                care_thresholds_json=care_thresholds,
+                rain=rain_data,
+                temp=temp_data,
+                last_watered=last_watered,
+                map_type=map_type,
+                most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
+                in_ground=in_ground,
+            )
+        ]
 
         phenology_json = plant.pop("phenology_json", None)
         plant["phenology"] = json.loads(phenology_json) if phenology_json else None
