@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
@@ -12,7 +12,19 @@ const CARE_LABEL_NL: Record<string, string> = {
   rotate: 'Draaien',
   repot_check: 'Verpotten',
   prune: 'Snoeien',
+  protect_cold: 'Beschermen tegen kou',
+  protect_heat: 'Beschermen tegen hitte',
 }
+
+function classifyTaskLocation(task: CareTask): 'buiten' | 'binnen' {
+  if (task.location === 'Tuin') return 'buiten'
+  if (task.location === 'Huis') return 'binnen'
+  if (task.map_type === 'outdoor') return 'buiten'
+  if (task.map_type === 'indoor') return 'binnen'
+  return 'buiten'
+}
+
+const LOCATION_ICON = { buiten: '🌿', binnen: '🏠' } as const
 
 const PX_PER_M = 46
 
@@ -222,8 +234,9 @@ export default function Dashboard() {
         {!isLoading && totalTasks === 0 && <CalmEmptyState />}
         {!isLoading && dashboard && totalTasks > 0 && (
           <>
-            {overdueCount > 0 && <TaskGroup label="Te laat" tone="overdue" tasks={dashboard.overdue} />}
-            {dueTodayCount > 0 && <TaskGroup label="Vandaag" tone="due" tasks={dashboard.due_today} />}
+            {/* Two-column grid for overdue + due_today */}
+            <TodayGrid overdue={dashboard.overdue} dueToday={dashboard.due_today} />
+            {/* Upcoming stays as single column below */}
             {upcomingCount > 0 && <TaskGroup label="Op komst" tone="upcoming" tasks={dashboard.upcoming} />}
           </>
         )}
@@ -484,6 +497,149 @@ function NewMapCard() {
   )
 }
 
+function TodayGrid({ overdue, dueToday }: { overdue: CareTask[]; dueToday: CareTask[] }) {
+  const allDue = [...overdue, ...dueToday]
+  const waterFeedTypes = new Set(['water', 'fertilize'])
+  const waterFeedTasks = allDue.filter(t => waterFeedTypes.has(t.care_type))
+  const attnTasks = allDue.filter(t => !waterFeedTypes.has(t.care_type))
+
+  function groupByLocation(tasks: CareTask[]) {
+    const buiten = tasks.filter(t => classifyTaskLocation(t) === 'buiten')
+    const binnen = tasks.filter(t => classifyTaskLocation(t) === 'binnen')
+    return { buiten, binnen }
+  }
+
+  const waterFeedGroups = groupByLocation(waterFeedTasks)
+  const attnGroups = groupByLocation(attnTasks)
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr 1fr',
+      border: '1px solid var(--color-border)', borderRadius: 14,
+      overflow: 'hidden', marginBottom: 24,
+    }}>
+      {/* Column headers */}
+      <TodayColHead label="Water & Voeding" count={waterFeedTasks.length} pip="overdue" />
+      <TodayColHead label="Aandacht" count={attnTasks.length} pip="due" borderLeft />
+
+      {/* Water & Voeding column */}
+      <div style={{ borderRight: '1px solid var(--color-border-soft)' }}>
+        {waterFeedTasks.length === 0 ? (
+          <EmptyCol />
+        ) : (
+          <>
+            <TodayLocationGroup label="Buiten" icon={LOCATION_ICON.buiten} tasks={waterFeedGroups.buiten} />
+            <TodayLocationGroup label="Binnen" icon={LOCATION_ICON.binnen} tasks={waterFeedGroups.binnen} />
+          </>
+        )}
+      </div>
+
+      {/* Aandacht column */}
+      <div>
+        {attnTasks.length === 0 ? (
+          <EmptyCol />
+        ) : (
+          <>
+            <TodayLocationGroup label="Buiten" icon={LOCATION_ICON.buiten} tasks={attnGroups.buiten} />
+            <TodayLocationGroup label="Binnen" icon={LOCATION_ICON.binnen} tasks={attnGroups.binnen} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TodayColHead({ label, count, pip, borderLeft }: { label: string; count: number; pip: 'overdue' | 'due'; borderLeft?: boolean }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '12px 16px 10px',
+      borderBottom: '1px solid var(--color-border-soft)',
+      borderLeft: borderLeft ? '1px solid var(--color-border-soft)' : 'none',
+      fontFamily: 'var(--font-mono)', fontSize: 10,
+      textTransform: 'uppercase', letterSpacing: '0.18em',
+      color: 'var(--color-text-muted)',
+    }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+        background: pip === 'overdue' ? 'var(--color-overdue)' : 'var(--color-due)',
+      }} />
+      {label}
+      <span style={{
+        marginLeft: 'auto', fontFamily: 'var(--font-heading)',
+        fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)',
+        textTransform: 'none', letterSpacing: 0,
+      }}>{count}</span>
+    </div>
+  )
+}
+
+function EmptyCol() {
+  return (
+    <div style={{ padding: '20px 16px', textAlign: 'center' }}>
+      <span style={{
+        fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+        fontSize: 13, color: 'var(--color-text-muted)',
+      }}>Alles op schema</span>
+    </div>
+  )
+}
+
+function TodayLocationGroup({ label, icon, tasks }: { label: string; icon: string; tasks: CareTask[] }) {
+  const [open, setOpen] = useState(tasks.length > 0)
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          width: '100%', padding: '8px 14px',
+          border: 'none', borderBottom: '1px solid var(--color-border-soft)',
+          background: 'var(--color-surface)',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 15, width: 22, textAlign: 'center' }}>{icon}</span>
+        <span style={{
+          fontFamily: 'var(--font-heading)',
+          fontStyle: 'italic',
+          fontSize: 13,
+          color: 'var(--color-text-soft)',
+          flex: 1,
+          textAlign: 'left',
+        }}>{label}</span>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: 'var(--color-text-muted)',
+        }}>{tasks.length}</span>
+        <span style={{
+          fontSize: 9,
+          color: 'var(--color-text-muted)',
+          transform: open ? 'rotate(90deg)' : 'none',
+          transition: 'transform 0.15s',
+        }}>▶</span>
+      </button>
+      {open && (
+        tasks.length === 0 ? (
+          <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+              fontSize: 12, color: 'var(--color-text-muted)',
+            }}>Alles op schema</span>
+          </div>
+        ) : (
+          tasks.map(task => <TaskCard key={task.schedule_id} task={task} tone={task.days_overdue > 0 ? 'overdue' : 'due'} />)
+        )
+      )}
+    </div>
+  )
+}
+
 function TaskGroup({ label, tone, tasks }: { label: string; tone: 'overdue' | 'due' | 'upcoming'; tasks: CareTask[] }) {
   return (
     <div style={{ marginBottom: 24 }}>
@@ -566,6 +722,7 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
           letterSpacing: '0.15em',
           color: 'var(--color-text-muted)',
         }}>
+          {task.is_ephemeral && (task.care_type === 'protect_cold' ? '🥶 ' : '🌡️ ')}
           {careLabel}{task.location ? ` · ${task.location}` : ''}
         </p>
         {tone === 'overdue' && (
