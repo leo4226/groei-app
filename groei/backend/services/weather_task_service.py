@@ -67,18 +67,9 @@ async def sync_ephemeral_schedules() -> dict:
             min_temp = thresholds.get("min_temp_c")
             max_temp = thresholds.get("max_temp_c")
 
-            # Check cold thresholds
-            cold_trigger = None
-            cold_label = None
+            # Only generate bring_inside ephemeral tasks (protect_cold removed —
+            # the ❄️ cold weather alert already covers temperature awareness)
             if bring_inside is not None and min_24h is not None and min_24h < bring_inside:
-                cold_trigger = True
-                cold_label = f"Min {min_24h}°C (grens {bring_inside}°C)"
-            elif min_temp is not None and min_24h is not None and min_24h < min_temp:
-                cold_trigger = True
-                cold_label = f"Min {min_24h}°C (grens {min_temp}°C)"
-
-            if cold_trigger:
-                # Dedup: keep only the most recent ephemeral schedule per plant+care_type
                 existing = await db.execute_fetchall(
                     """SELECT id FROM care_schedules
                        WHERE plant_id = ? AND care_type = 'protect_cold'
@@ -86,21 +77,21 @@ async def sync_ephemeral_schedules() -> dict:
                        ORDER BY id DESC""",
                     (plant_id,),
                 )
-                if existing:
-                    # Deactivate any duplicates beyond the first
-                    for dup in existing[1:]:
-                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
-                        deleted += 1
-                else:
+                if not existing:
+                    label = f"Min {min_24h}°C (grens {bring_inside}°C)"
                     await db.execute(
                         """INSERT INTO care_schedules
                            (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
                            VALUES (?, 'protect_cold', 1, ?, 1, ?)""",
-                        (plant_id, today, cold_label),
+                        (plant_id, today, label),
                     )
                     created += 1
+                else:
+                    for dup in existing[1:]:
+                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
+                        deleted += 1
             else:
-                # No cold trigger active — delete any stale ephemeral cold task
+                # No bring_inside trigger — delete any stale ephemeral cold task
                 stale = await db.execute_fetchall(
                     """SELECT id FROM care_schedules
                        WHERE plant_id = ? AND care_type = 'protect_cold'
