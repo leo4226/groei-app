@@ -17,6 +17,8 @@ async def apply(db):
         await db.execute("ALTER TABLE maps ADD COLUMN lon REAL")
     if "bearing" not in map_cols:
         await db.execute("ALTER TABLE maps ADD COLUMN bearing REAL DEFAULT 0")
+    if "thumbnail_file" not in map_cols:
+        await db.execute("ALTER TABLE maps ADD COLUMN thumbnail_file TEXT")
 
     # ── objects: category / label / preset ──
     obj_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(objects)")}
