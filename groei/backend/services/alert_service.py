@@ -149,15 +149,15 @@ def _collect_alerts(
             thresholds = {}
         has_protect_cold = most_urgent_care_type == "protect_cold" and care_status in ("overdue", "due_today")
         has_protect_heat = most_urgent_care_type == "protect_heat" and care_status in ("overdue", "due_today")
-        fertilize_uptodate = care_status in ("good", "due_today") and most_urgent_care_type != "fertilize"
+        fertilize_handled = care_status == "good" or (most_urgent_care_type is not None and most_urgent_care_type != "fertilize")
         for a in compute_alerts(thresholds, rain, temp, last_watered, map_type, in_ground=in_ground):
             # Suppress weather cold/heat when an ephemeral protect schedule already covers it
             if has_protect_cold and a["type"] == "cold":
                 continue
             if has_protect_heat and a["type"] == "heat":
                 continue
-            # Suppress monthly fertilise tip when fertilize schedule is already up-to-date
-            if fertilize_uptodate and a["type"] == "fertilise":
+            # Suppress monthly fertilise tip when plant has more urgent tasks
+            if fertilize_handled and a["type"] == "fertilise":
                 continue
             alerts.append({"alert_type": a["type"], "severity": a["severity"], "icon": a["icon"]})
 
