@@ -76,6 +76,7 @@ class CareScheduleOut(BaseModel):
     last_done_by_name: str | None = None
     notes: str | None = None
     is_active: bool = True
+    is_ephemeral: bool = False
 
 
 class PlantOut(BaseModel):
@@ -146,6 +147,7 @@ class CareTask(BaseModel):
     last_done_by: str | None = None
     last_done_at: str | None = None
     schedule_id: int
+    is_ephemeral: bool = False
 
 
 class DashboardResponse(BaseModel):
