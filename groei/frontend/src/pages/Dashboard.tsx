@@ -555,10 +555,10 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '14%',
+          padding: map.thumbnail_file ? '6%' : '14%',
         }}>
           <img
-            src={`/api/maps-static/${map.svg_file}`}
+            src={map.thumbnail_file ? `/maps/${map.thumbnail_file}` : `/api/maps-static/${map.svg_file}`}
             alt={map.name}
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
@@ -1098,7 +1098,7 @@ function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
           margin: '2px 0 0', fontFamily: 'var(--font-mono)', fontSize: 8,
           textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)',
         }}>
-          {task.is_ephemeral && (task.care_type === 'protect_cold' ? '🥶 ' : '🌡️ ')}
+          {task.is_ephemeral && (task.care_type === 'protect_cold' ? '❄️ ' : '🌡️ ')}
           {careLabel}{task.location ? ` · ${task.location}` : ''}
         </p>
         {isOverdue && (
