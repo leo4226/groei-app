@@ -10,6 +10,7 @@ from datetime import date, datetime
 _SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 _MANUAL_WATER_DAYS = 3
 _INDOOR_SKIP = {"drought", "waterlog", "bring_inside"}
+_GROUND_SKIP = {"bring_inside", "cold"}
 
 _CARE_ICON = {
     "water": "💧", "fertilize": "🧪", "mist": "🌫️", "rotate": "🔄",
@@ -50,6 +51,7 @@ def compute_alerts(
     temp_days = temp["days"]
     current_month = datetime.now().month
     skip = _INDOOR_SKIP if map_type == "indoor" else set()
+    skip |= _GROUND_SKIP if in_ground else set()
 
     drought_thresh = thresholds.get("drought_mm_per_week", 0)
     waterlog_thresh = thresholds.get("waterlog_mm_per_week", 9999)
@@ -85,7 +87,7 @@ def compute_alerts(
                 "message_nl": f"Veel neerslag deze week ({total_mm}mm). Let op wateroverlast.",
                 "icon": "🌧️"})
 
-    if min_temp is not None and temp_days:
+    if "cold" not in skip and min_temp is not None and temp_days:
         week_min = min(d["min"] for d in temp_days)
         if week_min <= min_temp:
             alerts.append({"type": "cold", "severity": "urgent",
