@@ -32,11 +32,15 @@ const PRESET_LABELS: Record<DichtheidPreset, string> = {
   'gebouw': 'Gebouw / Muur',
 }
 
-function numInput(
-  value: number,
-  onChange: (v: number) => void,
-  opts: { min?: number; max?: number; step?: number } = {},
-) {
+function NumInput({
+  value,
+  onChange,
+  opts = {},
+}: {
+  value: number
+  onChange: (v: number) => void
+  opts?: { min?: number; max?: number; step?: number }
+}) {
   return (
     <input
       type="number"
@@ -131,7 +135,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
 
       {/* Type toggle */}
       <div className="mb-3">
-        <label className="text-xs text-text-muted block mb-1">Type</label>
+        <p className="text-xs text-text-muted block mb-1">Type</p>
         <div className="flex gap-1">
           <button
             onClick={() => handleTypeChange('rect')}
@@ -153,22 +157,22 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
       </div>
 
       {/* Naam */}
-      <div className="mb-3">
-        <label className="text-xs text-text-muted block mb-1">Naam</label>
+      <label className="mb-3 block">
+        <span className="text-xs text-text-muted block mb-1">Naam</span>
         <input
           value={caster.label || ''}
           onChange={(e) => onUpdate({ label: e.target.value })}
           placeholder={isRect ? "bijv. Buurman's huis" : 'bijv. Eik, Spar...'}
           className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
         />
-      </div>
+      </label>
 
       {/* Position — Gebouw */}
       {isRect && rectDisplay && (
         <div className="mb-3">
-          <label className="text-xs text-text-muted block mb-1">Positie</label>
-          <div className="mb-1.5">
-            <label className="text-[10px] text-text-muted">Kant</label>
+          <p className="text-xs text-text-muted block mb-1">Positie</p>
+          <label className="mb-1.5 block">
+            <span className="text-[10px] text-text-muted block">Kant</span>
             <select
               value={rectDisplay.kant}
               onChange={(e) => handleKantChange(e.target.value as Kant)}
@@ -178,16 +182,16 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-          </div>
+          </label>
           <div className="grid grid-cols-2 gap-1.5">
-            <div>
-              <label className="text-[10px] text-text-muted">Afstand van tuin (m)</label>
-              {numInput(Math.round(rectDisplay.afstandM * 10) / 10, handleAfstandChange, { min: 0, step: 0.5 })}
-            </div>
-            <div>
-              <label className="text-[10px] text-text-muted">Dikte (m)</label>
-              {numInput(Math.round(rectDisplay.dikteM * 10) / 10, handleDikteChange, { min: 0.5, step: 0.5 })}
-            </div>
+            <label className="block">
+              <span className="text-[10px] text-text-muted block">Afstand van tuin (m)</span>
+              <NumInput value={Math.round(rectDisplay.afstandM * 10) / 10} onChange={handleAfstandChange} opts={{ min: 0, step: 0.5 }} />
+            </label>
+            <label className="block">
+              <span className="text-[10px] text-text-muted block">Dikte (m)</span>
+              <NumInput value={Math.round(rectDisplay.dikteM * 10) / 10} onChange={handleDikteChange} opts={{ min: 0.5, step: 0.5 }} />
+            </label>
           </div>
         </div>
       )}
@@ -195,37 +199,37 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
       {/* Position — Boom */}
       {!isRect && circleDisplay && (
         <div className="mb-3">
-          <label className="text-xs text-text-muted block mb-1">Positie &amp; grootte</label>
+          <p className="text-xs text-text-muted block mb-1">Positie &amp; grootte</p>
           <div className="grid grid-cols-2 gap-1.5">
-            <div>
-              <label className="text-[10px] text-text-muted">X (m)</label>
-              {numInput(circleDisplay.xM, (v) => handleCircleChange('xM', v), { step: 0.5 })}
-            </div>
-            <div>
-              <label className="text-[10px] text-text-muted">Y (m)</label>
-              {numInput(circleDisplay.yM, (v) => handleCircleChange('yM', v), { step: 0.5 })}
-            </div>
-            <div>
-              <label className="text-[10px] text-text-muted">Straal (m)</label>
-              {numInput(circleDisplay.straalM, (v) => handleCircleChange('straalM', v), { min: 0.5, step: 0.5 })}
-            </div>
+            <label className="block">
+              <span className="text-[10px] text-text-muted block">X (m)</span>
+              <NumInput value={circleDisplay.xM} onChange={(v) => handleCircleChange('xM', v)} opts={{ step: 0.5 }} />
+            </label>
+            <label className="block">
+              <span className="text-[10px] text-text-muted block">Y (m)</span>
+              <NumInput value={circleDisplay.yM} onChange={(v) => handleCircleChange('yM', v)} opts={{ step: 0.5 }} />
+            </label>
+            <label className="block">
+              <span className="text-[10px] text-text-muted block">Straal (m)</span>
+              <NumInput value={circleDisplay.straalM} onChange={(v) => handleCircleChange('straalM', v)} opts={{ min: 0.5, step: 0.5 }} />
+            </label>
           </div>
         </div>
       )}
 
       {/* Hoogte */}
-      <div className="mb-3">
-        <label className="text-xs text-text-muted block mb-1">Hoogte (m)</label>
-        {numInput(
-          Math.round(heightM * 10) / 10,
-          (v) => onUpdate({ heightCm: Math.max(50, Math.round(v * 100)) }),
-          { min: 0.5, max: 30, step: 0.5 },
-        )}
-      </div>
+      <label className="mb-3 block">
+        <span className="text-xs text-text-muted block mb-1">Hoogte (m)</span>
+        <NumInput
+          value={Math.round(heightM * 10) / 10}
+          onChange={(v) => onUpdate({ heightCm: Math.max(50, Math.round(v * 100)) })}
+          opts={{ min: 0.5, max: 30, step: 0.5 }}
+        />
+      </label>
 
       {/* Dichtheid presets */}
       <div>
-        <label className="text-xs text-text-muted block mb-1">Schaduwdichtheid</label>
+        <p className="text-xs text-text-muted block mb-1">Schaduwdichtheid</p>
         <div className="flex gap-1">
           {(Object.keys(PRESET_OPACITIES) as Array<keyof typeof PRESET_OPACITIES>).map((preset) => (
             <button
