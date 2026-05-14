@@ -78,6 +78,22 @@ describe('displayToRect round-trip', () => {
     const px = displayToRect('boven', 1, 5, BOUNDS, SCALE)
     expect(px.width).toBe((BOUNDS.maxX - BOUNDS.minX) * 3)
   })
+  it('boven round-trip preserves afstand and dikte', () => {
+    const px = displayToRect('boven', 2, 8, BOUNDS, SCALE)
+    const caster = rect(px.x, px.y, px.width, px.height)
+    const d = rectToDisplay(caster, BOUNDS, SCALE)
+    expect(d.kant).toBe('boven')
+    expect(d.afstandM).toBeCloseTo(2, 0)
+    expect(d.dikteM).toBeCloseTo(8, 0)
+  })
+  it('onder round-trip preserves afstand and dikte', () => {
+    const px = displayToRect('onder', 1, 6, BOUNDS, SCALE)
+    const caster = rect(px.x, px.y, px.width, px.height)
+    const d = rectToDisplay(caster, BOUNDS, SCALE)
+    expect(d.kant).toBe('onder')
+    expect(d.afstandM).toBeCloseTo(1, 0)
+    expect(d.dikteM).toBeCloseTo(6, 0)
+  })
 })
 
 describe('circleToDisplay + displayToCircle round-trip', () => {

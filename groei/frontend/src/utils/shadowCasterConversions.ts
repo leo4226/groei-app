@@ -12,6 +12,11 @@ export const PRESET_OPACITIES = {
 
 export type DichtheidPreset = keyof typeof PRESET_OPACITIES
 
+/** Buildings auto-span this many times the garden dimension to ensure full shadow coverage. */
+const SHADOW_SPAN_FACTOR = 3
+
+/** Detects which side of the garden bounds a rect shadow caster lies outside of.
+ * If the caster overlaps or is fully inside bounds, defaults to 'links'. */
 export function detectKant(caster: ShadowCaster & { type: 'rect' }, bounds: GardenBounds): Kant {
   const { x, y, width, height } = caster
   if (x + width <= bounds.minX) return 'links'
@@ -70,21 +75,21 @@ export function displayToRect(
   switch (kant) {
     case 'links': {
       const w = diktePx
-      const h = gardenH * 3
+      const h = gardenH * SHADOW_SPAN_FACTOR
       return { x: Math.round(bounds.minX - afstandPx - w), y: Math.round(centerY - h / 2), width: w, height: h }
     }
     case 'rechts': {
       const w = diktePx
-      const h = gardenH * 3
+      const h = gardenH * SHADOW_SPAN_FACTOR
       return { x: Math.round(bounds.maxX + afstandPx), y: Math.round(centerY - h / 2), width: w, height: h }
     }
     case 'boven': {
-      const w = gardenW * 3
+      const w = gardenW * SHADOW_SPAN_FACTOR
       const h = diktePx
       return { x: Math.round(centerX - w / 2), y: Math.round(bounds.minY - afstandPx - h), width: w, height: h }
     }
     case 'onder': {
-      const w = gardenW * 3
+      const w = gardenW * SHADOW_SPAN_FACTOR
       const h = diktePx
       return { x: Math.round(centerX - w / 2), y: Math.round(bounds.maxY + afstandPx), width: w, height: h }
     }
