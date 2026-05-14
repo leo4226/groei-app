@@ -32,7 +32,7 @@ def _compute_care_status(schedules, today):
     return care_status, most_urgent
 
 
-def _compute_temp_status(care_thresholds_json, temp_data):
+def _compute_temp_status(care_thresholds_json, temp_data, in_ground=False):
     """Derive temperature status from care thresholds + current week's weather."""
     if not care_thresholds_json:
         return "comfortable"
@@ -50,14 +50,16 @@ def _compute_temp_status(care_thresholds_json, temp_data):
     min_temp = thresholds.get("min_temp_c")
     max_temp = thresholds.get("max_temp_c")
 
-    if min_temp is not None:
-        if week_min <= min_temp:
-            return "freezing"
-        if week_min <= min_temp + 3:
-            return "chilling"
+    # In-ground plants can't be moved/protected — skip cold/heat status
+    if not in_ground:
+        if min_temp is not None:
+            if week_min <= min_temp:
+                return "freezing"
+            if week_min <= min_temp + 3:
+                return "chilling"
 
-    if max_temp is not None and week_max >= max_temp:
-        return "heatstress"
+        if max_temp is not None and week_max >= max_temp:
+            return "heatstress"
 
     return "comfortable"
 
@@ -149,12 +151,11 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
         plant["care_status"], plant["most_urgent"] = _compute_care_status(schedules, today)
 
         care_thresholds = plant.pop("care_thresholds", None)
+        in_ground = map_type == "outdoor" and plant.get("container_id") is None
         if temp_data is not None:
-            plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
+            plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data, in_ground)
         else:
             plant["temp_status"] = "comfortable"
-
-        in_ground = map_type == "outdoor" and plant.get("container_id") is None
         plant["top_alert"] = compute_top_alert(
             care_status=plant["care_status"],
             care_thresholds_json=care_thresholds,
