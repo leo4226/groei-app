@@ -153,8 +153,8 @@ async def apply(db):
         );
     """)
 
-        # Migration: add is_ephemeral column to care_schedules
-        try:
-            await db.execute("ALTER TABLE care_schedules ADD COLUMN is_ephemeral INTEGER DEFAULT 0")
-        except Exception:
-            pass  # column already exists
+    # Migration: add is_ephemeral column to care_schedules
+    try:
+        await db.execute("ALTER TABLE care_schedules ADD COLUMN is_ephemeral INTEGER DEFAULT 0")
+    except Exception:
+        pass  # column already exists
