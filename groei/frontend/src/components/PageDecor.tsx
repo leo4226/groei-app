@@ -1,4 +1,4 @@
-type DecorIcon = { name: string; left: string; top: string; size: number; rotate: number; opacity: number }
+type DecorIcon = { id: number; name: string; left: string; top: string; size: number; rotate: number; opacity: number }
 
 // Small seeded PRNG — deterministic so icons don't shift on re-render
 function mulberry32(seed: number) {
@@ -35,6 +35,7 @@ function plantConfig(name: string) {
 function generateDecor(count: number): DecorIcon[] {
   const rand = mulberry32(Date.now())
   const icons: DecorIcon[] = []
+  let nextId = 0
   const shuffled = [...allPlants].sort(() => rand() - 0.5)
 
   // Pre-compute candidates: random plant + random size, sorted largest-first
@@ -93,7 +94,7 @@ function generateDecor(count: number): DecorIcon[] {
 
     placed.push({ left, top, radiusPct })
     icons.push({
-      name: c.name,
+      id: nextId++, name: c.name,
       left: `${left.toFixed(1)}%`,
       top: `${Math.max(0, Math.min(98, top)).toFixed(1)}%`,
       size: c.size,
@@ -118,7 +119,7 @@ export default function PageDecor() {
     }}>
       {PAGE_DECOR.map((d) => (
         <img
-          key={d.name}
+          key={d.id}
           src={`/api/icons/${d.name}.svg`}
           alt=""
           style={{
