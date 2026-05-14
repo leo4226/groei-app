@@ -4,6 +4,39 @@ import { useGroeiStore } from '../store/useGroeiStore'
 import { useT } from '../context/LanguageContext'
 import type { MapInfo } from '../types'
 
+function MapThumbnail({ map }: { map: MapInfo }) {
+  const isOutdoor = map.map_type === 'outdoor' || map.map_type === 'garden'
+  const baseColor = isOutdoor ? '#7A9E5A' : '#E8E0D0'
+  const accentColor = isOutdoor ? '#C8A96A' : '#C8A060'
+
+  if (map.thumbnail_file) {
+    return (
+      <div className="bg-[#f5f3ef] rounded-xl h-44 flex items-center justify-center overflow-hidden mb-3">
+        <img
+          src={`/maps/${map.thumbnail_file}`}
+          alt={map.name}
+          className="w-full h-full object-contain"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-[#f5f3ef] rounded-xl h-44 flex items-center justify-center overflow-hidden mb-3">
+      <svg viewBox="0 0 120 80" width="150" height="120">
+        <rect x="0" y="0" width="120" height="80" fill={baseColor} opacity="0.08" />
+        <rect x="10" y="8" width="100" height="64" rx="4" fill={baseColor} opacity="0.25" />
+        <rect x="20" y="18" width="38" height="22" rx="3" fill={accentColor} opacity="0.45" />
+        <rect x="62" y="18" width="38" height="22" rx="3" fill={accentColor} opacity="0.35" />
+        <rect x="20" y="46" width="38" height="20" rx="3" fill={accentColor} opacity="0.3" />
+        <rect x="62" y="46" width="38" height="20" rx="3" fill={accentColor} opacity="0.4" />
+        <line x1="10" y1="8" x2="110" y2="72" stroke={baseColor} strokeWidth="0.4" opacity="0.15" />
+        <line x1="110" y1="8" x2="10" y2="72" stroke={baseColor} strokeWidth="0.4" opacity="0.15" />
+      </svg>
+    </div>
+  )
+}
+
 export default function MapsListPage() {
   const t = useT()
   const maps = useGroeiStore(s => s.maps)
@@ -117,6 +150,7 @@ export default function MapsListPage() {
       <div className="space-y-3">
         {maps.map((map) => (
           <div key={map.id} className="bg-surface border border-border rounded-xl p-4">
+            <MapThumbnail map={map} />
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-text">{map.name}</h2>

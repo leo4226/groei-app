@@ -235,10 +235,22 @@ class MapOut(BaseModel):
     scale_info: str | None = None
     sort_order: int = 0
     canvas_data: str | None = None
+    thumbnail_file: str | None = None
     map_type: str = 'outdoor'
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
+
+
+class ZoneOut(BaseModel):
+    id: int
+    map_id: int
+    name: str
+    zone_type: str
+    sun_exposure: str | None = None
+    boundary: str
+    color: str | None = None
+    sort_order: int = 0
 
 
 class MapDetailOut(MapOut):

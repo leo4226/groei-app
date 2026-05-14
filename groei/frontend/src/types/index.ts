@@ -150,6 +150,7 @@ export interface MapInfo {
   scale_info: string | null
   sort_order: number
   canvas_data: string | null
+  thumbnail_file: string | null
   map_type: 'outdoor' | 'indoor'
   lat: number | null
   lon: number | null
