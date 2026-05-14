@@ -33,6 +33,7 @@ def compute_alerts(
     rain: dict,
     temp: dict,
     last_watered: date | None = None,
+    last_fertilized: date | None = None,
     map_type: str = "outdoor",
     in_ground: bool = False,
 ) -> list[dict]:
@@ -114,8 +115,10 @@ def compute_alerts(
                 "icon": "🏠"})
 
     if current_month in fertilise_months:
-        tip = fertilise_tip or "Nu is het een goed moment om te bemesten."
-        alerts.append({"type": "fertilise", "severity": "info", "message_nl": tip, "icon": "🌿"})
+        fertilized_this_month = last_fertilized is not None and last_fertilized.month == current_month and last_fertilized.year == date.today().year
+        if not fertilized_this_month:
+            tip = fertilise_tip or "Nu is het een goed moment om te bemesten."
+            alerts.append({"type": "fertilise", "severity": "info", "message_nl": tip, "icon": "🌿"})
 
     return alerts
 
@@ -126,6 +129,7 @@ def _collect_alerts(
     rain: dict | None,
     temp: dict | None,
     last_watered: date | None,
+    last_fertilized: date | None = None,
     map_type: str = "outdoor",
     most_urgent_care_type: str | None = None,
     in_ground: bool = False,
@@ -150,7 +154,7 @@ def _collect_alerts(
         has_protect_cold = most_urgent_care_type == "protect_cold" and care_status in ("overdue", "due_today")
         has_protect_heat = most_urgent_care_type == "protect_heat" and care_status in ("overdue", "due_today")
         fertilize_handled = care_status == "good" or (most_urgent_care_type is not None and most_urgent_care_type != "fertilize")
-        for a in compute_alerts(thresholds, rain, temp, last_watered, map_type, in_ground=in_ground):
+        for a in compute_alerts(thresholds, rain, temp, last_watered, last_fertilized, map_type, in_ground=in_ground):
             # Suppress weather cold/heat when an ephemeral protect schedule already covers it
             if has_protect_cold and a["type"] == "cold":
                 continue
@@ -171,12 +175,13 @@ def compute_top_alert(
     rain: dict | None,
     temp: dict | None,
     last_watered: date | None,
+    last_fertilized: date | None = None,
     map_type: str = "outdoor",
     most_urgent_care_type: str | None = None,
     in_ground: bool = False,
 ) -> dict | None:
     """Return the single worst alert for map marker display (backward-compatible)."""
-    alerts = _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, map_type, most_urgent_care_type, in_ground)
+    alerts = _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, last_fertilized, map_type, most_urgent_care_type, in_ground)
     return alerts[0] if alerts else None
 
 
@@ -186,9 +191,10 @@ def compute_all_alerts(
     rain: dict | None,
     temp: dict | None,
     last_watered: date | None,
+    last_fertilized: date | None = None,
     map_type: str = "outdoor",
     most_urgent_care_type: str | None = None,
     in_ground: bool = False,
 ) -> list[dict]:
     """Return all active alerts for a plant, sorted by severity then priority."""
-    return _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, map_type, most_urgent_care_type, in_ground)
+    return _collect_alerts(care_status, care_thresholds_json, rain, temp, last_watered, last_fertilized, map_type, most_urgent_care_type, in_ground)

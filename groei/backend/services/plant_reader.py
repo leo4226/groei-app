@@ -117,7 +117,7 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
     return plant
 
 
-async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, last_watered=None, map_type="outdoor"):
+async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, last_watered=None, last_fertilized=None, map_type="outdoor"):
     """Batch-enrich plant dicts. Single query for all schedules (fixes N+1)."""
     if not plant_rows:
         return []
@@ -161,6 +161,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             rain=rain_data,
             temp=temp_data,
             last_watered=last_watered,
+            last_fertilized=last_fertilized,
             map_type=map_type,
             most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
             in_ground=in_ground,
@@ -173,6 +174,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
                 rain=rain_data,
                 temp=temp_data,
                 last_watered=last_watered,
+                last_fertilized=last_fertilized,
                 map_type=map_type,
                 most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
                 in_ground=in_ground,

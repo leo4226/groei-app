@@ -8,7 +8,7 @@ from datetime import date
 from database import db_dep
 from auth import get_current_account
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
-from routers.plant_care import _get_temp_data, _get_rain_data, get_last_garden_watered
+from routers.plant_care import _get_temp_data, _get_rain_data, get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 
@@ -71,7 +71,8 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
     temp_data = await _get_temp_data()
     rain_data = await _get_rain_data()
     last_watered = await get_last_garden_watered()
-    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
+    last_fertilized = await get_last_garden_fertilized()
+    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
 
 
 
