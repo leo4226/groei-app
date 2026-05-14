@@ -78,14 +78,20 @@ async def sync_ephemeral_schedules() -> dict:
                 cold_label = f"Min {min_24h}°C (grens {min_temp}°C)"
 
             if cold_trigger:
-                # Check if ephemeral schedule already exists
+                # Dedup: keep only the most recent ephemeral schedule per plant+care_type
                 existing = await db.execute_fetchall(
                     """SELECT id FROM care_schedules
                        WHERE plant_id = ? AND care_type = 'protect_cold'
-                       AND is_ephemeral = 1 AND is_active = 1""",
+                       AND is_ephemeral = 1 AND is_active = 1
+                       ORDER BY id DESC""",
                     (plant_id,),
                 )
-                if not existing:
+                if existing:
+                    # Deactivate any duplicates beyond the first
+                    for dup in existing[1:]:
+                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
+                        deleted += 1
+                else:
                     await db.execute(
                         """INSERT INTO care_schedules
                            (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
@@ -119,10 +125,15 @@ async def sync_ephemeral_schedules() -> dict:
                 existing = await db.execute_fetchall(
                     """SELECT id FROM care_schedules
                        WHERE plant_id = ? AND care_type = 'protect_heat'
-                       AND is_ephemeral = 1 AND is_active = 1""",
+                       AND is_ephemeral = 1 AND is_active = 1
+                       ORDER BY id DESC""",
                     (plant_id,),
                 )
-                if not existing:
+                if existing:
+                    for dup in existing[1:]:
+                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
+                        deleted += 1
+                else:
                     await db.execute(
                         """INSERT INTO care_schedules
                            (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
