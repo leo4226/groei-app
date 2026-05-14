@@ -203,15 +203,15 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
           <div className="grid grid-cols-2 gap-1.5">
             <label className="block">
               <span className="text-[10px] text-text-muted block">X (m)</span>
-              <NumInput value={circleDisplay.xM} onChange={(v) => handleCircleChange('xM', v)} opts={{ step: 0.5 }} />
+              <NumInput value={Math.round(circleDisplay.xM * 10) / 10} onChange={(v) => handleCircleChange('xM', v)} opts={{ step: 0.5 }} />
             </label>
             <label className="block">
               <span className="text-[10px] text-text-muted block">Y (m)</span>
-              <NumInput value={circleDisplay.yM} onChange={(v) => handleCircleChange('yM', v)} opts={{ step: 0.5 }} />
+              <NumInput value={Math.round(circleDisplay.yM * 10) / 10} onChange={(v) => handleCircleChange('yM', v)} opts={{ step: 0.5 }} />
             </label>
             <label className="block">
               <span className="text-[10px] text-text-muted block">Straal (m)</span>
-              <NumInput value={circleDisplay.straalM} onChange={(v) => handleCircleChange('straalM', v)} opts={{ min: 0.5, step: 0.5 }} />
+              <NumInput value={Math.round(circleDisplay.straalM * 10) / 10} onChange={(v) => handleCircleChange('straalM', v)} opts={{ min: 0.5, step: 0.5 }} />
             </label>
           </div>
         </div>
