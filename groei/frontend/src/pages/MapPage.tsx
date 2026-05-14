@@ -311,7 +311,7 @@ export default function MapPage() {
           <button
             onClick={async () => { await fertilize.save(); }}
             disabled={fertilize.fertilizing || !fertilize.pickerDate}
-            className="px-3 py-1.5 bg-emerald-green text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
           >
             {fertilize.fertilizing ? '…' : 'Opslaan'}
           </button>
@@ -369,7 +369,23 @@ export default function MapPage() {
       </div>
 
       {isOutdoor && sun.active && (
-        <SunControls sun={sun} />
+        <SunControls
+          viewMode={sun.viewMode}
+          onViewModeChange={sun.setViewMode}
+          selectedMonth={sun.month}
+          selectedHour={sun.hour}
+          sunPosition={sun.sunPosition}
+          onMonthChange={sun.setMonth}
+          onHourChange={sun.setHour}
+          onNow={sun.setToNow}
+          heatmapLayer={sun.layer}
+          onHeatmapLayerChange={sun.setLayer}
+          isCalculating={sun.isCalculating}
+          tappedCell={sun.tappedCell}
+          selectedProfile={sun.profile}
+          onProfileChange={sun.setProfile}
+          onGrowHere={sun.openGrowHere}
+        />
       )}
 
       {sun.inspectorMode && !sun.inspectorResult && !sun.inspectorLoading && (
