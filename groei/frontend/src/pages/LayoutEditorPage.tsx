@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchMapById, updateMap, fetchObjects, updateObjectPosition, archiveObject, updateObject } from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
@@ -11,6 +11,7 @@ import WallElementPropertiesPanel from '../components/editor/WallElementProperti
 import ShadowCasterPropertiesPanel from '../components/editor/ShadowCasterPropertiesPanel'
 import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
 import { useT } from '../context/LanguageContext'
+import { deriveGardenBounds } from '../utils/gardenFromCanvas'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -26,6 +27,10 @@ export default function LayoutEditorPage() {
   const [previewMode, setPreviewMode] = useState(false)
 
   const editor = useEditorState()
+  const gardenBounds = useMemo(
+    () => deriveGardenBounds(editor.zones),
+    [editor.zones],
+  )
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
@@ -279,6 +284,7 @@ export default function LayoutEditorPage() {
               <ShadowCasterPropertiesPanel
                 caster={selectedShadowCaster}
                 scalePxPerM={editor.scalePxPerM}
+                gardenBounds={gardenBounds}
                 onUpdate={(updates) => editor.updateShadowCaster(selectedShadowCaster.id, updates)}
                 onDelete={handleDelete}
               />
