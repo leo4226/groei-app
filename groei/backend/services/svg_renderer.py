@@ -101,3 +101,44 @@ def render_canvas_data(canvas_data_json: str, map_name: str) -> str:
     parts.append(_scale_bar(scale))
     parts.append("</svg>")
     return "\n".join(parts)
+
+
+def render_thumbnail(canvas_data_json: str) -> str:
+    """Render a compact zone-block thumbnail SVG — no patterns, no scale bar."""
+    data = json.loads(canvas_data_json)
+    zones: list[dict] = data.get("zones", [])
+
+    if not zones:
+        return ""
+
+    # Compute bounding box of all zone rects
+    min_x = min(z["x"] for z in zones)
+    min_y = min(z["y"] for z in zones)
+    max_x = max(z["x"] + z["width"] for z in zones)
+    max_y = max(z["y"] + z["height"] for z in zones)
+
+    bw = max_x - min_x
+    bh = max_y - min_y
+    pad = max(bw, bh) * 0.10
+    min_x -= pad
+    min_y -= pad
+    bw += pad * 2
+    bh += pad * 2
+
+    parts = [
+        f'<svg viewBox="{min_x} {min_y} {bw} {bh}" xmlns="http://www.w3.org/2000/svg">',
+    ]
+
+    for zone in zones:
+        ztype = zone.get("type", "soil")
+        style = ZONE_STYLES.get(ztype, ZONE_STYLES["soil"])
+        x, y, w, h = zone["x"], zone["y"], zone["width"], zone["height"]
+        fill = style["fill"]
+        opacity = style.get("opacity", 1)
+        parts.append(
+            f'  <rect x="{x}" y="{y}" width="{w}" height="{h}" '
+            f'fill="{fill}" opacity="{opacity}" rx="2"/>'
+        )
+
+    parts.append("</svg>")
+    return "\n".join(parts)
