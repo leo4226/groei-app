@@ -1,6 +1,6 @@
 {
-  "count": 110,
-  "iconCount": 110,
+  "count": 112,
+  "iconCount": 112,
   "categories": [
     {
       "id": "all",
@@ -1070,6 +1070,27 @@
       "cat": "unknown",
       "family": "",
       "file": "brownbean_nopot.svg"
+    },
+    {
+      "id": "seed",
+      "name": "Seed",
+      "sci": "",
+      "cat": "general",
+      "form": "potted",
+      "family": "",
+      "file": "seed.svg",
+      "phase": "seed"
+    },
+    {
+      "id": "seed_bare",
+      "name": "Seed (bare)",
+      "sci": "",
+      "cat": "general",
+      "form": "bare",
+      "family": "",
+      "file": "seed_bare.svg",
+      "phase": "seed",
+      "variant_of": "seed"
     }
   ]
 }
