@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
+import { CARE_TYPE_INFO } from '../../types'
 import { useGroeiStore } from '../../store/useGroeiStore'
 import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
 
@@ -191,14 +192,13 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                 const isOverdue = daysUntil < 0
                 const isDueToday = daysUntil === 0
 
-                const CARE_ICONS: Record<string, string> = {
-                  water: '💧', fertilize: '🌿', prune: '✂️', repot: '🪴',
+                const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
+                const labelMap: Record<string, string> = {
+                  water: 'Gieten', fertilize: 'Bemesten', prune: 'Snoeien', repot_check: 'Verpotten',
+                  mist: 'Sproeien', rotate: 'Draaien', protect_cold: 'Beschermen tegen kou', protect_heat: 'Beschermen tegen hitte',
                 }
-                const CARE_LABELS: Record<string, string> = {
-                  water: 'Gieten', fertilize: 'Bemesten', prune: 'Snoeien', repot: 'Verpotten',
-                }
-                const icon = CARE_ICONS[sched.care_type] ?? '📋'
-                const label = CARE_LABELS[sched.care_type] ?? sched.care_type
+                const icon = info?.icon ?? '📋'
+                const label = labelMap[sched.care_type] ?? info?.label ?? sched.care_type
 
                 let statusText: string
                 let statusColor: string
