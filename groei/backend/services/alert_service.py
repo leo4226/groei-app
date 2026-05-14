@@ -10,6 +10,11 @@ _SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 _MANUAL_WATER_DAYS = 3
 _INDOOR_SKIP = {"drought", "waterlog", "bring_inside"}
 
+_CARE_ICON = {
+    "water": "💧", "fertilize": "🧪", "mist": "🌫️", "rotate": "🔄",
+    "repot_check": "🪴", "prune": "✂️", "protect_cold": "🧤", "protect_heat": "🧴",
+}
+
 # Tiebreaker: at the same severity, temperature alerts beat weather alerts beat schedule alerts
 _ALERT_TYPE_PRIORITY = {
     "cold": 3, "heat": 3, "bring_inside": 3,
@@ -134,10 +139,12 @@ def compute_top_alert(
 
     if care_status == "overdue":
         alert_type = f"overdue_{most_urgent_care_type}" if most_urgent_care_type else "overdue"
-        alerts.append({"alert_type": alert_type, "severity": "urgent", "icon": "💧"})
+        icon = _CARE_ICON.get(most_urgent_care_type or "", "💧")
+        alerts.append({"alert_type": alert_type, "severity": "urgent", "icon": icon})
     elif care_status == "due_today":
         alert_type = f"due_{most_urgent_care_type}" if most_urgent_care_type else "due"
-        alerts.append({"alert_type": alert_type, "severity": "info", "icon": "💧"})
+        icon = _CARE_ICON.get(most_urgent_care_type or "", "💧")
+        alerts.append({"alert_type": alert_type, "severity": "info", "icon": icon})
 
     if care_thresholds_json and rain and temp:
         try:

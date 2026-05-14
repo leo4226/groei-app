@@ -414,6 +414,6 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; def
   rotate:      { label: 'Rotate',      icon: '🔄', defaultIndoor: 14,  defaultOutdoor: 0 },
   repot_check: { label: 'Repot check', icon: '🪴', defaultIndoor: 180, defaultOutdoor: 365 },
   prune:        { label: 'Prune',        icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
-  protect_cold: { label: 'Protect Cold', icon: '🥶', defaultIndoor: 0,   defaultOutdoor: 0 },
-  protect_heat: { label: 'Protect Heat', icon: '🌡️', defaultIndoor: 0,   defaultOutdoor: 0 },
+  protect_cold: { label: 'Protect Cold', icon: '🧤', defaultIndoor: 0,   defaultOutdoor: 0 },
+  protect_heat: { label: 'Protect Heat', icon: '🧴', defaultIndoor: 0,   defaultOutdoor: 0 },
 }
