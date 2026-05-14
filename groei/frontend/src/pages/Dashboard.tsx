@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { CARE_TYPE_INFO } from '../types'
 import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut } from '../types'
@@ -8,6 +8,7 @@ import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
 import { HALO_COLORS } from '../hooks/usePlantStatus'
 import { useT } from '../context/LanguageContext'
+import { getToken } from '../api/auth'
 import type { Translations } from '../i18n/translations'
 
 const PX_PER_M = 46
@@ -79,9 +80,40 @@ const RAIN_OK = 'var(--color-primary)'   // green
 const RAIN_DRY = 'var(--color-overdue)'  // red
 
 export default function Dashboard() {
-  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading } = useGroeiStore()
+  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading, createMap } = useGroeiStore()
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
+  const navigate = useNavigate()
+
+  const [showNewMap, setShowNewMap] = useState(false)
+  const [newMapName, setNewMapName] = useState('')
+  const [newMapType, setNewMapType] = useState<'outdoor' | 'indoor'>('outdoor')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  async function handleCreateMap() {
+    if (!newMapName.trim() || creating) return
+    setCreating(true)
+    setCreateError(null)
+    try {
+      const map = await createMap({ name: newMapName.trim(), map_type: newMapType })
+      setShowNewMap(false)
+      setNewMapName('')
+      setNewMapType('outdoor')
+      navigate(`/maps/${map.id}/edit-layout`)
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : t.maps.failedCreate)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  function openNewMap() {
+    setNewMapName('')
+    setNewMapType('outdoor')
+    setCreateError(null)
+    setShowNewMap(true)
+  }
 
   const greeting = (() => {
     const hour = new Date().getHours()
@@ -95,7 +127,7 @@ export default function Dashboard() {
   const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
 
   useEffect(() => {
-    loadDashboardV2()
+    if (getToken()) loadDashboardV2()
   }, [loadDashboardV2])
 
   const overdueCount = dashboardV2?.overdue.length ?? 0
@@ -156,24 +188,23 @@ export default function Dashboard() {
               <SectionHeader
                 leftLede={maps.length === 0 ? t.dashboard.actions.addGarden : maps.length === 1 ? t.dashboard.actions.view : `${t.dashboard.actions.view} (${maps.length})`}
                 rightMarker={t.dashboard.sections.myGardens}
-                rightAction={{ to: '/maps', label: t.dashboard.actions.manage }}
               />
               {maps.length > 0 ? (
                 <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '4px 24px 16px' }}>
                   {maps.map((map) => <MapCard key={map.id} map={map} t={t} />)}
-                  <NewMapCard t={t} />
+                  <NewMapCard t={t} onNewMap={openNewMap} />
                 </div>
               ) : (
-                <Link to="/maps" style={{
+                <button onClick={openNewMap} style={{
                   display: 'flex', width: '100%', height: 132,
                   border: '1px dashed var(--color-border)', borderRadius: 14,
                   flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                   color: 'var(--color-text-muted)', background: 'var(--color-surface)',
-                  textDecoration: 'none', marginBottom: 18,
+                  cursor: 'pointer', marginBottom: 18,
                 }}>
                   <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>{t.dashboard.actions.addGarden}</span>
-                </Link>
+                </button>
               )}
             </section>
 
@@ -239,6 +270,114 @@ export default function Dashboard() {
           }
         }
       `}</style>
+
+      {showNewMap && (
+        <div
+          onClick={() => setShowNewMap(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--color-surface)',
+              borderRadius: 16,
+              padding: '28px 24px 24px',
+              width: '100%',
+              maxWidth: 400,
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <h2 style={{
+              margin: '0 0 20px',
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 500,
+              fontSize: 22,
+              color: 'var(--color-text)',
+              letterSpacing: '-0.01em',
+            }}>{t.dashboard.actions.newGarden}</h2>
+
+            {createError && (
+              <div style={{
+                background: 'var(--color-overdue-soft, rgba(200,60,60,.1))',
+                color: 'var(--color-overdue)',
+                fontSize: 13, borderRadius: 8, padding: '8px 12px', marginBottom: 16,
+              }}>{createError}</div>
+            )}
+
+            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
+              {t.maps.mapNameLabel}
+            </label>
+            <input
+              autoFocus
+              value={newMapName}
+              onChange={(e) => setNewMapName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateMap()}
+              placeholder={t.maps.mapNamePlaceholder}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '10px 14px', fontSize: 15,
+                background: 'var(--color-bg)', color: 'var(--color-text)',
+                fontFamily: 'var(--font-body)', marginBottom: 18, outline: 'none',
+              }}
+            />
+
+            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+              Type
+            </label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+              {(['outdoor', 'indoor'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setNewMapType(type)}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 14,
+                    fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer',
+                    border: `1px solid ${newMapType === type ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: newMapType === type ? 'var(--color-primary)' : 'var(--color-bg)',
+                    color: newMapType === type ? '#fff' : 'var(--color-text-muted)',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  {type === 'outdoor' ? t.maps.outdoor : t.maps.indoor}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleCreateMap}
+                disabled={!newMapName.trim() || creating}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 10,
+                  background: 'var(--color-primary)', color: '#fff',
+                  fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600,
+                  border: 'none', cursor: 'pointer', opacity: (!newMapName.trim() || creating) ? 0.5 : 1,
+                  transition: 'opacity 0.12s',
+                }}
+              >
+                {creating ? '…' : t.maps.newMap.replace('+ ', '')}
+              </button>
+              <button
+                onClick={() => setShowNewMap(false)}
+                style={{
+                  padding: '12px 18px', borderRadius: 10,
+                  background: 'transparent', color: 'var(--color-text-muted)',
+                  fontFamily: 'var(--font-body)', fontSize: 15,
+                  border: '1px solid var(--color-border)', cursor: 'pointer',
+                }}
+              >
+                {t.common.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -574,10 +713,10 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
   )
 }
 
-function NewMapCard({ t }: { t: Translations }) {
+function NewMapCard({ t, onNewMap }: { t: Translations; onNewMap: () => void }) {
   return (
-    <Link
-      to="/maps"
+    <button
+      onClick={onNewMap}
       style={{
         flexShrink: 0,
         width: 300,
@@ -589,13 +728,13 @@ function NewMapCard({ t }: { t: Translations }) {
         alignItems: 'center',
         justifyContent: 'center',
         color: 'var(--color-text-muted)',
-        textDecoration: 'none',
+        cursor: 'pointer',
         aspectRatio: '4 / 3',
       }}
     >
       <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, color: 'var(--color-primary)' }}>+</span>
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: 6 }}>{t.dashboard.actions.newGarden}</span>
-    </Link>
+    </button>
   )
 }
 
