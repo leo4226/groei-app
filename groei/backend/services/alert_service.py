@@ -87,22 +87,22 @@ def compute_alerts(
 
     if min_temp is not None and temp_days:
         week_min = min(d["min"] for d in temp_days)
-        if week_min < min_temp:
+        if week_min <= min_temp:
             alerts.append({"type": "cold", "severity": "urgent",
                 "message_nl": f"Temperatuur daalde tot {week_min}°C, onder de stressgrens van {min_temp}°C.",
                 "icon": "❄️"})
-        elif week_min < min_temp + 3:
+        elif week_min <= min_temp + 3:
             alerts.append({"type": "cold", "severity": "warning",
                 "message_nl": f"Minimum temperatuur ({week_min}°C) nadert de stressgrens ({min_temp}°C).",
                 "icon": "❄️"})
 
     if max_temp is not None and temp_days:
         week_max = max(d["max"] for d in temp_days)
-        if week_max > max_temp:
+        if week_max >= max_temp:
             alerts.append({"type": "heat", "severity": "urgent",
                 "message_nl": f"Temperatuur bereikte {week_max}°C, boven de stressgrens van {max_temp}°C.",
                 "icon": "🌡️"})
-        elif week_max > max_temp - 3:
+        elif week_max >= max_temp - 3:
             alerts.append({"type": "heat", "severity": "warning",
                 "message_nl": f"Maximum temperatuur ({week_max}°C) nadert de stressgrens ({max_temp}°C).",
                 "icon": "🌡️"})
