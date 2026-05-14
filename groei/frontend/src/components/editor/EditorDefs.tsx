@@ -21,13 +21,14 @@ export const ZONE_STYLES: Record<ZoneStyleType, ZoneStyle> = {
   room:      { fill: '#E8E0D0', stroke: 'rgba(100,80,60,0.2)', strokeWidth: 1, opacity: 0.5, label: 'Room', chipColor: '#E8E0D0' },
   water:     { fill: '#3B8BD4', stroke: 'rgba(60,130,200,0.3)', strokeWidth: 1, opacity: 0.4, label: 'Water', chipColor: '#3B8BD4' },
   structure: { fill: '#C8A060', stroke: '#8a6030', strokeWidth: 1.2, opacity: 1, label: 'Structure', chipColor: '#C8A060' },
+  fence:     { fill: 'rgba(160,130,90,0.35)', stroke: 'rgba(120,95,60,0.5)', strokeWidth: 1, opacity: 1, label: 'Fence', chipColor: '#A0825A' },
 }
 
 export const ZONE_TYPE_ORDER: ZoneStyleType[] = [
-  'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure',
+  'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure', 'fence',
 ]
 
-export const GARDEN_ZONE_TYPES: ZoneStyleType[] = ['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'structure']
+export const GARDEN_ZONE_TYPES: ZoneStyleType[] = ['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'structure', 'fence']
 export const HOUSE_ZONE_TYPES: ZoneStyleType[] = ['room', 'wall', 'structure']
 
 export default function EditorDefs() {
@@ -39,6 +40,12 @@ export default function EditorDefs() {
       <pattern id="soilp" width="7" height="7" patternUnits="userSpaceOnUse">
         <circle cx="2" cy="2" r="1" fill="#6B4C11" opacity="0.2" />
         <circle cx="5.5" cy="5.5" r="0.7" fill="#6B4C11" opacity="0.15" />
+      </pattern>
+      <pattern id="fencep" width="8" height="8" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="2" x2="8" y2="2" stroke="#8B7355" strokeWidth="0.6" opacity="0.3" />
+        <line x1="0" y1="6" x2="8" y2="6" stroke="#8B7355" strokeWidth="0.6" opacity="0.3" />
+        <line x1="2" y1="0" x2="2" y2="8" stroke="#8B7355" strokeWidth="0.6" opacity="0.3" />
+        <line x1="6" y1="0" x2="6" y2="8" stroke="#8B7355" strokeWidth="0.6" opacity="0.3" />
       </pattern>
       <pattern id="gravelp" width="5" height="5" patternUnits="userSpaceOnUse">
         <circle cx="1.5" cy="1.5" r="0.9" fill="#999" opacity="0.35" />
