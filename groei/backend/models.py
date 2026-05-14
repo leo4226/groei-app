@@ -174,6 +174,8 @@ class MapOut(BaseModel):
     scale_info: str | None = None
     sort_order: int = 0
     canvas_data: str | None = None
+    thumbnail_file: str | None = None
+    map_type: str | None = None
 
 
 class ZoneOut(BaseModel):

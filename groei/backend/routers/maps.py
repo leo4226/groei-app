@@ -8,7 +8,7 @@ from datetime import date
 from database import db_dep
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
 from routers.plant_care import _get_temp_data
-from services.svg_renderer import render_canvas_data
+from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 
 # Path to frontend public/maps — SVGs land here so Vite serves them in dev
@@ -22,7 +22,7 @@ router = APIRouter(tags=["maps"])
 @router.get("/maps", response_model=list[MapOut])
 async def list_maps(db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps ORDER BY sort_order"
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps ORDER BY sort_order"
     )
     return [dict(r) for r in rows]
 
@@ -30,7 +30,7 @@ async def list_maps(db = Depends(db_dep)):
 @router.get("/maps/{slug}", response_model=MapDetailOut)
 async def get_map(slug: str, db = Depends(db_dep)):
     row = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE slug = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE slug = ?",
         (slug,),
     )
     if not row:
@@ -126,7 +126,7 @@ def _slugify(name: str) -> str:
 @router.get("/maps/by-id/{map_id}", response_model=MapOut)
 async def get_map_by_id(map_id: int, db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
         (map_id,),
     )
     if not rows:
@@ -160,7 +160,7 @@ async def create_map(data: MapCreate, db = Depends(db_dep)):
     await db.commit()
     map_id = cursor.lastrowid
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
         (map_id,),
     )
     return dict(rows[0])
@@ -168,9 +168,10 @@ async def create_map(data: MapCreate, db = Depends(db_dep)):
 
 @router.put("/maps/{map_id}", response_model=MapOut)
 async def update_map(map_id: int, data: MapUpdate, db = Depends(db_dep)):
-    existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ?", (map_id,))
+    existing = await db.execute_fetchall("SELECT id, slug FROM maps WHERE id = ?", (map_id,))
     if not existing:
         raise HTTPException(404, "Map not found")
+    existing_row = dict(existing[0])
 
     updates = []
     params = []
@@ -198,6 +199,22 @@ async def update_map(map_id: int, data: MapUpdate, db = Depends(db_dep)):
             params.append(vb)
         except (json.JSONDecodeError, TypeError):
             pass
+        # Generate thumbnail SVG from zone blocks
+        try:
+            thumb_svg = render_thumbnail(data.canvas_data)
+            if thumb_svg:
+                thumb_filename = f"{existing_row['slug']}-thumb.svg"
+                thumb_path = os.path.join(_MAPS_PUBLIC, thumb_filename)
+                os.makedirs(_MAPS_PUBLIC, exist_ok=True)
+                with open(thumb_path, "w", encoding="utf-8") as f:
+                    f.write(thumb_svg)
+                updates.append("thumbnail_file = ?")
+                params.append(thumb_filename)
+            else:
+                updates.append("thumbnail_file = ?")
+                params.append(None)
+        except (json.JSONDecodeError, TypeError):
+            pass
     if data.map_type is not None:
         updates.append("map_type = ?")
         params.append(data.map_type)
@@ -217,7 +234,7 @@ async def update_map(map_id: int, data: MapUpdate, db = Depends(db_dep)):
         await db.commit()
 
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing FROM maps WHERE id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
         (map_id,),
     )
     return dict(rows[0])
