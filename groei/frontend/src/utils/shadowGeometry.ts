@@ -1,6 +1,6 @@
 import type { SunPosition } from './sunCalc'
 import type { ShadowCaster } from './gardenStructures'
-import { PX_PER_CM, GARDEN_SVG_TOP_AZIMUTH } from './gardenStructures'
+import { PX_PER_CM } from './gardenStructures'
 
 export interface ShadowPolygon {
   id: string
@@ -18,14 +18,14 @@ const MAX_SHADOW_FACTOR = 6 // clamp shadow length for very low sun
  *   sin → SVG-X component, cos → SVG-Y component (standard SVG convention).
  * Shadow falls opposite to the sun direction.
  */
-function getShadowVector(azimuthDeg: number, altitudeDeg: number, heightCm: number): { dx: number; dy: number } | null {
+function getShadowVector(azimuthDeg: number, altitudeDeg: number, heightCm: number, bearing: number): { dx: number; dy: number } | null {
   if (altitudeDeg <= 0) return null
 
   const altRad = altitudeDeg * Math.PI / 180
   const shadowFactor = Math.min(1 / Math.tan(altRad), MAX_SHADOW_FACTOR)
   const shadowLenPx = heightCm * PX_PER_CM * shadowFactor
 
-  const svgAngleRad = (azimuthDeg - GARDEN_SVG_TOP_AZIMUTH) * Math.PI / 180
+  const svgAngleRad = (azimuthDeg - bearing) * Math.PI / 180
 
   // Shadow falls opposite to sun direction
   const dx = -shadowLenPx * Math.sin(svgAngleRad)
@@ -101,12 +101,19 @@ function computeRectShadow(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: 
 }
 
 function computeCircleShadow(caster: Extract<ShadowCaster, { type: 'circle' }>, dx: number, dy: number): ShadowPolygon {
-  // Displace the canopy circle by the shadow vector
-  return {
-    id: caster.id,
-    pathD: circlePath(caster.cx + dx, caster.cy + dy, caster.radius),
-    opacity: caster.opacity ?? 0.2, // lighter — dappled canopy shadow
+  const { cx, cy, radius } = caster
+  // Sample points around the canopy circle and the displaced shadow circle,
+  // then take the convex hull — produces an elongated oval/capsule shadow.
+  const N = 24
+  const points: [number, number][] = []
+  for (let i = 0; i < N; i++) {
+    const angle = (i / N) * 2 * Math.PI
+    const cos = Math.cos(angle), sin = Math.sin(angle)
+    points.push([cx + cos * radius, cy + sin * radius])
+    points.push([cx + dx + cos * radius, cy + dy + sin * radius])
   }
+  const hull = convexHull(points)
+  return { id: caster.id, pathD: pointsToPath(hull), opacity: caster.opacity ?? 0.2 }
 }
 
 function computePolygonShadow(caster: Extract<ShadowCaster, { type: 'polygon' }>, dx: number, dy: number): ShadowPolygon {
@@ -118,12 +125,12 @@ function computePolygonShadow(caster: Extract<ShadowCaster, { type: 'polygon' }>
 /**
  * Compute all shadow polygons for the current sun position.
  */
-export function computeShadows(sun: SunPosition, casters: ShadowCaster[]): ShadowPolygon[] {
+export function computeShadows(sun: SunPosition, casters: ShadowCaster[], bearing: number): ShadowPolygon[] {
   if (!sun.isUp) return []
 
   const shadows: ShadowPolygon[] = []
   for (const caster of casters) {
-    const vec = getShadowVector(sun.azimuthDeg, sun.altitudeDeg, caster.heightCm)
+    const vec = getShadowVector(sun.azimuthDeg, sun.altitudeDeg, caster.heightCm, bearing)
     if (!vec) continue
 
     if (caster.type === 'rect') {
@@ -149,12 +156,10 @@ export interface ShadowRegion {
 
 /**
  * Derive light-blocking factor from caster opacity.
- * Solid structures (default opacity or >= 0.25): block 100% of light.
- * Dappled structures (opacity < 0.25, e.g. tree canopy, vegetation): block 50% — some light filters through.
+ * Uses opacity directly: 1.0 = solid building (100% blocked), 0.35 = dappled tree (35% blocked).
  */
 function casterBlockFactor(caster: ShadowCaster): number {
-  if (caster.opacity !== undefined && caster.opacity < 0.25) return 0.5
-  return 1.0
+  return Math.min(1, Math.max(0, caster.opacity ?? 1))
 }
 
 function rectShadowRegion(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: number, dy: number): ShadowRegion {
@@ -178,11 +183,11 @@ function polygonShadowRegion(caster: Extract<ShadowCaster, { type: 'polygon' }>,
 /**
  * Compute shadow regions as raw geometry for point-in-polygon hit testing (used by heatmap).
  */
-export function computeShadowRegions(sun: SunPosition, casters: ShadowCaster[]): ShadowRegion[] {
+export function computeShadowRegions(sun: SunPosition, casters: ShadowCaster[], bearing: number): ShadowRegion[] {
   if (!sun.isUp) return []
   const regions: ShadowRegion[] = []
   for (const caster of casters) {
-    const vec = getShadowVector(sun.azimuthDeg, sun.altitudeDeg, caster.heightCm)
+    const vec = getShadowVector(sun.azimuthDeg, sun.altitudeDeg, caster.heightCm, bearing)
     if (!vec) continue
     if (caster.type === 'rect') {
       regions.push(rectShadowRegion(caster, vec.dx, vec.dy))
