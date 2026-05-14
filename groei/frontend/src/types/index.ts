@@ -79,6 +79,7 @@ export interface CareTask {
   last_done_by: string | null
   last_done_at: string | null
   schedule_id: number
+  is_ephemeral: boolean
 }
 
 export interface DashboardData {
@@ -113,7 +114,7 @@ export interface DashboardV2Data {
   plant_fact: PlantFactOut | null
 }
 
-export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot_check' | 'prune'
+export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot_check' | 'prune' | 'protect_cold' | 'protect_heat'
 
 export interface CareScheduleInput {
   care_type: CareType
@@ -412,5 +413,7 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; def
   mist:        { label: 'Mist',        icon: '🌫️', defaultIndoor: 3,   defaultOutdoor: 0 },
   rotate:      { label: 'Rotate',      icon: '🔄', defaultIndoor: 14,  defaultOutdoor: 0 },
   repot_check: { label: 'Repot check', icon: '🪴', defaultIndoor: 180, defaultOutdoor: 365 },
-  prune:       { label: 'Prune',       icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
+  prune:        { label: 'Prune',        icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
+  protect_cold: { label: 'Protect Cold', icon: '🥶', defaultIndoor: 0,   defaultOutdoor: 0 },
+  protect_heat: { label: 'Protect Heat', icon: '🌡️', defaultIndoor: 0,   defaultOutdoor: 0 },
 }

@@ -6,6 +6,7 @@ from database import db_dep
 from auth import get_current_account
 from models import DashboardResponse, DashboardV2Response, StatusCounts, RecentLogEntry, CareTask, PlantFactOut
 from datetime import date
+from services.weather_task_service import sync_ephemeral_schedules
 
 router = APIRouter(tags=["dashboard"])
 
@@ -106,7 +107,10 @@ async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_acc
 
 @router.get("/dashboard/v2", response_model=DashboardV2Response)
 async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_account)):
-    # ── Task lists (same logic as /dashboard) ──
+    # Sync weather-driven ephemeral tasks
+    await sync_ephemeral_schedules()
+
+    # ── Task lists ──
     cursor = await db.execute("""
         SELECT
             cs.id as schedule_id,
@@ -114,14 +118,17 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
             p.name as plant_name,
             p.photo_path as plant_photo,
             l.name as location,
+            m.map_type,
             cs.care_type,
             cs.next_due,
             cs.last_done_by,
             u.name as last_done_by_name,
-            cs.last_done as last_done_at
+            cs.last_done as last_done_at,
+            cs.is_ephemeral
         FROM care_schedules cs
         JOIN plants p ON cs.plant_id = p.id
         LEFT JOIN locations l ON p.location_id = l.id
+        LEFT JOIN maps m ON p.map_id = m.id
         LEFT JOIN users u ON cs.last_done_by = u.id
         WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
         ORDER BY cs.next_due ASC
@@ -136,11 +143,13 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
             plant_name=row["plant_name"],
             plant_photo=row["plant_photo"],
             location=row["location"],
+            map_type=row["map_type"],
             care_type=row["care_type"],
             days_overdue=-days_diff,
             last_done_by=row["last_done_by_name"],
             last_done_at=row["last_done_at"],
             schedule_id=row["schedule_id"],
+            is_ephemeral=bool(row["is_ephemeral"]) if row["is_ephemeral"] is not None else False,
         )
         if days_diff < 0:
             overdue.append(task)
@@ -203,7 +212,7 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
         for r in log_rows
     ]
 
-    # ── Plant fact (same logic as /plant-fact) ──
+    # ── Plant fact ──
     fact_rows = await db.execute_fetchall("""
         SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
         FROM plants p

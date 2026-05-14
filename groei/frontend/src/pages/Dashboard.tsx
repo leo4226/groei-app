@@ -879,8 +879,9 @@ function LocationGroup({
 
 function TodayGrid({ overdue, dueToday, t }: { overdue: CareTask[]; dueToday: CareTask[]; t: Translations }) {
   const allDue = [...overdue, ...dueToday]
-  const waterTasks = allDue.filter(task => task.care_type === 'water')
-  const attnTasks  = allDue.filter(task => task.care_type !== 'water')
+  const waterFeedTypes = new Set(['water', 'fertilize'])
+  const waterFeedTasks = allDue.filter(task => waterFeedTypes.has(task.care_type))
+  const attnTasks  = allDue.filter(task => !waterFeedTypes.has(task.care_type))
 
   function groupByLocation(tasks: CareTask[]) {
     const buiten = tasks.filter(task => classifyTaskLocation(task) === 'buiten')
@@ -888,7 +889,7 @@ function TodayGrid({ overdue, dueToday, t }: { overdue: CareTask[]; dueToday: Ca
     return { buiten, binnen }
   }
 
-  const waterGroups = groupByLocation(waterTasks)
+  const waterFeedGroups = groupByLocation(waterFeedTasks)
   const attnGroups  = groupByLocation(attnTasks)
 
   return (
@@ -898,15 +899,15 @@ function TodayGrid({ overdue, dueToday, t }: { overdue: CareTask[]; dueToday: Ca
       overflow: 'hidden', marginBottom: 24,
     }}>
       {/* Column headers */}
-      <TodayColHead label={t.care.water} count={waterTasks.length} pip="overdue" />
+      <TodayColHead label={t.dashboard.tasks.waterFeed} count={waterFeedTasks.length} pip="overdue" />
       <TodayColHead label={t.dashboard.tasks.attention} count={attnTasks.length} pip="due" borderLeft />
 
-      {/* Water column */}
+      {/* Water & Voeding column */}
       <div style={{ borderRight: '1px solid var(--color-border-soft)' }}>
-        {waterTasks.length === 0 ? <EmptyCol t={t} /> : (
+        {waterFeedTasks.length === 0 ? <EmptyCol t={t} /> : (
           <>
-            <LocationGroup label={t.dashboard.actions.mapTypeOutdoor} icon={LOCATION_ICON.buiten} tasks={waterGroups.buiten} tone="due" t={t} />
-            <LocationGroup label={t.dashboard.actions.mapTypeIndoor} icon={LOCATION_ICON.binnen} tasks={waterGroups.binnen} tone="due" t={t} />
+            <LocationGroup label={t.dashboard.actions.mapTypeOutdoor} icon={LOCATION_ICON.buiten} tasks={waterFeedGroups.buiten} tone="due" t={t} />
+            <LocationGroup label={t.dashboard.actions.mapTypeIndoor} icon={LOCATION_ICON.binnen} tasks={waterFeedGroups.binnen} tone="due" t={t} />
           </>
         )}
       </div>
@@ -1003,6 +1004,7 @@ function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
           margin: '2px 0 0', fontFamily: 'var(--font-mono)', fontSize: 8,
           textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)',
         }}>
+          {task.is_ephemeral && (task.care_type === 'protect_cold' ? '🥶 ' : '🌡️ ')}
           {careLabel}{task.location ? ` · ${task.location}` : ''}
         </p>
         {isOverdue && (
