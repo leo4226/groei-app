@@ -147,7 +147,14 @@ def _collect_alerts(
             thresholds = json.loads(care_thresholds_json)
         except (json.JSONDecodeError, TypeError):
             thresholds = {}
+        has_protect_cold = most_urgent_care_type == "protect_cold" and care_status in ("overdue", "due_today")
+        has_protect_heat = most_urgent_care_type == "protect_heat" and care_status in ("overdue", "due_today")
         for a in compute_alerts(thresholds, rain, temp, last_watered, map_type, in_ground=in_ground):
+            # Suppress weather cold/heat when an ephemeral protect schedule already covers it
+            if has_protect_cold and a["type"] == "cold":
+                continue
+            if has_protect_heat and a["type"] == "heat":
+                continue
             alerts.append({"alert_type": a["type"], "severity": a["severity"], "icon": a["icon"]})
 
     alerts.sort(key=lambda a: (_SEVERITY_ORDER.get(a["severity"], 0), _ALERT_TYPE_PRIORITY.get(a["alert_type"], 0)), reverse=True)
