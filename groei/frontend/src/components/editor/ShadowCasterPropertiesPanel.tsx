@@ -1,6 +1,5 @@
 import type { ShadowCaster } from '../../types'
 import {
-  detectKant,
   rectToDisplay,
   displayToRect,
   circleToDisplay,
@@ -9,6 +8,7 @@ import {
   PRESET_OPACITIES,
   type Kant,
   type GardenBounds,
+  type DichtheidPreset,
 } from '../../utils/shadowCasterConversions'
 
 interface Props {
@@ -26,7 +26,7 @@ const KANT_OPTIONS: { value: Kant; label: string }[] = [
   { value: 'onder', label: 'Onder' },
 ]
 
-const PRESET_LABELS: Record<string, string> = {
+const PRESET_LABELS: Record<DichtheidPreset, string> = {
   'lichte-boom': 'Lichte boom',
   'dichte-boom': 'Dichte boom',
   'gebouw': 'Gebouw / Muur',
