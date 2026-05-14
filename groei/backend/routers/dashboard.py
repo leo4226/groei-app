@@ -65,7 +65,7 @@ async def get_dashboard(db = Depends(db_dep)):
     return DashboardResponse(overdue=overdue, due_today=due_today, upcoming=upcoming)
 
 
-@router.get("/dashboard-v2", response_model=DashboardResponse)
+@router.get("/dashboard/v2", response_model=DashboardResponse)
 async def get_dashboard_v2(db = Depends(db_dep)):
     # Sync weather-driven ephemeral tasks
     await sync_ephemeral_schedules()
