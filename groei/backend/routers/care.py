@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from database import db_dep
 from models import CareAction, CareLogOut
 from services.scheduling import calculate_next_due
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 router = APIRouter(tags=["care"])
 
@@ -11,7 +11,7 @@ router = APIRouter(tags=["care"])
 async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     # Find the matching schedule
     cursor = await db.execute(
-        """SELECT id, interval_days, season_adjust FROM care_schedules
+        """SELECT id, interval_days, season_adjust, is_ephemeral FROM care_schedules
            WHERE plant_id = ? AND care_type = ? AND is_active = 1""",
         (action.plant_id, action.care_type),
     )
@@ -30,9 +30,12 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     )
 
     # Update schedule
-    next_due = calculate_next_due(
-        today, schedule["interval_days"], schedule["season_adjust"]
-    )
+    if schedule["is_ephemeral"]:
+        next_due = today + timedelta(days=1)
+    else:
+        next_due = calculate_next_due(
+            today, schedule["interval_days"], schedule["season_adjust"]
+        )
     await db.execute(
         """UPDATE care_schedules
            SET last_done = ?, last_done_by = ?, next_due = ?
@@ -47,7 +50,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
 @router.post("/care/skip")
 async def skip_care(action: CareAction, db = Depends(db_dep)):
     cursor = await db.execute(
-        """SELECT id, interval_days, season_adjust FROM care_schedules
+        """SELECT id, interval_days, season_adjust, is_ephemeral FROM care_schedules
            WHERE plant_id = ? AND care_type = ? AND is_active = 1""",
         (action.plant_id, action.care_type),
     )
@@ -66,9 +69,12 @@ async def skip_care(action: CareAction, db = Depends(db_dep)):
     )
 
     # Advance next_due
-    next_due = calculate_next_due(
-        today, schedule["interval_days"], schedule["season_adjust"]
-    )
+    if schedule["is_ephemeral"]:
+        next_due = today + timedelta(days=1)
+    else:
+        next_due = calculate_next_due(
+            today, schedule["interval_days"], schedule["season_adjust"]
+        )
     await db.execute(
         "UPDATE care_schedules SET next_due = ? WHERE id = ?",
         (str(next_due), schedule["id"]),
