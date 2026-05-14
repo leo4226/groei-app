@@ -1,15 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { computeShadows } from '../shadowGeometry'
-import { GARDEN_SVG_TOP_AZIMUTH } from '../gardenStructures'
-import type { ShadowCaster } from '../gardenStructures'
+import type { ShadowCaster } from '../../types'
 import type { SunPosition } from '../sunCalc'
+
+// Reference bearing for tests (Leon's garden: NNW ≈ 347°)
+const TEST_BEARING = 347
 
 // ── Helper: call the internal getShadowVector indirectly via computeShadows ──
 
 function shadowVec(azimuthDeg: number, altitudeDeg: number, heightCm: number) {
   const caster: ShadowCaster = { id: 't', label: 't', type: 'circle', cx: 0, cy: 0, radius: 1, heightCm }
   const sun: SunPosition = { azimuthDeg, altitudeDeg, isUp: true }
-  const shadows = computeShadows(sun, [caster])
+  const shadows = computeShadows(sun, [caster], TEST_BEARING)
   if (!shadows.length) return null
   // Circle displaced by (dx, dy): pathD = "M{cx+dx-r},{cy+dy}A..."
   // Extract new centre from path: "M{cx},{cy}A..." after displacement
@@ -31,7 +33,7 @@ const unitCaster: ShadowCaster = {
 
 function vec(az: number, alt: number) {
   const sun: SunPosition = { azimuthDeg: az, altitudeDeg: alt, isUp: true }
-  const s = computeShadows(sun, [unitCaster])
+  const s = computeShadows(sun, [unitCaster], TEST_BEARING)
   if (!s.length) return null
   // The convex hull of a unit rect displaced by (dx,dy) — extract dx,dy from first two corners
   // Corner [0,0] → tip [dx, dy]: find this in path points
@@ -57,7 +59,7 @@ function shadowDirection(az: number, alt: number): { dx: number; dy: number } | 
     heightCm: 100,
   }
   const sun: SunPosition = { azimuthDeg: az, altitudeDeg: alt, isUp: true }
-  const s = computeShadows(sun, [ref])
+  const s = computeShadows(sun, [ref], TEST_BEARING)
   if (!s.length) return null
   const coords = [...s[0].pathD.matchAll(/([-\d.]+),([-\d.]+)/g)]
   const xs = coords.map(m => parseFloat(m[1]))
@@ -69,32 +71,32 @@ function shadowDirection(az: number, alt: number): { dx: number; dy: number } | 
   return { dx: centX - 300.5, dy: centY - 300.5 }
 }
 
-describe('GARDEN_SVG_TOP_AZIMUTH', () => {
-  it('is 22', () => {
-    expect(GARDEN_SVG_TOP_AZIMUTH).toBe(22)
+describe('TEST_BEARING', () => {
+  it('is 347', () => {
+    expect(TEST_BEARING).toBe(347)
   })
 })
 
 describe('getShadowVector direction (via computeShadows)', () => {
   it('sun below horizon → no shadows', () => {
     const sun: SunPosition = { azimuthDeg: 180, altitudeDeg: -5, isUp: false }
-    expect(computeShadows(sun, [unitCaster])).toHaveLength(0)
+    expect(computeShadows(sun, [unitCaster], TEST_BEARING)).toHaveLength(0)
   })
 
   it('sun at SVG-top bearing → shadow falls +Y (toward SVG bottom)', () => {
-    const v = shadowDirection(GARDEN_SVG_TOP_AZIMUTH, 45)!
+    const v = shadowDirection(TEST_BEARING, 45)!
     expect(Math.abs(v.dx)).toBeLessThan(0.5)
     expect(v.dy).toBeGreaterThan(0)
   })
 
   it('sun 90° CW of SVG-top → shadow falls -X (toward SVG left)', () => {
-    const v = shadowDirection(GARDEN_SVG_TOP_AZIMUTH + 90, 45)!
+    const v = shadowDirection(TEST_BEARING + 90, 45)!
     expect(v.dx).toBeLessThan(0)
     expect(Math.abs(v.dy)).toBeLessThan(0.5)
   })
 
   it('sun 180° of SVG-top → shadow falls -Y (toward SVG top)', () => {
-    const v = shadowDirection(GARDEN_SVG_TOP_AZIMUTH + 180, 45)!
+    const v = shadowDirection(TEST_BEARING + 180, 45)!
     expect(Math.abs(v.dx)).toBeLessThan(0.5)
     expect(v.dy).toBeLessThan(0)
   })
