@@ -1,28 +1,29 @@
-{
-  "name": "Groei",
-  "short_name": "Groei",
-  "description": "Plant care for Leon & Lisbeth",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#FAF6F1",
-  "theme_color": "#2D6A4F",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
-}
+     1|{
+     2|  "name": "Floreren",
+     3|  "short_name": "Floreren",
+     4|  "description": "Plant care for Leon & Lisbeth",
+     5|  "start_url": "/",
+     6|  "display": "standalone",
+     7|  "background_color": "#FAF6F1",
+     8|  "theme_color": "#2D6A4F",
+     9|  "orientation": "portrait",
+    10|  "icons": [
+    11|    {
+    12|      "src": "/icons/icon-192.png",
+    13|      "sizes": "192x192",
+    14|      "type": "image/png"
+    15|    },
+    16|    {
+    17|      "src": "/icons/icon-512.png",
+    18|      "sizes": "512x512",
+    19|      "type": "image/png"
+    20|    },
+    21|    {
+    22|      "src": "/icons/icon-512.png",
+    23|      "sizes": "512x512",
+    24|      "type": "image/png",
+    25|      "purpose": "maskable"
+    26|    }
+    27|  ]
+    28|}
+    29|

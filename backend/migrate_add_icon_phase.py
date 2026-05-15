@@ -6,7 +6,7 @@ Idempotent — uses ALTER TABLE via existence check.
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "groei.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "floreren.db")
 
 
 def column_exists(db: sqlite3.Connection, table: str, column: str) -> bool:

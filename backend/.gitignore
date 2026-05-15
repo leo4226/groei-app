@@ -1,5 +1,6 @@
-__pycache__/
-*.pyc
-*.pyo
-.env
-groei.db.bak*
+     1|__pycache__/
+     2|*.pyc
+     3|*.pyo
+     4|.env
+     5|floreren.db.bak*
+     6|

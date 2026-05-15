@@ -18,7 +18,7 @@ import os
 import shutil
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "groei.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "floreren.db")
 H = 680  # SVG canvas height
 
 

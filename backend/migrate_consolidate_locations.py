@@ -8,7 +8,7 @@ import sqlite3, os, sys
 # Force UTF-8 output on Windows
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "groei.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "floreren.db")
 OUTDOOR_KEYWORDS = ["tuin", "balkon", "terras", "buiten", "kas", "moestuin"]
 
 def is_outdoor(name: str) -> bool:

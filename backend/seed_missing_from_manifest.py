@@ -13,7 +13,7 @@ import os
 import re
 
 MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "icons", "manifest.json")
-DB_PATH = os.path.join(os.path.dirname(__file__), "groei.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "floreren.db")
 
 
 def load_manifest():
