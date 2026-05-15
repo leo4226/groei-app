@@ -12,6 +12,7 @@ export interface MapLightConfig {
   bearing: number
   shadowCasters: ShadowCaster[]
   gardenBounds: GardenBounds
+  gardenPerimeter: [number, number][]
 }
 
 export interface LightEngine {
@@ -22,7 +23,7 @@ export interface LightEngine {
 }
 
 export function createLightEngine(config: MapLightConfig): LightEngine {
-  const { lat, lon, bearing, shadowCasters, gardenBounds } = config
+  const { lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter } = config
   const cache = new Map<number, HeatmapCell[]>()
 
   function findCell(cells: HeatmapCell[], x: number, y: number): HeatmapCell | undefined {
@@ -45,7 +46,7 @@ export function createLightEngine(config: MapLightConfig): LightEngine {
       if (cache.has(month)) return Promise.resolve(cache.get(month)!)
       return new Promise(resolve =>
         setTimeout(() => {
-          const cells = computeHeatmap(month, 0.3, 10, lat, lon, bearing, shadowCasters, gardenBounds)
+          const cells = computeHeatmap(month, 0.15, 10, lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter)
           cache.set(month, cells)
           resolve(cells)
         }, 0)

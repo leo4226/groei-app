@@ -1,5 +1,5 @@
 <!-- groei-map: House -->
-<!-- scale: 40.0px/m -->
+<!-- scale: 46.0px/m -->
 <!-- canvas: 680x680 -->
 <svg width="100%" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -15,19 +15,9 @@
       <circle cx="4" cy="4" r="0.7" fill="#999" opacity="0.22"/>
     </pattern>
   </defs>
-  <rect x="65" y="57" width="502" height="241" fill="#C8A060" opacity="1" stroke="#8a6030" stroke-width="1.2"/>
-  <text x="316" y="177" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="12" font-weight="500">Huis</text>
-  <rect x="257" y="212" width="70" height="75" fill="#E8E0D0" opacity="0.5" stroke="rgba(100,80,60,0.2)" stroke-width="1"/>
-  <text x="292" y="249" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="8" font-weight="500">Bathroom</text>
-  <rect x="77" y="135" width="200" height="153" fill="#E8E0D0" opacity="0.5" stroke="rgba(100,80,60,0.2)" stroke-width="1"/>
-  <text x="177" y="211" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="12" font-weight="500">Slaapkamer</text>
-  <rect x="66" y="93" width="198" height="42" fill="#E8E0D0" opacity="0.5" stroke="rgba(100,80,60,0.2)" stroke-width="1"/>
-  <text x="165" y="114" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="12" font-weight="500">Hallway</text>
-  <rect x="471" y="197" width="84" height="89" fill="#E8E0D0" opacity="0.5" stroke="rgba(100,80,60,0.2)" stroke-width="1"/>
-  <text x="513" y="241" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="10" font-weight="500">Office</text>
-  <rect x="264" y="69" width="10" height="30" fill="#262624" opacity="1" stroke="rgba(222,220,209,0.4)" stroke-width="1.5"/>
-  <line x1="16" y1="660" x2="96.0" y2="660" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
+  <rect x="167" y="247" width="79" height="114" fill="#262624" opacity="1" stroke="rgba(222,220,209,0.4)" stroke-width="1.5"/>
+  <line x1="16" y1="660" x2="108.0" y2="660" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
   <line x1="16" y1="656" x2="16" y2="664" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
-  <line x1="96.0" y1="656" x2="96.0" y2="664" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
-  <text x="56.0" y="653" text-anchor="middle" fill="rgba(100,90,70,0.8)" font-size="9">2m</text>
+  <line x1="108.0" y1="656" x2="108.0" y2="664" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
+  <text x="62.0" y="653" text-anchor="middle" fill="rgba(100,90,70,0.8)" font-size="9">2m</text>
 </svg>

@@ -1,17 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject, GroundZone } from '../../types'
-import { useGroeiStore } from '../../store/useGroeiStore'
-import { updatePlantContainer, updatePlantGroundZone, updatePlantLock } from '../../api/client'
+import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
+import { useGroeiStore } from '../../store/useGroeiStore'
+import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
+
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
-import { getCareDisplay } from '../../utils/careDisplay'
+
 
 interface Props {
   plant: MapPlant
   objects: MapObject[]
-  groundZones?: GroundZone[]
+  soilGroundZones?: GroundZone[]
   heatmapCells?: HeatmapCell[]
   onClose: () => void
   onCareAction: () => void
@@ -21,11 +22,16 @@ interface Props {
 }
 
 
-export default function PlantQuickSheet({ plant, objects, groundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
+export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
   const navigate = useNavigate()
   const markCareDone = useGroeiStore((s) => s.markCareDone)
   const [locked, setLocked] = useState(plant.is_locked)
-  const care = getCareDisplay(plant)
+  const [detail, setDetail] = useState<Plant | null>(null)
+
+  useEffect(() => {
+    setDetail(null)
+    fetchPlant(plant.id).then(setDetail).catch(() => {})
+  }, [plant.id])
 
   const handleToggleLock = async () => {
     const next = !locked
@@ -47,12 +53,21 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     }
   }
 
+  const handleFertilize = async () => {
+    try {
+      await markCareDone(plant.id, 'fertilize')
+      onCareAction()
+    } catch (e) {
+      console.error('Failed to mark fertilize done:', e)
+    }
+  }
+
   const container = plant.container_id
     ? objects.find(o => o.id === plant.container_id)
     : null
 
   const groundZone = plant.ground_zone_id
-    ? groundZones.find(z => z.id === plant.ground_zone_id)
+    ? soilGroundZones.find(z => z.id === plant.ground_zone_id)
     : null
 
   const sunFitInfo = (() => {
@@ -84,9 +99,6 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     await updatePlantGroundZone(plant.id, null, plant.map_x, plant.map_y)
     onAction()
   }
-
-  const urgentInfo = plant.most_urgent
-  const careTypeInfo = urgentInfo ? CARE_TYPE_INFO[urgentInfo.care_type as keyof typeof CARE_TYPE_INFO] : null
 
   return (
     <>
@@ -126,9 +138,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
               {plant.species && (
                 <p className="text-sm text-text-muted italic">{plant.species}</p>
               )}
-              <p className={`text-sm font-medium mt-0.5 ${care.colorClass}`}>
-                {care.label}
-              </p>
+
             </div>
             <div className="flex gap-1.5 shrink-0">
               {onDuplicate && (
@@ -170,17 +180,66 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
             </div>
           </div>
 
-          {/* Care info */}
-          {urgentInfo && (
-            <div className="bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
-              {careTypeInfo?.icon} Needs {careTypeInfo?.label.toLowerCase() ?? urgentInfo.care_type}
-              {urgentInfo.days_overdue > 0 && (
-                <span className="text-overdue font-medium"> — {urgentInfo.days_overdue} day{urgentInfo.days_overdue !== 1 ? 's' : ''} overdue</span>
-              )}
-              {urgentInfo.last_done_by && (
-                <span className="block mt-1">Last by {urgentInfo.last_done_by}</span>
-              )}
+          {/* Care schedules */}
+          {detail?.care_schedules && detail.care_schedules.length > 0 ? (
+            <div className="flex flex-col gap-2 mb-4">
+              {detail.care_schedules.map(sched => {
+                const nextDue = new Date(sched.next_due)
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const diffMs = nextDue.getTime() - today.getTime()
+                const daysUntil = Math.round(diffMs / 86400000)
+                const isOverdue = daysUntil < 0
+                const isDueToday = daysUntil === 0
+
+                const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
+                const labelMap: Record<string, string> = {
+                  water: 'Gieten', fertilize: 'Bemesten', prune: 'Snoeien', repot_check: 'Verpotten',
+                  mist: 'Sproeien', rotate: 'Draaien', protect_cold: 'Beschermen tegen kou', protect_heat: 'Beschermen tegen hitte',
+                }
+                const icon = info?.icon ?? '📋'
+                const label = labelMap[sched.care_type] ?? info?.label ?? sched.care_type
+
+                let statusText: string
+                let statusColor: string
+                if (isOverdue) {
+                  statusText = `${Math.abs(daysUntil)} dag${Math.abs(daysUntil) === 1 ? '' : 'en'} te laat`
+                  statusColor = 'var(--color-overdue)'
+                } else if (isDueToday) {
+                  statusText = 'vandaag'
+                  statusColor = 'var(--color-due)'
+                } else {
+                  statusText = `over ${daysUntil} dag${daysUntil === 1 ? '' : 'en'}`
+                  statusColor = 'var(--color-text-muted)'
+                }
+
+                return (
+                  <div
+                    key={sched.id}
+                    className="flex items-center gap-2.5 px-3 py-2 bg-bg rounded-xl border border-border-soft"
+                    style={{
+                      borderColor: isOverdue ? 'var(--color-overdue)' : undefined,
+                    }}
+                  >
+                    <span className="text-lg">{icon}</span>
+                    <span className="flex-1 text-text text-sm">
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs" style={{ color: statusColor }}>
+                      {statusText}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
+          ) : (
+            // Fallback: show most_urgent if detail not yet loaded
+            plant.most_urgent && (
+              <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
+                <span>💧</span>
+                <span>{plant.most_urgent.care_type} · {plant.most_urgent.days_overdue > 0 ? `${plant.most_urgent.days_overdue}d te laat` : 'vandaag'}</span>
+              </div>
+            )
           )}
 
           {/* Container info */}
@@ -246,6 +305,12 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
               className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
               💧 Water
+            </button>
+            <button
+              onClick={handleFertilize}
+              className="flex-1 bg-emerald-green/15 text-emerald-green rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+            >
+              🌿 Bemesten
             </button>
             <button
               onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}

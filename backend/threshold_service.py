@@ -14,6 +14,7 @@ _REQUIRED_KEYS = {
     "bring_inside_below_c",
     "fertilise_months",
     "fertilise_tip",
+    "water_interval_days",
 }
 
 
@@ -29,7 +30,8 @@ Geef ALLEEN geldige JSON terug, zonder extra tekst of markdown. Gebruik dit exac
   "max_temp_c": <float, plant krijgt stress boven deze temperatuur>,
   "bring_inside_below_c": <float of null, null voor volledig winterharde buitenplanten>,
   "fertilise_months": [<int 1-12>, ...],
-  "fertilise_tip": "<string max 80 tekens, Nederlandse bemestingstip>"
+  "fertilise_tip": "<string max 80 tekens, Nederlandse bemestingstip>",
+  "water_interval_days": <int, gemiddeld aantal dagen tussen handmatig water geven, bijv. 7 voor wekelijks>
 }}"""
 
 

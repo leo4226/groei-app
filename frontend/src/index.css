@@ -182,4 +182,8 @@ input:focus, select:focus, textarea:focus {
     gap: 10px !important;
     padding: 0 16px !important;
   }
+
+  .home-header {
+    padding: 24px 16px 14px !important;
+  }
 }

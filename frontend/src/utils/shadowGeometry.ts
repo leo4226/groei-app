@@ -101,12 +101,19 @@ function computeRectShadow(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: 
 }
 
 function computeCircleShadow(caster: Extract<ShadowCaster, { type: 'circle' }>, dx: number, dy: number): ShadowPolygon {
-  // Displace the canopy circle by the shadow vector
-  return {
-    id: caster.id,
-    pathD: circlePath(caster.cx + dx, caster.cy + dy, caster.radius),
-    opacity: caster.opacity ?? 0.2, // lighter — dappled canopy shadow
+  const { cx, cy, radius } = caster
+  // Sample points around the canopy circle and the displaced shadow circle,
+  // then take the convex hull — produces an elongated oval/capsule shadow.
+  const N = 24
+  const points: [number, number][] = []
+  for (let i = 0; i < N; i++) {
+    const angle = (i / N) * 2 * Math.PI
+    const cos = Math.cos(angle), sin = Math.sin(angle)
+    points.push([cx + cos * radius, cy + sin * radius])
+    points.push([cx + dx + cos * radius, cy + dy + sin * radius])
   }
+  const hull = convexHull(points)
+  return { id: caster.id, pathD: pointsToPath(hull), opacity: caster.opacity ?? 0.2 }
 }
 
 function computePolygonShadow(caster: Extract<ShadowCaster, { type: 'polygon' }>, dx: number, dy: number): ShadowPolygon {
@@ -149,12 +156,10 @@ export interface ShadowRegion {
 
 /**
  * Derive light-blocking factor from caster opacity.
- * Solid structures (default opacity or >= 0.25): block 100% of light.
- * Dappled structures (opacity < 0.25, e.g. tree canopy, vegetation): block 50% — some light filters through.
+ * Uses opacity directly: 1.0 = solid building (100% blocked), 0.35 = dappled tree (35% blocked).
  */
 function casterBlockFactor(caster: ShadowCaster): number {
-  if (caster.opacity !== undefined && caster.opacity < 0.25) return 0.5
-  return 1.0
+  return Math.min(1, Math.max(0, caster.opacity ?? 1))
 }
 
 function rectShadowRegion(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: number, dy: number): ShadowRegion {

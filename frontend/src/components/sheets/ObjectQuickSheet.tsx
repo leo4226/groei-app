@@ -1,6 +1,6 @@
 import type { MapObject, MapPlant, ObjectShapeType } from '../../types'
 import { archiveObject, updatePlantContainer, updateObject } from '../../api/client'
-import { getCareDisplay } from '../../utils/careDisplay'
+import { STATUS_COLORS } from '../map/PlantMarker'
 import { useState } from 'react'
 
 interface Props {
@@ -25,7 +25,7 @@ const SHAPE_LABELS: Record<string, string> = {
 }
 
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
-const COLOR_SWATCHES = ['#d64e2e', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#24e34c', '#333333', '#ff7701']
+const COLOR_SWATCHES = ['#B7654B', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#5B9A6F', '#333333', '#D4A843']
 
 const CATEGORY_ICONS: Record<string, string> = {
   container: '\u{1FAB4}',
@@ -163,7 +163,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                       <div key={plant.id} className="flex items-center gap-2 bg-bg rounded-lg px-3 py-2">
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: getCareDisplay(plant).badgeColor }}
+                          style={{ backgroundColor: STATUS_COLORS[plant.care_status] || STATUS_COLORS.good }}
                         />
                         <span className="flex-1 text-sm text-text">{plant.name}</span>
                         <button

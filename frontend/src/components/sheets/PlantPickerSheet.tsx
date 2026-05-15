@@ -1,16 +1,15 @@
 import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
 import { LOCAL_PLANTS } from '../../data/plants-dataset'
-import { PLANT_ICONS } from '../../constants/plantIcons'
 
-const TYPE_TO_ICON_KEY: Record<string, string> = {
-  vaste_plant: 'flower',
-  heester: 'shrub',
-  klimmer: 'climber',
-  gras: 'grass',
-  bol: 'bulb',
-  eenjarig: 'herb',
-  boom: 'tree',
+const TYPE_COLOR: Record<string, string> = {
+  vaste_plant: '#d98199',
+  heester: '#2544a0',
+  klimmer: '#2544a0',
+  gras: '#24e34c',
+  bol: '#d64e2e',
+  eenjarig: '#ff7701',
+  boom: '#160572',
 }
 
 interface Props {
@@ -42,20 +41,17 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 animate-slide-up"
-        style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-      >
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
         {/* Drag handle */}
         <button
           onClick={onClose}
           aria-label="Sluiten"
-          className="block mx-auto mt-3 mb-2 px-6 py-2 -my-1 group flex-shrink-0"
+          className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
         </button>
 
-        <div className="px-5 flex-shrink-0">
+        <div className="px-5 pb-5">
           {/* Header */}
           <h3 className="text-base font-bold text-text mb-1">Kies een plant</h3>
           <p className="text-xs text-text-muted mb-3">
@@ -100,10 +96,8 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
               </p>
             </div>
           </button>
-        </div>
 
-        {/* Plant grid — scrollable, takes remaining space */}
-        <div className="flex-1 overflow-y-auto px-5 pb-5 pb-[env(safe-area-inset-bottom)]" style={{ minHeight: 0 }}>
+          {/* Plant grid */}
           {filtered.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-text-muted">Geen planten gevonden</p>
@@ -116,9 +110,10 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
             </div>
           ) : (
             <div
-              className="grid gap-2"
+              className="grid gap-2 overflow-y-auto"
               style={{
                 gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                maxHeight: '40vh',
               }}
             >
               {filtered.map((plant) => (
@@ -128,12 +123,9 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-bg
                              hover:bg-primary/10 active:scale-[0.97] transition-all text-center"
                 >
-                  <svg
-                    viewBox="0 0 100 100"
-                    className="w-10 h-10 shrink-0"
-                    dangerouslySetInnerHTML={{
-                      __html: PLANT_ICONS[TYPE_TO_ICON_KEY[plant.type]] || PLANT_ICONS['unknown'] || ''
-                    }}
+                  <div
+                    className="w-8 h-8 rounded-md shrink-0"
+                    style={{ background: TYPE_COLOR[plant.type] ?? '#909090' }}
                   />
                   <span className="text-xs font-semibold text-text leading-tight line-clamp-2">
                     {plant.dutchName}

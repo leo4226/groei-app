@@ -4,8 +4,8 @@
   "description": "Plant care for Leon & Lisbeth",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fef9ee",
-  "theme_color": "#160572",
+  "background_color": "#FAF6F1",
+  "theme_color": "#2D6A4F",
   "orientation": "portrait",
   "icons": [
     {

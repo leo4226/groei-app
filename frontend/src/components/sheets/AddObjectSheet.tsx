@@ -38,7 +38,7 @@ const HARDSCAPE_PRESETS: Preset[] = [
 ]
 
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
-const COLOR_SWATCHES = ['#d64e2e', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#24e34c', '#333333', '#ff7701']
+const COLOR_SWATCHES = ['#B7654B', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#5B9A6F', '#333333', '#D4A843']
 
 export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
   const [name, setName] = useState('')

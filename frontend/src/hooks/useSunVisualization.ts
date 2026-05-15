@@ -4,14 +4,15 @@ import { useSunHeatmap } from './useSunHeatmap'
 import { useSpotInspector, type SpotInspectorResult } from './useSpotInspector'
 import { createLightEngine } from '../utils/lightEngine'
 import { shadowCastersToObstructions } from '../utils/heatmapCalc'
-import { SHADOW_CASTERS, GARDEN_FLOOR, GARDEN_SVG_TOP_AZIMUTH } from '../utils/gardenStructures'
+import { deriveAllShadowCasters, deriveGardenBounds, deriveGardenPerimeter, deriveViewBoxString } from '../utils/gardenFromCanvas'
 import type { SunPosition } from '../utils/sunCalc'
 import type { ShadowPolygon } from '../utils/shadowGeometry'
 import type { HeatmapCell } from '../utils/heatmapCalc'
 import type { PlantSunProfile } from '../utils/plantSunRequirements'
-import type { HeatmapLayer } from '../utils/lightQuality'
+
 import type { Obstruction } from '../utils/skyViewFactor'
 import type { SunViewMode } from '../components/sun/SunControls'
+import type { CanvasData } from '../types'
 
 export type { SpotInspectorResult }
 
@@ -29,8 +30,6 @@ export interface SunVisualization {
   viewMode: SunViewMode
   setViewMode: (mode: SunViewMode) => void
   // Heatmap
-  layer: HeatmapLayer
-  setLayer: (l: HeatmapLayer) => void
   cells: HeatmapCell[]
   isCalculating: boolean
   tappedCell: HeatmapCell | null
@@ -53,37 +52,71 @@ export interface SunVisualization {
   isLiveActive: boolean
   isHeatmapActive: boolean
   gardenObstructions: Obstruction[]
+  // Dynamic garden geometry
+  gardenPerimeter: [number, number][]
+  gardenBounds: { minX: number; minY: number; maxX: number; maxY: number }
+  gardenViewBox: string
   // Encapsulates inspector-vs-tappedCell branch
   handleCellTap: (cell: HeatmapCell) => void
 }
-
-// Stable garden bounds derived from GARDEN_FLOOR — module-level so they don't recreate
-const [_tl, _tr, , _bl] = GARDEN_FLOOR
-const GARDEN_BOUNDS = { minX: _tl[0], minY: _tl[1], maxX: _tr[0], maxY: _bl[1] }
 
 export function useSunVisualization(options: {
   isOutdoor: boolean
   lat?: number
   lon?: number
+  bearing?: number
+  canvasData?: CanvasData | null
 }): SunVisualization {
-  const { isOutdoor, lat, lon } = options
+  const { isOutdoor, lat, lon, bearing = 0, canvasData } = options
+
+  // Derive shadow casters and garden geometry from canvas_data
+  const shadowCasters = useMemo(() => {
+    if (!canvasData) return []
+    return deriveAllShadowCasters(canvasData)
+  }, [canvasData])
+
+  const gardenBounds = useMemo(() => {
+    if (!canvasData) return { minX: 0, minY: 0, maxX: 680, maxY: 680 }
+    return deriveGardenBounds(canvasData.zones)
+  }, [canvasData])
+
+  const gardenPerimeter = useMemo((): [number, number][] => {
+    if (!canvasData) return [[0, 0], [680, 0], [680, 680], [0, 680]]
+    return deriveGardenPerimeter(canvasData.zones)
+  }, [canvasData])
+
+  const gardenViewBox = useMemo(() => {
+    if (!canvasData) return '0 0 680 680'
+    return deriveViewBoxString(canvasData.zones, canvasData.canvas_w, canvasData.canvas_h)
+  }, [canvasData])
 
   const engine = useMemo(
     () => lat != null && lon != null
-      ? createLightEngine({ lat, lon, bearing: GARDEN_SVG_TOP_AZIMUTH, shadowCasters: SHADOW_CASTERS, gardenBounds: GARDEN_BOUNDS })
+      ? createLightEngine({ lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter })
       : null,
-    [lat, lon]
+    [lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter]
   )
 
   const {
     sunModeActive, toggleSunMode,
     selectedMonth, setSelectedMonth,
     selectedHour, setSelectedHour,
-    sunPosition, shadows, setToNow,
-  } = useSunPosition(engine)
+    setToNow,
+  } = useSunPosition()
+
+  // Compute sun position and shadows through the engine so that the correct
+  // lat/lon/bearing and dynamic shadow casters are used.
+  const sunPosition = useMemo((): SunPosition | null => {
+    if (!sunModeActive || !engine) return null
+    return engine.getSunPosition(selectedMonth, selectedHour)
+  }, [sunModeActive, engine, selectedMonth, selectedHour])
+
+  const shadows = useMemo((): ShadowPolygon[] => {
+    if (!sunPosition || !engine) return []
+    return engine.getShadows(sunPosition)
+  }, [sunPosition, engine])
 
   const [viewMode, setViewModeRaw] = useState<SunViewMode>('live')
-  const [layer, setLayerRaw] = useState<HeatmapLayer>('sun_hours')
   const [profile, setProfileRaw] = useState<PlantSunProfile | null>(null)
   const [tappedCell, setTappedCell] = useState<HeatmapCell | null>(null)
   const [showGrowHere, setShowGrowHere] = useState(false)
@@ -96,8 +129,7 @@ export function useSunVisualization(options: {
 
   const { cells, isCalculating } = useSunHeatmap(selectedMonth, isHeatmapActive, engine)
 
-  // Debug SVF overlay — only consumer of raw Obstruction[]; kept outside engine seam intentionally
-  const gardenObstructions = useMemo(() => shadowCastersToObstructions(SHADOW_CASTERS), [])
+  const gardenObstructions = useMemo(() => shadowCastersToObstructions(shadowCasters), [shadowCasters])
 
   const setViewMode = useCallback((mode: SunViewMode) => {
     setViewModeRaw(mode)
@@ -110,11 +142,6 @@ export function useSunVisualization(options: {
     setTappedCell(null)
     setShowGrowHere(false)
   }, [setSelectedMonth])
-
-  const setLayer = useCallback((l: HeatmapLayer) => {
-    setLayerRaw(l)
-    setTappedCell(null)
-  }, [])
 
   const setProfile = useCallback((p: PlantSunProfile | null) => {
     setProfileRaw(p)
@@ -143,8 +170,6 @@ export function useSunVisualization(options: {
     setToNow,
     viewMode,
     setViewMode,
-    layer,
-    setLayer,
     cells,
     isCalculating,
     tappedCell,
@@ -163,6 +188,9 @@ export function useSunVisualization(options: {
     isLiveActive,
     isHeatmapActive,
     gardenObstructions,
+    gardenPerimeter,
+    gardenBounds,
+    gardenViewBox,
     handleCellTap,
   }
 }

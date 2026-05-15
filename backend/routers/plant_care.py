@@ -3,10 +3,10 @@ import os
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from database import get_db
+from database import db_dep, get_db
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ OPEN_METEO_URL = (
     "https://api.open-meteo.com/v1/forecast"
     "?latitude=52.3715&longitude=4.8499"
     "&daily=precipitation_sum"
-    "&past_days=7&forecast_days=0"
+    "&past_days=14&forecast_days=0"
     "&timezone=Europe%2FAmsterdam"
 )
 
@@ -191,11 +191,12 @@ def _normalise_duration(duration) -> str | None:
 
 
 def _assessment(total_mm: float) -> str:
-    if total_mm >= 15:
+    """Categorise 14-day rainfall total for Dutch growing conditions."""
+    if total_mm >= 30:
         return "well_watered"
-    if total_mm >= 8:
+    if total_mm >= 16:
         return "moderate"
-    if total_mm >= 2:
+    if total_mm >= 5:
         return "dry"
     return "very_dry"
 
@@ -348,124 +349,123 @@ Geef alleen geldige JSON terug met dit formaat:
 # ── endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/plants/{plant_id}/care-info")
-async def get_plant_care_info(plant_id: int):
-    async with get_db() as db:
-        row = await db.execute_fetchall(
-            "SELECT species, notes FROM plants WHERE id = ?", (plant_id,)
-        )
-        if not row:
-            raise HTTPException(status_code=404, detail="Plant not found")
+async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
+    row = await db.execute_fetchall(
+        "SELECT species, notes FROM plants WHERE id = ?", (plant_id,)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Plant not found")
 
-        scientific_name = row[0]["species"]
-        plant_notes     = row[0]["notes"]
-        if not scientific_name:
-            return {"source": "not_found", "scientific_name": None, "plant_notes": plant_notes}
+    scientific_name = row[0]["species"]
+    plant_notes     = row[0]["notes"]
+    if not scientific_name:
+        return {"source": "not_found", "scientific_name": None, "plant_notes": plant_notes}
 
-        # Cache check — 30 days
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        cached = await db.execute_fetchall(
-            "SELECT * FROM plant_care_cache WHERE scientific_name = ? AND fetched_at > ?",
-            (scientific_name, cutoff),
-        )
-        if cached:
-            c = cached[0]
-            return {
-                "scientific_name": scientific_name,
-                "common_name":     c["common_name"],
-                "family":          c["family"],
-                "duration":        c["duration"],
-                "leaf_retention":  bool(c["leaf_retention"]) if c["leaf_retention"] is not None else None,
-                "light_label":     c["light_label"],
-                "light_raw":       c["light_raw"],
-                "precip_min_mm":   c["precip_min_mm"],
-                "precip_max_mm":   c["precip_max_mm"],
-                "bloom_months":    json.loads(c["bloom_months"]) if c["bloom_months"] else [],
-                "flower_colors":   json.loads(c["flower_colors"]) if c["flower_colors"] else [],
-                "avg_height_cm":   c["avg_height_cm"],
-                "toxicity":        c["toxicity"],
-                "edible":          bool(c["edible"]) if c["edible"] is not None else None,
-                "image_url":       c["image_url"],
-                "source":          "cache",
-                "cached_at":       c["fetched_at"],
-                "plant_notes":     plant_notes,
-            }
-
-        # Fetch from Trefle (or use curated fallback if token missing)
-        if not TREFLE_TOKEN:
-            curated = _CURATED.get(scientific_name)
-            if curated:
-                data = {"trefle_slug": None, "common_name": None, "family": None,
-                        "humidity_raw": None, "image_url": None, **curated}
-            else:
-                data = await _fetch_claude_species(scientific_name)
-            if not data:
-                return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
-        else:
-            data = await _fetch_trefle(scientific_name)
-
-        if not data:
-            # Trefle found nothing — try curated, then Claude
-            curated = _CURATED.get(scientific_name)
-            if curated:
-                data = {"trefle_slug": None, "common_name": None, "family": None,
-                        "humidity_raw": None, "image_url": None, **curated}
-            else:
-                data = await _fetch_claude_species(scientific_name)
-            if not data:
-                return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
-
-        fetched_at = datetime.now(timezone.utc).isoformat()
-        await db.execute(
-            """INSERT OR REPLACE INTO plant_care_cache
-               (scientific_name, trefle_slug, common_name, family, duration,
-                leaf_retention, light_raw, light_label, humidity_raw,
-                precip_min_mm, precip_max_mm, bloom_months, flower_colors,
-                avg_height_cm, max_height_cm, toxicity, edible, image_url, fetched_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                scientific_name,
-                data["trefle_slug"],
-                data["common_name"],
-                data["family"],
-                data["duration"],
-                data["leaf_retention"],
-                data["light_raw"],
-                data["light_label"],
-                data["humidity_raw"],
-                data["precip_min_mm"],
-                data["precip_max_mm"],
-                json.dumps(data["bloom_months"]),
-                json.dumps(data["flower_colors"]),
-                data["avg_height_cm"],
-                data["max_height_cm"],
-                data["toxicity"],
-                data["edible"],
-                data["image_url"],
-                fetched_at,
-            ),
-        )
-        await db.commit()
-
+    # Cache check — 30 days
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    cached = await db.execute_fetchall(
+        "SELECT * FROM plant_care_cache WHERE scientific_name = ? AND fetched_at > ?",
+        (scientific_name, cutoff),
+    )
+    if cached:
+        c = cached[0]
         return {
             "scientific_name": scientific_name,
-            "common_name":     data["common_name"],
-            "family":          data["family"],
-            "duration":        data["duration"],
-            "leaf_retention":  data["leaf_retention"],
-            "light_label":     data["light_label"],
-            "light_raw":       data["light_raw"],
-            "precip_min_mm":   data["precip_min_mm"],
-            "precip_max_mm":   data["precip_max_mm"],
-            "bloom_months":    data["bloom_months"],
-            "flower_colors":   data["flower_colors"],
-            "avg_height_cm":   data["avg_height_cm"],
-            "toxicity":        data["toxicity"],
-            "edible":          data["edible"],
-            "image_url":       data["image_url"],
-            "source":          "trefle",
-            "cached_at":       fetched_at,
+            "common_name":     c["common_name"],
+            "family":          c["family"],
+            "duration":        c["duration"],
+            "leaf_retention":  bool(c["leaf_retention"]) if c["leaf_retention"] is not None else None,
+            "light_label":     c["light_label"],
+            "light_raw":       c["light_raw"],
+            "precip_min_mm":   c["precip_min_mm"],
+            "precip_max_mm":   c["precip_max_mm"],
+            "bloom_months":    json.loads(c["bloom_months"]) if c["bloom_months"] else [],
+            "flower_colors":   json.loads(c["flower_colors"]) if c["flower_colors"] else [],
+            "avg_height_cm":   c["avg_height_cm"],
+            "toxicity":        c["toxicity"],
+            "edible":          bool(c["edible"]) if c["edible"] is not None else None,
+            "image_url":       c["image_url"],
+            "source":          "cache",
+            "cached_at":       c["fetched_at"],
             "plant_notes":     plant_notes,
         }
+
+    # Fetch from Trefle (or use curated fallback if token missing)
+    if not TREFLE_TOKEN:
+        curated = _CURATED.get(scientific_name)
+        if curated:
+            data = {"trefle_slug": None, "common_name": None, "family": None,
+                    "humidity_raw": None, "image_url": None, **curated}
+        else:
+            data = await _fetch_claude_species(scientific_name)
+        if not data:
+            return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
+    else:
+        data = await _fetch_trefle(scientific_name)
+
+    if not data:
+        # Trefle found nothing — try curated, then Claude
+        curated = _CURATED.get(scientific_name)
+        if curated:
+            data = {"trefle_slug": None, "common_name": None, "family": None,
+                    "humidity_raw": None, "image_url": None, **curated}
+        else:
+            data = await _fetch_claude_species(scientific_name)
+        if not data:
+            return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
+
+    fetched_at = datetime.now(timezone.utc).isoformat()
+    await db.execute(
+        """INSERT OR REPLACE INTO plant_care_cache
+           (scientific_name, trefle_slug, common_name, family, duration,
+            leaf_retention, light_raw, light_label, humidity_raw,
+            precip_min_mm, precip_max_mm, bloom_months, flower_colors,
+            avg_height_cm, max_height_cm, toxicity, edible, image_url, fetched_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            scientific_name,
+            data["trefle_slug"],
+            data["common_name"],
+            data["family"],
+            data["duration"],
+            data["leaf_retention"],
+            data["light_raw"],
+            data["light_label"],
+            data["humidity_raw"],
+            data["precip_min_mm"],
+            data["precip_max_mm"],
+            json.dumps(data["bloom_months"]),
+            json.dumps(data["flower_colors"]),
+            data["avg_height_cm"],
+            data["max_height_cm"],
+            data["toxicity"],
+            data["edible"],
+            data["image_url"],
+            fetched_at,
+        ),
+    )
+    await db.commit()
+
+    return {
+        "scientific_name": scientific_name,
+        "common_name":     data["common_name"],
+        "family":          data["family"],
+        "duration":        data["duration"],
+        "leaf_retention":  data["leaf_retention"],
+        "light_label":     data["light_label"],
+        "light_raw":       data["light_raw"],
+        "precip_min_mm":   data["precip_min_mm"],
+        "precip_max_mm":   data["precip_max_mm"],
+        "bloom_months":    data["bloom_months"],
+        "flower_colors":   data["flower_colors"],
+        "avg_height_cm":   data["avg_height_cm"],
+        "toxicity":        data["toxicity"],
+        "edible":          data["edible"],
+        "image_url":       data["image_url"],
+        "source":          "trefle",
+        "cached_at":       fetched_at,
+        "plant_notes":     plant_notes,
+    }
 
 
 class GrowHereRequest(BaseModel):
@@ -555,18 +555,25 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
     return result
 
 
+_RAIN_FALLBACK = {"days": [], "total_7day_mm": 0.0, "total_14day_mm": 0.0, "assessment": "unknown"}
+_TEMP_FALLBACK = {"days": [], "avg_max_7day": 0.0, "assessment": "unknown"}
+
+
 async def _get_rain_data() -> dict:
-    """Fetch (or return cached) 7-day rainfall data."""
+    """Fetch (or return cached) 14-day rainfall data with both 7d and 14d totals."""
     global _rain_cache
     now = datetime.now(timezone.utc)
 
     if _rain_cache.get("fetched_at") and (now - _rain_cache["fetched_at"]) < timedelta(hours=1):
         return _rain_cache["data"]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(OPEN_METEO_URL)
-        resp.raise_for_status()
-        raw = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(OPEN_METEO_URL)
+            resp.raise_for_status()
+            raw = resp.json()
+    except Exception:
+        return _rain_cache.get("data", _RAIN_FALLBACK)
 
     daily  = raw.get("daily", {})
     times  = daily.get("time", [])
@@ -574,25 +581,34 @@ async def _get_rain_data() -> dict:
 
     days  = [{"date": t, "mm": round(p, 1) if p is not None else 0.0}
              for t, p in zip(times, precip)]
-    total = round(sum(d["mm"] for d in days), 1)
+    total_14d = round(sum(d["mm"] for d in days), 1)
+    total_7d  = round(sum(d["mm"] for d in days[-7:]), 1) if len(days) >= 7 else total_14d
 
-    result = {"days": days, "total_7day_mm": total, "assessment": _assessment(total)}
+    result = {
+        "days": days,
+        "total_7day_mm": total_7d,
+        "total_14day_mm": total_14d,
+        "assessment": _assessment(total_14d),
+    }
     _rain_cache = {"fetched_at": now, "data": result}
     return result
 
 
 async def _get_temp_data() -> dict:
-    """Fetch (or return cached) 7-day temperature data."""
+    """Fetch (or return cached) 7-day temperature data. Returns fallback on error."""
     global _temp_cache
     now = datetime.now(timezone.utc)
 
     if _temp_cache.get("fetched_at") and (now - _temp_cache["fetched_at"]) < timedelta(hours=1):
         return _temp_cache["data"]
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(OPEN_METEO_TEMP_URL)
-        resp.raise_for_status()
-        raw = resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(OPEN_METEO_TEMP_URL)
+            resp.raise_for_status()
+            raw = resp.json()
+    except Exception:
+        return _temp_cache.get("data", _TEMP_FALLBACK)
 
     daily   = raw.get("daily", {})
     times   = daily.get("time", [])
@@ -646,15 +662,14 @@ async def get_last_garden_watered() -> date | None:
 
 
 @router.post("/garden/water-log")
-async def log_garden_watering(body: WaterLogCreate):
+async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
     watered_at = (body.watered_at or date.today()).isoformat()
-    async with get_db() as db:
-        await db.execute("DELETE FROM garden_water_log")
-        await db.execute(
-            "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
-            (watered_at, body.watered_by),
-        )
-        await db.commit()
+    await db.execute("DELETE FROM garden_water_log")
+    await db.execute(
+        "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
+        (watered_at, body.watered_by),
+    )
+    await db.commit()
     return {"watered_at": watered_at}
 
 
@@ -676,11 +691,13 @@ def _get_weekly_et_budget(season: str) -> float:
     return _WEEKLY_ET_BUDGET[season]
 
 
-def _compute_water_status(rain_7d: float, days_since_watered: int | None) -> dict:
+def _compute_water_status(rain_14d: float, rain_7d: float, days_since_watered: int | None) -> dict:
+    """Compute garden water status from 14-day rainfall against a biweekly ET budget."""
     from services.scheduling import get_current_season
     season = get_current_season()
-    budget = _get_weekly_et_budget(season)
-    covered = rain_7d / budget if budget else 1.0
+    weekly_budget = _get_weekly_et_budget(season)
+    biweekly_budget = weekly_budget * 2
+    covered = rain_14d / biweekly_budget if biweekly_budget else 1.0
     watered_recently = days_since_watered is not None and days_since_watered <= 3
 
     if covered >= 0.8 or (covered >= 0.5 and watered_recently):
@@ -693,7 +710,9 @@ def _compute_water_status(rain_7d: float, days_since_watered: int | None) -> dic
     return {
         "status": status,
         "rain_7day_mm": round(rain_7d, 1),
-        "weekly_budget_mm": budget,
+        "rain_14day_mm": round(rain_14d, 1),
+        "weekly_budget_mm": weekly_budget,
+        "biweekly_budget_mm": biweekly_budget,
         "season": season,
     }
 
@@ -706,21 +725,104 @@ async def get_garden_water_status():
     """
     rain         = await _get_rain_data()
     last_watered = await get_last_garden_watered()
-    total_mm     = rain.get("total_7day_mm", 0)
+    total_14d    = rain.get("total_14day_mm", 0)
+    total_7d     = rain.get("total_7day_mm", 0)
     days_since   = (date.today() - last_watered).days if last_watered else None
 
-    result = _compute_water_status(total_mm, days_since)
+    result = _compute_water_status(total_14d, total_7d, days_since)
     result["watered_at"] = last_watered.isoformat() if last_watered else None
     return result
 
 
 @router.delete("/garden/water-log/latest")
-async def delete_latest_garden_watering():
+async def delete_latest_garden_watering(db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+    )
+    if rows:
+        await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
+        await db.commit()
+    return {"ok": True}
+
+
+# ── Garden fertilize log ──────────────────────────────────────────────────────
+
+
+async def get_last_garden_fertilized() -> date | None:
+    """Return the most recent garden fertilize date, or None."""
     async with get_db() as db:
         rows = await db.execute_fetchall(
-            "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+            "SELECT id, fertilized_at FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
         )
-        if rows:
-            await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
-            await db.commit()
+    if not rows:
+        return None
+    return date.fromisoformat(rows[0]["fertilized_at"])
+
+
+class FertilizeLogCreate(BaseModel):
+    fertilized_by: int | None = None
+    fertilized_at: date | None = None
+
+
+@router.post("/garden/fertilize-log")
+async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep)):
+    """Log a garden-wide fertilize and mark all active fertilize schedules as done."""
+    fertilized_at = (body.fertilized_at or date.today()).isoformat()
+
+    # Log the garden fertilize event
+    await db.execute("DELETE FROM garden_fertilize_log")
+    await db.execute(
+        "INSERT INTO garden_fertilize_log (fertilized_at, fertilized_by) VALUES (?, ?)",
+        (fertilized_at, body.fertilized_by),
+    )
+
+    # Mark all active fertilize schedules as done
+    from services.scheduling import calculate_next_due
+    schedules = await db.execute_fetchall(
+        """SELECT cs.id, cs.interval_days, cs.season_adjust
+           FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1"""
+    )
+    today_str = date.today().isoformat()
+    updated = 0
+    for s in schedules:
+        next_due = calculate_next_due(
+            date.today(), s["interval_days"], s["season_adjust"]
+        )
+        await db.execute(
+            "UPDATE care_schedules SET last_done = ?, next_due = ? WHERE id = ?",
+            (today_str, str(next_due), s["id"]),
+        )
+        updated += 1
+
+    await db.commit()
+    return {"fertilized_at": fertilized_at, "schedules_updated": updated}
+
+
+@router.get("/garden/fertilize-status")
+async def get_garden_fertilize_status():
+    """Return garden-wide fertilize status and count of pending schedules."""
+    last = await get_last_garden_fertilized()
+    async with get_db() as db:
+        pending = await db.execute_fetchall(
+            """SELECT COUNT(*) as cnt FROM care_schedules cs
+               JOIN plants p ON cs.plant_id = p.id
+               WHERE cs.care_type = 'fertilize' AND cs.is_active = 1
+               AND p.is_active = 1 AND cs.next_due <= date('now')"""
+        )
+    return {
+        "fertilized_at": last.isoformat() if last else None,
+        "pending_count": pending[0]["cnt"] if pending else 0,
+    }
+
+
+@router.delete("/garden/fertilize-log/latest")
+async def delete_latest_garden_fertilizing(db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
+    )
+    if rows:
+        await db.execute("DELETE FROM garden_fertilize_log WHERE id = ?", (rows[0]["id"],))
+        await db.commit()
     return {"ok": True}

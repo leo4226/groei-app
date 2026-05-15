@@ -396,8 +396,8 @@ export default function RoomWallRenderer({
                     <rect
                       x={hitRect.x - 4} y={hitRect.y - 4}
                       width={hitRect.width + 8} height={hitRect.height + 8}
-                      fill={isWallElemSelected ? 'rgba(37,68,160,0.15)' : 'transparent'}
-                      stroke={isWallElemSelected ? '#2544a0' : 'none'}
+                      fill={isWallElemSelected ? 'rgba(74,144,217,0.15)' : 'transparent'}
+                      stroke={isWallElemSelected ? '#4A90D9' : 'none'}
                       strokeWidth={1.5}
                       strokeDasharray={isWallElemSelected ? '4 2' : undefined}
                       style={{ cursor: 'grab' }}
@@ -420,23 +420,6 @@ export default function RoomWallRenderer({
       {cornerWalls.map((r, i) => (
         <rect key={`cw-${i}`} {...r} fill={WALL_COLOR} pointerEvents="none" />
       ))}
-
-      {/* Structure label above the top outer wall */}
-      {isStructure && w > 40 && (
-        <text
-          x={x + w / 2}
-          y={y - 6}
-          textAnchor="middle"
-          dominantBaseline="auto"
-          fill="#d4b896"
-          fontSize={9.5}
-          fontWeight={600}
-          fontFamily="sans-serif"
-          pointerEvents="none"
-        >
-          {zone.label ? `${zone.label} · ${widthM} × ${heightM} m` : `${widthM} × ${heightM} m`}
-        </text>
-      )}
 
       {/* Room label + dimensions + area — fits dynamically inside the interior */}
       {!isStructure && (
@@ -490,7 +473,7 @@ export default function RoomWallRenderer({
       {isSelected && (
         <rect
           x={x} y={y} width={w} height={h}
-          fill="none" stroke="#2544a0"
+          fill="none" stroke="#4A90D9"
           strokeWidth={2} strokeDasharray="6 3"
           pointerEvents="none"
         />

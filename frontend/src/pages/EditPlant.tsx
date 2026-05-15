@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGroeiStore } from '../store/useGroeiStore'
 import { fetchPlant } from '../api/client'
@@ -6,15 +6,13 @@ import type { Plant } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import IconPicker from '../components/IconPicker'
 
-const MAP_TYPE_LABEL: Record<string, string> = {
-  outdoor: 'Tuin',
-  indoor: 'Binnen',
-}
+const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
+const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
 
 export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { maps, updatePlant, uploadPhoto } = useGroeiStore()
+  const { locations, maps, updatePlant, uploadPhoto } = useGroeiStore()
   const plantId = Number(id)
 
   const [plant, setPlant] = useState<Plant | null>(null)
@@ -22,7 +20,7 @@ export default function EditPlant() {
 
   const [name, setName] = useState('')
   const [species, setSpecies] = useState('')
-  const [mapId, setMapId] = useState<number | null>(null)
+  const [locationId, setLocationId] = useState<number | undefined>()
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
   const [lastRepotted, setLastRepotted] = useState('')
@@ -33,6 +31,22 @@ export default function EditPlant() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
+  const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
+  const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
+  const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
+
+  const currentArea: 'tuin' | 'huis' | null = locationId == null ? null
+    : locations.find(l => l.id === locationId && isTuinLoc(l.name)) ? 'tuin'
+    : locations.find(l => l.id === locationId) ? 'huis'
+    : null
+
+  function selectArea(area: 'tuin' | 'huis') {
+    if (currentArea === area) { setLocationId(undefined); return }
+    const pool = area === 'tuin' ? tuinLocs : huisLocs
+    if (pool.length > 0) setLocationId(pool[0].id)
+  }
+
   useEffect(() => {
     async function load() {
       try {
@@ -40,7 +54,7 @@ export default function EditPlant() {
         setPlant(p)
         setName(p.name)
         setSpecies(p.species ?? '')
-        setMapId(p.map_id ?? null)
+        setLocationId(p.location_id ?? undefined)
         setPotSize(p.pot_size_cm ? String(p.pot_size_cm) : '')
         setAcquiredDate(p.acquired_date ?? '')
         setLastRepotted(p.last_repotted ?? '')
@@ -74,7 +88,7 @@ export default function EditPlant() {
       await updatePlant(plantId, {
         name: name.trim(),
         species: species.trim() || null,
-        map_id: mapId,
+        location_id: locationId ?? null,
         pot_size_cm: potSize ? parseInt(potSize) : null,
         acquired_date: acquiredDate || null,
         last_repotted: lastRepotted || null,
@@ -106,7 +120,7 @@ export default function EditPlant() {
     )
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 rounded-full bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+  const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
 
   return (
     <div className="px-4 pt-6 pb-8">
@@ -196,33 +210,32 @@ export default function EditPlant() {
           </div>
         </div>
 
-        {/* Map picker */}
+        {/* Location */}
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">Locatie</label>
-          {maps.length === 0 ? (
-            <p className="text-sm text-text-muted bg-surface rounded-xl p-3">
-              Nog geen kaarten beschikbaar. Maak eerst een kaart aan.
-            </p>
-          ) : (
-            <div className="flex gap-3">
-              {maps.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMapId(mapId === m.id ? null : m.id)}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
-                    mapId === m.id
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-text-muted hover:border-text-muted'
-                  }`}
-                >
-                  <span className="text-2xl">{m.map_type === 'outdoor' ? '🌿' : '🏠'}</span>
-                  <span>{m.name}</span>
-                  <span className="text-[10px] text-text-muted/60">{MAP_TYPE_LABEL[m.map_type] ?? m.map_type}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-3">
+            {([
+              { area: 'tuin' as const, label: 'Tuin', emoji: '🌿', hasMap: !!tuinMap },
+              { area: 'huis' as const, label: 'Huis', emoji: '🏠', hasMap: !!huisMap },
+            ]).map(({ area, label, emoji, hasMap }) => (
+              <button
+                key={area}
+                type="button"
+                onClick={() => selectArea(area)}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                  currentArea === area
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:border-text-muted'
+                }`}
+              >
+                <span className="text-2xl">{emoji}</span>
+                <span>{label}</span>
+                {!hasMap && (
+                  <span className="text-[10px] text-text-muted/60">kaart binnenkort</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Pot size & dates */}
@@ -273,7 +286,7 @@ export default function EditPlant() {
         <button
           type="submit"
           disabled={submitting || !name.trim()}
-          className="w-full bg-primary text-white py-3.5 rounded-full font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
+          className="w-full bg-primary text-white py-3.5 rounded-xl font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50 shadow-sm"
         >
           {submitting ? (
             <span className="flex items-center justify-center gap-2">

@@ -68,7 +68,7 @@ function AISuggestionCard({ s, onAdd, loading, disabled }: { s: AISuggestion; on
       </div>
       <p className="text-xs text-text-muted leading-relaxed">{s.reasoning}</p>
       {s.caveat && (
-        <p className="text-xs text-pumpkin-swirl/80 leading-relaxed">⚠ {s.caveat}</p>
+        <p className="text-xs text-amber-400/80 leading-relaxed">⚠ {s.caveat}</p>
       )}
       {s.companionNote && (
         <p className="text-xs text-text-muted/70 leading-relaxed">🌿 {s.companionNote}</p>

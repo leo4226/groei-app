@@ -1,6 +1,0 @@
-fastapi>=0.135
-uvicorn[standard]>=0.44
-aiosqlite>=0.22
-python-multipart>=0.0.24
-httpx>=0.27
-python-dotenv>=1.0

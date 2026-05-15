@@ -8,7 +8,7 @@ export interface UseGardenWaterReturn {
   showPicker: boolean
   pickerDate: string
   setPickerDate: (date: string) => void
-  openPicker: () => void
+  togglePicker: () => void
   closePicker: () => void
   save: () => Promise<void>
   deleteLast: () => Promise<void>
@@ -26,13 +26,13 @@ export function useGardenWater(): UseGardenWaterReturn {
       .then(data => setGardenWater(data ?? null))
   }, [])
 
-  const openPicker = () => {
-    setPickerDate(gardenWater?.watered_at ?? new Date().toISOString().slice(0, 10))
-    setShowPicker(true)
-  }
-
-  const closePicker = () => {
-    setShowPicker(false)
+  const togglePicker = () => {
+    if (showPicker) {
+      setShowPicker(false)
+    } else {
+      setPickerDate(gardenWater?.watered_at ?? new Date().toISOString().slice(0, 10))
+      setShowPicker(true)
+    }
   }
 
   const save = async () => {
@@ -67,8 +67,7 @@ export function useGardenWater(): UseGardenWaterReturn {
     showPicker,
     pickerDate,
     setPickerDate,
-    openPicker,
-    closePicker,
+    togglePicker,
     save,
     deleteLast,
   }

@@ -1,23 +1,53 @@
 import { useCallback, useReducer, useRef, useState } from 'react'
-import type { EditorZone, ZoneStyleType, CanvasData, WallElement, MapType } from '../types'
+import type { EditorZone, ZoneStyleType, CanvasData, WallElement, MapType, ObjectShapeType, ObjectType, ObjectCategory, ShadowCaster } from '../types'
 import {
-  WALL_THICKNESS_EXTERIOR_CM,
-  WALL_THICKNESS_INTERIOR_CM,
   DEFAULT_DOOR_WIDTH_CM,
   DEFAULT_WINDOW_WIDTH_CM,
 } from '../constants/mapDefaults'
 
-export type EditorTool = 'select' | 'draw' | 'place_door' | 'place_window'
+export type EditorTool = 'select' | 'draw' | 'place_door' | 'place_window' | 'shadow_caster' | 'place_object'
+
+export interface ObjectPreset {
+  label: string
+  object_type: ObjectType
+  shape: ObjectShapeType
+  diameter_cm?: number
+  width_cm?: number
+  depth_cm?: number
+  material: string
+  color: string
+  category: ObjectCategory
+  preset?: string
+}
+
+export const CONTAINER_PRESETS: ObjectPreset[] = [
+  { label: 'Round pot',   object_type: 'pot',        shape: 'circle',    diameter_cm: 30,  material: 'terracotta', color: '#B7654B', category: 'container' },
+  { label: 'Square pot',  object_type: 'pot',        shape: 'square',    width_cm: 30,     material: 'plastic',    color: '#888888', category: 'container' },
+  { label: 'Planter',     object_type: 'planter',    shape: 'rectangle', width_cm: 80,  depth_cm: 30,  material: 'wood',       color: '#8B6914', category: 'container' },
+  { label: 'Corten ring', object_type: 'pot',        shape: 'circle',    diameter_cm: 100, material: 'corten',     color: '#A0522D', category: 'container' },
+  { label: 'Raised bed',  object_type: 'raised_bed', shape: 'rectangle', width_cm: 200, depth_cm: 80,  material: 'wood',       color: '#8B5A30', category: 'container' },
+]
+
+export const HARDSCAPE_PRESETS: ObjectPreset[] = [
+  { label: 'Stepping stone', object_type: 'furniture', shape: 'rectangle', width_cm: 60,  depth_cm: 40, material: 'stone',   color: '#a8a090', category: 'hardscape', preset: 'stepping_stone' },
+  { label: 'Bench',          object_type: 'furniture', shape: 'rectangle', width_cm: 180, depth_cm: 40, material: 'wood',    color: '#8b7355', category: 'hardscape', preset: 'bench' },
+  { label: 'Table',          object_type: 'furniture', shape: 'rectangle', width_cm: 80,  depth_cm: 80, material: 'wood',    color: '#8b7355', category: 'hardscape', preset: 'table' },
+  { label: 'Chair',          object_type: 'furniture', shape: 'rectangle', width_cm: 50,  depth_cm: 50, material: 'wood',    color: '#8b7355', category: 'hardscape', preset: 'chair' },
+  { label: 'Rain barrel',    object_type: 'furniture', shape: 'circle',    diameter_cm: 60,              material: 'plastic', color: '#3d5a6b', category: 'utility',   preset: 'rain_barrel' },
+]
 
 // ── State & actions ──────────────────────────────────────────────────────────
 
 interface EditorState {
   zones: EditorZone[]
   wallElements: WallElement[]
+  shadowCasters: ShadowCaster[]
   selectedZoneId: string | null
   selectedWallElementId: string | null
+  selectedShadowCasterId: string | null
   activeTool: EditorTool
   activeZoneType: ZoneStyleType
+  objectPreset: ObjectPreset | null
   isDirty: boolean
   scalePxPerM: number
   mapType: MapType
@@ -27,6 +57,7 @@ interface EditorState {
 interface Snapshot {
   zones: EditorZone[]
   wallElements: WallElement[]
+  shadowCasters: ShadowCaster[]
   scalePxPerM: number
   mapType: MapType
 }
@@ -46,12 +77,18 @@ type Action =
   | { type: 'DELETE_WALL_ELEMENT'; id: string }
   | { type: 'SELECT_WALL_ELEMENT'; id: string | null }
   | { type: 'SET_MAP_TYPE'; mapType: MapType }
+  | { type: 'ADD_SHADOW_CASTER'; caster: ShadowCaster }
+  | { type: 'UPDATE_SHADOW_CASTER'; id: string; updates: Partial<ShadowCaster> }
+  | { type: 'DELETE_SHADOW_CASTER'; id: string }
+  | { type: 'SELECT_SHADOW_CASTER'; id: string | null }
+  | { type: 'SET_OBJECT_PRESET'; preset: ObjectPreset | null }
   | { type: 'UNDO'; snapshot: Snapshot }
 
 /** Actions that record undo history before being applied */
 const UNDOABLE = new Set([
   'ADD_ZONE', 'UPDATE_ZONE', 'DELETE_ZONE',
   'ADD_WALL_ELEMENT', 'UPDATE_WALL_ELEMENT', 'DELETE_WALL_ELEMENT',
+  'ADD_SHADOW_CASTER', 'UPDATE_SHADOW_CASTER', 'DELETE_SHADOW_CASTER',
   'SET_SCALE', 'SET_MAP_TYPE',
 ])
 
@@ -62,10 +99,13 @@ const MAX_HISTORY = 60
 const initialState: EditorState = {
   zones: [],
   wallElements: [],
+  shadowCasters: [],
   selectedZoneId: null,
   selectedWallElementId: null,
+  selectedShadowCasterId: null,
   activeTool: 'draw',
   activeZoneType: 'deck',
+  objectPreset: null,
   isDirty: false,
   scalePxPerM: 46,
   mapType: 'outdoor',
@@ -89,6 +129,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         ...state,
         zones: action.data.zones,
         wallElements: action.data.wallElements ?? [],
+        shadowCasters: action.data.shadowCasters ?? [],
         scalePxPerM: action.data.scale_px_per_m,
         mapType: action.data.mapType ?? 'outdoor',
         isDirty: false,
@@ -177,15 +218,52 @@ function reducer(state: EditorState, action: Action): EditorState {
       }
     case 'SET_MAP_TYPE':
       return { ...state, mapType: action.mapType, isDirty: true }
+    case 'ADD_SHADOW_CASTER':
+      return {
+        ...state,
+        shadowCasters: [...state.shadowCasters, action.caster],
+        selectedShadowCasterId: action.caster.id,
+        selectedZoneId: null,
+        selectedWallElementId: null,
+        activeTool: 'select',
+        isDirty: true,
+      }
+    case 'UPDATE_SHADOW_CASTER':
+      return {
+        ...state,
+        shadowCasters: state.shadowCasters.map((sc) =>
+          sc.id === action.id ? { ...sc, ...action.updates } as ShadowCaster : sc
+        ),
+        isDirty: true,
+      }
+    case 'DELETE_SHADOW_CASTER':
+      return {
+        ...state,
+        shadowCasters: state.shadowCasters.filter((sc) => sc.id !== action.id),
+        selectedShadowCasterId:
+          state.selectedShadowCasterId === action.id ? null : state.selectedShadowCasterId,
+        isDirty: true,
+      }
+    case 'SELECT_SHADOW_CASTER':
+      return {
+        ...state,
+        selectedShadowCasterId: action.id,
+        selectedZoneId: null,
+        selectedWallElementId: null,
+      }
+    case 'SET_OBJECT_PRESET':
+      return { ...state, objectPreset: action.preset }
     case 'UNDO':
       return {
         ...state,
         zones: action.snapshot.zones,
         wallElements: action.snapshot.wallElements,
+        shadowCasters: action.snapshot.shadowCasters,
         scalePxPerM: action.snapshot.scalePxPerM,
         mapType: action.snapshot.mapType,
         selectedZoneId: null,
         selectedWallElementId: null,
+        selectedShadowCasterId: null,
         isDirty: true,
       }
   }
@@ -195,6 +273,7 @@ function reducer(state: EditorState, action: Action): EditorState {
 
 let zoneCounter = 0
 let wallElementCounter = 0
+let shadowCasterCounter = 0
 
 export function useEditorState() {
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -211,7 +290,7 @@ export function useEditorState() {
   const lastPushRef = useRef<{ actionType: string; zoneId?: string; time: number } | null>(null)
 
   function snapState(s: EditorState): Snapshot {
-    return { zones: s.zones, wallElements: s.wallElements, scalePxPerM: s.scalePxPerM, mapType: s.mapType }
+    return { zones: s.zones, wallElements: s.wallElements, shadowCasters: s.shadowCasters, scalePxPerM: s.scalePxPerM, mapType: s.mapType }
   }
 
   /** Dispatch wrapper that records the pre-action snapshot for undoable actions. */
@@ -250,6 +329,7 @@ export function useEditorState() {
   const loadCanvasData = useCallback((data: CanvasData) => {
     zoneCounter = data.zones.length
     wallElementCounter = (data.wallElements ?? []).length
+    shadowCasterCounter = (data.shadowCasters ?? []).length
     // Clear history on load so you can't undo past a page load
     historyRef.current = []
     setHistoryLength(0)
@@ -354,16 +434,39 @@ export function useEditorState() {
     dispatchWithHistory({ type: 'SET_MAP_TYPE', mapType })
   }, [dispatchWithHistory])
 
+  const addShadowCaster = useCallback((caster: Omit<ShadowCaster, 'id'>) => {
+    shadowCasterCounter++
+    const id = `sc_${shadowCasterCounter}_${Date.now()}`
+    dispatchWithHistory({ type: 'ADD_SHADOW_CASTER', caster: { ...caster, id } as ShadowCaster })
+  }, [dispatchWithHistory])
+
+  const updateShadowCaster = useCallback((id: string, updates: Partial<ShadowCaster>) => {
+    dispatchWithHistory({ type: 'UPDATE_SHADOW_CASTER', id, updates })
+  }, [dispatchWithHistory])
+
+  const deleteShadowCaster = useCallback((id: string) => {
+    dispatchWithHistory({ type: 'DELETE_SHADOW_CASTER', id })
+  }, [dispatchWithHistory])
+
+  const selectShadowCaster = useCallback((id: string | null) => {
+    dispatch({ type: 'SELECT_SHADOW_CASTER', id })
+  }, [])
+
+  const setObjectPreset = useCallback((preset: ObjectPreset | null) => {
+    dispatch({ type: 'SET_OBJECT_PRESET', preset })
+  }, [])
+
   const toCanvasData = useCallback((): CanvasData => {
     return {
       zones: state.zones,
       wallElements: state.wallElements,
+      shadowCasters: state.shadowCasters,
       scale_px_per_m: state.scalePxPerM,
       canvas_w: 680,
       canvas_h: 680,
       mapType: state.mapType,
     }
-  }, [state.zones, state.wallElements, state.scalePxPerM, state.mapType])
+  }, [state.zones, state.wallElements, state.shadowCasters, state.scalePxPerM, state.mapType])
 
   return {
     ...state,
@@ -383,6 +486,11 @@ export function useEditorState() {
     deleteWallElement,
     selectWallElement,
     setMapType,
+    addShadowCaster,
+    updateShadowCaster,
+    deleteShadowCaster,
+    selectShadowCaster,
+    setObjectPreset,
     toCanvasData,
   }
 }

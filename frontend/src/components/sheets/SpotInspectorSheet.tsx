@@ -43,7 +43,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5">
                     <div
-                      className={`w-full rounded-sm ${isNow ? 'bg-pumpkin-swirl' : 'bg-pumpkin-swirl/40'}`}
+                      className={`w-full rounded-sm ${isNow ? 'bg-amber-400' : 'bg-amber-200'}`}
                       style={{ height: `${Math.max(height, 2)}%` }}
                       title={`${MONTH_LABELS[i]}: ${sun.toFixed(1)}u`}
                     />
@@ -106,7 +106,7 @@ function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
       )}
       <div className="flex flex-wrap gap-1 mt-1.5">
         {species.sow_window.length > 0 && (
-          <span className="text-[9px] bg-emerald-green/15 text-emerald-green px-1.5 py-0.5 rounded-full">
+          <span className="text-[9px] bg-green-500/15 text-green-700 px-1.5 py-0.5 rounded-full">
             Zaai: {fmt(species.sow_window)}
           </span>
         )}
@@ -116,12 +116,12 @@ function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
           </span>
         )}
         {species.harvest_window.length > 0 && (
-          <span className="text-[9px] bg-pumpkin-swirl/15 text-pumpkin-swirl px-1.5 py-0.5 rounded-full">
+          <span className="text-[9px] bg-amber-500/15 text-amber-700 px-1.5 py-0.5 rounded-full">
             Oogst: {fmt(species.harvest_window)}
           </span>
         )}
         {species.frost_sensitive && (
-          <span className="text-[9px] bg-aqua-glow/10 text-midnight-ink px-1.5 py-0.5 rounded-full">
+          <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full">
             Vorstgevoelig
           </span>
         )}

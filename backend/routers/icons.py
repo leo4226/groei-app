@@ -2,9 +2,9 @@ import json
 import os
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from database import get_db
+from database import db_dep
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
@@ -187,7 +187,7 @@ async def get_catalog():
 
 
 @router.post("/sync")
-async def sync_icons():
+async def sync_icons(db = Depends(db_dep)):
     """
     1. Scan the icons folder for new SVGs and add them to manifest.json.
     2. Auto-match plants that have no icon_key by comparing plant name/species
@@ -234,55 +234,54 @@ async def sync_icons():
 
     # --- Step 3: match unassigned plants ---
     matched: list[dict] = []
-    async with get_db() as db:
-        plants = await db.execute_fetchall(
-            "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
-        )
+    plants = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
+    )
 
-        for row in plants:
-            plant = dict(row)
-            found_key: str | None = None
+    for row in plants:
+        plant = dict(row)
+        found_key: str | None = None
 
-            for text in [plant["name"], plant.get("species") or ""]:
-                if not text:
-                    continue
-                norm = _normalize(text)
+        for text in [plant["name"], plant.get("species") or ""]:
+            if not text:
+                continue
+            norm = _normalize(text)
 
-                # 1. Exact match
-                if norm in lookup:
-                    found_key = lookup[norm]
-                    break
+            # 1. Exact match
+            if norm in lookup:
+                found_key = lookup[norm]
+                break
 
-                # 2. Prefix match (plant name starts with icon key or vice versa)
-                for icon_norm, icon_id in lookup.items():
-                    if icon_norm and (
-                        norm.startswith(icon_norm) or icon_norm.startswith(norm)
-                    ):
-                        found_key = icon_id
-                        break
-
-                if found_key:
+            # 2. Prefix match (plant name starts with icon key or vice versa)
+            for icon_norm, icon_id in lookup.items():
+                if icon_norm and (
+                    norm.startswith(icon_norm) or icon_norm.startswith(norm)
+                ):
+                    found_key = icon_id
                     break
 
             if found_key:
-                await db.execute(
-                    "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (found_key, plant["id"]),
-                )
-                matched.append({
-                    "plant_id": plant["id"],
-                    "plant_name": plant["name"],
-                    "icon_key": found_key,
-                })
+                break
 
-        unmatched = [
-            {"plant_id": dict(row)["id"], "plant_name": dict(row)["name"]}
-            for row in plants
-            if not any(m["plant_id"] == dict(row)["id"] for m in matched)
-        ]
+        if found_key:
+            await db.execute(
+                "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (found_key, plant["id"]),
+            )
+            matched.append({
+                "plant_id": plant["id"],
+                "plant_name": plant["name"],
+                "icon_key": found_key,
+            })
 
-        if matched:
-            await db.commit()
+    unmatched = [
+        {"plant_id": dict(row)["id"], "plant_name": dict(row)["name"]}
+        for row in plants
+        if not any(m["plant_id"] == dict(row)["id"] for m in matched)
+    ]
+
+    if matched:
+        await db.commit()
 
     return {
         "total_icons": len(manifest),

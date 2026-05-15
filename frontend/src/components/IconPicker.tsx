@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { PlantIcon } from '../types'
 import { fetchIconCatalog } from '../api/client'
-import { CATEGORY_LABELS, FORM_LABELS } from '../constants/plantLabels'
+import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
 
 interface Props {
   value: string | null
@@ -9,6 +9,8 @@ interface Props {
 }
 
 export default function IconPicker({ value, onChange }: Props) {
+  const CATEGORY_LABELS = useCategoryLabels()
+  const FORM_LABELS = useFormLabels()
   const [open, setOpen] = useState(false)
   const [icons, setIcons] = useState<PlantIcon[]>([])
   const [search, setSearch] = useState('')

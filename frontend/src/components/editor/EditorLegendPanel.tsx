@@ -3,7 +3,7 @@ import type { ZoneStyleType } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { HARDSCAPE_PRESETS } from '../../hooks/useEditorState'
 import { ZONE_STYLES, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
-import { ZONE_NL, KAART_TYPE_NL, TOOLBAR_NL } from '../../utils/editorStrings.nl'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   activeZoneType: ZoneStyleType
@@ -46,7 +46,8 @@ export default function EditorLegendPanel({
   onSetMapType,
   onSetObjectPreset,
 }: Props) {
-  const zoneTypes = mapType === 'house' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
+  const t = useT()
+  const zoneTypes = mapType === 'indoor' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
   const [open, setOpen] = useState<Record<string, boolean>>({ zones: true, objects: false, shadows: false, place: false })
 
   function toggle(key: string) { setOpen(o => ({ ...o, [key]: !o[key] })) }
@@ -61,24 +62,24 @@ export default function EditorLegendPanel({
         </p>
         <div className="flex gap-1">
           <button
-            onClick={() => onSetMapType('garden')}
+            onClick={() => onSetMapType('outdoor')}
             className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
-              mapType === 'garden'
+              mapType === 'outdoor'
                 ? 'bg-primary text-white'
                 : 'bg-bg text-text-muted border border-border hover:bg-bg/80'
             }`}
           >
-            {KAART_TYPE_NL.tuin}
+            {t.editor.mapType.garden}
           </button>
           <button
-            onClick={() => onSetMapType('house')}
+            onClick={() => onSetMapType('indoor')}
             className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
-              mapType === 'house'
+              mapType === 'indoor'
                 ? 'bg-primary text-white'
                 : 'bg-bg text-text-muted border border-border hover:bg-bg/80'
             }`}
           >
-            {KAART_TYPE_NL.huis}
+            {t.editor.mapType.house}
           </button>
         </div>
       </div>
@@ -90,7 +91,6 @@ export default function EditorLegendPanel({
           <div className="flex flex-col gap-1 mt-2">
             {zoneTypes.map((type) => {
               const style = ZONE_STYLES[type]
-              const nl = ZONE_NL[type]
               const isActive = activeZoneType === type && activeTool === 'draw'
               return (
                 <button
@@ -111,10 +111,10 @@ export default function EditorLegendPanel({
                   />
                   <div className="min-w-0">
                     <div className="text-xs font-semibold text-text leading-tight">
-                      {nl.naam}
+                      {t.editor.zones[type]?.name ?? type}
                     </div>
                     <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                      {nl.beschrijving}
+                      {t.editor.zones[type]?.description ?? ''}
                     </div>
                   </div>
                 </button>
@@ -124,8 +124,8 @@ export default function EditorLegendPanel({
         )}
       </div>
 
-      {/* ── Objecten plaatsen (garden mode only) ── */}
-      {mapType === 'garden' && (
+      {/* ── Objecten plaatsen (outdoor mode only) ── */}
+      {mapType === 'outdoor' && (
         <div>
           <SectionHeader label="Objecten" open={open.objects} onToggle={() => toggle('objects')} />
           {open.objects && (
@@ -162,8 +162,8 @@ export default function EditorLegendPanel({
         </div>
       )}
 
-      {/* ── Schaduw objecten (garden mode only) ── */}
-      {mapType === 'garden' && (
+      {/* ── Schaduw objecten (outdoor mode only) ── */}
+      {mapType === 'outdoor' && (
         <div>
           <SectionHeader label="Schaduw objecten" open={open.shadows} onToggle={() => toggle('shadows')} />
           {open.shadows && (
@@ -194,8 +194,8 @@ export default function EditorLegendPanel({
         </div>
       )}
 
-      {/* ── Plaatsen (house mode only) ── */}
-      {mapType === 'house' && (
+      {/* ── Plaatsen (indoor mode only) ── */}
+      {mapType === 'indoor' && (
         <div>
           <SectionHeader label="Plaatsen" open={open.place} onToggle={() => toggle('place')} />
           {open.place && (
@@ -214,7 +214,7 @@ export default function EditorLegendPanel({
                   <path d="M10 12v.01" />
                   <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z" />
                 </svg>
-                {TOOLBAR_NL.deurPlaatsen}
+                {t.editor.toolbar.placeDoor}
               </button>
               <button
                 onClick={() => onSetTool('place_window')}
@@ -228,7 +228,7 @@ export default function EditorLegendPanel({
                   <line x1="12" y1="4" x2="12" y2="20" />
                   <line x1="2" y1="12" x2="22" y2="12" />
                 </svg>
-                {TOOLBAR_NL.raamPlaatsen}
+                {t.editor.toolbar.placeWindow}
               </button>
             </div>
           )}

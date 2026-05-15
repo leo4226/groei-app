@@ -140,7 +140,7 @@ export default function PlantCareDetail() {
                 <div className="flex items-center gap-3 mb-1.5">
                   <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-pumpkin-swirl rounded-full"
+                      className="h-full bg-amber-400 rounded-full"
                       style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
                     />
                   </div>
@@ -289,7 +289,7 @@ export default function PlantCareDetail() {
                 const heightPct = Math.max((day.mm / maxMm) * 100, day.mm > 0 ? 8 : 3)
                 return (
                   <div key={day.date} className="flex-1 flex flex-col items-center justify-end">
-                    <div className="w-full rounded-sm bg-aqua-glow/70" style={{ height: `${heightPct}%` }} />
+                    <div className="w-full rounded-sm bg-blue-400/70" style={{ height: `${heightPct}%` }} />
                   </div>
                 )
               })}

@@ -1,10 +1,12 @@
 import type { EditorTool } from '../../hooks/useEditorState'
-import { TOOLBAR_NL } from '../../utils/editorStrings.nl'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   activeTool: EditorTool
   selectedZoneId: string | null
   selectedWallElementId: string | null
+  selectedShadowCasterId: string | null
+  selectedObjectId: number | null
   onSetTool: (tool: EditorTool) => void
   onDelete: () => void
 }
@@ -13,10 +15,13 @@ export default function EditorToolbar({
   activeTool,
   selectedZoneId,
   selectedWallElementId,
+  selectedShadowCasterId,
+  selectedObjectId,
   onSetTool,
   onDelete,
 }: Props) {
-  const hasSelection = selectedZoneId || selectedWallElementId
+  const t = useT()
+  const hasSelection = !!(selectedZoneId || selectedWallElementId || selectedShadowCasterId || selectedObjectId !== null)
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-surface/95 backdrop-blur-md border-b border-border overflow-x-auto">
@@ -26,7 +31,7 @@ export default function EditorToolbar({
         className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'select' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
-        title={TOOLBAR_NL.selecteren}
+        title={t.editor.toolbar.select}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
@@ -37,10 +42,22 @@ export default function EditorToolbar({
         className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'draw' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
-        title={TOOLBAR_NL.tekenen}
+        title={t.editor.toolbar.draw}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onSetTool('shadow_caster')}
+        className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
+          activeTool === 'shadow_caster' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
+        }`}
+        title="Schaduw object"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="10" width="12" height="10" rx="1" />
+          <polygon points="14,10 22,16 22,20 14,20" opacity="0.35" />
         </svg>
       </button>
 
@@ -51,7 +68,7 @@ export default function EditorToolbar({
           <button
             onClick={onDelete}
             className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-overdue/10 text-overdue border border-overdue/20"
-            title={TOOLBAR_NL.verwijderen}
+            title={t.editor.toolbar.delete}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" />

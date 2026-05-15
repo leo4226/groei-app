@@ -28,7 +28,7 @@ export default function GardenCompass({ isMobile = false }: { isMobile?: boolean
         <line x1="46" y1="28" x2="51" y2="28" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
 
         {/* North arrow — filled warm gold (prominent) */}
-        <polygon points="28,9 24.5,22 28,19.5 31.5,22" fill="#ff7701" />
+        <polygon points="28,9 24.5,22 28,19.5 31.5,22" fill="#d4a843" />
         {/* South arrow — faint */}
         <polygon points="28,47 24.5,34 28,36.5 31.5,34" fill="rgba(255,255,255,0.22)" />
 
@@ -37,7 +37,7 @@ export default function GardenCompass({ isMobile = false }: { isMobile?: boolean
 
         {/* N label */}
         <text x="28" y="7.5" textAnchor="middle" dominantBaseline="middle"
-          fill="#ff7701" fontSize="9.5" fontWeight="700" fontFamily="system-ui,sans-serif">N</text>
+          fill="#d4a843" fontSize="9.5" fontWeight="700" fontFamily="system-ui,sans-serif">N</text>
 
         {/* S label */}
         <text x="28" y="50" textAnchor="middle" dominantBaseline="middle"

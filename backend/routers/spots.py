@@ -1,9 +1,9 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from database import get_db
+from database import db_dep
 
 router = APIRouter(prefix="/spots", tags=["spots"])
 
@@ -18,14 +18,13 @@ class SpotPayload(BaseModel):
 
 
 @router.post("/suitability")
-async def get_spot_suitability(payload: SpotPayload):
+async def get_spot_suitability(payload: SpotPayload, db = Depends(db_dep)):
     sun = payload.sun_by_month
 
-    async with get_db() as db:
-        rows = await db.execute_fetchall(
-            "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json "
-            "FROM plant_species WHERE phenology_json IS NOT NULL"
-        )
+    rows = await db.execute_fetchall(
+        "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json "
+        "FROM plant_species WHERE phenology_json IS NOT NULL"
+    )
 
     results = []
     for row in rows:

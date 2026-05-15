@@ -12,7 +12,7 @@ import PhaseCalendar from '../components/PhaseCalendar'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-6">
-      <p className="text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">{title}</p>
+      <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">{title}</p>
       {children}
     </section>
   )
@@ -75,9 +75,11 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
 export default function PlantDetail() {
   const { id }     = useParams<{ id: string }>()
   const navigate   = useNavigate()
+  const plants = useGroeiStore(s => s.plants)
+  const loadPlants = useGroeiStore(s => s.loadPlants)
   const { markCareDone, archivePlant } = useGroeiStore()
 
-  const [plant, setPlant]         = useState<Awaited<ReturnType<typeof fetchPlant>> | null>(null)
+  const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [duplicating, setDuplicating] = useState(false)
   const [sunHours, setSunHours]   = useState<number | null>(null)
@@ -86,27 +88,35 @@ export default function PlantDetail() {
   const careLog = useCareLog(plantId)
 
   useEffect(() => {
-    async function load() {
-      try {
-        setPlant(await fetchPlant(plantId))
-      } catch {
-        navigate('/plants')
-      } finally {
+    // Use cached plant from store if available, else fetch directly
+    const cached = plants.find(p => p.id === plantId)
+    if (cached) {
+      setPlant(cached)
+      setLoading(false)
+    } else {
+      fetchPlant(plantId).then(p => {
+        setPlant(p)
         setLoading(false)
-      }
+      }).catch(() => navigate('/plants'))
     }
-    load()
-  }, [plantId, navigate])
+  }, [plantId, plants, navigate])
+
+  // Keep local plant in sync with store updates (e.g. after markCareDone)
+  useEffect(() => {
+    if (plant) {
+      const updated = plants.find(p => p.id === plantId)
+      if (updated && updated !== plant) setPlant(updated)
+    }
+  }, [plants, plantId])
 
   async function handleQuickAction(careType: string) {
     await markCareDone(plantId, careType)
-    setPlant(await fetchPlant(plantId))
     careLog.invalidate()
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
     await deleteCareSchedule(scheduleId)
-    setPlant(await fetchPlant(plantId))
+    await loadPlants() // store.sync effect picks up the updated plant
   }
 
   async function handleArchive() {
@@ -194,32 +204,31 @@ export default function PlantDetail() {
         <div className="card p-4 mb-5">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-extrabold leading-tight">{plant.name}</h1>
-              {plant.species && <p className="text-sm text-text-muted italic mt-0.5">{plant.species}</p>}
+              {(plant.location_name || plant.plant_type) && (
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted mb-1">
+                  {[
+                    plant.location_icon && plant.location_name
+                      ? `${plant.location_icon} ${plant.location_name}`
+                      : plant.location_name,
+                    plant.plant_type,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              <h1 className="font-heading text-2xl font-medium leading-tight tracking-tight">{plant.name}</h1>
+              {plant.species && (
+                <p className="font-heading italic text-sm text-text-muted mt-0.5">{plant.species}</p>
+              )}
+              {(plant.pot_size_cm || plant.acquired_date) && (
+                <p className="font-mono text-[10px] text-text-muted mt-1.5">
+                  {[
+                    plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
+                    plant.acquired_date
+                      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}`
+                      : null,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-3">
-            {plant.plant_type && (
-              <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium capitalize">
-                {plant.plant_type}
-              </span>
-            )}
-            {plant.location_name && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                {plant.location_icon} {plant.location_name}
-              </span>
-            )}
-            {plant.pot_size_cm && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                🪴 {plant.pot_size_cm} cm
-              </span>
-            )}
-            {plant.acquired_date && (
-              <span className="text-xs bg-bg text-text-muted px-2.5 py-1 rounded-full">
-                📅 {plant.acquired_date}
-              </span>
-            )}
           </div>
 
           {plant.notes && (

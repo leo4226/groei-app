@@ -1,10 +1,9 @@
 import type { MapObject, HardscapePreset } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { StatusBadge } from './PlantMarker'
 import { getCareDisplay } from '../../utils/careDisplay'
-import { getPlantStatus } from '../../hooks/usePlantStatus'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { useMapRotation } from '../../context/MapRotationContext'
+import { getHaloColor } from '../../hooks/usePlantStatus'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -12,14 +11,12 @@ interface Props {
   object: MapObject
   x: number
   y: number
-  isDragging: boolean
-  isSelected?: boolean
   isHoverTarget?: boolean
   showLabel?: boolean
   heatmapCells?: HeatmapCell[]
-  onTap: (object: MapObject) => void
-  onPointerDown: (e: React.PointerEvent, object: MapObject) => void
-  liveRotation?: number
+  onTap?: (object: MapObject) => void
+  onPointerDown?: (e: React.PointerEvent, object: MapObject) => void
+  isDragging?: boolean
 }
 
 function labelForObject(obj: MapObject): string {
@@ -81,13 +78,13 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
   }
 }
 
-export default function ObjectShape({ object, x, y, isDragging, isSelected, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, liveRotation }: Props) {
+export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
   const counterRot = useMapRotation()
   const color = object.color || '#888888'
-  const effectiveRotation = liveRotation ?? (object.rotation || 0)
+  const effectiveRotation = object.rotation || 0
   const fill = color + '33'
   const stroke = color
-  const sw = isDragging ? 2 : isSelected ? 1.8 : 1.2
+  const sw = 1.2
 
   const renderShape = () => {
     switch (object.shape) {
@@ -153,17 +150,32 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
-      const { tempStatus } = getPlantStatus(plant)
-      const badgeOffset = iconHalf * 0.72
+      const haloColor = getHaloColor(plant)
+      const alerts = plant.alerts ?? []
+      if (!alerts.length && plant.top_alert) {
+        alerts.push(plant.top_alert)
+      }
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
+          {/* Status halo — extends beyond pot outline to shine through */}
+          {haloColor && (
+            <>
+              <defs>
+                <radialGradient id={`halo-${plant.id}`} cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor={haloColor} stopOpacity={0.70} />
+                  <stop offset="100%" stopColor={haloColor} stopOpacity={0}    />
+                </radialGradient>
+              </defs>
+              <circle r={iconHalf * 1.6} fill={`url(#halo-${plant.id})`} style={{ pointerEvents: 'none' }} />
+            </>
+          )}
           {/* Sun-fit ring — only visible in Zonkaart mode */}
           {sunFit && (
             <circle
               r={iconHalf + 3}
               fill="none"
               stroke={SUN_FIT_COLORS[sunFit]}
-              strokeWidth={isDragging ? 2 : 1.2}
+              strokeWidth={1.2}
               strokeDasharray={sunFit === 'good' ? 'none' : '2 2'}
               opacity={0.85}
             />
@@ -182,21 +194,61 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
-          <StatusBadge cx={badgeOffset} cy={badgeOffset} tempStatus={tempStatus} />
+          {/* Alert badges — arc around top of plant */}
+          {alerts.length > 0 && alerts.map((a, i) => {
+            const count = alerts.length
+            const totalArc = Math.min(count * 30, 140)
+            const startDeg = -(totalArc / 2)
+            const step = count > 1 ? totalArc / (count - 1) : 0
+            const deg = startDeg + i * step
+            const rad = (deg * Math.PI) / 180
+            const orbitR = iconHalf + 4
+            const bx = orbitR * Math.sin(rad)
+            const by = -(orbitR * Math.cos(rad))
+            return (
+            <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
+              <circle
+                cx={bx}
+                cy={by}
+                r={6}
+                fill="white"
+                stroke={haloColor ?? '#888'}
+                strokeWidth={1.5}
+              />
+              <text
+                x={bx}
+                y={by}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={7}
+                style={{ pointerEvents: 'none', userSelect: 'none' }}
+              >
+                {a.icon}
+              </text>
+            </g>
+            )
+          })}
         </g>
       )
     })
   }
 
+  const interactive = !!(onTap || onPointerDown)
+
   return (
     <g
       transform={`translate(${x}, ${y}) rotate(${effectiveRotation})`}
-      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(object) }}
-      onPointerDown={(e) => onPointerDown(e, object)}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+      onClick={onTap ? (e) => { e.stopPropagation(); if (!isDragging) onTap(object) } : undefined}
+      onPointerDown={onPointerDown ? (e) => { e.stopPropagation(); onPointerDown(e, object) } : undefined}
+      style={{
+        cursor: onPointerDown ? (isDragging ? 'grabbing' : 'grab') : onTap ? 'pointer' : undefined,
+        touchAction: onPointerDown ? 'none' : undefined,
+        opacity: isDragging ? 0.75 : 1,
+        pointerEvents: interactive ? undefined : 'none',
+      }}
     >
-      {/* Transparent hit area */}
-      <circle r={hitR} fill="transparent" />
+      {/* Transparent hit area — only when interactive */}
+      {interactive && <circle r={hitR} fill="transparent" />}
 
       {object.category !== 'container' && object.preset
         ? renderHardscapeShape(
@@ -266,38 +318,6 @@ export default function ObjectShape({ object, x, y, isDragging, isSelected, isHo
         </g>
       )}
 
-      {/* Drag pill — worst sun-fit among contained plants */}
-      {isDragging && heatCell && (() => {
-        const plants = (object.contained_plants ?? []).filter(p => p.sun_requirement)
-        if (plants.length === 0) return null
-        const fits = plants.map(p => getSunFit(p.sun_requirement!, heatCell.sunHours))
-        const order = { poor: 0, partial: 1, good: 2 }
-        const worstFit = fits.reduce((a, b) =>
-          (order[a ?? 'good'] ?? 2) <= (order[b ?? 'good'] ?? 2) ? a : b
-        )
-        if (!worstFit) return null
-        const pillY = getShapeBound(object) + 28
-        return (
-          <g transform={`rotate(${counterRot - effectiveRotation})`}>
-            <rect x={-54} y={pillY - 9} width={108} height={18} rx={9}
-              fill={SUN_FIT_COLORS[worstFit]} opacity={0.92} />
-            <text
-              y={pillY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="white"
-              fontSize="9"
-              fontWeight="600"
-              style={{ pointerEvents: 'none' }}
-            >
-              {`~${heatCell.sunHours.toFixed(1)}u · ${
-                worstFit === 'good' ? 'Goed' :
-                worstFit === 'partial' ? 'Deels' : 'Te weinig'
-              }`}
-            </text>
-          </g>
-        )
-      })()}
     </g>
   )
 }

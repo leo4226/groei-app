@@ -1,30 +1,37 @@
 import { create } from 'zustand'
-import type { User, Location, Plant, DashboardData, PlantCreateInput, MapInfo } from '../types'
+import type { User, Location, Plant, DashboardData, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut } from '../types'
 import * as api from '../api/client'
 
 interface GroeiStore {
-  // State
   users: User[]
   locations: Location[]
   maps: MapInfo[]
   plants: Plant[]
   dashboard: DashboardData | null
+  dashboardV2: DashboardV2Data | null
+  plantFact: PlantFactOut | null
   activeUserId: number | null
   isLoading: boolean
   error: string | null
+  showPlantPicker: boolean
 
-  // Actions
   load: () => Promise<void>
   loadMaps: () => Promise<void>
   loadDashboard: () => Promise<void>
+  loadDashboardV2: () => Promise<void>
   loadPlants: () => Promise<void>
+  loadPlantFact: () => Promise<void>
   addPlant: (data: PlantCreateInput) => Promise<Plant>
   updatePlant: (id: number, data: Partial<Plant>) => Promise<void>
   archivePlant: (id: number) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
   markCareDone: (plantId: number, careType: string, notes?: string) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
+  createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
+  deleteMap: (id: number) => Promise<void>
   setActiveUser: (id: number) => void
+  setShowPlantPicker: (show: boolean) => void
+  updateUserLanguage: (userId: number, language: 'nl' | 'en') => Promise<void>
   clearError: () => void
 }
 
@@ -35,15 +42,30 @@ function getSavedUserId(): number | null {
   return saved ? parseInt(saved, 10) : null
 }
 
+/** Surgically remove a care task from the dashboard's buckets. */
+function _removeDashboardTask(dashboard: DashboardData | null, plantId: number, careType: string): DashboardData | null {
+  if (!dashboard) return null
+  const remove = (tasks: typeof dashboard.overdue) =>
+    tasks.filter(t => !(t.plant_id === plantId && t.care_type === careType))
+  return {
+    overdue: remove(dashboard.overdue),
+    due_today: remove(dashboard.due_today),
+    upcoming: remove(dashboard.upcoming),
+  }
+}
+
 export const useGroeiStore = create<GroeiStore>((set, get) => ({
   users: [],
   locations: [],
   maps: [],
   plants: [],
   dashboard: null,
+  dashboardV2: null,
+  plantFact: null,
   activeUserId: getSavedUserId(),
   isLoading: false,
   error: null,
+  showPlantPicker: false,
 
   load: async () => {
     set({ isLoading: true, error: null })
@@ -55,7 +77,6 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
         api.fetchPlants(),
       ])
       const state: Partial<GroeiStore> = { users, locations, maps, plants, isLoading: false }
-      // Default to first user if none selected
       if (!get().activeUserId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))
@@ -79,6 +100,15 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
     try {
       const dashboard = await api.fetchDashboard()
       set({ dashboard })
+    } catch (e) {
+      set({ error: (e as Error).message })
+    }
+  },
+
+  loadDashboardV2: async () => {
+    try {
+      const dashboardV2 = await api.fetchDashboardV2()
+      set({ dashboardV2 })
     } catch (e) {
       set({ error: (e as Error).message })
     }
@@ -118,20 +148,69 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
     await api.markCareDone(plantId, careType, userId, notes)
-    // Refresh dashboard and plants
-    await Promise.all([get().loadDashboard(), get().loadPlants()])
+    // Surgical update: adjust the plant's care_status and remove task from dashboard
+    set((s) => ({
+      plants: s.plants.map((p) =>
+        p.id === plantId ? { ...p, care_status: 'good' as const, most_urgent: undefined } : p,
+      ),
+      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
+      dashboardV2: s.dashboardV2 ? {
+        ...s.dashboardV2,
+        overdue: s.dashboardV2.overdue.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+        due_today: s.dashboardV2.due_today.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+        upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+      } : null,
+    }))
+    // Refetch to get correct status_counts
+    get().loadDashboardV2()
   },
 
   skipCare: async (plantId, careType) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
     await api.skipCare(plantId, careType, userId)
-    await Promise.all([get().loadDashboard(), get().loadPlants()])
+    set((s) => ({
+      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
+      dashboardV2: s.dashboardV2 ? {
+        ...s.dashboardV2,
+        overdue: s.dashboardV2.overdue.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+        due_today: s.dashboardV2.due_today.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+        upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
+      } : null,
+    }))
+    get().loadDashboardV2()
+  },
+
+  createMap: async (data) => {
+    const map = await api.createMap(data)
+    set((s) => ({ maps: [...s.maps, map] }))
+    return map
+  },
+
+  deleteMap: async (id) => {
+    await api.deleteMap(id)
+    set((s) => ({ maps: s.maps.filter((m) => m.id !== id) }))
+  },
+
+  loadPlantFact: async () => {
+    try {
+      const fact = await api.fetchPlantFact()
+      set({ plantFact: fact })
+    } catch {
+      set({ plantFact: null })
+    }
   },
 
   setActiveUser: (id) => {
     localStorage.setItem(STORAGE_KEY, String(id))
     set({ activeUserId: id })
+  },
+
+  setShowPlantPicker: (show) => set({ showPlantPicker: show }),
+
+  updateUserLanguage: async (userId, language) => {
+    const updated = await api.updateUserLanguage(userId, language)
+    set((s) => ({ users: s.users.map((u) => (u.id === userId ? updated : u)) }))
   },
 
   clearError: () => set({ error: null }),

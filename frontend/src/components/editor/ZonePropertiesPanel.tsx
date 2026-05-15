@@ -1,6 +1,6 @@
 import type { EditorZone, ZoneStyleType, CornerPosition } from '../../types'
 import { ZONE_STYLES, ZONE_TYPE_ORDER } from './EditorDefs'
-import { EIGENSCHAPPEN_NL } from '../../utils/editorStrings.nl'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   zone: EditorZone
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSetScale, onDelete }: Props) {
+  const t = useT()
   const lenM   = scalePxPerM > 0 ? (zone.width  / scalePxPerM).toFixed(1) : null
   const breedM = scalePxPerM > 0 ? (zone.height / scalePxPerM).toFixed(1) : null
   const isRoom = zone.type === 'room'
@@ -44,18 +45,18 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
     <div className="p-3 border-b border-border">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-          {EIGENSCHAPPEN_NL.zone}
+          {t.editor.props.zone}
         </p>
         <button
           onClick={onDelete}
           className="text-overdue text-xs px-2 py-0.5 rounded border border-overdue/20 bg-overdue/5"
         >
-          {EIGENSCHAPPEN_NL.verwijderen}
+          {t.editor.props.delete}
         </button>
       </div>
       {/* Label */}
       <div className="mb-2">
-        <label className="text-xs text-text-muted block mb-1">{EIGENSCHAPPEN_NL.label}</label>
+        <label className="text-xs text-text-muted block mb-1">{t.editor.props.label}</label>
         <input
           value={zone.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
@@ -107,6 +108,75 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         </div>
       )}
 
+      {/* Fence material toggle */}
+      {zone.type === 'fence' && (
+        <>
+          <div className="mb-2">
+            <label className="text-xs text-text-muted block mb-1">Materiaal</label>
+            <div className="flex gap-1">
+              <button
+                onClick={() => onUpdate({ fenceMaterial: 'wood' })}
+                className={`flex-1 text-xs py-1.5 rounded-lg border ${
+                  (zone.fenceMaterial ?? 'wood') === 'wood'
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-bg text-text-muted border-border'
+                }`}
+              >
+                Hout
+              </button>
+              <button
+                onClick={() => onUpdate({ fenceMaterial: 'brick' })}
+                className={`flex-1 text-xs py-1.5 rounded-lg border ${
+                  zone.fenceMaterial === 'brick'
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-bg text-text-muted border-border'
+                }`}
+              >
+                Steen
+              </button>
+            </div>
+          </div>
+          <div className="mb-2">
+            <label className="text-xs text-text-muted block mb-1">
+              Hoogte (m)
+              <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
+            </label>
+            <input
+              type="number" min="0.5" max="4" step="0.1"
+              placeholder="bijv. 2.0"
+              defaultValue={zone.fenceHeightM ?? 2.0}
+              key={`fenceh-${zone.id}`}
+              onBlur={(e) => {
+                const m = parseFloat(e.target.value)
+                onUpdate({ fenceHeightM: !isNaN(m) && m > 0 ? m : undefined })
+              }}
+              className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Structure height */}
+      {zone.type === 'structure' && (
+        <div className="mb-2">
+          <label className="text-xs text-text-muted block mb-1">
+            Hoogte (m)
+            <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
+          </label>
+          <input
+            type="number" min="1" max="6" step="0.1"
+            placeholder="bijv. 2.5"
+            defaultValue={zone.structureHeightM ?? 2.5}
+            key={`structh-${zone.id}`}
+            onBlur={(e) => {
+              const m = parseFloat(e.target.value)
+              onUpdate({ structureHeightM: !isNaN(m) && m > 0 ? m : undefined })
+            }}
+            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+          />
+        </div>
+      )}
+
       {/* Lengte × Breedte — both editable */}
       <div className="flex gap-2 mb-2">
         <div className="flex-1">
@@ -155,8 +225,8 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         </div>
       )}
 
-      {/* Corner cut — rooms only */}
-      {isRoom && (
+      {/* Corner cut */}
+      {(
         <details className="mb-2">
           <summary className="text-xs text-text-muted cursor-pointer select-none py-0.5">
             {zone.cornerCut

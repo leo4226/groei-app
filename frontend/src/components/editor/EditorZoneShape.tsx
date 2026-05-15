@@ -47,7 +47,7 @@ export default function EditorZoneShape({ zone, zones, isSelected, scalePxPerM, 
           <rect
             x={zone.x} y={zone.y}
             width={zone.width} height={zone.height}
-            fill="none" stroke="#2544a0"
+            fill="none" stroke="#4A90D9"
             strokeWidth={2} strokeDasharray="6 3"
             pointerEvents="none"
           />
@@ -69,7 +69,7 @@ export default function EditorZoneShape({ zone, zones, isSelected, scalePxPerM, 
         fill={style.fill}
         opacity={style.opacity}
         stroke={style.stroke}
-        strokeWidth={Math.min(style.strokeWidth, 1)}
+        strokeWidth={style.strokeWidth}
         onPointerDown={(e) => onPointerDown(e, zone.id)}
         style={{ cursor: 'pointer' }}
       />
@@ -93,7 +93,7 @@ export default function EditorZoneShape({ zone, zones, isSelected, scalePxPerM, 
           width={zone.width}
           height={zone.height}
           fill="none"
-          stroke="#2544a0"
+          stroke="#4A90D9"
           strokeWidth={2}
           strokeDasharray="6 3"
           pointerEvents="none"

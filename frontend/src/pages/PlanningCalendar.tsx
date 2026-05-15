@@ -116,7 +116,7 @@ export default function PlanningCalendar() {
                 <span className="text-sm text-text">
                   {plant.name}
                   {alertPlantIds.has(plant.id) && (
-                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-pumpkin-swirl/15 text-pumpkin-swirl">⚠️</span>
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">⚠️</span>
                   )}
                 </span>
                 <span className="text-xs text-text-muted">{plant._monthData?.phase_label_nl}</span>
@@ -134,7 +134,7 @@ export default function PlanningCalendar() {
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {grouped.dormant.map(plant => (
-              <span key={plant.id} className={`text-xs border px-2.5 py-1 rounded-full ${alertPlantIds.has(plant.id) ? 'bg-pumpkin-swirl/10 border-pumpkin-swirl/30 text-pumpkin-swirl' : 'bg-surface border-border text-text-muted'}`}>
+              <span key={plant.id} className={`text-xs border px-2.5 py-1 rounded-full ${alertPlantIds.has(plant.id) ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-surface border-border text-text-muted'}`}>
                 {plant.name}{alertPlantIds.has(plant.id) ? ' ⚠️' : ''}
               </span>
             ))}
@@ -163,7 +163,7 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
       <p className="font-medium text-text text-sm">
         {plant.name}
         {hasAlert && (
-          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-pumpkin-swirl/15 text-pumpkin-swirl">⚠️</span>
+          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">⚠️</span>
         )}
       </p>
       <div className="flex gap-1.5 mt-2 flex-wrap">

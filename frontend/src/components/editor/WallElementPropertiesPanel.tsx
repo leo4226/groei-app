@@ -1,5 +1,5 @@
 import type { WallElement } from '../../types'
-import { EIGENSCHAPPEN_NL } from '../../utils/editorStrings.nl'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   element: WallElement
@@ -8,19 +8,20 @@ interface Props {
 }
 
 export default function WallElementPropertiesPanel({ element, onUpdate, onDelete }: Props) {
+  const t = useT()
   const isDoor = element.type === 'door'
 
   return (
     <div className="p-3 border-b border-border">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-          {isDoor ? EIGENSCHAPPEN_NL.deur : EIGENSCHAPPEN_NL.raam}
+          {isDoor ? t.editor.props.door : t.editor.props.window}
         </p>
         <button
           onClick={onDelete}
           className="text-overdue text-xs px-2 py-0.5 rounded border border-overdue/20 bg-overdue/5"
         >
-          {EIGENSCHAPPEN_NL.verwijderen}
+          {t.editor.props.delete}
         </button>
       </div>
       {/* Width */}

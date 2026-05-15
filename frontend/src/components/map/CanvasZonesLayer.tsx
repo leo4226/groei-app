@@ -23,7 +23,7 @@ export default function CanvasZonesLayer({ canvasData }: Props) {
       <EditorDefs />
 
       {/* Canvas background */}
-      <rect width={canvas_w} height={canvas_h} fill="#fef9ee" />
+      <rect width={canvas_w} height={canvas_h} fill="#f5f3ee" />
 
       {zones.map((zone) => (
         <EditorZoneShape
