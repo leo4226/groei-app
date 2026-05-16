@@ -236,3 +236,42 @@ def test_heating_boost_noop_when_field_missing():
     entry = {"interval_days": 7}
     eff = _apply_heating_boost(entry, today=date(2026, 1, 15))
     assert eff == 7
+
+
+from services.warnings import _sort_warnings
+
+
+def _mk(care_type, severity, trigger, days=None):
+    return CareWarning(
+        care_type=care_type, severity=severity, trigger=trigger,
+        days_overdue=days, message_nl="", message_en="", icon="", color="",
+    )
+
+
+def test_weather_urgent_beats_schedule_urgent():
+    a = _mk("water", "urgent", "schedule_overdue", 3)
+    b = _mk("frost_protect", "urgent", "weather_event")
+    sorted_ = _sort_warnings([a, b])
+    assert sorted_[0].care_type == "frost_protect"
+
+
+def test_overdue_3d_beats_overdue_1d_within_bucket():
+    a = _mk("fertilize", "urgent", "schedule_overdue", 1)
+    b = _mk("water", "urgent", "schedule_overdue", 5)
+    sorted_ = _sort_warnings([a, b])
+    assert sorted_[0].care_type == "water"
+
+
+def test_alphabetical_tiebreaker_within_bucket():
+    a = _mk("water", "urgent", "schedule_overdue", 3)
+    b = _mk("fertilize", "urgent", "schedule_overdue", 3)
+    sorted_ = _sort_warnings([a, b])
+    assert sorted_[0].care_type == "fertilize"   # alphabetical
+    assert sorted_[1].care_type == "water"
+
+
+def test_due_today_after_overdue():
+    a = _mk("water", "warning", "schedule_due_today", 0)
+    b = _mk("fertilize", "warning", "schedule_overdue", 1)
+    sorted_ = _sort_warnings([a, b])
+    assert sorted_[0].trigger == "schedule_overdue"

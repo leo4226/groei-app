@@ -16,6 +16,7 @@ from care_types import (
     HEATING_SEASON_START_MONTH,
     SEVERITY_COLORS,
     WEATHER_COLDHEAT_COLORS,
+    priority_bucket,
 )
 
 
@@ -246,3 +247,13 @@ def _apply_heating_boost(profile_entry: dict, *, today: date) -> int:
     if boost <= 1.0 or not _is_heating_season(today):
         return base
     return max(1, round(base / boost))
+
+
+def _sort_warnings(warnings: list[CareWarning]) -> list[CareWarning]:
+    """Sort by canonical priority bucket; tiebreaker = more days_overdue first, then alphabetical."""
+    def key(w: CareWarning):
+        bucket = priority_bucket(w.trigger, w.severity)
+        # Negate days_overdue so larger overdue sorts first; None days → 0.
+        days_key = -(w.days_overdue or 0)
+        return (bucket, days_key, w.care_type)
+    return sorted(warnings, key=key)
