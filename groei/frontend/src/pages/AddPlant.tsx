@@ -11,7 +11,7 @@ const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
   eenjarig: 'flower',
   boom: 'tree',
 }
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import type { CareType, CareScheduleInput } from '../types'
@@ -25,7 +25,7 @@ export default function AddPlant() {
   const location = useLocation()
   const prefill = location.state?.prefill as LocalPlant | { name: string } | undefined
   const isFromDatabase = !!(prefill && 'latinName' in prefill)
-  const { locations, maps, addPlant, uploadPhoto } = useGroeiStore()
+  const { locations, maps, addPlant, uploadPhoto } = useFloreren()
 
   const [name, setName] = useState(
     prefill
@@ -44,13 +44,14 @@ export default function AddPlant() {
   const [sunRequirement, setSunRequirement] = useState<string | null>(
     prefill && 'latinName' in prefill ? (prefill as LocalPlant).sunRequirement : null
   )
-  const [iconKey, setIconKey] = useState<string | null>(null)
+  const [iconKey, setIconKey] = useState<string | null>(
+    prefill && 'latinName' in prefill ? (prefill as LocalPlant).iconKey ?? null : null
+  )
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
-  const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
   const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
   const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
 

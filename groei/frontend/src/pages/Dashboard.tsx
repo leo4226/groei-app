@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
 import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut } from '../types'
 import type { WeatherData, WeatherIcon } from '../hooks/useWeather'
@@ -35,7 +35,7 @@ const RAIN_OK = 'var(--color-primary)'   // green
 const RAIN_DRY = 'var(--color-overdue)'  // red
 
 export default function Dashboard() {
-  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading, createMap } = useGroeiStore()
+  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading, createMap } = useFloreren()
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
@@ -715,7 +715,7 @@ function TaskGroup({ label, tone, tasks }: { label: string; tone: 'overdue' | 'd
 }
 
 function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'upcoming' }) {
-  const markCareDone = useGroeiStore((s) => s.markCareDone)
+  const markCareDone = useFloreren((s) => s.markCareDone)
   const t = useT()
   const careLabel = t.care[task.care_type as keyof typeof t.care] ?? CARE_TYPE_INFO[task.care_type as keyof typeof CARE_TYPE_INFO]?.label ?? task.care_type
 
@@ -725,8 +725,7 @@ function TaskCard({ task, tone }: { task: CareTask; tone: 'overdue' | 'due' | 'u
     'var(--color-border)'
 
   const taskHaloColor: string | null =
-    task.care_type === 'water' && task.days_overdue > 0  ? HALO_COLORS.dry :
-    task.care_type === 'water' && task.days_overdue === 0 ? HALO_COLORS.thirsty :
+    task.care_type === 'water' && task.days_overdue >= 0 ? HALO_COLORS.needs_care :
     null
 
   return (
@@ -1056,13 +1055,12 @@ function EmptyCol({ t }: { t: Translations }) {
 }
 
 function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
-  const markCareDone = useGroeiStore(s => s.markCareDone)
+  const markCareDone = useFloreren(s => s.markCareDone)
   const careLabel = t.care[task.care_type as keyof typeof t.care] ?? task.care_type
   const isOverdue = task.days_overdue > 0
 
   const taskHaloColor: string | null =
-    task.care_type === 'water' && task.days_overdue > 0  ? HALO_COLORS.dry :
-    task.care_type === 'water' && task.days_overdue === 0 ? HALO_COLORS.thirsty :
+    task.care_type === 'water' && task.days_overdue >= 0 ? HALO_COLORS.needs_care :
     null
 
   return (

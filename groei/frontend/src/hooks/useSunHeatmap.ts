@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { computeHeatmap, type HeatmapCell } from '../utils/heatmapCalc'
+import type { LightEngine } from '../utils/lightEngine'
 
 /**
  * Computes sun hours heatmap for a given month.
- * Caches results per month so switching back is instant.
+ * When an engine is provided, uses per-map config (lat/lon/bearing/shadowCasters/gardenBounds).
+ * Falls back to hardcoded defaults when no engine is available.
  */
-export function useSunHeatmap(month: number, active: boolean) {
+export function useSunHeatmap(month: number, active: boolean, engine?: LightEngine | null) {
   const [cells, setCells] = useState<HeatmapCell[]>([])
   const [isCalculating, setIsCalculating] = useState(false)
   const cacheRef = useRef<Map<number, HeatmapCell[]>>(new Map())
@@ -23,17 +25,26 @@ export function useSunHeatmap(month: number, active: boolean) {
       return
     }
 
-    // Compute in next tick so loading state renders
     setIsCalculating(true)
-    const handle = setTimeout(() => {
-      const result = computeHeatmap(month)
-      cacheRef.current.set(month, result)
-      setCells(result)
-      setIsCalculating(false)
-    }, 0)
 
-    return () => clearTimeout(handle)
-  }, [month, active])
+    if (engine) {
+      // Use per-map engine (async — returns Promise)
+      engine.computeHeatmap(month).then(result => {
+        cacheRef.current.set(month, result)
+        setCells(result)
+        setIsCalculating(false)
+      })
+    } else {
+      // Fallback: hardcoded defaults
+      const handle = setTimeout(() => {
+        const result = computeHeatmap(month)
+        cacheRef.current.set(month, result)
+        setCells(result)
+        setIsCalculating(false)
+      }, 0)
+      return () => clearTimeout(handle)
+    }
+  }, [month, active, engine])
 
   return { cells, isCalculating }
 }

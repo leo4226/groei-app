@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
 import type { Phenology, PlantAlert } from '../types'
 import { fetchPlant, deleteCareSchedule, duplicatePlant, fetchPlantAlerts } from '../api/client'
@@ -75,9 +75,9 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
 export default function PlantDetail() {
   const { id }     = useParams<{ id: string }>()
   const navigate   = useNavigate()
-  const plants = useGroeiStore(s => s.plants)
-  const loadPlants = useGroeiStore(s => s.loadPlants)
-  const { markCareDone, archivePlant } = useGroeiStore()
+  const plants = useFloreren(s => s.plants)
+  const loadPlants = useFloreren(s => s.loadPlants)
+  const { markCareDone, archivePlant } = useFloreren()
 
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)

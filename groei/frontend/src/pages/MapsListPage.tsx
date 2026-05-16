@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import type { MapInfo } from '../types'
 
@@ -39,11 +39,11 @@ function MapThumbnail({ map }: { map: MapInfo }) {
 
 export default function MapsListPage() {
   const t = useT()
-  const maps = useGroeiStore(s => s.maps)
-  const isLoading = useGroeiStore(s => s.isLoading)
-  const loadMaps = useGroeiStore(s => s.loadMaps)
-  const createMap = useGroeiStore(s => s.createMap)
-  const deleteMap = useGroeiStore(s => s.deleteMap)
+  const maps = useFloreren(s => s.maps)
+  const isLoading = useFloreren(s => s.isLoading)
+  const loadMaps = useFloreren(s => s.loadMaps)
+  const createMap = useFloreren(s => s.createMap)
+  const deleteMap = useFloreren(s => s.deleteMap)
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newMapType, setNewMapType] = useState<'outdoor' | 'indoor'>('outdoor')

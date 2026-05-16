@@ -5,7 +5,7 @@ import type { MapPlant } from '../../types'
 import { PLANT_SUN_PROFILES, getSunFit } from '../../utils/plantSunRequirements'
 import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
 import { fetchGrowHereSuggestions, type GrowHereResponse, type AISuggestion } from '../../api/client'
-import { useGroeiStore } from '../../store/useGroeiStore'
+import { useFloreren } from '../../store/useFloreren'
 
 const MONTHS_NL = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
 
@@ -99,7 +99,7 @@ function AISkeleton() {
 
 export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, mapId, onClose }: Props) {
   const navigate = useNavigate()
-  const { addPlant } = useGroeiStore()
+  const { addPlant } = useFloreren()
   const { sunHours } = tappedCell
   const { label: catLabel, emoji: catEmoji } = sunCategoryLabel(sunHours)
   const spotReqId = sunReqId(sunHours)

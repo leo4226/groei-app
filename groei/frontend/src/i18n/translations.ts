@@ -54,6 +54,7 @@ export type Translations = {
       today: string
       calm: string
       noTasks: string
+      waterFeed: string
       attention: string
       daysLate: (n: number) => string
       inDays: (n: number) => string
@@ -77,6 +78,8 @@ export type Translations = {
     rotate: string
     repot_check: string
     prune: string
+    protect_cold: string
+    protect_heat: string
   }
 
   plants: {

@@ -18,7 +18,7 @@ import { useMapData } from '../hooks/useMapData'
 import { useGardenWater } from '../hooks/useGardenWater'
 import { useGardenFertilize } from '../hooks/useGardenFertilize'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
 import { createObject } from '../api/client'
@@ -26,7 +26,7 @@ import { createObject } from '../api/client'
 export default function MapPage() {
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
-  const setShowPlantPicker = useGroeiStore((s) => s.setShowPlantPicker)
+  const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
 
   const mapData = useMapData(slug)
   const water = useGardenWater()
@@ -143,6 +143,26 @@ export default function MapPage() {
     setSelectedObject(null)
     await refresh()
   }, [refresh])
+
+  const handleWaterSave = useCallback(async () => {
+    await water.save()
+    await refresh()
+  }, [water, refresh])
+
+  const handleWaterDelete = useCallback(async () => {
+    await water.deleteLast()
+    await refresh()
+  }, [water, refresh])
+
+  const handleFertilizeSave = useCallback(async () => {
+    await fertilize.save()
+    await refresh()
+  }, [fertilize, refresh])
+
+  const handleFertilizeDelete = useCallback(async () => {
+    await fertilize.deleteLast()
+    await refresh()
+  }, [fertilize, refresh])
 
   const handleRemoveItem = useCallback(async (type: 'plant' | 'object', id: number) => {
     const info = await mapRemove(type, id)
@@ -280,7 +300,7 @@ export default function MapPage() {
             className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
           />
           <button
-            onClick={water.save}
+            onClick={handleWaterSave}
             disabled={water.watering || !water.pickerDate}
             className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
           >
@@ -288,7 +308,7 @@ export default function MapPage() {
           </button>
           {water.gardenWater?.watered_at && (
             <button
-              onClick={water.deleteLast}
+              onClick={handleWaterDelete}
               disabled={water.watering}
               className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
             >
@@ -309,7 +329,7 @@ export default function MapPage() {
             className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
           />
           <button
-            onClick={async () => { await fertilize.save(); }}
+            onClick={handleFertilizeSave}
             disabled={fertilize.fertilizing || !fertilize.pickerDate}
             className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
           >
@@ -317,7 +337,7 @@ export default function MapPage() {
           </button>
           {fertilize.fertilize?.fertilized_at && (
             <button
-              onClick={fertilize.deleteLast}
+              onClick={handleFertilizeDelete}
               disabled={fertilize.fertilizing}
               className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
             >
@@ -346,7 +366,7 @@ export default function MapPage() {
             sunPosition={sun.sunPosition}
             heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
             heatmapCalculating={sun.isHeatmapActive ? sun.isCalculating : undefined}
-            heatmapLayer={sun.layer}
+            heatmapLayer="sun_hours"
             heatmapProfile={sun.isHeatmapActive ? sun.profile : undefined}
             onHeatmapCellTap={sun.isHeatmapActive ? sun.handleCellTap : undefined}
             gardenPerimeter={sun.gardenPerimeter}
@@ -378,8 +398,6 @@ export default function MapPage() {
           onMonthChange={sun.setMonth}
           onHourChange={sun.setHour}
           onNow={sun.setToNow}
-          heatmapLayer={sun.layer}
-          onHeatmapLayerChange={sun.setLayer}
           isCalculating={sun.isCalculating}
           tappedCell={sun.tappedCell}
           selectedProfile={sun.profile}

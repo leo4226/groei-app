@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 
 export default function BottomNav() {
-  const setShowPlantPicker = useGroeiStore((s) => s.setShowPlantPicker)
+  const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
   const t = useT()
 
   const tabs = [

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
-import { useGroeiStore } from '../../store/useGroeiStore'
+import { useFloreren } from '../../store/useFloreren'
 import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
 
 import type { HeatmapCell } from '../../utils/heatmapCalc'
@@ -24,7 +24,7 @@ interface Props {
 
 export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
   const navigate = useNavigate()
-  const markCareDone = useGroeiStore((s) => s.markCareDone)
+  const markCareDone = useFloreren((s) => s.markCareDone)
   const [locked, setLocked] = useState(plant.is_locked)
   const [detail, setDetail] = useState<Plant | null>(null)
 

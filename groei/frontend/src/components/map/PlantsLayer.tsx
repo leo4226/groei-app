@@ -4,6 +4,7 @@ import PlantMarker from './PlantMarker'
 
 interface Props {
   plants: MapPlant[]
+  mapType: 'outdoor' | 'indoor'
   dragPositions: Record<string, { x: number; y: number }>
   draggingKey: string | null
   selectedId: string | null
@@ -13,7 +14,7 @@ interface Props {
   heatmapCells?: HeatmapCell[]
 }
 
-export default function PlantsLayer({ plants, dragPositions, draggingKey, selectedId, showLabels = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, showLabels = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
   return (
     <g>
       {plants.map((plant) => {
@@ -23,6 +24,7 @@ export default function PlantsLayer({ plants, dragPositions, draggingKey, select
           <PlantMarker
             key={plant.id}
             plant={plant}
+            mapType={mapType}
             x={pos.x}
             y={pos.y}
             isDragging={draggingKey === key}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { fetchAlertSummary } from '../api/client'
 import type { Plant, Phenology, MonthPhenology } from '../types'
 
@@ -18,7 +18,7 @@ interface PlantWithMonth extends Plant {
 }
 
 export default function PlanningCalendar() {
-  const plants = useGroeiStore(s => s.plants)
+  const plants = useFloreren(s => s.plants)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const currentMonth = new Date().getMonth() + 1
   const [alertPlantIds, setAlertPlantIds] = useState<Set<number>>(new Set())

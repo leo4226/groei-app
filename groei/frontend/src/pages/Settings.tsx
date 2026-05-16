@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import { syncIcons, fetchIconGaps, fetchAdminAccounts, type AdminAccount } from '../api/client'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult, IconGapReport } from '../types'
 
 export default function Settings() {
-  const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useGroeiStore()
+  const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
   const t = useT()
   const navigate = useNavigate()
   const [syncing, setSyncing] = useState(false)
@@ -294,7 +294,7 @@ export default function Settings() {
         <h2 className="text-base font-bold mb-3">About</h2>
         <div className="card p-4">
           <p className="text-sm text-text-muted">
-            <span className="font-bold text-primary text-base">Groei</span> v0.1
+            <span className="font-bold text-primary text-base">Floreren</span> v0.1
           </p>
           <p className="text-xs text-text-muted mt-1">
             Plant care for Leon & Lisbeth 🌱

@@ -8,6 +8,8 @@ interface Props {
   isCalculating: boolean
   layer: HeatmapLayer
   onCellTap?: (cell: HeatmapCell) => void
+  maskPolygon?: [number, number][]
+  bounds?: { x: number; y: number; width: number; height: number }
 }
 
 function cellColor(cell: HeatmapCell, layer: HeatmapLayer): string {
@@ -18,13 +20,16 @@ function cellColor(cell: HeatmapCell, layer: HeatmapLayer): string {
   }
 }
 
-export default function SunHeatmap({ cells, isCalculating, layer, onCellTap }: Props) {
+const CLIP_ID = 'heatmap-clip'
+
+export default function SunHeatmap({ cells, isCalculating, layer, onCellTap, maskPolygon, bounds }: Props) {
   if (isCalculating) {
+    const rect = bounds ?? GARDEN_CLIP
     return (
       <g>
         <rect
-          x={GARDEN_CLIP.x} y={GARDEN_CLIP.y}
-          width={GARDEN_CLIP.width} height={GARDEN_CLIP.height}
+          x={rect.x} y={rect.y}
+          width={rect.width} height={rect.height}
           fill="rgba(200,168,48,0.15)"
           style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
         />
@@ -35,19 +40,30 @@ export default function SunHeatmap({ cells, isCalculating, layer, onCellTap }: P
   if (cells.length === 0) return null
 
   return (
-    <g style={{ pointerEvents: onCellTap ? 'all' : 'none' }}>
-      {cells.map((cell, i) => (
-        <rect
-          key={i}
-          x={cell.x}
-          y={cell.y}
-          width={cell.w}
-          height={cell.h}
-          fill={cellColor(cell, layer)}
-          opacity={0.72}
-          onClick={onCellTap ? (e) => { e.stopPropagation(); onCellTap(cell) } : undefined}
-        />
-      ))}
+    <g>
+      <defs>
+        <clipPath id={CLIP_ID}>
+          {maskPolygon && maskPolygon.length >= 3 ? (
+            <polygon points={maskPolygon.map(([x, y]) => `${x},${y}`).join(' ')} />
+          ) : (
+            <rect x={GARDEN_CLIP.x} y={GARDEN_CLIP.y} width={GARDEN_CLIP.width} height={GARDEN_CLIP.height} />
+          )}
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${CLIP_ID})`} style={{ pointerEvents: onCellTap ? 'all' : 'none' }}>
+        {cells.map((cell, i) => (
+          <rect
+            key={i}
+            x={cell.x}
+            y={cell.y}
+            width={cell.w}
+            height={cell.h}
+            fill={cellColor(cell, layer)}
+            opacity={0.72}
+            onClick={onCellTap ? (e) => { e.stopPropagation(); onCellTap(cell) } : undefined}
+          />
+        ))}
+      </g>
     </g>
   )
 }

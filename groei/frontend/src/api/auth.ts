@@ -39,13 +39,13 @@ export async function register(
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem('groei-token')
+  return localStorage.getItem('floreren-token')
 }
 
 export function saveToken(token: string): void {
-  localStorage.setItem('groei-token', token)
+  localStorage.setItem('floreren-token', token)
 }
 
 export function clearToken(): void {
-  localStorage.removeItem('groei-token')
+  localStorage.removeItem('floreren-token')
 }

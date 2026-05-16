@@ -1,11 +1,9 @@
 import type { SunPosition } from '../../utils/sunCalc'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
-import { bucketFor, bucketLabelNl, bucketColor, type HeatmapLayer } from '../../utils/lightQuality'
 import HeatmapLegend from './HeatmapLegend'
 
 export type SunViewMode = 'live' | 'heatmap'
-export type { HeatmapLayer }
 
 interface Props {
   viewMode: SunViewMode
@@ -17,8 +15,6 @@ interface Props {
   onHourChange: (h: number) => void
   onNow: () => void
   // Heatmap-specific
-  heatmapLayer: HeatmapLayer
-  onHeatmapLayerChange: (layer: HeatmapLayer) => void
   isCalculating?: boolean
   tappedCell?: HeatmapCell | null
   selectedProfile?: PlantSunProfile | null
@@ -28,12 +24,6 @@ interface Props {
 
 const MONTHS = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
 
-const LAYERS: { id: HeatmapLayer; label: string }[] = [
-  { id: 'sun_hours',     label: 'Directe zon' },
-  { id: 'sky_openness',  label: 'Hemelzicht' },
-  { id: 'light_quality', label: 'Lichttype' },
-]
-
 function formatTime(hour: number): string {
   const h = Math.floor(hour)
   const m = Math.round((hour - h) * 60)
@@ -41,49 +31,21 @@ function formatTime(hour: number): string {
 }
 
 function TappedCellInfo({
-  cell, layer, month, onGrowHere,
+  cell, month, onGrowHere,
 }: {
   cell: HeatmapCell
-  layer: HeatmapLayer
   month: number
   onGrowHere?: () => void
 }) {
   const monthName = MONTHS[month - 1]
 
-  let label: React.ReactNode
-  if (layer === 'sun_hours') {
-    label = (
-      <>
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs text-text-muted">
         Dit punt krijgt{' '}
         <span className="text-text font-medium">~{cell.sunHours.toFixed(1)}u</span>{' '}
         directe zon in {monthName}
-      </>
-    )
-  } else if (layer === 'sky_openness') {
-    const pct = Math.round(cell.skyOpenness * 100)
-    label = (
-      <>
-        Hemelzicht: <span className="text-text font-medium">{pct}%</span>
-        {' · '}
-        {cell.sunHours.toFixed(1)}u directe zon
-      </>
-    )
-  } else {
-    const bucket = bucketFor(cell.sunHours, cell.skyOpenness)
-    const color  = bucketColor(bucket)
-    label = (
-      <span className="flex items-center gap-1.5">
-        <span className="w-2.5 h-2.5 rounded-sm shrink-0 inline-block" style={{ backgroundColor: color }} />
-        <span className="font-medium" style={{ color }}>{bucketLabelNl(bucket)}</span>
-        <span className="text-text-muted">·</span>
-        <span>{cell.sunHours.toFixed(1)}u · {Math.round(cell.skyOpenness * 100)}% hemel</span>
-      </span>
-    )
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-xs text-text-muted">{label}</p>
+      </p>
       <button
         onClick={onGrowHere}
         className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
@@ -98,7 +60,6 @@ export default function SunControls({
   viewMode, onViewModeChange,
   selectedMonth, selectedHour, sunPosition,
   onMonthChange, onHourChange, onNow,
-  heatmapLayer, onHeatmapLayerChange,
   isCalculating, tappedCell, selectedProfile, onProfileChange, onGrowHere,
 }: Props) {
   return (
@@ -181,53 +142,35 @@ export default function SunControls({
         </>
       )}
 
-      {/* Heatmap mode: layer toggle + legend + filters + tapped cell */}
+      {/* Heatmap mode: legend + zone filters + tapped cell */}
       {viewMode === 'heatmap' && (
         <>
-          {/* Layer sub-toggle */}
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
-            {LAYERS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => onHeatmapLayerChange(id)}
-                className={`flex-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  heatmapLayer === id ? 'bg-white/30 text-white shadow-sm' : 'text-text-muted hover:text-text'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <HeatmapLegend layer="sun_hours" />
+
+          {/* Zone filter chips */}
+          <div className="flex gap-1.5 flex-wrap">
+            {PLANT_SUN_PROFILES.map(profile => {
+              const isActive = selectedProfile?.id === profile.id
+              return (
+                <button
+                  key={profile.id}
+                  onClick={() => onProfileChange?.(isActive ? null : profile)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                    isActive ? 'text-white' : 'text-text-muted hover:bg-white/5'
+                  }`}
+                  style={isActive ? { backgroundColor: profile.color + '55' } : undefined}
+                >
+                  <span>{profile.emoji}</span>
+                  <span>{profile.labelNl}</span>
+                </button>
+              )
+            })}
           </div>
-
-          <HeatmapLegend layer={heatmapLayer} />
-
-          {/* Plant suitability filter chips — only meaningful for sun_hours layer */}
-          {heatmapLayer === 'sun_hours' && (
-            <div className="flex gap-1.5 flex-wrap">
-              {PLANT_SUN_PROFILES.map(profile => {
-                const isActive = selectedProfile?.id === profile.id
-                return (
-                  <button
-                    key={profile.id}
-                    onClick={() => onProfileChange?.(isActive ? null : profile)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                      isActive ? 'text-white' : 'text-text-muted hover:bg-white/5'
-                    }`}
-                    style={isActive ? { backgroundColor: profile.color + '55' } : undefined}
-                  >
-                    <span>{profile.emoji}</span>
-                    <span>{profile.labelNl}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
 
           {/* Tapped cell info + grow-here CTA */}
           {tappedCell && (
             <TappedCellInfo
               cell={tappedCell}
-              layer={heatmapLayer}
               month={selectedMonth}
               onGrowHere={onGrowHere}
             />

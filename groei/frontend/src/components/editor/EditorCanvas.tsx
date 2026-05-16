@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import type { EditorZone, WallElement, ZoneStyleType, RoomEdge } from '../../types'
+import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster } from '../../types'
 import type { EditorTool } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
 import {
@@ -142,8 +142,10 @@ function computeWallDrawRect(
 interface Props {
   zones: EditorZone[]
   wallElements: WallElement[]
+  shadowCasters: ShadowCaster[]
   selectedZoneId: string | null
   selectedWallElementId: string | null
+  selectedShadowCasterId: string | null
   activeTool: EditorTool
   activeZoneType: ZoneStyleType
   scalePxPerM: number
@@ -154,6 +156,9 @@ interface Props {
   onSelectZone: (id: string | null) => void
   onSelectWallElement: (id: string | null) => void
   onPlaceWallElement: (zoneId: string, type: 'door' | 'window', edge: RoomEdge, position: number) => void
+  onAddShadowCaster: (caster: Omit<ShadowCaster, 'id'>) => void
+  onUpdateShadowCaster: (id: string, updates: Partial<ShadowCaster>) => void
+  onSelectShadowCaster: (id: string | null) => void
 }
 
 interface DrawState {
@@ -180,16 +185,27 @@ interface WallElementDragState {
   startSvgY: number
 }
 
+interface ShadowCasterDragState {
+  casterId: string
+  startSvgX: number
+  startSvgY: number
+  origX: number  // rect: x, circle: cx
+  origY: number  // rect: y, circle: cy
+}
+
 export default function EditorCanvas({
-  zones, wallElements, selectedZoneId, selectedWallElementId,
+  zones, wallElements, shadowCasters,
+  selectedZoneId, selectedWallElementId, selectedShadowCasterId,
   activeTool, activeZoneType, scalePxPerM, previewMode,
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
+  onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<DrawState | null>(null)
   const [dragging, setDragging] = useState<DragState | null>(null)
   const [resizing, setResizing] = useState<ResizeState | null>(null)
   const [wallElementDragging, setWallElementDragging] = useState<WallElementDragState | null>(null)
+  const [shadowCasterDragging, setShadowCasterDragging] = useState<ShadowCasterDragState | null>(null)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
 
@@ -210,14 +226,16 @@ export default function EditorCanvas({
       return
     }
 
-    if (activeTool === 'draw') {
+    if (activeTool === 'draw' || activeTool === 'shadow_caster') {
       e.preventDefault()
       ;(e.target as Element).setPointerCapture(e.pointerId)
       setDrawing({ startX: pt.x, startY: pt.y, currentX: pt.x, currentY: pt.y })
       onSelectZone(null)
+      onSelectShadowCaster(null)
     } else {
       onSelectZone(null)
       onSelectWallElement(null)
+      onSelectShadowCaster(null)
     }
   }
 
@@ -254,6 +272,25 @@ export default function EditorCanvas({
     })
   }
 
+  function handleShadowCasterPointerDown(e: React.PointerEvent, casterId: string) {
+    if (isPlacingWallElement) return
+    e.stopPropagation()
+    const pt = getSvgPoint(e)
+    if (!pt) return
+    onSelectShadowCaster(casterId)
+    onSelectZone(null)
+    onSelectWallElement(null)
+    if (activeTool === 'select') {
+      const caster = shadowCasters.find((sc) => sc.id === casterId)
+      if (caster) {
+        ;(e.target as Element).setPointerCapture(e.pointerId)
+        const origX = caster.type === 'rect' ? caster.x : caster.type === 'circle' ? caster.cx : (caster.points[0]?.[0] ?? 0)
+        const origY = caster.type === 'rect' ? caster.y : caster.type === 'circle' ? caster.cy : (caster.points[0]?.[1] ?? 0)
+        setShadowCasterDragging({ casterId, startSvgX: pt.x, startSvgY: pt.y, origX, origY })
+      }
+    }
+  }
+
   function handleResizeHandlePointerDown(e: React.PointerEvent, handle: ResizeHandle) {
     if (!selectedZone) return
     const pt = getSvgPoint(e)
@@ -277,6 +314,22 @@ export default function EditorCanvas({
 
     if (drawing) {
       setDrawing((d) => d ? { ...d, currentX: pt.x, currentY: pt.y } : null)
+      return
+    }
+
+    if (shadowCasterDragging) {
+      const caster = shadowCasters.find((sc) => sc.id === shadowCasterDragging.casterId)
+      if (caster) {
+        const dx = pt.x - shadowCasterDragging.startSvgX
+        const dy = pt.y - shadowCasterDragging.startSvgY
+        const newX = Math.round(shadowCasterDragging.origX + dx)
+        const newY = Math.round(shadowCasterDragging.origY + dy)
+        if (caster.type === 'rect') {
+          onUpdateShadowCaster(shadowCasterDragging.casterId, { x: newX, y: newY })
+        } else if (caster.type === 'circle') {
+          onUpdateShadowCaster(shadowCasterDragging.casterId, { cx: newX, cy: newY })
+        }
+      }
       return
     }
 
@@ -336,7 +389,26 @@ export default function EditorCanvas({
 
   function handlePointerUp() {
     if (drawing) {
-      if (activeZoneType === 'wall') {
+      if (activeTool === 'shadow_caster') {
+        const x = Math.min(drawing.startX, drawing.currentX)
+        const y = Math.min(drawing.startY, drawing.currentY)
+        const w = Math.abs(drawing.currentX - drawing.startX)
+        const h = Math.abs(drawing.currentY - drawing.startY)
+        if (w >= MIN_ZONE_SIZE && h >= MIN_ZONE_SIZE) {
+          onAddShadowCaster({
+            label: '',
+            type: 'rect',
+            x: Math.max(0, Math.round(x)),
+            y: Math.max(0, Math.round(y)),
+            width: Math.round(Math.min(w, CANVAS_W - Math.max(0, x))),
+            height: Math.round(Math.min(h, CANVAS_H - Math.max(0, y))),
+            heightCm: 500,
+            opacity: 1,
+            // Omit<ShadowCaster, 'id'> doesn't distribute over the union, so TypeScript
+            // loses rect-specific fields. The cast is safe — addShadowCaster appends the id.
+          } as unknown as Omit<ShadowCaster, 'id'>)
+        }
+      } else if (activeZoneType === 'wall') {
         const wr = computeWallDrawRect(drawing, scalePxPerM)
         const length = Math.max(wr.width, wr.height)
         if (length >= MIN_ZONE_SIZE) {
@@ -365,13 +437,14 @@ export default function EditorCanvas({
       }
       setDrawing(null)
     }
+    if (shadowCasterDragging) setShadowCasterDragging(null)
     if (wallElementDragging) setWallElementDragging(null)
     if (dragging) { setDragging(null); setSnapLines([]) }
     if (resizing) setResizing(null)
   }
 
-  // Standard draw preview (non-wall types)
-  const drawRect = drawing && activeZoneType !== 'wall' ? {
+  // Standard draw preview (non-wall zone types)
+  const drawRect = drawing && activeTool === 'draw' && activeZoneType !== 'wall' ? {
     x: Math.max(0, Math.min(drawing.startX, drawing.currentX)),
     y: Math.max(0, Math.min(drawing.startY, drawing.currentY)),
     width: Math.min(Math.abs(drawing.currentX - drawing.startX), CANVAS_W),
@@ -379,13 +452,17 @@ export default function EditorCanvas({
   } : null
 
   // Wall draw preview — direction-locked, auto-thickness
-  const wallDrawRect = drawing && activeZoneType === 'wall'
+  const wallDrawRect = drawing && activeTool === 'draw' && activeZoneType === 'wall'
     ? computeWallDrawRect(drawing, scalePxPerM)
     : null
 
-  const scaleBarM = 2
-  const scaleBarPx = scaleBarM * scalePxPerM
-  const barX = 16; const barY = CANVAS_H - 20
+  // Shadow caster draw preview
+  const shadowCasterDrawRect = drawing && activeTool === 'shadow_caster' ? {
+    x: Math.max(0, Math.min(drawing.startX, drawing.currentX)),
+    y: Math.max(0, Math.min(drawing.startY, drawing.currentY)),
+    width: Math.min(Math.abs(drawing.currentX - drawing.startX), CANVAS_W),
+    height: Math.min(Math.abs(drawing.currentY - drawing.startY), CANVAS_H),
+  } : null
 
   return (
     <div className="flex-1 flex items-center justify-center bg-bg overflow-hidden p-2">
@@ -393,7 +470,7 @@ export default function EditorCanvas({
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
         className="max-w-full max-h-full border border-border rounded-lg bg-[#f5f3ee]"
-        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : 'default' }}
+        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' ? 'crosshair' : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -402,6 +479,46 @@ export default function EditorCanvas({
       >
         <EditorDefs />
         <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
+
+        {/* Shadow casters — drawn below zones so garden zones overlay them */}
+        {shadowCasters.map((sc) => {
+          const isSelected = !previewMode && sc.id === selectedShadowCasterId
+          const fill = 'rgba(107, 114, 128, 0.18)'
+          const stroke = isSelected ? '#4A90D9' : '#6b7280'
+          const strokeWidth = isSelected ? 2 : 1.5
+          const strokeDasharray = isSelected ? undefined : '6 3'
+          const cursor = activeTool === 'select' ? 'move' : 'default'
+          if (sc.type === 'rect') {
+            return (
+              <rect
+                key={sc.id}
+                x={sc.x} y={sc.y}
+                width={sc.width} height={sc.height}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                style={{ cursor }}
+                onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+              />
+            )
+          } else if (sc.type === 'circle') {
+            return (
+              <circle
+                key={sc.id}
+                cx={sc.cx} cy={sc.cy}
+                r={sc.radius}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                strokeDasharray={strokeDasharray}
+                style={{ cursor }}
+                onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+              />
+            )
+          }
+          return null
+        })}
 
         {zones.map((zone) => (
           <EditorZoneShape
@@ -470,13 +587,16 @@ export default function EditorCanvas({
           />
         )}
 
-        {/* Scale bar */}
-        <g pointerEvents="none">
-          <line x1={barX} y1={barY} x2={barX + scaleBarPx} y2={barY} stroke="rgba(100,90,70,0.7)" strokeWidth={1.5} />
-          <line x1={barX} y1={barY - 4} x2={barX} y2={barY + 4} stroke="rgba(100,90,70,0.7)" strokeWidth={1.5} />
-          <line x1={barX + scaleBarPx} y1={barY - 4} x2={barX + scaleBarPx} y2={barY + 4} stroke="rgba(100,90,70,0.7)" strokeWidth={1.5} />
-          <text x={barX + scaleBarPx / 2} y={barY - 7} textAnchor="middle" fill="rgba(100,90,70,0.8)" fontSize={9}>{scaleBarM}m</text>
-        </g>
+        {/* Draw preview (shadow caster) */}
+        {shadowCasterDrawRect && shadowCasterDrawRect.width > 2 && shadowCasterDrawRect.height > 2 && (
+          <rect
+            x={shadowCasterDrawRect.x} y={shadowCasterDrawRect.y}
+            width={shadowCasterDrawRect.width} height={shadowCasterDrawRect.height}
+            fill="rgba(107,114,128,0.2)" stroke="#6b7280"
+            strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
+          />
+        )}
+
       </svg>
     </div>
   )

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { User, Location, Plant, DashboardData, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut } from '../types'
 import * as api from '../api/client'
 
-interface GroeiStore {
+interface FlorerStore {
   users: User[]
   locations: Location[]
   maps: MapInfo[]
@@ -35,7 +35,7 @@ interface GroeiStore {
   clearError: () => void
 }
 
-const STORAGE_KEY = 'groei-active-user'
+const STORAGE_KEY = 'floreren-active-user'
 
 function getSavedUserId(): number | null {
   const saved = localStorage.getItem(STORAGE_KEY)
@@ -54,7 +54,7 @@ function _removeDashboardTask(dashboard: DashboardData | null, plantId: number, 
   }
 }
 
-export const useGroeiStore = create<GroeiStore>((set, get) => ({
+export const useFloreren = create<FlorerStore>((set, get) => ({
   users: [],
   locations: [],
   maps: [],
@@ -76,7 +76,7 @@ export const useGroeiStore = create<GroeiStore>((set, get) => ({
         api.fetchMaps(),
         api.fetchPlants(),
       ])
-      const state: Partial<GroeiStore> = { users, locations, maps, plants, isLoading: false }
+      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false }
       if (!get().activeUserId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))

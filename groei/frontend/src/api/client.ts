@@ -22,7 +22,7 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
 
 async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
   const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
-  const token = localStorage.getItem('groei-token')
+  const token = localStorage.getItem('floreren-token')
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -37,7 +37,7 @@ async function api<T>(method: string, path: string, options: ApiOptions = {}): P
   const res = await fetch(url, init)
 
   if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('groei-token')
+    localStorage.removeItem('floreren-token')
     window.location.href = '/login'
     throw new Error('Session expired — redirecting to login')
   }

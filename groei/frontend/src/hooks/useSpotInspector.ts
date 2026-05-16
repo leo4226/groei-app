@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { getSunHoursAtPosition } from '../utils/heatmapCalc'
+import type { LightEngine } from '../utils/lightEngine'
 
 export interface SpeciesSuggestion {
   species_id: number
@@ -25,15 +26,18 @@ export interface SpotInspectorResult {
   error: string | null
 }
 
-export function useSpotInspector() {
+export function useSpotInspector(engine?: LightEngine | null) {
   const [result, setResult] = useState<SpotInspectorResult | null>(null)
   const [loading, setLoading] = useState(false)
 
   const inspect = useCallback(async (x: number, y: number) => {
     setLoading(true)
-    const sunByMonth = Array.from({ length: 12 }, (_, i) =>
-      getSunHoursAtPosition(x, y, i + 1)
-    )
+    const sunByMonth = Array.from({ length: 12 }, (_, i) => {
+      if (engine) {
+        return engine.getSunHoursAtPosition(x, y, i + 1) ?? 0
+      }
+      return getSunHoursAtPosition(x, y, i + 1)
+    })
 
     try {
       const resp = await fetch('/api/spots/suitability', {
@@ -48,7 +52,7 @@ export function useSpotInspector() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [engine])
 
   const clear = useCallback(() => setResult(null), [])
 

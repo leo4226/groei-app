@@ -1,5 +1,15 @@
 import type { Phenology } from '../types'
 
+export const PHASE_COLORS: Record<string, string> = {
+  growing:      '#5B9A6F',
+  flowering:    '#D4829A',
+  fruiting:     '#D9A418',
+  harvest:      '#C6873A',
+  establishing: '#8FA882',
+  evergreen:    '#2F5D3A',
+  unknown:      '#C8C8C8',
+}
+
 export type SuitabilityStatus =
   | 'good'
   | 'too_little'

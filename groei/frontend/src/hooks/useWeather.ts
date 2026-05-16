@@ -37,6 +37,7 @@ function wmoToIcon(code: number): WeatherIcon {
 export interface WeatherDay {
   date: string
   maxTemp: number
+  minTemp: number
   icon: WeatherIcon
   conditionNl: string
 }
@@ -48,6 +49,9 @@ export interface WeatherData {
   currentIcon: WeatherIcon
   sunrise: string
   sunset: string
+  todayRainMm: number
+  windSpeedKmh: number
+  tonightMin: number
   forecast: WeatherDay[]
 }
 
@@ -75,7 +79,7 @@ export function useWeather(lat: number | null, lon: number | null): {
       latitude: String(resolvedLat),
       longitude: String(resolvedLon),
       current: 'temperature_2m,relative_humidity_2m,weather_code',
-      daily: 'weather_code,temperature_2m_max,sunrise,sunset',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset',
       timezone: 'Europe/Amsterdam',
       forecast_days: '7',
     })
@@ -93,6 +97,7 @@ export function useWeather(lat: number | null, lon: number | null): {
         const forecast: WeatherDay[] = (daily.time as string[]).map((d, i) => ({
           date: d,
           maxTemp: Math.round(daily.temperature_2m_max[i]),
+          minTemp: Math.round(daily.temperature_2m_min[i]),
           icon: wmoToIcon(daily.weather_code[i]),
           conditionNl: WMO_NL[daily.weather_code[i]] ?? 'onbekend',
         }))
@@ -104,6 +109,9 @@ export function useWeather(lat: number | null, lon: number | null): {
           currentIcon: wmoToIcon(cur.weather_code),
           sunrise: daily.sunrise[0],
           sunset: daily.sunset[0],
+          todayRainMm: daily.precipitation_sum[0] ?? 0,
+          windSpeedKmh: Math.round(daily.wind_speed_10m_max[0] ?? 0),
+          tonightMin: Math.round(daily.temperature_2m_min[0]),
           forecast,
         })
         setLoading(false)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { fetchPlant } from '../api/client'
 import type { Plant } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
@@ -12,7 +12,7 @@ const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase(
 export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { locations, maps, updatePlant, uploadPhoto } = useGroeiStore()
+  const { locations, maps, updatePlant, uploadPhoto } = useFloreren()
   const plantId = Number(id)
 
   const [plant, setPlant] = useState<Plant | null>(null)

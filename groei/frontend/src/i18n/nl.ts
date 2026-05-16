@@ -56,6 +56,7 @@ export const nl: Translations = {
       today: 'Vandaag',
       calm: 'Een rustige dag in de tuin.',
       noTasks: 'Geen taken op dit moment',
+      waterFeed: 'Water & Voeding',
       attention: 'Aandacht',
       daysLate: (n) => `${n} ${n === 1 ? 'dag' : 'dagen'} te laat`,
       inDays: (n) => `over ${n} ${n === 1 ? 'dag' : 'dagen'}`,
@@ -79,6 +80,8 @@ export const nl: Translations = {
     rotate: 'Draaien',
     repot_check: 'Verpotten',
     prune: 'Snoeien',
+    protect_cold: 'Beschermen tegen kou',
+    protect_heat: 'Beschermen tegen hitte',
   },
 
   plants: {

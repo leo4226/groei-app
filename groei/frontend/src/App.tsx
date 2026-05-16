@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { useGroeiStore } from './store/useGroeiStore'
+import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
@@ -16,7 +16,6 @@ import EditPlant from './pages/EditPlant'
 import PlantCareDetail from './pages/PlantCareDetail'
 import Settings from './pages/Settings'
 import PlanningCalendar from './pages/PlanningCalendar'
-import MapsListPage from './pages/MapsListPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
 import MapSettingsPage from './pages/MapSettingsPage'
 
@@ -26,11 +25,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const load = useGroeiStore((s) => s.load)
-  const error = useGroeiStore((s) => s.error)
-  const clearError = useGroeiStore((s) => s.clearError)
-  const showPlantPicker = useGroeiStore((s) => s.showPlantPicker)
-  const setShowPlantPicker = useGroeiStore((s) => s.setShowPlantPicker)
+  const load = useFloreren((s) => s.load)
+  const error = useFloreren((s) => s.error)
+  const clearError = useFloreren((s) => s.clearError)
+  const showPlantPicker = useFloreren((s) => s.showPlantPicker)
+  const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
   const navigate = useNavigate()
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
@@ -68,14 +67,6 @@ export default function App() {
             }
           />
           <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/maps"
-            element={
-              <RequireAuth>
-                <MapsListPage />
-              </RequireAuth>
-            }
-          />
           <Route
             path="/maps/:id/edit-layout"
             element={

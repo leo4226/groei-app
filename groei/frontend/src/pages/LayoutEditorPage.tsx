@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { fetchMapById, updateMap, fetchObjects, updateObjectPosition, archiveObject, updateObject } from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
-import type { CanvasData, MapInfo, MapObject } from '../types'
+import type { CanvasData, MapInfo, MapObject, MapType } from '../types'
 import EditorCanvas from '../components/editor/EditorCanvas'
 import EditorToolbar from '../components/editor/EditorToolbar'
 import EditorLegendPanel from '../components/editor/EditorLegendPanel'
@@ -31,25 +31,44 @@ export default function LayoutEditorPage() {
     () => deriveGardenBounds(editor.zones),
     [editor.zones],
   )
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // React 19 StrictMode simulates Activity (offscreen) by remounting with preserved state.
+  // This ref prevents re-fetching and re-calling loadCanvasData on those remounts,
+  // which would overwrite the user's unsaved changes with stale server data.
+  const loadedMapIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!mapId) return
+    // Skip if already loaded for this map. The check inside `.then()` handles the
+    // StrictMode initial double-mount (where the ref isn't set yet when both
+    // effects start); this top-level check handles Activity remounts that fire
+    // after the editor has real data.
+    if (loadedMapIdRef.current === mapId) return
+    let cancelled = false
     Promise.all([
       fetchMapById(mapId),
       fetchObjects(),
     ]).then(([m, objs]) => {
+        if (cancelled) return
+        // Guard again inside .then() to handle the StrictMode double-mount race:
+        // both effects start before the ref is written, but only the first to
+        // complete should load.
+        if (loadedMapIdRef.current === mapId) return
+        loadedMapIdRef.current = mapId
         setMap(m)
         setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
         if (m.canvas_data) {
           try {
             const data = JSON.parse(m.canvas_data) as CanvasData
-            data.mapType = m.map_type
+            // Normalise mapType to 'outdoor'|'indoor', mapping legacy 'garden'/'house' values
+            const raw = (data.mapType as string) || m.map_type
+            data.mapType = (raw === 'indoor' || raw === 'house') ? 'indoor' : 'outdoor'
             editor.loadCanvasData(data)
           } catch { /* start blank */ }
         }
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [mapId])
 
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
@@ -261,7 +280,7 @@ export default function LayoutEditorPage() {
               objectPreset={editor.objectPreset}
               onSetZoneType={editor.setZoneType}
               onSetTool={editor.setTool}
-              onSetMapType={(t) => editor.setMapType(t as import('../types').MapType)}
+              onSetMapType={(t) => editor.setMapType(t as MapType)}
               onSetObjectPreset={editor.setObjectPreset}
             />
             {selectedZone && !selectedWallElement && (
@@ -307,8 +326,8 @@ export default function LayoutEditorPage() {
                   {editor.shadowCasters.map((sc) => {
                     const isSelected = sc.id === editor.selectedShadowCasterId
                     const isRect = sc.type === 'rect'
-                    const scx = isRect ? sc.x : sc.cx
-                    const scy = isRect ? sc.y : sc.cy
+                    const scx = sc.type === 'rect' ? sc.x : sc.type === 'circle' ? sc.cx : sc.points[0]?.[0] ?? 0
+                    const scy = sc.type === 'rect' ? sc.y : sc.type === 'circle' ? sc.cy : sc.points[0]?.[1] ?? 0
                     const onCanvas = scx >= -50 && scx <= 730 && scy >= -50 && scy <= 730
                     return (
                       <button

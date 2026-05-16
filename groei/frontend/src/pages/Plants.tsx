@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { PLANT_ICONS } from '../constants/plantIcons'
 import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/plantLabels'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
-import { getHaloStatus, HALO_COLORS } from '../hooks/usePlantStatus'
-
+import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import type { LocalPlant } from '../data/plants-dataset'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -29,10 +29,10 @@ const TYPE_BG: Record<string, string> = {
 }
 
 export default function Plants() {
+  const { plants, isLoading } = useFloreren()
   const CATEGORY_LABELS = useCategoryLabels()
   const PLANT_TYPE_LABELS = useTypeLabels()
   const FORM_LABELS = useFormLabels()
-  const { plants, isLoading, setShowPlantPicker } = useGroeiStore()
   const [filterArea, setFilterArea] = useState<'all' | 'tuin' | 'huis'>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterForm, setFilterForm] = useState<string>('all')
@@ -42,6 +42,7 @@ export default function Plants() {
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
@@ -268,7 +269,7 @@ export default function Plants() {
           </span>
         </div>
         <button
-          onClick={() => setShowPlantPicker(true)}
+          onClick={() => setShowPicker(true)}
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
@@ -470,6 +471,19 @@ export default function Plants() {
           </div>
         )}
       </div>
+      {showPicker && (
+        <PlantPickerSheet
+          onClose={() => setShowPicker(false)}
+          onSelectPlant={(plant: LocalPlant) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: { prefill: plant } })
+          }}
+          onCustomName={(name) => {
+            setShowPicker(false)
+            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -535,9 +549,6 @@ function Count({ children }: { children: React.ReactNode }) {
 }
 
 function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, PlantIcon> }) {
-  const haloStatus = getHaloStatus(plant)
-  const haloColor  = haloStatus ? HALO_COLORS[haloStatus] : null
-
   // Has custom SVG icon
   if (plant.icon_key) {
     return (
@@ -551,19 +562,10 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
         padding: '16%',
         position: 'relative',
       }}>
-        {haloColor && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: `radial-gradient(circle, ${haloColor} 0%, transparent 70%)`,
-            opacity: 0.35,
-            pointerEvents: 'none',
-          }} />
-        )}
         <img
           src={`/api/icons/${plant.icon_key}.svg`}
           alt={plant.name}
-          style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)', position: 'relative' }}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
           className="card-icon"
         />
       </div>
@@ -586,15 +588,6 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
       padding: '18%',
       position: 'relative',
     }}>
-      {haloColor && (
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(circle, ${haloColor} 0%, transparent 70%)`,
-          opacity: 0.35,
-          pointerEvents: 'none',
-        }} />
-      )}
       <div style={{
         position: 'absolute',
         bottom: 0,
@@ -607,7 +600,7 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
       }} />
       <svg
         viewBox="0 0 100 100"
-        style={{ width: '100%', height: '100%', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)', position: 'relative' }}
+        style={{ width: '100%', height: '100%', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
         className="card-icon"
         dangerouslySetInnerHTML={{ __html: iconBody }}
       />

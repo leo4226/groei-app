@@ -56,6 +56,7 @@ export const en: Translations = {
       today: 'Today',
       calm: 'A quiet day in the garden.',
       noTasks: 'No tasks right now',
+      waterFeed: 'Water & Feed',
       attention: 'Attention',
       daysLate: (n) => `${n} ${n === 1 ? 'day' : 'days'} late`,
       inDays: (n) => `in ${n} ${n === 1 ? 'day' : 'days'}`,
@@ -79,6 +80,8 @@ export const en: Translations = {
     rotate: 'Rotate',
     repot_check: 'Repot',
     prune: 'Prune',
+    protect_cold: 'Cold protection',
+    protect_heat: 'Heat protection',
   },
 
   plants: {

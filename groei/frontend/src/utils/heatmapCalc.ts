@@ -1,9 +1,17 @@
 import { getSunPosition, getSunTimes, GARDEN_LAT, GARDEN_LNG } from './sunCalc'
-import { SHADOW_CASTERS, GARDEN_FLOOR, PX_PER_M, PX_PER_CM } from './gardenStructures'
+import { SHADOW_CASTERS, GARDEN_FLOOR, GARDEN_SVG_TOP_AZIMUTH, PX_PER_M, PX_PER_CM } from './gardenStructures'
 import type { ShadowCaster } from './gardenStructures'
 import { computeShadowRegions, getSunFraction } from './shadowGeometry'
 import { computeSkyOpenness } from './skyViewFactor'
 import type { Obstruction } from './skyViewFactor'
+import { pointInPolygon } from './svgCoords'
+
+export interface GardenBounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
 
 export interface HeatmapCell {
   x: number          // SVG x of cell top-left
@@ -87,9 +95,12 @@ export function skyOpennessToColor(svf: number): string {
   return stopsToColor(VIRIDIS_STOPS, svf)
 }
 
-/** Check if a point is inside the garden floor boundary (simple rect check). */
-function isInGarden(px: number, py: number): boolean {
-  const [tl, tr, br, bl] = GARDEN_FLOOR
+/** Check if a point is inside the garden boundary (simple rect check). */
+function isInGarden(px: number, py: number, bounds?: GardenBounds): boolean {
+  if (bounds) {
+    return px >= bounds.minX && px <= bounds.maxX && py >= bounds.minY && py <= bounds.maxY
+  }
+  const [tl, tr, , bl] = GARDEN_FLOOR
   return px >= tl[0] && px <= tr[0] && py >= tl[1] && py <= bl[1]
 }
 
@@ -105,14 +116,25 @@ function isInGarden(px: number, py: number): boolean {
  */
 export function computeHeatmap(
   month: number,
-  gridResM: number = 0.3,
+  gridResM: number = 0.15,
   intervalMin: number = 10,
+  lat?: number,
+  lon?: number,
+  bearing?: number,
+  shadowCasters?: ShadowCaster[],
+  gardenBounds?: GardenBounds,
+  gardenPerimeter?: [number, number][],
 ): HeatmapCell[] {
   const year = new Date().getFullYear()
   const day = new Date(year, month - 1, 15)
 
+  const useLat = lat ?? GARDEN_LAT
+  const useLon = lon ?? GARDEN_LNG
+  const useBearing = bearing ?? GARDEN_SVG_TOP_AZIMUTH
+  const useCasters = shadowCasters ?? SHADOW_CASTERS
+
   // Get sunrise/sunset
-  const times = getSunTimes(day, GARDEN_LAT, GARDEN_LNG)
+  const times = getSunTimes(day, useLat, useLon)
   const sunrise = times.sunrise.getTime()
   const sunset = times.sunset.getTime()
   const intervalMs = intervalMin * 60 * 1000
@@ -121,22 +143,20 @@ export function computeHeatmap(
   const samples: { time: Date; regions: ReturnType<typeof computeShadowRegions> }[] = []
   for (let t = sunrise; t <= sunset; t += intervalMs) {
     const date = new Date(t)
-    const sun = getSunPosition(date)
+    const sun = getSunPosition(date, useLat, useLon)
     if (!sun.isUp) continue
-    samples.push({ time: date, regions: computeShadowRegions(sun, SHADOW_CASTERS) })
+    samples.push({ time: date, regions: computeShadowRegions(sun, useCasters, useBearing) })
   }
 
   // Pre-compute 3-D obstructions for SVF (time-independent — computed once per map).
-  // SVF is only invalidated when shadow-caster geometry changes, not when month changes.
-  const obstructions = shadowCastersToObstructions(SHADOW_CASTERS)
+  const obstructions = shadowCastersToObstructions(useCasters)
 
   // Build grid
   const cellPx = gridResM * PX_PER_M
-  const [tl, , , ] = GARDEN_FLOOR
-  const minX = tl[0]
-  const minY = tl[1]
-  const maxX = GARDEN_FLOOR[1][0]
-  const maxY = GARDEN_FLOOR[3][1]
+  const minX = gardenBounds?.minX ?? GARDEN_FLOOR[0][0]
+  const minY = gardenBounds?.minY ?? GARDEN_FLOOR[0][1]
+  const maxX = gardenBounds?.maxX ?? GARDEN_FLOOR[1][0]
+  const maxY = gardenBounds?.maxY ?? GARDEN_FLOOR[3][1]
 
   const cols = Math.ceil((maxX - minX) / cellPx)
   const rows = Math.ceil((maxY - minY) / cellPx)
@@ -144,15 +164,24 @@ export function computeHeatmap(
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const cx = minX + col * cellPx + cellPx / 2 // cell center
-      const cy = minY + row * cellPx + cellPx / 2
-      if (!isInGarden(cx, cy)) continue
+      const cellLeft = minX + col * cellPx
+      const cellTop = minY + row * cellPx
+      const cx = cellLeft + cellPx / 2 // cell center
+      const cy = cellTop + cellPx / 2
+      if (gardenPerimeter && gardenPerimeter.length >= 3) {
+        // Only render cell if all four corners are inside the perimeter
+        const tl = pointInPolygon(cellLeft, cellTop, gardenPerimeter)
+        const tr = pointInPolygon(cellLeft + cellPx, cellTop, gardenPerimeter)
+        const br = pointInPolygon(cellLeft + cellPx, cellTop + cellPx, gardenPerimeter)
+        const bl = pointInPolygon(cellLeft, cellTop + cellPx, gardenPerimeter)
+        if (!tl || !tr || !br || !bl) continue
+      } else if (!isInGarden(cx, cy, gardenBounds)) {
+        continue
+      }
 
       // Direct sun hours (time-dependent, sampled across the day)
       let sunCredit = 0
       for (const sample of samples) {
-        // getSunFraction returns 0.0 (full shade) to 1.0 (full sun)
-        // Dappled structures contribute fractional sun credit
         sunCredit += getSunFraction(cx, cy, sample.regions)
       }
 
@@ -172,7 +201,39 @@ export function computeHeatmap(
     }
   }
 
-  return cells
+  // Trim incomplete rows/columns at the edges
+  const trimmed = trimRaggedEdges(cells)
+  return trimmed
+}
+
+/** Remove rows/columns with significantly fewer cells than the full count — cleans up ragged perimeter edges. */
+function trimRaggedEdges(cells: HeatmapCell[], threshold = 0.75): HeatmapCell[] {
+  if (cells.length === 0) return cells
+
+  // Count cells per row (unique y)
+  const rowCounts = new Map<number, number>()
+  for (const c of cells) {
+    rowCounts.set(c.y, (rowCounts.get(c.y) ?? 0) + 1)
+  }
+  const maxRow = Math.max(...rowCounts.values())
+  const keepY = new Set<number>()
+  for (const [y, count] of rowCounts) {
+    if (count >= maxRow * threshold) keepY.add(y)
+  }
+
+  // Count cells per column (unique x)
+  const colCounts = new Map<number, number>()
+  for (const c of cells) {
+    if (!keepY.has(c.y)) continue
+    colCounts.set(c.x, (colCounts.get(c.x) ?? 0) + 1)
+  }
+  const maxCol = Math.max(...colCounts.values())
+  const keepX = new Set<number>()
+  for (const [x, count] of colCounts) {
+    if (count >= maxCol * threshold) keepX.add(x)
+  }
+
+  return cells.filter(c => keepY.has(c.y) && keepX.has(c.x))
 }
 
 const _heatmapCache = new Map<number, HeatmapCell[]>()
