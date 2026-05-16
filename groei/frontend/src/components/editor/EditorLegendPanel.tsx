@@ -162,10 +162,10 @@ export default function EditorLegendPanel({
         </div>
       )}
 
-      {/* ── Schaduw objecten (outdoor mode only) ── */}
+      {/* ── Shadows (outdoor mode only) ── */}
       {mapType === 'outdoor' && (
         <div>
-          <SectionHeader label="Schaduw objecten" open={open.shadows} onToggle={() => toggle('shadows')} />
+          <SectionHeader label={t.editor.legendShadows} open={open.shadows} onToggle={() => toggle('shadows')} />
           {open.shadows && (
             <div className="mt-2">
               <button
@@ -182,7 +182,7 @@ export default function EditorLegendPanel({
                 />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    Schaduw object
+                    {t.editor.shadowObject}
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
                     Plaats een gebouw of boom die schaduw werpt
@@ -197,7 +197,7 @@ export default function EditorLegendPanel({
       {/* ── Plaatsen (indoor mode only) ── */}
       {mapType === 'indoor' && (
         <div>
-          <SectionHeader label="Plaatsen" open={open.place} onToggle={() => toggle('place')} />
+          <SectionHeader label={t.editor.legendPlace} open={open.place} onToggle={() => toggle('place')} />
           {open.place && (
             <div className="flex flex-col gap-1 mt-2">
               <button

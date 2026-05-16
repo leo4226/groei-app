@@ -1,5 +1,6 @@
 import type { MapPlant, MapObject } from '../../types'
 import { SEVERITY_HALO_COLORS } from '../../hooks/usePlantStatus'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   plants: MapPlant[]
@@ -10,6 +11,7 @@ interface Props {
 type PlantWithMeta = MapPlant & { containerName?: string }
 
 export default function MapLegend({ plants, objects, onPlantTap }: Props) {
+  const t = useT()
   const containedPlants: PlantWithMeta[] = objects.flatMap((obj) =>
     obj.contained_plants.map((p) => ({ ...p, containerName: obj.name }))
   )
@@ -28,7 +30,7 @@ export default function MapLegend({ plants, objects, onPlantTap }: Props) {
       {alertPlants.length > 0 && (
         <>
           <h3 className="text-[9px] font-semibold text-overdue uppercase tracking-wider mb-1.5">
-            Aandacht nodig
+            {t.mapLegend.attentionNeeded}
           </h3>
           <ul className="space-y-1 mb-3">
             {alertPlants.map(plant => (
@@ -40,7 +42,7 @@ export default function MapLegend({ plants, objects, onPlantTap }: Props) {
       {goodPlants.length > 0 && (
         <>
           <h3 className="text-[9px] font-semibold text-text-muted uppercase tracking-wider mb-1.5">
-            Alles goed
+            {t.mapLegend.allGood}
           </h3>
           <ul className="space-y-1">
             {goodPlants.map(plant => (

@@ -4,6 +4,7 @@ import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
 import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
+import { useT } from '../../context/LanguageContext'
 
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
@@ -23,6 +24,7 @@ interface Props {
 
 
 export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
+  const t = useT()
   const navigate = useNavigate()
   const markCareDone = useFloreren((s) => s.markCareDone)
   const [locked, setLocked] = useState(plant.is_locked)
@@ -109,7 +111,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
         <button
           onClick={onClose}
-          aria-label="Sluiten"
+          aria-label={t.plantQuickSheet.close}
           className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
@@ -132,7 +134,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                   onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
                   className="text-xs text-primary font-medium shrink-0 hover:underline"
                 >
-                  Meer info →
+                  {t.plantQuickSheet.moreInfo}
                 </button>
               </div>
               {plant.species && (
@@ -145,7 +147,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                 <button
                   onClick={() => { onDuplicate(plant.id); onClose() }}
                   className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-text hover:bg-border transition-colors"
-                  title="Kopieer plant"
+                  title={t.plantQuickSheet.duplicate}
                 >
                   ⎘
                 </button>
@@ -153,7 +155,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
               <button
                 onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
                 className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
-                title="Bewerk plant"
+                title={t.plantQuickSheet.edit}
               >
                 ✏️
               </button>
@@ -164,7 +166,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                     ? 'bg-amber-500/20 text-amber-600'
                     : 'bg-bg text-text-muted hover:text-amber-500 hover:bg-amber-500/10'
                 }`}
-                title={locked ? 'Ontgrendel plant' : 'Vergrendel plant'}
+                title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
               >
                 {locked ? '🔒' : '🔓'}
               </button>
@@ -172,7 +174,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                 <button
                   onClick={() => { onRemove(plant.id); onClose() }}
                   className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-overdue hover:bg-overdue/10 transition-colors"
-                  title="Verwijder plant"
+                  title={t.plantQuickSheet.remove}
                 >
                   🗑
                 </button>
@@ -193,23 +195,23 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                 const isDueToday = daysUntil === 0
 
                 const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
-                const labelMap: Record<string, string> = {
-                  water: 'Gieten', fertilize: 'Bemesten', prune: 'Snoeien', repot_check: 'Verpotten',
-                  mist: 'Sproeien', rotate: 'Draaien', protect_cold: 'Beschermen tegen kou', protect_heat: 'Beschermen tegen hitte',
+                const careLabelMap: Record<string, string> = {
+                  water: t.plantQuickSheet.careWater, fertilize: t.plantQuickSheet.careFertilize, prune: t.plantQuickSheet.carePrune, repot_check: t.plantQuickSheet.careRepot,
+                  mist: t.plantQuickSheet.careMist, rotate: t.plantQuickSheet.careRotate, protect_cold: t.plantQuickSheet.careProtectCold, protect_heat: t.plantQuickSheet.careProtectHeat,
                 }
                 const icon = info?.icon ?? '📋'
-                const label = labelMap[sched.care_type] ?? info?.label ?? sched.care_type
+                const label = careLabelMap[sched.care_type] ?? info?.label ?? sched.care_type
 
                 let statusText: string
                 let statusColor: string
                 if (isOverdue) {
-                  statusText = `${Math.abs(daysUntil)} dag${Math.abs(daysUntil) === 1 ? '' : 'en'} te laat`
+                  statusText = t.plantQuickSheet.overdue(Math.abs(daysUntil))
                   statusColor = 'var(--color-overdue)'
                 } else if (isDueToday) {
-                  statusText = 'vandaag'
+                  statusText = t.plantQuickSheet.today
                   statusColor = 'var(--color-due)'
                 } else {
-                  statusText = `over ${daysUntil} dag${daysUntil === 1 ? '' : 'en'}`
+                  statusText = t.plantQuickSheet.overN(daysUntil)
                   statusColor = 'var(--color-text-muted)'
                 }
 
@@ -237,7 +239,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
             plant.most_urgent && (
               <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
                 <span>💧</span>
-                <span>{plant.most_urgent.care_type} · {plant.most_urgent.days_overdue > 0 ? `${plant.most_urgent.days_overdue}d te laat` : 'vandaag'}</span>
+                <span>{plant.most_urgent.care_type} · {plant.most_urgent.days_overdue > 0 ? t.plantQuickSheet.overdue(plant.most_urgent.days_overdue) : t.plantQuickSheet.today}</span>
               </div>
             )
           )}
@@ -246,13 +248,13 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
           {container && (
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <span className="text-sm text-text-muted flex-1">
-                In: <span className="text-text font-medium">{container.name}</span>
+                {t.plantQuickSheet.plantedIn} <span className="text-text font-medium">{container.name}</span>
               </span>
               <button
                 onClick={handleRemoveFromContainer}
                 className="text-xs text-text-muted hover:text-overdue transition-colors"
               >
-                Remove
+                {t.plantQuickSheet.removeFrom}
               </button>
             </div>
           )}
@@ -262,7 +264,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-text-muted">
-                  Geplant in: <span className="text-text font-medium">{groundZone.name}</span>
+                  {t.plantQuickSheet.plantedIn} <span className="text-text font-medium">{groundZone.name}</span>
                 </span>
                 {groundZone.soil_note && (
                   <p className="text-xs text-text-muted mt-0.5 italic">{groundZone.soil_note}</p>
@@ -272,7 +274,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                 onClick={handleLiftFromZone}
                 className="text-xs text-text-muted hover:text-overdue transition-colors shrink-0"
               >
-                Verplaatsen
+                {t.plantQuickSheet.move}
               </button>
             </div>
           )}
@@ -282,7 +284,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <span className="text-base">☀️</span>
               <span className="text-sm text-text-muted flex-1">
-                Dit punt:{' '}
+                {t.plantQuickSheet.thisSpot}{' '}
                 <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u</span>
                 {' · '}{sunFitInfo.profile.labelNl}
               </span>
@@ -293,7 +295,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
                   color: SUN_FIT_COLORS[sunFitInfo.fit],
                 }}
               >
-                {sunFitInfo.fit === 'good' ? '✓ Geschikt' : sunFitInfo.fit === 'partial' ? '~ Deels' : '⚠ Te weinig'}
+                {sunFitInfo.fit === 'good' ? t.plantQuickSheet.goodFit : sunFitInfo.fit === 'partial' ? t.plantQuickSheet.partialFit : t.plantQuickSheet.insufficientFit}
               </span>
             </div>
           )}
@@ -304,19 +306,19 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
               onClick={handleWater}
               className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
-              💧 Water
+              {t.plantQuickSheet.water}
             </button>
             <button
               onClick={handleFertilize}
               className="flex-1 bg-emerald-green/15 text-emerald-green rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
-              🌿 Bemesten
+              {t.plantQuickSheet.fertilize}
             </button>
             <button
               onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
               className="flex-1 bg-bg text-text rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
-              ✏️ Bewerken
+              {t.plantQuickSheet.editPlant}
             </button>
           </div>
         </div>

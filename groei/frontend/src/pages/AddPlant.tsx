@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
+import { useT } from '../context/LanguageContext'
 
 const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
   vaste_plant: 'herb',
@@ -21,6 +22,7 @@ const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
 
 export default function AddPlant() {
+  const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
   const prefill = location.state?.prefill as LocalPlant | { name: string } | undefined
@@ -153,7 +155,7 @@ export default function AddPlant() {
         >
           ←
         </button>
-        <h1 className="text-2xl font-extrabold">Plant toevoegen</h1>
+        <h1 className="text-2xl font-extrabold">{t.addPlant.title}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -164,12 +166,12 @@ export default function AddPlant() {
           ) : (
             <div className="w-20 h-20 rounded-xl bg-bg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted flex-shrink-0">
               <span className="text-2xl">📷</span>
-              <span className="text-[10px] mt-0.5">Foto toevoegen</span>
+              <span className="text-[10px] mt-0.5">{t.editPlant.addPhoto}</span>
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text">Plantfoto</p>
-            <p className="text-xs text-text-muted mt-0.5">Tik om foto toe te voegen</p>
+            <p className="text-sm font-medium text-text">{t.editPlant.plantPhoto}</p>
+            <p className="text-xs text-text-muted mt-0.5">{t.editPlant.tapToChangePhoto}</p>
           </div>
           <input
             type="file"
@@ -181,7 +183,7 @@ export default function AddPlant() {
 
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Naam *</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.nameLabel}</label>
           <input
             type="text"
             value={name}
@@ -194,7 +196,7 @@ export default function AddPlant() {
 
         {/* Species */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Botanische naam</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.speciesLabel}</label>
           <input
             type="text"
             value={species}
@@ -206,20 +208,20 @@ export default function AddPlant() {
 
         {/* Icon */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Icoon</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.iconLabel}</label>
           <IconPicker value={iconKey} onChange={setIconKey} />
         </div>
 
         {isFromDatabase && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
             <span className="text-base">📋</span>
-            <span>Ingevuld uit plantendatabase — pas aan waar nodig</span>
+            <span>{t.editPlant.databasePrefill}</span>
           </div>
         )}
 
         {/* Sun requirement */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Zonbehoefte</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sunRequirementLabel}</label>
           <div className="flex gap-2">
             {PLANT_SUN_PROFILES.map((profile) => (
               <button
@@ -234,7 +236,7 @@ export default function AddPlant() {
                 style={sunRequirement === profile.id ? { backgroundColor: profile.color } : undefined}
               >
                 <span className="text-lg">{profile.emoji}</span>
-                <span>{profile.labelNl}</span>
+                <span>{profile.id === 'full_sun' ? t.editPlant.sunFull : profile.id === 'partial_sun' ? t.editPlant.sunPartial : t.editPlant.sunShade}</span>
               </button>
             ))}
           </div>
@@ -242,11 +244,11 @@ export default function AddPlant() {
 
         {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Locatie</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.locationLabel}</label>
           <div className="flex gap-3">
             {([
-              { area: 'tuin' as const, label: 'Tuin', emoji: '🌿', hasMap: !!tuinMap },
-              { area: 'huis' as const, label: 'Huis', emoji: '🏠', hasMap: !!huisMap },
+              { area: 'tuin' as const, label: t.editPlant.garden, emoji: '🌿', hasMap: !!tuinMap },
+              { area: 'huis' as const, label: t.editPlant.house, emoji: '🏠', hasMap: !!huisMap },
             ]).map(({ area, label, emoji, hasMap }) => (
               <button
                 key={area}
@@ -261,7 +263,7 @@ export default function AddPlant() {
                 <span className="text-2xl">{emoji}</span>
                 <span>{label}</span>
                 {!hasMap && (
-                  <span className="text-[10px] text-text-muted/60">kaart binnenkort</span>
+                  <span className="text-[10px] text-text-muted/60">{t.editPlant.mapComingSoon}</span>
                 )}
               </button>
             ))}
@@ -271,7 +273,7 @@ export default function AddPlant() {
         {/* Pot size & Acquired */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">Potmaat (cm)</label>
+            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.potSizeLabel}</label>
             <input
               type="number"
               value={potSize}
@@ -281,7 +283,7 @@ export default function AddPlant() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">Verkregen</label>
+            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.acquiredLabel}</label>
             <input
               type="date"
               value={acquiredDate}
@@ -293,11 +295,11 @@ export default function AddPlant() {
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Notities</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.notesLabel}</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Houdt van indirect licht, van onderen water geven..."
+            placeholder={t.editPlant.notesPlaceholder}
             rows={2}
             className={`${inputClass} resize-none`}
           />
@@ -305,8 +307,8 @@ export default function AddPlant() {
 
         {/* Care Schedules */}
         <div>
-          <h2 className="text-lg font-bold mb-1">Verzorgingsschema</h2>
-          <p className="text-xs text-text-muted mb-3">Hoe vaak heeft deze plant verzorging nodig?</p>
+          <h2 className="text-lg font-bold mb-1">{t.editPlant.careScheduleTitle}</h2>
+          <p className="text-xs text-text-muted mb-3">{t.editPlant.careScheduleDesc}</p>
           <div className="space-y-2">
             {(Object.entries(CARE_TYPE_INFO) as [CareType, typeof CARE_TYPE_INFO[CareType]][]).map(([type, info]) => {
               const sched = schedules[type]
@@ -324,11 +326,11 @@ export default function AddPlant() {
                         className="w-5 h-5 rounded accent-primary"
                       />
                       <span className="text-lg">{info.icon}</span>
-                      <span className="font-medium text-sm">{info.label}</span>
+                      <span className="font-medium text-sm">{t.care[type as keyof typeof t.care]}</span>
                     </label>
                     {sched.enabled && (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-text-muted">elke</span>
+                        <span className="text-xs text-text-muted">{t.editPlant.everyLabel}</span>
                         <input
                           type="number"
                           min={1}
@@ -336,7 +338,7 @@ export default function AddPlant() {
                           onChange={(e) => setScheduleDays(type, parseInt(e.target.value) || 1)}
                           className="w-14 px-2 py-1 rounded-lg bg-bg border border-border text-center text-sm font-medium"
                         />
-                        <span className="text-xs text-text-muted">dagen</span>
+                        <span className="text-xs text-text-muted">{t.editPlant.daysLabel}</span>
                       </div>
                     )}
                   </div>
@@ -354,10 +356,10 @@ export default function AddPlant() {
           {submitting ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Toevoegen...
+              {t.editPlant.submitting}
             </span>
           ) : (
-            'Plant toevoegen 🌱'
+            <span>{t.addPlant.title + ' 🌱'}</span>
           )}
         </button>
       </form>

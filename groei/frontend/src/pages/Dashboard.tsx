@@ -282,8 +282,8 @@ export default function Dashboard() {
               }}
             />
 
-            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
-              Type
+          <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+              {t.mapSettings.typeLabel}
             </label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
               {(['outdoor', 'indoor'] as const).map((type) => (
@@ -651,7 +651,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
         </Link>
         <Link
           to={`/maps/${map.id}/settings`}
-          title="Instellingen"
+          title={t.mapSettings.pageTitle}
           style={{
             padding: '9px 14px',
             fontFamily: 'var(--font-heading)',

@@ -32,13 +32,13 @@ export function bucketColor(bucket: LightBucket): string {
   }
 }
 
-/** Dutch display label for each bucket. */
-export function bucketLabelNl(bucket: LightBucket): string {
+/** Display label for each bucket via i18n. Pass in a `useT()` result. */
+export function bucketLabel(bucket: LightBucket, t: { sun: { bucketFull: string; bucketPart: string; bucketBrightShade: string; bucketDeepShade: string } }): string {
   switch (bucket) {
-    case 'full':        return 'Volle zon'
-    case 'part':        return 'Halfschaduw'
-    case 'bright_shade': return 'Lichte schaduw'
-    case 'deep_shade':  return 'Diepe schaduw'
+    case 'full':        return t.sun.bucketFull
+    case 'part':        return t.sun.bucketPart
+    case 'bright_shade': return t.sun.bucketBrightShade
+    case 'deep_shade':  return t.sun.bucketDeepShade
   }
 }
 
