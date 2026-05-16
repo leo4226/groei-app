@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 import aiosqlite
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "groei.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "floreren.db")
 
 
 @asynccontextmanager

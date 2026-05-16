@@ -161,20 +161,14 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
 
     # ── Status counts ──
     total_row = await db.execute_fetchall(
-        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1"
+        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1 AND household_id = ?",
+        (account["household_id"],)
     )
     total = total_row[0]["n"] if total_row else 0
 
-    water_rows = await db.execute_fetchall("""
-        SELECT
-            SUM(CASE WHEN CAST(julianday('now') - julianday(cs.next_due) AS INTEGER) BETWEEN 1 AND 2 THEN 1 ELSE 0 END) as thirsty,
-            SUM(CASE WHEN CAST(julianday('now') - julianday(cs.next_due) AS INTEGER) >= 3 THEN 1 ELSE 0 END) as dry
-        FROM care_schedules cs
-        JOIN plants p ON cs.plant_id = p.id
-        WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
-    """, (account["household_id"],))
-    thirsty = int(water_rows[0]["thirsty"] or 0) if water_rows else 0
-    dry = int(water_rows[0]["dry"] or 0) if water_rows else 0
+    # Derived from the already-classified overdue list — always consistent with the task list
+    thirsty = sum(1 for t in overdue if t.care_type == 'water' and 1 <= t.days_overdue <= 2)
+    dry = sum(1 for t in overdue if t.care_type == 'water' and t.days_overdue >= 3)
 
     on_schedule_rows = await db.execute_fetchall("""
         SELECT COUNT(DISTINCT p.id) as n

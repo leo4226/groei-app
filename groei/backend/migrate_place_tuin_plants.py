@@ -6,7 +6,7 @@ that currently have no map placement (map_id IS NULL).
 import sqlite3, os, random, sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'groei.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), 'floreren.db')
 TUIN_LOCATION_ID = 1
 
 def run():

@@ -669,8 +669,29 @@ async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
         "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
         (watered_at, body.watered_by),
     )
+
+    # Mark all active water schedules as done
+    from services.scheduling import calculate_next_due
+    schedules = await db.execute_fetchall(
+        """SELECT cs.id, cs.interval_days, cs.season_adjust
+           FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1"""
+    )
+    today_str = date.today().isoformat()
+    updated = 0
+    for s in schedules:
+        next_due = calculate_next_due(
+            date.today(), s["interval_days"], s["season_adjust"]
+        )
+        await db.execute(
+            "UPDATE care_schedules SET last_done = ?, next_due = ? WHERE id = ?",
+            (today_str, str(next_due), s["id"]),
+        )
+        updated += 1
+
     await db.commit()
-    return {"watered_at": watered_at}
+    return {"watered_at": watered_at, "schedules_updated": updated}
 
 
 @router.get("/garden/water-log/latest")
