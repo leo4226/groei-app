@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-from care_types import CARE_TYPES, Environment, SEVERITY_COLORS
+from care_types import CARE_TYPES, Environment, SEVERITY_COLORS, WEATHER_COLDHEAT_COLORS
 
 
 Severity = Literal["urgent", "warning", "info"]
@@ -147,3 +147,78 @@ def _schedule_warning_for_type(
         icon=icon,
         color=SEVERITY_COLORS[severity],
     )
+
+
+def _weather_warnings_for_plant(
+    profile: dict, *, temp_data: dict | None
+) -> list[CareWarning]:
+    """Build weather-triggered warnings for one plant given its profile + week temp data."""
+    warnings: list[CareWarning] = []
+    if not temp_data:
+        return warnings
+
+    days = temp_data.get("days") or []
+    if not days:
+        return warnings
+    week_min = min(d["min"] for d in days)
+    week_max = max(d["max"] for d in days)
+
+    # Frost
+    frost = profile.get("frost_protect") or {}
+    if frost.get("active"):
+        t = frost.get("thresholds") or {}
+        min_temp = t.get("min_temp_c")
+        bring_in = t.get("bring_inside_below_c")
+        urgent_threshold = min_temp if min_temp is not None else bring_in
+        if urgent_threshold is not None and week_min <= urgent_threshold:
+            warnings.append(CareWarning(
+                care_type="frost_protect",
+                severity="urgent",
+                trigger="weather_event",
+                days_overdue=None,
+                message_nl=f"Vorst-bescherming — min {week_min:.0f}°C",
+                message_en=f"Frost protect — min {week_min:.0f}°C",
+                icon=CARE_TYPES["frost_protect"]["icon"],
+                color=WEATHER_COLDHEAT_COLORS["frost_protect_urgent"],
+            ))
+        elif bring_in is not None and week_min <= bring_in:
+            warnings.append(CareWarning(
+                care_type="frost_protect",
+                severity="warning",
+                trigger="weather_event",
+                days_overdue=None,
+                message_nl=f"Koud aankomend — min {week_min:.0f}°C",
+                message_en=f"Cold approaching — min {week_min:.0f}°C",
+                icon=CARE_TYPES["frost_protect"]["icon"],
+                color=WEATHER_COLDHEAT_COLORS["frost_protect_warning"],
+            ))
+
+    # Heat
+    heat = profile.get("heat_protect") or {}
+    if heat.get("active"):
+        t = heat.get("thresholds") or {}
+        max_temp = t.get("max_temp_c")
+        if max_temp is not None and week_max >= max_temp:
+            warnings.append(CareWarning(
+                care_type="heat_protect",
+                severity="urgent",
+                trigger="weather_event",
+                days_overdue=None,
+                message_nl=f"Hitte-stress — max {week_max:.0f}°C",
+                message_en=f"Heat stress — max {week_max:.0f}°C",
+                icon=CARE_TYPES["heat_protect"]["icon"],
+                color=WEATHER_COLDHEAT_COLORS["heat_protect_urgent"],
+            ))
+        elif max_temp is not None and week_max >= max_temp - 3:
+            warnings.append(CareWarning(
+                care_type="heat_protect",
+                severity="warning",
+                trigger="weather_event",
+                days_overdue=None,
+                message_nl=f"Hitte nadert — max {week_max:.0f}°C",
+                message_en=f"Heat approaching — max {week_max:.0f}°C",
+                icon=CARE_TYPES["heat_protect"]["icon"],
+                color=WEATHER_COLDHEAT_COLORS["heat_protect_warning"],
+            ))
+
+    return warnings

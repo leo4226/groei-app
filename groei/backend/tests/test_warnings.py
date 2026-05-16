@@ -3,6 +3,7 @@ from datetime import date
 from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
 from services.warnings import _schedule_warning_for_type
+from services.warnings import _weather_warnings_for_plant
 
 
 def test_dataclasses_have_expected_fields():
@@ -137,3 +138,56 @@ def test_schedule_warning_uses_care_type_icon():
     w = _schedule_warning_for_type("repot", next_due=date(2026, 5, 10), today=today)
     assert w.icon == "🪴"
     assert "Verpotten" in w.message_nl
+
+
+def test_frost_urgent_when_min_below_threshold():
+    profile = {
+        "frost_protect": {
+            "active": True,
+            "thresholds": {"min_temp_c": 0, "bring_inside_below_c": 5},
+        }
+    }
+    temp = {"days": [{"min": -2, "max": 8}, {"min": -1, "max": 10}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    assert any(w.care_type == "frost_protect" and w.severity == "urgent" for w in warns)
+
+
+def test_frost_warning_when_min_near_bring_inside():
+    profile = {
+        "frost_protect": {
+            "active": True,
+            "thresholds": {"min_temp_c": -5, "bring_inside_below_c": 5},
+        }
+    }
+    temp = {"days": [{"min": 3, "max": 12}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    cold = [w for w in warns if w.care_type == "frost_protect"]
+    assert len(cold) == 1
+    assert cold[0].severity == "warning"
+
+
+def test_no_frost_when_inactive():
+    profile = {"frost_protect": {"active": False, "thresholds": {"min_temp_c": 0}}}
+    temp = {"days": [{"min": -5, "max": 5}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    assert all(w.care_type != "frost_protect" for w in warns)
+
+
+def test_heat_urgent_when_max_above_threshold():
+    profile = {
+        "heat_protect": {
+            "active": True,
+            "thresholds": {"max_temp_c": 28},
+        }
+    }
+    temp = {"days": [{"min": 18, "max": 32}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    assert any(w.care_type == "heat_protect" and w.severity == "urgent" for w in warns)
+
+
+def test_weather_color_overrides_apply():
+    profile = {"frost_protect": {"active": True, "thresholds": {"min_temp_c": 0}}}
+    temp = {"days": [{"min": -3, "max": 5}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    cold = next(w for w in warns if w.care_type == "frost_protect")
+    assert cold.color == "#2544a0"   # cold-blue, not red
