@@ -275,3 +275,56 @@ def test_due_today_after_overdue():
     b = _mk("fertilize", "warning", "schedule_overdue", 1)
     sorted_ = _sort_warnings([a, b])
     assert sorted_[0].trigger == "schedule_overdue"
+
+
+from services.warnings import compute_plant_warnings
+
+
+def test_compute_indoor_plant_overdue_water():
+    plant = {
+        "id": 1, "map_type": "indoor", "container_id": 3, "ground_zone_id": None,
+        "care_thresholds": None,
+    }
+    schedules = [{"care_type": "water", "next_due": "2026-05-13"}]   # 3d ago
+    state = compute_plant_warnings(plant, schedules, weather=None, today=date(2026, 5, 16))
+    assert state.plant_id == 1
+    assert state.environment == "indoor"
+    assert state.top_warning.care_type == "water"
+    assert state.top_warning.severity == "urgent"
+    assert state.care_summary["water"].status == "overdue"
+
+
+def test_compute_outdoor_container_frost_beats_water():
+    plant = {
+        "id": 2, "map_type": "outdoor", "container_id": 1, "ground_zone_id": None,
+        "care_thresholds": '{"min_temp_c": 0, "bring_inside_below_c": 5}',
+    }
+    schedules = [{"care_type": "water", "next_due": "2026-05-13"}]   # urgent overdue
+    weather = {"temp": {"days": [{"min": -2, "max": 8}]}}
+    state = compute_plant_warnings(plant, schedules, weather=weather, today=date(2026, 5, 16))
+    assert state.top_warning.care_type == "frost_protect"
+    assert state.top_warning.trigger == "weather_event"
+
+
+def test_compute_no_warnings_returns_none_top():
+    plant = {
+        "id": 3, "map_type": "indoor", "container_id": 2, "ground_zone_id": None,
+        "care_thresholds": None,
+    }
+    schedules = [{"care_type": "water", "next_due": "2026-06-01"}]   # future
+    state = compute_plant_warnings(plant, schedules, weather=None, today=date(2026, 5, 16))
+    assert state.top_warning is None
+    assert state.warnings == []
+    assert state.care_summary["water"].status == "good"
+
+
+def test_compute_active_care_types_listed():
+    plant = {
+        "id": 4, "map_type": "indoor", "container_id": 1, "ground_zone_id": None,
+        "care_thresholds": None,
+    }
+    state = compute_plant_warnings(plant, [], weather=None, today=date(2026, 5, 16))
+    # Indoor plant has water, fertilize, prune, repot, mist, rotate, pest_check, dust active.
+    assert "water" in state.active_care_types
+    assert "mist" in state.active_care_types
+    assert "frost_protect" not in state.active_care_types

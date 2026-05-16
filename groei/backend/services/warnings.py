@@ -257,3 +257,89 @@ def _sort_warnings(warnings: list[CareWarning]) -> list[CareWarning]:
         days_key = -(w.days_overdue or 0)
         return (bucket, days_key, w.care_type)
     return sorted(warnings, key=key)
+
+
+def compute_plant_warnings(
+    plant: dict,
+    schedules: list[dict],
+    *,
+    weather: dict | None,
+    today: date,
+) -> PlantWarningState:
+    """Single entry point: derive a plant's canonical warning state.
+
+    Pure function — no DB writes, no side effects.
+
+    Args:
+        plant: dict-like row from `plants` table; expected keys include
+            id, map_type, container_id, ground_zone_id, care_thresholds.
+        schedules: list of dict-like care_schedules rows; expected keys include
+            care_type, next_due (ISO date string), last_done (optional).
+        weather: dict shaped like {"temp": {"days": [{"min": x, "max": y}, ...]}, ...},
+            or None if weather data is not available.
+        today: the date to evaluate against (caller passes for testability).
+
+    Returns:
+        Fully-populated PlantWarningState. top_warning is None if no warnings fire.
+    """
+    environment = _environment_for_plant(plant)
+    profile = _load_care_profile(plant.get("care_thresholds"), environment)
+
+    active_care_types = [ct for ct, entry in profile.items() if entry.get("active")]
+
+    # Schedule warnings
+    schedule_warnings: list[CareWarning] = []
+    by_type: dict[str, dict] = {s["care_type"]: dict(s) for s in schedules}
+    for care_type in active_care_types:
+        entry = profile[care_type]
+        if entry.get("active") and entry.get("interval_days") is not None:
+            sched = by_type.get(care_type)
+            if sched and sched.get("next_due"):
+                next_due = date.fromisoformat(sched["next_due"])
+                # NB: heating-season boost is honoured by the scheduler that writes next_due,
+                # so we don't recompute next_due here — we trust the stored value.
+                w = _schedule_warning_for_type(care_type, next_due=next_due, today=today)
+                if w is not None:
+                    schedule_warnings.append(w)
+
+    # Weather warnings
+    temp_data = (weather or {}).get("temp")
+    weather_warnings = _weather_warnings_for_plant(profile, temp_data=temp_data)
+
+    all_warnings = _sort_warnings(schedule_warnings + weather_warnings)
+    top = all_warnings[0] if all_warnings else None
+
+    # Care summary rollup (one row per active care type)
+    care_summary: dict[str, CareTypeStatus] = {}
+    for care_type in active_care_types:
+        sched = by_type.get(care_type)
+        last_done_iso = sched.get("last_done") if sched else None
+        last_done = date.fromisoformat(last_done_iso) if last_done_iso else None
+        next_due_iso = sched.get("next_due") if sched else None
+        if next_due_iso:
+            next_due = date.fromisoformat(next_due_iso)
+            days_until = (next_due - today).days
+            if days_until < 0:
+                status: CareStatus = "overdue"
+            elif days_until == 0:
+                status = "due_today"
+            else:
+                status = "good"
+        else:
+            days_until = None
+            status = "good"
+        care_summary[care_type] = CareTypeStatus(
+            care_type=care_type,
+            status=status,
+            days_until_due=days_until,
+            last_done=last_done,
+        )
+
+    return PlantWarningState(
+        plant_id=plant["id"],
+        environment=environment,
+        active_care_types=active_care_types,
+        warnings=all_warnings,
+        top_warning=top,
+        care_summary=care_summary,
+    )
