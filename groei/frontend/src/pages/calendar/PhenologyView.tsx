@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useFloreren } from '../store/useFloreren'
-import { fetchAlertSummary } from '../api/client'
-import type { Plant, Phenology, MonthPhenology } from '../types'
+import { useFloreren } from '../../store/useFloreren'
+import { fetchAlertSummary } from '../../api/client'
+import type { Plant, Phenology, MonthPhenology } from '../../types'
 
 const MONTH_NAMES_NL = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
@@ -17,7 +17,7 @@ interface PlantWithMonth extends Plant {
   _phenology?: Phenology
 }
 
-export default function PlanningCalendar() {
+export default function PhenologyView() {
   const plants = useFloreren(s => s.plants)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const currentMonth = new Date().getMonth() + 1
