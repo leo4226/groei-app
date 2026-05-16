@@ -9,10 +9,9 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-from care_types import CARE_TYPES, Environment as EnvLit
+from care_types import CARE_TYPES, Environment
 
 
-Environment = Literal["outdoor_ground", "outdoor_container", "indoor"]
 Severity = Literal["urgent", "warning", "info"]
 Trigger = Literal["schedule_overdue", "schedule_due_today", "weather_event", "seasonal"]
 CareStatus = Literal["good", "due_today", "overdue"]
@@ -48,7 +47,7 @@ class PlantWarningState:
     care_summary: dict[str, CareTypeStatus] = field(default_factory=dict)
 
 
-def _environment_for_plant(plant: dict) -> EnvLit:
+def _environment_for_plant(plant: dict) -> Environment:
     """Determine environment from map_type + container_id + ground_zone_id."""
     map_type = plant.get("map_type")
     if map_type == "indoor":
@@ -59,7 +58,7 @@ def _environment_for_plant(plant: dict) -> EnvLit:
     return "outdoor_ground"
 
 
-def _load_care_profile(care_thresholds_json: str | None, environment: EnvLit) -> dict:
+def _load_care_profile(care_thresholds_json: str | None, environment: Environment) -> dict:
     """Translate the legacy care_thresholds JSON into the new care-profile shape.
 
     This shim lets Phase A work against current production data without a

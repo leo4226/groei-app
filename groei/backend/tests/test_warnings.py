@@ -86,3 +86,13 @@ def test_load_care_profile_indoor_activates_indoor_types():
     assert profile["dust"]["active"] is True
     assert profile["frost_protect"]["active"] is False
     assert profile["heat_protect"]["active"] is False
+
+
+def test_load_care_profile_invalid_json_does_not_raise():
+    """Malformed JSON should yield a complete 10-key profile, not raise."""
+    profile = _load_care_profile("{not json", environment="outdoor_ground")
+    assert len(profile) == 10
+    assert "water" in profile
+    assert profile["water"]["active"] is True
+    # Thresholds dict present but with None values (legacy parse failed silently).
+    assert profile["frost_protect"]["thresholds"]["min_temp_c"] is None
