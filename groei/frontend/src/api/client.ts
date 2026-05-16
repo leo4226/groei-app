@@ -148,6 +148,13 @@ export const deleteLatestGardenFertilizing  = ()               => api<void>('DEL
 
 export const fetchAlertSummary     = ()                    => api<AlertSummary>('GET', '/alerts/summary')
 
+// ── Calendar ──
+
+import type { CalendarEvent } from '../pages/calendar/calendarTypes'
+
+export const fetchCalendarEvents   = (from: string, to: string) =>
+  api<CalendarEvent[]>('GET', '/calendar/events', { params: { from, to } })
+
 // ── Icons ──
 
 export const fetchIconCatalog      = ()                    => api<PlantIcon[]>('GET', '/icon-catalog')

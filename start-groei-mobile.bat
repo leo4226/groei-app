@@ -22,10 +22,10 @@ echo Stap 2/2: Backend starten (serveert ook de app)...
 cd /d %~dp0groei\backend
 echo.
 echo ============================================
-echo  App draait op: http://localhost:8000
+echo  App draait op: http://localhost:1415
 echo.
 echo  Open op je telefoon (zelfde WiFi):
-echo  http://192.168.1.139:8000
+echo  http://192.168.1.139:1415
 echo ============================================
 echo.
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+.venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 1415

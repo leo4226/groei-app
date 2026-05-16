@@ -15,7 +15,7 @@ import PlantDetail from './pages/PlantDetail'
 import EditPlant from './pages/EditPlant'
 import PlantCareDetail from './pages/PlantCareDetail'
 import Settings from './pages/Settings'
-import PlanningCalendar from './pages/PlanningCalendar'
+import PlanningCalendarPage from './pages/calendar/PlanningCalendarPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
 import MapSettingsPage from './pages/MapSettingsPage'
 
@@ -143,7 +143,7 @@ export default function App() {
             path="/calendar"
             element={
               <RequireAuth>
-                <PlanningCalendar />
+                <PlanningCalendarPage />
               </RequireAuth>
             }
           />

@@ -1,6 +1,6 @@
 {
-  "count": 112,
-  "iconCount": 112,
+  "count": 113,
+  "iconCount": 113,
   "categories": [
     {
       "id": "all",
@@ -1091,6 +1091,15 @@
       "file": "seed_bare.svg",
       "phase": "seed",
       "variant_of": "seed"
+    },
+    {
+      "id": "cortaderia_bare",
+      "name": "Cortaderia",
+      "sci": "Cortaderia selloana",
+      "cat": "grass",
+      "form": "bare",
+      "family": "",
+      "file": "cortaderia_bare.svg"
     }
   ]
 }

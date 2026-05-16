@@ -1,3 +1,4 @@
+import { useT } from '../context/LanguageContext'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
@@ -32,6 +33,7 @@ const ALERT_BG: Record<PlantAlert['severity'], string> = {
 
 function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Phenology | null }) {
   const [alerts, setAlerts] = useState<PlantAlert[]>([])
+  const t = useT()
 
   useEffect(() => {
     fetchPlantAlerts(plantId).then(setAlerts).catch(() => {})
@@ -43,7 +45,7 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
   const monthActions = phenology?.months.find(m => m.month === currentMonth)?.actions_nl ?? []
 
   return (
-    <Section title="Weeralerts">
+    <Section title={t.plantDetail.weatherAlerts}>
       <div className="space-y-2">
         {alerts.map((alert, i) => (
           <div
@@ -57,7 +59,7 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
       </div>
       {monthActions.length > 0 && (
         <div className="mt-2 rounded-xl border border-border bg-surface/50 p-3">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">Wat kun je nu doen?</p>
+          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">{t.plantDetail.whatCanYouDo}</p>
           <ul className="space-y-1">
             {monthActions.map((action, i) => (
               <li key={i} className="text-sm text-text flex gap-1.5">
@@ -73,6 +75,7 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
 }
 
 export default function PlantDetail() {
+  const t = useT()
   const { id }     = useParams<{ id: string }>()
   const navigate   = useNavigate()
   const plants = useFloreren(s => s.plants)
@@ -186,7 +189,7 @@ export default function PlantDetail() {
             onClick={handleDuplicate}
             disabled={duplicating}
             className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text-muted disabled:opacity-50"
-            title="Kopieer plant"
+            title={t.plantDetail.copyPlant}
           >
             {duplicating ? '…' : '⎘'}
           </button>
@@ -194,7 +197,7 @@ export default function PlantDetail() {
             to={`/plants/${plantId}/edit`}
             className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center no-underline text-primary font-semibold text-sm"
           >
-            Edit
+            {t.plantDetail.edit}
           </Link>
         </div>
       </div>
@@ -241,21 +244,21 @@ export default function PlantDetail() {
           <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
             <span className="text-lg">☀️</span>
             <span className="text-sm text-text-muted flex-1">
-              Zonuren: <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u/dag</span>
+              {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u/dag</span>
               {' · '}{sunFitInfo.profile.labelNl}
             </span>
             <span
               className="text-xs font-semibold px-2.5 py-1 rounded-full"
               style={{ background: SUN_FIT_COLORS[sunFitInfo.fit] + '20', color: SUN_FIT_COLORS[sunFitInfo.fit] }}
             >
-              {sunFitInfo.fit === 'good' ? '✓ Geschikt' : sunFitInfo.fit === 'partial' ? '~ Deels' : '⚠ Te weinig'}
+              {sunFitInfo.fit === 'good' ? t.plantDetail.fitGood : sunFitInfo.fit === 'partial' ? t.plantDetail.fitPartial : t.plantDetail.fitInsufficient}
             </span>
           </div>
         )}
 
         {/* Jaarkalender */}
         {plant.phenology && (
-          <Section title="Jaarkalender">
+          <Section title={t.plantDetail.yearCalendar}>
             <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
           </Section>
         )}
@@ -265,7 +268,7 @@ export default function PlantDetail() {
 
         {/* Care schedules */}
         {plant.care_schedules.length > 0 && (
-          <Section title="Verzorging">
+          <Section title={t.plantDetail.care}>
             {/* Quick action buttons */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
               {plant.care_schedules.map((sched) => {
@@ -293,20 +296,20 @@ export default function PlantDetail() {
                     <span className="text-xl shrink-0">{info?.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">{info?.label ?? sched.care_type}</p>
-                      <p className="text-xs text-text-muted">Elke {sched.interval_days} dagen</p>
+                      <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className={`text-sm font-semibold ${isOverdue ? 'text-overdue' : isDueToday ? 'text-due' : 'text-good'}`}>
-                        {isOverdue ? 'Te laat' : isDueToday ? 'Vandaag' : sched.next_due}
+                        {isOverdue ? t.plantDetail.overdue : isDueToday ? t.plantDetail.today : sched.next_due}
                       </p>
                       {sched.last_done_by_name && (
-                        <p className="text-[11px] text-text-muted">Door {sched.last_done_by_name}</p>
+                        <p className="text-[11px] text-text-muted">{t.plantDetail.byPerson.replace('{name}', sched.last_done_by_name)}</p>
                       )}
                     </div>
                     <button
                       onClick={() => handleDeleteSchedule(sched.id)}
                       className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
-                      title="Verwijder schema"
+                      title={t.plantDetail.deleteSchedule}
                     >
                       ✕
                     </button>
@@ -324,7 +327,7 @@ export default function PlantDetail() {
 
         {/* Care history */}
         {careLog.data && careLog.data.length > 0 && (
-          <Section title="Zorggeschiedenis">
+          <Section title={t.plantDetail.careHistory}>
             <div className="card divide-y divide-border/50">
               {careLog.data.map((entry) => {
                 const info = CARE_TYPE_INFO[entry.care_type as keyof typeof CARE_TYPE_INFO]
@@ -335,7 +338,7 @@ export default function PlantDetail() {
                       <p className="text-sm">
                         <span className="font-semibold">{entry.done_by_name}</span>
                         <span className="text-text-muted">
-                          {entry.skipped ? ' sloeg over: ' : ' deed: '}
+                          {entry.skipped ? ` ${t.plantDetail.skipped} ` : ` ${t.plantDetail.did} `}
                           {info?.label ?? entry.care_type}
                         </span>
                       </p>
@@ -356,7 +359,7 @@ export default function PlantDetail() {
           onClick={handleArchive}
           className="w-full py-2.5 text-sm text-overdue/70 border border-overdue/20 rounded-xl hover:bg-overdue/5 transition-colors mt-2"
         >
-          Archiveer plant
+          {t.plantDetail.archivePlant}
         </button>
       </div>
     </div>

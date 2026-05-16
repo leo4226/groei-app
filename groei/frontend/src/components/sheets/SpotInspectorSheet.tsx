@@ -1,4 +1,5 @@
 import type { SpotInspectorResult, SpeciesSuggestion } from '../../hooks/useSpotInspector'
+import { useT } from '../../context/LanguageContext'
 
 const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const MONTH_NAMES_NL = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function SpotInspectorSheet({ result, loading, onClose }: Props) {
+  const t = useT()
   const currentMonth = new Date().getMonth()
   const maxSun = Math.max(...result.sunByMonth, 1)
   const suitable = result.species.filter(s => s.tier === 'suitable')
@@ -24,9 +26,9 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 sticky top-0 bg-surface border-b border-border">
           <div>
-            <h2 className="font-semibold text-text">Plek inspectie</h2>
+            <h2 className="font-semibold text-text">{t.spotInspector.title}</h2>
             <p className="text-xs text-text-muted">
-              {result.sunByMonth[currentMonth].toFixed(1)}u zon nu · {suitable.length} geschikt
+              {result.sunByMonth[currentMonth].toFixed(1)}u zon nu · {suitable.length} {t.spotInspector.suitable.toLowerCase()}
             </p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text text-xl leading-none">✕</button>
@@ -35,7 +37,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
         <div className="px-5 pb-5">
           {/* Sun bar chart */}
           <div className="mt-3 mb-4">
-            <p className="text-xs font-medium text-text-muted mb-2">Zon per maand op deze plek</p>
+            <p className="text-xs font-medium text-text-muted mb-2">{t.spotInspector.sunPerMonth}</p>
             <div className="flex items-end gap-0.5 h-14">
               {result.sunByMonth.map((sun, i) => {
                 const height = (sun / maxSun) * 100
@@ -55,7 +57,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
           </div>
 
           {loading && (
-            <div className="text-center py-6 text-text-muted text-sm">Laden...</div>
+            <div className="text-center py-6 text-text-muted text-sm">{t.spotInspector.loading}</div>
           )}
 
           {!loading && result.error && (
@@ -66,7 +68,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
             <>
               {suitable.length > 0 && (
                 <section className="mb-4">
-                  <p className="text-xs font-semibold text-good mb-2">Geschikt ({suitable.length})</p>
+                  <p className="text-xs font-semibold text-good mb-2">{t.spotInspector.suitable} ({suitable.length})</p>
                   <div className="space-y-2">
                     {suitable.map(s => <SpeciesCard key={s.species_id} species={s} />)}
                   </div>
@@ -75,7 +77,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
 
               {marginal.length > 0 && (
                 <section className="mb-4">
-                  <p className="text-xs font-semibold text-due mb-2">Marginaal ({marginal.length})</p>
+                  <p className="text-xs font-semibold text-due mb-2">{t.spotInspector.marginal} ({marginal.length})</p>
                   <div className="space-y-2">
                     {marginal.map(s => <SpeciesCard key={s.species_id} species={s} />)}
                   </div>
@@ -84,7 +86,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
 
               {suitable.length === 0 && marginal.length === 0 && (
                 <p className="text-sm text-text-muted text-center py-6">
-                  Geen geschikte planten gevonden voor deze plek.
+                  {t.spotInspector.noPlantsFound}
                 </p>
               )}
             </>
@@ -96,6 +98,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
 }
 
 function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
+  const t = useT()
   const fmt = (months: number[]) => months.map(m => MONTH_NAMES_NL[m - 1]).join(', ')
 
   return (
@@ -107,28 +110,28 @@ function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
       <div className="flex flex-wrap gap-1 mt-1.5">
         {species.sow_window.length > 0 && (
           <span className="text-[9px] bg-green-500/15 text-green-700 px-1.5 py-0.5 rounded-full">
-            Zaai: {fmt(species.sow_window)}
+            {t.spotInspector.sow} {fmt(species.sow_window)}
           </span>
         )}
         {species.transplant_window.length > 0 && (
           <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">
-            Plant: {fmt(species.transplant_window)}
+            {t.spotInspector.plant} {fmt(species.transplant_window)}
           </span>
         )}
         {species.harvest_window.length > 0 && (
           <span className="text-[9px] bg-amber-500/15 text-amber-700 px-1.5 py-0.5 rounded-full">
-            Oogst: {fmt(species.harvest_window)}
+            {t.spotInspector.harvest} {fmt(species.harvest_window)}
           </span>
         )}
         {species.frost_sensitive && (
           <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full">
-            Vorstgevoelig
+            {t.spotInspector.frostSensitive}
           </span>
         )}
       </div>
       {species.avg_shortfall_hours > 0 && (
         <p className="text-[9px] text-due mt-1">
-          ~{species.avg_shortfall_hours.toFixed(1)}u/dag tekort in groeiseizoen
+          {t.spotInspector.deficitPerDay.replace('{hours}', species.avg_shortfall_hours.toFixed(1))}
         </p>
       )}
     </div>
