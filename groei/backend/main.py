@@ -28,7 +28,7 @@ app = FastAPI(title="Floreren", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["http://localhost:1414", "http://localhost:1415"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
