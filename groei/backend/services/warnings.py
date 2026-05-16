@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-from care_types import CARE_TYPES, Environment
+from care_types import CARE_TYPES, Environment, SEVERITY_COLORS
 
 
 Severity = Literal["urgent", "warning", "info"]
@@ -106,3 +106,44 @@ def _load_care_profile(care_thresholds_json: str | None, environment: Environmen
         profile["water"]["rainfall_override"] = True
 
     return profile
+
+
+def _schedule_warning_for_type(
+    care_type: str, *, next_due: date, today: date
+) -> CareWarning | None:
+    """Build a schedule-based warning for one care type, or None if not due yet."""
+    if next_due > today:
+        return None
+
+    days_overdue = (today - next_due).days
+    ct_def = CARE_TYPES[care_type]
+    icon = ct_def["icon"]
+    label_nl = ct_def["label_nl"]
+    label_en = ct_def["label_en"]
+
+    if days_overdue >= 3:
+        severity: Severity = "urgent"
+        trigger: Trigger = "schedule_overdue"
+        message_nl = f"{label_nl} — {days_overdue} dagen te laat"
+        message_en = f"{label_en} — {days_overdue} days overdue"
+    elif days_overdue >= 1:
+        severity = "warning"
+        trigger = "schedule_overdue"
+        message_nl = f"{label_nl} — {days_overdue} dag(en) te laat"
+        message_en = f"{label_en} — {days_overdue} day(s) overdue"
+    else:
+        severity = "warning"
+        trigger = "schedule_due_today"
+        message_nl = f"{label_nl} vandaag"
+        message_en = f"{label_en} due today"
+
+    return CareWarning(
+        care_type=care_type,
+        severity=severity,
+        trigger=trigger,
+        days_overdue=days_overdue,
+        message_nl=message_nl,
+        message_en=message_en,
+        icon=icon,
+        color=SEVERITY_COLORS[severity],
+    )

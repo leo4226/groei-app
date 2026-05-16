@@ -2,6 +2,7 @@
 from datetime import date
 from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
+from services.warnings import _schedule_warning_for_type
 
 
 def test_dataclasses_have_expected_fields():
@@ -96,3 +97,43 @@ def test_load_care_profile_invalid_json_does_not_raise():
     assert profile["water"]["active"] is True
     # Thresholds dict present but with None values (legacy parse failed silently).
     assert profile["frost_protect"]["thresholds"]["min_temp_c"] is None
+
+
+def test_schedule_overdue_3_days_is_urgent():
+    """Water 3+ days overdue → urgent."""
+    today = date(2026, 5, 16)
+    next_due = date(2026, 5, 13)   # 3 days ago
+    w = _schedule_warning_for_type("water", next_due=next_due, today=today)
+    assert w is not None
+    assert w.severity == "urgent"
+    assert w.trigger == "schedule_overdue"
+    assert w.days_overdue == 3
+
+
+def test_schedule_overdue_1_day_is_warning():
+    today = date(2026, 5, 16)
+    next_due = date(2026, 5, 15)
+    w = _schedule_warning_for_type("water", next_due=next_due, today=today)
+    assert w.severity == "warning"
+    assert w.days_overdue == 1
+
+
+def test_schedule_due_today():
+    today = date(2026, 5, 16)
+    w = _schedule_warning_for_type("water", next_due=today, today=today)
+    assert w.severity == "warning"
+    assert w.trigger == "schedule_due_today"
+    assert w.days_overdue == 0
+
+
+def test_schedule_future_returns_none():
+    today = date(2026, 5, 16)
+    next_due = date(2026, 5, 20)
+    assert _schedule_warning_for_type("water", next_due=next_due, today=today) is None
+
+
+def test_schedule_warning_uses_care_type_icon():
+    today = date(2026, 5, 16)
+    w = _schedule_warning_for_type("repot", next_due=date(2026, 5, 10), today=today)
+    assert w.icon == "🪴"
+    assert "Verpotten" in w.message_nl
