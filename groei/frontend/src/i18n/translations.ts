@@ -1,3 +1,9 @@
+// Note: as of 2026-05-16, the new /calendar MonthView ships Dutch-only strings
+// (matching the mockup at c:\Users\leon_\Downloads\Floreren Kalender.html).
+// English translations are pending — see
+// docs/plans/in-progress/2026-05-16-calendar-magazine-redesign.md section E4.
+// The Phenology view (Agenda tab) and the rest of the app are already bilingual.
+
 export type Translations = {
   locale: string
 

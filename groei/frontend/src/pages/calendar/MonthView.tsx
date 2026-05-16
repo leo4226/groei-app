@@ -6,7 +6,9 @@ import CalendarAgendaCard from './CalendarAgendaCard'
 import CalendarAlmanac from './CalendarAlmanac'
 import CalendarUpcoming from './CalendarUpcoming'
 import CalendarMoon from './CalendarMoon'
+import MobileAgendaList from './MobileAgendaList'
 import { useCalendarEvents } from './useCalendarEvents'
+import { useIsNarrow } from './useIsNarrow'
 import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
@@ -27,6 +29,7 @@ export default function MonthView({ viewMode, onSetView }: Props) {
   )
 
   const { events, loading, error } = useCalendarEvents(year, month1)
+  const isNarrow = useIsNarrow(1200)
 
   const filtered = useMemo(
     () => events.filter(e => activeTypes.has(e.type)),
@@ -63,21 +66,25 @@ export default function MonthView({ viewMode, onSetView }: Props) {
         taskCount={filtered.length} bloomCount={bloomCount} openCount={openCount}
       />
       <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
-      <main>
-        <CalendarGrid
-          year={year} month1={month1}
-          events={filtered}
-          todayIso={todayIso}
-          selectedIso={selectedIso}
-          onSelect={setSelectedIso}
-        />
-        <aside className="col-side">
-          <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} />
-          <CalendarAlmanac month1={month1} />
-          <CalendarUpcoming todayIso={todayIso} events={filtered} />
-          <CalendarMoon year={year} month1={month1} todayDay={now.getDate()} />
-        </aside>
-      </main>
+      {isNarrow ? (
+        <MobileAgendaList events={filtered} todayIso={todayIso} />
+      ) : (
+        <main>
+          <CalendarGrid
+            year={year} month1={month1}
+            events={filtered}
+            todayIso={todayIso}
+            selectedIso={selectedIso}
+            onSelect={setSelectedIso}
+          />
+          <aside className="col-side">
+            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} />
+            <CalendarAlmanac month1={month1} />
+            <CalendarUpcoming todayIso={todayIso} events={filtered} />
+            <CalendarMoon year={year} month1={month1} todayDay={now.getDate()} />
+          </aside>
+        </main>
+      )}
       {loading && <div style={{ padding: 16, opacity: 0.6 }}>Laden…</div>}
       {error && <div style={{ padding: 16, color: 'crimson' }}>Fout: {error}</div>}
     </>
