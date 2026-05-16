@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
-import { EVENT_TYPE_BY_ID } from './calendarTypes'
+import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
 import { DAY_LONG_NL, MONTH_SHORT_NL, dowMon } from './dateUtils'
+import { useT } from '../../context/LanguageContext'
 
 interface Props { events: CalendarEvent[]; todayIso: string }
 
 export default function MobileAgendaList({ events, todayIso }: Props) {
+  const t = useT()
   const grouped = useMemo(() => {
     const m = new Map<string, CalendarEvent[]>()
     events.forEach(e => {
@@ -17,7 +19,7 @@ export default function MobileAgendaList({ events, todayIso }: Props) {
   }, [events])
 
   if (grouped.length === 0) {
-    return <p style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>Geen taken deze maand.</p>
+    return <p style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t.calendar.noTasksRest}</p>
   }
 
   return (
@@ -32,7 +34,7 @@ export default function MobileAgendaList({ events, todayIso }: Props) {
               color: isToday ? '#2F5D3A' : '#1F2A1E',
             }}>
               {DAY_LONG_NL[dowMon(y, m, d)]} {d} {MONTH_SHORT_NL[m - 1]}
-              {isToday && <em style={{ marginLeft: 8, fontSize: 12, color: '#B2664A' }}>vandaag</em>}
+              {isToday && <em style={{ marginLeft: 8, fontSize: 12, color: '#B2664A' }}>{t.calendar.today}</em>}
             </h3>
             {list.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
@@ -43,9 +45,9 @@ export default function MobileAgendaList({ events, todayIso }: Props) {
                   borderLeft: `3px solid ${def?.color ?? '#2F5D3A'}`,
                   borderRadius: 4, marginBottom: 6,
                 }}>
-                  <span style={{ fontSize: 12, color: '#8A9482', minWidth: 64 }}>{def?.labelNl ?? e.type}</span>
+                  <span style={{ fontSize: 12, color: '#8A9482', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
                   <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{e.plant_name ?? '—'}</span>
-                  {e.overdue && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B2664A' }}>overtijd</span>}
+                  {e.overdue && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B2664A' }}>{t.calendar.overdueLabel}</span>}
                 </div>
               )
             })}

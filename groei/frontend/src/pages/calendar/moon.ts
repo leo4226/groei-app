@@ -39,3 +39,17 @@ export const MOON_PHASE_LABEL_NL: Record<MoonPhase['phase'], string> = {
   'last-quarter': 'Laatste kwartier',
   'waning-crescent': 'Afnemende sikkel',
 }
+
+import type { Translations } from '../../i18n/translations'
+
+/** Maps MoonPhase.phase to its translation key in t.calendar */
+export const MOON_PHASE_KEY: Record<MoonPhase['phase'], keyof Translations['calendar']> = {
+  'new': 'moonNew',
+  'waxing-crescent': 'moonWaxingCrescent',
+  'first-quarter': 'moonFirstQuarter',
+  'waxing-gibbous': 'moonWaxingGibbous',
+  'full': 'moonFull',
+  'waning-gibbous': 'moonWaningGibbous',
+  'last-quarter': 'moonLastQuarter',
+  'waning-crescent': 'moonWaningCrescent',
+}

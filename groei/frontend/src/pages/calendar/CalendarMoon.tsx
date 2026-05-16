@@ -1,9 +1,11 @@
-import { DAY_LETTERS_NL, isoWeek, dowMon } from './dateUtils'
-import { moonPhaseFor, MOON_PHASE_LABEL_NL } from './moon'
+import { isoWeek, dowMon } from './dateUtils'
+import { moonPhaseFor, MOON_PHASE_KEY } from './moon'
+import { useT } from '../../context/LanguageContext'
 
 interface Props { year: number; month1: number; todayDay: number }
 
 export default function CalendarMoon({ year, month1, todayDay }: Props) {
+  const t = useT()
   const dow = dowMon(year, month1, todayDay)
   const monStart = new Date(year, month1 - 1, todayDay - dow)
   const cells = Array.from({ length: 7 }).map((_, i) => {
@@ -18,9 +20,9 @@ export default function CalendarMoon({ year, month1, todayDay }: Props) {
   return (
     <section className="side-card">
       <div className="sc-head">
-        <div className="sc-eye">§ Maanstand</div>
-        <h2 className="sc-title">Week <em>{wk}</em>.</h2>
-        <p className="sc-sub">{MOON_PHASE_LABEL_NL[center.phase]}.</p>
+        <div className="sc-eye">{t.calendar.moonPhase}</div>
+        <h2 className="sc-title">{t.calendar.week} <em>{wk}</em>.</h2>
+        <p className="sc-sub">{t.calendar[MOON_PHASE_KEY[center.phase]]}.</p>
       </div>
       <div className="moon-strip">
         <div className="moon-row">
@@ -33,14 +35,14 @@ export default function CalendarMoon({ year, month1, todayDay }: Props) {
             const isNow = d.toDateString() === todayIso
             return (
               <div key={i} className={`moon-cell ${isNow ? 'now' : ''}`}>
-                <div className="day-letter">{DAY_LETTERS_NL[i]}</div>
+                <div className="day-letter">{t.calendar.dayLetters[i]}</div>
                 <div className="moon-dot" style={{ background: grad }} />
                 <div className="moon-date">{d.getDate()}</div>
               </div>
             )
           })}
         </div>
-        <p className="moon-phase-label">{MOON_PHASE_LABEL_NL[center.phase]}.</p>
+        <p className="moon-phase-label">{t.calendar[MOON_PHASE_KEY[center.phase]]}.</p>
       </div>
     </section>
   )

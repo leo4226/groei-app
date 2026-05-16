@@ -1,6 +1,7 @@
 import CalendarEvent from './CalendarEvent'
 import type { CalendarEvent as Ev } from './calendarTypes'
 import { moonPhaseFor } from './moon'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   day: number
@@ -18,6 +19,7 @@ interface Props {
 export default function CalendarDayCell({
   day, month0, year, otherMonth, weekend, isToday, isSelected, events, maxVisible, onClick,
 }: Props) {
+  const t = useT()
   const classes = [
     'day',
     otherMonth ? 'other-month' : '',
@@ -38,7 +40,7 @@ export default function CalendarDayCell({
       const grad = waxing
         ? `linear-gradient(90deg, #2A2A2A ${100 - pct}%, #F0E4C8 ${100 - pct}%)`
         : `linear-gradient(90deg, #F0E4C8 ${pct}%, #2A2A2A ${pct}%)`
-      const label = lit > 0.96 ? 'vol' : lit < 0.04 ? 'nieuw' : 'kwart'
+      const label = lit > 0.96 ? t.calendar.fullMoon! : lit < 0.04 ? t.calendar.newMoon! : t.calendar.quarterMoon!
       metaHtml = <div className="day-meta">{label} <span className="moon" style={{ background: grad }} /></div>
     }
   }
@@ -51,7 +53,7 @@ export default function CalendarDayCell({
       </div>
       <div className="ev-list">
         {shown.map(e => <CalendarEvent key={e.id} ev={e} />)}
-        {moreCount > 0 && <div className="ev-more">+ {moreCount} meer</div>}
+        {moreCount > 0 && <div className="ev-more">{t.calendar.more!(moreCount)}</div>}
       </div>
     </div>
   )

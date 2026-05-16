@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useFloreren } from '../../store/useFloreren'
 import { fetchAlertSummary } from '../../api/client'
+import { useT } from '../../context/LanguageContext'
 import type { Plant, Phenology, MonthPhenology } from '../../types'
 
 const MONTH_NAMES_NL = [
@@ -18,6 +19,7 @@ interface PlantWithMonth extends Plant {
 }
 
 export default function PhenologyView() {
+  const t = useT()
   const plants = useFloreren(s => s.plants)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const currentMonth = new Date().getMonth() + 1
@@ -60,7 +62,7 @@ export default function PhenologyView() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-text mb-4">Tuinkalender</h1>
+      <h1 className="text-xl font-bold text-text mb-4">{t.phenology.title}</h1>
 
       {/* Month selector */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-5 -mx-4 px-4">
@@ -94,7 +96,7 @@ export default function PhenologyView() {
       {grouped.needs_action.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-semibold text-due uppercase tracking-wider mb-2">
-            Actie vereist ({grouped.needs_action.length})
+            {t.phenology.actionRequired(grouped.needs_action.length)}
           </h3>
           <div className="space-y-2">
             {grouped.needs_action.map(plant => (
@@ -108,7 +110,7 @@ export default function PhenologyView() {
       {grouped.growing.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-semibold text-good uppercase tracking-wider mb-2">
-            Groeit actief ({grouped.growing.length})
+            {t.phenology.growingActive(grouped.growing.length)}
           </h3>
           <div className="space-y-1">
             {grouped.growing.map(plant => (
@@ -130,7 +132,7 @@ export default function PhenologyView() {
       {grouped.dormant.length > 0 && (
         <section className="mb-5">
           <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-            Rustperiode ({grouped.dormant.length})
+            {t.phenology.dormant(grouped.dormant.length)}
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {grouped.dormant.map(plant => (
@@ -144,7 +146,7 @@ export default function PhenologyView() {
 
       {grouped.needs_action.length === 0 && grouped.growing.length === 0 && grouped.dormant.length === 0 && (
         <p className="text-sm text-text-muted text-center py-8">
-          {plants.length === 0 ? 'Nog geen planten toegevoegd.' : 'Geen fenologiedata beschikbaar voor je planten.'}
+          {plants.length === 0 ? t.phenology.noPlants : t.phenology.noData}
         </p>
       )}
     </div>
@@ -152,6 +154,7 @@ export default function PhenologyView() {
 }
 
 function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: number; hasAlert: boolean }) {
+  const t = useT()
   const phenology = plant._phenology ?? plant.phenology
   const monthData = plant._monthData
   const hasSow = phenology?.sow_window?.includes(month)
@@ -169,17 +172,17 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
       <div className="flex gap-1.5 mt-2 flex-wrap">
         {hasSow && (
           <span className="text-xs bg-good/15 text-good px-2.5 py-0.5 rounded-full font-medium">
-            Zaai nu
+            {t.phenology.badgeSow}
           </span>
         )}
         {hasTransplant && (
           <span className="text-xs bg-primary/15 text-primary px-2.5 py-0.5 rounded-full font-medium">
-            Plant buiten
+            {t.phenology.badgeTransplant}
           </span>
         )}
         {hasHarvest && (
           <span className="text-xs bg-due/15 text-due px-2.5 py-0.5 rounded-full font-medium">
-            Oogstperiode
+            {t.phenology.badgeHarvest}
           </span>
         )}
       </div>

@@ -12,6 +12,7 @@ import { useIsNarrow } from './useIsNarrow'
 import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   viewMode: CalendarViewMode
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function MonthView({ viewMode, onSetView }: Props) {
+  const t = useT()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -85,8 +87,8 @@ export default function MonthView({ viewMode, onSetView }: Props) {
           </aside>
         </main>
       )}
-      {loading && <div style={{ padding: 16, opacity: 0.6 }}>Laden…</div>}
-      {error && <div style={{ padding: 16, color: 'crimson' }}>Fout: {error}</div>}
+      {loading && <div style={{ padding: 16, opacity: 0.6 }}>{t.common.loading}</div>}
+      {error && <div style={{ padding: 16, color: 'crimson' }}>{t.common.error}: {error}</div>}
     </>
   )
 }

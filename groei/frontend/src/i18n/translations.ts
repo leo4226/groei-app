@@ -75,6 +75,7 @@ export type Translations = {
       loading: string
     }
     comingSoon: string
+    columnType: string     // "Type" / "Type"
   }
 
   care: {
@@ -104,6 +105,38 @@ export type Translations = {
     failedDelete: string
     indoor: string
     outdoor: string
+  }
+
+  // ── Map settings page ───────────────────────────────────────────
+  mapSettings: {
+    pageTitle: string          // "Map settings"
+    nameLabel: string          // "Name"
+    namePlaceholder: string    // "Garden name..."
+    typeLabel: string          // "Type"
+    location: string           // "Location"
+    latLabel: string           // "Latitude"
+    lonLabel: string           // "Longitude"
+    latPlaceholder: string     // "e.g. 52.3715"
+    lonPlaceholder: string     // "e.g. 4.8499"
+    useCurrentLocation: string // "Use current location"
+    compassBearing: string     // "Compass bearing"
+    compassHint: string        // "Point the needle..."
+    dimensions: string         // "Dimensions"
+    dimensionsHint: string     // "Edit dimensions via the layout editor"
+    editLayout: string         // "Edit layout"
+    dangerZone: string         // "Danger zone"
+    deleteMap: string          // "Delete map"
+    deleteConfirm: string      // "Are you sure?..."
+    confirmDelete: string      // "Yes, delete"
+    deleting: string           // "Deleting..."
+    deleteFailed: string       // "Delete failed"
+    backToMaps: string         // "Back to maps"
+    locationUnavailable: string // "Location unavailable"
+    saving: string             // "Saving..."
+    saved: string              // "Saved"
+    notFound: string           // "Map not found"
+    outdoor: string            // "Garden"
+    indoor: string             // "House"
   }
 
   editor: {
@@ -151,10 +184,37 @@ export type Translations = {
       scaleCalibrate: string
       scaleHint: string
       delete: string
+      lightTree: string   // "Light tree" / "Lichte boom"
+      rotation: string    // "Rotation" / "Rotatie"
+      reset: string       // "Reset" / "Resetten"
     }
     loading: string
     notFound: string
     legend: string
+    legendLabels: Record<string, string>
+    mode: string          // "Mode" / "Modus"
+    legendZones: string   // "Zones" / "Zones"
+    legendObjects: string // "Objects" / "Objecten"
+    legendShadows: string // "Shadows" / "Schaduwen"
+    legendPlace: string   // "Place" / "Plaats"
+    shadowObject: string  // "Shadow" / "Schaduw"  // { container: "Pot / Tray" / "Pot / Bak", hardscape: "Garden object" / "Tuinobject", utility: "Utility" / "Nutsvoorziening" }
+    // Shadow caster properties panel
+    shadowCasterBuilding: string   // "Gebouw" / "Building"
+    shadowCasterTree: string       // "Boom" / "Tree"
+    shadowCasterName: string       // "Naam" / "Name"
+    rectPlaceholder: string        // "bijv. Buurman's huis" / "e.g. Neighbor's house"
+    circlePlaceholder: string      // "bijv. Eik, Spar..." / "e.g. Oak, Pine..."
+    shadowCasterPosition: string   // "Positie" / "Position"
+    shadowCasterSide: string       // "Kant" / "Side"
+    shadowCasterDistance: string   // "Afstand van tuin (m)" / "Distance from garden (m)"
+    shadowCasterThickness: string   // "Dikte (m)" / "Thickness (m)"
+    shadowCasterPosSize: string    // "Positie & grootte" / "Position & size"
+    shadowCasterRadius: string     // "Straal (m)" / "Radius (m)"
+    shadowDensity: string          // "Schaduwdichtheid" / "Shadow density"
+    denseTree: string              // "Dichte boom" / "Dense tree"
+    buildingWall: string           // "Gebouw / Muur" / "Building / Wall"
+    top: string                    // "Boven" / "Top"
+    bottom: string                 // "Onder" / "Bottom"
   }
 
   settings: {
@@ -184,6 +244,402 @@ export type Translations = {
     }
   }
 
+  // ── Sun / heatmap controls ──────────────────────────────────────
+  sun: {
+    live: string
+    heatmap: string
+    now: string
+    sunHoursIn: string  // "~{hours}u direct sunlight in {month}"
+    whatCanGrow: string  // "What can go here? →"
+    aboveHorizon: string  // "{deg}° above horizon"
+    belowHorizon: string  // "Below horizon"
+    calculating: string  // "Calculating..."
+    // Bucket labels (light quality heatmap)
+    bucketFull: string
+    bucketPart: string
+    bucketBrightShade: string
+    bucketDeepShade: string
+    // Heatmap layer toggle
+    layerSunHours: string
+    layerSkyOpenness: string
+    layerLightQuality: string
+    // Sun category labels for GrowHereSheet
+    sunCategoryFull: string    // "Full sun" / "Volle zon"
+    sunCategoryPartial: string // "Partial sun" / "Half zon"
+    sunCategoryShade: string   // "Shade" / "Schaduw"
+  }
+
+  // ── Grow-here sheet ─────────────────────────────────────────────
+  growHere: {
+    title: string  // "What can grow here?"
+    sunLabel: string  // "~{hours}u direct sunlight"
+    alreadyInGarden: string  // "Already in your garden"
+    suggestions: string  // "Suggestions"
+    aiSuggestions: string  // "AI Suggestions"
+    add: string  // "+ Add"
+    addLoading: string  // "..."
+    aiError: string  // "Could not load AI suggestions."
+    badgePerfect: string
+    badgeAcceptable: string
+    badgeGood: string
+    hoursPerDay: string  // "{hours}h / day" / "{hours}u / dag"
+  }
+
+  // ── Icon picker ─────────────────────────────────────────────────
+  iconPicker: {
+    title: string   // "Choose icon" / "Kies icoon"
+    searchPlaceholder: string  // "Search icons..." / "Zoek iconen..."
+    clear: string   // "Clear" / "Wissen"
+    noResults: string  // "No icons found" / "Geen iconen gevonden"
+  }
+
+  // ── Spot Inspector sheet ────────────────────────────────────────
+  spotInspector: {
+    title: string  // "Spot inspection"
+    loading: string  // "Loading..."
+    suitable: string  // "Suitable"
+    marginal: string  // "Marginal"
+    noPlantsFound: string  // "No suitable plants found for this spot."
+    sow: string  // "Sow:"
+    plant: string  // "Plant:"
+    harvest: string  // "Harvest:"
+    frostSensitive: string  // "Frost-sensitive"
+    deficitPerDay: string  // "~{hours}h/day deficit in growing season"
+    sunPerMonth: string  // "Sun per month at this spot"
+  }
+
+  // ── Phenology / Agenda ──────────────────────────────────────────
+  phenology: {
+    title: string            // "Agenda" / "Agenda"
+    actionRequired: (n: number) => string  // "{n} need(s) action" / "{n} vraagt om actie"
+    growingActive: (n: number) => string   // "{n} growing actively" / "{n} groeit actief"
+    dormant: (n: number) => string         // "{n} dormant" / "{n} in rust"
+    noPlants: string         // "No plants with a care schedule" / "Geen planten met een verzorgingsschema"
+    noData: string           // "No phenology data" / "Geen fenologie data"
+    badgeSow: string         // "Sow" / "Zaaien"
+    badgeTransplant: string  // "Transplant" / "Verplanten"
+    badgeHarvest: string     // "Harvest" / "Oogsten"
+  }
+
+  // ── Plant Quick Sheet ───────────────────────────────────────────
+  plantQuickSheet: {
+    close: string
+    moreInfo: string
+    copy: string  // "Copy plant"
+    duplicate: string
+    edit: string  // "Edit plant"
+    lock: string
+    unlock: string
+    remove: string
+    delete: string  // "Delete plant"
+    fixed: string  // "Fixed — cannot be moved"
+    careWater: string
+    careFertilize: string
+    carePrune: string
+    careRepot: string
+    careMist: string
+    careRotate: string
+    careProtectCold: string
+    careProtectHeat: string
+    overdue: (n: number) => string
+    today: string
+    overN: (n: number) => string
+    removeFrom: string
+    plantedIn: string
+    move: string
+    thisSpot: string
+    goodFit: string
+    partialFit: string
+    insufficientFit: string
+    water: string
+    fertilize: string
+    editPlant: string
+  }
+
+  // ── Plant picker sheet ──────────────────────────────────────────
+  plantPicker: {
+    close: string
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    addCustom: (name: string) => string
+    typeName: string
+    notInList: string
+    noResults: string
+    addAsNew: (name: string) => string
+  }
+
+  // ── Plant Detail page ──────────────────────────────────────────
+  plantDetail: {
+    weatherAlerts: string
+    copyPlant: string
+    yearCalendar: string
+    care: string
+    overdue: string
+    today: string
+    xDays: string  // "Every {n} days"
+    byPerson: string  // "by {name}"
+    deleteSchedule: string
+    careHistory: string
+    skipped: string  // "skipped:"
+    did: string  // "did:"
+    archivePlant: string
+    edit: string  // "Edit"
+    whatCanYouDo: string  // "What can you do now?"
+    sunHoursLabel: string  // "Sun hours:"
+    fitGood: string  // "✓ Good fit"
+    fitPartial: string  // "~ Partial"
+    fitInsufficient: string  // "⚠ Insufficient"
+  }
+
+  // ── Plant Care Detail page ─────────────────────────────────────
+  plantCare: {
+    light: string
+    water: string
+    floweringCalendar: string
+    characteristics: string
+    specifications: string
+    treeInspection: string
+    family: string
+    // Fallback / status
+    careGuide: string
+    noInfo: string
+    failedToLoad: string
+    retry: string
+    // Characteristics
+    evergreen: string
+    deciduous: string
+    avgHeight: string
+    flowers: string
+    toxicity: string
+    edible: string
+    yes: string
+    no: string
+    // Specs
+    stemDiameter: string
+    height: string
+    age: string
+    // Water context
+    precipitationYear: string
+    amsterdamSuitable: string
+    needsMoreRain: string
+    tooWet: string
+    // Rain chart
+    rainfallAmsterdam: string
+    total: string
+    // Source
+    dataVia: string
+    // Lookup maps
+    lightLabels: Record<string, string>
+    rainBadges: Record<string, string>
+  }
+
+  // ── Add / Edit Plant ────────────────────────────────────────────
+  addPlant: {
+    title: string  // "Add plant 🌱"
+    preview: string
+  }
+
+  editPlant: {
+    title: string            // "Edit plant"
+    addPhoto: string         // "Add photo"
+    plantPhoto: string       // "Plant photo"
+    tapToChangePhoto: string // "Tap to change photo"
+    previewAlt: string       // "Preview"
+    nameLabel: string        // "Name *"
+    speciesLabel: string     // "Botanical name"
+    speciesPlaceholder: string // "Monstera deliciosa"
+    iconLabel: string        // "Icon"
+    sunRequirementLabel: string // "Sun requirement"
+    locationLabel: string    // "Location"
+    garden: string           // "Garden"
+    house: string            // "House"
+    mapComingSoon: string    // "Map coming soon"
+    potSizeLabel: string     // "Pot size (cm)"
+    potSizePlaceholder: string // "15"
+    acquiredLabel: string    // "Acquired"
+    lastRepottedLabel: string // "Last repotted"
+    notesLabel: string       // "Notes"
+    notesPlaceholder: string // "Likes indirect light, water from below..."
+    saving: string           // "Saving..."
+    databasePrefill: string  // "Filled from plant database — adjust where needed"
+    careScheduleTitle: string // "Care schedule"
+    careScheduleDesc: string  // "How often does this plant need care?"
+    everyLabel: string        // "every"
+    daysLabel: string         // "days"
+    submitting: string        // "Adding..."
+    // Sun requirement profile labels
+    sunFull: string          // "Full sun"
+    sunPartial: string       // "Partial sun"
+    sunShade: string         // "Shade"
+  }
+
+  // ── Calendar page ───────────────────────────────────────────────
+  calendar: {
+    title: string  // "Calendar"
+    gardenYear: string  // "Garden Year"
+    subtitle: string  // "Everything your garden asks for - and everything it promises - ordered by day."
+    week: string
+    month: string
+    agenda: string
+    thisMonth: string  // "This month"
+    previousMonth: string
+    nextMonth: string
+    tasks: string  // "tasks"
+    taskSingular: string  // "task"
+    bloom: string  // "Bloom"
+    open: string  // "Open"
+    filter: string
+    heading: string  // "Calendar"
+    upcoming: string  // "Upcoming"
+    upcomingSubtitle: string  // "The coming days - sorted by date."
+    upcomingTitlePrefix: string  // "What" / "Wat " — text before the italic word
+    upcomingTitleEm: string     // "'s coming" / "komt" — the italic word
+    silence: string  // "— silence —"
+    moonPhase: string  // "Moon phase"
+    agendaSelectedDay: string  // "Agenda — selected day"
+    noTasksRest: string  // "No tasks — rest."
+    freeDay: string  // "Free day"
+    gardenManagesItself: string  // "The garden takes care of itself today."
+    today: string  // "today"
+    overdueLabel: string  // "Overdue"
+    editLabel: string  // "Edit"
+    // Moon short labels (used in day cells)
+    newMoon: string  // "new"
+    fullMoon: string  // "full"
+    quarterMoon: string  // "quarter"
+    more: (n: number) => string  // "+ {n} more"
+    // Moon phase long labels
+    moonNew: string
+    moonWaxingCrescent: string
+    moonFirstQuarter: string
+    moonWaxingGibbous: string
+    moonFull: string
+    moonWaningGibbous: string
+    moonLastQuarter: string
+    moonWaningCrescent: string
+    // Month labels (short)
+    monthsShort: [string, string, string, string, string, string, string, string, string, string, string, string]
+    // Day letters (header)
+    dayLetters: [string, string, string, string, string, string, string]
+    // Month labels (long)
+    monthsLong: [string, string, string, string, string, string, string, string, string, string, string, string]
+  }
+
+  // ── Add Object sheet ────────────────────────────────────────────
+  addObject: {
+    title: string  // "Add object"
+    containers: string
+    hardscape: string  // "Hardscape & Utility"
+    name: string
+    namePlaceholder: string  // "e.g. Front deck pot"
+    label: string
+    shape: string
+    shapeRound: string
+    shapeSquare: string
+    shapeRect: string
+    round: string
+    square: string
+    rect: string
+    dimensions: string  // "Dimensions (cm)"
+    diameter: string
+    width: string
+    depth: string
+    material: string
+    color: string
+    addToMap: string
+    adding: string  // "Adding..."
+    addPlant: string
+    hidePlantPicker: string
+    assignPlant: string
+    noStandalonePlants: string
+    plantsInside: (n: number) => string
+    remove: string
+    edit: string
+    editObject: string
+    removeObject: string
+    saving: string
+    save: string
+    cancel: string
+    archive: (name: string) => string
+  }
+
+  // ── Utility / event-type labels (used across calendar + care) ───
+  utility: {
+    eventWater: string
+    eventFertilize: string
+    eventPrune: string
+    eventRepot: string
+    eventMist: string
+    eventColdProtection: string
+    eventHeatProtection: string
+    eventBloom: string
+    eventSow: string
+    eventHarvest: string
+    eventScan: string
+    eventRain: string
+  }
+
+  // ── Plants page (list view) ──────────────────────────────
+  plantsPage: {
+    title: string           // "Planten Icons."
+    subtitle: string        // "Een botanische gids voor je plantencollectie — binnen en buiten."
+    subtitleEst: string     // "Mijn Tuin · Est. 2026"
+    countPlants: string     // "Planten" (plural label next to count)
+    countCategories: string // "Categorieën" (plural label next to count)
+    searchPlaceholder: string // "Zoek op naam of soort…"
+    addButton: string       // "+ Toevoegen"
+    filterLocation: string  // "Locatie"
+    filterType: string      // "Type"
+    filterForm: string      // "Vorm"
+    filterAll: string       // "Alle"
+    filterHouse: string     // "🏠 Huis"
+    filterGarden: string    // "🌿 Tuin"
+    alertBanner: string     // "⚠️ Planten met weeralerts"
+    alertShowAll: string    // "Alles tonen"
+    found: (n: number) => string      // "Gevonden: {n}"
+    showAll: (n: number) => string    // "Toon alle {n} planten"
+    sectionSearchResults: string      // "§ Zoekresultaten"
+    sectionGarden: string             // "§ De Tuin"
+    sectionHouse: string              // "§ Huis"
+    sectionCollection: string         // "§ De Collectie"
+    emptySearch: string               // "Niets gevonden in deze hoek van de tuin."
+    emptyNoPlants: string             // "Nog geen planten in deze collectie."
+    emptySearchHint: string           // "Probeer een andere zoekopdracht"
+    emptyNoPlantsHint: string         // "Voeg je eerste plant toe via + Toevoegen"
+  }
+
+  // ── Map page (garden/indoor view) ────────────────────────
+  mapPage: {
+    notFound: string          // "Map not found"
+    mapSettings: string       // "Kaart instellingen" (settings button tooltip)
+    labelShow: string         // "Toon namen"
+    labelHide: string         // "Verberg namen"
+    water: string             // "Bewater" (garden watering button)
+    fertilize: string         // "Bemest" (garden fertilize button)
+    sun: string               // "Zon"
+    inspect: string           // "Inspecteer"
+    pot: string               // "Pot"
+    plant: string             // "Plant"
+    saveLabel: string         // "Opslaan"
+    clearLabel: string        // "Wis"
+    lastWatered: (date: string) => string   // "Laatst bewaterd: {date}"
+    recordWatering: string                  // "Registreer tuin bewatering"
+    lastFertilized: (date: string) => string // "Laatst bemest: {date}"
+    recordFertilizing: string               // "Registreer tuin bemesting"
+    spotInspectorHint: string               // "Zet de zonkaart aan en tik op een plek in de tuin"
+    addPot: string                          // "Pot toevoegen"
+    deleted: (label: string) => string      // "Verwijderd: {label}"
+    undo: string                            // "Ongedaan maken"
+    soilDefaultName: string                 // "Grond"
+  }
+
+  // ── Map legend ──────────────────────────────────────────────────
+  mapLegend: {
+    attentionNeeded: string  // "Attention needed" / "Aandacht nodig"
+    allGood: string          // "All good" / "Alles goed"
+  }
+
   common: {
     loading: string
     notFound: string
@@ -192,5 +648,8 @@ export type Translations = {
     delete: string
     back: string
     error: string
+    saving: string       // "Saving..." / "Opslaan..."
+    saved: string        // "Saved" / "Opgeslagen"
+    deleting: string     // "Deleting..." / "Verwijderen..."
   }
 }

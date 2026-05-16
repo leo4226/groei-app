@@ -32,6 +32,21 @@ export const EVENT_TYPES: EventTypeDef[] = [
 export const EVENT_TYPE_BY_ID: Record<string, EventTypeDef | undefined> =
   Object.fromEntries(EVENT_TYPES.map(t => [t.id, t]))
 
+import type { Translations } from '../../i18n/translations'
+
+/** Maps EventTypeId to its translation key in t.utility */
+export const EVENT_TYPE_UTILITY_KEY: Record<EventTypeId, keyof Translations['utility']> = {
+  water: 'eventWater',
+  fertilize: 'eventFertilize',
+  prune: 'eventPrune',
+  bloom: 'eventBloom',
+  sow: 'eventSow',
+  repot: 'eventRepot',
+  harvest: 'eventHarvest',
+  scan: 'eventScan',
+  rain: 'eventRain',
+}
+
 export interface CalendarEvent {
   id: string
   date: string
