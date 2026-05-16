@@ -191,3 +191,48 @@ def test_weather_color_overrides_apply():
     warns = _weather_warnings_for_plant(profile, temp_data=temp)
     cold = next(w for w in warns if w.care_type == "frost_protect")
     assert cold.color == "#2544a0"   # cold-blue, not red
+
+
+from services.warnings import _is_heating_season, _apply_heating_boost
+
+
+def test_heating_season_in_january():
+    assert _is_heating_season(date(2026, 1, 15)) is True
+
+
+def test_heating_season_in_december():
+    assert _is_heating_season(date(2026, 12, 5)) is True
+
+
+def test_heating_season_in_march_through_31():
+    assert _is_heating_season(date(2026, 3, 31)) is True
+
+
+def test_heating_season_off_in_april():
+    assert _is_heating_season(date(2026, 4, 1)) is False
+
+
+def test_heating_season_off_in_july():
+    assert _is_heating_season(date(2026, 7, 15)) is False
+
+
+def test_heating_boost_shortens_interval_when_in_season():
+    """interval_days × heating_season_boost when in heating season → shorter effective interval.
+
+    Effective interval = interval / boost (boost > 1 means more frequent).
+    """
+    entry = {"interval_days": 7, "heating_season_boost": 1.5}
+    eff = _apply_heating_boost(entry, today=date(2026, 1, 15))
+    assert eff == round(7 / 1.5)  # ≈ 5
+
+
+def test_heating_boost_noop_off_season():
+    entry = {"interval_days": 7, "heating_season_boost": 1.5}
+    eff = _apply_heating_boost(entry, today=date(2026, 7, 15))
+    assert eff == 7
+
+
+def test_heating_boost_noop_when_field_missing():
+    entry = {"interval_days": 7}
+    eff = _apply_heating_boost(entry, today=date(2026, 1, 15))
+    assert eff == 7

@@ -9,7 +9,14 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
-from care_types import CARE_TYPES, Environment, SEVERITY_COLORS, WEATHER_COLDHEAT_COLORS
+from care_types import (
+    CARE_TYPES,
+    Environment,
+    HEATING_SEASON_END_MONTH,
+    HEATING_SEASON_START_MONTH,
+    SEVERITY_COLORS,
+    WEATHER_COLDHEAT_COLORS,
+)
 
 
 Severity = Literal["urgent", "warning", "info"]
@@ -222,3 +229,20 @@ def _weather_warnings_for_plant(
             ))
 
     return warnings
+
+
+def _is_heating_season(today: date) -> bool:
+    """True if `today` is in the NL heating season (Nov 1 – Mar 31 inclusive)."""
+    m = today.month
+    return m >= HEATING_SEASON_START_MONTH or m <= HEATING_SEASON_END_MONTH
+
+
+def _apply_heating_boost(profile_entry: dict, *, today: date) -> int:
+    """Return the effective interval_days, accounting for heating-season boost."""
+    base = profile_entry.get("interval_days")
+    if base is None:
+        return base
+    boost = profile_entry.get("heating_season_boost", 1.0)
+    if boost <= 1.0 or not _is_heating_season(today):
+        return base
+    return max(1, round(base / boost))
