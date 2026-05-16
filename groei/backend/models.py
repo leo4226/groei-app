@@ -535,3 +535,14 @@ class AccountOut(BaseModel):
     email: str
     name: str
     avatar: str | None = None
+
+
+class CalendarEventOut(BaseModel):
+    id: str                  # composite e.g. "schedule:42:water"
+    date: str                # ISO date YYYY-MM-DD
+    type: str                # 'water' | 'fertilize' | (more later)
+    plant_id: int | None
+    plant_name: str | None
+    plant_icon_variant: str | None
+    schedule_id: int | None
+    overdue: bool
