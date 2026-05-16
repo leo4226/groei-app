@@ -69,7 +69,7 @@ Every map has a `type: 'outdoor' | 'indoor'`:
 
 - The SVG `viewBox` comes from `map.viewbox` in the DB — never hardcode it.
 - The SVG scales to fill its container using `preserveAspectRatio="xMidYMid meet"` (letterbox, no rotation).
-- **No 90° CSS rotation.** The old landscape rotation hack is being eliminated. Do not reintroduce it.
+- On mobile, the SVG container uses a 90° CSS rotation (`rotate(-90deg) translateX(-100%)`) to present landscape maps in portrait. `screenToSVG()` handles this via `getScreenCTM()` — no manual rotation math needed.
 - Scale is `PX_PER_M = 46` (46 px = 1 m). This will become per-map; do not assume it is fixed.
 
 ### Coordinate system
@@ -78,7 +78,7 @@ SVG coordinates are the source of truth. `screenToSVG()` converts pointer events
 
 ### Shadow casters
 
-Currently hardcoded in `utils/gardenStructures.ts` for Leon's Amsterdam garden. This is a known limitation — shadow casting for other users' gardens is a future feature. Do not generalise shadow caster geometry without a plan.
+Shadow casters are derived per-map from canvas data via `deriveAllShadowCasters()` in `utils/gardenFromCanvas.ts`. The function combines fence casters, structure casters (both computed from zones), and per-map `shadowCasters` stored in canvas data. The editor supports adding/editing/deleting shadow casters per map. Legacy hardcoded constants in `gardenStructures.ts` (`SHADOW_CASTERS`, `GARDEN_CLIP`, `GARDEN_FLOOR`) are still imported by `SunDebugOverlay`, `heatmapCalc`, and `useSunPosition` — these are debug/legacy paths, not the primary shadow pipeline.
 
 ## New garden onboarding
 
@@ -92,8 +92,7 @@ Indoor maps only need a name and dimensions.
 
 ## Known issues
 
-- Plant/object placement on the canvas is sometimes unreliable — a placed item may not appear. Likely a coordinate mismatch. Investigate before touching placement logic.
-- Shadow geometry (`GARDEN_CLIP`, `SHADOW_CASTERS`) is hardcoded for Leon's garden and will break if treated as generic.
+- `heatmapCalc.ts`, `useSunPosition.ts`, and `SunDebugOverlay.tsx` still import hardcoded `SHADOW_CASTERS` from `gardenStructures.ts` — these should be migrated to use `deriveAllShadowCasters(canvasData)` for full per-map support.
 
 ## Users
 
