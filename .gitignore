@@ -1,2 +1,27 @@
 .DS_Store
 Thumbs.db
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Claude Code (machine-local settings)
+.claude/settings.local.json
+**/.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+
+# Local databases & backups
+*.db
+*.db.bak*
