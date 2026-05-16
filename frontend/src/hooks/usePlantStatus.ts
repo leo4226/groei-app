@@ -31,23 +31,20 @@ export function aggregatePlantStatuses(plants: MapPlant[]) {
   return counts
 }
 
-export type HaloStatus = 'freezing' | 'dry' | 'chilling' | 'thirsty' | null
+export type HaloStatus = 'freezing' | 'needs_care' | null
 
 export const HALO_COLORS: Record<NonNullable<HaloStatus>, string> = {
-  freezing: '#2544a0',
-  dry:      '#FF7A2E',
-  chilling: '#24e3dc',
-  thirsty:  '#FFC233',
+  freezing:  '#2544a0',
+  needs_care: '#FFC233',
 }
 
 export function getHaloStatus(plant: { care_status?: 'overdue' | 'due_today' | 'good' | null; temp_status?: TempStatus | null }): HaloStatus {
   const temp  = plant.temp_status  ?? ''
   const water = plant.care_status  ?? ''
-  if (temp  === 'freezing')   return 'freezing'
-  if (water === 'overdue')    return 'dry'
-  if (temp  === 'heatstress') return 'dry'
-  if (temp  === 'chilling')   return 'chilling'
-  if (water === 'due_today')  return 'thirsty'
+  // Weather alerts take priority (blue)
+  if (temp === 'freezing' || temp === 'chilling') return 'freezing'
+  // Any care need → amber (overdue, due today, heat stress — all one level)
+  if (water === 'overdue' || water === 'due_today' || temp === 'heatstress') return 'needs_care'
   return null
 }
 
@@ -58,12 +55,14 @@ export const SEVERITY_HALO_COLORS: Record<'urgent' | 'warning' | 'info', string>
 }
 
 /**
- * Returns the halo colour for a map plant marker based on its top_alert severity.
- * Falls back to the legacy getHaloStatus path if top_alert is absent (e.g. stale cache).
+ * Returns the halo colour for a map plant marker.
+ * Simplified to 2 colours: blue (weather alert) and amber (needs care).
+ * Falls back to top_alert severity when the plant is otherwise healthy.
  */
 export function getHaloColor(plant: MapPlant): string | null {
-  if (plant.top_alert) return SEVERITY_HALO_COLORS[plant.top_alert.severity]
-  // Legacy fallback — remove once all API responses include top_alert
   const legacy = getHaloStatus(plant)
-  return legacy ? HALO_COLORS[legacy] : null
+  if (legacy) return HALO_COLORS[legacy]
+  // Server-driven top_alert — only for info-level alerts on healthy plants
+  if (plant.top_alert) return SEVERITY_HALO_COLORS[plant.top_alert.severity]
+  return null
 }

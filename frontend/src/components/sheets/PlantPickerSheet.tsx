@@ -123,10 +123,18 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                   className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-bg
                              hover:bg-primary/10 active:scale-[0.97] transition-all text-center"
                 >
-                  <div
-                    className="w-8 h-8 rounded-md shrink-0"
-                    style={{ background: TYPE_COLOR[plant.type] ?? '#909090' }}
-                  />
+                  {plant.iconKey ? (
+                    <img
+                      src={`/api/icons/${plant.iconKey}.svg`}
+                      alt={plant.dutchName}
+                      className="w-8 h-8 object-contain"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-md shrink-0"
+                      style={{ background: TYPE_COLOR[plant.type] ?? '#909090' }}
+                    />
+                  )}
                   <span className="text-xs font-semibold text-text leading-tight line-clamp-2">
                     {plant.dutchName}
                   </span>

@@ -462,6 +462,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           {/* Plants layer on top */}
           <PlantsLayer
             plants={plants}
+            mapType={map.map_type as 'outdoor' | 'indoor'}
             dragPositions={dragPositions}
             draggingKey={dragKey}
             selectedId={selection.selectedId}

@@ -23,6 +23,7 @@ const SUITABILITY_RING_COLORS: Record<string, string> = {
 
 interface Props {
   plant: MapPlant
+  mapType: 'outdoor' | 'indoor'
   x: number
   y: number
   isDragging: boolean
@@ -36,11 +37,18 @@ interface Props {
 const PX_PER_CM = 0.46
 
 
-export default function PlantMarker({ plant, x, y, isDragging, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
   const counterRot = useMapRotation()
   const rot = counterRot ? `rotate(${counterRot})` : undefined
   const { badgeColor: color } = getCareDisplay(plant)
-  const haloColor = getHaloColor(plant)
+  const isOutdoor = mapType === 'outdoor'
+  const isContainer = plant.container_id != null
+  // Outdoor ground plants: only weather halos. Indoor or container plants: full care halos.
+  const haloColor = isOutdoor && !isContainer
+    ? (plant.temp_status === 'freezing' || plant.temp_status === 'chilling' || plant.temp_status === 'heatstress'
+        ? getHaloColor(plant)
+        : null)
+    : getHaloColor(plant)
   const alerts = plant.alerts ?? []
   if (!alerts.length && plant.top_alert) {
     alerts.push(plant.top_alert)
