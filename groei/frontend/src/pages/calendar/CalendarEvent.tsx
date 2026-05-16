@@ -5,9 +5,9 @@ export default function CalendarEvent({ ev }: { ev: Ev }) {
   const def = EVENT_TYPE_BY_ID[ev.type]
   const css = def?.cssClass ?? 'water'
   const iconSrc = ev.plant_icon_variant
-    ? `/icons/${ev.plant_icon_variant}.svg`
+    ? `/api/icons/${ev.plant_icon_variant}.svg`
     : ev.plant_id
-      ? '/icons/seed.svg'
+      ? '/api/icons/seed.svg'
       : null
 
   return (
