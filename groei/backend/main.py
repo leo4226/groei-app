@@ -15,7 +15,7 @@ except ImportError:
 from database import init_db
 from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
 from routers import plant_care, species, spots, icons
-from routers import admin, alerts, weed_catalog, weed_sightings, auth
+from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
 
 
 @asynccontextmanager
@@ -64,6 +64,7 @@ app.include_router(alerts.router, prefix="/api")
 app.include_router(weed_catalog.router, prefix="/api")
 app.include_router(weed_sightings.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(calendar.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
