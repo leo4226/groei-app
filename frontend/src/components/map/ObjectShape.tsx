@@ -151,10 +151,6 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
       const haloColor = getHaloColor(plant)
-      const alerts = plant.alerts ?? []
-      if (!alerts.length && plant.top_alert) {
-        alerts.push(plant.top_alert)
-      }
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Status halo — extends beyond pot outline to shine through */}
@@ -194,40 +190,6 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               <circle r={dotR} fill={dotColor} opacity={0.8} />
             )}
           </g>
-          {/* Alert badges — arc around top of plant */}
-          {alerts.length > 0 && alerts.map((a, i) => {
-            const count = alerts.length
-            const totalArc = Math.min(count * 30, 140)
-            const startDeg = -(totalArc / 2)
-            const step = count > 1 ? totalArc / (count - 1) : 0
-            const deg = startDeg + i * step
-            const rad = (deg * Math.PI) / 180
-            const orbitR = iconHalf + 4
-            const bx = orbitR * Math.sin(rad)
-            const by = -(orbitR * Math.cos(rad))
-            return (
-            <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
-              <circle
-                cx={bx}
-                cy={by}
-                r={6}
-                fill="white"
-                stroke={haloColor ?? '#888'}
-                strokeWidth={1.5}
-              />
-              <text
-                x={bx}
-                y={by}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={7}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {a.icon}
-              </text>
-            </g>
-            )
-          })}
         </g>
       )
     })

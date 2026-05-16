@@ -31,20 +31,22 @@ export function aggregatePlantStatuses(plants: MapPlant[]) {
   return counts
 }
 
-export type HaloStatus = 'freezing' | 'needs_care' | null
+export type HaloStatus = 'freezing' | 'heat' | 'needs_care' | null
 
 export const HALO_COLORS: Record<NonNullable<HaloStatus>, string> = {
   freezing:  '#2544a0',
+  heat:      '#ea0706',
   needs_care: '#FFC233',
 }
 
 export function getHaloStatus(plant: { care_status?: 'overdue' | 'due_today' | 'good' | null; temp_status?: TempStatus | null }): HaloStatus {
   const temp  = plant.temp_status  ?? ''
   const water = plant.care_status  ?? ''
-  // Weather alerts take priority (blue)
+  // Weather alerts take priority
   if (temp === 'freezing' || temp === 'chilling') return 'freezing'
-  // Any care need → amber (overdue, due today, heat stress — all one level)
-  if (water === 'overdue' || water === 'due_today' || temp === 'heatstress') return 'needs_care'
+  if (temp === 'heatstress') return 'heat'
+  // Any care need → amber (overdue, due today — all one level)
+  if (water === 'overdue' || water === 'due_today') return 'needs_care'
   return null
 }
 
@@ -56,7 +58,7 @@ export const SEVERITY_HALO_COLORS: Record<'urgent' | 'warning' | 'info', string>
 
 /**
  * Returns the halo colour for a map plant marker.
- * Simplified to 2 colours: blue (weather alert) and amber (needs care).
+ * Blue=cold/frost, red=heat stress, amber=care needed.
  * Falls back to top_alert severity when the plant is otherwise healthy.
  */
 export function getHaloColor(plant: MapPlant): string | null {
