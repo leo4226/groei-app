@@ -49,7 +49,10 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
         ? getHaloColor(plant)
         : null)
     : getHaloColor(plant)
-  // Alert badges: removed — halo is the single visual indicator
+  const alerts = plant.alerts ?? []
+  if (!alerts.length && plant.top_alert) {
+    alerts.push(plant.top_alert)
+  }
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
@@ -249,6 +252,41 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
         </g>
       )}
       </g>
+
+      {/* Alert badges — arc around top of plant */}
+      {alerts.length > 0 && alerts.map((a, i) => {
+        const count = alerts.length
+        const totalArc = Math.min(count * 30, 140) // degrees
+        const startDeg = -(totalArc / 2)
+        const step = count > 1 ? totalArc / (count - 1) : 0
+        const deg = startDeg + i * step
+        const rad = (deg * Math.PI) / 180
+        const orbitR = iconR + 5
+        const bx = orbitR * Math.sin(rad)
+        const by = -(orbitR * Math.cos(rad))
+        return (
+        <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
+          <circle
+            cx={bx}
+            cy={by}
+            r={7}
+            fill="white"
+            stroke={haloColor ?? '#888'}
+            strokeWidth={1.5}
+          />
+          <text
+            x={bx}
+            y={by}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={8}
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {a.icon}
+          </text>
+        </g>
+        )
+      })}
     </g>
   )
 }
