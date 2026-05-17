@@ -7,10 +7,10 @@ async def test_get_plant_warnings_returns_state(client, seeded_db, auth_header):
     """Plant with overdue water → endpoint returns top_warning."""
     # Minimal maps table for the join (conftest's schema doesn't include maps).
     await seeded_db.execute(
-        "CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, type TEXT, household_id INTEGER)"
+        "CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, map_type TEXT, household_id INTEGER)"
     )
     await seeded_db.execute(
-        "INSERT INTO maps (id, type, household_id) VALUES (1, 'indoor', 1)"
+        "INSERT INTO maps (id, map_type, household_id) VALUES (1, 'indoor', 1)"
     )
     await seeded_db.execute(
         """INSERT INTO plants (id, name, map_id, container_id, care_thresholds, household_id, is_active)
@@ -36,7 +36,7 @@ async def test_get_plant_warnings_returns_state(client, seeded_db, auth_header):
 async def test_get_plant_warnings_404_when_missing(client, seeded_db, auth_header):
     # Need the maps table to exist for the LEFT JOIN to parse.
     await seeded_db.execute(
-        "CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, type TEXT, household_id INTEGER)"
+        "CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, map_type TEXT, household_id INTEGER)"
     )
     await seeded_db.commit()
 

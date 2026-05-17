@@ -95,14 +95,14 @@ async def test_parity_for_representative_plants(seeded_db):
     # SCHEMA doesn't include it (warnings code joins on map_type).
     await seeded_db.execute(
         "CREATE TABLE IF NOT EXISTS maps ("
-        "  id INTEGER PRIMARY KEY, type TEXT, household_id INTEGER"
+        "  id INTEGER PRIMARY KEY, map_type TEXT, household_id INTEGER"
         ")"
     )
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO maps (id, type, household_id) VALUES (1, 'indoor', 1)"
+        "INSERT OR IGNORE INTO maps (id, map_type, household_id) VALUES (1, 'indoor', 1)"
     )
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO maps (id, type, household_id) VALUES (2, 'outdoor', 1)"
+        "INSERT OR IGNORE INTO maps (id, map_type, household_id) VALUES (2, 'outdoor', 1)"
     )
 
     # Plant 1 — indoor, overdue water, no thresholds.
@@ -147,7 +147,7 @@ async def test_parity_for_representative_plants(seeded_db):
 
     plant_rows = await seeded_db.execute_fetchall(
         "SELECT p.id, p.map_id, p.container_id, p.ground_zone_id, p.care_thresholds, "
-        "       m.type AS map_type "
+        "       m.map_type "
         "FROM plants p LEFT JOIN maps m ON p.map_id = m.id "
         "WHERE p.is_active = 1"
     )

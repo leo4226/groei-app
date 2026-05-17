@@ -83,3 +83,32 @@ The blocker for end-to-end success is a single mis-named column in
 `routers/warnings.py`, masked by an identically-mis-named test fixture. Phase
 A should not be considered "live-DB green" until that is patched and
 re-verified.
+
+## FIXED — 2026-05-17
+
+The schema-name mismatch is resolved.
+
+- `routers/warnings.py` now selects `m.map_type` (no alias needed).
+- `tests/test_warnings_endpoint.py` fixture `CREATE TABLE` + `INSERT` use
+  `map_type`.
+- `tests/test_warnings_parity.py` fixture `CREATE TABLE`, `INSERT`s, and the
+  `SELECT` join all use `map_type`.
+
+Verified against the live `floreren.db`:
+
+- Real `maps` schema columns: `id, name, slug, svg_file, viewbox, scale_info,
+  sort_order, created_at, canvas_data, map_type, lat, lon, bearing,
+  household_id, thumbnail_file`. No `type` column exists.
+- `pytest tests/test_warnings.py tests/test_warnings_endpoint.py
+  tests/test_warnings_parity.py`: **37 passed**.
+- `curl -H "Authorization: Bearer <token>"
+  http://127.0.0.1:8765/api/plants/2/warnings`: **HTTP 200**.
+  - `plant_id`: `2`
+  - `environment`: `"outdoor_container"`
+  - `active_care_types`: `["water", "fertilize", "frost_protect",
+    "heat_protect", "prune", "repot", "pest_check"]`
+  - `top_warning`: `null` (no warnings active; `water` is in good state with
+    `days_until_due: 2`, `last_done: 2026-05-16`)
+  - `care_summary`: all 7 active care types report `status: "good"`.
+
+Phase A is now live-DB green.

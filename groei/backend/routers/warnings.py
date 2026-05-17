@@ -66,7 +66,7 @@ async def get_plant_warnings(
 
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id, p.care_thresholds,
-                  m.type as map_type
+                  m.map_type
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
            WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
