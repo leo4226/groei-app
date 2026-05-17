@@ -1,4 +1,11 @@
 """HTTP endpoints for plant identification."""
+import base64
+import json
+import os
+import secrets
+from datetime import datetime
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -12,6 +19,10 @@ router = APIRouter(prefix="/plants", tags=["plant-id"])
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _MIN_CONFIDENCE_FOR_RESULT = 0.10
 _LOW_CONFIDENCE_UPPER = 0.30
+
+# Photos are served at /api/photos/<filename> from groei/backend/photos/
+_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "photos")
+_ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
 
 
 class CandidateOut(BaseModel):
@@ -84,3 +95,107 @@ async def identify_endpoint(
 
     low_conf = _MIN_CONFIDENCE_FOR_RESULT <= candidates[0].confidence < _LOW_CONFIDENCE_UPPER
     return IdentifyResponse(candidates=out, low_confidence=low_conf)
+
+
+class IdentifyCommitRequest(BaseModel):
+    scientific_name: str
+    photo_base64: str   # raw base64 OR a data: URL prefix
+
+
+class IdentifyCommitResponse(BaseModel):
+    species_id: int
+    name_nl_suggested: str
+    scientific_name: str
+    icon_key: str | None
+    care_thresholds: dict
+    photo_path: str
+
+
+def _strip_data_url(b64: str) -> str:
+    """Accept either raw base64 or a 'data:...;base64,XXX' data URL."""
+    if "," in b64 and b64.lstrip().startswith("data:"):
+        return b64.split(",", 1)[1]
+    return b64
+
+
+def _match_icon_key(scientific_name: str) -> str | None:
+    """Cheap icon match: lowercase genus → look for icon file. Returns icon_key or None."""
+    genus = scientific_name.strip().split(" ", 1)[0].lower()
+    if not genus:
+        return None
+    candidate = Path(_ICONS_DIR) / f"{genus}.svg"
+    if candidate.exists():
+        return genus
+    return None
+
+
+async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
+    """Trigger the existing species-enrichment pipeline. Returns species_id or None.
+
+    TASK 6: skeleton that always returns None.
+    TASK 7: will be replaced with the real Trefle/Claude pipeline call.
+    """
+    return None
+
+
+def _save_identify_photo(image_bytes: bytes) -> str:
+    """Save photo to _PHOTOS_DIR and return the /api/photos/<filename> URL."""
+    os.makedirs(_PHOTOS_DIR, exist_ok=True)
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    suffix = secrets.token_hex(3)
+    filename = f"identify_{timestamp}_{suffix}.jpg"
+    full = Path(_PHOTOS_DIR) / filename
+    full.write_bytes(image_bytes)
+    return f"/api/photos/{filename}"
+
+
+@router.post("/identify/commit", response_model=IdentifyCommitResponse)
+async def identify_commit(
+    body: IdentifyCommitRequest,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    # Look up species
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT id, common_name_nl, common_name_en, care_thresholds "
+            "FROM plant_species WHERE latin_name = ? LIMIT 1",
+            (body.scientific_name,),
+        )
+    except Exception:
+        rows = []
+
+    if rows:
+        row = dict(rows[0])
+        species_id = row["id"]
+        name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
+        thresholds_raw = row["care_thresholds"]
+        thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
+    else:
+        species_id = await _enrich_species_if_missing(db, body.scientific_name)
+        if species_id is None:
+            raise HTTPException(status_code=404, detail="Soort niet gevonden")
+        re_rows = await db.execute_fetchall(
+            "SELECT common_name_nl, common_name_en, care_thresholds FROM plant_species WHERE id = ?",
+            (species_id,),
+        )
+        row = dict(re_rows[0])
+        name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
+        thresholds_raw = row["care_thresholds"]
+        thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
+
+    # Decode + save the photo
+    try:
+        image_bytes = base64.b64decode(_strip_data_url(body.photo_base64))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
+    photo_path = _save_identify_photo(image_bytes)
+
+    return IdentifyCommitResponse(
+        species_id=species_id,
+        name_nl_suggested=name_nl,
+        scientific_name=body.scientific_name,
+        icon_key=_match_icon_key(body.scientific_name),
+        care_thresholds=thresholds,
+        photo_path=photo_path,
+    )
