@@ -52,6 +52,8 @@ export default function AddPlant() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [sownDate, setSownDate] = useState('')
+  const [phase, setPhase] = useState('established')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
   const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
@@ -129,6 +131,8 @@ export default function AddPlant() {
         icon_key: iconKey ?? undefined,
         plant_type: isFromDatabase ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type) : undefined,
         sun_requirement: sunRequirement ?? undefined,
+        phase: phase as any,
+        sown_date: sownDate || undefined,
         care_schedules: careSchedules,
       })
 
@@ -212,6 +216,27 @@ export default function AddPlant() {
           <IconPicker value={iconKey} onChange={setIconKey} />
         </div>
 
+        {/* Growth phase */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.growthPhaseLabel}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {(['seed', 'sprout', 'seedling', 'young', 'established'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPhase(p)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                  phase === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:border-text-muted'
+                }`}
+              >
+                {t.editPlant[`phase${p.charAt(0).toUpperCase() + p.slice(1)}` as keyof typeof t.editPlant] as string}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {isFromDatabase && (
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
             <span className="text-base">📋</span>
@@ -291,6 +316,17 @@ export default function AddPlant() {
               className={inputClass}
             />
           </div>
+        </div>
+
+        {/* Sown date */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
+          <input
+            type="date"
+            value={sownDate}
+            onChange={(e) => setSownDate(e.target.value)}
+            className={inputClass}
+          />
         </div>
 
         {/* Notes */}

@@ -6,9 +6,9 @@ export const nl: Translations = {
   nav: {
     home: 'Home',
     plants: 'Planten',
+    maps: 'Kaart',
     calendar: 'Kalender',
     settings: 'Instellingen',
-    add: 'Voeg toe',
   },
 
   dashboard: {
@@ -513,6 +513,13 @@ export const nl: Translations = {
     sunFull: 'Volle zon',
     sunPartial: 'Half zon',
     sunShade: 'Schaduw',
+    growthPhaseLabel: 'Groeifase',
+    sownDateLabel: 'Zaai datum',
+    phaseSeed: 'Zaad',
+    phaseSprout: 'Kiem',
+    phaseSeedling: 'Zaailing',
+    phaseYoung: 'Jonge plant',
+    phaseEstablished: 'Volwassen',
   },
 
   // ── Calendar page ────────────────────────────────────────

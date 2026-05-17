@@ -45,11 +45,12 @@ export interface Plant {
   is_active: boolean
   is_locked: boolean
   created_at: string | null
+  sown_date: string | null
   sun_requirement: string | null
   plant_type: string | null
   icon_key: string | null
   icon_requested: boolean
-  phase: 'seed' | 'seedling' | 'mature'
+  phase: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -136,7 +137,8 @@ export interface PlantCreateInput {
   sun_requirement?: string
   plant_type?: string
   icon_key?: string
-  phase?: 'seed' | 'seedling' | 'mature'
+  phase?: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+  sown_date?: string
   care_schedules: CareScheduleInput[]
 }
 

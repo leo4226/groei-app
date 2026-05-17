@@ -52,7 +52,8 @@ class PlantCreate(BaseModel):
     sun_requirement: str | None = None  # 'full_sun' | 'partial_sun' | 'shade'
     plant_type: str | None = None  # 'tree' | 'shrub' | 'grass' | 'herb' | 'flower' | etc.
     icon_key: str | None = None   # icon filename without extension, e.g. 'oak', 'raspberry'
-    phase: str = 'mature'          # 'seed' | 'seedling' | 'mature'
+    phase: str = 'established'    # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+    sown_date: date | None = None
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -69,7 +70,8 @@ class PlantUpdate(BaseModel):
     plant_type: str | None = None
     icon_key: str | None = None
     icon_requested: bool | None = None   # None = don't change
-    phase: str | None = None             # 'seed' | 'seedling' | 'mature'
+    phase: str | None = None             # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+    sown_date: date | None = None
 
 
 class CareScheduleOut(BaseModel):
@@ -110,7 +112,8 @@ class PlantOut(BaseModel):
     plant_type: str | None = None
     icon_key: str | None = None
     icon_requested: bool = False
-    phase: str = 'mature'
+    phase: str = 'established'
+    sown_date: str | None = None
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []

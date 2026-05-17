@@ -53,6 +53,10 @@ async def apply(db):
         await db.execute("ALTER TABLE plants ADD COLUMN species_id INTEGER REFERENCES plant_species(id)")
     if "care_thresholds" not in cols:
         await db.execute("ALTER TABLE plants ADD COLUMN care_thresholds TEXT")
+    if "phase" not in cols:
+        await db.execute("ALTER TABLE plants ADD COLUMN phase TEXT DEFAULT 'established'")
+    if "sown_date" not in cols:
+        await db.execute("ALTER TABLE plants ADD COLUMN sown_date TEXT")
 
     # ── plant_species: care_thresholds ──
     sp_cols = {row[1] for row in await db.execute_fetchall("PRAGMA table_info(plant_species)")}
