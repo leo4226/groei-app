@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
+import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
 
 const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
@@ -21,36 +22,65 @@ import IconPicker from '../components/IconPicker'
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
 
+type AddPlantLocState = {
+  from?: 'identify' | 'manual' | 'pick'
+  prefill?: LocalPlant | { name: string } | IdentifyCommitResult
+} | null
+
+function isIdentifyPrefill(p: unknown): p is IdentifyCommitResult {
+  return !!p && typeof p === 'object' && 'name_nl_suggested' in (p as Record<string, unknown>)
+}
+
 export default function AddPlant() {
   const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
-  const prefill = location.state?.prefill as LocalPlant | { name: string } | undefined
-  const isFromDatabase = !!(prefill && 'latinName' in prefill)
+  const locState = (location.state ?? null) as AddPlantLocState
+  const prefill = locState?.prefill
+  const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
+  const isFromIdentify = isIdentifyPrefill(prefill)
   const { locations, maps, addPlant, uploadPhoto } = useFloreren()
 
   const [name, setName] = useState(
     prefill
-      ? 'latinName' in prefill
-        ? prefill.dutchName
-        : prefill.name
+      ? isIdentifyPrefill(prefill)
+        ? prefill.name_nl_suggested
+        : 'latinName' in prefill
+          ? prefill.dutchName
+          : prefill.name
       : ''
   )
   const [species, setSpecies] = useState(
-    prefill && 'latinName' in prefill ? prefill.latinName : ''
+    prefill
+      ? isIdentifyPrefill(prefill)
+        ? prefill.scientific_name
+        : 'latinName' in prefill
+          ? prefill.latinName
+          : ''
+      : ''
   )
   const [locationId, setLocationId] = useState<number | undefined>()
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
   const [notes, setNotes] = useState('')
   const [sunRequirement, setSunRequirement] = useState<string | null>(
-    prefill && 'latinName' in prefill ? (prefill as LocalPlant).sunRequirement : null
+    prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
+      ? (prefill as LocalPlant).sunRequirement
+      : null
   )
   const [iconKey, setIconKey] = useState<string | null>(
-    prefill && 'latinName' in prefill ? (prefill as LocalPlant).iconKey ?? null : null
+    prefill
+      ? isIdentifyPrefill(prefill)
+        ? prefill.icon_key ?? null
+        : 'latinName' in prefill
+          ? (prefill as LocalPlant).iconKey ?? null
+          : null
+      : null
   )
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(
+    isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
+  )
   const [submitting, setSubmitting] = useState(false)
   const [sownDate, setSownDate] = useState('')
   const [phase, setPhase] = useState('established')
@@ -149,6 +179,64 @@ export default function AddPlant() {
   }
 
   const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+
+  // Entry-choice screen: shown when the user lands on Add Plant without a prior path choice.
+  if (locState?.from == null) {
+    return (
+      <div className="px-4 pt-6 pb-8">
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
+          >
+            ←
+          </button>
+          <h1 className="text-2xl font-extrabold">{t.addPlant.title}</h1>
+        </div>
+        <div className="flex flex-col gap-3 max-w-md mx-auto">
+          <button
+            type="button"
+            onClick={() => navigate('/identify')}
+            className="bg-green-700 text-white p-4 rounded-lg text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📸</span>
+              <div>
+                <div className="font-medium">{t.addPlant.entry.identify}</div>
+                <div className="text-xs opacity-85">{t.addPlant.entry.identifySubtitle}</div>
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(location.pathname, { state: { from: 'pick' }, replace: true })}
+            className="card p-4 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔍</span>
+              <div>
+                <div className="font-medium">{t.addPlant.entry.pick}</div>
+                <div className="text-xs text-text-muted">{t.addPlant.entry.pickSubtitle}</div>
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(location.pathname, { state: { from: 'manual' }, replace: true })}
+            className="card p-4 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">✏️</span>
+              <div>
+                <div className="font-medium">{t.addPlant.entry.manual}</div>
+                <div className="text-xs text-text-muted">{t.addPlant.entry.manualSubtitle}</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 pt-6 pb-8">
