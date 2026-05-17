@@ -55,7 +55,7 @@ export function IdentifyPlantPage() {
     setStep({ kind: 'enriching' })
     try {
       const enriched = await commitIdentification(candidate.scientific_name, capturedPhotoDataUrl)
-      navigate('/plant/add', { state: { prefill: enriched, from: 'identify' } })
+      navigate('/plants/add', { state: { prefill: enriched, from: 'identify' } })
     } catch {
       setStep({
         kind: 'error',
@@ -71,7 +71,7 @@ export function IdentifyPlantPage() {
   }
 
   function manualFallback() {
-    navigate('/plant/add', { state: { from: 'manual' } })
+    navigate('/plants/add', { state: { from: 'manual' } })
   }
 
   function retry() {
