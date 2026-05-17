@@ -480,6 +480,46 @@ export const nl: Translations = {
   addPlant: {
     title: 'Plant toevoegen 🌱',
     preview: 'Preview',
+    entry: {
+      identify: 'Identificeer met foto',
+      identifySubtitle: 'Snelste — laat AI het type herkennen',
+      pick: 'Kies uit lijst',
+      pickSubtitle: 'Browse onze plantenbibliotheek',
+      manual: 'Handmatig invullen',
+      manualSubtitle: 'Ik weet zelf wat het is',
+    },
+  },
+
+  // ── Plant identification flow ────────────────────────────
+  identify: {
+    camera: {
+      title: 'Maak een foto',
+      capture: 'Foto maken',
+      cancel: 'Annuleren',
+      noAccess: 'Geen toegang tot camera',
+    },
+    identifying: 'Identificeren...',
+    enriching: 'Bezig met opzoeken...',
+    results: {
+      title: 'Mogelijke matches',
+      confidence: 'zekerheid',
+      poweredBy: 'powered by Pl@ntNet',
+      choose: 'Kies deze',
+    },
+    lowConfidence: 'Lage zekerheid — controleer de resultaten zorgvuldig',
+    noMatch: {
+      title: 'Geen match gevonden',
+      body: 'Probeer een andere foto of vul de plant handmatig in.',
+      retry: 'Opnieuw proberen',
+      manualFallback: 'Handmatig invullen',
+    },
+    errorOffline: 'Identificatie werkt niet zonder internet',
+    errorService: 'Kon niet verbinden met identificatieservice',
+    errorQuota: 'Identificatie tijdelijk niet beschikbaar (dagelijkse limiet)',
+    privacy: {
+      notice: "Foto's worden naar Pl@ntNet gestuurd voor identificatie.",
+      ack: 'OK, begrepen',
+    },
   },
 
   editPlant: {
