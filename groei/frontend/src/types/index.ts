@@ -420,3 +420,28 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; def
   protect_cold: { label: 'Protect Cold', icon: '🧤', defaultIndoor: 0,   defaultOutdoor: 0 },
   protect_heat: { label: 'Protect Heat', icon: '🧴', defaultIndoor: 0,   defaultOutdoor: 0 },
 }
+
+// ── Plant identification (Pl@ntNet) ──
+
+export type PlantIdCandidate = {
+  scientific_name: string
+  common_names_nl: string[]
+  common_names_en: string[]
+  confidence: number
+  species_id: number | null
+  thumbnail_url: string | null
+}
+
+export type IdentifyResponse = {
+  candidates: PlantIdCandidate[]
+  low_confidence: boolean
+}
+
+export type IdentifyCommitResult = {
+  species_id: number
+  name_nl_suggested: string
+  scientific_name: string
+  icon_key: string | null
+  care_thresholds: Record<string, unknown>
+  photo_path: string
+}
