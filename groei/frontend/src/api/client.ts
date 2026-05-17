@@ -182,3 +182,20 @@ export const fetchAdminAccounts = () => api<AdminAccount[]>('GET', '/admin/accou
 
 export const fetchGrowHereSuggestions = (sunHours: number, selectedMonth: number, existingPlants: string[]) =>
   api<GrowHereResponse>('POST', '/garden/grow-here', { body: { sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants } })
+
+// ── Plant identification (Pl@ntNet) ──
+
+export async function identifyPlant(imageBlob: Blob): Promise<import('../types').IdentifyResponse> {
+  const form = new FormData()
+  form.append('image', imageBlob, 'plant.jpg')
+  return api<import('../types').IdentifyResponse>('POST', '/plants/identify', { form })
+}
+
+export async function commitIdentification(
+  scientificName: string,
+  photoBase64: string,
+): Promise<import('../types').IdentifyCommitResult> {
+  return api<import('../types').IdentifyCommitResult>('POST', '/plants/identify/commit', {
+    body: { scientific_name: scientificName, photo_base64: photoBase64 },
+  })
+}
