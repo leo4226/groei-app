@@ -33,13 +33,21 @@ _PLANTNET_URL = "https://my-api.plantnet.org/v2/identify/all"
 
 
 async def _post_plantnet(image_bytes: bytes, organs: list[str], api_key: str) -> httpx.Response:
-    """Single seam for the HTTP call — patchable in tests."""
+    """Single seam for the HTTP call — patchable in tests.
+
+    Note: httpx 0.28 on Python 3.14 raises "Attempted to send a sync request
+    with an AsyncClient instance" when files are passed as a list-of-tuples;
+    the dict form below works. v1 only sends one image and one organ value,
+    so dict-keyed form is sufficient. Multi-image / multi-organ would need
+    a manually-constructed multipart body and is out of scope.
+    """
+    primary_organ = organs[0] if organs else "auto"
     async with httpx.AsyncClient(timeout=30.0) as client:
         return await client.post(
             _PLANTNET_URL,
             params={"api-key": api_key},
-            files=[("images", ("plant.jpg", image_bytes, "image/jpeg"))],
-            data=[("organs", o) for o in organs],
+            files={"images": ("plant.jpg", image_bytes, "image/jpeg")},
+            data={"organs": primary_organ},
         )
 
 
