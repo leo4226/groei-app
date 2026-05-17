@@ -15,6 +15,7 @@ import AddPlant from './pages/AddPlant'
 import PlantDetail from './pages/PlantDetail'
 import EditPlant from './pages/EditPlant'
 import PlantCareDetail from './pages/PlantCareDetail'
+import { IdentifyPlantPage } from './pages/IdentifyPlant'
 import Settings from './pages/Settings'
 import PlanningCalendarPage from './pages/calendar/PlanningCalendarPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
@@ -145,6 +146,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <PlantCareDetail />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/identify"
+            element={
+              <RequireAuth>
+                <IdentifyPlantPage />
               </RequireAuth>
             }
           />

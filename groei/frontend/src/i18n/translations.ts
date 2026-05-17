@@ -438,6 +438,46 @@ export type Translations = {
   addPlant: {
     title: string  // "Add plant 🌱"
     preview: string
+    entry: {
+      identify: string         // "Identify with photo"
+      identifySubtitle: string // "Fastest — let AI recognise the species"
+      pick: string             // "Pick from list"
+      pickSubtitle: string     // "Browse our plant library"
+      manual: string           // "Enter manually"
+      manualSubtitle: string   // "I know what it is"
+    }
+  }
+
+  // ── Plant identification flow ───────────────────────────────────
+  identify: {
+    camera: {
+      title: string     // "Take a photo"
+      capture: string   // "Capture"
+      cancel: string    // "Cancel"
+      noAccess: string  // "No camera access"
+    }
+    identifying: string  // "Identifying..."
+    enriching: string    // "Looking up..."
+    results: {
+      title: string       // "Possible matches"
+      confidence: string  // "confidence"
+      poweredBy: string   // "powered by Pl@ntNet"
+      choose: string      // "Pick this one"
+    }
+    lowConfidence: string  // "Low confidence — review carefully"
+    noMatch: {
+      title: string           // "No match found"
+      body: string            // "Try a different photo or add the plant manually."
+      retry: string           // "Try again"
+      manualFallback: string  // "Enter manually"
+    }
+    errorOffline: string  // "Identification needs an internet connection"
+    errorService: string  // "Could not reach the identification service"
+    errorQuota: string    // "Identification temporarily unavailable (daily limit)"
+    privacy: {
+      notice: string  // "Photos are sent to Pl@ntNet for identification."
+      ack: string     // "OK, got it"
+    }
   }
 
   editPlant: {
