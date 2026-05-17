@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Peace Lily"><title>Peace Lily — Spathiphyllum wallisii</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Lepelplant"><title>Lepelplant — Spathiphyllum wallisii</title>
   
     <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
     <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
     <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
     <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
   
-  <path d="M 50 74 Q 48 66 46 58 M 50 74 Q 52 66 54 58 M 50 74 Q 44 68 40 62 M 50 74 Q 56 68 60 62 M 50 74 L 50 50" stroke="#3D5C3A" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 76 Q 48 66 46 58 M 50 76 Q 52 66 54 58 M 50 76 Q 44 68 40 62 M 50 76 Q 56 68 60 62 M 50 76 L 50 50" stroke="#3D5C3A" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
   
     <g transform="translate(38 62) rotate(-24)">
       <path d="M 0 0 Q -8 -8 -6 -22 Q 0 -28 6 -22 Q 8 -8 0 0 Z" fill="#2F5D3A"></path>

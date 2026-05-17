@@ -6,7 +6,7 @@
     <ellipse cx="50" cy="77.5" rx="19" ry="1.8" fill="#4A3429"></ellipse>
   
   
-  <path d="M 50 74 Q 46 60 52 48 Q 48 38 50 30" stroke="#6B4A35" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 78 Q 46 60 52 48 Q 48 38 50 30" stroke="#6B4A35" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
   
   <path d="M 28 30 Q 50 24 72 30" stroke="#6B4A35" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
   

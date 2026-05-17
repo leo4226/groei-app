@@ -1,72 +1,92 @@
 {
-  "count": 113,
-  "iconCount": 113,
+  "count": 143,
+  "iconCount": 143,
   "categories": [
     {
       "id": "all",
-      "label": "All plants"
+      "label": "Alle planten"
+    },
+    {
+      "id": "growth",
+      "label": "Groeifasen"
+    },
+    {
+      "id": "state",
+      "label": "Statussen"
     },
     {
       "id": "edible",
-      "label": "Edibles"
+      "label": "Eetbaar"
     },
     {
       "id": "houseplant",
-      "label": "Houseplants"
+      "label": "Kamerplanten"
     },
     {
       "id": "succulent",
-      "label": "Succulents"
+      "label": "Vetplanten"
     },
     {
       "id": "flower",
-      "label": "Flowers"
+      "label": "Bloemen"
     },
     {
       "id": "bulb",
-      "label": "Bulbs"
+      "label": "Bollen"
     },
     {
       "id": "herb",
-      "label": "Herbs"
+      "label": "Kruiden"
     },
     {
       "id": "shrub",
-      "label": "Shrubs"
+      "label": "Struiken"
     },
     {
       "id": "tree",
-      "label": "Trees"
+      "label": "Bomen"
     },
     {
       "id": "grass",
-      "label": "Grasses"
+      "label": "Grassen"
     },
     {
       "id": "fern",
-      "label": "Ferns"
+      "label": "Varens"
     }
   ],
   "forms": [
     {
       "id": "all",
-      "label": "All forms"
+      "label": "Alle vormen"
     },
     {
       "id": "potted",
-      "label": "Potted"
+      "label": "In pot"
     },
     {
       "id": "bare",
-      "label": "Bare (no pot)"
+      "label": "Zonder pot"
     },
     {
       "id": "fruit",
-      "label": "Fruit/Produce"
+      "label": "Vrucht/oogst"
     },
     {
       "id": "portrait",
-      "label": "Portrait"
+      "label": "Portret"
+    },
+    {
+      "id": "stage",
+      "label": "Fase · in pot"
+    },
+    {
+      "id": "stage_bare",
+      "label": "Fase · in de grond"
+    },
+    {
+      "id": "state",
+      "label": "Status"
     }
   ],
   "plants": [
@@ -81,7 +101,7 @@
     },
     {
       "id": "pothos",
-      "name": "Golden Pothos",
+      "name": "Scindapsus",
       "sci": "Epipremnum aureum",
       "cat": "houseplant",
       "form": "potted",
@@ -90,7 +110,7 @@
     },
     {
       "id": "fiddle",
-      "name": "Fiddle Leaf Fig",
+      "name": "Vioolbladplant",
       "sci": "Ficus lyrata",
       "cat": "houseplant",
       "form": "potted",
@@ -99,7 +119,7 @@
     },
     {
       "id": "snake",
-      "name": "Snake Plant",
+      "name": "Vrouwentongen",
       "sci": "Dracaena trifasciata",
       "cat": "houseplant",
       "form": "potted",
@@ -108,7 +128,7 @@
     },
     {
       "id": "zz",
-      "name": "ZZ Plant",
+      "name": "ZZ-plant",
       "sci": "Zamioculcas zamiifolia",
       "cat": "houseplant",
       "form": "potted",
@@ -117,7 +137,7 @@
     },
     {
       "id": "rubber",
-      "name": "Rubber Plant",
+      "name": "Rubberplant",
       "sci": "Ficus elastica",
       "cat": "houseplant",
       "form": "potted",
@@ -126,7 +146,7 @@
     },
     {
       "id": "peacelily",
-      "name": "Peace Lily",
+      "name": "Lepelplant",
       "sci": "Spathiphyllum wallisii",
       "cat": "houseplant",
       "form": "potted",
@@ -135,7 +155,7 @@
     },
     {
       "id": "spider",
-      "name": "Spider Plant",
+      "name": "Graslelie",
       "sci": "Chlorophytum comosum",
       "cat": "houseplant",
       "form": "potted",
@@ -144,8 +164,8 @@
     },
     {
       "id": "philo",
-      "name": "Heartleaf Philodendron",
-      "sci": "Philodendron hederaceum",
+      "name": "Hartblad Philodendron",
+      "sci": "Philodendron hederaceum var. oxycardium",
       "cat": "houseplant",
       "form": "potted",
       "family": "Araceae",
@@ -162,7 +182,7 @@
     },
     {
       "id": "bostonfern",
-      "name": "Boston Fern",
+      "name": "Krulvaren",
       "sci": "Nephrolepis exaltata",
       "cat": "fern",
       "form": "potted",
@@ -171,7 +191,7 @@
     },
     {
       "id": "bostonfern_bare",
-      "name": "Boston Fern",
+      "name": "Krulvaren",
       "sci": "Nephrolepis exaltata",
       "cat": "fern",
       "form": "bare",
@@ -181,7 +201,7 @@
     },
     {
       "id": "birdnest",
-      "name": "Bird's Nest Fern",
+      "name": "Nestvaren",
       "sci": "Asplenium nidus",
       "cat": "fern",
       "form": "potted",
@@ -190,7 +210,7 @@
     },
     {
       "id": "areca",
-      "name": "Areca Palm",
+      "name": "Areca-palm",
       "sci": "Dypsis lutescens",
       "cat": "houseplant",
       "form": "potted",
@@ -199,7 +219,7 @@
     },
     {
       "id": "parlor",
-      "name": "Parlor Palm",
+      "name": "Bergpalm",
       "sci": "Chamaedorea elegans",
       "cat": "houseplant",
       "form": "potted",
@@ -208,7 +228,7 @@
     },
     {
       "id": "aloe",
-      "name": "Aloe Vera",
+      "name": "Aloë Vera",
       "sci": "Aloe barbadensis",
       "cat": "succulent",
       "form": "potted",
@@ -217,7 +237,7 @@
     },
     {
       "id": "jade",
-      "name": "Jade Plant",
+      "name": "Jadeplant",
       "sci": "Crassula ovata",
       "cat": "succulent",
       "form": "potted",
@@ -235,7 +255,7 @@
     },
     {
       "id": "cactus",
-      "name": "Barrel Cactus",
+      "name": "Bolcactus",
       "sci": "Ferocactus glaucescens",
       "cat": "succulent",
       "form": "potted",
@@ -244,7 +264,7 @@
     },
     {
       "id": "prickly",
-      "name": "Prickly Pear",
+      "name": "Schijfcactus",
       "sci": "Opuntia ficus-indica",
       "cat": "succulent",
       "form": "potted",
@@ -253,7 +273,7 @@
     },
     {
       "id": "stringpearls",
-      "name": "String of Pearls",
+      "name": "Erwtenplant",
       "sci": "Curio rowleyanus",
       "cat": "succulent",
       "form": "potted",
@@ -262,7 +282,7 @@
     },
     {
       "id": "orchid",
-      "name": "Moth Orchid",
+      "name": "Vlinderorchidee",
       "sci": "Phalaenopsis amabilis",
       "cat": "flower",
       "form": "potted",
@@ -271,7 +291,7 @@
     },
     {
       "id": "africanviolet",
-      "name": "African Violet",
+      "name": "Kaaps Viooltje",
       "sci": "Streptocarpus ionanthus",
       "cat": "flower",
       "form": "potted",
@@ -280,7 +300,7 @@
     },
     {
       "id": "anthurium",
-      "name": "Anthurium",
+      "name": "Flamingoplant",
       "sci": "Anthurium andraeanum",
       "cat": "flower",
       "form": "potted",
@@ -289,7 +309,7 @@
     },
     {
       "id": "bromeliad",
-      "name": "Bromeliad",
+      "name": "Bromelia",
       "sci": "Guzmania lingulata",
       "cat": "flower",
       "form": "potted",
@@ -307,7 +327,7 @@
     },
     {
       "id": "tulip",
-      "name": "Tulip",
+      "name": "Tulp",
       "sci": "Tulipa gesneriana",
       "cat": "bulb",
       "form": "potted",
@@ -316,7 +336,7 @@
     },
     {
       "id": "daffodil",
-      "name": "Daffodil",
+      "name": "Narcis",
       "sci": "Narcissus pseudonarcissus",
       "cat": "bulb",
       "form": "potted",
@@ -325,7 +345,7 @@
     },
     {
       "id": "hyacinth",
-      "name": "Hyacinth",
+      "name": "Hyacint",
       "sci": "Hyacinthus orientalis",
       "cat": "bulb",
       "form": "potted",
@@ -334,7 +354,7 @@
     },
     {
       "id": "crocus",
-      "name": "Crocus",
+      "name": "Krokus",
       "sci": "Crocus vernus",
       "cat": "bulb",
       "form": "potted",
@@ -343,7 +363,7 @@
     },
     {
       "id": "snowdrop",
-      "name": "Snowdrop",
+      "name": "Sneeuwklokje",
       "sci": "Galanthus nivalis",
       "cat": "bulb",
       "form": "potted",
@@ -352,7 +372,7 @@
     },
     {
       "id": "iris",
-      "name": "Dutch Iris",
+      "name": "Hollandse Iris",
       "sci": "Iris × hollandica",
       "cat": "flower",
       "form": "potted",
@@ -361,7 +381,7 @@
     },
     {
       "id": "allium",
-      "name": "Allium",
+      "name": "Sierui",
       "sci": "Allium giganteum",
       "cat": "bulb",
       "form": "potted",
@@ -370,7 +390,7 @@
     },
     {
       "id": "lavender",
-      "name": "Lavender",
+      "name": "Lavendel",
       "sci": "Lavandula angustifolia",
       "cat": "herb",
       "form": "potted",
@@ -379,7 +399,7 @@
     },
     {
       "id": "lavender_bare",
-      "name": "Lavender",
+      "name": "Lavendel",
       "sci": "Lavandula angustifolia",
       "cat": "herb",
       "form": "bare",
@@ -389,7 +409,7 @@
     },
     {
       "id": "rosemary",
-      "name": "Rosemary",
+      "name": "Rozemarijn",
       "sci": "Salvia rosmarinus",
       "cat": "herb",
       "form": "potted",
@@ -398,7 +418,7 @@
     },
     {
       "id": "thyme",
-      "name": "Thyme",
+      "name": "Tijm",
       "sci": "Thymus vulgaris",
       "cat": "herb",
       "form": "potted",
@@ -407,7 +427,7 @@
     },
     {
       "id": "basil",
-      "name": "Basil",
+      "name": "Basilicum",
       "sci": "Ocimum basilicum",
       "cat": "herb",
       "form": "potted",
@@ -416,7 +436,7 @@
     },
     {
       "id": "mint",
-      "name": "Mint",
+      "name": "Munt",
       "sci": "Mentha spicata",
       "cat": "herb",
       "form": "potted",
@@ -425,7 +445,7 @@
     },
     {
       "id": "hydrangea",
-      "name": "Hydrangea",
+      "name": "Hortensia",
       "sci": "Hydrangea macrophylla",
       "cat": "shrub",
       "form": "potted",
@@ -434,7 +454,7 @@
     },
     {
       "id": "rose",
-      "name": "Garden Rose",
+      "name": "Tuinroos",
       "sci": "Rosa × hybrida",
       "cat": "shrub",
       "form": "potted",
@@ -443,7 +463,7 @@
     },
     {
       "id": "sunflower",
-      "name": "Sunflower",
+      "name": "Zonnebloem",
       "sci": "Helianthus annuus",
       "cat": "flower",
       "form": "potted",
@@ -452,7 +472,7 @@
     },
     {
       "id": "poppy",
-      "name": "Field Poppy",
+      "name": "Klaproos",
       "sci": "Papaver rhoeas",
       "cat": "flower",
       "form": "potted",
@@ -461,7 +481,7 @@
     },
     {
       "id": "daisy",
-      "name": "Oxeye Daisy",
+      "name": "Margriet",
       "sci": "Leucanthemum vulgare",
       "cat": "flower",
       "form": "potted",
@@ -470,7 +490,7 @@
     },
     {
       "id": "foxglove",
-      "name": "Foxglove",
+      "name": "Vingerhoedskruid",
       "sci": "Digitalis purpurea",
       "cat": "flower",
       "form": "potted",
@@ -479,7 +499,7 @@
     },
     {
       "id": "peony",
-      "name": "Peony",
+      "name": "Pioenroos",
       "sci": "Paeonia lactiflora",
       "cat": "flower",
       "form": "potted",
@@ -488,7 +508,7 @@
     },
     {
       "id": "cornflower",
-      "name": "Cornflower",
+      "name": "Korenbloem",
       "sci": "Centaurea cyanus",
       "cat": "flower",
       "form": "potted",
@@ -497,7 +517,7 @@
     },
     {
       "id": "boxwood",
-      "name": "Boxwood",
+      "name": "Buxus",
       "sci": "Buxus sempervirens",
       "cat": "shrub",
       "form": "potted",
@@ -506,7 +526,7 @@
     },
     {
       "id": "oak",
-      "name": "English Oak",
+      "name": "Zomereik",
       "sci": "Quercus robur",
       "cat": "tree",
       "form": "portrait",
@@ -515,7 +535,7 @@
     },
     {
       "id": "birch",
-      "name": "Silver Birch",
+      "name": "Ruwe Berk",
       "sci": "Betula pendula",
       "cat": "tree",
       "form": "portrait",
@@ -524,7 +544,7 @@
     },
     {
       "id": "beech",
-      "name": "European Beech",
+      "name": "Beuk",
       "sci": "Fagus sylvatica",
       "cat": "tree",
       "form": "portrait",
@@ -533,7 +553,7 @@
     },
     {
       "id": "willow",
-      "name": "Weeping Willow",
+      "name": "Treurwilg",
       "sci": "Salix babylonica",
       "cat": "tree",
       "form": "portrait",
@@ -542,7 +562,7 @@
     },
     {
       "id": "maple",
-      "name": "Norway Maple",
+      "name": "Noorse Esdoorn",
       "sci": "Acer platanoides",
       "cat": "tree",
       "form": "portrait",
@@ -551,7 +571,7 @@
     },
     {
       "id": "geranium",
-      "name": "Geranium",
+      "name": "Pelargonium",
       "sci": "Pelargonium × hortorum",
       "cat": "flower",
       "form": "potted",
@@ -569,7 +589,7 @@
     },
     {
       "id": "marigold",
-      "name": "Marigold",
+      "name": "Afrikaantje",
       "sci": "Tagetes patula",
       "cat": "flower",
       "form": "potted",
@@ -578,7 +598,7 @@
     },
     {
       "id": "pansy",
-      "name": "Pansy",
+      "name": "Viooltje",
       "sci": "Viola × wittrockiana",
       "cat": "flower",
       "form": "potted",
@@ -596,7 +616,7 @@
     },
     {
       "id": "heather",
-      "name": "Heather",
+      "name": "Struikheide",
       "sci": "Calluna vulgaris",
       "cat": "shrub",
       "form": "potted",
@@ -605,7 +625,7 @@
     },
     {
       "id": "ivy",
-      "name": "Ivy",
+      "name": "Klimop",
       "sci": "Hedera helix",
       "cat": "shrub",
       "form": "potted",
@@ -614,7 +634,7 @@
     },
     {
       "id": "holly",
-      "name": "Holly",
+      "name": "Hulst",
       "sci": "Ilex aquifolium",
       "cat": "shrub",
       "form": "potted",
@@ -641,7 +661,7 @@
     },
     {
       "id": "forgetmenot",
-      "name": "Forget-me-not",
+      "name": "Vergeet-mij-nietje",
       "sci": "Myosotis sylvatica",
       "cat": "flower",
       "form": "potted",
@@ -651,7 +671,7 @@
     {
       "id": "clematis",
       "name": "Clematis",
-      "sci": "Clematis vitalba",
+      "sci": "Clematis × jackmanii",
       "cat": "shrub",
       "form": "potted",
       "family": "Ranunculaceae",
@@ -659,7 +679,7 @@
     },
     {
       "id": "silvergrass",
-      "name": "Chinese Silver Grass",
+      "name": "Chinees Prachtriet",
       "sci": "Miscanthus sinensis",
       "cat": "grass",
       "form": "potted",
@@ -668,7 +688,7 @@
     },
     {
       "id": "figtree",
-      "name": "Fig Tree",
+      "name": "Vijgenboom",
       "sci": "Ficus carica",
       "cat": "tree",
       "form": "portrait",
@@ -677,7 +697,7 @@
     },
     {
       "id": "laurel",
-      "name": "Bay Laurel",
+      "name": "Laurier",
       "sci": "Laurus nobilis",
       "cat": "shrub",
       "form": "potted",
@@ -686,7 +706,7 @@
     },
     {
       "id": "camellia",
-      "name": "Camellia",
+      "name": "Camelia",
       "sci": "Camellia japonica",
       "cat": "shrub",
       "form": "potted",
@@ -695,7 +715,7 @@
     },
     {
       "id": "bamboo",
-      "name": "Bamboo",
+      "name": "Bamboe",
       "sci": "Phyllostachys edulis",
       "cat": "grass",
       "form": "potted",
@@ -704,7 +724,7 @@
     },
     {
       "id": "tomato",
-      "name": "Tomato",
+      "name": "Tomaat",
       "sci": "Solanum lycopersicum",
       "cat": "edible",
       "form": "potted",
@@ -713,7 +733,7 @@
     },
     {
       "id": "tomato_bare",
-      "name": "Tomato",
+      "name": "Tomaat",
       "sci": "Solanum lycopersicum",
       "cat": "edible",
       "form": "bare",
@@ -723,7 +743,7 @@
     },
     {
       "id": "brownbean",
-      "name": "Brown Bean",
+      "name": "Bruine Boon",
       "sci": "Phaseolus vulgaris",
       "cat": "edible",
       "form": "potted",
@@ -732,7 +752,7 @@
     },
     {
       "id": "brownbean_bare",
-      "name": "Brown Bean",
+      "name": "Bruine Boon",
       "sci": "Phaseolus vulgaris",
       "cat": "edible",
       "form": "bare",
@@ -751,7 +771,7 @@
     },
     {
       "id": "avocado_tree_potted",
-      "name": "Avocado Tree (2yr)",
+      "name": "Avocadoboom (2 jr)",
       "sci": "Persea americana",
       "cat": "tree",
       "form": "potted",
@@ -761,7 +781,7 @@
     },
     {
       "id": "strawberry",
-      "name": "Strawberry",
+      "name": "Aardbei",
       "sci": "Fragaria × ananassa",
       "cat": "edible",
       "form": "potted",
@@ -770,7 +790,7 @@
     },
     {
       "id": "strawberry_bare",
-      "name": "Strawberry",
+      "name": "Aardbei",
       "sci": "Fragaria × ananassa",
       "cat": "edible",
       "form": "bare",
@@ -780,7 +800,7 @@
     },
     {
       "id": "carrot",
-      "name": "Carrot",
+      "name": "Wortel",
       "sci": "Daucus carota",
       "cat": "edible",
       "form": "fruit",
@@ -789,7 +809,7 @@
     },
     {
       "id": "lettuce",
-      "name": "Lettuce",
+      "name": "Sla",
       "sci": "Lactuca sativa",
       "cat": "edible",
       "form": "potted",
@@ -798,7 +818,7 @@
     },
     {
       "id": "lettuce_bare",
-      "name": "Lettuce",
+      "name": "Sla",
       "sci": "Lactuca sativa",
       "cat": "edible",
       "form": "bare",
@@ -808,7 +828,7 @@
     },
     {
       "id": "pepper",
-      "name": "Bell Pepper",
+      "name": "Paprika",
       "sci": "Capsicum annuum",
       "cat": "edible",
       "form": "potted",
@@ -817,7 +837,7 @@
     },
     {
       "id": "pepper_bare",
-      "name": "Bell Pepper",
+      "name": "Paprika",
       "sci": "Capsicum annuum",
       "cat": "edible",
       "form": "bare",
@@ -827,7 +847,7 @@
     },
     {
       "id": "pumpkin",
-      "name": "Pumpkin",
+      "name": "Pompoen",
       "sci": "Cucurbita pepo",
       "cat": "edible",
       "form": "fruit",
@@ -836,7 +856,7 @@
     },
     {
       "id": "zucchini",
-      "name": "Zucchini",
+      "name": "Courgette",
       "sci": "Cucurbita pepo",
       "cat": "edible",
       "form": "fruit",
@@ -845,7 +865,7 @@
     },
     {
       "id": "cucumber",
-      "name": "Cucumber",
+      "name": "Komkommer",
       "sci": "Cucumis sativus",
       "cat": "edible",
       "form": "fruit",
@@ -854,7 +874,7 @@
     },
     {
       "id": "radish",
-      "name": "Radish",
+      "name": "Radijs",
       "sci": "Raphanus sativus",
       "cat": "edible",
       "form": "fruit",
@@ -863,7 +883,7 @@
     },
     {
       "id": "potato",
-      "name": "Potato",
+      "name": "Aardappel",
       "sci": "Solanum tuberosum",
       "cat": "edible",
       "form": "fruit",
@@ -872,7 +892,7 @@
     },
     {
       "id": "blueberry",
-      "name": "Blueberry",
+      "name": "Blauwe Bes",
       "sci": "Vaccinium corymbosum",
       "cat": "edible",
       "form": "fruit",
@@ -881,7 +901,7 @@
     },
     {
       "id": "garlic",
-      "name": "Garlic",
+      "name": "Knoflook",
       "sci": "Allium sativum",
       "cat": "edible",
       "form": "fruit",
@@ -890,7 +910,7 @@
     },
     {
       "id": "onion",
-      "name": "Onion",
+      "name": "Ui",
       "sci": "Allium cepa",
       "cat": "edible",
       "form": "fruit",
@@ -899,7 +919,7 @@
     },
     {
       "id": "corn",
-      "name": "Corn",
+      "name": "Mais",
       "sci": "Zea mays",
       "cat": "edible",
       "form": "fruit",
@@ -908,7 +928,7 @@
     },
     {
       "id": "raspberry_fruit",
-      "name": "Raspberry",
+      "name": "Framboos",
       "sci": "Rubus idaeus",
       "cat": "edible",
       "form": "fruit",
@@ -918,7 +938,7 @@
     },
     {
       "id": "raspberry",
-      "name": "Raspberry",
+      "name": "Framboos",
       "sci": "Rubus idaeus",
       "cat": "edible",
       "form": "potted",
@@ -954,7 +974,7 @@
     },
     {
       "id": "columbine",
-      "name": "Columbine",
+      "name": "Akelei",
       "sci": "Aquilegia vulgaris",
       "cat": "flower",
       "form": "bare",
@@ -964,7 +984,7 @@
     },
     {
       "id": "malefern",
-      "name": "Male Fern",
+      "name": "Mannetjesvaren",
       "sci": "Dryopteris filix-mas",
       "cat": "fern",
       "form": "bare",
@@ -1064,6 +1084,282 @@
       "file": "wisteria_potted.svg"
     },
     {
+      "id": "pampasgras",
+      "name": "Pampasgras",
+      "sci": "Cortaderia selloana",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "file": "pampasgras.svg"
+    },
+    {
+      "id": "drakenplant",
+      "name": "Drakenplant",
+      "sci": "Dracaena marginata",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "drakenplant.svg"
+    },
+    {
+      "id": "dracaena_compacta",
+      "name": "Dracaena Compacta",
+      "sci": "Dracaena fragrans 'Compacta'",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "dracaena_compacta.svg"
+    },
+    {
+      "id": "pannenkoekenplant",
+      "name": "Pannenkoekenplant",
+      "sci": "Pilea peperomioides",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Urticaceae",
+      "file": "pannenkoekenplant.svg"
+    },
+    {
+      "id": "wildebloemen",
+      "name": "Wilde Bloemen",
+      "sci": "Gemengde wilde bloemen",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Wilde bloemenmix · placeholder",
+      "file": "wildebloemen.svg"
+    },
+    {
+      "id": "onkruid",
+      "name": "Onkruid",
+      "sci": "Algemene onkruiddetectie",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Detectie · onkruid",
+      "file": "onkruid.svg"
+    },
+    {
+      "id": "hosta",
+      "name": "Hartlelie",
+      "sci": "Hosta sieboldiana",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "hosta.svg"
+    },
+    {
+      "id": "stokroos",
+      "name": "Stokroos",
+      "sci": "Alcea rosea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Malvaceae",
+      "file": "stokroos.svg"
+    },
+    {
+      "id": "zonnehoed",
+      "name": "Zonnehoed",
+      "sci": "Echinacea purpurea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "zonnehoed.svg"
+    },
+    {
+      "id": "lupine",
+      "name": "Lupine",
+      "sci": "Lupinus polyphyllus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Fabaceae",
+      "file": "lupine.svg"
+    },
+    {
+      "id": "growth_seed",
+      "name": "Zaad",
+      "sci": "pas geplant",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 1 · in de grond",
+      "file": "growth_seed.svg"
+    },
+    {
+      "id": "growth_sprout",
+      "name": "Kiem",
+      "sci": "eerste groene punt",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 2 · ontkieming",
+      "file": "growth_sprout.svg"
+    },
+    {
+      "id": "growth_seedling",
+      "name": "Zaailing",
+      "sci": "twee zaadlobben, eerste blad",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 3 · zaailing",
+      "file": "growth_seedling.svg"
+    },
+    {
+      "id": "growth_young",
+      "name": "Jonge plant",
+      "sci": "gevestigd, klein bladerdek",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 4 · jong",
+      "file": "growth_young.svg"
+    },
+    {
+      "id": "growth_established",
+      "name": "Volwassen",
+      "sci": "volle bladmassa, nog niet in bloei",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 5 · vegetatief",
+      "file": "growth_established.svg"
+    },
+    {
+      "id": "growth_mature",
+      "name": "Tot wasdom",
+      "sci": "bloeiend / vruchtdragend",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 6 · in bloei",
+      "file": "growth_mature.svg"
+    },
+    {
+      "id": "growth_seed_bare",
+      "name": "Zaad (in de grond)",
+      "sci": "pas geplant in tuin",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 1 · open grond",
+      "variant_of": "growth_seed",
+      "file": "growth_seed_bare.svg"
+    },
+    {
+      "id": "growth_sprout_bare",
+      "name": "Kiem (in de grond)",
+      "sci": "eerste groene punt",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 2 · open grond",
+      "variant_of": "growth_sprout",
+      "file": "growth_sprout_bare.svg"
+    },
+    {
+      "id": "growth_seedling_bare",
+      "name": "Zaailing (in de grond)",
+      "sci": "twee zaadlobben, eerste blad",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 3 · open grond",
+      "variant_of": "growth_seedling",
+      "file": "growth_seedling_bare.svg"
+    },
+    {
+      "id": "growth_young_bare",
+      "name": "Jonge plant (in de grond)",
+      "sci": "gevestigd, klein bladerdek",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 4 · open grond",
+      "variant_of": "growth_young",
+      "file": "growth_young_bare.svg"
+    },
+    {
+      "id": "growth_established_bare",
+      "name": "Volwassen (in de grond)",
+      "sci": "volle bladmassa, nog niet in bloei",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 5 · open grond",
+      "variant_of": "growth_established",
+      "file": "growth_established_bare.svg"
+    },
+    {
+      "id": "growth_mature_bare",
+      "name": "Tot wasdom (in de grond)",
+      "sci": "bloeiend / vruchtdragend",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 6 · open grond",
+      "variant_of": "growth_mature",
+      "file": "growth_mature_bare.svg"
+    },
+    {
+      "id": "poplar",
+      "name": "Italiaanse Populier",
+      "sci": "Populus nigra 'Italica' · ± 70 jaar",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Salicaceae · veteraan",
+      "file": "poplar.svg"
+    },
+    {
+      "id": "state_hydrated",
+      "name": "Goed verzorgd",
+      "sci": "binnen schema",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · OK",
+      "file": "state_hydrated.svg"
+    },
+    {
+      "id": "state_thirsty",
+      "name": "Dorstig",
+      "sci": "binnen 1 dag voor watergift",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · binnenkort",
+      "file": "state_thirsty.svg"
+    },
+    {
+      "id": "state_dry",
+      "name": "Droog",
+      "sci": "watergift te laat",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · urgent",
+      "file": "state_dry.svg"
+    },
+    {
+      "id": "state_chilling",
+      "name": "Koud",
+      "sci": "binnen 3 °C boven min_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · koel",
+      "file": "state_chilling.svg"
+    },
+    {
+      "id": "state_freezing",
+      "name": "Bevriezing",
+      "sci": "op of onder min_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · kritiek",
+      "file": "state_freezing.svg"
+    },
+    {
+      "id": "state_heatstress",
+      "name": "Hittestress",
+      "sci": "op of boven max_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · kritiek",
+      "file": "state_heatstress.svg"
+    },
+    {
+      "id": "state_comfortable",
+      "name": "Comfortabel",
+      "sci": "geen zorg (geen icon getoond)",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · OK",
+      "file": "state_comfortable.svg"
+    },
+    {
       "id": "brownbean_nopot",
       "name": "Brownbean Nopot",
       "sci": "",
@@ -1072,34 +1368,28 @@
       "file": "brownbean_nopot.svg"
     },
     {
+      "id": "cortaderia_bare",
+      "name": "Cortaderia Bare",
+      "sci": "",
+      "cat": "unknown",
+      "family": "",
+      "file": "cortaderia_bare.svg"
+    },
+    {
       "id": "seed",
       "name": "Seed",
       "sci": "",
-      "cat": "general",
-      "form": "potted",
+      "cat": "unknown",
       "family": "",
-      "file": "seed.svg",
-      "phase": "seed"
+      "file": "seed.svg"
     },
     {
       "id": "seed_bare",
-      "name": "Seed (bare)",
+      "name": "Seed Bare",
       "sci": "",
-      "cat": "general",
-      "form": "bare",
+      "cat": "unknown",
       "family": "",
-      "file": "seed_bare.svg",
-      "phase": "seed",
-      "variant_of": "seed"
-    },
-    {
-      "id": "cortaderia_bare",
-      "name": "Cortaderia",
-      "sci": "Cortaderia selloana",
-      "cat": "grass",
-      "form": "bare",
-      "family": "",
-      "file": "cortaderia_bare.svg"
+      "file": "seed_bare.svg"
     }
   ]
 }

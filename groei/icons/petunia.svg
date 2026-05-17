@@ -6,11 +6,11 @@
     <ellipse cx="50" cy="81.5" rx="17" ry="1.8" fill="#4A3429"></ellipse>
   
   
-  <path d="M 50 70 Q 30 66 22 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 70 66 78 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 42 56 40 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 58 56 60 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 50 56 50 40" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 30 66 22 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 70 66 78 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 42 56 40 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 58 56 60 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 50 56 50 40" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
   
   <ellipse cx="34" cy="66" rx="4" ry="2.5" fill="#4A7C4E"></ellipse>
   <ellipse cx="66" cy="66" rx="4" ry="2.5" fill="#4A7C4E"></ellipse>

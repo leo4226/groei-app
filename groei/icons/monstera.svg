@@ -7,8 +7,8 @@
   
   
   <path d="M 50 75 Q 50 60 50 46" stroke="#3D5C3A" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 44 64 40 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 70 Q 56 64 60 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 75 Q 44 64 40 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 75 Q 56 64 60 58" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
   
   <g transform="translate(40 52) rotate(-18)">
     <path d="M 0 0 Q -20 -8 -24 -22 Q -20 -30 -10 -26 Q -4 -20 0 -14 Q 4 -20 10 -26 Q 20 -30 24 -22 Q 20 -8 0 0 Z" fill="#2F5D3A"></path>
