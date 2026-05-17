@@ -44,6 +44,10 @@ LEGACY_TO_NEW_CARE_TYPE = {
     "bring_inside": "frost_protect",
     "heat": "heat_protect",
     "fertilise": "fertilize",    # monthly seasonal fertilise tip (note Dutch spelling in legacy)
+    "overdue_protect_cold": "frost_protect",
+    "due_protect_cold": "frost_protect",
+    "overdue_protect_heat": "heat_protect",
+    "due_protect_heat": "heat_protect",
 }
 
 # Care types that exist only in the new pipeline — divergence is expected
@@ -59,7 +63,6 @@ def _derive_care_status(schedules: list[dict], today_iso: str):
     """
     care_status = "good"
     most_urgent_care_type: str | None = None
-    today_d = date.fromisoformat(today_iso)
     for s in schedules:
         next_due = s["next_due"]
         if next_due < today_iso:
@@ -70,8 +73,6 @@ def _derive_care_status(schedules: list[dict], today_iso: str):
             if care_status != "overdue":
                 care_status = "due_today"
                 most_urgent_care_type = s["care_type"]
-    # touch today_d to keep linters happy — kept for future days-overdue use.
-    _ = today_d
     return care_status, most_urgent_care_type
 
 
