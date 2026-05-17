@@ -16,12 +16,12 @@ from care_types import (
     HEATING_SEASON_START_MONTH,
     SEVERITY_COLORS,
     WEATHER_COLDHEAT_COLORS,
+    Severity,
+    Trigger,
     priority_bucket,
 )
 
 
-Severity = Literal["urgent", "warning", "info"]
-Trigger = Literal["schedule_overdue", "schedule_due_today", "weather_event", "seasonal"]
 CareStatus = Literal["good", "due_today", "overdue"]
 
 
@@ -238,6 +238,9 @@ def _is_heating_season(today: date) -> bool:
     return m >= HEATING_SEASON_START_MONTH or m <= HEATING_SEASON_END_MONTH
 
 
+# NOTE: _apply_heating_boost is exported for use by the Phase B scheduler
+# that writes next_due on care_schedules. compute_plant_warnings trusts the
+# stored next_due and does not re-apply the boost.
 def _apply_heating_boost(profile_entry: dict, *, today: date) -> int:
     """Return the effective interval_days, accounting for heating-season boost."""
     base = profile_entry.get("interval_days")
@@ -328,6 +331,24 @@ def compute_plant_warnings(
         else:
             days_until = None
             status = "good"
+        # Weather-only types have no schedule, so the schedule-driven status above
+        # is always "good". Reflect any live weather warning in the summary instead.
+        if CARE_TYPES[care_type].get("is_weather_triggered"):
+            last_done = None
+            days_until = None
+            weather_warning = next(
+                (w for w in all_warnings if w.care_type == care_type), None
+            )
+            if weather_warning is not None:
+                if weather_warning.severity == "urgent":
+                    status = "overdue"
+                elif weather_warning.severity == "warning":
+                    status = "due_today"
+                else:
+                    status = "good"
+            else:
+                status = "good"
+
         care_summary[care_type] = CareTypeStatus(
             care_type=care_type,
             status=status,

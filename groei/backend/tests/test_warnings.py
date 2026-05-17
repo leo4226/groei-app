@@ -328,3 +328,15 @@ def test_compute_active_care_types_listed():
     assert "water" in state.active_care_types
     assert "mist" in state.active_care_types
     assert "frost_protect" not in state.active_care_types
+
+
+def test_compute_weather_only_care_summary_reflects_active_warning():
+    """frost_protect has no schedule, but a live weather warning bumps its summary status."""
+    plant = {
+        "id": 5, "map_type": "outdoor", "container_id": 1, "ground_zone_id": None,
+        "care_thresholds": '{"min_temp_c": 0, "bring_inside_below_c": 5}',
+    }
+    weather = {"temp": {"days": [{"min": -3, "max": 5}]}}
+    state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
+    assert state.care_summary["frost_protect"].status == "overdue"
+    assert state.care_summary["frost_protect"].last_done is None
