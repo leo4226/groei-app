@@ -132,10 +132,17 @@ def _match_icon_key(scientific_name: str) -> str | None:
 async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
     """Trigger the existing species-enrichment pipeline. Returns species_id or None.
 
-    TASK 6: skeleton that always returns None.
-    TASK 7: will be replaced with the real Trefle/Claude pipeline call.
+    Delegates to species_service.get_or_create_species which generates a
+    plant_species row via Claude when no match exists. Any failure (missing
+    API key, Trefle/Claude timeout, network down, JSON parse error) is
+    swallowed so the endpoint returns 404 rather than 500, letting the user
+    fall back to manual entry.
     """
-    return None
+    from species_service import get_or_create_species
+    try:
+        return await get_or_create_species(db, scientific_name)
+    except Exception:
+        return None
 
 
 def _save_identify_photo(image_bytes: bytes) -> str:
