@@ -26,7 +26,7 @@ export function IdentifyPlantPage() {
 
   useEffect(() => {
     if (!navigator.onLine) {
-      setStep({ kind: 'error', message: t('identify.errorOffline'), thumbnail: null })
+      setStep({ kind: 'error', message: t.identify.errorOffline, thumbnail: null })
     }
   }, [t])
 
@@ -44,8 +44,8 @@ export function IdentifyPlantPage() {
       })
     } catch (e) {
       const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
-        ? t('identify.errorQuota')
-        : t('identify.errorService')
+        ? t.identify.errorQuota
+        : t.identify.errorService
       setStep({ kind: 'error', message, thumbnail: dataUrl })
     }
   }
@@ -59,7 +59,7 @@ export function IdentifyPlantPage() {
     } catch {
       setStep({
         kind: 'error',
-        message: t('identify.errorService'),
+        message: t.identify.errorService,
         thumbnail: capturedPhotoDataUrl,
       })
     }
@@ -84,14 +84,14 @@ export function IdentifyPlantPage() {
   if (step.kind === 'privacy') {
     return (
       <div className="p-6 max-w-md mx-auto">
-        <h2 className="text-xl font-semibold mb-2">📸 {t('identify.camera.title')}</h2>
-        <p className="text-gray-600 my-4">{t('identify.privacy.notice')}</p>
+        <h2 className="text-xl font-semibold mb-2">📸 {t.identify.camera.title}</h2>
+        <p className="text-gray-600 my-4">{t.identify.privacy.notice}</p>
         <div className="flex flex-col gap-3">
           <button onClick={ackPrivacy} className="bg-green-700 text-white px-4 py-3 rounded">
-            {t('identify.privacy.ack')}
+            {t.identify.privacy.ack}
           </button>
           <button onClick={() => navigate(-1)} className="text-gray-700 px-4 py-3 rounded border">
-            {t('identify.camera.cancel')}
+            {t.identify.camera.cancel}
           </button>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function IdentifyPlantPage() {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
         <img src={step.thumbnail} alt="" className="w-40 h-40 object-cover rounded mx-auto mb-6" />
-        <p className="text-gray-700">{t('identify.identifying')}</p>
+        <p className="text-gray-700">{t.identify.identifying}</p>
       </div>
     )
   }
@@ -114,7 +114,7 @@ export function IdentifyPlantPage() {
   if (step.kind === 'enriching') {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
-        <p className="text-gray-700">{t('identify.enriching')}</p>
+        <p className="text-gray-700">{t.identify.enriching}</p>
       </div>
     )
   }
@@ -142,10 +142,10 @@ export function IdentifyPlantPage() {
       )}
       <div className="flex flex-col gap-3">
         <button onClick={retry} className="bg-green-700 text-white px-4 py-3 rounded">
-          {t('identify.noMatch.retry')}
+          {t.identify.noMatch.retry}
         </button>
         <button onClick={manualFallback} className="text-gray-700 px-4 py-3 rounded border">
-          {t('identify.noMatch.manualFallback')}
+          {t.identify.noMatch.manualFallback}
         </button>
       </div>
     </div>

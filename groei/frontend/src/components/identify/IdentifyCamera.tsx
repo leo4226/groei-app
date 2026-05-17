@@ -29,7 +29,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
           videoRef.current.srcObject = stream
         }
       } catch {
-        setError(t('identify.camera.noAccess'))
+        setError(t.identify.camera.noAccess)
       }
     }
     start()
@@ -63,8 +63,8 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="flex items-center justify-between p-4 text-white">
-        <button onClick={onCancel} aria-label={t('identify.camera.cancel')} className="text-2xl">×</button>
-        <span className="text-sm opacity-75">{t('identify.camera.title')}</span>
+        <button onClick={onCancel} aria-label={t.identify.camera.cancel} className="text-2xl">×</button>
+        <span className="text-sm opacity-75">{t.identify.camera.title}</span>
         <span className="w-6" />
       </div>
       <div className="flex-1 flex items-center justify-center overflow-hidden">
@@ -86,7 +86,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
         <div className="p-6 flex justify-center">
           <button
             onClick={capture}
-            aria-label={t('identify.camera.capture')}
+            aria-label={t.identify.camera.capture}
             className="w-20 h-20 rounded-full bg-white border-4 border-gray-300 active:scale-95 transition-transform"
           />
         </div>

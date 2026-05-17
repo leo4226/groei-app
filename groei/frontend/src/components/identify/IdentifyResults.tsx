@@ -18,17 +18,17 @@ export function IdentifyResults({
   if (candidates.length === 0) {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
-        <h2 className="text-xl font-semibold mb-2">{t('identify.noMatch.title')}</h2>
-        <p className="text-gray-600 mb-6">{t('identify.noMatch.body')}</p>
+        <h2 className="text-xl font-semibold mb-2">{t.identify.noMatch.title}</h2>
+        <p className="text-gray-600 mb-6">{t.identify.noMatch.body}</p>
         {capturedThumbnailUrl && (
           <img src={capturedThumbnailUrl} alt="" className="w-32 h-32 object-cover rounded mx-auto mb-6 opacity-75" />
         )}
         <div className="flex flex-col gap-3">
           <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded">
-            {t('identify.noMatch.retry')}
+            {t.identify.noMatch.retry}
           </button>
           <button onClick={onManualFallback} className="text-gray-700 px-4 py-3 rounded border">
-            {t('identify.noMatch.manualFallback')}
+            {t.identify.noMatch.manualFallback}
           </button>
         </div>
       </div>
@@ -37,10 +37,10 @@ export function IdentifyResults({
 
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-semibold mb-2">{t('identify.results.title')}</h2>
+      <h2 className="text-xl font-semibold mb-2">{t.identify.results.title}</h2>
       {lowConfidence && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4 text-sm">
-          {t('identify.lowConfidence')}
+          {t.identify.lowConfidence}
         </div>
       )}
       <div className="flex flex-col gap-3">
@@ -64,13 +64,13 @@ export function IdentifyResults({
                 <div className="mt-1 h-1.5 bg-gray-200 rounded overflow-hidden">
                   <div className="h-full bg-green-600" style={{ width: `${pct}%` }} />
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">{pct}% {t('identify.results.confidence')}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{pct}% {t.identify.results.confidence}</div>
               </div>
             </button>
           )
         })}
       </div>
-      <div className="text-center text-xs text-gray-400 mt-6">{t('identify.results.poweredBy')}</div>
+      <div className="text-center text-xs text-gray-400 mt-6">{t.identify.results.poweredBy}</div>
     </div>
   )
 }
