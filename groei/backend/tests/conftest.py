@@ -63,6 +63,8 @@ SCHEMA = """
         ground_zone_id TEXT,
         display_radius_cm INTEGER,
         care_thresholds TEXT,
+        phase TEXT DEFAULT 'established',
+        sown_date TEXT,
         household_id INTEGER
     );
     CREATE TABLE care_schedules (

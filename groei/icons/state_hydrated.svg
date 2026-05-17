@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Goed verzorgd"><title>Goed verzorgd — binnen schema</title>
+  
+    
+    <path d="M 29 74 L 33 94 Q 33 96 35 96 L 65 96 Q 67 96 67 94 L 71 74 Z" fill="#B2664A"></path>
+    <rect x="27" y="71" width="46" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 33 94 Q 33 96 35 96 L 65 96 Q 67 96 67 94 L 65 92 L 35 92 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="73.5" rx="19" ry="1.8" fill="#4A3429"></ellipse>
+  
+    
+    <path d="M 50 74 Q 50 60 50 46" stroke="#3D5C3A" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
+    
+        <g transform="translate(50 50) rotate(-55)">
+          <path d="M 0 0&#xA;                   Q -6 -9 0 -18&#xA;                   Q 6 -9 0 0 Z" fill="#4A7C4E"></path>
+          <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.6" fill="none" opacity="0.7"></path>
+        </g>
+      
+        <g transform="translate(50 50) rotate(-28)">
+          <path d="M 0 0&#xA;                   Q -6 -11 0 -22&#xA;                   Q 6 -11 0 0 Z" fill="#4A7C4E"></path>
+          <path d="M 0 -2 L 0 -20" stroke="#2F5D3A" stroke-width="0.6" fill="none" opacity="0.7"></path>
+        </g>
+      
+        <g transform="translate(50 50) rotate(0)">
+          <path d="M 0 0&#xA;                   Q -6 -13 0 -26&#xA;                   Q 6 -13 0 0 Z" fill="#4A7C4E"></path>
+          <path d="M 0 -2 L 0 -24" stroke="#2F5D3A" stroke-width="0.6" fill="none" opacity="0.7"></path>
+        </g>
+      
+        <g transform="translate(50 50) rotate(28)">
+          <path d="M 0 0&#xA;                   Q -6 -11 0 -22&#xA;                   Q 6 -11 0 0 Z" fill="#4A7C4E"></path>
+          <path d="M 0 -2 L 0 -20" stroke="#2F5D3A" stroke-width="0.6" fill="none" opacity="0.7"></path>
+        </g>
+      
+        <g transform="translate(50 50) rotate(55)">
+          <path d="M 0 0&#xA;                   Q -6 -9 0 -18&#xA;                   Q 6 -9 0 0 Z" fill="#4A7C4E"></path>
+          <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.6" fill="none" opacity="0.7"></path>
+        </g>
+      
+  
+  
+  <g transform="translate(50 22)">
+    <ellipse cx="0" cy="-3" rx="2" ry="2.6" fill="#E88AA8" transform="rotate(0)"></ellipse><ellipse cx="0" cy="-3" rx="2" ry="2.6" fill="#E88AA8" transform="rotate(72)"></ellipse><ellipse cx="0" cy="-3" rx="2" ry="2.6" fill="#E88AA8" transform="rotate(144)"></ellipse><ellipse cx="0" cy="-3" rx="2" ry="2.6" fill="#E88AA8" transform="rotate(216)"></ellipse><ellipse cx="0" cy="-3" rx="2" ry="2.6" fill="#E88AA8" transform="rotate(288)"></ellipse>
+    <circle cx="0" cy="0" r="1.4" fill="#F4C542"></circle>
+  </g>
+  
+  <g transform="translate(76 26)">
+    <path d="M 0 -8 Q -5 0 0 6 Q 5 0 0 -8 Z" fill="#6B8FCA"></path>
+    <ellipse cx="-1.5" cy="-1" rx="1.2" ry="2" fill="#FFF" opacity="0.45"></ellipse>
+  </g>
+  
+  <g stroke="#6DA86F" stroke-width="1.2" stroke-linecap="round" fill="none">
+    <path d="M 22 30 L 22 26 M 20 28 L 24 28"></path>
+    <path d="M 30 18 L 30 15 M 28.5 16.5 L 31.5 16.5"></path>
+  </g>
+</svg>

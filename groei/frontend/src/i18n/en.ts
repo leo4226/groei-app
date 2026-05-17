@@ -6,9 +6,9 @@ export const en: Translations = {
   nav: {
     home: 'Home',
     plants: 'Plants',
+    maps: 'Map',
     calendar: 'Calendar',
     settings: 'Settings',
-    add: 'Add',
   },
 
   dashboard: {
@@ -513,6 +513,13 @@ export const en: Translations = {
     sunFull: 'Full sun',
     sunPartial: 'Partial sun',
     sunShade: 'Shade',
+    growthPhaseLabel: 'Growth phase',
+    sownDateLabel: 'Sown date',
+    phaseSeed: 'Seed',
+    phaseSprout: 'Sprout',
+    phaseSeedling: 'Seedling',
+    phaseYoung: 'Young plant',
+    phaseEstablished: 'Established',
   },
 
   // ── Calendar page ────────────────────────────────────────

@@ -8,6 +8,7 @@ import type { LocalPlant } from './data/plants-dataset'
 import LoginPage from './pages/LoginPage'
 import { getToken } from './api/auth'
 import MapPage from './pages/MapPage'
+import MapsListPage from './pages/MapsListPage'
 import Dashboard from './pages/Dashboard'
 import Plants from './pages/Plants'
 import AddPlant from './pages/AddPlant'
@@ -67,6 +68,14 @@ export default function App() {
             }
           />
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/maps"
+            element={
+              <RequireAuth>
+                <MapsListPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/maps/:id/edit-layout"
             element={

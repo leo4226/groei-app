@@ -29,6 +29,8 @@ async def apply(db):
             pot_size_cm     INTEGER,
             last_repotted   DATE,
             notes           TEXT,
+            phase           TEXT DEFAULT 'established',
+            sown_date       TEXT,
             is_active       BOOLEAN DEFAULT 1,
             created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP

@@ -129,12 +129,13 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
 @router.post("/plants", response_model=PlantOut)
 async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute(
-        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
          str(data.acquired_date) if data.acquired_date else None,
          data.pot_size_cm, data.notes,
-         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key, account["household_id"]),
+         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key,
+         data.phase, str(data.sown_date) if data.sown_date else None, account["household_id"]),
     )
     plant_id = cursor.lastrowid
 
@@ -303,11 +304,11 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
 
     new_cursor = await db.execute(
         """INSERT INTO plants (name, species, species_id, location_id, photo_path, pot_size_cm, notes,
-           map_id, display_radius_cm, sun_requirement, is_active, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+           map_id, display_radius_cm, sun_requirement, phase, sown_date, is_active, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
         (src["name"], src["species"], src.get("species_id"), src["location_id"], src["photo_path"],
          src["pot_size_cm"], src["notes"], src["map_id"], src.get("display_radius_cm"),
-         src.get("sun_requirement"), account["household_id"]),
+         src.get("sun_requirement"), src.get("phase"), src.get("sown_date"), account["household_id"]),
     )
     new_id = new_cursor.lastrowid
 

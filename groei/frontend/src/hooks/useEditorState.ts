@@ -150,14 +150,27 @@ function reducer(state: EditorState, action: Action): EditorState {
         isDirty: true,
       }
     }
-    case 'UPDATE_ZONE':
+    case 'UPDATE_ZONE': {
+      const posChanged = action.updates.x !== undefined ||
+        action.updates.y !== undefined ||
+        action.updates.width !== undefined ||
+        action.updates.height !== undefined
       return {
         ...state,
-        zones: state.zones.map((z) =>
-          z.id === action.id ? { ...z, ...action.updates } : z
-        ),
+        zones: state.zones.map((z) => {
+          if (z.id !== action.id) return z
+          const updated = { ...z, ...action.updates }
+          // Auto-detect wallThickness when a room's position/size changes
+          if (posChanged && updated.type === 'room') {
+            updated.wallThickness = isInsideStructure(updated, state.zones.filter((oz) => oz.id !== action.id))
+              ? 'interior'
+              : 'exterior'
+          }
+          return updated
+        }),
         isDirty: true,
       }
+    }
     case 'DELETE_ZONE':
       return {
         ...state,

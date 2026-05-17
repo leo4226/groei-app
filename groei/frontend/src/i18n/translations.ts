@@ -10,9 +10,9 @@ export type Translations = {
   nav: {
     home: string
     plants: string
+    maps: string
     calendar: string
     settings: string
-    add: string
   }
 
   dashboard: {
@@ -472,6 +472,14 @@ export type Translations = {
     sunFull: string          // "Full sun"
     sunPartial: string       // "Partial sun"
     sunShade: string         // "Shade"
+    // Growth phases (Groeifasen)
+    growthPhaseLabel: string  // "Growth phase"
+    sownDateLabel: string     // "Sown date"
+    phaseSeed: string         // "Seed"
+    phaseSprout: string       // "Sprout"
+    phaseSeedling: string     // "Seedling"
+    phaseYoung: string        // "Young plant"
+    phaseEstablished: string  // "Established"
   }
 
   // ── Calendar page ───────────────────────────────────────────────

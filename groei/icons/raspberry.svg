@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Raspberry"><title>Raspberry — Rubus idaeus</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Framboos"><title>Framboos — Rubus idaeus</title>
   
     <path d="M 30 80 L 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 70 80 Z" fill="#B2664A"></path>
     <rect x="28" y="77" width="44" height="5" rx="1.5" fill="#C77B5D"></rect>
@@ -6,9 +6,9 @@
     <ellipse cx="50" cy="79.5" rx="18" ry="1.8" fill="#4A3429"></ellipse>
   
   
-  <path d="M 50 72 Q 48 60 44 48 Q 42 38 44 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 72 Q 52 60 56 48 Q 58 38 56 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
-  <path d="M 50 72 Q 50 58 50 38" stroke="#6B4A35" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 80 Q 48 60 44 48 Q 42 38 44 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 80 Q 52 60 56 48 Q 58 38 56 26" stroke="#6B4A35" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 80 Q 50 58 50 38" stroke="#6B4A35" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
   
   
     <g transform="translate(36 56) rotate(-30)">

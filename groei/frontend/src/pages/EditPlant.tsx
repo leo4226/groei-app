@@ -32,6 +32,8 @@ export default function EditPlant() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [sownDate, setSownDate] = useState('')
+  const [phase, setPhase] = useState('established')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
   const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
@@ -63,6 +65,8 @@ export default function EditPlant() {
         setNotes(p.notes ?? '')
         setSunRequirement(p.sun_requirement ?? null)
         setIconKey(p.icon_key ?? null)
+        setPhase(p.phase ?? 'established')
+        setSownDate(p.sown_date ?? '')
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -97,6 +101,8 @@ export default function EditPlant() {
         notes: notes.trim() || null,
         sun_requirement: sunRequirement ?? null,
         icon_key: iconKey,
+        phase: phase,
+        sown_date: sownDate || null,
       })
 
       if (photoFile) {
@@ -189,6 +195,27 @@ export default function EditPlant() {
           <IconPicker value={iconKey} onChange={setIconKey} />
         </div>
 
+        {/* Growth phase */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.growthPhaseLabel}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {(['seed', 'sprout', 'seedling', 'young', 'established'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPhase(p)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                  phase === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:border-text-muted'
+                }`}
+              >
+                {t.editPlant[`phase${p.charAt(0).toUpperCase() + p.slice(1)}` as keyof typeof t.editPlant] as string}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Sun requirement */}
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sunRequirementLabel}</label>
@@ -269,6 +296,17 @@ export default function EditPlant() {
             type="date"
             value={lastRepotted}
             onChange={(e) => setLastRepotted(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        {/* Sown date */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
+          <input
+            type="date"
+            value={sownDate}
+            onChange={(e) => setSownDate(e.target.value)}
             className={inputClass}
           />
         </div>

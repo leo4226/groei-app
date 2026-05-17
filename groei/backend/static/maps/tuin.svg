@@ -15,26 +15,26 @@
       <circle cx="4" cy="4" r="0.7" fill="#999" opacity="0.22"/>
     </pattern>
   </defs>
-  <rect x="143" y="210" width="216" height="199" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="143" y="210" width="216" height="199" fill="url(#soilp)" opacity="1"/>
-  <rect x="56" y="135" width="142" height="274" fill="#C8A96A" opacity="1" stroke="rgba(222,220,209,0.3)" stroke-width="1"/>
-  <rect x="56" y="135" width="142" height="274" fill="url(#deckp)" opacity="0.55"/>
-  <rect x="359" y="135" width="249" height="274" fill="#C8A96A" opacity="1" stroke="rgba(222,220,209,0.3)" stroke-width="1"/>
-  <rect x="359" y="135" width="249" height="274" fill="url(#deckp)" opacity="0.55"/>
-  <rect x="198" y="161" width="161" height="49" fill="#cccccc" opacity="1" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="198" y="161" width="161" height="49" fill="url(#gravelp)" opacity="1"/>
-  <rect x="198" y="135" width="161" height="26" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="198" y="135" width="161" height="26" fill="url(#soilp)" opacity="1"/>
-  <rect x="507" y="317" width="101" height="92" fill="#C8A060" opacity="1" stroke="#8a6030" stroke-width="1.2"/>
-  <text x="557" y="363" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="12" font-weight="500">Schuur</text>
-  <rect x="608" y="135" width="6" height="274" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="608" y="135" width="6" height="274" fill="url(#soilp)" opacity="1"/>
-  <rect x="56" y="130" width="558" height="5" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="56" y="130" width="558" height="5" fill="url(#soilp)" opacity="1"/>
-  <rect x="51" y="130" width="5" height="279" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="51" y="130" width="5" height="279" fill="url(#soilp)" opacity="1"/>
-  <rect x="51" y="409" width="563" height="5" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
-  <rect x="51" y="409" width="563" height="5" fill="url(#soilp)" opacity="1"/>
+  <rect x="172" y="216" width="206" height="199" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="172" y="216" width="206" height="199" fill="url(#soilp)" opacity="1"/>
+  <rect x="75" y="141" width="142" height="274" fill="#C8A96A" opacity="1" stroke="rgba(222,220,209,0.3)" stroke-width="1"/>
+  <rect x="75" y="141" width="142" height="274" fill="url(#deckp)" opacity="0.55"/>
+  <rect x="378" y="141" width="249" height="274" fill="#C8A96A" opacity="1" stroke="rgba(222,220,209,0.3)" stroke-width="1"/>
+  <rect x="378" y="141" width="249" height="274" fill="url(#deckp)" opacity="0.55"/>
+  <rect x="217" y="167" width="161" height="49" fill="#cccccc" opacity="1" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="217" y="167" width="161" height="49" fill="url(#gravelp)" opacity="1"/>
+  <rect x="217" y="141" width="161" height="26" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="217" y="141" width="161" height="26" fill="url(#soilp)" opacity="1"/>
+  <rect x="526" y="323" width="101" height="92" fill="#C8A060" opacity="1" stroke="#8a6030" stroke-width="1.2"/>
+  <text x="576" y="369" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="12" font-weight="500">Schuur</text>
+  <rect x="627" y="141" width="6" height="274" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="627" y="141" width="6" height="274" fill="url(#soilp)" opacity="1"/>
+  <rect x="75" y="136" width="558" height="5" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="75" y="136" width="558" height="5" fill="url(#soilp)" opacity="1"/>
+  <rect x="70" y="136" width="5" height="279" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="70" y="136" width="5" height="279" fill="url(#soilp)" opacity="1"/>
+  <rect x="70" y="415" width="563" height="5" fill="#9B7A3A" opacity="0.4" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+  <rect x="70" y="415" width="563" height="5" fill="url(#soilp)" opacity="1"/>
   <line x1="16" y1="660" x2="108.0" y2="660" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
   <line x1="16" y1="656" x2="16" y2="664" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
   <line x1="108.0" y1="656" x2="108.0" y2="664" stroke="rgba(100,90,70,0.7)" stroke-width="1.5"/>
