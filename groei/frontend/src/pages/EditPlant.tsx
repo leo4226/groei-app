@@ -46,11 +46,11 @@ export default function EditPlant() {
     : null
 
   function randomMapPos(viewbox: string) {
-    const [, , w, h] = viewbox.split(' ').map(Number)
+    const [x0, y0, w, h] = viewbox.split(' ').map(Number)
     const pad = Math.min(w, h) * 0.12
     return {
-      x: Math.round((pad + Math.random() * (w - pad * 2)) * 10) / 10,
-      y: Math.round((pad + Math.random() * (h - pad * 2)) * 10) / 10,
+      x: Math.round((x0 + pad + Math.random() * (w - pad * 2)) * 10) / 10,
+      y: Math.round((y0 + pad + Math.random() * (h - pad * 2)) * 10) / 10,
     }
   }
 

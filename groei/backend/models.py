@@ -72,6 +72,9 @@ class PlantUpdate(BaseModel):
     icon_requested: bool | None = None   # None = don't change
     phase: str | None = None             # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
     sown_date: date | None = None
+    map_id: int | None = None
+    map_x: float | None = None
+    map_y: float | None = None
 
 
 class CareScheduleOut(BaseModel):
@@ -289,6 +292,8 @@ class MapPlantOut(BaseModel):
     is_locked: bool = False
     top_alert: TopAlert | None = None
     alerts: list[TopAlert] = []
+    top_warning: dict | None = None
+    warnings: list[dict] = []
 
 
 class PlantPositionUpdate(BaseModel):
@@ -543,9 +548,23 @@ class AccountOut(BaseModel):
 class CalendarEventOut(BaseModel):
     id: str                  # composite e.g. "schedule:42:water"
     date: str                # ISO date YYYY-MM-DD
-    type: str                # 'water' | 'fertilize' | (more later)
+    type: str                # 'water' | 'fertilize' | etc.
     plant_id: int | None
     plant_name: str | None
     plant_icon_variant: str | None
     schedule_id: int | None
     overdue: bool
+    # ── warning enrichment ──
+    severity: str | None = None   # 'urgent' | 'warning' | 'info' | None
+    color: str | None = None      # canonical badge color from CareWarning
+    icon: str | None = None       # emoji from CareWarning
+
+
+# ── Water Log ──
+
+class WaterLogOut(BaseModel):
+    id: int
+    watered_at: str
+    watered_by: int | None = None
+    water_amount: float | None = None  # ml
+    created_at: str | None = None
