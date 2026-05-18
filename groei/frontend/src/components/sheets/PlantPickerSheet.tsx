@@ -43,7 +43,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up max-h-[85dvh] flex flex-col">
         {/* Drag handle */}
         <button
           onClick={onClose}
@@ -53,7 +53,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
         </button>
 
-        <div className="px-5 pb-5">
+        <div className="px-5 pb-5 flex flex-col min-h-0 flex-1 overflow-y-auto">
           {/* Header */}
           <h3 className="text-base font-bold text-text mb-1">{t.plantPicker.title}</h3>
           <p className="text-xs text-text-muted mb-3">
@@ -112,10 +112,9 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
             </div>
           ) : (
             <div
-              className="grid gap-2 overflow-y-auto"
+              className="grid gap-2 pb-2"
               style={{
                 gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                maxHeight: '40vh',
               }}
             >
               {filtered.map((plant) => (

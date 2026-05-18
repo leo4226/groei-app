@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import { WaterStatusIcon } from '../components/PlantStatusIcon'
@@ -11,6 +11,7 @@ import type { FixedPlant } from '../constants/fixedPlants'
 import SunControls from '../components/sun/SunControls'
 import GrowHereSheet from '../components/sheets/GrowHereSheet'
 import SpotInspectorSheet from '../components/sheets/SpotInspectorSheet'
+import WaterLogSheet from '../components/sheets/WaterLogSheet'
 import { useSunVisualization } from '../hooks/useSunVisualization'
 import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
@@ -28,12 +29,18 @@ export default function MapPage() {
   const t = useT()
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
-  const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
+  const maps = useFloreren((s) => s.maps)
+  const loadMaps = useFloreren((s) => s.loadMaps)
 
   const mapData = useMapData(slug)
   const water = useGardenWater()
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
+
+  // Load full map list for the indoor/outdoor toggle
+  useEffect(() => {
+    if (maps.length === 0) loadMaps()
+  }, [loadMaps])
 
   const { map, plants, objects, loading } = mapData
 
@@ -192,10 +199,39 @@ export default function MapPage() {
     )
   }
 
+  // Find indoor/outdoor maps for the toggle
+  const indoorMap = maps.find((m) => m.map_type === 'indoor')
+  const outdoorMap = maps.find((m) => m.map_type === 'outdoor')
+  const isIndoor = map.map_type === 'indoor'
+
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
+          {indoorMap && outdoorMap && (
+            <div className="flex gap-0.5 bg-surface rounded-lg p-0.5 border border-border shrink-0">
+              <button
+                onClick={() => { if (indoorMap.slug !== slug) navigate(`/map/${indoorMap.slug}`) }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  isIndoor
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                {indoorMap.name}
+              </button>
+              <button
+                onClick={() => { if (outdoorMap.slug !== slug) navigate(`/map/${outdoorMap.slug}`) }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  !isIndoor
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                {outdoorMap.name}
+              </button>
+            </div>
+          )}
           <h1 className="text-xl font-bold text-text">{map.name}</h1>
           <button
             onClick={() => navigate(`/maps/${map.id}/settings`)}
@@ -283,7 +319,7 @@ export default function MapPage() {
             <span>{t.mapPage.pot}</span>
           </button>
           <button
-            onClick={() => setShowPlantPicker(true)}
+            onClick={() => navigate('/plants/add')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
           >
             <span className="text-lg leading-none">+</span>
@@ -293,31 +329,15 @@ export default function MapPage() {
       </div>
 
       {water.showPicker && (
-        <div className="mb-2 p-3 bg-surface rounded-xl border border-border flex items-center gap-2 shrink-0">
-          <input
-            type="date"
-            value={water.pickerDate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => water.setPickerDate(e.target.value)}
-            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
-          />
-          <button
-            onClick={handleWaterSave}
-            disabled={water.watering || !water.pickerDate}
-            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {water.watering ? '…' : t.mapPage.saveLabel}
-          </button>
-          {water.gardenWater?.watered_at && (
-            <button
-              onClick={handleWaterDelete}
-              disabled={water.watering}
-              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              Wis
-            </button>
-          )}
-        </div>
+        <WaterLogSheet
+          pickerDate={water.pickerDate}
+          onPickerDateChange={water.setPickerDate}
+          busy={water.watering}
+          hasExistingWatering={!!water.gardenWater?.watered_at}
+          onSave={handleWaterSave}
+          onDelete={handleWaterDelete}
+          onClose={water.closePicker}
+        />
       )}
 
       {fertilize.showPicker && (

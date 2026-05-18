@@ -45,6 +45,15 @@ export default function EditPlant() {
     : locations.find(l => l.id === locationId) ? 'huis'
     : null
 
+  function randomMapPos(viewbox: string) {
+    const [, , w, h] = viewbox.split(' ').map(Number)
+    const pad = Math.min(w, h) * 0.12
+    return {
+      x: Math.round((pad + Math.random() * (w - pad * 2)) * 10) / 10,
+      y: Math.round((pad + Math.random() * (h - pad * 2)) * 10) / 10,
+    }
+  }
+
   function selectArea(area: 'tuin' | 'huis') {
     if (currentArea === area) { setLocationId(undefined); return }
     const pool = area === 'tuin' ? tuinLocs : huisLocs
@@ -91,6 +100,12 @@ export default function EditPlant() {
 
     setSubmitting(true)
     try {
+      const needsMapPlacement = !plant?.map_id && currentArea != null
+      const placedMap = needsMapPlacement
+        ? (currentArea === 'tuin' ? tuinMap : huisMap)
+        : undefined
+      const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
+
       await updatePlant(plantId, {
         name: name.trim(),
         species: species.trim() || null,
@@ -103,6 +118,7 @@ export default function EditPlant() {
         icon_key: iconKey,
         phase: phase,
         sown_date: sownDate || null,
+        ...(placedMap && mapPos ? { map_id: placedMap.id, map_x: mapPos.x, map_y: mapPos.y } : {}),
       })
 
       if (photoFile) {

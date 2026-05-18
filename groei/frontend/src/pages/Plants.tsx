@@ -6,8 +6,6 @@ import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/pl
 import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
-import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
-import type { LocalPlant } from '../data/plants-dataset'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -44,7 +42,6 @@ export default function Plants() {
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
-  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
@@ -271,7 +268,7 @@ export default function Plants() {
           </span>
         </div>
         <button
-          onClick={() => setShowPicker(true)}
+          onClick={() => navigate('/plants/add')}
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
@@ -472,19 +469,7 @@ export default function Plants() {
           </div>
         )}
       </div>
-      {showPicker && (
-        <PlantPickerSheet
-          onClose={() => setShowPicker(false)}
-          onSelectPlant={(plant: LocalPlant) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: { prefill: plant } })
-          }}
-          onCustomName={(name) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
-          }}
-        />
-      )}
+
     </div>
   )
 }

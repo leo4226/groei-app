@@ -18,6 +18,7 @@ import { CARE_TYPE_INFO } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import type { CareType, CareScheduleInput } from '../types'
 import IconPicker from '../components/IconPicker'
+import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
@@ -86,6 +87,7 @@ export default function AddPlant() {
   const [phase, setPhase] = useState('established')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
+  const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
   const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
   const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
 
@@ -145,14 +147,14 @@ export default function AddPlant() {
         .filter(([, s]) => s.enabled && s.days > 0)
         .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
 
-      // Auto-place on garden map at a random spot when Tuin is selected
-      const mapPos = currentArea === 'tuin' && tuinMap ? randomMapPos(tuinMap.viewbox) : undefined
+      const placedMap = currentArea === 'tuin' ? tuinMap : currentArea === 'huis' ? huisMap : undefined
+      const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
       const plant = await addPlant({
         name: name.trim(),
         species: species.trim() || undefined,
         location_id: locationId,
-        map_id: currentArea === 'tuin' && tuinMap ? tuinMap.id : undefined,
+        map_id: placedMap?.id,
         map_x: mapPos?.x,
         map_y: mapPos?.y,
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
@@ -235,6 +237,20 @@ export default function AddPlant() {
           </button>
         </div>
       </div>
+    )
+  }
+
+  if (locState?.from === 'pick' && !prefill) {
+    return (
+      <PlantPickerSheet
+        onClose={() => navigate(-1)}
+        onSelectPlant={(plant) =>
+          navigate(location.pathname, { state: { from: 'pick', prefill: plant }, replace: true })
+        }
+        onCustomName={(name) =>
+          navigate(location.pathname, { state: { from: 'manual', prefill: name ? { name } : undefined }, replace: true })
+        }
+      />
     )
   }
 
