@@ -3,6 +3,8 @@ app = "floreren-api"
 primary_region = "ams"
 
 [build]
+  dockerfile = "backend/Dockerfile"
+  context = ".."
 
 [env]
   PORT = "8000"
