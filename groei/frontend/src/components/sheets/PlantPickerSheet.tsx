@@ -43,7 +43,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up max-h-[85dvh] flex flex-col">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up max-h-[85dvh] flex flex-col">
         {/* Drag handle */}
         <button
           onClick={onClose}

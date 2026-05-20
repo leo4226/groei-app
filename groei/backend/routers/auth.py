@@ -32,6 +32,13 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     )
     account_id = cur2.lastrowid
 
+    # Create a user entry for this account so the language endpoint works
+    cur3 = await db.execute(
+        "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
+        (body.name.strip(), household_id, "nl"),
+    )
+    user_id = cur3.lastrowid
+
     # Create default locations for the new household
     for name, icon, sort_order in DEFAULT_LOCATIONS:
         await db.execute(

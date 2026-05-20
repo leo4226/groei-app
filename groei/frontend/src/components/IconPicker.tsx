@@ -23,19 +23,19 @@ export default function IconPicker({ value, onChange }: Props) {
   const selected = icons.find((i) => i.id === value) ?? null
 
   useEffect(() => {
-    if (!open) return
-    if (icons.length > 0) {
-      setTimeout(() => searchRef.current?.focus(), 80)
-      return
-    }
+    if (icons.length > 0) return
     setLoading(true)
     fetchIconCatalog()
       .then(setIcons)
       .catch(console.error)
       .finally(() => {
         setLoading(false)
-        setTimeout(() => searchRef.current?.focus(), 80)
       })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    setTimeout(() => searchRef.current?.focus(), 80)
   }, [open])
 
   const filtered = icons.filter((icon) => {

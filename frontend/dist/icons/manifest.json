@@ -1,0 +1,1395 @@
+{
+  "count": 143,
+  "iconCount": 143,
+  "categories": [
+    {
+      "id": "all",
+      "label": "Alle planten"
+    },
+    {
+      "id": "growth",
+      "label": "Groeifasen"
+    },
+    {
+      "id": "state",
+      "label": "Statussen"
+    },
+    {
+      "id": "edible",
+      "label": "Eetbaar"
+    },
+    {
+      "id": "houseplant",
+      "label": "Kamerplanten"
+    },
+    {
+      "id": "succulent",
+      "label": "Vetplanten"
+    },
+    {
+      "id": "flower",
+      "label": "Bloemen"
+    },
+    {
+      "id": "bulb",
+      "label": "Bollen"
+    },
+    {
+      "id": "herb",
+      "label": "Kruiden"
+    },
+    {
+      "id": "shrub",
+      "label": "Struiken"
+    },
+    {
+      "id": "tree",
+      "label": "Bomen"
+    },
+    {
+      "id": "grass",
+      "label": "Grassen"
+    },
+    {
+      "id": "fern",
+      "label": "Varens"
+    }
+  ],
+  "forms": [
+    {
+      "id": "all",
+      "label": "Alle vormen"
+    },
+    {
+      "id": "potted",
+      "label": "In pot"
+    },
+    {
+      "id": "bare",
+      "label": "Zonder pot"
+    },
+    {
+      "id": "fruit",
+      "label": "Vrucht/oogst"
+    },
+    {
+      "id": "portrait",
+      "label": "Portret"
+    },
+    {
+      "id": "stage",
+      "label": "Fase · in pot"
+    },
+    {
+      "id": "stage_bare",
+      "label": "Fase · in de grond"
+    },
+    {
+      "id": "state",
+      "label": "Status"
+    }
+  ],
+  "plants": [
+    {
+      "id": "monstera",
+      "name": "Monstera",
+      "sci": "Monstera deliciosa",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "monstera.svg"
+    },
+    {
+      "id": "pothos",
+      "name": "Scindapsus",
+      "sci": "Epipremnum aureum",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "pothos.svg"
+    },
+    {
+      "id": "fiddle",
+      "name": "Vioolbladplant",
+      "sci": "Ficus lyrata",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Moraceae",
+      "file": "fiddle.svg"
+    },
+    {
+      "id": "snake",
+      "name": "Vrouwentongen",
+      "sci": "Dracaena trifasciata",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "snake.svg"
+    },
+    {
+      "id": "zz",
+      "name": "ZZ-plant",
+      "sci": "Zamioculcas zamiifolia",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "zz.svg"
+    },
+    {
+      "id": "rubber",
+      "name": "Rubberplant",
+      "sci": "Ficus elastica",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Moraceae",
+      "file": "rubber.svg"
+    },
+    {
+      "id": "peacelily",
+      "name": "Lepelplant",
+      "sci": "Spathiphyllum wallisii",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "peacelily.svg"
+    },
+    {
+      "id": "spider",
+      "name": "Graslelie",
+      "sci": "Chlorophytum comosum",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "spider.svg"
+    },
+    {
+      "id": "philo",
+      "name": "Hartblad Philodendron",
+      "sci": "Philodendron hederaceum var. oxycardium",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "philo.svg"
+    },
+    {
+      "id": "calathea",
+      "name": "Calathea",
+      "sci": "Goeppertia orbifolia",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Marantaceae",
+      "file": "calathea.svg"
+    },
+    {
+      "id": "bostonfern",
+      "name": "Krulvaren",
+      "sci": "Nephrolepis exaltata",
+      "cat": "fern",
+      "form": "potted",
+      "family": "Nephrolepidaceae",
+      "file": "bostonfern.svg"
+    },
+    {
+      "id": "bostonfern_bare",
+      "name": "Krulvaren",
+      "sci": "Nephrolepis exaltata",
+      "cat": "fern",
+      "form": "bare",
+      "family": "Nephrolepidaceae",
+      "variant_of": "bostonfern",
+      "file": "bostonfern_bare.svg"
+    },
+    {
+      "id": "birdnest",
+      "name": "Nestvaren",
+      "sci": "Asplenium nidus",
+      "cat": "fern",
+      "form": "potted",
+      "family": "Aspleniaceae",
+      "file": "birdnest.svg"
+    },
+    {
+      "id": "areca",
+      "name": "Areca-palm",
+      "sci": "Dypsis lutescens",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Arecaceae",
+      "file": "areca.svg"
+    },
+    {
+      "id": "parlor",
+      "name": "Bergpalm",
+      "sci": "Chamaedorea elegans",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Arecaceae",
+      "file": "parlor.svg"
+    },
+    {
+      "id": "aloe",
+      "name": "Aloë Vera",
+      "sci": "Aloe barbadensis",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Asphodelaceae",
+      "file": "aloe.svg"
+    },
+    {
+      "id": "jade",
+      "name": "Jadeplant",
+      "sci": "Crassula ovata",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Crassulaceae",
+      "file": "jade.svg"
+    },
+    {
+      "id": "echeveria",
+      "name": "Echeveria",
+      "sci": "Echeveria elegans",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Crassulaceae",
+      "file": "echeveria.svg"
+    },
+    {
+      "id": "cactus",
+      "name": "Bolcactus",
+      "sci": "Ferocactus glaucescens",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Cactaceae",
+      "file": "cactus.svg"
+    },
+    {
+      "id": "prickly",
+      "name": "Schijfcactus",
+      "sci": "Opuntia ficus-indica",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Cactaceae",
+      "file": "prickly.svg"
+    },
+    {
+      "id": "stringpearls",
+      "name": "Erwtenplant",
+      "sci": "Curio rowleyanus",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "stringpearls.svg"
+    },
+    {
+      "id": "orchid",
+      "name": "Vlinderorchidee",
+      "sci": "Phalaenopsis amabilis",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Orchidaceae",
+      "file": "orchid.svg"
+    },
+    {
+      "id": "africanviolet",
+      "name": "Kaaps Viooltje",
+      "sci": "Streptocarpus ionanthus",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Gesneriaceae",
+      "file": "africanviolet.svg"
+    },
+    {
+      "id": "anthurium",
+      "name": "Flamingoplant",
+      "sci": "Anthurium andraeanum",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Araceae",
+      "file": "anthurium.svg"
+    },
+    {
+      "id": "bromeliad",
+      "name": "Bromelia",
+      "sci": "Guzmania lingulata",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Bromeliaceae",
+      "file": "bromeliad.svg"
+    },
+    {
+      "id": "bonsai",
+      "name": "Bonsai",
+      "sci": "Ficus retusa",
+      "cat": "tree",
+      "form": "potted",
+      "family": "Moraceae",
+      "file": "bonsai.svg"
+    },
+    {
+      "id": "tulip",
+      "name": "Tulp",
+      "sci": "Tulipa gesneriana",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Liliaceae",
+      "file": "tulip.svg"
+    },
+    {
+      "id": "daffodil",
+      "name": "Narcis",
+      "sci": "Narcissus pseudonarcissus",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Amaryllidaceae",
+      "file": "daffodil.svg"
+    },
+    {
+      "id": "hyacinth",
+      "name": "Hyacint",
+      "sci": "Hyacinthus orientalis",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "hyacinth.svg"
+    },
+    {
+      "id": "crocus",
+      "name": "Krokus",
+      "sci": "Crocus vernus",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Iridaceae",
+      "file": "crocus.svg"
+    },
+    {
+      "id": "snowdrop",
+      "name": "Sneeuwklokje",
+      "sci": "Galanthus nivalis",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Amaryllidaceae",
+      "file": "snowdrop.svg"
+    },
+    {
+      "id": "iris",
+      "name": "Hollandse Iris",
+      "sci": "Iris × hollandica",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Iridaceae",
+      "file": "iris.svg"
+    },
+    {
+      "id": "allium",
+      "name": "Sierui",
+      "sci": "Allium giganteum",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "Amaryllidaceae",
+      "file": "allium.svg"
+    },
+    {
+      "id": "lavender",
+      "name": "Lavendel",
+      "sci": "Lavandula angustifolia",
+      "cat": "herb",
+      "form": "potted",
+      "family": "Lamiaceae",
+      "file": "lavender.svg"
+    },
+    {
+      "id": "lavender_bare",
+      "name": "Lavendel",
+      "sci": "Lavandula angustifolia",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "variant_of": "lavender",
+      "file": "lavender_bare.svg"
+    },
+    {
+      "id": "rosemary",
+      "name": "Rozemarijn",
+      "sci": "Salvia rosmarinus",
+      "cat": "herb",
+      "form": "potted",
+      "family": "Lamiaceae",
+      "file": "rosemary.svg"
+    },
+    {
+      "id": "thyme",
+      "name": "Tijm",
+      "sci": "Thymus vulgaris",
+      "cat": "herb",
+      "form": "potted",
+      "family": "Lamiaceae",
+      "file": "thyme.svg"
+    },
+    {
+      "id": "basil",
+      "name": "Basilicum",
+      "sci": "Ocimum basilicum",
+      "cat": "herb",
+      "form": "potted",
+      "family": "Lamiaceae",
+      "file": "basil.svg"
+    },
+    {
+      "id": "mint",
+      "name": "Munt",
+      "sci": "Mentha spicata",
+      "cat": "herb",
+      "form": "potted",
+      "family": "Lamiaceae",
+      "file": "mint.svg"
+    },
+    {
+      "id": "hydrangea",
+      "name": "Hortensia",
+      "sci": "Hydrangea macrophylla",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Hydrangeaceae",
+      "file": "hydrangea.svg"
+    },
+    {
+      "id": "rose",
+      "name": "Tuinroos",
+      "sci": "Rosa × hybrida",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Rosaceae",
+      "file": "rose.svg"
+    },
+    {
+      "id": "sunflower",
+      "name": "Zonnebloem",
+      "sci": "Helianthus annuus",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "sunflower.svg"
+    },
+    {
+      "id": "poppy",
+      "name": "Klaproos",
+      "sci": "Papaver rhoeas",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Papaveraceae",
+      "file": "poppy.svg"
+    },
+    {
+      "id": "daisy",
+      "name": "Margriet",
+      "sci": "Leucanthemum vulgare",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "daisy.svg"
+    },
+    {
+      "id": "foxglove",
+      "name": "Vingerhoedskruid",
+      "sci": "Digitalis purpurea",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Plantaginaceae",
+      "file": "foxglove.svg"
+    },
+    {
+      "id": "peony",
+      "name": "Pioenroos",
+      "sci": "Paeonia lactiflora",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Paeoniaceae",
+      "file": "peony.svg"
+    },
+    {
+      "id": "cornflower",
+      "name": "Korenbloem",
+      "sci": "Centaurea cyanus",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "cornflower.svg"
+    },
+    {
+      "id": "boxwood",
+      "name": "Buxus",
+      "sci": "Buxus sempervirens",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Buxaceae",
+      "file": "boxwood.svg"
+    },
+    {
+      "id": "oak",
+      "name": "Zomereik",
+      "sci": "Quercus robur",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Fagaceae",
+      "file": "oak.svg"
+    },
+    {
+      "id": "birch",
+      "name": "Ruwe Berk",
+      "sci": "Betula pendula",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Betulaceae",
+      "file": "birch.svg"
+    },
+    {
+      "id": "beech",
+      "name": "Beuk",
+      "sci": "Fagus sylvatica",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Fagaceae",
+      "file": "beech.svg"
+    },
+    {
+      "id": "willow",
+      "name": "Treurwilg",
+      "sci": "Salix babylonica",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Salicaceae",
+      "file": "willow.svg"
+    },
+    {
+      "id": "maple",
+      "name": "Noorse Esdoorn",
+      "sci": "Acer platanoides",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Sapindaceae",
+      "file": "maple.svg"
+    },
+    {
+      "id": "geranium",
+      "name": "Pelargonium",
+      "sci": "Pelargonium × hortorum",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Geraniaceae",
+      "file": "geranium.svg"
+    },
+    {
+      "id": "begonia",
+      "name": "Begonia",
+      "sci": "Begonia semperflorens",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Begoniaceae",
+      "file": "begonia.svg"
+    },
+    {
+      "id": "marigold",
+      "name": "Afrikaantje",
+      "sci": "Tagetes patula",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "marigold.svg"
+    },
+    {
+      "id": "pansy",
+      "name": "Viooltje",
+      "sci": "Viola × wittrockiana",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Violaceae",
+      "file": "pansy.svg"
+    },
+    {
+      "id": "fuchsia",
+      "name": "Fuchsia",
+      "sci": "Fuchsia magellanica",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Onagraceae",
+      "file": "fuchsia.svg"
+    },
+    {
+      "id": "heather",
+      "name": "Struikheide",
+      "sci": "Calluna vulgaris",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Ericaceae",
+      "file": "heather.svg"
+    },
+    {
+      "id": "ivy",
+      "name": "Klimop",
+      "sci": "Hedera helix",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Araliaceae",
+      "file": "ivy.svg"
+    },
+    {
+      "id": "holly",
+      "name": "Hulst",
+      "sci": "Ilex aquifolium",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Aquifoliaceae",
+      "file": "holly.svg"
+    },
+    {
+      "id": "dahlia",
+      "name": "Dahlia",
+      "sci": "Dahlia pinnata",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "dahlia.svg"
+    },
+    {
+      "id": "petunia",
+      "name": "Petunia",
+      "sci": "Petunia × atkinsiana",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Solanaceae",
+      "file": "petunia.svg"
+    },
+    {
+      "id": "forgetmenot",
+      "name": "Vergeet-mij-nietje",
+      "sci": "Myosotis sylvatica",
+      "cat": "flower",
+      "form": "potted",
+      "family": "Boraginaceae",
+      "file": "forgetmenot.svg"
+    },
+    {
+      "id": "clematis",
+      "name": "Clematis",
+      "sci": "Clematis × jackmanii",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Ranunculaceae",
+      "file": "clematis.svg"
+    },
+    {
+      "id": "silvergrass",
+      "name": "Chinees Prachtriet",
+      "sci": "Miscanthus sinensis",
+      "cat": "grass",
+      "form": "potted",
+      "family": "Poaceae",
+      "file": "silvergrass.svg"
+    },
+    {
+      "id": "figtree",
+      "name": "Vijgenboom",
+      "sci": "Ficus carica",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Moraceae",
+      "file": "figtree.svg"
+    },
+    {
+      "id": "laurel",
+      "name": "Laurier",
+      "sci": "Laurus nobilis",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Lauraceae",
+      "file": "laurel.svg"
+    },
+    {
+      "id": "camellia",
+      "name": "Camelia",
+      "sci": "Camellia japonica",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Theaceae",
+      "file": "camellia.svg"
+    },
+    {
+      "id": "bamboo",
+      "name": "Bamboe",
+      "sci": "Phyllostachys edulis",
+      "cat": "grass",
+      "form": "potted",
+      "family": "Poaceae",
+      "file": "bamboo.svg"
+    },
+    {
+      "id": "tomato",
+      "name": "Tomaat",
+      "sci": "Solanum lycopersicum",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Solanaceae",
+      "file": "tomato.svg"
+    },
+    {
+      "id": "tomato_bare",
+      "name": "Tomaat",
+      "sci": "Solanum lycopersicum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Solanaceae",
+      "variant_of": "tomato",
+      "file": "tomato_bare.svg"
+    },
+    {
+      "id": "brownbean",
+      "name": "Bruine Boon",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Fabaceae",
+      "file": "brownbean.svg"
+    },
+    {
+      "id": "brownbean_bare",
+      "name": "Bruine Boon",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Fabaceae",
+      "variant_of": "brownbean",
+      "file": "brownbean_bare.svg"
+    },
+    {
+      "id": "avocado",
+      "name": "Avocado",
+      "sci": "Persea americana",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Lauraceae",
+      "file": "avocado.svg"
+    },
+    {
+      "id": "avocado_tree_potted",
+      "name": "Avocadoboom (2 jr)",
+      "sci": "Persea americana",
+      "cat": "tree",
+      "form": "potted",
+      "family": "Lauraceae",
+      "variant_of": "avocado",
+      "file": "avocado_tree_potted.svg"
+    },
+    {
+      "id": "strawberry",
+      "name": "Aardbei",
+      "sci": "Fragaria × ananassa",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Rosaceae",
+      "file": "strawberry.svg"
+    },
+    {
+      "id": "strawberry_bare",
+      "name": "Aardbei",
+      "sci": "Fragaria × ananassa",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "strawberry",
+      "file": "strawberry_bare.svg"
+    },
+    {
+      "id": "carrot",
+      "name": "Wortel",
+      "sci": "Daucus carota",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Apiaceae",
+      "file": "carrot.svg"
+    },
+    {
+      "id": "lettuce",
+      "name": "Sla",
+      "sci": "Lactuca sativa",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "lettuce.svg"
+    },
+    {
+      "id": "lettuce_bare",
+      "name": "Sla",
+      "sci": "Lactuca sativa",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Asteraceae",
+      "variant_of": "lettuce",
+      "file": "lettuce_bare.svg"
+    },
+    {
+      "id": "pepper",
+      "name": "Paprika",
+      "sci": "Capsicum annuum",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Solanaceae",
+      "file": "pepper.svg"
+    },
+    {
+      "id": "pepper_bare",
+      "name": "Paprika",
+      "sci": "Capsicum annuum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Solanaceae",
+      "variant_of": "pepper",
+      "file": "pepper_bare.svg"
+    },
+    {
+      "id": "pumpkin",
+      "name": "Pompoen",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "file": "pumpkin.svg"
+    },
+    {
+      "id": "zucchini",
+      "name": "Courgette",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "file": "zucchini.svg"
+    },
+    {
+      "id": "cucumber",
+      "name": "Komkommer",
+      "sci": "Cucumis sativus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "file": "cucumber.svg"
+    },
+    {
+      "id": "radish",
+      "name": "Radijs",
+      "sci": "Raphanus sativus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Brassicaceae",
+      "file": "radish.svg"
+    },
+    {
+      "id": "potato",
+      "name": "Aardappel",
+      "sci": "Solanum tuberosum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Solanaceae",
+      "file": "potato.svg"
+    },
+    {
+      "id": "blueberry",
+      "name": "Blauwe Bes",
+      "sci": "Vaccinium corymbosum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Ericaceae",
+      "file": "blueberry.svg"
+    },
+    {
+      "id": "garlic",
+      "name": "Knoflook",
+      "sci": "Allium sativum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Amaryllidaceae",
+      "file": "garlic.svg"
+    },
+    {
+      "id": "onion",
+      "name": "Ui",
+      "sci": "Allium cepa",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Amaryllidaceae",
+      "file": "onion.svg"
+    },
+    {
+      "id": "corn",
+      "name": "Mais",
+      "sci": "Zea mays",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Poaceae",
+      "file": "corn.svg"
+    },
+    {
+      "id": "raspberry_fruit",
+      "name": "Framboos",
+      "sci": "Rubus idaeus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "raspberry",
+      "file": "raspberry_fruit.svg"
+    },
+    {
+      "id": "raspberry",
+      "name": "Framboos",
+      "sci": "Rubus idaeus",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Rosaceae",
+      "file": "raspberry.svg"
+    },
+    {
+      "id": "agapanthus",
+      "name": "Afrikaanse Lelie",
+      "sci": "Agapanthus africanus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "file": "agapanthus.svg"
+    },
+    {
+      "id": "wisteria",
+      "name": "Blauweregen",
+      "sci": "Wisteria sinensis",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Fabaceae",
+      "file": "wisteria.svg"
+    },
+    {
+      "id": "aquilegia",
+      "name": "Wilde Akelei",
+      "sci": "Aquilegia vulgaris",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "aquilegia.svg"
+    },
+    {
+      "id": "columbine",
+      "name": "Akelei",
+      "sci": "Aquilegia vulgaris",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "variant_of": "aquilegia",
+      "file": "columbine.svg"
+    },
+    {
+      "id": "malefern",
+      "name": "Mannetjesvaren",
+      "sci": "Dryopteris filix-mas",
+      "cat": "fern",
+      "form": "bare",
+      "family": "Dryopteridaceae",
+      "file": "malefern.svg"
+    },
+    {
+      "id": "ajuga",
+      "name": "Kruipend Zenegroen",
+      "sci": "Ajuga reptans",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "ajuga.svg"
+    },
+    {
+      "id": "liriope",
+      "name": "Leliegras",
+      "sci": "Liriope muscari",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "liriope.svg"
+    },
+    {
+      "id": "wallflower",
+      "name": "Muurbloem",
+      "sci": "Erysimum 'Bowles's Mauve'",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "file": "wallflower.svg"
+    },
+    {
+      "id": "oenothera",
+      "name": "Teunisbloem",
+      "sci": "Oenothera biennis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Onagraceae",
+      "file": "oenothera.svg"
+    },
+    {
+      "id": "elder",
+      "name": "Vlier",
+      "sci": "Sambucus nigra",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Adoxaceae",
+      "file": "elder.svg"
+    },
+    {
+      "id": "buddleja",
+      "name": "Vlinderstruik",
+      "sci": "Buddleja davidii",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Scrophulariaceae",
+      "file": "buddleja.svg"
+    },
+    {
+      "id": "alchemilla",
+      "name": "Vrouwenmantel",
+      "sci": "Alchemilla mollis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Rosaceae",
+      "file": "alchemilla.svg"
+    },
+    {
+      "id": "lilyofthevalley",
+      "name": "Lelietje-van-dalen",
+      "sci": "Convallaria majalis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "lilyofthevalley.svg"
+    },
+    {
+      "id": "silvergrass_bare",
+      "name": "Chinees Prachtriet",
+      "sci": "Miscanthus sinensis",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "variant_of": "silvergrass",
+      "file": "silvergrass_bare.svg"
+    },
+    {
+      "id": "wisteria_potted",
+      "name": "Blauweregen",
+      "sci": "Wisteria sinensis",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "Fabaceae",
+      "variant_of": "wisteria",
+      "file": "wisteria_potted.svg"
+    },
+    {
+      "id": "pampasgras",
+      "name": "Pampasgras",
+      "sci": "Cortaderia selloana",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "file": "pampasgras.svg"
+    },
+    {
+      "id": "drakenplant",
+      "name": "Drakenplant",
+      "sci": "Dracaena marginata",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "drakenplant.svg"
+    },
+    {
+      "id": "dracaena_compacta",
+      "name": "Dracaena Compacta",
+      "sci": "Dracaena fragrans 'Compacta'",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "dracaena_compacta.svg"
+    },
+    {
+      "id": "pannenkoekenplant",
+      "name": "Pannenkoekenplant",
+      "sci": "Pilea peperomioides",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Urticaceae",
+      "file": "pannenkoekenplant.svg"
+    },
+    {
+      "id": "wildebloemen",
+      "name": "Wilde Bloemen",
+      "sci": "Gemengde wilde bloemen",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Wilde bloemenmix · placeholder",
+      "file": "wildebloemen.svg"
+    },
+    {
+      "id": "onkruid",
+      "name": "Onkruid",
+      "sci": "Algemene onkruiddetectie",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Detectie · onkruid",
+      "file": "onkruid.svg"
+    },
+    {
+      "id": "hosta",
+      "name": "Hartlelie",
+      "sci": "Hosta sieboldiana",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "hosta.svg"
+    },
+    {
+      "id": "stokroos",
+      "name": "Stokroos",
+      "sci": "Alcea rosea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Malvaceae",
+      "file": "stokroos.svg"
+    },
+    {
+      "id": "zonnehoed",
+      "name": "Zonnehoed",
+      "sci": "Echinacea purpurea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "zonnehoed.svg"
+    },
+    {
+      "id": "lupine",
+      "name": "Lupine",
+      "sci": "Lupinus polyphyllus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Fabaceae",
+      "file": "lupine.svg"
+    },
+    {
+      "id": "growth_seed",
+      "name": "Zaad",
+      "sci": "pas geplant",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 1 · in de grond",
+      "file": "growth_seed.svg"
+    },
+    {
+      "id": "growth_sprout",
+      "name": "Kiem",
+      "sci": "eerste groene punt",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 2 · ontkieming",
+      "file": "growth_sprout.svg"
+    },
+    {
+      "id": "growth_seedling",
+      "name": "Zaailing",
+      "sci": "twee zaadlobben, eerste blad",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 3 · zaailing",
+      "file": "growth_seedling.svg"
+    },
+    {
+      "id": "growth_young",
+      "name": "Jonge plant",
+      "sci": "gevestigd, klein bladerdek",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 4 · jong",
+      "file": "growth_young.svg"
+    },
+    {
+      "id": "growth_established",
+      "name": "Volwassen",
+      "sci": "volle bladmassa, nog niet in bloei",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 5 · vegetatief",
+      "file": "growth_established.svg"
+    },
+    {
+      "id": "growth_mature",
+      "name": "Tot wasdom",
+      "sci": "bloeiend / vruchtdragend",
+      "cat": "growth",
+      "form": "stage",
+      "family": "Fase 6 · in bloei",
+      "file": "growth_mature.svg"
+    },
+    {
+      "id": "growth_seed_bare",
+      "name": "Zaad (in de grond)",
+      "sci": "pas geplant in tuin",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 1 · open grond",
+      "variant_of": "growth_seed",
+      "file": "growth_seed_bare.svg"
+    },
+    {
+      "id": "growth_sprout_bare",
+      "name": "Kiem (in de grond)",
+      "sci": "eerste groene punt",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 2 · open grond",
+      "variant_of": "growth_sprout",
+      "file": "growth_sprout_bare.svg"
+    },
+    {
+      "id": "growth_seedling_bare",
+      "name": "Zaailing (in de grond)",
+      "sci": "twee zaadlobben, eerste blad",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 3 · open grond",
+      "variant_of": "growth_seedling",
+      "file": "growth_seedling_bare.svg"
+    },
+    {
+      "id": "growth_young_bare",
+      "name": "Jonge plant (in de grond)",
+      "sci": "gevestigd, klein bladerdek",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 4 · open grond",
+      "variant_of": "growth_young",
+      "file": "growth_young_bare.svg"
+    },
+    {
+      "id": "growth_established_bare",
+      "name": "Volwassen (in de grond)",
+      "sci": "volle bladmassa, nog niet in bloei",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 5 · open grond",
+      "variant_of": "growth_established",
+      "file": "growth_established_bare.svg"
+    },
+    {
+      "id": "growth_mature_bare",
+      "name": "Tot wasdom (in de grond)",
+      "sci": "bloeiend / vruchtdragend",
+      "cat": "growth",
+      "form": "stage_bare",
+      "family": "Fase 6 · open grond",
+      "variant_of": "growth_mature",
+      "file": "growth_mature_bare.svg"
+    },
+    {
+      "id": "poplar",
+      "name": "Italiaanse Populier",
+      "sci": "Populus nigra 'Italica' · ± 70 jaar",
+      "cat": "tree",
+      "form": "portrait",
+      "family": "Salicaceae · veteraan",
+      "file": "poplar.svg"
+    },
+    {
+      "id": "state_hydrated",
+      "name": "Goed verzorgd",
+      "sci": "binnen schema",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · OK",
+      "file": "state_hydrated.svg"
+    },
+    {
+      "id": "state_thirsty",
+      "name": "Dorstig",
+      "sci": "binnen 1 dag voor watergift",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · binnenkort",
+      "file": "state_thirsty.svg"
+    },
+    {
+      "id": "state_dry",
+      "name": "Droog",
+      "sci": "watergift te laat",
+      "cat": "state",
+      "form": "state",
+      "family": "Water · urgent",
+      "file": "state_dry.svg"
+    },
+    {
+      "id": "state_chilling",
+      "name": "Koud",
+      "sci": "binnen 3 °C boven min_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · koel",
+      "file": "state_chilling.svg"
+    },
+    {
+      "id": "state_freezing",
+      "name": "Bevriezing",
+      "sci": "op of onder min_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · kritiek",
+      "file": "state_freezing.svg"
+    },
+    {
+      "id": "state_heatstress",
+      "name": "Hittestress",
+      "sci": "op of boven max_temp",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · kritiek",
+      "file": "state_heatstress.svg"
+    },
+    {
+      "id": "state_comfortable",
+      "name": "Comfortabel",
+      "sci": "geen zorg (geen icon getoond)",
+      "cat": "state",
+      "form": "state",
+      "family": "Temperatuur · OK",
+      "file": "state_comfortable.svg"
+    },
+    {
+      "id": "brownbean_nopot",
+      "name": "Brownbean Nopot",
+      "sci": "",
+      "cat": "unknown",
+      "family": "",
+      "file": "brownbean_nopot.svg"
+    },
+    {
+      "id": "cortaderia_bare",
+      "name": "Cortaderia Bare",
+      "sci": "",
+      "cat": "unknown",
+      "family": "",
+      "file": "cortaderia_bare.svg"
+    },
+    {
+      "id": "seed",
+      "name": "Seed",
+      "sci": "",
+      "cat": "unknown",
+      "family": "",
+      "file": "seed.svg"
+    },
+    {
+      "id": "seed_bare",
+      "name": "Seed Bare",
+      "sci": "",
+      "cat": "unknown",
+      "family": "",
+      "file": "seed_bare.svg"
+    }
+  ]
+}

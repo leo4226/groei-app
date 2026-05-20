@@ -480,7 +480,7 @@ export const en: Translations = {
 
   // ── Add / Edit Plant ─────────────────────────────────────
   addPlant: {
-    title: 'Add plant 🌱',
+    title: 'Add plant',
     preview: 'Preview',
     entry: {
       identify: 'Identify with photo',

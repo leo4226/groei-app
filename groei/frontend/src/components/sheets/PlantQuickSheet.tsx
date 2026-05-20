@@ -108,7 +108,7 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up">
         <button
           onClick={onClose}
           aria-label={t.plantQuickSheet.close}

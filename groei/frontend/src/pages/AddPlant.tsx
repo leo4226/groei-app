@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
 import type { IdentifyCommitResult } from '../types'
@@ -18,6 +18,8 @@ import { CARE_TYPE_INFO } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import type { CareType, CareScheduleInput } from '../types'
 import IconPicker from '../components/IconPicker'
+import type { PlantIcon } from '../types'
+import { fetchIconCatalog } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
@@ -32,6 +34,59 @@ function isIdentifyPrefill(p: unknown): p is IdentifyCommitResult {
   return !!p && typeof p === 'object' && 'name_nl_suggested' in (p as Record<string, unknown>)
 }
 
+/** Try to find the best-matching icon for a LocalPlant in the icon catalog. */
+function findMatchingIcon(plant: LocalPlant, catalog: PlantIcon[]): string | null {
+  // 1. Check if iconKey from dataset exists in catalog
+  if (plant.iconKey) {
+    const direct = catalog.find(i => i.id === plant.iconKey)
+    if (direct) return direct.variant_of || direct.id
+  }
+  // 2. Match by exact Latin name
+  if (plant.latinName) {
+    const latin = plant.latinName.toLowerCase()
+    const exact = catalog.find(i => i.sci?.toLowerCase() === latin)
+    if (exact) return exact.variant_of || exact.id
+  }
+  // 3. Match by exact Dutch name
+  if (plant.dutchName) {
+    const name = plant.dutchName.toLowerCase()
+    const byName = catalog.find(i => i.name?.toLowerCase() === name)
+    if (byName) return byName.variant_of || byName.id
+  }
+  // 4. Match by genus (first word of Latin name)
+  if (plant.latinName) {
+    const genus = plant.latinName.split(' × ')[0].split(' ')[0].toLowerCase()
+    const byGenus = catalog.find(i => i.sci?.toLowerCase().startsWith(genus) || i.id === genus)
+    if (byGenus) return byGenus.variant_of || byGenus.id
+  }
+  return null
+}
+
+/** Map LocalPlant waterNeeds to a water interval in days. */
+const WATER_NEEDS_TO_DAYS: Record<string, number> = {
+  laag: 14,
+  gemiddeld: 7,
+  hoog: 3,
+}
+
+/** Build an initial schedules map, optionally prefilled from a LocalPlant. */
+function buildInitialSchedules(prefill: unknown): Record<CareType, { enabled: boolean; days: number }> {
+  const initial: Record<string, { enabled: boolean; days: number }> = {}
+  for (const [type, info] of Object.entries(CARE_TYPE_INFO)) {
+    let days = info.defaultIndoor
+    if (
+      type === 'water' &&
+      prefill &&
+      !isIdentifyPrefill(prefill) &&
+      'waterNeeds' in (prefill as Record<string, unknown>)
+    ) {
+      days = WATER_NEEDS_TO_DAYS[(prefill as LocalPlant).waterNeeds] ?? days
+    }
+    initial[type] = { enabled: type === 'repot_check' ? false : days > 0, days }
+  }
+  return initial as Record<CareType, { enabled: boolean; days: number }>
+}
+
 export default function AddPlant() {
   const t = useT()
   const navigate = useNavigate()
@@ -42,6 +97,10 @@ export default function AddPlant() {
   const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
   const isFromIdentify = isIdentifyPrefill(prefill)
   const { locations, maps, addPlant, uploadPhoto } = useFloreren()
+
+  // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
+  const fromMapState = (location.state as any)?.fromMap
+  if (fromMapState) sessionStorage.setItem('addPlant_returnPath', fromMapState)
 
   const [name, setName] = useState(
     prefill
@@ -62,9 +121,14 @@ export default function AddPlant() {
       : ''
   )
   const [locationId, setLocationId] = useState<number | undefined>()
+  const [area, setArea] = useState<'tuin' | 'huis' | null>(null)
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
-  const [notes, setNotes] = useState('')
+  const [notes, setNotes] = useState(
+    prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
+      ? (prefill as LocalPlant).amsterdamNotes ?? ''
+      : ''
+  )
   const [sunRequirement, setSunRequirement] = useState<string | null>(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
       ? (prefill as LocalPlant).sunRequirement
@@ -79,6 +143,21 @@ export default function AddPlant() {
           : null
       : null
   )
+
+  // Icon catalog — used for auto-matching and pot/bare icon switching
+  const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+  const baseIconRef = useRef<string | null>(null)
+  const userPickedIconRef = useRef(false)
+  const iconLookup = useMemo(() => {
+    const bareBases = new Set<string>()       // base ids that have _bare variants
+    const pottedVariants = new Map<string, string>()  // base id → potted variant id
+    for (const icon of iconCatalog) {
+      if (icon.form === 'bare' && icon.variant_of) bareBases.add(icon.variant_of)
+      if (icon.form === 'potted' && icon.variant_of) pottedVariants.set(icon.variant_of, icon.id)
+    }
+    return { bareBases, pottedVariants }
+  }, [iconCatalog])
+
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
@@ -91,13 +170,7 @@ export default function AddPlant() {
   const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
   const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
   const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
-
-  const currentArea: 'tuin' | 'huis' | null = locationId == null ? null
-    : locations.find(l => l.id === locationId && isTuinLoc(l.name)) ? 'tuin'
-    : locations.find(l => l.id === locationId) ? 'huis'
-    : null
-
-  const isOutdoor = currentArea === 'tuin'
+  const isOutdoor = area === 'tuin'
 
   function randomMapPos(viewbox: string) {
     const [x0, y0, w, h] = viewbox.split(' ').map(Number)
@@ -108,19 +181,92 @@ export default function AddPlant() {
     }
   }
 
-  function selectArea(area: 'tuin' | 'huis') {
-    if (currentArea === area) { setLocationId(undefined); return }
-    const pool = area === 'tuin' ? tuinLocs : huisLocs
-    if (pool.length > 0) setLocationId(pool[0].id)
+  function toggleArea(target: 'tuin' | 'huis') {
+    if (area === target) {
+      setArea(null)
+      setLocationId(undefined)
+      return
+    }
+    setArea(target)
+    const pool = target === 'tuin' ? tuinLocs : huisLocs
+    if (pool.length > 0) {
+      setLocationId(pool[0].id)
+    } else {
+      setLocationId(undefined)
+    }
   }
 
-  const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(() => {
-    const initial: Record<string, { enabled: boolean; days: number }> = {}
-    for (const [type, info] of Object.entries(CARE_TYPE_INFO)) {
-      initial[type] = { enabled: type === 'water', days: info.defaultIndoor }
+  const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
+    () => buildInitialSchedules(prefill)
+  )
+
+  // Load icon catalog once for auto-matching and pot/bare switching
+  useEffect(() => {
+    fetchIconCatalog().then(setIconCatalog).catch(() => {})
+  }, [])
+
+  // Sync form fields when prefill changes from a later navigation (e.g. pick from list)
+  useEffect(() => {
+    if (!prefill) return
+    if (isIdentifyPrefill(prefill)) {
+      setName(prefill.name_nl_suggested)
+      setSpecies(prefill.scientific_name)
+      setIconKey(prefill.icon_key ?? null)
+      return
     }
-    return initial as Record<CareType, { enabled: boolean; days: number }>
-  })
+    if ('latinName' in (prefill as Record<string, unknown>)) {
+      const p = prefill as LocalPlant
+      setName(p.dutchName)
+      setSpecies(p.latinName)
+      setNotes(p.amsterdamNotes ?? '')
+      setSunRequirement(p.sunRequirement ?? null)
+      // Try to auto-match an icon from the catalog
+      if (iconCatalog.length > 0) {
+        const matchedId = findMatchingIcon(p, iconCatalog)
+        if (matchedId) {
+          baseIconRef.current = matchedId
+          userPickedIconRef.current = false
+          const noPot = potSize.trim() === ''
+          const bareExists = iconLookup.bareBases.has(matchedId)
+          setIconKey(noPot && bareExists ? `${matchedId}_bare` : matchedId)
+        } else {
+          baseIconRef.current = null
+          setIconKey(p.iconKey ?? null)
+        }
+      } else {
+        // Catalog not loaded yet — plant a flag to retry when it arrives
+        baseIconRef.current = 'pending'
+        setIconKey(p.iconKey ?? null)
+      }
+      setSchedules(buildInitialSchedules(prefill))
+      return
+    }
+    if ('name' in prefill) {
+      setName(prefill.name)
+    }
+  }, [prefill, iconCatalog, iconLookup])
+
+  // Switch icon between potted/bare variant based on pot size
+  useEffect(() => {
+    const base = baseIconRef.current
+    if (!base || base === 'pending' || userPickedIconRef.current) return
+    const hasPot = potSize.trim() !== ''
+    const bareExists = iconLookup.bareBases.has(base)
+    const pottedOverride = iconLookup.pottedVariants.get(base)
+    if (hasPot) {
+      setIconKey(pottedOverride ?? base)
+    } else {
+      setIconKey(bareExists ? `${base}_bare` : base)
+    }
+  }, [potSize, iconLookup])
+
+  // Repot check toggle: only enabled when a pot size is entered
+  useEffect(() => {
+    setSchedules(prev => ({
+      ...prev,
+      repot_check: { ...prev.repot_check, enabled: potSize.trim() !== '' },
+    }))
+  }, [potSize])
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -148,7 +294,7 @@ export default function AddPlant() {
         .filter(([, s]) => s.enabled && s.days > 0)
         .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
 
-      const placedMap = currentArea === 'tuin' ? tuinMap : currentArea === 'huis' ? huisMap : undefined
+      const placedMap = area === 'tuin' ? tuinMap : area === 'huis' ? huisMap : undefined
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
       const plant = await addPlant({
@@ -172,11 +318,12 @@ export default function AddPlant() {
       if (photoFile) {
         await uploadPhoto(plant.id, photoFile)
       }
-
-      navigate('/plants')
-    } catch {
-      // Error handled by store
+    } catch (e) {
+      console.error('AddPlant: add failed', e)
     } finally {
+      const finalReturnPath = sessionStorage.getItem('addPlant_returnPath') ?? '/plants'
+      sessionStorage.removeItem('addPlant_returnPath')
+      navigate(finalReturnPath)
       setSubmitting(false)
     }
   }
@@ -318,7 +465,11 @@ export default function AddPlant() {
         {/* Icon */}
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.iconLabel}</label>
-          <IconPicker value={iconKey} onChange={setIconKey} />
+          <IconPicker value={iconKey} onChange={(key) => {
+            userPickedIconRef.current = true
+            baseIconRef.current = null
+            setIconKey(key)
+          }} />
         </div>
 
         {/* Growth phase */}
@@ -377,24 +528,21 @@ export default function AddPlant() {
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.locationLabel}</label>
           <div className="flex gap-3">
             {([
-              { area: 'tuin' as const, label: t.editPlant.garden, emoji: '🌿', hasMap: !!tuinMap },
-              { area: 'huis' as const, label: t.editPlant.house, emoji: '🏠', hasMap: !!huisMap },
-            ]).map(({ area, label, emoji, hasMap }) => (
+              tuinMap && { area: 'tuin' as const, label: t.editPlant.garden, emoji: '🌿' },
+              huisMap && { area: 'huis' as const, label: t.editPlant.house, emoji: '🏠' },
+            ].filter(Boolean) as { area: 'tuin' | 'huis'; label: string; emoji: string }[]).map(({ area: btnArea, label, emoji }) => (
               <button
-                key={area}
+                key={btnArea}
                 type="button"
-                onClick={() => selectArea(area)}
+                onClick={() => toggleArea(btnArea)}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
-                  currentArea === area
+                  area === btnArea
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border text-text-muted hover:border-text-muted'
                 }`}
               >
                 <span className="text-2xl">{emoji}</span>
                 <span>{label}</span>
-                {!hasMap && (
-                  <span className="text-[10px] text-text-muted/60">{t.editPlant.mapComingSoon}</span>
-                )}
               </button>
             ))}
           </div>
@@ -500,7 +648,7 @@ export default function AddPlant() {
               {t.editPlant.submitting}
             </span>
           ) : (
-            <span>{t.addPlant.title + ' 🌱'}</span>
+            <span>{t.addPlant.title}</span>
           )}
         </button>
       </form>

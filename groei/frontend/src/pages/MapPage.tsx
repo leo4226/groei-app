@@ -191,7 +191,7 @@ export default function MapPage() {
 
   if (loading && !map) {
     return (
-      <div className="flex flex-col h-[calc(100dvh-4rem)] p-4 overflow-hidden">
+      <div className="flex flex-col h-[calc(100dvh-5rem)] p-4 overflow-hidden">
         <div className="h-8 w-32 bg-surface rounded-lg animate-pulse mb-4 shrink-0" />
         <div className="flex-1 bg-surface rounded-2xl animate-pulse" />
       </div>
@@ -212,7 +212,7 @@ export default function MapPage() {
   const isIndoor = map.map_type === 'indoor'
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] px-4 pt-4 pb-2 overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
           {indoorMap && outdoorMap && (
@@ -326,7 +326,7 @@ export default function MapPage() {
             <span>{t.mapPage.pot}</span>
           </button>
           <button
-            onClick={() => navigate('/plants/add')}
+            onClick={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
           >
             <span className="text-lg leading-none">+</span>

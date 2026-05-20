@@ -129,6 +129,7 @@ export const skipCare              = (plantId: number, careType: string, userId:
 export const deleteCareSchedule    = (scheduleId: number)  => api<void>('DELETE', `/care/schedules/${scheduleId}`)
 export const fetchCareLog          = (plantId: number)    => api<CareLogEntry[]>('GET', `/care/log/${plantId}`)
 export const fetchPlantWarnings    = (plantId: number)    => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`)
+export const fetchWarningSummary   = (env: string = 'all') => api<import('../types').WarningSummaryOut>('GET', '/warnings/summary', { params: { env } })
 export const patchCareProfile      = (plantId: number, data: Record<string, { active: boolean }>) => api<void>('PATCH', `/plants/${plantId}/care-profile`, { body: data })
 
 // ── Garden Water ──
@@ -162,7 +163,20 @@ export const fetchCalendarEvents   = (from: string, to: string, env?: string) =>
 
 // ── Icons ──
 
-export const fetchIconCatalog      = ()                    => api<PlantIcon[]>('GET', '/icon-catalog')
+/**
+ * Fetch icon catalog from the static manifest.json served by the frontend,
+ * since the backend API (/api/icon-catalog) is unavailable on Vercel.
+ * The manifest is copied from public/icons/ during the Vite build.
+ */
+export const fetchIconCatalog: () => Promise<PlantIcon[]> =
+  async () => {
+    const res = await fetch('/icons/manifest.json')
+    if (!res.ok) throw new Error(`Failed to fetch icon manifest: ${res.status}`)
+    const data = await res.json()
+    const entries: PlantIcon[] = data.plants ?? data
+    return entries.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
 export const syncIcons             = ()                    => api<IconSyncResult>('POST', '/icon-catalog/sync')
 export const fetchIconGaps         = ()                    => api<IconGapReport>('GET', '/icon-catalog/gaps')
 export const requestIcon           = (plantId: number)     => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`)
@@ -182,6 +196,7 @@ export interface AdminAccount {
 }
 
 export const fetchAdminAccounts = () => api<AdminAccount[]>('GET', '/admin/accounts')
+export const deleteAdminAccount = (id: number) => api<void>('DELETE', `/admin/accounts/${id}`)
 
 // ── Grow Here ──
 

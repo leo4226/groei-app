@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { syncIcons, fetchIconGaps, fetchAdminAccounts, type AdminAccount } from '../api/client'
+import { syncIcons, fetchIconGaps, fetchAdminAccounts, deleteAdminAccount, type AdminAccount } from '../api/client'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult, IconGapReport } from '../types'
 
@@ -280,7 +280,25 @@ export default function Settings() {
               <div key={acct.id} className="px-4 py-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{acct.name}</span>
-                  <span className="text-[10px] text-text-muted">{acct.created_at?.slice(0, 10)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-text-muted">{acct.created_at?.slice(0, 10)}</span>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm(`Delete account "${acct.name}" (${acct.email})?\n\nAll plants, locations and data will be permanently removed.`)) {
+                          try {
+                            await deleteAdminAccount(acct.id)
+                            setAdminAccounts(prev => prev ? prev.filter(a => a.id !== acct.id) : prev)
+                          } catch (e) {
+                            alert('Failed to delete: ' + (e instanceof Error ? e.message : 'Unknown error'))
+                          }
+                        }
+                      }}
+                      className="text-red-400/60 hover:text-red-400 text-xs ml-2 p-1"
+                      title={`Delete ${acct.name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-text-muted mt-0.5">{acct.email}</p>
                 <p className="text-[10px] text-primary/60 mt-0.5">{acct.household_name}</p>

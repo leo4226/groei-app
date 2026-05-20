@@ -20,7 +20,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up max-h-[80vh] overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up max-h-[80vh] overflow-y-auto">
         <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 mb-1" />
 
         {/* Header */}

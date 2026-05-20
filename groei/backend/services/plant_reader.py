@@ -11,19 +11,20 @@ def _compute_care_status(schedules, today):
     """Derive care_status and most_urgent from schedule rows."""
     care_status = "good"
     most_urgent = None
+    today_date = date.fromisoformat(today) if isinstance(today, str) else today
     for s in schedules:
         s = dict(s)
         next_due = s["next_due"]
-        if next_due < today:
+        if next_due < today_date:
             care_status = "overdue"
-            days = (date.fromisoformat(today) - date.fromisoformat(next_due)).days
+            days = (today_date - next_due).days
             most_urgent = MostUrgent(
                 care_type=s["care_type"],
                 days_overdue=days,
                 last_done_by=s.get("last_done_by_name"),
             )
             break
-        elif next_due == today:
+        elif next_due == today_date:
             if care_status != "overdue":
                 care_status = "due_today"
                 most_urgent = MostUrgent(

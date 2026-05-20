@@ -120,22 +120,27 @@ async def list_calendar_events(
             pass
 
     # 5. Build enriched events
-    today = today_date.isoformat()
+    today = today_date  # keep as date object for safe comparison
     events = []
     for r in rows:
         pid = r["plant_id"]
         ct = r["type"]
         enrichment = enrichment_cache.get((pid, ct), {})
 
+        # Normalise: asyncpg returns datetime.date; aiosqlite returns str
+        due = r["due_date"]
+        if isinstance(due, str):
+            due = date.fromisoformat(due)
+
         events.append(CalendarEventOut(
             id=f"schedule:{r['schedule_id']}:{r['type']}",
-            date=r["due_date"],
+            date=due.isoformat(),
             type=ct,
             plant_id=pid,
             plant_name=r["plant_name"],
             plant_icon_variant=r["plant_icon_variant"],
             schedule_id=r["schedule_id"],
-            overdue=r["due_date"] < today,
+            overdue=due < today,
             severity=enrichment.get("severity"),
             color=enrichment.get("color"),
             icon=enrichment.get("icon"),

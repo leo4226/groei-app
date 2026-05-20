@@ -64,6 +64,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   const didDrag = useRef(false)
   const lastTapRef = useRef<{ id: string; time: number } | null>(null)
   const pendingTapRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Throttle drag state updates with requestAnimationFrame for smooth performance
+  const rafThrottleRef = useRef<number | null>(null)
+  const dragPositionsRef = useRef<Record<string, { x: number; y: number }>>({})
 
   const { selection, dispatch } = useMapSelection()
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
@@ -234,14 +237,30 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       ? Math.max(0, Math.min(canvasData.canvas_h, pt.y))
       : gb ? Math.max(gb.minY, Math.min(gb.maxY, pt.y))
       : Math.max(0, Math.min(680, pt.y))
-    setDragPositions((prev) => ({ ...prev, [key]: { x: clampedX, y: clampedY } }))
+
+    // Update ref immediately (zero-latency, no re-render)
+    dragPositionsRef.current = { ...dragPositionsRef.current, [key]: { x: clampedX, y: clampedY } }
+
+    // Throttle React state updates to at most once per frame
+    if (!rafThrottleRef.current) {
+      rafThrottleRef.current = requestAnimationFrame(() => {
+        rafThrottleRef.current = null
+        setDragPositions((prev) => ({ ...prev, [key]: { x: clampedX, y: clampedY } }))
+      })
+    }
 
     if (dragging.type === 'plant') {
       setDropTarget(resolveDropTarget(pt.x, pt.y, objects, soilGroundZones))
     }
-  }, [dragging, selection.mode, dragPositions, objects, soilGroundZones])
+  }, [dragging, selection.mode, objects, soilGroundZones])
 
   const handlePointerUp = useCallback(async () => {
+    // Cancel any pending throttle frame
+    if (rafThrottleRef.current !== null) {
+      cancelAnimationFrame(rafThrottleRef.current)
+      rafThrottleRef.current = null
+    }
+
     // End resize (plants only)
     if (selection.mode === 'resizing') {
       if (plantResizeRef.current && plantResizeRadiusRef.current !== null) {
@@ -263,7 +282,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     // End drag (plants only)
     if (!dragging) return
     const key = `${dragging.type}-${dragging.id}`
-    const pos = dragPositions[key]
+    // Use ref for final position (guarantees latest value, independent of RAF throttle)
+    const pos = dragPositionsRef.current[key]
     if (pos && didDrag.current) {
       try {
         if (dragging.type === 'plant') {
@@ -291,10 +311,13 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         return rest
       })
     }
+    // Cleanup: remove from ref too and sync state with latest ref values
+    const { [key]: _, ...restRef } = dragPositionsRef.current
+    dragPositionsRef.current = restRef
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
-  }, [dragging, dragPositions, map.id, dropTarget, onPositionUpdate])
+  }, [dragging, map.id, dropTarget, onPositionUpdate])
 
   // --- Plant resize handles ---
   const handlePlantResizeDown = useCallback((e: React.PointerEvent, handle: string) => {

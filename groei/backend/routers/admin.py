@@ -86,3 +86,33 @@ async def list_accounts(account = Depends(get_current_account), db = Depends(db_
         ORDER BY a.created_at DESC
     """)
     return [dict(r) for r in accounts]
+
+
+@router.delete("/admin/accounts/{account_id}")
+async def delete_account(account_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT id, email, name FROM accounts WHERE id = ?", (account["account_id"],)
+    )
+    if not rows or rows[0]["email"] != ADMIN_EMAIL:
+        raise HTTPException(403, "Forbidden")
+
+    target = await db.execute_fetchall(
+        "SELECT id, household_id, name FROM accounts WHERE id = ?", (account_id,)
+    )
+    if not target:
+        raise HTTPException(404, "Account not found")
+    if target[0]["id"] == account["account_id"]:
+        raise HTTPException(400, "Cannot delete your own account")
+
+    household_id = target[0]["household_id"]
+
+    # Delete plants and related data in the household
+    await db.execute("DELETE FROM plants WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM users WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM locations WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM maps WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    await db.execute("DELETE FROM households WHERE id = ?", (household_id,))
+    await db.commit()
+
+    return {"status": "deleted", "account_id": account_id, "name": target[0]["name"]}

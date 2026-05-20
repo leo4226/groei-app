@@ -9,7 +9,11 @@ from auth import get_current_account
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
-ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons"))
+# Allow override via env var; fallback works both locally (dev) and in Docker (prod)
+ICONS_DIR = os.environ.get(
+    "ICONS_DIR",
+    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons")),
+)
 MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 
 
@@ -322,7 +326,7 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
 
     # 1. requested — plants with icon_requested=1 and no icon assigned
     requested_rows = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = 1 AND (icon_key IS NULL OR icon_key = '')"
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE AND (icon_key IS NULL OR icon_key = '')"
     )
     requested = [{"id": r["id"], "name": r["name"], "species": r["species"]} for r in requested_rows]
 

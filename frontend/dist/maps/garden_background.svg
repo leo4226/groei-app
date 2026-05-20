@@ -1,0 +1,69 @@
+<svg width="100%" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <pattern id="deckp" width="6" height="6" patternUnits="userSpaceOnUse">
+    <line x1="0" y1="0" x2="6" y2="0" stroke="#8B6914" stroke-width="0.7" opacity="0.3"/>
+  </pattern>
+  <pattern id="soilp" width="7" height="7" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#6B4C11" opacity="0.2"/>
+    <circle cx="5.5" cy="5.5" r="0.7" fill="#6B4C11" opacity="0.15"/>
+  </pattern>
+  <pattern id="gravelp" width="5" height="5" patternUnits="userSpaceOnUse">
+    <circle cx="1.5" cy="1.5" r="0.9" fill="#999" opacity="0.35"/>
+    <circle cx="4" cy="4" r="0.7" fill="#999" opacity="0.22"/>
+  </pattern>
+</defs>
+
+<!-- ============================================ -->
+<!-- Landscape orientation (90° CW baked in):      -->
+<!-- Left  = house wall + doors  (WNW)             -->
+<!-- Right = back fence + shed + tree  (ESE)       -->
+<!-- Top   = brick wall  (NNE ~22°)                -->
+<!-- Bottom= wooden fence  (SSW ~202°)             -->
+<!-- Transform: (old_x, old_y) → (680-old_y, old_x)-->
+<!-- ============================================ -->
+<g transform="matrix(0 1 -1 0 680 0)">
+
+<!-- Back fence (top of map) -->
+<line x1="162" y1="55" x2="438" y2="64" stroke="rgba(222,220,209,0.4)" stroke-width="6" stroke-linecap="round"/>
+
+<!-- Back deck -->
+<rect x="162" y="55" width="276" height="251" fill="#C8A96A"/>
+<rect x="162" y="55" width="276" height="251" fill="url(#deckp)" opacity="0.55"/>
+<rect x="162" y="55" width="276" height="251" fill="none" stroke="rgba(222,220,209,0.3)" stroke-width="1"/>
+
+<!-- Shed — on back deck, right side -->
+<rect x="346" y="55" width="92" height="101" rx="4" fill="#C8A060" stroke="#8a6030" stroke-width="1.2"/>
+
+<!-- Middle zone (planting area) -->
+<polygon points="162,306 438,306 438,557 351,557 305,511 162,511" fill="#9B7A3A" opacity="0.2"/>
+<polygon points="162,306 438,306 438,557 351,557 305,511 162,511" fill="url(#soilp)"/>
+<polygon points="162,306 438,306 438,557 351,557 305,511 162,511" fill="none" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+
+<!-- Raised soil strip (along left wall) -->
+<rect x="162" y="306" width="16" height="205" fill="#8B5A30" opacity="0.55"/>
+
+<!-- Shell/gravel path -->
+<rect x="178" y="306" width="57" height="205" fill="url(#gravelp)"/>
+<rect x="178" y="306" width="57" height="205" fill="none" stroke="rgba(222,220,209,0.15)" stroke-width="0.5"/>
+
+<!-- Front deck (closest to house, bottom of map) -->
+<!-- Left flat (310cm=143px): x=162..305, Right flat (190cm=87px): x=351..438 -->
+<!-- Diagonal (100cm=46px): x=305..351 connecting y=511 to y=557 -->
+<polygon points="162,511 305,511 351,557 438,557 438,626 162,626" fill="#C8A96A"/>
+<polygon points="162,511 305,511 351,557 438,557 438,626 162,626" fill="url(#deckp)" opacity="0.6"/>
+<polygon points="162,511 305,511 351,557 438,557 438,626 162,626" fill="none" stroke="rgba(222,220,209,0.3)" stroke-width="1.2"/>
+
+<!-- House wall (bottom edge) -->
+<rect x="162" y="626" width="276" height="14" rx="3" fill="#262624" stroke="rgba(222,220,209,0.4)" stroke-width="1.5"/>
+
+<!-- Living room doors -->
+<rect x="178" y="626" width="138" height="14" rx="1" fill="#3B8BD4" opacity="0.4"/>
+<!-- Office doors -->
+<rect x="321" y="626" width="101" height="14" rx="1" fill="#3B8BD4" opacity="0.4"/>
+
+<!-- Left brick wall -->
+<rect x="157" y="55" width="5" height="585" fill="rgba(222,220,209,0.3)" opacity="0.55"/>
+<!-- Right fence -->
+<rect x="438" y="55" width="4" height="585" fill="rgba(222,220,209,0.15)" opacity="0.55"/>
+</g>
+</svg>
