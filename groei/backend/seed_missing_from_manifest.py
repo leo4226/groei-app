@@ -4,7 +4,7 @@ Also adds user-requested plants: Tabaksplant, Dracaena Compacta.
 Updates Vrouwentong to modern scientific name.
 
 Run: cd groei/backend && python seed_missing_from_manifest.py
-Idempotent — INSERT OR IGNORE on slug, safe to re-run.
+Idempotent — ON CONFLICT (slug) DO NOTHING, safe to re-run.
 """
 
 import json
@@ -159,9 +159,10 @@ def main():
     for plant in to_insert:
         try:
             db.execute(
-                """INSERT OR IGNORE INTO plant_species
+                """INSERT INTO plant_species
                    (slug, common_name_nl, common_name_en, latin_name, climate_zone)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (slug) DO NOTHING""",
                 (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
                  plant["latin_name"], plant["climate_zone"]),
             )
@@ -175,9 +176,10 @@ def main():
     for plant in EXTRA_PLANTS:
         try:
             db.execute(
-                """INSERT OR IGNORE INTO plant_species
+                """INSERT INTO plant_species
                    (slug, common_name_nl, common_name_en, latin_name, climate_zone)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (slug) DO NOTHING""",
                 (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
                  plant["latin_name"], plant["climate_zone"]),
             )

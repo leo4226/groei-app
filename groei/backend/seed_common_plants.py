@@ -1,7 +1,7 @@
 """Seed 50 common Dutch garden & indoor plants into plant_species.
 
 Run once:  cd groei/backend && python seed_common_plants.py
-Idempotent — INSERT OR IGNORE on slug, safe to re-run.
+Idempotent — ON CONFLICT (slug) DO NOTHING, safe to re-run.
 """
 
 import asyncio
@@ -755,9 +755,10 @@ async def main():
         for p in PLANTS:
             thresholds = _make_thresholds(_THRESHOLDS[p["common_name_nl"]]) if p["common_name_nl"] in _THRESHOLDS else None
             cursor = await db.execute(
-                """INSERT OR IGNORE INTO plant_species
+                """INSERT INTO plant_species
                    (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone, care_thresholds)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (slug) DO NOTHING""",
                 (p["slug"], p["common_name_nl"], p["common_name_en"],
                  p["latin_name"], p["phenology_json"], p["climate_zone"], thresholds),
             )

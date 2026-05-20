@@ -39,10 +39,10 @@ async def _get_contained_plants(db, object_id: int) -> list[dict]:
         # Compute care_status
         sched_cursor = await db.execute("""
             SELECT care_type, next_due,
-                   julianday(next_due) - julianday('now', 'localtime') as days_until,
+                   EXTRACT(epoch FROM (next_due::timestamp - CURRENT_TIMESTAMP)) / 86400.0 as days_until,
                    (SELECT u.name FROM users u WHERE u.id = cs.last_done_by) as last_done_by
             FROM care_schedules cs
-            WHERE cs.plant_id = ? AND cs.is_active = 1
+            WHERE cs.plant_id = $1 AND cs.is_active = 1
             ORDER BY days_until ASC
         """, (plant["id"],))
         schedules = [dict(s) for s in await sched_cursor.fetchall()]

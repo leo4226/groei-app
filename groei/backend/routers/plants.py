@@ -36,7 +36,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
         )
         if not existing:
             await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, date('now'))",
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES ($1, 'water', $2, CURRENT_DATE)",
                 (plant_id, int(water_interval)),
             )
 

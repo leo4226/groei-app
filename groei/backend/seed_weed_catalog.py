@@ -1,7 +1,7 @@
 """One-shot seed: reads weed catalog data and inserts into weed_species.
 
 Run once: python seed_weed_catalog.py
-Safe to re-run: INSERT OR IGNORE on slug prevents duplicates."""
+Safe to re-run: ON CONFLICT (slug) DO NOTHING prevents duplicates."""
 
 import asyncio
 import json
@@ -1462,11 +1462,12 @@ async def seed():
     async with get_db() as db:
         for w in WEEDS:
             await db.execute("""
-                INSERT OR IGNORE INTO weed_species
+                INSERT INTO weed_species
                     (slug, common_name_nl, latin_name, family, common_names,
                      appearance_json, habitat_json, removal_json,
                      edible, edible_note, interesting, native_to_nl)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (slug) DO NOTHING
             """, (
                 w["slug"], w["common_name_nl"], w["latin_name"],
                 w["family"], json.dumps(w.get("common_names", [])),

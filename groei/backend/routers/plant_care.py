@@ -416,12 +416,22 @@ async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
 
     fetched_at = datetime.now(timezone.utc).isoformat()
     await db.execute(
-        """INSERT OR REPLACE INTO plant_care_cache
+        """INSERT INTO plant_care_cache
            (scientific_name, trefle_slug, common_name, family, duration,
             leaf_retention, light_raw, light_label, humidity_raw,
             precip_min_mm, precip_max_mm, bloom_months, flower_colors,
             avg_height_cm, max_height_cm, toxicity, edible, image_url, fetched_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+           ON CONFLICT (scientific_name) DO UPDATE SET
+               trefle_slug=EXCLUDED.trefle_slug, common_name=EXCLUDED.common_name,
+               family=EXCLUDED.family, duration=EXCLUDED.duration,
+               leaf_retention=EXCLUDED.leaf_retention, light_raw=EXCLUDED.light_raw,
+               light_label=EXCLUDED.light_label, humidity_raw=EXCLUDED.humidity_raw,
+               precip_min_mm=EXCLUDED.precip_min_mm, precip_max_mm=EXCLUDED.precip_max_mm,
+               bloom_months=EXCLUDED.bloom_months, flower_colors=EXCLUDED.flower_colors,
+               avg_height_cm=EXCLUDED.avg_height_cm, max_height_cm=EXCLUDED.max_height_cm,
+               toxicity=EXCLUDED.toxicity, edible=EXCLUDED.edible,
+               image_url=EXCLUDED.image_url, fetched_at=EXCLUDED.fetched_at""",
         (
             scientific_name,
             data["trefle_slug"],
@@ -830,7 +840,7 @@ async def get_garden_fertilize_status():
             """SELECT COUNT(*) as cnt FROM care_schedules cs
                JOIN plants p ON cs.plant_id = p.id
                WHERE cs.care_type = 'fertilize' AND cs.is_active = 1
-               AND p.is_active = 1 AND cs.next_due <= date('now')"""
+               AND p.is_active = 1 AND cs.next_due <= CURRENT_DATE"""
         )
     return {
         "fertilized_at": last.isoformat() if last else None,

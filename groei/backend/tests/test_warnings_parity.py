@@ -99,10 +99,10 @@ async def test_parity_for_representative_plants(seeded_db):
         ")"
     )
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO maps (id, map_type, household_id) VALUES (1, 'indoor', 1)"
+        "INSERT INTO maps (id, map_type, household_id) VALUES (1, 'indoor', 1) ON CONFLICT DO NOTHING"
     )
     await seeded_db.execute(
-        "INSERT OR IGNORE INTO maps (id, map_type, household_id) VALUES (2, 'outdoor', 1)"
+        "INSERT INTO maps (id, map_type, household_id) VALUES (2, 'outdoor', 1) ON CONFLICT DO NOTHING"
     )
 
     # Plant 1 — indoor, overdue water, no thresholds.
