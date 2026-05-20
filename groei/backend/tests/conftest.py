@@ -13,7 +13,11 @@ override). This conftest exposes the same seam in async form so new tests
 can `await client.get(...)`.
 """
 import asyncio
+import os
 import pytest
+
+# Ensure tests use a real Postgres connection.
+os.environ.setdefault("DATABASE_URL", "postgresql://floreren:dev@localhost:5432/floreren")
 import pytest_asyncio
 import aiosqlite
 from httpx import AsyncClient, ASGITransport
