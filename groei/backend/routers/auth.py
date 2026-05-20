@@ -97,7 +97,7 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
 
     if account:
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
         await db.execute(
             "INSERT INTO password_reset_tokens (account_id, token, expires_at) VALUES (?, ?, ?)",
             (account[0]["id"], token, expires_at),
@@ -114,7 +114,7 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     """Validate a reset token and update the account password."""
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     rows = await db.execute_fetchall(
         """SELECT id, account_id, expires_at, used_at
@@ -139,8 +139,6 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     expires = token_row["expires_at"]
     if isinstance(expires, str):
         expires = datetime.fromisoformat(expires)
-    if expires.tzinfo is None:
-        expires = expires.replace(tzinfo=timezone.utc)
     if now > expires:
         raise HTTPException(
             status_code=400, detail="Reset link is invalid or has expired"
