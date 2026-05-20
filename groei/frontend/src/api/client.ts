@@ -20,7 +20,7 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   throw new Error(msg)
 }
 
-async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
+async function apiRequest<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
   const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
   const token = localStorage.getItem('floreren-token')
   const headers: Record<string, string> = {}
@@ -45,6 +45,26 @@ async function api<T>(method: string, path: string, options: ApiOptions = {}): P
   await ensureOk(res, `Failed: ${method} ${path}`)
   if (res.status === 204) return undefined as T
   return res.json()
+}
+
+/** Retry transient network errors (TypeError from fetch). */
+async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
+  const MAX_RETRIES = 2
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await apiRequest<T>(method, path, options)
+    } catch (e) {
+      // Only retry on genuine network errors (e.g. DNS failure, cold start timeout)
+      const isNetworkError = e instanceof TypeError
+      if (!isNetworkError || attempt === MAX_RETRIES) throw e
+      lastError = e
+      await new Promise(r => setTimeout(r, (attempt + 1) * 1000))
+    }
+  }
+
+  throw lastError
 }
 
 // ── Local types ──
