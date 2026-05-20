@@ -14,14 +14,20 @@ MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 
 
 def load_manifest() -> list[dict]:
+    if not os.path.exists(MANIFEST_PATH):
+        return []
     with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data["plants"] if isinstance(data, dict) else data
 
 
 def save_manifest(entries: list[dict]) -> None:
-    with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if not os.path.exists(MANIFEST_PATH):
+        os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
+        data = {"plants": [], "count": 0, "iconCount": 0}
+    else:
+        with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
     if isinstance(data, dict):
         data["plants"] = entries
         data["count"] = len(entries)

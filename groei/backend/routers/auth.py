@@ -1,3 +1,8 @@
+DEFAULT_LOCATIONS: list[tuple[str, str, int]] = [
+    ("Tuin", "🌿", 0),
+    ("Huis", "🏠", 1),
+]
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from database import db_dep
 from models import RegisterInput, LoginInput, AuthResponse, AccountOut
@@ -26,6 +31,14 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
         (household_id, body.email.lower(), body.name.strip(), pw_hash),
     )
     account_id = cur2.lastrowid
+
+    # Create default locations for the new household
+    for name, icon, sort_order in DEFAULT_LOCATIONS:
+        await db.execute(
+            "INSERT INTO locations (name, icon, sort_order, household_id) VALUES (?, ?, ?, ?)",
+            (name, icon, sort_order, household_id),
+        )
+
     await db.commit()
 
     token = create_token(account_id=account_id, household_id=household_id)

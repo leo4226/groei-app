@@ -33,7 +33,7 @@ _origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://floreren\.app|https://www\.floreren\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

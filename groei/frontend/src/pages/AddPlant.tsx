@@ -38,6 +38,7 @@ export default function AddPlant() {
   const location = useLocation()
   const locState = (location.state ?? null) as AddPlantLocState
   const prefill = locState?.prefill
+  const remountKey = useMemo(() => Date.now(), [prefill])
   const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
   const isFromIdentify = isIdentifyPrefill(prefill)
   const { locations, maps, addPlant, uploadPhoto } = useFloreren()
@@ -255,7 +256,7 @@ export default function AddPlant() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-8">
+    <div key={remountKey} className="px-4 pt-6 pb-8">
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate(-1)}

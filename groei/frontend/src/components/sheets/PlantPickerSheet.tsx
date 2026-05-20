@@ -53,7 +53,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
         </button>
 
-        <div className="px-5 pb-5 flex flex-col min-h-0 flex-1 overflow-y-auto">
+        <div className="px-5 pb-8 flex flex-col min-h-0 flex-1 overflow-y-auto">
           {/* Header */}
           <h3 className="text-base font-bold text-text mb-1">{t.plantPicker.title}</h3>
           <p className="text-xs text-text-muted mb-3">
