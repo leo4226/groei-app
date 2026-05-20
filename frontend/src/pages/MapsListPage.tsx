@@ -113,7 +113,7 @@ export default function MapsListPage() {
             placeholder={t.maps.mapNamePlaceholder}
             className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-bg text-text mb-3"
           />
-          <label className="text-sm text-text-muted block mb-1">Type</label>
+          <label className="text-sm text-text-muted block mb-1">{t.mapSettings.typeLabel}</label>
           <div className="flex gap-2 mb-3">
             {(['outdoor', 'indoor'] as const).map(mapType => (
               <button
@@ -162,7 +162,7 @@ export default function MapsListPage() {
                 <button
                   onClick={() => navigate(`/maps/${map.id}/settings`)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:bg-bg hover:text-text transition-colors"
-                  title="Instellingen"
+                  title={t.mapSettings.pageTitle}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="3" />
@@ -172,7 +172,7 @@ export default function MapsListPage() {
                 <button
                   onClick={() => handleDelete(map)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-overdue transition-colors"
-                  title="Verwijderen"
+                  title={t.common.delete}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
@@ -8,20 +8,51 @@ import type { LocalPlant } from './data/plants-dataset'
 import LoginPage from './pages/LoginPage'
 import { getToken } from './api/auth'
 import MapPage from './pages/MapPage'
+// MapsListPage import removed — /maps now redirects to default indoor map
 import Dashboard from './pages/Dashboard'
 import Plants from './pages/Plants'
 import AddPlant from './pages/AddPlant'
 import PlantDetail from './pages/PlantDetail'
 import EditPlant from './pages/EditPlant'
 import PlantCareDetail from './pages/PlantCareDetail'
+import { IdentifyPlantPage } from './pages/IdentifyPlant'
 import Settings from './pages/Settings'
-import PlanningCalendar from './pages/PlanningCalendar'
+import PlanningCalendarPage from './pages/calendar/PlanningCalendarPage'
 import LayoutEditorPage from './pages/LayoutEditorPage'
 import MapSettingsPage from './pages/MapSettingsPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />
   return <>{children}</>
+}
+
+/** Redirect /maps to the first indoor map's /map/:slug page. */
+function MapRedirect() {
+  const maps = useFloreren((s) => s.maps)
+  const loadMaps = useFloreren((s) => s.loadMaps)
+  const isLoading = useFloreren((s) => s.isLoading)
+  const navigate = useNavigate()
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (maps.length > 0) {
+      const indoor = maps.find((m) => m.map_type === 'indoor')
+      if (indoor) {
+        navigate(`/map/${indoor.slug}`, { replace: true })
+      } else if (maps[0]) {
+        navigate(`/map/${maps[0].slug}`, { replace: true })
+      }
+      setReady(true)
+    } else if (!isLoading) {
+      loadMaps().then(() => setReady(true))
+    }
+  }, [maps, isLoading, loadMaps, navigate])
+
+  if (!ready) {
+    return <div className="p-6 text-text-muted text-center">Loading maps…</div>
+  }
+
+  return <div className="p-6 text-text-muted text-center">No maps found.</div>
 }
 
 export default function App() {
@@ -67,6 +98,14 @@ export default function App() {
             }
           />
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/maps"
+            element={
+              <RequireAuth>
+                <MapRedirect />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/maps/:id/edit-layout"
             element={
@@ -140,10 +179,18 @@ export default function App() {
             }
           />
           <Route
+            path="/identify"
+            element={
+              <RequireAuth>
+                <IdentifyPlantPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/calendar"
             element={
               <RequireAuth>
-                <PlanningCalendar />
+                <PlanningCalendarPage />
               </RequireAuth>
             }
           />

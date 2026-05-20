@@ -16,43 +16,47 @@ try:
 except ImportError:
     pass
 
-from database import get_db
+from database import init_pool, close_pool, get_db
 from species_service import get_or_create_species, get_token_usage
 
 
 async def backfill():
-    async with get_db() as db:
-        plants = await db.execute_fetchall(
-            "SELECT id, name FROM plants WHERE species_id IS NULL AND is_active = 1"
-        )
+    await init_pool()
+    try:
+        async with get_db() as db:
+            plants = await db.execute_fetchall(
+                "SELECT id, name FROM plants WHERE species_id IS NULL AND is_active = 1"
+            )
 
-    if not plants:
-        print("All plants already have species_id. Nothing to do.")
-        return
+        if not plants:
+            print("All plants already have species_id. Nothing to do.")
+            return
 
-    print(f"Backfilling {len(plants)} plants...\n")
+        print(f"Backfilling {len(plants)} plants...\n")
 
-    for plant in plants:
-        plant_id = plant["id"]
-        plant_name = plant["name"]
-        try:
-            async with get_db() as db:
-                species_id = await get_or_create_species(db, plant_name)
-                await db.execute(
-                    "UPDATE plants SET species_id = ? WHERE id = ?",
-                    (species_id, plant_id),
-                )
-                await db.commit()
-            print(f"  [OK] {plant_name} -> species_id={species_id}")
-        except Exception as exc:
-            print(f"  [FAIL] {plant_name}: {exc}", file=sys.stderr)
+        for plant in plants:
+            plant_id = plant["id"]
+            plant_name = plant["name"]
+            try:
+                async with get_db() as db:
+                    species_id = await get_or_create_species(db, plant_name)
+                    await db.execute(
+                        "UPDATE plants SET species_id = $1 WHERE id = $2",
+                        (species_id, plant_id),
+                    )
+                    await db.commit()
+                print(f"  [OK] {plant_name} -> species_id={species_id}")
+            except Exception as exc:
+                print(f"  [FAIL] {plant_name}: {exc}", file=sys.stderr)
 
-        await asyncio.sleep(0.5)
+            await asyncio.sleep(0.5)
 
-    usage = get_token_usage()
-    total = usage["input"] + usage["output"]
-    print(f"\nBackfill complete.")
-    print(f"Tokens used — input: {usage['input']:,}  output: {usage['output']:,}  total: {total:,}")
+        usage = get_token_usage()
+        total = usage["input"] + usage["output"]
+        print(f"\nBackfill complete.")
+        print(f"Tokens used — input: {usage['input']:,}  output: {usage['output']:,}  total: {total:,}")
+    finally:
+        await close_pool()
 
 
 if __name__ == "__main__":

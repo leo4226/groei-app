@@ -45,11 +45,12 @@ export interface Plant {
   is_active: boolean
   is_locked: boolean
   created_at: string | null
+  sown_date: string | null
   sun_requirement: string | null
   plant_type: string | null
   icon_key: string | null
   icon_requested: boolean
-  phase: 'seed' | 'seedling' | 'mature'
+  phase: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -66,6 +67,7 @@ export interface CareLogEntry {
   done_at: string
   notes: string | null
   skipped: boolean
+  water_amount: number | null
 }
 
 export interface CareTask {
@@ -136,7 +138,8 @@ export interface PlantCreateInput {
   sun_requirement?: string
   plant_type?: string
   icon_key?: string
-  phase?: 'seed' | 'seedling' | 'mature'
+  phase?: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+  sown_date?: string
   care_schedules: CareScheduleInput[]
 }
 
@@ -283,6 +286,8 @@ export interface MapPlant {
   is_locked: boolean,
   top_alert: TopAlert | null
   alerts: TopAlert[]
+  top_warning: CareWarningOut | null
+  warnings: CareWarningOut[]
 }
 
 // --- Objects ---
@@ -417,4 +422,95 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; def
   prune:        { label: 'Prune',        icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
   protect_cold: { label: 'Protect Cold', icon: '🧤', defaultIndoor: 0,   defaultOutdoor: 0 },
   protect_heat: { label: 'Protect Heat', icon: '🧴', defaultIndoor: 0,   defaultOutdoor: 0 },
+}
+
+// ── Care warning types (Phase C) ──
+
+export interface CareWarningOut {
+  care_type: string
+  severity: string
+  trigger: string
+  days_overdue: number | null
+  message_nl: string
+  message_en: string
+  icon: string
+  color: string
+}
+
+export interface CareTypeStatusOut {
+  care_type: string
+  status: string
+  days_until_due: number | null
+  last_done: string | null
+}
+
+export interface PlantWarningStateOut {
+  plant_id: number
+  environment: string
+  active_care_types: string[]
+  warnings: CareWarningOut[]
+  top_warning: CareWarningOut | null
+  care_summary: Record<string, CareTypeStatusOut>
+}
+
+// ── Warning Summary (C3 Dashboard) ──
+
+export interface CareTypeKPIOut {
+  care_type: string
+  icon: string
+  label_nl: string
+  label_en: string
+  count: number
+  urgent_count: number
+  warning_count: number
+  info_count: number
+}
+
+export interface BucketPlantOut {
+  plant_id: number
+  plant_name: string
+  plant_icon_variant: string | null
+  environment: string
+  care_type: string | null
+  top_warning: CareWarningOut | null
+  days_overdue: number | null
+  schedule_id: number | null
+}
+
+export interface WarningBucketsOut {
+  nu: BucketPlantOut[]
+  vandaag: BucketPlantOut[]
+  komende_week: BucketPlantOut[]
+}
+
+export interface WarningSummaryOut {
+  total_plants: number
+  on_schedule: number
+  kpis: CareTypeKPIOut[]
+  buckets: WarningBucketsOut
+}
+
+// ── Plant identification (Pl@ntNet) ──
+
+export type PlantIdCandidate = {
+  scientific_name: string
+  common_names_nl: string[]
+  common_names_en: string[]
+  confidence: number
+  species_id: number | null
+  thumbnail_url: string | null
+}
+
+export type IdentifyResponse = {
+  candidates: PlantIdCandidate[]
+  low_confidence: boolean
+}
+
+export type IdentifyCommitResult = {
+  species_id: number
+  name_nl_suggested: string
+  scientific_name: string
+  icon_key: string | null
+  care_thresholds: Record<string, unknown>
+  photo_path: string
 }

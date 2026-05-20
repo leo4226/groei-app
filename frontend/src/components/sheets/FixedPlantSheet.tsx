@@ -1,4 +1,5 @@
 import type { FixedPlant } from '../../constants/fixedPlants'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   plant: FixedPlant
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function FixedPlantSheet({ plant, onClose }: Props) {
+  const t = useT()
   return (
     <>
       {/* Backdrop */}
@@ -34,7 +36,7 @@ export default function FixedPlantSheet({ plant, onClose }: Props) {
                     <rect x="1.5" y="4.5" width="7" height="5" rx="1" fill="currentColor" opacity="0.7" />
                     <path d="M3,4.5 L3,3 A2,2,0,0,1,7,3 L7,4.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
                   </svg>
-                  Vast — kan niet worden verplaatst
+                  {t.plantQuickSheet.fixed}
                 </span>
               </div>
             </div>
@@ -52,7 +54,7 @@ export default function FixedPlantSheet({ plant, onClose }: Props) {
             onClick={onClose}
             className="w-full bg-bg text-text rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
           >
-            Sluiten
+            {t.plantQuickSheet.close}
           </button>
         </div>
       </div>

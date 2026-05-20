@@ -12,39 +12,32 @@ try:
 except ImportError:
     pass
 
-from database import init_db
+from database import init_pool, close_pool
 from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
 from routers import plant_care, species, spots, icons
-from routers import admin, alerts, weed_catalog, weed_sightings, auth
+from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
+from routers import warnings as warnings_router
+from routers import plant_id as plant_id_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    await init_pool()
     yield
+    await close_pool()
 
 
 app = FastAPI(title="Floreren", version="0.1.0", lifespan=lifespan)
 
+_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Serve uploaded photos
-photos_dir = os.path.join(os.path.dirname(__file__), "photos")
-app.mount("/api/photos", StaticFiles(directory=photos_dir), name="photos")
-
-# Serve map SVGs
-maps_dir = os.path.join(os.path.dirname(__file__), "static", "maps")
-app.mount("/api/maps-static", StaticFiles(directory=maps_dir), name="maps-static")
-
-# Serve plant icons
-icons_dir = os.path.join(os.path.dirname(__file__), "..", "icons")
-app.mount("/api/icons", StaticFiles(directory=icons_dir), name="icons")
 
 # Mount routers
 app.include_router(users.router, prefix="/api")
@@ -64,6 +57,9 @@ app.include_router(alerts.router, prefix="/api")
 app.include_router(weed_catalog.router, prefix="/api")
 app.include_router(weed_sightings.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(calendar.router, prefix="/api")
+app.include_router(warnings_router.router, prefix="/api")
+app.include_router(plant_id_router.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

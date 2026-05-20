@@ -1,4 +1,5 @@
 import type { MapObject } from '../../types'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   object: MapObject
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Props) {
+  const t = useT()
   const rotation = object.rotation ?? 0
 
   return (
@@ -19,13 +21,13 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
           onClick={onDelete}
           className="text-overdue text-xs px-2 py-0.5 rounded border border-overdue/20 bg-overdue/5 shrink-0"
         >
-          Verwijderen
+          {t.common.delete}
         </button>
       </div>
 
       <div>
         <label className="text-xs text-text-muted block mb-1">
-          Rotatie&ensp;<span className="font-semibold text-text">{Math.round(rotation)}°</span>
+          {t.editor.props.rotation}&ensp;<span className="font-semibold text-text">{Math.round(rotation)}°</span>
         </label>
         <input
           type="range"
@@ -47,7 +49,7 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
             onClick={() => onRotate(0)}
             className="flex-1 text-xs py-1 rounded-lg border border-border bg-bg text-text-muted hover:bg-border"
           >
-            Reset
+            {t.editor.props.reset}
           </button>
           <button
             onClick={() => onRotate((rotation + 45) % 360)}

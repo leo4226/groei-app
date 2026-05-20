@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Lavendel"><title>Lavendel — Lavandula angustifolia</title>
+  
+    <path d="M 30 80 L 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 70 80 Z" fill="#B2664A"></path>
+    <rect x="28" y="77" width="44" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 34 100 Q 34 102 36 102 L 64 102 Q 66 102 66 100 L 64 98 L 36 98 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="79.5" rx="18" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+    <g transform="translate(50 80) rotate(-22)">
+      <path d="M 0 0 L 0 -38" stroke="#A5C68F" stroke-width="1" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 -38 L 0 -30 M -2 -36 L -2 -30 M 2 -36 L 2 -30 M -1.5 -42 L -1.5 -36 M 1.5 -42 L 1.5 -36" stroke="#9B88C4" stroke-width="1.4" stroke-linecap="round"></path>
+      <circle cx="0" cy="-44" r="1.5" fill="#8E6BB8"></circle>
+      <circle cx="-2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+      <circle cx="2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+    </g>
+  
+    <g transform="translate(50 80) rotate(-10)">
+      <path d="M 0 0 L 0 -38" stroke="#A5C68F" stroke-width="1" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 -38 L 0 -30 M -2 -36 L -2 -30 M 2 -36 L 2 -30 M -1.5 -42 L -1.5 -36 M 1.5 -42 L 1.5 -36" stroke="#9B88C4" stroke-width="1.4" stroke-linecap="round"></path>
+      <circle cx="0" cy="-44" r="1.5" fill="#8E6BB8"></circle>
+      <circle cx="-2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+      <circle cx="2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+    </g>
+  
+    <g transform="translate(50 80) rotate(0)">
+      <path d="M 0 0 L 0 -38" stroke="#A5C68F" stroke-width="1" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 -38 L 0 -30 M -2 -36 L -2 -30 M 2 -36 L 2 -30 M -1.5 -42 L -1.5 -36 M 1.5 -42 L 1.5 -36" stroke="#9B88C4" stroke-width="1.4" stroke-linecap="round"></path>
+      <circle cx="0" cy="-44" r="1.5" fill="#8E6BB8"></circle>
+      <circle cx="-2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+      <circle cx="2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+    </g>
+  
+    <g transform="translate(50 80) rotate(10)">
+      <path d="M 0 0 L 0 -38" stroke="#A5C68F" stroke-width="1" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 -38 L 0 -30 M -2 -36 L -2 -30 M 2 -36 L 2 -30 M -1.5 -42 L -1.5 -36 M 1.5 -42 L 1.5 -36" stroke="#9B88C4" stroke-width="1.4" stroke-linecap="round"></path>
+      <circle cx="0" cy="-44" r="1.5" fill="#8E6BB8"></circle>
+      <circle cx="-2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+      <circle cx="2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+    </g>
+  
+    <g transform="translate(50 80) rotate(22)">
+      <path d="M 0 0 L 0 -38" stroke="#A5C68F" stroke-width="1" fill="none" stroke-linecap="round"></path>
+      <path d="M 0 -38 L 0 -30 M -2 -36 L -2 -30 M 2 -36 L 2 -30 M -1.5 -42 L -1.5 -36 M 1.5 -42 L 1.5 -36" stroke="#9B88C4" stroke-width="1.4" stroke-linecap="round"></path>
+      <circle cx="0" cy="-44" r="1.5" fill="#8E6BB8"></circle>
+      <circle cx="-2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+      <circle cx="2" cy="-40" r="1.2" fill="#8E6BB8"></circle>
+    </g>
+  
+</svg>

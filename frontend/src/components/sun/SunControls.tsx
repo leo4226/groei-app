@@ -2,6 +2,7 @@ import type { SunPosition } from '../../utils/sunCalc'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
 import HeatmapLegend from './HeatmapLegend'
+import { useT } from '../../context/LanguageContext'
 
 export type SunViewMode = 'live' | 'heatmap'
 
@@ -22,8 +23,6 @@ interface Props {
   onGrowHere?: () => void
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
-
 function formatTime(hour: number): string {
   const h = Math.floor(hour)
   const m = Math.round((hour - h) * 60)
@@ -37,20 +36,21 @@ function TappedCellInfo({
   month: number
   onGrowHere?: () => void
 }) {
-  const monthName = MONTHS[month - 1]
+  const t = useT()
+  const monthName = t.calendar.monthsShort[month - 1]
 
   return (
     <div className="flex items-center justify-between gap-2">
       <p className="text-xs text-text-muted">
-        Dit punt krijgt{' '}
-        <span className="text-text font-medium">~{cell.sunHours.toFixed(1)}u</span>{' '}
-        directe zon in {monthName}
+        {t.sun.sunHoursIn
+          .replace('{hours}', cell.sunHours.toFixed(1))
+          .replace('{month}', monthName)}
       </p>
       <button
         onClick={onGrowHere}
         className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
       >
-        Wat kan hier? →
+        {t.sun.whatCanGrow}
       </button>
     </div>
   )
@@ -62,6 +62,7 @@ export default function SunControls({
   onMonthChange, onHourChange, onNow,
   isCalculating, tappedCell, selectedProfile, onProfileChange, onGrowHere,
 }: Props) {
+  const t = useT()
   return (
     <div className="shrink-0 mt-2 bg-surface rounded-xl border border-border p-3 space-y-2">
       {/* Live / Zonkaart toggle */}
@@ -72,7 +73,7 @@ export default function SunControls({
             viewMode === 'live' ? 'bg-amber-500/25 text-amber-300' : 'text-text-muted'
           }`}
         >
-          Live
+          {t.sun.live}
         </button>
         <button
           onClick={() => onViewModeChange('heatmap')}
@@ -80,13 +81,13 @@ export default function SunControls({
             viewMode === 'heatmap' ? 'bg-amber-500/25 text-amber-300' : 'text-text-muted'
           }`}
         >
-          Zonkaart
+          {t.sun.heatmap}
         </button>
       </div>
 
       {/* Month pills — shown in both modes */}
       <div className="flex gap-1 overflow-x-auto no-scrollbar">
-        {MONTHS.map((label, i) => {
+        {t.calendar.monthsShort.map((label, i) => {
           const month = i + 1
           const isActive = month === selectedMonth
           return (
@@ -127,8 +128,8 @@ export default function SunControls({
               {sunPosition && (
                 <span className="text-text-muted font-normal ml-2">
                   {sunPosition.isUp
-                    ? `${sunPosition.altitudeDeg.toFixed(0)}° boven horizon`
-                    : 'Onder horizon'}
+                    ? t.sun.aboveHorizon.replace('{deg}', sunPosition.altitudeDeg.toFixed(0))
+                    : t.sun.belowHorizon}
                 </span>
               )}
             </span>
@@ -136,7 +137,7 @@ export default function SunControls({
               onClick={onNow}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors"
             >
-              Nu
+              {t.sun.now}
             </button>
           </div>
         </>
@@ -161,7 +162,7 @@ export default function SunControls({
                   style={isActive ? { backgroundColor: profile.color + '55' } : undefined}
                 >
                   <span>{profile.emoji}</span>
-                  <span>{profile.labelNl}</span>
+                  <span>{profile.label}</span>
                 </button>
               )
             })}
@@ -177,7 +178,7 @@ export default function SunControls({
           )}
 
           {isCalculating && (
-            <div className="text-xs text-amber-300 animate-pulse">Berekenen...</div>
+            <div className="text-xs text-amber-300 animate-pulse">{t.sun.calculating}</div>
           )}
         </>
       )}

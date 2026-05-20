@@ -3,10 +3,9 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { PLANT_ICONS } from '../constants/plantIcons'
 import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/plantLabels'
+import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
 import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
-import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
-import type { LocalPlant } from '../data/plants-dataset'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -33,6 +32,7 @@ export default function Plants() {
   const CATEGORY_LABELS = useCategoryLabels()
   const PLANT_TYPE_LABELS = useTypeLabels()
   const FORM_LABELS = useFormLabels()
+  const t = useT()
   const [filterArea, setFilterArea] = useState<'all' | 'tuin' | 'huis'>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterForm, setFilterForm] = useState<string>('all')
@@ -42,7 +42,6 @@ export default function Plants() {
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
-  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
@@ -154,7 +153,7 @@ export default function Plants() {
             gap: 12,
           }}>
             <span style={{ width: 24, height: 1, background: 'var(--color-border)', flex: 'none' }} />
-            Mijn Tuin · Est. 2026
+            {t.plantsPage.subtitleEst}
             <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
           </p>
           <h1 style={{
@@ -166,7 +165,7 @@ export default function Plants() {
             color: 'var(--color-text)',
             margin: 0,
           }}>
-            Planten <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>Icons</em>.
+            {t.plantsPage.title} <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>Icons</em>.
           </h1>
           <p style={{
             fontFamily: 'var(--font-heading)',
@@ -177,7 +176,7 @@ export default function Plants() {
             maxWidth: 440,
             margin: '8px 0 0 0',
           }}>
-            Een botanische gids voor je plantencollectie — binnen en buiten.
+            {t.plantsPage.subtitle}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 28 }}>
@@ -197,7 +196,7 @@ export default function Plants() {
               letterSpacing: '0.15em',
               color: 'var(--color-text-muted)',
               marginTop: 4,
-            }}>Planten</span>
+            }}>{t.plantsPage.countPlants}</span>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{
@@ -215,7 +214,7 @@ export default function Plants() {
               letterSpacing: '0.15em',
               color: 'var(--color-text-muted)',
               marginTop: 4,
-            }}>Categorieen</span>
+            }}>{t.plantsPage.countCategories}</span>
           </div>
         </div>
       </header>
@@ -234,7 +233,7 @@ export default function Plants() {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Zoek op naam of soort…"
+            placeholder={t.plantsPage.searchPlaceholder}
             style={{
               width: '100%',
               padding: '13px 50px 13px 42px',
@@ -269,7 +268,7 @@ export default function Plants() {
           </span>
         </div>
         <button
-          onClick={() => setShowPicker(true)}
+          onClick={() => navigate('/plants/add')}
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: 13,
@@ -288,7 +287,7 @@ export default function Plants() {
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)'; }}
         >
-          + Toevoegen
+          {t.plantsPage.addButton}
         </button>
       </div>
 
@@ -302,10 +301,10 @@ export default function Plants() {
           color: 'var(--color-text-muted)',
           flexShrink: 0,
           minWidth: 48,
-        }}>Locatie</span>
-        <FilterChip label="Alle" count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
-        <FilterChip label="🏠 Huis" count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
-        <FilterChip label="🌿 Tuin" count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
+        }}>{t.plantsPage.filterLocation}</span>
+        <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
+        <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
+        <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
       </div>
 
       {/* Filter row 2: Plant type */}
@@ -318,8 +317,8 @@ export default function Plants() {
           color: 'var(--color-text-muted)',
           flexShrink: 0,
           minWidth: 48,
-        }}>Type</span>
-        <FilterChip label="Alle" count={typeCounts.all} active={filterType === 'all'} onClick={() => setFilterType('all')} />
+        }}>{t.plantsPage.filterType}</span>
+        <FilterChip label={t.plantsPage.filterAll} count={typeCounts.all} active={filterType === 'all'} onClick={() => setFilterType('all')} />
         {Object.entries(PLANT_TYPE_LABELS).map(([key, label]) => {
           const count = typeCounts[key] || 0
           if (count === 0) return null
@@ -345,7 +344,7 @@ export default function Plants() {
           color: 'var(--color-text-muted)',
           flexShrink: 0,
           minWidth: 48,
-        }}>Vorm</span>
+        }}>{t.plantsPage.filterForm}</span>
         {Object.entries(FORM_LABELS).map(([key, label]) => {
           const count = formCounts[key] || 0
           const disabled = count === 0 && key !== 'all'
@@ -372,7 +371,7 @@ export default function Plants() {
             background: '#fffac2', borderRadius: 10, border: '1px solid var(--color-due)',
           }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-              ⚠️ Planten met weeralerts
+              {t.plantsPage.alertBanner}
             </p>
             <button
               onClick={() => navigate('/plants')}
@@ -381,7 +380,7 @@ export default function Plants() {
                 border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline',
               }}
             >
-              Alles tonen
+              {t.plantsPage.alertShowAll}
             </button>
           </div>
         )}
@@ -401,11 +400,10 @@ export default function Plants() {
               fontSize: 15,
               color: 'var(--color-text-soft)',
             }}>
-              {query ? (
-                <>Gevonden: <strong style={{ fontStyle: 'normal', fontWeight: 600, color: 'var(--color-text)' }}>{filtered.length}</strong></>
-              ) : (
-                <>Toon <strong style={{ fontStyle: 'normal', fontWeight: 600, color: 'var(--color-text)' }}>alle {filtered.length}</strong> planten</>
-              )}
+              {query
+                ? t.plantsPage.found(filtered.length)
+                : t.plantsPage.showAll(filtered.length)
+              }
             </p>
             <span style={{
               fontFamily: 'var(--font-mono)',
@@ -415,11 +413,11 @@ export default function Plants() {
               color: 'var(--color-text-muted)',
             }}>
               {query
-                ? '§ Zoekresultaten'
-                : filterArea === 'tuin' ? '§ De Tuin'
-                : filterArea === 'huis' ? '§ Huis'
+                ? t.plantsPage.sectionSearchResults
+                : filterArea === 'tuin' ? t.plantsPage.sectionGarden
+                : filterArea === 'huis' ? t.plantsPage.sectionHouse
                 : filterType !== 'all' ? `§ ${PLANT_TYPE_LABELS[filterType] || filterType}`
-                : '§ De Collectie'
+                : t.plantsPage.sectionCollection
               }
             </span>
           </div>
@@ -450,10 +448,10 @@ export default function Plants() {
               color: 'var(--color-text-soft)',
               margin: '0 0 6px',
             }}>
-              {query ? 'Niets gevonden in deze hoek van de tuin.' : 'Nog geen planten in deze collectie.'}
+              {query ? t.plantsPage.emptySearch : t.plantsPage.emptyNoPlants}
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
-              {query ? 'Probeer een andere zoekopdracht' : 'Voeg je eerste plant toe via + Toevoegen'}
+              {query ? t.plantsPage.emptySearchHint : t.plantsPage.emptyNoPlantsHint}
             </p>
           </div>
         )}
@@ -471,19 +469,7 @@ export default function Plants() {
           </div>
         )}
       </div>
-      {showPicker && (
-        <PlantPickerSheet
-          onClose={() => setShowPicker(false)}
-          onSelectPlant={(plant: LocalPlant) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: { prefill: plant } })
-          }}
-          onCustomName={(name) => {
-            setShowPicker(false)
-            navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
-          }}
-        />
-      )}
+
     </div>
   )
 }
@@ -563,7 +549,7 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
         position: 'relative',
       }}>
         <img
-          src={`/api/icons/${plant.icon_key}.svg`}
+          src={`/icons/${plant.icon_key}.svg`}
           alt={plant.name}
           style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
           className="card-icon"

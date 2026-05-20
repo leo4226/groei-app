@@ -28,3 +28,6 @@ Thumbs.db
 # Uploaded photos (keep directory, ignore contents)
 backend/photos/*
 !backend/photos/.gitkeep
+
+# Alembic
+alembic/__pycache__/

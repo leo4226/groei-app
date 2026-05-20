@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Petunia"><title>Petunia — Petunia × atkinsiana</title>
+  
+    <path d="M 31 82 L 35 102 Q 35 104 37 104 L 63 104 Q 65 104 65 102 L 69 82 Z" fill="#B2664A"></path>
+    <rect x="29" y="79" width="42" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 35 102 Q 35 104 37 104 L 63 104 Q 65 104 65 102 L 63 100 L 37 100 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="81.5" rx="17" ry="1.8" fill="#4A3429"></ellipse>
+  
+  
+  <path d="M 50 82 Q 30 66 22 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 70 66 78 72" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 42 56 40 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 58 56 60 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 82 Q 50 56 50 40" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  
+  <ellipse cx="34" cy="66" rx="4" ry="2.5" fill="#4A7C4E"></ellipse>
+  <ellipse cx="66" cy="66" rx="4" ry="2.5" fill="#4A7C4E"></ellipse>
+  
+  
+    <g transform="translate(22 72)">
+      <path d="M -6 2 Q -8 -4 -4 -6 Q 0 -7 4 -6 Q 8 -4 6 2 Q 3 4 0 4 Q -3 4 -6 2 Z" fill="#8E6BB8"></path>
+      <path d="M -3 0 Q 0 2 3 0" stroke="undefined" stroke-width="0.8" fill="none"></path>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(78 72)">
+      <path d="M -6 2 Q -8 -4 -4 -6 Q 0 -7 4 -6 Q 8 -4 6 2 Q 3 4 0 4 Q -3 4 -6 2 Z" fill="#8E6BB8"></path>
+      <path d="M -3 0 Q 0 2 3 0" stroke="undefined" stroke-width="0.8" fill="none"></path>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(40 44)">
+      <path d="M -6 2 Q -8 -4 -4 -6 Q 0 -7 4 -6 Q 8 -4 6 2 Q 3 4 0 4 Q -3 4 -6 2 Z" fill="#8E6BB8"></path>
+      <path d="M -3 0 Q 0 2 3 0" stroke="undefined" stroke-width="0.8" fill="none"></path>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(60 44)">
+      <path d="M -6 2 Q -8 -4 -4 -6 Q 0 -7 4 -6 Q 8 -4 6 2 Q 3 4 0 4 Q -3 4 -6 2 Z" fill="#8E6BB8"></path>
+      <path d="M -3 0 Q 0 2 3 0" stroke="undefined" stroke-width="0.8" fill="none"></path>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+    <g transform="translate(50 40)">
+      <path d="M -6 2 Q -8 -4 -4 -6 Q 0 -7 4 -6 Q 8 -4 6 2 Q 3 4 0 4 Q -3 4 -6 2 Z" fill="#8E6BB8"></path>
+      <path d="M -3 0 Q 0 2 3 0" stroke="undefined" stroke-width="0.8" fill="none"></path>
+      <circle cx="0" cy="0" r="1" fill="#F4C542"></circle>
+    </g>
+  
+</svg>

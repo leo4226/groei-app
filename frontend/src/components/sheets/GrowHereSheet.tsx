@@ -6,8 +6,8 @@ import { PLANT_SUN_PROFILES, getSunFit } from '../../utils/plantSunRequirements'
 import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
 import { fetchGrowHereSuggestions, type GrowHereResponse, type AISuggestion } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
-
-const MONTHS_NL = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec']
+import { useT } from '../../context/LanguageContext'
+import type { Translations } from '../../i18n/translations'
 
 // Module-level cache — survives sheet open/close within the session
 const _aiCache = new Map<string, GrowHereResponse>()
@@ -24,10 +24,10 @@ interface Props {
   onClose: () => void
 }
 
-function sunCategoryLabel(hours: number): { label: string; emoji: string } {
-  if (hours >= 6) return { label: 'Volle zon', emoji: '☀️' }
-  if (hours >= 3) return { label: 'Half zon', emoji: '⛅' }
-  return { label: 'Schaduw', emoji: '🌿' }
+function sunCategoryLabel(hours: number, tSun: Translations['sun']): { label: string; emoji: string } {
+  if (hours >= 6) return { label: tSun.sunCategoryFull, emoji: '☀️' }
+  if (hours >= 3) return { label: tSun.sunCategoryPartial, emoji: '⛅' }
+  return { label: tSun.sunCategoryShade, emoji: '🌿' }
 }
 
 function sunReqId(hours: number): string {
@@ -36,23 +36,23 @@ function sunReqId(hours: number): string {
   return 'shade'
 }
 
-const SUN_FIT_BADGE: Record<string, { label: string; className: string }> = {
-  perfect:    { label: 'Perfect',    className: 'bg-good/15 text-good' },
-  good:       { label: 'Goed',       className: 'bg-good/15 text-good' },
-  acceptable: { label: 'Acceptabel', className: 'bg-due/15 text-due' },
+const BADGE_CLASS: Record<string, string> = {
+  perfect:    'bg-good/15 text-good',
+  good:       'bg-good/15 text-good',
+  acceptable: 'bg-due/15 text-due',
 }
 
-function AISuggestionCard({ s, onAdd, loading, disabled }: { s: AISuggestion; onAdd: () => void; loading?: boolean; disabled?: boolean }) {
-  const badge = SUN_FIT_BADGE[s.sunFit]
+function AISuggestionCard({ s, onAdd, loading, disabled, t }: { s: AISuggestion; onAdd: () => void; loading?: boolean; disabled?: boolean; t: Translations['growHere'] }) {
+  const badgeClassName = BADGE_CLASS[s.sunFit]
   return (
     <div className="card p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-medium text-sm text-text">{s.dutchName || s.commonName}</p>
-            {badge && (
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.className}`}>
-                {badge.label}
+            {badgeClassName && (
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badgeClassName}`}>
+                {s.sunFit === 'perfect' ? t.badgePerfect : s.sunFit === 'good' ? t.badgeGood : t.badgeAcceptable}
               </span>
             )}
           </div>
@@ -63,7 +63,7 @@ function AISuggestionCard({ s, onAdd, loading, disabled }: { s: AISuggestion; on
           disabled={disabled}
           className="shrink-0 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-50"
         >
-          {loading ? '...' : '+ Voeg toe'}
+          {loading ? t.addLoading : t.add}
         </button>
       </div>
       <p className="text-xs text-text-muted leading-relaxed">{s.reasoning}</p>
@@ -100,8 +100,9 @@ function AISkeleton() {
 export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, mapId, onClose }: Props) {
   const navigate = useNavigate()
   const { addPlant } = useFloreren()
+  const t = useT()
   const { sunHours } = tappedCell
-  const { label: catLabel, emoji: catEmoji } = sunCategoryLabel(sunHours)
+  const { label: catLabel, emoji: catEmoji } = sunCategoryLabel(sunHours, t.sun)
   const spotReqId = sunReqId(sunHours)
   const profile = PLANT_SUN_PROFILES.find(p => p.id === spotReqId)
 
@@ -203,15 +204,15 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0 pr-2">
               <p className="text-xs text-text-muted mb-0.5">
-                {MONTHS_NL[selectedMonth - 1]} · {catEmoji} {catLabel}
+                {t.calendar.monthsShort[selectedMonth - 1]} · {catEmoji} {catLabel}
               </p>
-              <h2 className="text-lg font-bold text-text">Wat kan hier groeien?</h2>
+              <h2 className="text-lg font-bold text-text">{t.growHere.title}</h2>
               <p className="text-sm text-text-muted mt-0.5">
                 {aiData?.spotSummary ?? (
                   <>
-                    Dit punt krijgt{' '}
-                    <span className="text-text font-medium">~{sunHours.toFixed(1)}u</span>{' '}
-                    directe zon
+                    {t.growHere.sunLabel.split('{hours}')[0]}
+                    <span className="text-text font-medium">{sunHours.toFixed(1)}</span>
+                    {t.growHere.sunLabel.split('{hours}')[1]}
                   </>
                 )}
               </p>
@@ -235,7 +236,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                 }}
               />
             </div>
-            <span className="text-xs text-text-muted shrink-0">{sunHours.toFixed(1)}u / dag</span>
+            <span className="text-xs text-text-muted shrink-0">{t.growHere.hoursPerDay.replace('{hours}', sunHours.toFixed(1))}</span>
           </div>
         </div>
 
@@ -246,7 +247,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
           {userMatches.length > 0 && (
             <section>
               <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-                Al in uw tuin
+                {t.growHere.alreadyInGarden}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {userMatches.map(p => (
@@ -265,7 +266,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
           {datasetMatches.length > 0 && (
             <section>
               <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-                Suggesties
+                {t.growHere.suggestions}
               </h3>
               <div className="space-y-2">
                 {datasetMatches.map(lp => {
@@ -276,10 +277,10 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-sm text-text">{lp.dutchName}</p>
                           {fit === 'good' && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-good/15 text-good">Perfect</span>
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-good/15 text-good">{t.growHere.badgePerfect}</span>
                           )}
                           {fit === 'partial' && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-due/15 text-due">Acceptabel</span>
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-due/15 text-due">{t.growHere.badgeAcceptable}</span>
                           )}
                         </div>
                         <p className="text-xs text-text-muted italic">{lp.latinName}</p>
@@ -292,7 +293,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                         disabled={!!addingName}
                         className="shrink-0 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-50"
                       >
-                        {addingName === lp.dutchName ? '...' : '+ Voeg toe'}
+                        {addingName === lp.dutchName ? t.growHere.addLoading : t.growHere.add}
                       </button>
                     </div>
                   )
@@ -304,11 +305,11 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
           {/* AI suggestions */}
           <section>
             <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-              AI Suggesties
+              {t.growHere.aiSuggestions}
             </h3>
             {aiLoading && <AISkeleton />}
             {!aiLoading && aiError && (
-              <p className="text-xs text-text-muted">Kon geen AI suggesties laden.</p>
+              <p className="text-xs text-text-muted">{t.growHere.aiError}</p>
             )}
             {!aiLoading && !aiError && aiData && (
               <div className="space-y-2">
@@ -319,6 +320,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                     onAdd={() => handleAddToGarden(s.dutchName || s.commonName, s.latinName)}
                     loading={addingName === (s.dutchName || s.commonName)}
                     disabled={!!addingName}
+                    t={t.growHere}
                   />
                 ))}
               </div>

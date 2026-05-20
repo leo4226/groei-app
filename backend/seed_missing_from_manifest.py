@@ -4,16 +4,16 @@ Also adds user-requested plants: Tabaksplant, Dracaena Compacta.
 Updates Vrouwentong to modern scientific name.
 
 Run: cd groei/backend && python seed_missing_from_manifest.py
-Idempotent — INSERT OR IGNORE on slug, safe to re-run.
+Idempotent — ON CONFLICT (slug) DO NOTHING, safe to re-run.
 """
 
+import asyncio
 import json
-import sqlite3
 import os
 import re
+from database import init_pool, close_pool, get_db
 
 MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "icons", "manifest.json")
-DB_PATH = os.path.join(os.path.dirname(__file__), "floreren.db")
 
 
 def load_manifest():
@@ -99,140 +99,146 @@ EXTRA_PLANTS = [
 ]
 
 
-def main():
-    manifest = load_manifest()
+async def main():
+    await init_pool()
+    try:
+        manifest = load_manifest()
 
-    # Deduplicate: skip variant entries
-    unique_icons = {}
-    for entry in manifest:
-        if entry.get("variant_of"):
-            continue
-        unique_icons[entry["id"]] = entry
+        # Deduplicate: skip variant entries
+        unique_icons = {}
+        for entry in manifest:
+            if entry.get("variant_of"):
+                continue
+            unique_icons[entry["id"]] = entry
 
-    db = sqlite3.connect(DB_PATH)
+        async with get_db() as db:
+            # Get existing latin names and slugs
+            existing = await db.execute_fetchall("SELECT slug, latin_name FROM plant_species")
+            existing_slugs = {r[0] for r in existing}
+            existing_latin_norm = {norm(r[1]): r[0] for r in existing if r[1]}
 
-    # Get existing latin names and slugs
-    existing = db.execute("SELECT slug, latin_name FROM plant_species").fetchall()
-    existing_slugs = {r[0] for r in existing}
-    existing_latin_norm = {norm(r[1]): r[0] for r in existing if r[1]}
+            # Find which icon plants are missing
+            to_insert = []
+            already = []
 
-    # Find which icon plants are missing
-    to_insert = []
-    already = []
+            for icon_id, entry in sorted(unique_icons.items()):
+                sci = entry.get("sci", "")
+                sci_norm = norm(sci)
 
-    for icon_id, entry in sorted(unique_icons.items()):
-        sci = entry.get("sci", "")
-        sci_norm = norm(sci)
+                # Skip if latin name already exists
+                if sci_norm and sci_norm in existing_latin_norm:
+                    already.append((icon_id, entry["name"], "latin match"))
+                    continue
 
-        # Skip if latin name already exists
-        if sci_norm and sci_norm in existing_latin_norm:
-            already.append((icon_id, entry["name"], "latin match"))
-            continue
+                # Skip brownbean_nopot (no scientific name)
+                if icon_id == "brownbean_nopot":
+                    continue
 
-        # Skip brownbean_nopot (no scientific name)
-        if icon_id == "brownbean_nopot":
-            continue
+                # Get Dutch name and slug
+                dutch_info = DUTCH_NAMES.get(icon_id)
+                if dutch_info:
+                    name_nl, slug = dutch_info
+                else:
+                    name_nl = entry["name"]
+                    slug = slugify(entry["name"])
 
-        # Get Dutch name and slug
-        dutch_info = DUTCH_NAMES.get(icon_id)
-        if dutch_info:
-            name_nl, slug = dutch_info
-        else:
-            name_nl = entry["name"]
-            slug = slugify(entry["name"])
+                # Ensure unique slug
+                if slug in existing_slugs:
+                    slug = f"{slug}-{icon_id}"
 
-        # Ensure unique slug
-        if slug in existing_slugs:
-            slug = f"{slug}-{icon_id}"
+                to_insert.append({
+                    "slug": slug,
+                    "common_name_nl": name_nl,
+                    "common_name_en": entry["name"],
+                    "latin_name": sci,
+                    "climate_zone": "tropical" if entry.get("cat") in ("houseplant", "succulent") else "temperate",
+                    "icon_id": icon_id,
+                })
 
-        to_insert.append({
-            "slug": slug,
-            "common_name_nl": name_nl,
-            "common_name_en": entry["name"],
-            "latin_name": sci,
-            "climate_zone": "tropical" if entry.get("cat") in ("houseplant", "succulent") else "temperate",
-            "icon_id": icon_id,
-        })
+            # Insert missing icon plants
+            added = 0
+            for plant in to_insert:
+                try:
+                    result = await db.execute(
+                        """INSERT INTO plant_species
+                           (slug, common_name_nl, common_name_en, latin_name, climate_zone)
+                           VALUES ($1, $2, $3, $4, $5)
+                           ON CONFLICT (slug) DO NOTHING""",
+                        (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
+                         plant["latin_name"], plant["climate_zone"]),
+                    )
+                    if result.rowcount > 0:
+                        added += 1
+                except Exception as e:
+                    print(f"  ERROR inserting {plant['slug']}: {e}")
 
-    # Insert missing icon plants
-    added = 0
-    for plant in to_insert:
-        try:
-            db.execute(
-                """INSERT OR IGNORE INTO plant_species
-                   (slug, common_name_nl, common_name_en, latin_name, climate_zone)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
-                 plant["latin_name"], plant["climate_zone"]),
+            # Insert extra plants (no icons)
+            extra_added = 0
+            for plant in EXTRA_PLANTS:
+                try:
+                    result = await db.execute(
+                        """INSERT INTO plant_species
+                           (slug, common_name_nl, common_name_en, latin_name, climate_zone)
+                           VALUES ($1, $2, $3, $4, $5)
+                           ON CONFLICT (slug) DO NOTHING""",
+                        (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
+                         plant["latin_name"], plant["climate_zone"]),
+                    )
+                    if result.rowcount > 0:
+                        extra_added += 1
+                except Exception as e:
+                    print(f"  ERROR inserting {plant['slug']}: {e}")
+
+            await db.commit()
+
+            # Update Vrouwentong scientific name (modern taxonomy)
+            result = await db.execute(
+                """UPDATE plant_species SET latin_name = $1
+                   WHERE slug = $2 AND latin_name = $3""",
+                ("Dracaena trifasciata", "vrouwentongen", "Sansevieria trifasciata"),
             )
-            if db.changes():
-                added += 1
-        except Exception as e:
-            print(f"  ERROR inserting {plant['slug']}: {e}")
+            updated_snake = result.rowcount
 
-    # Insert extra plants (no icons)
-    extra_added = 0
-    for plant in EXTRA_PLANTS:
-        try:
-            db.execute(
-                """INSERT OR IGNORE INTO plant_species
-                   (slug, common_name_nl, common_name_en, latin_name, climate_zone)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (plant["slug"], plant["common_name_nl"], plant["common_name_en"],
-                 plant["latin_name"], plant["climate_zone"]),
+            # Also check if there's a duplicate vrouwentong entry now
+            snake_entries = await db.execute_fetchall(
+                "SELECT id, slug, latin_name FROM plant_species WHERE slug IN ('vrouwentong', 'vrouwentongen')"
             )
-            if db.changes():
-                extra_added += 1
-        except Exception as e:
-            print(f"  ERROR inserting {plant['slug']}: {e}")
 
-    db.commit()
+            await db.commit()
 
-    # Update Vrouwentong scientific name (modern taxonomy)
-    updated_snake = db.execute(
-        """UPDATE plant_species SET latin_name = 'Dracaena trifasciata'
-           WHERE slug = 'vrouwentongen' AND latin_name = 'Sansevieria trifasciata'"""
-    ).rowcount
+            # Summary
+            total_result = await db.execute_fetchall("SELECT COUNT(*) FROM plant_species")
+            total = total_result[0][0] if total_result else 0
+            print(f"Manifest unique plants: {len(unique_icons)}")
+            print(f"Already in DB: {len(already)}")
+            print(f"Added from manifest: {added}")
+            print(f"Added extra (user-requested): {extra_added}")
+            print(f"Updated Vrouwentong latin name: {updated_snake > 0}")
+            print(f"Total plant_species now: {total}")
+            print()
 
-    # Also check if there's a duplicate vrouwentong entry now
-    snake_entries = db.execute(
-        "SELECT id, slug, latin_name FROM plant_species WHERE slug IN ('vrouwentong', 'vrouwentongen')"
-    ).fetchall()
+            if snake_entries:
+                print("Snake plant / Vrouwentong entries:")
+                for s in snake_entries:
+                    print(f"  id={s[0]} slug={s[1]} latin={s[2]}")
 
-    db.commit()
-
-    # Summary
-    total = db.execute("SELECT COUNT(*) FROM plant_species").fetchone()[0]
-    print(f"Manifest unique plants: {len(unique_icons)}")
-    print(f"Already in DB: {len(already)}")
-    print(f"Added from manifest: {added}")
-    print(f"Added extra (user-requested): {extra_added}")
-    print(f"Updated Vrouwentong latin name: {updated_snake > 0}")
-    print(f"Total plant_species now: {total}")
-    print()
-
-    if snake_entries:
-        print("Snake plant / Vrouwentong entries:")
-        for s in snake_entries:
-            print(f"  id={s[0]} slug={s[1]} latin={s[2]}")
-
-    # Verify user-requested plants
-    print()
-    print("User-requested plants check:")
-    for name_nl in ["Vrouwentong", "Tabaksplant", "Dracaena Compacta",
-                    "Lepelplant", "Hartbladphilodendron", "Drakenklimop"]:
-        rows = db.execute(
-            "SELECT id, slug, common_name_nl, latin_name FROM plant_species WHERE common_name_nl LIKE ?",
-            (f"%{name_nl}%",)
-        ).fetchall()
-        if rows:
-            for r in rows:
-                print(f"  FOUND: id={r[0]} slug={r[1]} name={r[2]} latin={r[3]}")
-        else:
-            print(f"  MISSING: {name_nl}")
-
-    db.close()
+            # Verify user-requested plants
+            print()
+            print("User-requested plants check:")
+            for name_nl in ["Vrouwentong", "Tabaksplant", "Dracaena Compacta",
+                            "Lepelplant", "Hartbladphilodendron", "Drakenklimop"]:
+                rows = await db.execute_fetchall(
+                    "SELECT id, slug, common_name_nl, latin_name FROM plant_species WHERE common_name_nl LIKE $1",
+                    (f"%{name_nl}%",),
+                )
+                if rows:
+                    for r in rows:
+                        print(f"  FOUND: id={r[0]} slug={r[1]} name={r[2]} latin={r[3]}")
+                else:
+                    print(f"  MISSING: {name_nl}")
+    finally:
+        await close_pool()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

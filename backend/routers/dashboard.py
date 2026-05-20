@@ -176,7 +176,7 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
         WHERE p.is_active = 1 AND p.household_id = ?
         AND p.id NOT IN (
             SELECT DISTINCT plant_id FROM care_schedules
-            WHERE is_active = 1 AND next_due < date('now')
+            WHERE is_active = 1 AND next_due < CURRENT_DATE
         )
     """, (account["household_id"],))
     on_schedule = on_schedule_rows[0]["n"] if on_schedule_rows else 0

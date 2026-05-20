@@ -282,8 +282,8 @@ export default function Dashboard() {
               }}
             />
 
-            <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
-              Type
+          <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+              {t.mapSettings.typeLabel}
             </label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
               {(['outdoor', 'indoor'] as const).map((type) => (
@@ -558,7 +558,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
           padding: map.thumbnail_file ? '6%' : '14%',
         }}>
           <img
-            src={map.thumbnail_file ? `/maps/${map.thumbnail_file}` : `/api/maps-static/${map.svg_file}`}
+            src={map.thumbnail_file ?? map.svg_file ?? ''}
             alt={map.name}
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
@@ -651,7 +651,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
         </Link>
         <Link
           to={`/maps/${map.id}/settings`}
-          title="Instellingen"
+          title={t.mapSettings.pageTitle}
           style={{
             padding: '9px 14px',
             fontFamily: 'var(--font-heading)',
@@ -1159,7 +1159,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
               overflow: 'hidden', flexShrink: 0,
             }}>
               {entry.icon_key ? (
-                <img src={`/api/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                <img src={`/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
               ) : (
                 <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>
               )}
@@ -1308,7 +1308,7 @@ function CareTipCard({ fact, t }: { fact: PlantFactOut; t: Translations }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {fact.icon_key && (
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <img src={`/api/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
+              <img src={`/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
             </div>
           )}
           <div>

@@ -35,7 +35,8 @@ export function useRainContext() {
     }
 
     if (!_fetchPromise) {
-      _fetchPromise = fetch('/api/garden/rain-context')
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
+      _fetchPromise = fetch(`${apiBase}/garden/rain-context`)
         .then((r) => {
           if (!r.ok) throw new Error('Failed to load rain data')
           return r.json() as Promise<RainContext>

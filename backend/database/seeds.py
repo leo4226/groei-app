@@ -1,24 +1,28 @@
 """Seed data for local development.
 
    Leon & Lisbeth's garden — test users, locations, map, zones,
-   ground zones, plants, and objects. All INSERT OR IGNORE, so
+   ground zones, plants, and objects. All INSERT ... ON CONFLICT DO NOTHING, so
    safe to re-run against any database."""
+
+import asyncio
+from database import init_pool, close_pool, get_db
 
 
 async def apply(db):
     # ── Users ──
-    await db.execute("INSERT OR IGNORE INTO users (id, name, avatar) VALUES (1, 'Leon', '🧑‍💻')")
-    await db.execute("INSERT OR IGNORE INTO users (id, name, avatar) VALUES (2, 'Lisbeth', '🌸')")
+    await db.execute("INSERT INTO users (id, name, avatar) VALUES (1, 'Leon', '🧑‍💻') ON CONFLICT DO NOTHING")
+    await db.execute("INSERT INTO users (id, name, avatar) VALUES (2, 'Lisbeth', '🌸') ON CONFLICT DO NOTHING")
 
     # ── Locations ──
-    await db.execute("INSERT OR IGNORE INTO locations (id, name, icon, sort_order) VALUES (1, 'Tuin', '🌿', 0)")
-    await db.execute("INSERT OR IGNORE INTO locations (id, name, icon, sort_order) VALUES (2, 'Huis', '🏠', 1)")
+    await db.execute("INSERT INTO locations (id, name, icon, sort_order) VALUES (1, 'Tuin', '🌿', 0) ON CONFLICT DO NOTHING")
+    await db.execute("INSERT INTO locations (id, name, icon, sort_order) VALUES (2, 'Huis', '🏠', 1) ON CONFLICT DO NOTHING")
 
     # ── Garden map ──
     await db.execute("""
-        INSERT OR IGNORE INTO maps (id, name, slug, svg_file, viewbox, scale_info, sort_order)
+        INSERT INTO maps (id, name, slug, svg_file, viewbox, scale_info, sort_order)
         VALUES (1, 'Garden', 'garden', 'garden_background.svg', '0 0 680 680',
                 '{"px_per_meter": 46, "origin_x": 162, "origin_y": 54}', 0)
+        ON CONFLICT DO NOTHING
     """)
 
     # ── Ground zones ──
@@ -30,7 +34,7 @@ async def apply(db):
          '[[162,306],[178,306],[178,511],[162,511]]', None),
     ]:
         await db.execute(
-            "INSERT OR IGNORE INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING",
             gz)
 
     # ── Zones ──
@@ -45,7 +49,7 @@ async def apply(db):
          '[[346,524],[438,524],[438,625],[346,625]]', '#666666', 3),
     ]:
         await db.execute(
-            "INSERT OR IGNORE INTO zones (id, map_id, name, zone_type, sun_exposure, boundary, color, sort_order) VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO zones (id, map_id, name, zone_type, sun_exposure, boundary, color, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING",
             z)
 
     # ── Test plants ──
@@ -58,11 +62,11 @@ async def apply(db):
             ("Tomatoes", "Solanum lycopersicum", 1, 380.0, 300.0),
         ]:
             cursor = await db.execute(
-                "INSERT INTO plants (name, species, map_id, map_x, map_y, is_active) VALUES (?, ?, ?, ?, ?, 1)",
+                "INSERT INTO plants (name, species, map_id, map_x, map_y, is_active) VALUES ($1, $2, $3, $4, $5, 1)",
                 (name, species, map_id, mx, my))
             pid = cursor.lastrowid
             await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) VALUES (?, 'water', 3, date('now', '-1 day'), 1)",
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) VALUES ($1, 'water', 3, CURRENT_DATE - INTERVAL '1 day', 1)",
                 (pid,))
 
     # ── Test objects ──
@@ -74,7 +78,24 @@ async def apply(db):
             ("Square planter", "pot", "square", None, 30, None, "plastic", "#888888", 1, 220.0, 150.0, 0),
         ]:
             await db.execute(
-                "INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm, material, color, map_id, map_x, map_y, rotation, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                "INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm, material, color, map_id, map_x, map_y, rotation, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 1)",
                 (name, otype, shape, diam, w, d, mat, color, map_id, mx, my, rot))
 
     await db.commit()
+
+
+async def seed():
+    """Main entry point for seeding."""
+    async with get_db() as db:
+        await apply(db)
+
+
+if __name__ == "__main__":
+    async def main():
+        await init_pool()
+        try:
+            await seed()
+        finally:
+            await close_pool()
+
+    asyncio.run(main())

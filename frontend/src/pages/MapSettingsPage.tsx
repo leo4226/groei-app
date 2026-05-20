@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { fetchMapById, updateMap, deleteMap } from '../api/client'
 import type { MapInfo } from '../types'
 import CompassBearingPicker from '../components/settings/CompassBearingPicker'
+import { useT } from '../context/LanguageContext'
 
 export default function MapSettingsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const t = useT()
   const mapId = Number(id)
 
   const [map, setMap] = useState<MapInfo | null>(null)
@@ -36,7 +38,7 @@ export default function MapSettingsPage() {
       setBearing(m.bearing ?? 0)
       setLoading(false)
     }).catch(e => {
-      if (mounted.current) setError('Kaart niet gevonden')
+      if (mounted.current) setError(t.mapSettings.notFound)
       setLoading(false)
     })
     return () => { mounted.current = false }
@@ -103,7 +105,7 @@ export default function MapSettingsPage() {
         setLon(lo)
         doSave({ lat: parseFloat(la), lon: parseFloat(lo) })
       },
-      () => setError('Locatie niet beschikbaar'),
+      () => setError(t.mapSettings.locationUnavailable),
       { enableHighAccuracy: false, timeout: 10000 },
     )
   }
@@ -114,7 +116,7 @@ export default function MapSettingsPage() {
       await deleteMap(mapId)
       navigate('/maps', { replace: true })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Verwijderen mislukt')
+      setError(e instanceof Error ? e.message : t.mapSettings.deleteFailed)
       setDeleting(false)
       setDeleteConfirm(false)
     }
@@ -144,9 +146,9 @@ export default function MapSettingsPage() {
   if (error || !map) {
     return (
       <div className="p-4 text-center text-text-muted">
-        <p>{error || 'Kaart niet gevonden'}</p>
+        <p>{error || t.mapSettings.notFound}</p>
         <button onClick={() => navigate('/maps')} className="mt-2 text-primary text-sm font-medium">
-          Terug naar kaarten
+          {t.mapSettings.backToMaps}
         </button>
       </div>
     )
@@ -166,25 +168,25 @@ export default function MapSettingsPage() {
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-        <h1 className="text-xl font-bold text-text">Kaart instellingen</h1>
-        {saveStatus === 'saving' && <span className="text-xs text-text-muted">Opslaan...</span>}
-        {saveStatus === 'saved' && <span className="text-xs text-emerald-green">Opgeslagen</span>}
+        <h1 className="text-xl font-bold text-text">{t.mapSettings.pageTitle}</h1>
+        {saveStatus === 'saving' && <span className="text-xs text-text-muted">{t.mapSettings.saving}</span>}
+        {saveStatus === 'saved' && <span className="text-xs text-emerald-green">{t.mapSettings.saved}</span>}
       </div>
 
       {/* Naam */}
       <section className="mb-6">
-        <label className="text-sm font-medium text-text-muted block mb-1.5">Naam</label>
+        <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.nameLabel}</label>
         <input
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
-          placeholder="Tuin naam..."
+          placeholder={t.mapSettings.namePlaceholder}
           className="w-full border border-border rounded-xl px-4 py-2.5 text-sm bg-bg text-text"
         />
       </section>
 
       {/* Type */}
       <section className="mb-6">
-        <label className="text-sm font-medium text-text-muted block mb-1.5">Type</label>
+        <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.typeLabel}</label>
         <div className="flex gap-2">
           {(['outdoor', 'indoor'] as const).map(t => (
             <button
@@ -196,7 +198,7 @@ export default function MapSettingsPage() {
                   : 'bg-bg text-text-muted border-border hover:bg-surface'
               }`}
             >
-              {t === 'outdoor' ? 'Tuin' : 'Huis'}
+              {t === 'outdoor' ? t.mapSettings.outdoor : t.mapSettings.indoor}
             </button>
           ))}
         </div>
@@ -205,23 +207,23 @@ export default function MapSettingsPage() {
       {/* GPS location (outdoor only) */}
       {isOutdoor && (
         <section className="mb-6">
-          <label className="text-sm font-medium text-text-muted block mb-1.5">Locatie</label>
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.location}</label>
           <div className="flex gap-2 mb-2">
             <div className="flex-1">
-              <label className="text-xs text-text-muted block mb-0.5">Breedtegraad (lat)</label>
+              <label className="text-xs text-text-muted block mb-0.5">{t.mapSettings.latLabel}</label>
               <input
                 value={lat}
                 onChange={(e) => handleLatChange(e.target.value)}
-                placeholder="bijv. 52.3715"
+                placeholder={t.mapSettings.latPlaceholder}
                 className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text"
               />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-text-muted block mb-0.5">Lengtegraad (lon)</label>
+              <label className="text-xs text-text-muted block mb-0.5">{t.mapSettings.lonLabel}</label>
               <input
                 value={lon}
                 onChange={(e) => handleLonChange(e.target.value)}
-                placeholder="bijv. 4.8499"
+                placeholder={t.mapSettings.lonPlaceholder}
                 className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text"
               />
             </div>
@@ -230,7 +232,7 @@ export default function MapSettingsPage() {
             onClick={handleUseCurrentLocation}
             className="w-full py-2 rounded-xl border border-border text-sm text-text-muted hover:bg-surface transition-colors"
           >
-            Gebruik huidige locatie
+            {t.mapSettings.useCurrentLocation}
           </button>
         </section>
       )}
@@ -238,10 +240,8 @@ export default function MapSettingsPage() {
       {/* Compass bearing (outdoor only) */}
       {isOutdoor && (
         <section className="mb-6">
-          <label className="text-sm font-medium text-text-muted block mb-1.5">Kompasrichting</label>
-          <p className="text-xs text-text-muted mb-3">
-            Richt de naald naar waar de <strong>bovenkant</strong> van je tuin wijst
-          </p>
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.compassBearing}</label>
+          <p className="text-xs text-text-muted mb-3" dangerouslySetInnerHTML={{ __html: t.mapSettings.compassHint }} />
           <div className="flex justify-center">
             <CompassBearingPicker value={bearing} onChange={handleBearingChange} />
           </div>
@@ -251,12 +251,12 @@ export default function MapSettingsPage() {
       {/* Dimensions (read-only) */}
       {dimensions && (
         <section className="mb-6">
-          <label className="text-sm font-medium text-text-muted block mb-1.5">Afmetingen</label>
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.dimensions}</label>
           <p className="text-sm text-text bg-surface rounded-xl px-4 py-2.5">
             {dimensions.w}m breed &times; {dimensions.h}m diep
           </p>
           <p className="text-xs text-text-muted mt-1">
-            Wijzig afmetingen via de layout editor
+            {t.mapSettings.dimensionsHint}
           </p>
         </section>
       )}
@@ -266,23 +266,23 @@ export default function MapSettingsPage() {
         onClick={() => navigate(`/maps/${mapId}/edit-layout`)}
         className="w-full py-3 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
       >
-        Layout bewerken
+        {t.mapSettings.editLayout}
       </button>
 
       {/* Danger zone */}
       <div className="mt-10 pt-6 border-t border-border">
-        <p className="text-xs font-medium text-text-muted uppercase tracking-widest mb-3">Gevarenzone</p>
+        <p className="text-xs font-medium text-text-muted uppercase tracking-widest mb-3">{t.mapSettings.dangerZone}</p>
         {!deleteConfirm ? (
           <button
             onClick={() => setDeleteConfirm(true)}
             className="w-full py-3 rounded-xl border border-red-300 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
           >
-            Kaart verwijderen
+            {t.mapSettings.deleteMap}
           </button>
         ) : (
           <div className="rounded-xl border border-red-300 overflow-hidden">
             <p className="text-sm text-text px-4 pt-4 pb-3">
-              Weet je het zeker? Dit verwijdert de kaart en alle bijbehorende data permanent.
+              {t.mapSettings.deleteConfirm}
             </p>
             <div className="flex border-t border-red-200">
               <button
@@ -290,14 +290,14 @@ export default function MapSettingsPage() {
                 disabled={deleting}
                 className="flex-1 py-3 text-sm text-text-muted hover:bg-surface transition-colors border-r border-red-200"
               >
-                Annuleren
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="flex-1 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors"
               >
-                {deleting ? 'Verwijderen...' : 'Ja, verwijder'}
+                {deleting ? t.mapSettings.deleting : t.mapSettings.confirmDelete}
               </button>
             </div>
           </div>

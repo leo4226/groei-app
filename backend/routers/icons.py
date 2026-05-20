@@ -2,13 +2,14 @@ import json
 import os
 import re
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
+from auth import get_current_account
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
-ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "icons"))
+ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons"))
 MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 
 
@@ -292,3 +293,64 @@ async def sync_icons(db = Depends(db_dep)):
         "unmatched_plants": len(unmatched),
         "unmatched": unmatched,
     }
+
+
+@router.get("/gaps")
+async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)):
+    """Return three gap lists:
+    - requested: plants that asked for an icon but don't have one yet
+    - species_without_icon: plant_species entries with no matching icon in the manifest
+    - icons_without_species: base icons in the manifest not matched to any species
+    """
+    manifest = load_manifest()
+
+    # Build set of scientific names in the manifest (normalised) → icon_id
+    sci_to_icon: dict[str, str] = {}
+    for entry in manifest:
+        sci = entry.get("sci", "")
+        if sci:
+            sci_to_icon[_normalize(sci)] = entry["id"]
+
+    # Base icons only (exclude form variants like _bare, _potted, etc.)
+    base_icons = [e for e in manifest if not _FORM_SUFFIXES.search(e["id"]) and not e.get("variant_of")]
+
+    # 1. requested — plants with icon_requested=1 and no icon assigned
+    requested_rows = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = 1 AND (icon_key IS NULL OR icon_key = '')"
+    )
+    requested = [{"id": r["id"], "name": r["name"], "species": r["species"]} for r in requested_rows]
+
+    # 2. species_without_icon — plant_species entries with no matching manifest icon
+    species_rows = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species ORDER BY common_name_nl"
+    )
+    species_without_icon = []
+    for row in species_rows:
+        latin = row["latin_name"] or ""
+        if not latin or _normalize(latin) not in sci_to_icon:
+            species_without_icon.append({"id": row["id"], "name": row["common_name_nl"], "latin": latin or None})
+
+    # 3. icons_without_species — base icons not referenced by any plant_species
+    latin_norms = {_normalize(r["latin_name"]) for r in species_rows if r["latin_name"]}
+    icons_without_species = [
+        {"id": e["id"], "name": e.get("name", e["id"]), "sci": e.get("sci") or None}
+        for e in base_icons
+        if _normalize(e.get("sci", "")) not in latin_norms
+    ]
+
+    return {
+        "requested": requested,
+        "species_without_icon": species_without_icon,
+        "icons_without_species": icons_without_species,
+    }
+
+
+@router.patch("/request/{plant_id}")
+async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+    """Flag a plant as needing an icon."""
+    row = await db.execute_fetchall("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    await db.execute("UPDATE plants SET icon_requested = 1 WHERE id = ?", (plant_id,))
+    await db.commit()
+    return {"status": "requested", "plant_id": plant_id}

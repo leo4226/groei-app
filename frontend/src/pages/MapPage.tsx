@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import { WaterStatusIcon } from '../components/PlantStatusIcon'
@@ -11,6 +11,7 @@ import type { FixedPlant } from '../constants/fixedPlants'
 import SunControls from '../components/sun/SunControls'
 import GrowHereSheet from '../components/sheets/GrowHereSheet'
 import SpotInspectorSheet from '../components/sheets/SpotInspectorSheet'
+import WaterLogSheet from '../components/sheets/WaterLogSheet'
 import { useSunVisualization } from '../hooks/useSunVisualization'
 import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
@@ -22,16 +23,24 @@ import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
 import { createObject } from '../api/client'
+import { useT } from '../context/LanguageContext'
 
 export default function MapPage() {
+  const t = useT()
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
-  const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
+  const maps = useFloreren((s) => s.maps)
+  const loadMaps = useFloreren((s) => s.loadMaps)
 
   const mapData = useMapData(slug)
   const water = useGardenWater()
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
+
+  // Load full map list for the indoor/outdoor toggle
+  useEffect(() => {
+    if (maps.length === 0) loadMaps()
+  }, [loadMaps])
 
   const { map, plants, objects, loading } = mapData
 
@@ -190,10 +199,39 @@ export default function MapPage() {
     )
   }
 
+  // Find indoor/outdoor maps for the toggle
+  const indoorMap = maps.find((m) => m.map_type === 'indoor')
+  const outdoorMap = maps.find((m) => m.map_type === 'outdoor')
+  const isIndoor = map.map_type === 'indoor'
+
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
+          {indoorMap && outdoorMap && (
+            <div className="flex gap-0.5 bg-surface rounded-lg p-0.5 border border-border shrink-0">
+              <button
+                onClick={() => { if (indoorMap.slug !== slug) navigate(`/map/${indoorMap.slug}`) }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  isIndoor
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                {indoorMap.name}
+              </button>
+              <button
+                onClick={() => { if (outdoorMap.slug !== slug) navigate(`/map/${outdoorMap.slug}`) }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  !isIndoor
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text'
+                }`}
+              >
+                {outdoorMap.name}
+              </button>
+            </div>
+          )}
           <h1 className="text-xl font-bold text-text">{map.name}</h1>
           <button
             onClick={() => navigate(`/maps/${map.id}/settings`)}
@@ -211,27 +249,27 @@ export default function MapPage() {
           <button
             onClick={water.togglePicker}
             title={water.gardenWater?.watered_at
-              ? `Laatst bewaterd: ${new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL')}`
-              : 'Registreer tuin bewatering'}
+              ? t.mapPage.lastWatered(new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL'))
+              : t.mapPage.recordWatering}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-600 rounded-full text-sm font-medium hover:bg-blue-500/25 transition-colors"
           >
             <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
-            <span>Bewater</span>
+            <span>{t.mapPage.water}</span>
           </button>
           {/* Bemest */}
           <button
             onClick={fertilize.togglePicker}
             title={fertilize.fertilize?.fertilized_at
-              ? `Laatst bemest: ${new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL')}`
-              : 'Registreer tuin bemesting'}
+              ? t.mapPage.lastFertilized(new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL'))
+              : t.mapPage.recordFertilizing}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-600 rounded-full text-sm font-medium hover:bg-emerald-500/25 transition-colors"
           >
             <span className="text-sm leading-none">🌿</span>
-            <span>Bemest</span>
+            <span>{t.mapPage.fertilize}</span>
           </button>
           <button
             onClick={() => setShowLabels(v => !v)}
-            title={showLabels ? 'Verberg namen' : 'Toon namen'}
+            title={showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
             className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-colors ${
               showLabels
                 ? 'bg-surface text-text-muted hover:bg-surface/80'
@@ -260,7 +298,7 @@ export default function MapPage() {
                 <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
                 <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
               </svg>
-              <span>Zon</span>
+              <span>{t.mapPage.sun}</span>
             </button>
           )}
           <button
@@ -271,51 +309,35 @@ export default function MapPage() {
                 : 'bg-orange-500/15 text-orange-500 hover:bg-orange-500/25'
             }`}
           >
-            <span>Inspecteer</span>
+            <span>{t.mapPage.inspect}</span>
           </button>
           <button
             onClick={() => setShowPotPicker(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700/15 text-amber-800 rounded-full text-sm font-medium hover:bg-amber-700/25 transition-colors"
           >
             <span className="text-lg leading-none">+</span>
-            <span>Pot</span>
+            <span>{t.mapPage.pot}</span>
           </button>
           <button
-            onClick={() => setShowPlantPicker(true)}
+            onClick={() => navigate('/plants/add')}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
           >
             <span className="text-lg leading-none">+</span>
-            <span>Plant</span>
+            <span>{t.mapPage.plant}</span>
           </button>
         </div>
       </div>
 
       {water.showPicker && (
-        <div className="mb-2 p-3 bg-surface rounded-xl border border-border flex items-center gap-2 shrink-0">
-          <input
-            type="date"
-            value={water.pickerDate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => water.setPickerDate(e.target.value)}
-            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
-          />
-          <button
-            onClick={handleWaterSave}
-            disabled={water.watering || !water.pickerDate}
-            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {water.watering ? '…' : 'Opslaan'}
-          </button>
-          {water.gardenWater?.watered_at && (
-            <button
-              onClick={handleWaterDelete}
-              disabled={water.watering}
-              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              Wis
-            </button>
-          )}
-        </div>
+        <WaterLogSheet
+          pickerDate={water.pickerDate}
+          onPickerDateChange={water.setPickerDate}
+          busy={water.watering}
+          hasExistingWatering={!!water.gardenWater?.watered_at}
+          onSave={handleWaterSave}
+          onDelete={handleWaterDelete}
+          onClose={water.closePicker}
+        />
       )}
 
       {fertilize.showPicker && (
@@ -333,7 +355,7 @@ export default function MapPage() {
             disabled={fertilize.fertilizing || !fertilize.pickerDate}
             className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
           >
-            {fertilize.fertilizing ? '…' : 'Opslaan'}
+            {fertilize.fertilizing ? '…' : t.mapPage.saveLabel}
           </button>
           {fertilize.fertilize?.fertilized_at && (
             <button
@@ -408,7 +430,7 @@ export default function MapPage() {
 
       {sun.inspectorMode && !sun.inspectorResult && !sun.inspectorLoading && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black/70 text-white text-xs px-4 py-2 rounded-full pointer-events-none">
-          Zet de zonkaart aan en tik op een plek in de tuin
+          {t.mapPage.spotInspectorHint}
         </div>
       )}
 
@@ -460,7 +482,7 @@ export default function MapPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text">Pot toevoegen</h2>
+              <h2 className="text-base font-bold text-text">{t.mapPage.addPot}</h2>
               <button
                 onClick={() => setShowPotPicker(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface"
@@ -506,13 +528,13 @@ export default function MapPage() {
 
       {undo.toast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-surface border border-border rounded-full px-4 py-2.5 flex items-center gap-3 animate-slide-up">
-          <span className="text-sm text-text">Verwijderd: <strong>{undo.toast.label}</strong></span>
+          <span className="text-sm text-text">{t.mapPage.deleted(undo.toast.label)}</span>
           {undo.toast.canUndo && (
             <button
               onClick={undo.undo}
               className="text-sm font-semibold text-primary hover:underline"
             >
-              Ongedaan maken
+              {t.mapPage.undo}
             </button>
           )}
         </div>

@@ -11,12 +11,11 @@ from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPos
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status
+from services.storage import build_storage_from_env
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
 router = APIRouter(tags=["plants"])
-
-PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 
 
 async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
@@ -36,7 +35,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
         )
         if not existing:
             await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, date('now'))",
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES ($1, 'water', $2, CURRENT_DATE)",
                 (plant_id, int(water_interval)),
             )
 
@@ -129,12 +128,13 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
 @router.post("/plants", response_model=PlantOut)
 async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute(
-        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
          str(data.acquired_date) if data.acquired_date else None,
          data.pot_size_cm, data.notes,
-         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key, account["household_id"]),
+         data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key,
+         data.phase, str(data.sown_date) if data.sown_date else None, account["household_id"]),
     )
     plant_id = cursor.lastrowid
 
@@ -303,11 +303,11 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
 
     new_cursor = await db.execute(
         """INSERT INTO plants (name, species, species_id, location_id, photo_path, pot_size_cm, notes,
-           map_id, display_radius_cm, sun_requirement, is_active, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+           map_id, display_radius_cm, sun_requirement, phase, sown_date, is_active, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
         (src["name"], src["species"], src.get("species_id"), src["location_id"], src["photo_path"],
          src["pot_size_cm"], src["notes"], src["map_id"], src.get("display_radius_cm"),
-         src.get("sun_requirement"), account["household_id"]),
+         src.get("sun_requirement"), src.get("phase"), src.get("sown_date"), account["household_id"]),
     )
     new_id = new_cursor.lastrowid
 
@@ -369,20 +369,16 @@ async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Plant not found")
 
-    # Save file
-    ext = os.path.splitext(file.filename or "photo.jpg")[1] or ".jpg"
-    filename = f"{plant_id}_{int(time.time())}{ext}"
-    filepath = os.path.join(PHOTOS_DIR, filename)
-
-    content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
-
-    photo_path = f"/api/photos/{filename}"
+    # Upload to R2
+    file_bytes = await file.read()
+    ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
+    key = f"photos/{plant_id}_{int(time.time())}.{ext}"
+    storage = build_storage_from_env()
+    public_url = storage.put(key, file_bytes, content_type=file.content_type or "image/jpeg")
 
     await db.execute(
         "UPDATE plants SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (photo_path, plant_id),
+        (public_url, plant_id),
     )
     await db.commit()
 

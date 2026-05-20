@@ -36,7 +36,8 @@ export function useTemperatureContext() {
     }
 
     if (!_fetchPromise) {
-      _fetchPromise = fetch('/api/garden/temperature-context')
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
+      _fetchPromise = fetch(`${apiBase}/garden/temperature-context`)
         .then((r) => {
           if (!r.ok) throw new Error('Failed to load temperature data')
           return r.json() as Promise<TempContext>

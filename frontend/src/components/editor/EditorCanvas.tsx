@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
-import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster } from '../../types'
-import type { EditorTool } from '../../hooks/useEditorState'
+import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
+import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
 import {
   WALL_THICKNESS_EXTERIOR_CM,
@@ -9,6 +9,7 @@ import {
 } from '../../constants/mapDefaults'
 import EditorDefs from './EditorDefs'
 import EditorZoneShape from './EditorZoneShape'
+import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
 import WallElementPlacementOverlay from './WallElementPlacementOverlay'
 
@@ -16,7 +17,7 @@ const CANVAS_W = 680
 const CANVAS_H = 680
 const MIN_ZONE_SIZE = 20
 const MIN_PX = 10
-const SNAP_THRESHOLD = 12   // px — snap when any edge is within this distance
+const SNAP_THRESHOLD = 60   // px — snap when any edge is within this distance
 
 // ── Snap helpers ────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ function wallThicknessPx(zone: EditorZone, scalePxPerM: number): number {
 
 /**
  * Collect all horizontal (y) and vertical (x) snap target values from
- * structures, rooms and walls — excluding the zone currently being dragged.
+ * every zone (all types) — excluding the zone currently being dragged.
  */
 function getSnapTargets(
   zones: EditorZone[],
@@ -48,21 +49,18 @@ function getSnapTargets(
   for (const z of zones) {
     if (z.id === draggingZoneId) continue
 
+    // Every zone contributes its outer edges as snap targets
+    xTargets.push(z.x, z.x + z.width)
+    yTargets.push(z.y, z.y + z.height)
+
+    // For structures, also add inner faces (inside the wall thickness)
     if (z.type === 'structure') {
       const t = wallThicknessPx(z, scalePxPerM)
-      // Outer faces
-      xTargets.push(z.x, z.x + z.width)
-      yTargets.push(z.y, z.y + z.height)
-      // Inner faces (inside the wall)
       xTargets.push(z.x + t, z.x + z.width - t)
       yTargets.push(z.y + t, z.y + z.height - t)
-    } else if (z.type === 'room' || z.type === 'wall') {
-      // Outer edges of sibling rooms/walls
-      xTargets.push(z.x, z.x + z.width)
-      yTargets.push(z.y, z.y + z.height)
     }
 
-    // Fix 3: corner-cut inner faces — so other zones snap into the notch
+    // Corner-cut inner faces — so other zones snap into the notch
     if (z.cornerCut) {
       const { corner, widthPx: cw, heightPx: ch } = z.cornerCut
       switch (corner) {
@@ -80,21 +78,56 @@ function getSnapTargets(
 /**
  * Snap newX/newY so that the nearest edge of the zone aligns with the
  * nearest snap target within SNAP_THRESHOLD.
+ *
+ * Also performs **dimension matching**: if one edge of the dragged zone
+ * is close to the corresponding edge of another zone (e.g. left ≈ left),
+ * the *opposite* edge of the dragged zone will also be offered as a snap
+ * target against that zone's opposite edge (e.g. right ≈ right). This
+ * makes it easy to match widths/heights without aggressive snapping.
+ *
  * Returns adjusted position + which canvas-coordinate lines to draw.
  */
 function snapPosition(
   newX: number, newY: number,
   zoneW: number, zoneH: number,
+  zones: EditorZone[],
+  draggingZoneId: string,
   xTargets: number[], yTargets: number[],
 ): { x: number; y: number; snapLines: SnapLine[] } {
   const snapLines: SnapLine[] = []
   let x = newX
   let y = newY
 
-  // X axis — compare left edge and right edge to each target
+  // ── Extra targets for dimension matching ────────────────────────────────
+  // If one edge of the dragged zone is near the same edge of another zone,
+  // also offer a snap for the opposite edge so widths/heights match.
+  const extraX: number[] = []
+  const extraY: number[] = []
+  for (const z of zones) {
+    if (z.id === draggingZoneId) continue
+    // X: left-near-left → also snap right to match z.right
+    if (Math.abs(newX - z.x) < SNAP_THRESHOLD) {
+      extraX.push(z.x + z.width - zoneW)
+    }
+    // X: right-near-right → also snap left to match z.left
+    if (Math.abs((newX + zoneW) - (z.x + z.width)) < SNAP_THRESHOLD) {
+      extraX.push(z.x)
+    }
+    // Y: top-near-top → also snap bottom to match z.bottom
+    if (Math.abs(newY - z.y) < SNAP_THRESHOLD) {
+      extraY.push(z.y + z.height - zoneH)
+    }
+    // Y: bottom-near-bottom → also snap top to match z.top
+    if (Math.abs((newY + zoneH) - (z.y + z.height)) < SNAP_THRESHOLD) {
+      extraY.push(z.y)
+    }
+  }
+
+  // X axis — compare left edge and right edge to each target + extra
+  const allX = [...xTargets, ...extraX]
   let bestX = SNAP_THRESHOLD
   let snapXVal: number | null = null
-  for (const t of xTargets) {
+  for (const t of allX) {
     const dLeft  = Math.abs(newX - t)
     const dRight = Math.abs(newX + zoneW - t)
     if (dLeft < bestX)  { bestX = dLeft;  x = t;          snapXVal = t }
@@ -102,10 +135,11 @@ function snapPosition(
   }
   if (snapXVal !== null) snapLines.push({ axis: 'x', value: snapXVal })
 
-  // Y axis — compare top edge and bottom edge to each target
+  // Y axis — compare top edge and bottom edge to each target + extra
+  const allY = [...yTargets, ...extraY]
   let bestY = SNAP_THRESHOLD
   let snapYVal: number | null = null
-  for (const t of yTargets) {
+  for (const t of allY) {
     const dTop    = Math.abs(newY - t)
     const dBottom = Math.abs(newY + zoneH - t)
     if (dTop < bestY)    { bestY = dTop;    y = t;          snapYVal = t }
@@ -142,14 +176,18 @@ function computeWallDrawRect(
 interface Props {
   zones: EditorZone[]
   wallElements: WallElement[]
+  objects: MapObject[]
   shadowCasters: ShadowCaster[]
   selectedZoneId: string | null
   selectedWallElementId: string | null
   selectedShadowCasterId: string | null
   activeTool: EditorTool
   activeZoneType: ZoneStyleType
+  objectPreset: ObjectPreset | null
   scalePxPerM: number
   previewMode: boolean
+  mapType: MapType
+  mapId: number | null
   onAddZone: (x: number, y: number, w: number, h: number, type: ZoneStyleType) => void
   onUpdateZone: (id: string, updates: Partial<EditorZone>) => void
   onUpdateWallElement: (id: string, updates: Partial<WallElement>) => void
@@ -159,6 +197,11 @@ interface Props {
   onAddShadowCaster: (caster: Omit<ShadowCaster, 'id'>) => void
   onUpdateShadowCaster: (id: string, updates: Partial<ShadowCaster>) => void
   onSelectShadowCaster: (id: string | null) => void
+  selectedObjectId: number | null
+  onMoveObject: (objectId: number, x: number, y: number) => void
+  onRotateObject: (objectId: number, rotation: number) => void
+  onSelectObject: (id: number | null) => void
+  onObjectCreated: () => void
 }
 
 interface DrawState {
@@ -194,11 +237,12 @@ interface ShadowCasterDragState {
 }
 
 export default function EditorCanvas({
-  zones, wallElements, shadowCasters,
+  zones, wallElements, shadowCasters, objects,
   selectedZoneId, selectedWallElementId, selectedShadowCasterId,
-  activeTool, activeZoneType, scalePxPerM, previewMode,
+  activeTool, activeZoneType, objectPreset, scalePxPerM, previewMode, mapType, mapId,
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
+  selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<DrawState | null>(null)
@@ -355,10 +399,10 @@ export default function EditorCanvas({
       const dy = pt.y - dragging.startSvgY
       const zone = zones.find((z) => z.id === dragging.zoneId)
       if (zone) {
-        const rawX = Math.max(0, Math.min(CANVAS_W - zone.width,  dragging.origX + dx))
-        const rawY = Math.max(0, Math.min(CANVAS_H - zone.height, dragging.origY + dy))
+        let rawX = Math.max(0, Math.min(CANVAS_W - zone.width,  dragging.origX + dx))
+        let rawY = Math.max(0, Math.min(CANVAS_H - zone.height, dragging.origY + dy))
         const { xTargets, yTargets } = getSnapTargets(zones, dragging.zoneId, scalePxPerM)
-        const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, xTargets, yTargets)
+        const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, zones, dragging.zoneId, xTargets, yTargets)
         setSnapLines(lines)
         onUpdateZone(dragging.zoneId, { x: Math.round(x), y: Math.round(y) })
       }
@@ -379,6 +423,40 @@ export default function EditorCanvas({
       x = Math.max(0, x); y = Math.max(0, y)
       w = Math.min(w, CANVAS_W - x); hh = Math.min(hh, CANVAS_H - y)
 
+      // Snap resize edges to other zone edges
+      const { xTargets, yTargets } = getSnapTargets(zones, resizing.zoneId, scalePxPerM)
+      const snapLines: SnapLine[] = []
+      const rightEdge = x + w
+      const bottomEdge = y + hh
+
+      // Show alignment lines but DON'T snap — just guide the eye
+      if (h.includes('e')) {
+        for (const t of xTargets) {
+          if (Math.abs(rightEdge - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'x', value: t })
+        }
+      }
+      if (h.includes('w')) {
+        for (const t of xTargets) {
+          if (Math.abs(x - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'x', value: t })
+        }
+      }
+      if (h.includes('s')) {
+        for (const t of yTargets) {
+          if (Math.abs(bottomEdge - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'y', value: t })
+        }
+      }
+      if (h.includes('n')) {
+        for (const t of yTargets) {
+          if (Math.abs(y - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'y', value: t })
+        }
+      }
+
+      // Re-clamp after snap
+      x = Math.max(0, x); y = Math.max(0, y)
+      w = Math.max(MIN_PX, Math.min(w, CANVAS_W - x))
+      hh = Math.max(MIN_PX, Math.min(hh, CANVAS_H - y))
+
+      setSnapLines(snapLines)
       onUpdateZone(resizing.zoneId, { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
     }
   }
@@ -412,13 +490,14 @@ export default function EditorCanvas({
         const wr = computeWallDrawRect(drawing, scalePxPerM)
         const length = Math.max(wr.width, wr.height)
         if (length >= MIN_ZONE_SIZE) {
-          onAddZone(
-            Math.max(0, Math.round(wr.x)),
-            Math.max(0, Math.round(wr.y)),
-            Math.round(Math.min(wr.width,  CANVAS_W - Math.max(0, wr.x))),
-            Math.round(Math.min(wr.height, CANVAS_H - Math.max(0, wr.y))),
-            activeZoneType,
-          )
+          let wx = Math.max(0, Math.round(wr.x))
+          let wy = Math.max(0, Math.round(wr.y))
+          const ww = Math.round(Math.min(wr.width,  CANVAS_W - Math.max(0, wr.x)))
+          const wh = Math.round(Math.min(wr.height, CANVAS_H - Math.max(0, wr.y)))
+          // Snap new wall to existing zone edges on creation
+          const { xTargets, yTargets } = getSnapTargets(zones, '', scalePxPerM)
+          const snapped = snapPosition(wx, wy, ww, wh, zones, '', xTargets, yTargets)
+          onAddZone(snapped.x, snapped.y, ww, wh, activeZoneType)
         }
       } else {
         const x = Math.min(drawing.startX, drawing.currentX)
@@ -426,13 +505,14 @@ export default function EditorCanvas({
         const w = Math.abs(drawing.currentX - drawing.startX)
         const h = Math.abs(drawing.currentY - drawing.startY)
         if (w >= MIN_ZONE_SIZE && h >= MIN_ZONE_SIZE) {
-          onAddZone(
-            Math.max(0, Math.round(x)),
-            Math.max(0, Math.round(y)),
-            Math.round(Math.min(w, CANVAS_W - Math.max(0, x))),
-            Math.round(Math.min(h, CANVAS_H - Math.max(0, y))),
-            activeZoneType,
-          )
+          let px = Math.max(0, Math.round(x))
+          let py = Math.max(0, Math.round(y))
+          const pw = Math.round(Math.min(w, CANVAS_W - Math.max(0, x)))
+          const ph = Math.round(Math.min(h, CANVAS_H - Math.max(0, y)))
+          // Snap new zone to existing zone edges on creation
+          const { xTargets, yTargets } = getSnapTargets(zones, '', scalePxPerM)
+          const snapped = snapPosition(px, py, pw, ph, zones, '', xTargets, yTargets)
+          onAddZone(snapped.x, snapped.y, pw, ph, activeZoneType)
         }
       }
       setDrawing(null)
@@ -520,20 +600,36 @@ export default function EditorCanvas({
           return null
         })}
 
-        {zones.map((zone) => (
-          <EditorZoneShape
-            key={zone.id}
-            zone={zone}
-            zones={zones}
-            isSelected={!previewMode && zone.id === selectedZoneId}
-            scalePxPerM={scalePxPerM}
-            wallElements={wallElements}
-            selectedWallElementId={previewMode ? null : selectedWallElementId}
-            onPointerDown={handleZonePointerDown}
-            onSelectWallElement={onSelectWallElement}
-            onWallElementPointerDown={handleWallElementPointerDown}
-          />
-        ))}
+        {zones.map((zone) => {
+          const isIndoorZone = mapType === 'indoor' && (zone.type === 'room' || zone.type === 'structure')
+          return isIndoorZone ? (
+            <RoomWallRenderer
+              key={zone.id}
+              zone={zone}
+              zones={zones}
+              isSelected={!previewMode && zone.id === selectedZoneId}
+              scalePxPerM={scalePxPerM}
+              wallElements={wallElements}
+              selectedWallElementId={previewMode ? null : selectedWallElementId}
+              onPointerDown={handleZonePointerDown}
+              onSelectWallElement={onSelectWallElement}
+              onWallElementPointerDown={handleWallElementPointerDown}
+            />
+          ) : (
+            <EditorZoneShape
+              key={zone.id}
+              zone={zone}
+              zones={zones}
+              isSelected={!previewMode && zone.id === selectedZoneId}
+              scalePxPerM={scalePxPerM}
+              wallElements={wallElements}
+              selectedWallElementId={previewMode ? null : selectedWallElementId}
+              onPointerDown={handleZonePointerDown}
+              onSelectWallElement={onSelectWallElement}
+              onWallElementPointerDown={handleWallElementPointerDown}
+            />
+          )
+        })}
 
         {/* Resize overlay on selected zone */}
         {!previewMode && selectedZone && activeTool === 'select' && (
@@ -561,9 +657,9 @@ export default function EditorCanvas({
         {snapLines.map((line, i) =>
           line.axis === 'x'
             ? <line key={i} x1={line.value} y1={0} x2={line.value} y2={CANVAS_H}
-                stroke="#4A90D9" strokeWidth={1} strokeDasharray="4 3" opacity={0.7} pointerEvents="none" />
+                stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
             : <line key={i} x1={0} y1={line.value} x2={CANVAS_W} y2={line.value}
-                stroke="#4A90D9" strokeWidth={1} strokeDasharray="4 3" opacity={0.7} pointerEvents="none" />
+                stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
         )}
 
         {/* Draw preview (regular zones) */}

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
 import { LOCAL_PLANTS } from '../../data/plants-dataset'
+import { useT } from '../../context/LanguageContext'
 
 const TYPE_COLOR: Record<string, string> = {
   vaste_plant: '#d98199',
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName }: Props) {
+  const t = useT()
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
@@ -41,21 +43,21 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up max-h-[85dvh] flex flex-col">
         {/* Drag handle */}
         <button
           onClick={onClose}
-          aria-label="Sluiten"
+          aria-label={t.plantPicker.close}
           className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
         </button>
 
-        <div className="px-5 pb-5">
+        <div className="px-5 pb-8 flex flex-col min-h-0 flex-1 overflow-y-auto">
           {/* Header */}
-          <h3 className="text-base font-bold text-text mb-1">Kies een plant</h3>
+          <h3 className="text-base font-bold text-text mb-1">{t.plantPicker.title}</h3>
           <p className="text-xs text-text-muted mb-3">
-            Uit onze database of typ zelf een naam
+            {t.plantPicker.subtitle}
           </p>
 
           {/* Search bar */}
@@ -71,7 +73,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Zoek op naam…"
+              placeholder={t.plantPicker.searchPlaceholder}
               autoFocus
               className="w-full pl-10 pr-4 py-2.5 rounded-full bg-bg border border-border text-text text-sm
                          placeholder:text-text-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
@@ -89,10 +91,10 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
             </div>
             <div className="text-left">
               <span className="text-sm font-semibold text-primary">
-                {query.trim() ? `"${query.trim()}" toevoegen` : 'Typ zelf een naam…'}
+                {query.trim() ? t.plantPicker.addCustom(query.trim()) : t.plantPicker.typeName}
               </span>
               <p className="text-xs text-text-muted">
-                Plant niet in de lijst? Voer zelf in.
+                {t.plantPicker.notInList}
               </p>
             </div>
           </button>
@@ -100,20 +102,19 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
           {/* Plant grid */}
           {filtered.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-text-muted">Geen planten gevonden</p>
+              <p className="text-sm text-text-muted">{t.plantPicker.noResults}</p>
               <button
                 onClick={handleCustom}
                 className="mt-2 text-sm text-primary font-medium hover:underline"
               >
-                {query.trim() ? `"${query.trim()}" als nieuwe plant toevoegen` : 'Typ zelf een naam…'}
+                {query.trim() ? t.plantPicker.addAsNew(query.trim()) : t.plantPicker.typeName}
               </button>
             </div>
           ) : (
             <div
-              className="grid gap-2 overflow-y-auto"
+              className="grid gap-2 pb-2"
               style={{
                 gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                maxHeight: '40vh',
               }}
             >
               {filtered.map((plant) => (
@@ -125,7 +126,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                 >
                   {plant.iconKey ? (
                     <img
-                      src={`/api/icons/${plant.iconKey}.svg`}
+                      src={`/icons/${plant.iconKey}.svg`}
                       alt={plant.dutchName}
                       className="w-8 h-8 object-contain"
                     />

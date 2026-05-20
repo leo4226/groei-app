@@ -31,8 +31,7 @@ export default function LayoutEditorPage() {
     () => deriveGardenBounds(editor.zones),
     [editor.zones],
   )
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  // React 19 StrictMode simulates Activity (offscreen) by remounting with preserved state.
+  // React 19 StrictMode simulates Activity (off-screen) by remounting with preserved state.
   // This ref prevents re-fetching and re-calling loadCanvasData on those remounts,
   // which would overwrite the user's unsaved changes with stale server data.
   const loadedMapIdRef = useRef<number | null>(null)
@@ -106,15 +105,41 @@ export default function LayoutEditorPage() {
     [mapId, editor.markClean]
   )
 
+  const isSavingRef = useRef(false)
+
+  useEffect(() => {
+    setSaveStatus(editor.isDirty ? 'unsaved' : 'saved')
+  }, [editor.isDirty])
+
+  // Save + navigate helper — used by back/exit buttons
+  const handleExit = useCallback(
+    async (url: string) => {
+      if (!editor.isDirty || !mapId || isSavingRef.current) {
+        navigate(url)
+        return
+      }
+      isSavingRef.current = true
+      setSaveStatus('saving')
+      try {
+        await updateMap(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
+        editor.markClean()
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('unsaved')
+      }
+      isSavingRef.current = false
+      navigate(url)
+    },
+    [mapId, editor.isDirty, editor.markClean, editor.toCanvasData, navigate],
+  )
+
+  // Warn on tab close / refresh when unsaved
   useEffect(() => {
     if (!editor.isDirty) return
-    setSaveStatus('unsaved')
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      doSave(editor.toCanvasData())
-    }, 1000)
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-  }, [editor.isDirty, editor.zones, editor.wallElements, editor.shadowCasters, editor.scalePxPerM, editor.mapType, doSave, editor.toCanvasData])
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editor.isDirty])
 
   function handleDelete() {
     if (editor.selectedWallElementId) {
@@ -182,13 +207,13 @@ export default function LayoutEditorPage() {
     <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-border">
-        <button onClick={() => navigate('/dashboard')} className="text-text-muted text-sm shrink-0">
+        <button onClick={() => handleExit('/dashboard')} className="text-text-muted text-sm shrink-0">
           {t.editor.toolbar.back}
         </button>
         <h1 className="text-sm font-semibold text-text flex-1 truncate">{map.name}</h1>
 
         <button
-          onClick={() => navigate(`/map/${map.slug}`)}
+          onClick={() => handleExit(`/map/${map.slug}`)}
           className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg"
         >
           Bekijken →
@@ -249,6 +274,7 @@ export default function LayoutEditorPage() {
           objectPreset={editor.objectPreset}
           scalePxPerM={editor.scalePxPerM}
           previewMode={previewMode}
+          mapType={editor.mapType}
           mapId={mapId}
           onAddZone={editor.addZone}
           onUpdateZone={editor.updateZone}

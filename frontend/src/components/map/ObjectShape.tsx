@@ -183,7 +183,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
           <g transform={counterRot ? `rotate(${counterRot})` : undefined}>
             {plant.icon_key ? (
               <image
-                href={`/api/icons/${plant.icon_key}.svg`}
+                href={`/icons/${plant.icon_key}.svg`}
                 x={-iconHalf}
                 y={-iconHalf}
                 width={iconHalf * 2}

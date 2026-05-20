@@ -2,28 +2,17 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { usePlantCareInfo } from '../hooks/usePlantCareInfo'
 import type { PlantNotesData } from '../hooks/usePlantCareInfo'
 import { useRainContext } from '../hooks/useRainContext'
-
-const MONTHS_SHORT = ['J','F','M','A','M','J','J','A','S','O','N','D']
-const MONTHS_FULL  = [
-  'january','february','march','april','may','june',
-  'july','august','september','october','november','december',
-]
-
-const LIGHT_LABEL: Record<string, string> = {
-  shade: 'Schaduw',
-  partial: 'Halfschaduw',
-  full_sun: 'Volle zon',
-}
-
-const RAIN_BADGE: Record<string, { label: string; className: string }> = {
-  well_watered: { label: 'Goed bewaterd', className: 'bg-good/15 text-good' },
-  moderate:     { label: 'Matig',         className: 'bg-due/15 text-due' },
-  dry:          { label: 'Droog',         className: 'bg-secondary/15 text-secondary' },
-  very_dry:     { label: 'Erg droog',     className: 'bg-overdue/15 text-overdue' },
-}
+import { useT } from '../context/LanguageContext'
 
 // Amsterdam average precipitation: ~800mm/year
 const AMS_PRECIP = 800
+
+const RAIN_CLASS: Record<string, string> = {
+  well_watered: 'bg-good/15 text-good',
+  moderate:     'bg-due/15 text-due',
+  dry:          'bg-secondary/15 text-secondary',
+  very_dry:     'bg-overdue/15 text-overdue',
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -42,6 +31,9 @@ export default function PlantCareDetail() {
   const { id }    = useParams<{ id: string }>()
   const navigate  = useNavigate()
   const plantId   = Number(id)
+  const t         = useT()
+
+  const { calendar: { monthsShort, monthsLong } } = t
 
   const care = usePlantCareInfo(plantId)
   const rain = useRainContext()
@@ -58,10 +50,10 @@ export default function PlantCareDetail() {
     if (min == null && max == null) return null
     if (min != null && max != null) {
       if (min <= AMS_PRECIP && AMS_PRECIP <= max)
-        return { ok: true, text: '✓ Amsterdam (~800mm/jaar) is geschikt' }
+        return { ok: true, text: t.plantCare.amsterdamSuitable }
       if (AMS_PRECIP < min)
-        return { ok: false, text: '⚠ Heeft meer regen nodig dan Amsterdam geeft — regelmatig bijwateren' }
-      return { ok: false, text: '⚠ Amsterdam kan te nat zijn — goede drainage nodig' }
+        return { ok: false, text: t.plantCare.needsMoreRain }
+      return { ok: false, text: t.plantCare.tooWet }
     }
     return null
   })()
@@ -90,7 +82,7 @@ export default function PlantCareDetail() {
           ) : (
             <>
               <p className="text-sm font-bold text-text truncate leading-tight">
-                {care.data?.common_name ?? care.data?.scientific_name ?? 'Verzorgingsgids'}
+                {care.data?.common_name ?? care.data?.scientific_name ?? t.plantCare.careGuide}
               </p>
               {care.data?.scientific_name && care.data.common_name && (
                 <p className="text-xs text-text-muted italic truncate leading-tight">
@@ -123,20 +115,20 @@ export default function PlantCareDetail() {
         ) : care.data?.source === 'not_found' ? (
           <div className="text-center py-12 text-text-muted">
             <p className="text-3xl mb-3">🌿</p>
-            <p className="text-sm">Geen verzorgingsinfo beschikbaar</p>
+            <p className="text-sm">{t.plantCare.noInfo}</p>
           </div>
         ) : care.error ? (
           <div className="text-center py-12 text-text-muted">
-            <p className="text-sm">Kon verzorgingsinfo niet laden</p>
+            <p className="text-sm">{t.plantCare.failedToLoad}</p>
             <button onClick={() => window.location.reload()} className="mt-2 text-xs text-primary underline">
-              Opnieuw proberen
+              {t.plantCare.retry}
             </button>
           </div>
         ) : care.data ? (
           <>
             {/* Light */}
             {care.data.light_raw != null && (
-              <Section title="Licht">
+              <Section title={t.plantCare.light}>
                 <div className="flex items-center gap-3 mb-1.5">
                   <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                     <div
@@ -149,16 +141,16 @@ export default function PlantCareDetail() {
                   </span>
                 </div>
                 <p className="text-sm text-text">
-                  {LIGHT_LABEL[care.data.light_label ?? ''] ?? care.data.light_label ?? '—'}
+                  {t.plantCare.lightLabels[care.data.light_label ?? ''] ?? care.data.light_label ?? '—'}
                 </p>
               </Section>
             )}
 
             {/* Water */}
             {(care.data.precip_min_mm != null || care.data.precip_max_mm != null) && (
-              <Section title="Water">
+              <Section title={t.plantCare.water}>
                 <p className="text-sm text-text mb-1">
-                  {care.data.precip_min_mm}–{care.data.precip_max_mm} mm/jaar neerslag
+                  {care.data.precip_min_mm}–{care.data.precip_max_mm} {t.plantCare.precipitationYear}
                 </p>
                 {waterContext && (
                   <p className={`text-xs font-medium ${waterContext.ok ? 'text-good' : 'text-due'}`}>
@@ -170,10 +162,10 @@ export default function PlantCareDetail() {
 
             {/* Bloom calendar */}
             {bloomSet.size > 0 && (
-              <Section title="Bloeikalender">
+              <Section title={t.plantCare.floweringCalendar}>
                 <div className="flex gap-0.5">
-                  {MONTHS_SHORT.map((abbr, i) => {
-                    const active = bloomSet.has(MONTHS_FULL[i])
+                  {monthsShort.map((abbr, i) => {
+                    const active = bloomSet.has(monthsLong[i])
                     return (
                       <div key={abbr} className="flex-1 flex flex-col items-center gap-1">
                         <div className={`w-full aspect-square rounded-full flex items-center justify-center text-[9px] font-bold
@@ -192,28 +184,28 @@ export default function PlantCareDetail() {
             {(care.data.duration || care.data.leaf_retention != null ||
               care.data.avg_height_cm != null || care.data.flower_colors.length > 0 ||
               care.data.toxicity || care.data.edible != null) && (
-              <Section title="Kenmerken">
+              <Section title={t.plantCare.characteristics}>
                 <div className="space-y-1.5 text-sm text-text-muted">
                   {(care.data.duration || care.data.leaf_retention != null) && (
                     <p className="capitalize">
                       {[
                         care.data.duration,
-                        care.data.leaf_retention === true  ? 'Groenblijvend'  : null,
-                        care.data.leaf_retention === false ? 'Bladverliezend' : null,
+                        care.data.leaf_retention === true  ? t.plantCare.evergreen  : null,
+                        care.data.leaf_retention === false ? t.plantCare.deciduous : null,
                       ].filter(Boolean).join(' · ')}
                     </p>
                   )}
                   {care.data.avg_height_cm != null && (
-                    <p>Gemiddelde hoogte: {care.data.avg_height_cm} cm</p>
+                    <p>{t.plantCare.avgHeight} {care.data.avg_height_cm} cm</p>
                   )}
                   {care.data.flower_colors.length > 0 && (
-                    <p className="capitalize">Bloemen: {care.data.flower_colors.join(', ')}</p>
+                    <p className="capitalize">{t.plantCare.flowers} {care.data.flower_colors.join(', ')}</p>
                   )}
                   {care.data.toxicity && (
-                    <p>Toxiciteit: {care.data.toxicity}</p>
+                    <p>{t.plantCare.toxicity} {care.data.toxicity}</p>
                   )}
                   {care.data.edible != null && (
-                    <p>Eetbaar: {care.data.edible ? 'ja' : 'nee'}</p>
+                    <p>{t.plantCare.edible} {care.data.edible ? t.plantCare.yes : t.plantCare.no}</p>
                   )}
                 </div>
               </Section>
@@ -221,23 +213,23 @@ export default function PlantCareDetail() {
 
             {/* Tree specs */}
             {parsedNotes && (parsedNotes.stamdiameter_cm || parsedNotes.hoogte_m || parsedNotes.leeftijd) && (
-              <Section title="Specificaties">
+              <Section title={t.plantCare.specifications}>
                 <div className="flex flex-wrap gap-3">
                   {parsedNotes.stamdiameter_cm != null && (
                     <div className="bg-bg rounded-xl px-3 py-2 text-center">
-                      <p className="text-xs text-text-muted">Stamdiameter</p>
+                      <p className="text-xs text-text-muted">{t.plantCare.stemDiameter}</p>
                       <p className="text-sm font-semibold text-text">{parsedNotes.stamdiameter_cm} cm</p>
                     </div>
                   )}
                   {parsedNotes.hoogte_m != null && (
                     <div className="bg-bg rounded-xl px-3 py-2 text-center">
-                      <p className="text-xs text-text-muted">Hoogte</p>
+                      <p className="text-xs text-text-muted">{t.plantCare.height}</p>
                       <p className="text-sm font-semibold text-text">{parsedNotes.hoogte_m} m</p>
                     </div>
                   )}
                   {parsedNotes.leeftijd && (
                     <div className="bg-bg rounded-xl px-3 py-2 text-center">
-                      <p className="text-xs text-text-muted">Leeftijd</p>
+                      <p className="text-xs text-text-muted">{t.plantCare.age}</p>
                       <p className="text-sm font-semibold text-text">{parsedNotes.leeftijd}</p>
                     </div>
                   )}
@@ -247,7 +239,7 @@ export default function PlantCareDetail() {
 
             {/* Boomkeuring */}
             {parsedNotes?.boomkeuring && parsedNotes.boomkeuring.length > 0 && (
-              <Section title="Boomkeuring">
+              <Section title={t.plantCare.treeInspection}>
                 <div className="space-y-3">
                   {parsedNotes.boomkeuring.map((item) => {
                     const scoreColor =
@@ -270,7 +262,7 @@ export default function PlantCareDetail() {
 
             {/* Family */}
             {care.data.family && (
-              <Section title="Familie">
+              <Section title={t.plantCare.family}>
                 <p className="text-sm text-text-muted italic">{care.data.family}</p>
               </Section>
             )}
@@ -281,7 +273,7 @@ export default function PlantCareDetail() {
         {rain.data && (
           <div className="mt-2 pt-4 border-t border-border">
             <p className="text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
-              Neerslag Amsterdam — 7 dagen
+              {t.plantCare.rainfallAmsterdam}
             </p>
             <div className="flex items-end gap-1 h-12 mb-2">
               {rain.data.days.map(day => {
@@ -297,16 +289,16 @@ export default function PlantCareDetail() {
             <div className="flex justify-between text-[9px] text-text-muted mb-3">
               {rain.data.days.map(day => (
                 <span key={day.date}>
-                  {new Date(day.date).toLocaleDateString('nl-NL', { weekday: 'narrow' })}
+                  {new Date(day.date).toLocaleDateString(t.locale, { weekday: 'narrow' })}
                 </span>
               ))}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-muted">
-                Totaal: <span className="text-text font-medium">{rain.data.total_7day_mm} mm</span>
+                {t.plantCare.total} <span className="text-text font-medium">{rain.data.total_7day_mm} mm</span>
               </span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${RAIN_BADGE[rain.data.assessment]?.className ?? ''}`}>
-                {RAIN_BADGE[rain.data.assessment]?.label ?? rain.data.assessment}
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${RAIN_CLASS[rain.data.assessment] ?? ''}`}>
+                {t.plantCare.rainBadges[rain.data.assessment] ?? rain.data.assessment}
               </span>
             </div>
           </div>
@@ -315,7 +307,7 @@ export default function PlantCareDetail() {
         {/* Source */}
         {care.data && care.data.source !== 'not_found' && (
           <p className="text-[10px] text-text-muted/50 text-center mt-6">
-            Gegevens via Trefle · {care.data.cached_at ? new Date(care.data.cached_at).toLocaleDateString('nl-NL') : ''}
+            {t.plantCare.dataVia} · {care.data.cached_at ? new Date(care.data.cached_at).toLocaleDateString(t.locale) : ''}
           </p>
         )}
       </div>

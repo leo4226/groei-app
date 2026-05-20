@@ -1,3 +1,4 @@
+import { useT } from '../../context/LanguageContext'
 import type { ShadowCaster } from '../../types'
 import {
   rectToDisplay,
@@ -17,19 +18,6 @@ interface Props {
   gardenBounds: GardenBounds
   onUpdate: (updates: Partial<ShadowCaster>) => void
   onDelete: () => void
-}
-
-const KANT_OPTIONS: { value: Kant; label: string }[] = [
-  { value: 'links', label: 'Links' },
-  { value: 'rechts', label: 'Rechts' },
-  { value: 'boven', label: 'Boven' },
-  { value: 'onder', label: 'Onder' },
-]
-
-const PRESET_LABELS: Record<DichtheidPreset, string> = {
-  'lichte-boom': 'Lichte boom',
-  'dichte-boom': 'Dichte boom',
-  'gebouw': 'Gebouw / Muur',
 }
 
 function NumInput({
@@ -58,7 +46,21 @@ function NumInput({
 }
 
 export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, gardenBounds, onUpdate, onDelete }: Props) {
+  const t = useT()
   const isRect = caster.type === 'rect'
+
+  const KANT_OPTIONS: { value: Kant; label: string }[] = [
+    { value: 'links', label: t.editor.props.left },
+    { value: 'rechts', label: t.editor.props.right },
+    { value: 'boven', label: t.editor.top },
+    { value: 'onder', label: t.editor.bottom },
+  ]
+
+  const PRESET_LABELS: Record<DichtheidPreset, string> = {
+    'lichte-boom': t.editor.props.lightTree,
+    'dichte-boom': t.editor.denseTree,
+    'gebouw': t.editor.buildingWall,
+  }
 
   function handleTypeChange(type: 'rect' | 'circle') {
     if (type === caster.type) return
@@ -123,19 +125,19 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
     <div className="p-3 border-b border-border">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-          Schaduw object
+          {t.editor.shadowObject}
         </p>
         <button
           onClick={onDelete}
           className="text-overdue text-xs px-2 py-0.5 rounded border border-overdue/20 bg-overdue/5"
         >
-          Verwijderen
+          {t.common.delete}
         </button>
       </div>
 
       {/* Type toggle */}
       <div className="mb-3">
-        <p className="text-xs text-text-muted block mb-1">Type</p>
+        <p className="text-xs text-text-muted block mb-1">{t.mapSettings.typeLabel}</p>
         <div className="flex gap-1">
           <button
             onClick={() => handleTypeChange('rect')}
@@ -143,7 +145,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
               isRect ? 'bg-primary text-white border-primary' : 'bg-bg text-text-muted border-border'
             }`}
           >
-            Gebouw
+            {t.editor.shadowCasterBuilding}
           </button>
           <button
             onClick={() => handleTypeChange('circle')}
@@ -151,18 +153,18 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
               !isRect ? 'bg-primary text-white border-primary' : 'bg-bg text-text-muted border-border'
             }`}
           >
-            Boom
+            {t.editor.shadowCasterTree}
           </button>
         </div>
       </div>
 
       {/* Naam */}
       <label className="mb-3 block">
-        <span className="text-xs text-text-muted block mb-1">Naam</span>
+        <span className="text-xs text-text-muted block mb-1">{t.editor.shadowCasterName}</span>
         <input
           value={caster.label || ''}
           onChange={(e) => onUpdate({ label: e.target.value })}
-          placeholder={isRect ? "bijv. Buurman's huis" : 'bijv. Eik, Spar...'}
+          placeholder={isRect ? t.editor.rectPlaceholder : t.editor.circlePlaceholder}
           className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
         />
       </label>
@@ -170,9 +172,9 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
       {/* Position — Gebouw */}
       {isRect && rectDisplay && (
         <div className="mb-3">
-          <p className="text-xs text-text-muted block mb-1">Positie</p>
+          <p className="text-xs text-text-muted block mb-1">{t.editor.shadowCasterPosition}</p>
           <label className="mb-1.5 block">
-            <span className="text-[10px] text-text-muted block">Kant</span>
+            <span className="text-[10px] text-text-muted block">{t.editor.shadowCasterSide}</span>
             <select
               value={rectDisplay.kant}
               onChange={(e) => handleKantChange(e.target.value as Kant)}
@@ -185,11 +187,11 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
           </label>
           <div className="grid grid-cols-2 gap-1.5">
             <label className="block">
-              <span className="text-[10px] text-text-muted block">Afstand van tuin (m)</span>
+              <span className="text-[10px] text-text-muted block">{t.editor.shadowCasterDistance}</span>
               <NumInput value={Math.round(rectDisplay.afstandM * 10) / 10} onChange={handleAfstandChange} opts={{ min: 0, step: 0.5 }} />
             </label>
             <label className="block">
-              <span className="text-[10px] text-text-muted block">Dikte (m)</span>
+              <span className="text-[10px] text-text-muted block">{t.editor.shadowCasterThickness}</span>
               <NumInput value={Math.round(rectDisplay.dikteM * 10) / 10} onChange={handleDikteChange} opts={{ min: 0.5, step: 0.5 }} />
             </label>
           </div>
@@ -199,7 +201,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
       {/* Position — Boom */}
       {!isRect && circleDisplay && (
         <div className="mb-3">
-          <p className="text-xs text-text-muted block mb-1">Positie &amp; grootte</p>
+          <p className="text-xs text-text-muted block mb-1">{t.editor.shadowCasterPosSize}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <label className="block">
               <span className="text-[10px] text-text-muted block">X (m)</span>
@@ -210,7 +212,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
               <NumInput value={Math.round(circleDisplay.yM * 10) / 10} onChange={(v) => handleCircleChange('yM', v)} opts={{ step: 0.5 }} />
             </label>
             <label className="block">
-              <span className="text-[10px] text-text-muted block">Straal (m)</span>
+              <span className="text-[10px] text-text-muted block">{t.editor.shadowCasterRadius}</span>
               <NumInput value={Math.round(circleDisplay.straalM * 10) / 10} onChange={(v) => handleCircleChange('straalM', v)} opts={{ min: 0.5, step: 0.5 }} />
             </label>
           </div>
@@ -219,7 +221,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
 
       {/* Hoogte */}
       <label className="mb-3 block">
-        <span className="text-xs text-text-muted block mb-1">Hoogte (m)</span>
+        <span className="text-xs text-text-muted block mb-1">{t.editor.props.height}</span>
         <NumInput
           value={Math.round(heightM * 10) / 10}
           onChange={(v) => onUpdate({ heightCm: Math.max(50, Math.round(v * 100)) })}
@@ -229,7 +231,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
 
       {/* Dichtheid presets */}
       <div>
-        <p className="text-xs text-text-muted block mb-1">Schaduwdichtheid</p>
+        <p className="text-xs text-text-muted block mb-1">{t.editor.shadowDensity}</p>
         <div className="flex gap-1">
           {(Object.keys(PRESET_OPACITIES) as Array<keyof typeof PRESET_OPACITIES>).map((preset) => (
             <button

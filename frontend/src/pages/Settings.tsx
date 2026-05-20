@@ -259,8 +259,8 @@ export default function Settings() {
                 ) : (
                   <ul className="space-y-1 max-h-40 overflow-y-auto">
                     {gapReport.icons_without_species.map((e) => (
-                      <li key={e.id} className="text-text-muted font-mono text-xs">
-                        {e.id}
+                      <li key={e.name} className="text-text-muted font-mono text-xs">
+                        {e.name}
                         {e.sci && <span className="font-sans italic ml-1">— {e.sci}</span>}
                       </li>
                     ))}
