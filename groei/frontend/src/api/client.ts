@@ -1,6 +1,6 @@
 import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
-const BASE = '/api'
+const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 // ── Generic typed API client ──
 

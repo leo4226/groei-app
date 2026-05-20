@@ -61,7 +61,8 @@ export function usePlantCareInfo(plantId: number | null) {
     let cancelled = false
     setState({ data: null, loading: true, error: false })
 
-    fetch(`/api/plants/${plantId}/care-info`)
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
+    fetch(`${apiBase}/plants/${plantId}/care-info`)
       .then(r => {
         if (!r.ok) throw new Error('fetch failed')
         return r.json() as Promise<CareInfo>

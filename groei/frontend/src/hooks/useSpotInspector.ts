@@ -40,7 +40,8 @@ export function useSpotInspector(engine?: LightEngine | null) {
     })
 
     try {
-      const resp = await fetch('/api/spots/suitability', {
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
+      const resp = await fetch(`${apiBase}/spots/suitability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x, y, sun_by_month: sunByMonth }),
