@@ -3,7 +3,7 @@ app = "floreren-api"
 primary_region = "ams"
 
 [build]
-  dockerfile = "backend/Dockerfile"
+  dockerfile = "Dockerfile"
   context = ".."
 
 [env]
