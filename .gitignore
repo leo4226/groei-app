@@ -31,3 +31,4 @@ backend/photos/*
 
 # Alembic
 alembic/__pycache__/
+.vercel
