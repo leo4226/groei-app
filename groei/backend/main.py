@@ -29,9 +29,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Floreren", version="0.1.0", lifespan=lifespan)
 
+_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:1414", "http://localhost:1415"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
