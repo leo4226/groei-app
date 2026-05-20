@@ -1,6 +1,5 @@
 import json
 import re
-import os
 
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import date
@@ -11,16 +10,7 @@ from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut,
 from routers.plant_care import _get_temp_data, _get_rain_data, get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
-
-# Path to backend static/maps — served by /api/maps-static
-_MAPS_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "static", "maps")
-)
-
-# Path to frontend public/maps — served by Vite in dev
-_MAPS_PUBLIC = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "maps")
-)
+from services.storage import build_storage_from_env
 
 router = APIRouter(tags=["maps"])
 
@@ -168,17 +158,15 @@ async def create_map(data: MapCreate, account = Depends(get_current_account), db
     canvas_data = json.dumps({"zones": [], "scale_px_per_m": 46, "canvas_w": 680, "canvas_h": 680, "mapType": data.map_type})
 
     # Generate a placeholder SVG so the dashboard thumbnail shows immediately
-    svg_filename = f"{slug}.svg"
     svg_content = render_canvas_data(canvas_data, data.name)
-    os.makedirs(_MAPS_DIR, exist_ok=True)
-    svg_path = os.path.join(_MAPS_DIR, svg_filename)
-    with open(svg_path, "w", encoding="utf-8") as f:
-        f.write(svg_content)
+    key = f"maps/{slug}.svg"
+    storage = build_storage_from_env()
+    svg_url = storage.put(key, svg_content.encode("utf-8"), content_type="image/svg+xml")
 
     cursor = await db.execute(
         """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, household_id)
            VALUES (?, ?, ?, '0 0 680 680', '{"px_per_meter": 46}', ?, ?, ?, ?, ?, ?, ?)""",
-        (data.name, slug, svg_filename, next_order, canvas_data, data.map_type, data.lat, data.lon, data.bearing, account["household_id"]),
+        (data.name, slug, svg_url, next_order, canvas_data, data.map_type, data.lat, data.lon, data.bearing, account["household_id"]),
     )
     await db.commit()
     map_id = cursor.lastrowid
@@ -227,26 +215,22 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
                 slug = map_row[0]["slug"]
                 map_name = map_row[0]["name"]
                 svg_content = render_canvas_data(data.canvas_data, map_name)
-                svg_filename = f"{slug}.svg"
-                os.makedirs(_MAPS_DIR, exist_ok=True)
-                svg_path = os.path.join(_MAPS_DIR, svg_filename)
-                with open(svg_path, "w", encoding="utf-8") as f:
-                    f.write(svg_content)
+                key = f"maps/{slug}.svg"
+                storage = build_storage_from_env()
+                svg_url = storage.put(key, svg_content.encode("utf-8"), content_type="image/svg+xml")
                 updates.append("svg_file = ?")
-                params.append(svg_filename)
+                params.append(svg_url)
         except (json.JSONDecodeError, TypeError):
             pass
         # Generate thumbnail SVG from zone blocks
         try:
             thumb_svg = render_thumbnail(data.canvas_data)
             if thumb_svg:
-                thumb_filename = f"{existing_row['slug']}-thumb.svg"
-                thumb_path = os.path.join(_MAPS_PUBLIC, thumb_filename)
-                os.makedirs(_MAPS_PUBLIC, exist_ok=True)
-                with open(thumb_path, "w", encoding="utf-8") as f:
-                    f.write(thumb_svg)
+                thumb_key = f"maps/{existing_row['slug']}-thumb.svg"
+                storage = build_storage_from_env()
+                thumb_url = storage.put(thumb_key, thumb_svg.encode("utf-8"), content_type="image/svg+xml")
                 updates.append("thumbnail_file = ?")
-                params.append(thumb_filename)
+                params.append(thumb_url)
             else:
                 updates.append("thumbnail_file = ?")
                 params.append(None)

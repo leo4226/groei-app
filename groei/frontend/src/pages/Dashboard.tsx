@@ -558,7 +558,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
           padding: map.thumbnail_file ? '6%' : '14%',
         }}>
           <img
-            src={map.thumbnail_file ? `/maps/${map.thumbnail_file}` : `/api/maps-static/${map.svg_file}`}
+            src={map.thumbnail_file ?? map.svg_file ?? ''}
             alt={map.name}
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
