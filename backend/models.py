@@ -110,7 +110,7 @@ class PlantOut(BaseModel):
     notes: str | None = None
     is_active: bool = True
     is_locked: bool = False
-    created_at: str | None = None
+    created_at: datetime | None = None
     sun_requirement: str | None = None
     plant_type: str | None = None
     icon_key: str | None = None
@@ -383,8 +383,8 @@ class ObjectOut(BaseModel):
     rotation: float = 0
     notes: str | None = None
     is_active: bool = True
-    created_at: str | None = None
-    updated_at: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     category: str = "container"
     label: str | None = None
     preset: str | None = None
@@ -513,7 +513,7 @@ class WeedSightingOut(BaseModel):
     map_y: float
     notes: str | None = None
     sighted_at: str
-    created_at: str | None = None
+    created_at: datetime | None = None
 
 
 # --- Auth ---
@@ -567,4 +567,4 @@ class WaterLogOut(BaseModel):
     watered_at: str
     watered_by: int | None = None
     water_amount: float | None = None  # ml
-    created_at: str | None = None
+    created_at: datetime | None = None
