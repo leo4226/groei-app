@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import { WaterStatusIcon } from '../components/PlantStatusIcon'
 import MapView from '../components/map/MapView'
@@ -29,10 +29,17 @@ export default function MapPage() {
   const t = useT()
   const { slug = 'garden' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const maps = useFloreren((s) => s.maps)
   const loadMaps = useFloreren((s) => s.loadMaps)
 
   const mapData = useMapData(slug)
+  const { refresh: refreshMapData } = mapData
+
+  // Force refresh when navigating back (location.key changes on popstate)
+  useEffect(() => {
+    refreshMapData()
+  }, [location.key])
   const water = useGardenWater()
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()

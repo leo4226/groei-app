@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchMapById, updateMap, deleteMap } from '../api/client'
+import { fetchMapById, updateMap } from '../api/client'
 import type { MapInfo } from '../types'
 import CompassBearingPicker from '../components/settings/CompassBearingPicker'
 import { useT } from '../context/LanguageContext'
+import { useFloreren } from '../store/useFloreren'
 
 export default function MapSettingsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const t = useT()
   const mapId = Number(id)
+  const deleteMap = useFloreren(s => s.deleteMap)
 
   const [map, setMap] = useState<MapInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -114,7 +116,7 @@ export default function MapSettingsPage() {
     setDeleting(true)
     try {
       await deleteMap(mapId)
-      navigate('/maps', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : t.mapSettings.deleteFailed)
       setDeleting(false)
@@ -188,17 +190,17 @@ export default function MapSettingsPage() {
       <section className="mb-6">
         <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.typeLabel}</label>
         <div className="flex gap-2">
-          {(['outdoor', 'indoor'] as const).map(t => (
+          {(['outdoor', 'indoor'] as const).map(type => (
             <button
-              key={t}
-              onClick={() => handleTypeChange(t)}
+              key={type}
+              onClick={() => handleTypeChange(type)}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
-                mapType === t
+                mapType === type
                   ? 'bg-primary text-white border-primary'
                   : 'bg-bg text-text-muted border-border hover:bg-surface'
               }`}
             >
-              {t === 'outdoor' ? t.mapSettings.outdoor : t.mapSettings.indoor}
+              {type === 'outdoor' ? t.mapSettings.outdoor : t.mapSettings.indoor}
             </button>
           ))}
         </div>

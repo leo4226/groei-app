@@ -33,12 +33,12 @@ function isIdentifyPrefill(p: unknown): p is IdentifyCommitResult {
 }
 
 export default function AddPlant() {
-  const remountKey = useMemo(() => Date.now(), [prefill])
   const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
   const locState = (location.state ?? null) as AddPlantLocState
   const prefill = locState?.prefill
+  const remountKey = useMemo(() => Date.now(), [prefill])
   const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
   const isFromIdentify = isIdentifyPrefill(prefill)
   const { locations, maps, addPlant, uploadPhoto } = useFloreren()
