@@ -128,6 +128,8 @@ export const markCareDone          = (plantId: number, careType: string, userId:
 export const skipCare              = (plantId: number, careType: string, userId: number) => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } })
 export const deleteCareSchedule    = (scheduleId: number)  => api<void>('DELETE', `/care/schedules/${scheduleId}`)
 export const fetchCareLog          = (plantId: number)    => api<CareLogEntry[]>('GET', `/care/log/${plantId}`)
+export const fetchPlantWarnings    = (plantId: number)    => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`)
+export const patchCareProfile      = (plantId: number, data: Record<string, { active: boolean }>) => api<void>('PATCH', `/plants/${plantId}/care-profile`, { body: data })
 
 // ── Garden Water ──
 
