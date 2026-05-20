@@ -14,12 +14,12 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            account_id INTEGER NOT NULL REFERENCES accounts(id),
-            token      TEXT    NOT NULL UNIQUE,
-            expires_at TEXT    NOT NULL,
-            used_at    TEXT
+        CREATE TABLE password_reset_tokens (
+            id          SERIAL PRIMARY KEY,
+            account_id  INTEGER NOT NULL REFERENCES accounts(id),
+            token       TEXT    NOT NULL UNIQUE,
+            expires_at  TIMESTAMP NOT NULL,
+            used_at     TIMESTAMP
         )
     """)
 
