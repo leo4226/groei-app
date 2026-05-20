@@ -5,7 +5,7 @@ Safe to re-run: ON CONFLICT (slug) DO NOTHING prevents duplicates."""
 
 import asyncio
 import json
-from database import get_db
+from database import init_pool, close_pool, get_db
 
 WEEDS = [
     # ── GAZON (lawn weeds) ──────────────────────────────────────────────────
@@ -1482,4 +1482,11 @@ async def seed():
 
 
 if __name__ == "__main__":
-    asyncio.run(seed())
+    async def main():
+        await init_pool()
+        try:
+            await seed()
+        finally:
+            await close_pool()
+
+    asyncio.run(main())

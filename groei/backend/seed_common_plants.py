@@ -6,7 +6,7 @@ Idempotent — ON CONFLICT (slug) DO NOTHING, safe to re-run.
 
 import asyncio
 import json
-import aiosqlite
+from database import init_pool, close_pool, get_db
 
 
 def pheno(months_data, frost_sensitive, min_temp_c, max_height_cm, max_spread_cm,
@@ -750,25 +750,29 @@ def _make_thresholds(data):
 
 
 async def main():
-    async with aiosqlite.connect("floreren.db") as db:
-        inserted = 0
-        for p in PLANTS:
-            thresholds = _make_thresholds(_THRESHOLDS[p["common_name_nl"]]) if p["common_name_nl"] in _THRESHOLDS else None
-            cursor = await db.execute(
-                """INSERT INTO plant_species
-                   (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone, care_thresholds)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT (slug) DO NOTHING""",
-                (p["slug"], p["common_name_nl"], p["common_name_en"],
-                 p["latin_name"], p["phenology_json"], p["climate_zone"], thresholds),
-            )
-            if cursor.rowcount > 0:
-                inserted += 1
-        await db.commit()
+    await init_pool()
+    try:
+        async with get_db() as db:
+            inserted = 0
+            for p in PLANTS:
+                thresholds = _make_thresholds(_THRESHOLDS[p["common_name_nl"]]) if p["common_name_nl"] in _THRESHOLDS else None
+                cursor = await db.execute(
+                    """INSERT INTO plant_species
+                       (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone, care_thresholds)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7)
+                       ON CONFLICT (slug) DO NOTHING""",
+                    (p["slug"], p["common_name_nl"], p["common_name_en"],
+                     p["latin_name"], p["phenology_json"], p["climate_zone"], thresholds),
+                )
+                if cursor.rowcount > 0:
+                    inserted += 1
+            await db.commit()
 
-    print(f"Seeded {inserted} new species "
-          f"({len(PLANTS) - inserted} already existed, "
-          f"total {len(PLANTS)} processed)")
+        print(f"Seeded {inserted} new species "
+              f"({len(PLANTS) - inserted} already existed, "
+              f"total {len(PLANTS)} processed)")
+    finally:
+        await close_pool()
 
 
 if __name__ == "__main__":

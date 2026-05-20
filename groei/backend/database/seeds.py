@@ -4,6 +4,9 @@
    ground zones, plants, and objects. All INSERT ... ON CONFLICT DO NOTHING, so
    safe to re-run against any database."""
 
+import asyncio
+from database import init_pool, close_pool, get_db
+
 
 async def apply(db):
     # ── Users ──
@@ -79,3 +82,20 @@ async def apply(db):
                 (name, otype, shape, diam, w, d, mat, color, map_id, mx, my, rot))
 
     await db.commit()
+
+
+async def seed():
+    """Main entry point for seeding."""
+    async with get_db() as db:
+        await apply(db)
+
+
+if __name__ == "__main__":
+    async def main():
+        await init_pool()
+        try:
+            await seed()
+        finally:
+            await close_pool()
+
+    asyncio.run(main())

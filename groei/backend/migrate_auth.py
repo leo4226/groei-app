@@ -8,7 +8,7 @@ import argparse
 import sys
 
 sys.path.insert(0, ".")
-from database import get_db
+from database import init_pool, close_pool, get_db
 from auth import hash_password
 
 
@@ -56,4 +56,12 @@ if __name__ == "__main__":
     parser.add_argument("--name", default="Leon")
     parser.add_argument("--household", default="Korbee Garden")
     args = parser.parse_args()
-    asyncio.run(run(args.email, args.password, args.name, args.household))
+
+    async def main():
+        await init_pool()
+        try:
+            await run(args.email, args.password, args.name, args.household)
+        finally:
+            await close_pool()
+
+    asyncio.run(main())
