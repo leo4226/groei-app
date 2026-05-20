@@ -3,10 +3,22 @@ DEFAULT_LOCATIONS: list[tuple[str, str, int]] = [
     ("Huis", "🏠", 1),
 ]
 
+import os
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from database import db_dep
-from models import RegisterInput, LoginInput, AuthResponse, AccountOut
+from models import (
+    RegisterInput,
+    LoginInput,
+    AuthResponse,
+    AccountOut,
+    ForgotPasswordInput,
+    ResetPasswordInput,
+)
 from auth import hash_password, verify_password, create_token, get_current_account
+from services.email import send_password_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -72,6 +84,83 @@ async def login(body: LoginInput, db=Depends(db_dep)):
         household_id=account["household_id"],
         name=account["name"],
     )
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
+    """Send a password reset email if the account exists.
+    Always returns 200 to prevent account enumeration.
+    """
+    account = await db.execute_fetchall(
+        "SELECT id FROM accounts WHERE email = ?", (body.email.lower().strip(),)
+    )
+
+    if account:
+        token = secrets.token_urlsafe(32)
+        expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        await db.execute(
+            "INSERT INTO password_reset_tokens (account_id, token, expires_at) VALUES (?, ?, ?)",
+            (account[0]["id"], token, expires_at),
+        )
+        await db.commit()
+
+        app_url = os.environ.get("APP_URL", "http://localhost:5173")
+        reset_link = f"{app_url}/reset-password?token={token}"
+        send_password_reset(body.email.lower().strip(), reset_link)
+
+    return {"message": "If that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
+    """Validate a reset token and update the account password."""
+    now = datetime.now(timezone.utc)
+
+    rows = await db.execute_fetchall(
+        """SELECT id, account_id, expires_at, used_at
+           FROM password_reset_tokens
+           WHERE token = ?""",
+        (body.token,),
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=400, detail="Reset link is invalid or has expired"
+        )
+
+    token_row = dict(rows[0])
+
+    # Already used?
+    if token_row.get("used_at") is not None:
+        raise HTTPException(
+            status_code=400, detail="Reset link is invalid or has expired"
+        )
+
+    # Expired?
+    expires = datetime.fromisoformat(token_row["expires_at"])
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if now > expires:
+        raise HTTPException(
+            status_code=400, detail="Reset link is invalid or has expired"
+        )
+
+    # Validate password length
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    # Hash and update
+    pw_hash = hash_password(body.new_password)
+    await db.execute(
+        "UPDATE accounts SET password_hash = ? WHERE id = ?",
+        (pw_hash, token_row["account_id"]),
+    )
+    await db.execute(
+        "UPDATE password_reset_tokens SET used_at = ? WHERE id = ?",
+        (now.isoformat(), token_row["id"]),
+    )
+    await db.commit()
+
+    return {"message": "Password updated"}
 
 
 @router.get("/me", response_model=AccountOut)

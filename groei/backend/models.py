@@ -537,6 +537,15 @@ class AuthResponse(BaseModel):
     name: str
 
 
+class ForgotPasswordInput(BaseModel):
+    email: str
+
+
+class ResetPasswordInput(BaseModel):
+    token: str
+    new_password: str
+
+
 class AccountOut(BaseModel):
     id: int
     household_id: int

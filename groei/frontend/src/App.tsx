@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import LoginPage from './pages/LoginPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import { getToken } from './api/auth'
 import MapPage from './pages/MapPage'
 // MapsListPage import removed — /maps now redirects to default indoor map
@@ -98,6 +99,7 @@ export default function App() {
             }
           />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/maps"
             element={
