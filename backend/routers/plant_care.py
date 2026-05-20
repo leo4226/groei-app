@@ -658,6 +658,7 @@ async def get_temperature_context():
 class WaterLogCreate(BaseModel):
     watered_by: int | None = None
     watered_at: date | None = None  # defaults to today if omitted
+    water_amount: float | None = None  # ml
 
 
 async def get_last_garden_watered() -> date | None:
@@ -676,8 +677,8 @@ async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
     watered_at = (body.watered_at or date.today()).isoformat()
     await db.execute("DELETE FROM garden_water_log")
     await db.execute(
-        "INSERT INTO garden_water_log (watered_at, watered_by) VALUES (?, ?)",
-        (watered_at, body.watered_by),
+        "INSERT INTO garden_water_log (watered_at, watered_by, water_amount) VALUES (?, ?, ?)",
+        (watered_at, body.watered_by, body.water_amount),
     )
 
     # Mark all active water schedules as done
@@ -701,13 +702,18 @@ async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
         updated += 1
 
     await db.commit()
-    return {"watered_at": watered_at, "schedules_updated": updated}
+    return {"watered_at": watered_at, "schedules_updated": updated, "water_amount": body.water_amount}
 
 
 @router.get("/garden/water-log/latest")
-async def latest_garden_watering():
-    last = await get_last_garden_watered()
-    return {"watered_at": last.isoformat() if last else None}
+async def latest_garden_watering(db=Depends(db_dep)):
+    rows = await db.execute_fetchall(
+        "SELECT watered_at, water_amount FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+    )
+    if not rows:
+        return {"watered_at": None, "water_amount": None}
+    row = rows[0]
+    return {"watered_at": row["watered_at"], "water_amount": row["water_amount"]}
 
 
 _WEEKLY_ET_BUDGET: dict[str, float] = {

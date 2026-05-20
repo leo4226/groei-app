@@ -14,7 +14,7 @@ async def list_sightings(
         cursor = await db.execute("""
             SELECT ws.id, ws.weed_id, wsp.common_name_nl as weed_name,
                    wsp.slug as weed_slug, wsp.latin_name,
-                   json_extract(wsp.removal_json, '$.removal_difficulty') as removal_difficulty,
+                   (wsp.removal_json::json->>'removal_difficulty') as removal_difficulty,
                    ws.map_id, ws.map_x, ws.map_y, ws.notes, ws.sighted_at, ws.created_at
             FROM weed_sightings ws
             JOIN weed_species wsp ON ws.weed_id = wsp.id
@@ -25,7 +25,7 @@ async def list_sightings(
         cursor = await db.execute("""
             SELECT ws.id, ws.weed_id, wsp.common_name_nl as weed_name,
                    wsp.slug as weed_slug, wsp.latin_name,
-                   json_extract(wsp.removal_json, '$.removal_difficulty') as removal_difficulty,
+                   (wsp.removal_json::json->>'removal_difficulty') as removal_difficulty,
                    ws.map_id, ws.map_x, ws.map_y, ws.notes, ws.sighted_at, ws.created_at
             FROM weed_sightings ws
             JOIN weed_species wsp ON ws.weed_id = wsp.id
@@ -65,7 +65,7 @@ async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep)):
     cursor = await db.execute("""
         SELECT ws.id, ws.weed_id, wsp.common_name_nl as weed_name,
                wsp.slug as weed_slug, wsp.latin_name,
-               json_extract(wsp.removal_json, '$.removal_difficulty') as removal_difficulty,
+               (wsp.removal_json::json->>'removal_difficulty') as removal_difficulty,
                ws.map_id, ws.map_x, ws.map_y, ws.notes, ws.sighted_at, ws.created_at
         FROM weed_sightings ws
         JOIN weed_species wsp ON ws.weed_id = wsp.id

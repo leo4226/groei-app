@@ -62,6 +62,7 @@ class DbAdapter:
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
         self.lastrowid: int | None = None
+        self.rowcount: int = 0
         self._last_result: list[dict] | None = None
 
     async def execute_fetchall(
@@ -90,9 +91,14 @@ class DbAdapter:
             self.lastrowid = None
         else:
             # DELETE, UPDATE, etc. — no rows returned
-            await self._conn.execute(pg_sql, *params)
+            # asyncpg returns a status string like "DELETE 1" or "UPDATE 0"
+            status = await self._conn.execute(pg_sql, *params)
             self._last_result = None
             self.lastrowid = None
+            try:
+                self.rowcount = int(status.split()[-1])
+            except (ValueError, IndexError, AttributeError):
+                self.rowcount = 0
         return self
 
     async def fetchall(self) -> list[dict]:
