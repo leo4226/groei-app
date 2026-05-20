@@ -201,12 +201,23 @@ export default function Dashboard() {
               title="Detectie"
               description={`Onkruid & ziektes herkennen — ${t.dashboard.comingSoon.toLowerCase()} beschikbaar.`}
             />
-            <UnderConstructionCard
-              t={t}
-              icon="📷"
-              title="Foto-identificatie"
-              description={`Richt de camera op een plant — ${t.dashboard.comingSoon.toLowerCase()} beschikbaar.`}
-            />
+            <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
+              <div style={{
+                borderRadius: 14, overflow: 'hidden', marginBottom: 18,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                padding: '18px 18px',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s',
+              }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
+                  📷 Foto-identificatie
+                </div>
+                <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Richt de camera op een plant om hem te identificeren.
+                </p>
+              </div>
+            </Link>
           </div>
         </div>
 
