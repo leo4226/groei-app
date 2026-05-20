@@ -11,12 +11,11 @@ from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPos
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status
+from services.storage import build_storage_from_env
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
 router = APIRouter(tags=["plants"])
-
-PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "photos")
 
 
 async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
@@ -370,20 +369,16 @@ async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Plant not found")
 
-    # Save file
-    ext = os.path.splitext(file.filename or "photo.jpg")[1] or ".jpg"
-    filename = f"{plant_id}_{int(time.time())}{ext}"
-    filepath = os.path.join(PHOTOS_DIR, filename)
-
-    content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
-
-    photo_path = f"/api/photos/{filename}"
+    # Upload to R2
+    file_bytes = await file.read()
+    ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
+    key = f"photos/{plant_id}_{int(time.time())}.{ext}"
+    storage = build_storage_from_env()
+    public_url = storage.put(key, file_bytes, content_type=file.content_type or "image/jpeg")
 
     await db.execute(
         "UPDATE plants SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (photo_path, plant_id),
+        (public_url, plant_id),
     )
     await db.commit()
 

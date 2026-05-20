@@ -37,10 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve uploaded photos
-photos_dir = os.path.join(os.path.dirname(__file__), "photos")
-app.mount("/api/photos", StaticFiles(directory=photos_dir), name="photos")
-
 # Serve map SVGs
 maps_dir = os.path.join(os.path.dirname(__file__), "static", "maps")
 app.mount("/api/maps-static", StaticFiles(directory=maps_dir), name="maps-static")

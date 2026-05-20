@@ -2,8 +2,7 @@
 import base64
 import json
 import os
-import secrets
-from datetime import datetime
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -12,6 +11,7 @@ from pydantic import BaseModel
 from database import db_dep
 from auth import get_current_account
 from services.plant_id import identify, PlantIdQuotaExceeded, PlantIdServiceError
+from services.storage import build_storage_from_env
 
 
 router = APIRouter(prefix="/plants", tags=["plant-id"])
@@ -20,8 +20,6 @@ _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _MIN_CONFIDENCE_FOR_RESULT = 0.10
 _LOW_CONFIDENCE_UPPER = 0.30
 
-# Photos are served at /api/photos/<filename> from groei/backend/photos/
-_PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "photos")
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
 
 
@@ -146,14 +144,10 @@ async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
 
 
 def _save_identify_photo(image_bytes: bytes) -> str:
-    """Save photo to _PHOTOS_DIR and return the /api/photos/<filename> URL."""
-    os.makedirs(_PHOTOS_DIR, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    suffix = secrets.token_hex(3)
-    filename = f"identify_{timestamp}_{suffix}.jpg"
-    full = Path(_PHOTOS_DIR) / filename
-    full.write_bytes(image_bytes)
-    return f"/api/photos/{filename}"
+    """Upload identify photo to R2 and return the public URL."""
+    key = f"photos/identify_{int(time.time())}.jpg"
+    storage = build_storage_from_env()
+    return storage.put(key, image_bytes, content_type="image/jpeg")
 
 
 @router.post("/identify/commit", response_model=IdentifyCommitResponse)
