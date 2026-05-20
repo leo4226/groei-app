@@ -1,6 +1,6 @@
 import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 // ── Generic typed API client ──
 
@@ -152,8 +152,11 @@ export const fetchAlertSummary     = ()                    => api<AlertSummary>(
 
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 
-export const fetchCalendarEvents   = (from: string, to: string) =>
-  api<CalendarEvent[]>('GET', '/calendar/events', { params: { from, to } })
+export const fetchCalendarEvents   = (from: string, to: string, env?: string) => {
+  const params: Record<string, string> = { from, to }
+  if (env && env !== 'all') params.env = env
+  return api<CalendarEvent[]>('GET', '/calendar/events', { params })
+}
 
 // ── Icons ──
 
