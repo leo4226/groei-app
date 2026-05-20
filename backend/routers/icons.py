@@ -2,25 +2,32 @@ import json
 import os
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 
-from database import get_db
+from database import db_dep
+from auth import get_current_account
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
-ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "icons"))
+ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons"))
 MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 
 
 def load_manifest() -> list[dict]:
+    if not os.path.exists(MANIFEST_PATH):
+        return []
     with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data["plants"] if isinstance(data, dict) else data
 
 
 def save_manifest(entries: list[dict]) -> None:
-    with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if not os.path.exists(MANIFEST_PATH):
+        os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
+        data = {"plants": [], "count": 0, "iconCount": 0}
+    else:
+        with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
     if isinstance(data, dict):
         data["plants"] = entries
         data["count"] = len(entries)
@@ -187,7 +194,7 @@ async def get_catalog():
 
 
 @router.post("/sync")
-async def sync_icons():
+async def sync_icons(db = Depends(db_dep)):
     """
     1. Scan the icons folder for new SVGs and add them to manifest.json.
     2. Auto-match plants that have no icon_key by comparing plant name/species
@@ -234,55 +241,54 @@ async def sync_icons():
 
     # --- Step 3: match unassigned plants ---
     matched: list[dict] = []
-    async with get_db() as db:
-        plants = await db.execute_fetchall(
-            "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
-        )
+    plants = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
+    )
 
-        for row in plants:
-            plant = dict(row)
-            found_key: str | None = None
+    for row in plants:
+        plant = dict(row)
+        found_key: str | None = None
 
-            for text in [plant["name"], plant.get("species") or ""]:
-                if not text:
-                    continue
-                norm = _normalize(text)
+        for text in [plant["name"], plant.get("species") or ""]:
+            if not text:
+                continue
+            norm = _normalize(text)
 
-                # 1. Exact match
-                if norm in lookup:
-                    found_key = lookup[norm]
-                    break
+            # 1. Exact match
+            if norm in lookup:
+                found_key = lookup[norm]
+                break
 
-                # 2. Prefix match (plant name starts with icon key or vice versa)
-                for icon_norm, icon_id in lookup.items():
-                    if icon_norm and (
-                        norm.startswith(icon_norm) or icon_norm.startswith(norm)
-                    ):
-                        found_key = icon_id
-                        break
-
-                if found_key:
+            # 2. Prefix match (plant name starts with icon key or vice versa)
+            for icon_norm, icon_id in lookup.items():
+                if icon_norm and (
+                    norm.startswith(icon_norm) or icon_norm.startswith(norm)
+                ):
+                    found_key = icon_id
                     break
 
             if found_key:
-                await db.execute(
-                    "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (found_key, plant["id"]),
-                )
-                matched.append({
-                    "plant_id": plant["id"],
-                    "plant_name": plant["name"],
-                    "icon_key": found_key,
-                })
+                break
 
-        unmatched = [
-            {"plant_id": dict(row)["id"], "plant_name": dict(row)["name"]}
-            for row in plants
-            if not any(m["plant_id"] == dict(row)["id"] for m in matched)
-        ]
+        if found_key:
+            await db.execute(
+                "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (found_key, plant["id"]),
+            )
+            matched.append({
+                "plant_id": plant["id"],
+                "plant_name": plant["name"],
+                "icon_key": found_key,
+            })
 
-        if matched:
-            await db.commit()
+    unmatched = [
+        {"plant_id": dict(row)["id"], "plant_name": dict(row)["name"]}
+        for row in plants
+        if not any(m["plant_id"] == dict(row)["id"] for m in matched)
+    ]
+
+    if matched:
+        await db.commit()
 
     return {
         "total_icons": len(manifest),
@@ -293,3 +299,64 @@ async def sync_icons():
         "unmatched_plants": len(unmatched),
         "unmatched": unmatched,
     }
+
+
+@router.get("/gaps")
+async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)):
+    """Return three gap lists:
+    - requested: plants that asked for an icon but don't have one yet
+    - species_without_icon: plant_species entries with no matching icon in the manifest
+    - icons_without_species: base icons in the manifest not matched to any species
+    """
+    manifest = load_manifest()
+
+    # Build set of scientific names in the manifest (normalised) → icon_id
+    sci_to_icon: dict[str, str] = {}
+    for entry in manifest:
+        sci = entry.get("sci", "")
+        if sci:
+            sci_to_icon[_normalize(sci)] = entry["id"]
+
+    # Base icons only (exclude form variants like _bare, _potted, etc.)
+    base_icons = [e for e in manifest if not _FORM_SUFFIXES.search(e["id"]) and not e.get("variant_of")]
+
+    # 1. requested — plants with icon_requested=1 and no icon assigned
+    requested_rows = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = 1 AND (icon_key IS NULL OR icon_key = '')"
+    )
+    requested = [{"id": r["id"], "name": r["name"], "species": r["species"]} for r in requested_rows]
+
+    # 2. species_without_icon — plant_species entries with no matching manifest icon
+    species_rows = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species ORDER BY common_name_nl"
+    )
+    species_without_icon = []
+    for row in species_rows:
+        latin = row["latin_name"] or ""
+        if not latin or _normalize(latin) not in sci_to_icon:
+            species_without_icon.append({"id": row["id"], "name": row["common_name_nl"], "latin": latin or None})
+
+    # 3. icons_without_species — base icons not referenced by any plant_species
+    latin_norms = {_normalize(r["latin_name"]) for r in species_rows if r["latin_name"]}
+    icons_without_species = [
+        {"id": e["id"], "name": e.get("name", e["id"]), "sci": e.get("sci") or None}
+        for e in base_icons
+        if _normalize(e.get("sci", "")) not in latin_norms
+    ]
+
+    return {
+        "requested": requested,
+        "species_without_icon": species_without_icon,
+        "icons_without_species": icons_without_species,
+    }
+
+
+@router.patch("/request/{plant_id}")
+async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+    """Flag a plant as needing an icon."""
+    row = await db.execute_fetchall("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    await db.execute("UPDATE plants SET icon_requested = 1 WHERE id = ?", (plant_id,))
+    await db.commit()
+    return {"status": "requested", "plant_id": plant_id}

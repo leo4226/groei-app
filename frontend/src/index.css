@@ -1,45 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand Colors — Handsome Frank palette */
-  --color-midnight-ink: #160572;
-  --color-fiery-red: #ea0706;
-  --color-warm-ginger: #e29675;
-  --color-terracotta-orange: #d64e2e;
-  --color-crimson-edge: #df1a19;
-  --color-aqua-glow: #24e3dc;
-  --color-sunny-marigold: #f9e44d;
-  --color-warm-canvas-yellow: #fffac2;
-  --color-illustrator-blue: #2544a0;
-  --color-pumpkin-swirl: #ff7701;
-  --color-violet-berry: #4b0f4d;
-  --color-rose-bloom: #d98199;
-  --color-emerald-green: #24e34c;
-  --color-melon-hue: #eea883;
-  --color-fog-canvas: #f2ebe6;
-  --color-sky-haze: #eef4fb;
-  --color-cream-canvas: #fef9ee;
-  --color-dark-wolf: #2c2c2c;
-  --color-ash-gray: #636160;
-  --color-midtone-gray: #909090;
+  /* Botanical palette — warm paper + green/terra accents */
+  --color-bg: #F5F0E3;
+  --color-surface: #FBF7EE;
+  --color-bg-warm: #EDE5D1;
+  --color-primary: #2F5D3A;
+  --color-primary-dark: #1E3F26;
+  --color-primary-highlight: #8FA882;
+  --color-secondary: #B2664A;
+  --color-text: #1F2A1E;
+  --color-text-soft: #4A5A44;
+  --color-text-muted: #8A9482;
+  --color-overdue: #B2664A;
+  --color-due: #D9A418;
+  --color-good: #2F5D3A;
+  --color-border: #D9CFB8;
+  --color-border-soft: #E5DCC3;
 
-  /* Semantic mappings */
-  --color-bg: #fef9ee;
-  --color-surface: #ffffff;
-  --color-primary: #160572;
-  --color-primary-light: #2544a0;
-  --color-secondary: #ff7701;
-  --color-secondary-light: #e29675;
-  --color-text: #2c2c2c;
-  --color-text-muted: #909090;
-  --color-overdue: #ea0706;
-  --color-due: #ff7701;
-  --color-good: #24e34c;
-  --color-border: #f2ebe6;
+  /* Legacy type colors — kept for fallback icon accents only */
+  --color-type-tree: #160572;
+  --color-type-shrub: #2544a0;
+  --color-type-grass: #24e34c;
+  --color-type-herb: #24e3dc;
+  --color-type-flower: #d98199;
+  --color-type-bulb: #d64e2e;
+  --color-type-succulent: #e29675;
+  --color-type-fern: #4b0f4d;
+  --color-type-edible: #ff7701;
+  --color-type-houseplant: #160572;
+  --color-type-cactus: #f9e44d;
+  --color-type-climber: #2544a0;
+  --color-type-unknown: #909090;
 
   /* Typography */
-  --font-heading: 'Playfair Display', serif;
+  --font-heading: 'Fraunces', serif;
   --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
   /* Border Radius */
   --radius-pill: 30px;
@@ -59,15 +56,19 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(circle at 10% 0%, rgba(143, 168, 130, 0.10), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 h1 {
   letter-spacing: -0.02em;
+  line-height: 0.95;
 }
 
 #root {
@@ -95,11 +96,47 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 
-/* Card base style — flat surfaces, no shadows */
+/* Card base style */
 .card {
   background: var(--color-surface);
-  border-radius: 10px;
+  border-radius: 14px;
   border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(31, 42, 30, 0.04);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary-highlight);
+  box-shadow: 0 2px 6px rgba(31, 42, 30, 0.08), 0 16px 40px rgba(31, 42, 30, 0.10);
+}
+
+/* Card hover glow overlay */
+.card-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(143, 168, 130, 0.08), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+/* Wave animation for greeting emoji */
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(10deg); }
+  75% { transform: rotate(-10deg); }
 }
 
 /* Skeleton loading animation */
@@ -109,7 +146,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--color-border) 25%, #fef9ee 50%, var(--color-border) 75%);
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite ease-in-out;
   border-radius: 0.5rem;
@@ -123,4 +160,30 @@ input:focus, select:focus, textarea:focus {
 
 .animate-slide-up {
   animation: slide-up 0.25s ease-out;
+}
+
+/* Card icon hover animation */
+.card:hover .card-icon {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.card:hover .card-index {
+  opacity: 0.7;
+}
+
+/* Responsive — Plants page */
+@media (max-width: 720px) {
+  .plants-header {
+    padding: 24px 16px 14px !important;
+  }
+
+  .plants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: 10px !important;
+    padding: 0 16px !important;
+  }
+
+  .home-header {
+    padding: 24px 16px 14px !important;
+  }
 }

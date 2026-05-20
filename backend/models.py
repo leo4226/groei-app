@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 
 # --- Users ---
@@ -9,6 +9,11 @@ class UserOut(BaseModel):
     id: int
     name: str
     avatar: str | None = None
+    language: Literal['nl', 'en'] = 'nl'
+
+
+class UserLanguageUpdate(BaseModel):
+    language: Literal['nl', 'en']
 
 
 # --- Locations ---
@@ -47,6 +52,8 @@ class PlantCreate(BaseModel):
     sun_requirement: str | None = None  # 'full_sun' | 'partial_sun' | 'shade'
     plant_type: str | None = None  # 'tree' | 'shrub' | 'grass' | 'herb' | 'flower' | etc.
     icon_key: str | None = None   # icon filename without extension, e.g. 'oak', 'raspberry'
+    phase: str = 'established'    # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+    sown_date: date | None = None
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -62,6 +69,12 @@ class PlantUpdate(BaseModel):
     sun_requirement: str | None = None
     plant_type: str | None = None
     icon_key: str | None = None
+    icon_requested: bool | None = None   # None = don't change
+    phase: str | None = None             # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+    sown_date: date | None = None
+    map_id: int | None = None
+    map_x: float | None = None
+    map_y: float | None = None
 
 
 class CareScheduleOut(BaseModel):
@@ -76,6 +89,7 @@ class CareScheduleOut(BaseModel):
     last_done_by_name: str | None = None
     notes: str | None = None
     is_active: bool = True
+    is_ephemeral: bool = False
 
 
 class PlantOut(BaseModel):
@@ -96,13 +110,18 @@ class PlantOut(BaseModel):
     notes: str | None = None
     is_active: bool = True
     is_locked: bool = False
-    created_at: str | None = None
+    created_at: datetime | None = None
     sun_requirement: str | None = None
     plant_type: str | None = None
     icon_key: str | None = None
+    icon_requested: bool = False
+    phase: str = 'established'
+    sown_date: str | None = None
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []
+    care_status: str = "good"
+    temp_status: str = "comfortable"
 
 
 # --- Alerts ---
@@ -111,6 +130,12 @@ class PlantAlert(BaseModel):
     type: str           # drought | waterlog | cold | heat | bring_inside | fertilise
     severity: str       # info | warning | urgent
     message_nl: str
+    icon: str
+
+
+class TopAlert(BaseModel):
+    alert_type: str   # overdue_water | due_today | drought | waterlog | cold | heat | bring_inside | fertilise
+    severity: str     # urgent | warning | info
     icon: str
 
 
@@ -141,11 +166,13 @@ class CareTask(BaseModel):
     plant_name: str
     plant_photo: str | None = None
     location: str | None = None
+    map_type: str | None = None
     care_type: str
     days_overdue: int
     last_done_by: str | None = None
     last_done_at: str | None = None
     schedule_id: int
+    is_ephemeral: bool = False
 
 
 class DashboardResponse(BaseModel):
@@ -154,11 +181,45 @@ class DashboardResponse(BaseModel):
     upcoming: list[CareTask] = []
 
 
+class StatusCounts(BaseModel):
+    total: int
+    on_schedule: int
+    thirsty: int
+    dry: int
+
+
+class RecentLogEntry(BaseModel):
+    id: int
+    plant_id: int
+    plant_name: str
+    icon_key: str | None
+    care_type: str
+    done_at: str
+    notes: str | None
+
+
+class PlantFactOut(BaseModel):
+    plant_id: int
+    plant_name: str
+    icon_key: str | None = None
+    fact_nl: str
+    species_name: str | None = None
+
+
+class DashboardV2Response(BaseModel):
+    overdue: list[CareTask] = []
+    due_today: list[CareTask] = []
+    upcoming: list[CareTask] = []
+    status_counts: StatusCounts
+    recent_log: list[RecentLogEntry] = []
+    plant_fact: PlantFactOut | None = None
+
+
 # --- Maps ---
 
 class MapCreate(BaseModel):
     name: str
-    map_type: str = 'outdoor'  # 'garden' | 'indoor'
+    map_type: str = 'outdoor'  # 'outdoor' | 'indoor'
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
@@ -182,10 +243,22 @@ class MapOut(BaseModel):
     scale_info: str | None = None
     sort_order: int = 0
     canvas_data: str | None = None
+    thumbnail_file: str | None = None
     map_type: str = 'outdoor'
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
+
+
+class ZoneOut(BaseModel):
+    id: int
+    map_id: int
+    name: str
+    zone_type: str
+    sun_exposure: str | None = None
+    boundary: str
+    color: str | None = None
+    sort_order: int = 0
 
 
 class MapDetailOut(MapOut):
@@ -217,6 +290,10 @@ class MapPlantOut(BaseModel):
     species_id: int | None = None
     phenology: Any | None = None
     is_locked: bool = False
+    top_alert: TopAlert | None = None
+    alerts: list[TopAlert] = []
+    top_warning: dict | None = None
+    warnings: list[dict] = []
 
 
 class PlantPositionUpdate(BaseModel):
@@ -306,8 +383,8 @@ class ObjectOut(BaseModel):
     rotation: float = 0
     notes: str | None = None
     is_active: bool = True
-    created_at: str | None = None
-    updated_at: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     category: str = "container"
     label: str | None = None
     preset: str | None = None
@@ -354,3 +431,140 @@ class PlantSpeciesOut(BaseModel):
     latin_name: str | None = None
     climate_zone: str = "temperate"
     phenology: PhenologyData | None = None
+
+
+# --- Home / Plant Fact (PlantFactOut defined above, before DashboardV2Response) ---
+
+
+# ── Weeds ──
+
+class WeedAppearanceOut(BaseModel):
+    flower_color: str
+    flower_shape: str
+    leaf_shape: str
+    growth_form: str
+    max_height_cm: int
+    distinguishing: str
+    look_alikes: list[str] = []
+
+
+class WeedHabitatOut(BaseModel):
+    places: list[str] = []
+    soil_types: list[str] = []
+    active_months: list[int] = []
+    bloom_months: list[int] = []
+    sun_preference: str
+
+
+class WeedRemovalOut(BaseModel):
+    root_type: str
+    reproduces_via: list[str] = []
+    removal_method: str
+    removal_difficulty: str
+    urgency: str
+    removal_tip: str
+    prevention: str
+
+
+class WeedSpeciesOut(BaseModel):
+    id: int
+    slug: str
+    common_name_nl: str
+    latin_name: str
+    family: str | None = None
+    common_names: list[str] = []
+    appearance: WeedAppearanceOut | None = None
+    habitat: WeedHabitatOut | None = None
+    removal: WeedRemovalOut | None = None
+    edible: bool = False
+    edible_note: str | None = None
+    interesting: str | None = None
+    native_to_nl: bool = True
+
+
+class WeedSpeciesListItem(BaseModel):
+    id: int
+    slug: str
+    common_name_nl: str
+    latin_name: str
+    family: str | None = None
+    flower_color: str | None = None
+    places: list[str] = []
+
+
+class WeedSightingCreate(BaseModel):
+    weed_id: int
+    map_id: int
+    map_x: float
+    map_y: float
+    notes: str | None = None
+    sighted_at: str | None = None  # date string
+
+
+class WeedSightingOut(BaseModel):
+    id: int
+    weed_id: int
+    weed_name: str | None = None
+    weed_slug: str | None = None
+    latin_name: str | None = None
+    removal_difficulty: str | None = None
+    map_id: int
+    map_x: float
+    map_y: float
+    notes: str | None = None
+    sighted_at: str
+    created_at: datetime | None = None
+
+
+# --- Auth ---
+
+class RegisterInput(BaseModel):
+    email: str
+    password: str
+    name: str
+    household_name: str = ""
+
+
+class LoginInput(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    account_id: int
+    household_id: int
+    name: str
+
+
+class AccountOut(BaseModel):
+    id: int
+    household_id: int
+    email: str
+    name: str
+    avatar: str | None = None
+
+
+class CalendarEventOut(BaseModel):
+    id: str                  # composite e.g. "schedule:42:water"
+    date: str                # ISO date YYYY-MM-DD
+    type: str                # 'water' | 'fertilize' | etc.
+    plant_id: int | None
+    plant_name: str | None
+    plant_icon_variant: str | None
+    schedule_id: int | None
+    overdue: bool
+    # ── warning enrichment ──
+    severity: str | None = None   # 'urgent' | 'warning' | 'info' | None
+    color: str | None = None      # canonical badge color from CareWarning
+    icon: str | None = None       # emoji from CareWarning
+
+
+# ── Water Log ──
+
+class WaterLogOut(BaseModel):
+    id: int
+    watered_at: str
+    watered_by: int | None = None
+    water_amount: float | None = None  # ml
+    created_at: datetime | None = None

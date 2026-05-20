@@ -25,8 +25,8 @@ export default function ResizeHandle({ x, y, direction, active, onPointerDown }:
       {/* Visible handle */}
       <circle
         r={5}
-        fill={active ? '#24e34c' : 'white'}
-        stroke={active ? '#24e34c' : '#888'}
+        fill={active ? '#5B9A6F' : 'white'}
+        stroke={active ? '#5B9A6F' : '#888'}
         strokeWidth={1.2}
       />
     </g>

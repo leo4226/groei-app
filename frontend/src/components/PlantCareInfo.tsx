@@ -56,10 +56,10 @@ export default function PlantCareInfo({ plantId }: Props) {
   const noData    = !care.loading && care.data?.source === 'not_found'
 
   return (
-    <div className="mt-4 rounded-xl bg-bg overflow-hidden">
+    <div className="mt-4">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <span className="text-sm font-semibold text-text">🌱 Verzorgingsinfo</span>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">Verzorgingsinfo</p>
         {!isLoading && !noData && care.data && (
           <button
             onClick={() => setExpanded(e => !e)}
@@ -70,7 +70,7 @@ export default function PlantCareInfo({ plantId }: Props) {
         )}
       </div>
 
-      <div className="px-4 py-3 space-y-2.5">
+      <div className="card px-4 py-3 space-y-2.5">
         {isLoading ? (
           <><SkeletonRow /><SkeletonRow /><SkeletonRow /></>
         ) : care.error ? (

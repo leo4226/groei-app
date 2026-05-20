@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 import { fetchPlant } from '../api/client'
 import type { Plant } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import IconPicker from '../components/IconPicker'
+import { useT } from '../context/LanguageContext'
 
-const MAP_TYPE_LABEL: Record<string, string> = {
-  outdoor: 'Tuin',
-  indoor: 'Binnen',
-}
+const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
+const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
 
 export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { maps, updatePlant, uploadPhoto } = useGroeiStore()
+  const t = useT()
+  const { locations, maps, updatePlant, uploadPhoto } = useFloreren()
   const plantId = Number(id)
 
   const [plant, setPlant] = useState<Plant | null>(null)
@@ -22,7 +22,7 @@ export default function EditPlant() {
 
   const [name, setName] = useState('')
   const [species, setSpecies] = useState('')
-  const [mapId, setMapId] = useState<number | null>(null)
+  const [locationId, setLocationId] = useState<number | undefined>()
   const [potSize, setPotSize] = useState('')
   const [acquiredDate, setAcquiredDate] = useState('')
   const [lastRepotted, setLastRepotted] = useState('')
@@ -32,6 +32,33 @@ export default function EditPlant() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [sownDate, setSownDate] = useState('')
+  const [phase, setPhase] = useState('established')
+
+  const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
+  const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
+  const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
+  const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
+
+  const currentArea: 'tuin' | 'huis' | null = locationId == null ? null
+    : locations.find(l => l.id === locationId && isTuinLoc(l.name)) ? 'tuin'
+    : locations.find(l => l.id === locationId) ? 'huis'
+    : null
+
+  function randomMapPos(viewbox: string) {
+    const [x0, y0, w, h] = viewbox.split(' ').map(Number)
+    const pad = Math.min(w, h) * 0.12
+    return {
+      x: Math.round((x0 + pad + Math.random() * (w - pad * 2)) * 10) / 10,
+      y: Math.round((y0 + pad + Math.random() * (h - pad * 2)) * 10) / 10,
+    }
+  }
+
+  function selectArea(area: 'tuin' | 'huis') {
+    if (currentArea === area) { setLocationId(undefined); return }
+    const pool = area === 'tuin' ? tuinLocs : huisLocs
+    if (pool.length > 0) setLocationId(pool[0].id)
+  }
 
   useEffect(() => {
     async function load() {
@@ -40,13 +67,15 @@ export default function EditPlant() {
         setPlant(p)
         setName(p.name)
         setSpecies(p.species ?? '')
-        setMapId(p.map_id ?? null)
+        setLocationId(p.location_id ?? undefined)
         setPotSize(p.pot_size_cm ? String(p.pot_size_cm) : '')
         setAcquiredDate(p.acquired_date ?? '')
         setLastRepotted(p.last_repotted ?? '')
         setNotes(p.notes ?? '')
         setSunRequirement(p.sun_requirement ?? null)
         setIconKey(p.icon_key ?? null)
+        setPhase(p.phase ?? 'established')
+        setSownDate(p.sown_date ?? '')
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -71,16 +100,25 @@ export default function EditPlant() {
 
     setSubmitting(true)
     try {
+      const needsMapPlacement = !plant?.map_id && currentArea != null
+      const placedMap = needsMapPlacement
+        ? (currentArea === 'tuin' ? tuinMap : huisMap)
+        : undefined
+      const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
+
       await updatePlant(plantId, {
         name: name.trim(),
         species: species.trim() || null,
-        map_id: mapId,
+        location_id: locationId ?? null,
         pot_size_cm: potSize ? parseInt(potSize) : null,
         acquired_date: acquiredDate || null,
         last_repotted: lastRepotted || null,
         notes: notes.trim() || null,
         sun_requirement: sunRequirement ?? null,
         icon_key: iconKey,
+        phase: phase,
+        sown_date: sownDate || null,
+        ...(placedMap && mapPos ? { map_id: placedMap.id, map_x: mapPos.x, map_y: mapPos.y } : {}),
       })
 
       if (photoFile) {
@@ -106,7 +144,7 @@ export default function EditPlant() {
     )
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 rounded-full bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+  const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
 
   return (
     <div className="px-4 pt-6 pb-8">
@@ -117,23 +155,23 @@ export default function EditPlant() {
         >
           ←
         </button>
-        <h1 className="text-2xl font-extrabold">Plant bewerken</h1>
+        <h1 className="text-2xl font-extrabold">{t.editPlant.title}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Photo */}
         <label className="card p-4 flex items-center gap-4 cursor-pointer">
           {photoPreview ? (
-            <img src={photoPreview} alt="Preview" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+            <img src={photoPreview} alt={t.editPlant.previewAlt} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
           ) : (
             <div className="w-20 h-20 rounded-xl bg-bg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted flex-shrink-0">
               <span className="text-2xl">📷</span>
-              <span className="text-[10px] mt-0.5">Foto toevoegen</span>
+              <span className="text-[10px] mt-0.5">{t.editPlant.addPhoto}</span>
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text">Plantfoto</p>
-            <p className="text-xs text-text-muted mt-0.5">Tik om foto te wijzigen</p>
+            <p className="text-sm font-medium text-text">{t.editPlant.plantPhoto}</p>
+            <p className="text-xs text-text-muted mt-0.5">{t.editPlant.tapToChangePhoto}</p>
           </div>
           <input
             type="file"
@@ -145,7 +183,7 @@ export default function EditPlant() {
 
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Naam *</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.nameLabel}</label>
           <input
             type="text"
             value={name}
@@ -157,25 +195,46 @@ export default function EditPlant() {
 
         {/* Species */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Botanische naam</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.speciesLabel}</label>
           <input
             type="text"
             value={species}
             onChange={(e) => setSpecies(e.target.value)}
-            placeholder="Monstera deliciosa"
+            placeholder={t.editPlant.speciesPlaceholder}
             className={inputClass}
           />
         </div>
 
         {/* Icon */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Icoon</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.iconLabel}</label>
           <IconPicker value={iconKey} onChange={setIconKey} />
+        </div>
+
+        {/* Growth phase */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.growthPhaseLabel}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {(['seed', 'sprout', 'seedling', 'young', 'established'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPhase(p)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                  phase === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:border-text-muted'
+                }`}
+              >
+                {t.editPlant[`phase${p.charAt(0).toUpperCase() + p.slice(1)}` as keyof typeof t.editPlant] as string}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Sun requirement */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Zonbehoefte</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sunRequirementLabel}</label>
           <div className="flex gap-2">
             {PLANT_SUN_PROFILES.map((profile) => (
               <button
@@ -196,49 +255,48 @@ export default function EditPlant() {
           </div>
         </div>
 
-        {/* Map picker */}
+        {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Locatie</label>
-          {maps.length === 0 ? (
-            <p className="text-sm text-text-muted bg-surface rounded-xl p-3">
-              Nog geen kaarten beschikbaar. Maak eerst een kaart aan.
-            </p>
-          ) : (
-            <div className="flex gap-3">
-              {maps.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMapId(mapId === m.id ? null : m.id)}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
-                    mapId === m.id
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-text-muted hover:border-text-muted'
-                  }`}
-                >
-                  <span className="text-2xl">{m.map_type === 'outdoor' ? '🌿' : '🏠'}</span>
-                  <span>{m.name}</span>
-                  <span className="text-[10px] text-text-muted/60">{MAP_TYPE_LABEL[m.map_type] ?? m.map_type}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.locationLabel}</label>
+          <div className="flex gap-3">
+            {([
+              { area: 'tuin' as const, label: t.editPlant.garden, emoji: '🌿', hasMap: !!tuinMap },
+              { area: 'huis' as const, label: t.editPlant.house, emoji: '🏠', hasMap: !!huisMap },
+            ]).map(({ area, label, emoji, hasMap }) => (
+              <button
+                key={area}
+                type="button"
+                onClick={() => selectArea(area)}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                  currentArea === area
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:border-text-muted'
+                }`}
+              >
+                <span className="text-2xl">{emoji}</span>
+                <span>{label}</span>
+                {!hasMap && (
+                  <span className="text-[10px] text-text-muted/60">{t.editPlant.mapComingSoon}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Pot size & dates */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">Potmaat (cm)</label>
+            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.potSizeLabel}</label>
             <input
               type="number"
               value={potSize}
               onChange={(e) => setPotSize(e.target.value)}
-              placeholder="15"
+              placeholder={t.editPlant.potSizePlaceholder}
               className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">Verkregen</label>
+            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.acquiredLabel}</label>
             <input
               type="date"
               value={acquiredDate}
@@ -249,7 +307,7 @@ export default function EditPlant() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Laatste verpot</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.lastRepottedLabel}</label>
           <input
             type="date"
             value={lastRepotted}
@@ -258,13 +316,24 @@ export default function EditPlant() {
           />
         </div>
 
+        {/* Sown date */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
+          <input
+            type="date"
+            value={sownDate}
+            onChange={(e) => setSownDate(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">Notities</label>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.notesLabel}</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Houdt van indirect licht, van onderen water geven..."
+            placeholder={t.editPlant.notesPlaceholder}
             rows={2}
             className={`${inputClass} resize-none`}
           />
@@ -273,15 +342,15 @@ export default function EditPlant() {
         <button
           type="submit"
           disabled={submitting || !name.trim()}
-          className="w-full bg-primary text-white py-3.5 rounded-full font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50"
+          className="w-full bg-primary text-white py-3.5 rounded-xl font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50 shadow-sm"
         >
           {submitting ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Opslaan...
+              {t.editPlant.saving}
             </span>
           ) : (
-            'Opslaan'
+            t.common.save
           )}
         </button>
       </form>

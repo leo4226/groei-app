@@ -11,9 +11,9 @@ export interface PlantSunProfile {
 export type SunFit = 'good' | 'partial' | 'poor'
 
 export const SUN_FIT_COLORS: Record<SunFit, string> = {
-  good:    '#24e34c',
-  partial: '#ff7701',
-  poor:    '#ea0706',
+  good:    '#5B9A6F',
+  partial: '#D4A843',
+  poor:    '#C1443E',
 }
 
 // Returns how well a plant's sun requirement matches actual sun hours.

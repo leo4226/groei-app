@@ -1,9 +1,9 @@
-import { useGroeiStore } from '../store/useGroeiStore'
+import { useFloreren } from '../store/useFloreren'
 
 export default function UserSwitcher() {
-  const users = useGroeiStore((s) => s.users)
-  const activeUserId = useGroeiStore((s) => s.activeUserId)
-  const setActiveUser = useGroeiStore((s) => s.setActiveUser)
+  const users = useFloreren((s) => s.users)
+  const activeUserId = useFloreren((s) => s.activeUserId)
+  const setActiveUser = useFloreren((s) => s.setActiveUser)
 
   const activeUser = users.find((u) => u.id === activeUserId)
 

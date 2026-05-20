@@ -42,7 +42,7 @@ export default function EditorResizeOverlay({ zone, onHandlePointerDown }: Props
           cy={hy}
           r={r}
           fill="white"
-          stroke="#2544a0"
+          stroke="#4A90D9"
           strokeWidth={1.5}
           style={{ cursor: cursorMap[id] }}
           onPointerDown={(e) => {

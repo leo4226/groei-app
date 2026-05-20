@@ -1,6 +1,7 @@
 import type { CanvasData } from '../../types'
 import EditorDefs from '../editor/EditorDefs'
 import EditorZoneShape from '../editor/EditorZoneShape'
+import RoomWallRenderer from '../editor/RoomWallRenderer'
 
 interface Props {
   canvasData: CanvasData
@@ -11,11 +12,12 @@ const noop = () => {}
 
 /**
  * Read-only renderer for house/garden canvas_data zones.
- * Uses the exact same EditorZoneShape → RoomWallRenderer pipeline as the
- * editor, so walls, doors, windows and labels render identically.
+ * Uses RoomWallRenderer for indoor rooms/structures (room walls, door/window gaps,
+ * thickness auto-detect), and EditorZoneShape for outdoor / ground zones.
  */
 export default function CanvasZonesLayer({ canvasData }: Props) {
-  const { zones, wallElements = [], scale_px_per_m, canvas_w, canvas_h } = canvasData
+  const { zones, wallElements = [], scale_px_per_m, canvas_w, canvas_h, mapType } = canvasData
+  const isIndoor = mapType === 'indoor'
 
   return (
     <g>
@@ -23,22 +25,38 @@ export default function CanvasZonesLayer({ canvasData }: Props) {
       <EditorDefs />
 
       {/* Canvas background */}
-      <rect width={canvas_w} height={canvas_h} fill="#fef9ee" />
+      <rect width={canvas_w} height={canvas_h} fill="#f5f3ee" />
 
-      {zones.map((zone) => (
-        <EditorZoneShape
-          key={zone.id}
-          zone={zone}
-          zones={zones}
-          isSelected={false}
-          scalePxPerM={scale_px_per_m}
-          wallElements={wallElements}
-          selectedWallElementId={null}
-          onPointerDown={noop}
-          onSelectWallElement={noop}
-          onWallElementPointerDown={noop}
-        />
-      ))}
+      {zones.map((zone) => {
+        const isIndoorZone = isIndoor && (zone.type === 'room' || zone.type === 'structure')
+        return isIndoorZone ? (
+          <RoomWallRenderer
+            key={zone.id}
+            zone={zone}
+            zones={zones}
+            isSelected={false}
+            scalePxPerM={scale_px_per_m}
+            wallElements={wallElements}
+            selectedWallElementId={null}
+            onPointerDown={noop}
+            onSelectWallElement={noop}
+            onWallElementPointerDown={noop}
+          />
+        ) : (
+          <EditorZoneShape
+            key={zone.id}
+            zone={zone}
+            zones={zones}
+            isSelected={false}
+            scalePxPerM={scale_px_per_m}
+            wallElements={wallElements}
+            selectedWallElementId={null}
+            onPointerDown={noop}
+            onSelectWallElement={noop}
+            onWallElementPointerDown={noop}
+          />
+        )
+      })}
     </g>
   )
 }

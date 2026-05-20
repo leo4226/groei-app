@@ -1,36 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import type { PlantIcon } from '../types'
 import { fetchIconCatalog } from '../api/client'
+import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
+import { useT } from '../context/LanguageContext'
 
 interface Props {
   value: string | null
   onChange: (iconKey: string | null) => void
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  houseplant: '🪴 Kamerplant',
-  fern: '🌿 Varen',
-  succulent: '🌵 Vetplant',
-  flower: '🌸 Bloem',
-  bulb: '🧅 Bol',
-  herb: '🌱 Kruid',
-  shrub: '🌳 Struik',
-  tree: '🌲 Boom',
-  edible: '🥕 Eetbaar',
-  grass: '🎋 Gras',
-  bamboo: '🎍 Bamboe',
-  cactus: '🌵 Cactus',
-  unknown: '❓ Overig',
-}
-
-const FORM_LABELS: Record<string, string> = {
-  all: 'Alle',
-  potted: '🪴 In pot',
-  bare: '🌿 Zonder pot',
-  other: '🌸 Overig',
-}
-
 export default function IconPicker({ value, onChange }: Props) {
+  const CATEGORY_LABELS = useCategoryLabels()
+  const FORM_LABELS = useFormLabels()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [icons, setIcons] = useState<PlantIcon[]>([])
   const [search, setSearch] = useState('')
@@ -97,7 +79,7 @@ export default function IconPicker({ value, onChange }: Props) {
         {selected ? (
           <>
             <img
-              src={`/api/icons/${selected.id}.svg`}
+              src={`/icons/${selected.id}.svg`}
               alt={selected.name}
               className="w-9 h-9 flex-shrink-0"
             />
@@ -120,7 +102,7 @@ export default function IconPicker({ value, onChange }: Props) {
             <div className="w-9 h-9 rounded-lg bg-bg border border-dashed border-border flex items-center justify-center text-text-muted flex-shrink-0">
               <span className="text-xl">🌿</span>
             </div>
-            <span className="text-sm text-text-muted">Kies een icoon…</span>
+            <span className="text-sm text-text-muted">{t.iconPicker.title}</span>
           </>
         )}
       </button>
@@ -137,14 +119,14 @@ export default function IconPicker({ value, onChange }: Props) {
             >
               ←
             </button>
-            <h2 className="text-lg font-bold flex-1">Icoon kiezen</h2>
+            <h2 className="text-lg font-bold flex-1">{t.iconPicker.title}</h2>
             {value && (
               <button
                 type="button"
                 onClick={() => { onChange(null); handleClose() }}
                 className="text-xs text-text-muted underline"
               >
-                Wissen
+                {t.iconPicker.clear}
               </button>
             )}
           </div>
@@ -156,7 +138,7 @@ export default function IconPicker({ value, onChange }: Props) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Zoek op naam of soort…"
+              placeholder={t.iconPicker.searchPlaceholder}
               className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
             />
           </div>
@@ -184,10 +166,10 @@ export default function IconPicker({ value, onChange }: Props) {
           {/* Grid */}
           <div className="flex-1 overflow-y-auto px-4 pb-8">
             {loading && (
-              <div className="flex justify-center pt-12 text-text-muted text-sm">Laden…</div>
+              <div className="flex justify-center pt-12 text-text-muted text-sm">{t.common.loading}</div>
             )}
             {!loading && filtered.length === 0 && (
-              <div className="flex justify-center pt-12 text-text-muted text-sm">Geen iconen gevonden</div>
+              <div className="flex justify-center pt-12 text-text-muted text-sm">{t.iconPicker.noResults}</div>
             )}
             {!loading && filtered.length > 0 && (
               <div className="grid grid-cols-4 gap-3">
@@ -203,7 +185,7 @@ export default function IconPicker({ value, onChange }: Props) {
                     }`}
                   >
                     <img
-                      src={`/api/icons/${icon.id}.svg`}
+                      src={`/icons/${icon.id}.svg`}
                       alt={icon.name}
                       className="w-12 h-12"
                       loading="lazy"

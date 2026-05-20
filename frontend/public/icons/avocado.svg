@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Avocado"><title>Avocado — Persea americana</title>
+  <path d="M 50 24 Q 30 24 26 10 Q 40 4 50 18 Z" fill="#4A7C4E"></path>
+  <path d="M 30 16 Q 38 14 46 20" stroke="#2F5D3A" stroke-width="0.8" fill="none"></path>
+  <path d="M 50 24 L 50 30" stroke="#6B4A35" stroke-width="2" stroke-linecap="round"></path>
+  <path d="M 50 30 Q 30 30 28 54 Q 28 80 50 82 Q 72 80 72 54 Q 70 30 50 30 Z" fill="#2F5D3A"></path>
+  <ellipse cx="42" cy="50" rx="4" ry="10" fill="#4A7C4E" opacity="0.5"></ellipse>
+</svg>

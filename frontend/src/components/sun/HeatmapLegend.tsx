@@ -1,6 +1,7 @@
 import { sunHoursToColor, skyOpennessToColor } from '../../utils/heatmapCalc'
-import { bucketColor, bucketLabelNl, type HeatmapLayer } from '../../utils/lightQuality'
+import { bucketColor, type HeatmapLayer } from '../../utils/lightQuality'
 import type { LightBucket } from '../../utils/lightQuality'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   layer: HeatmapLayer
@@ -11,6 +12,7 @@ const SVF_STOPS = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
 const BUCKETS: LightBucket[] = ['full', 'part', 'bright_shade', 'deep_shade']
 
 export default function HeatmapLegend({ layer }: Props) {
+  const t = useT()
   if (layer === 'sun_hours') {
     return (
       <div className="flex items-center gap-1.5">
@@ -48,7 +50,7 @@ export default function HeatmapLegend({ layer }: Props) {
             className="w-2.5 h-2.5 rounded-sm shrink-0"
             style={{ backgroundColor: bucketColor(b) }}
           />
-          <span className="text-[9px] text-text-muted truncate">{bucketLabelNl(b)}</span>
+          <span className="text-[9px] text-text-muted truncate">{t.sun[`bucket${b === 'full' ? 'Full' : b === 'part' ? 'Part' : b === 'bright_shade' ? 'BrightShade' : 'DeepShade'}`]}</span>
         </div>
       ))}
     </div>

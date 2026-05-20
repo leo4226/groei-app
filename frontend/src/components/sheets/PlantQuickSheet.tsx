@@ -1,17 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject, GroundZone } from '../../types'
-import { useGroeiStore } from '../../store/useGroeiStore'
-import { updatePlantContainer, updatePlantGroundZone, updatePlantLock } from '../../api/client'
+import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
+import { useFloreren } from '../../store/useFloreren'
+import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
+import { useT } from '../../context/LanguageContext'
+
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
-import { getCareDisplay } from '../../utils/careDisplay'
+
 
 interface Props {
   plant: MapPlant
   objects: MapObject[]
-  groundZones?: GroundZone[]
+  soilGroundZones?: GroundZone[]
   heatmapCells?: HeatmapCell[]
   onClose: () => void
   onCareAction: () => void
@@ -21,11 +23,17 @@ interface Props {
 }
 
 
-export default function PlantQuickSheet({ plant, objects, groundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
+export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], heatmapCells, onClose, onCareAction, onAction, onDuplicate, onRemove }: Props) {
+  const t = useT()
   const navigate = useNavigate()
-  const markCareDone = useGroeiStore((s) => s.markCareDone)
+  const markCareDone = useFloreren((s) => s.markCareDone)
   const [locked, setLocked] = useState(plant.is_locked)
-  const care = getCareDisplay(plant)
+  const [detail, setDetail] = useState<Plant | null>(null)
+
+  useEffect(() => {
+    setDetail(null)
+    fetchPlant(plant.id).then(setDetail).catch(() => {})
+  }, [plant.id])
 
   const handleToggleLock = async () => {
     const next = !locked
@@ -47,12 +55,21 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     }
   }
 
+  const handleFertilize = async () => {
+    try {
+      await markCareDone(plant.id, 'fertilize')
+      onCareAction()
+    } catch (e) {
+      console.error('Failed to mark fertilize done:', e)
+    }
+  }
+
   const container = plant.container_id
     ? objects.find(o => o.id === plant.container_id)
     : null
 
   const groundZone = plant.ground_zone_id
-    ? groundZones.find(z => z.id === plant.ground_zone_id)
+    ? soilGroundZones.find(z => z.id === plant.ground_zone_id)
     : null
 
   const sunFitInfo = (() => {
@@ -85,9 +102,6 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
     onAction()
   }
 
-  const urgentInfo = plant.most_urgent
-  const careTypeInfo = urgentInfo ? CARE_TYPE_INFO[urgentInfo.care_type as keyof typeof CARE_TYPE_INFO] : null
-
   return (
     <>
       {/* Backdrop */}
@@ -97,7 +111,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[env(safe-area-inset-bottom)] animate-slide-up">
         <button
           onClick={onClose}
-          aria-label="Sluiten"
+          aria-label={t.plantQuickSheet.close}
           className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
@@ -120,22 +134,20 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
                   onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
                   className="text-xs text-primary font-medium shrink-0 hover:underline"
                 >
-                  Meer info →
+                  {t.plantQuickSheet.moreInfo}
                 </button>
               </div>
               {plant.species && (
                 <p className="text-sm text-text-muted italic">{plant.species}</p>
               )}
-              <p className={`text-sm font-medium mt-0.5 ${care.colorClass}`}>
-                {care.label}
-              </p>
+
             </div>
             <div className="flex gap-1.5 shrink-0">
               {onDuplicate && (
                 <button
                   onClick={() => { onDuplicate(plant.id); onClose() }}
                   className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-text hover:bg-border transition-colors"
-                  title="Kopieer plant"
+                  title={t.plantQuickSheet.duplicate}
                 >
                   ⎘
                 </button>
@@ -143,7 +155,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
               <button
                 onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
                 className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
-                title="Bewerk plant"
+                title={t.plantQuickSheet.edit}
               >
                 ✏️
               </button>
@@ -154,7 +166,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
                     ? 'bg-amber-500/20 text-amber-600'
                     : 'bg-bg text-text-muted hover:text-amber-500 hover:bg-amber-500/10'
                 }`}
-                title={locked ? 'Ontgrendel plant' : 'Vergrendel plant'}
+                title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
               >
                 {locked ? '🔒' : '🔓'}
               </button>
@@ -162,7 +174,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
                 <button
                   onClick={() => { onRemove(plant.id); onClose() }}
                   className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-text-muted hover:text-overdue hover:bg-overdue/10 transition-colors"
-                  title="Verwijder plant"
+                  title={t.plantQuickSheet.remove}
                 >
                   🗑
                 </button>
@@ -170,30 +182,79 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
             </div>
           </div>
 
-          {/* Care info */}
-          {urgentInfo && (
-            <div className="bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
-              {careTypeInfo?.icon} Needs {careTypeInfo?.label.toLowerCase() ?? urgentInfo.care_type}
-              {urgentInfo.days_overdue > 0 && (
-                <span className="text-overdue font-medium"> — {urgentInfo.days_overdue} day{urgentInfo.days_overdue !== 1 ? 's' : ''} overdue</span>
-              )}
-              {urgentInfo.last_done_by && (
-                <span className="block mt-1">Last by {urgentInfo.last_done_by}</span>
-              )}
+          {/* Care schedules */}
+          {detail?.care_schedules && detail.care_schedules.length > 0 ? (
+            <div className="flex flex-col gap-2 mb-4">
+              {detail.care_schedules.map(sched => {
+                const nextDue = new Date(sched.next_due)
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const diffMs = nextDue.getTime() - today.getTime()
+                const daysUntil = Math.round(diffMs / 86400000)
+                const isOverdue = daysUntil < 0
+                const isDueToday = daysUntil === 0
+
+                const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
+                const careLabelMap: Record<string, string> = {
+                  water: t.plantQuickSheet.careWater, fertilize: t.plantQuickSheet.careFertilize, prune: t.plantQuickSheet.carePrune, repot_check: t.plantQuickSheet.careRepot,
+                  mist: t.plantQuickSheet.careMist, rotate: t.plantQuickSheet.careRotate, protect_cold: t.plantQuickSheet.careProtectCold, protect_heat: t.plantQuickSheet.careProtectHeat,
+                }
+                const icon = info?.icon ?? '📋'
+                const label = careLabelMap[sched.care_type] ?? info?.label ?? sched.care_type
+
+                let statusText: string
+                let statusColor: string
+                if (isOverdue) {
+                  statusText = t.plantQuickSheet.overdue(Math.abs(daysUntil))
+                  statusColor = 'var(--color-overdue)'
+                } else if (isDueToday) {
+                  statusText = t.plantQuickSheet.today
+                  statusColor = 'var(--color-due)'
+                } else {
+                  statusText = t.plantQuickSheet.overN(daysUntil)
+                  statusColor = 'var(--color-text-muted)'
+                }
+
+                return (
+                  <div
+                    key={sched.id}
+                    className="flex items-center gap-2.5 px-3 py-2 bg-bg rounded-xl border border-border-soft"
+                    style={{
+                      borderColor: isOverdue ? 'var(--color-overdue)' : undefined,
+                    }}
+                  >
+                    <span className="text-lg">{icon}</span>
+                    <span className="flex-1 text-text text-sm">
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs" style={{ color: statusColor }}>
+                      {statusText}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
+          ) : (
+            // Fallback: show most_urgent if detail not yet loaded
+            plant.most_urgent && (
+              <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4 text-sm text-text-muted">
+                <span>💧</span>
+                <span>{plant.most_urgent.care_type} · {plant.most_urgent.days_overdue > 0 ? t.plantQuickSheet.overdue(plant.most_urgent.days_overdue) : t.plantQuickSheet.today}</span>
+              </div>
+            )
           )}
 
           {/* Container info */}
           {container && (
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <span className="text-sm text-text-muted flex-1">
-                In: <span className="text-text font-medium">{container.name}</span>
+                {t.plantQuickSheet.plantedIn} <span className="text-text font-medium">{container.name}</span>
               </span>
               <button
                 onClick={handleRemoveFromContainer}
                 className="text-xs text-text-muted hover:text-overdue transition-colors"
               >
-                Remove
+                {t.plantQuickSheet.removeFrom}
               </button>
             </div>
           )}
@@ -203,7 +264,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-text-muted">
-                  Geplant in: <span className="text-text font-medium">{groundZone.name}</span>
+                  {t.plantQuickSheet.plantedIn} <span className="text-text font-medium">{groundZone.name}</span>
                 </span>
                 {groundZone.soil_note && (
                   <p className="text-xs text-text-muted mt-0.5 italic">{groundZone.soil_note}</p>
@@ -213,7 +274,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
                 onClick={handleLiftFromZone}
                 className="text-xs text-text-muted hover:text-overdue transition-colors shrink-0"
               >
-                Verplaatsen
+                {t.plantQuickSheet.move}
               </button>
             </div>
           )}
@@ -223,7 +284,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
             <div className="flex items-center gap-2 bg-bg rounded-xl px-4 py-3 mb-4">
               <span className="text-base">☀️</span>
               <span className="text-sm text-text-muted flex-1">
-                Dit punt:{' '}
+                {t.plantQuickSheet.thisSpot}{' '}
                 <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u</span>
                 {' · '}{sunFitInfo.profile.labelNl}
               </span>
@@ -234,7 +295,7 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
                   color: SUN_FIT_COLORS[sunFitInfo.fit],
                 }}
               >
-                {sunFitInfo.fit === 'good' ? '✓ Geschikt' : sunFitInfo.fit === 'partial' ? '~ Deels' : '⚠ Te weinig'}
+                {sunFitInfo.fit === 'good' ? t.plantQuickSheet.goodFit : sunFitInfo.fit === 'partial' ? t.plantQuickSheet.partialFit : t.plantQuickSheet.insufficientFit}
               </span>
             </div>
           )}
@@ -245,13 +306,19 @@ export default function PlantQuickSheet({ plant, objects, groundZones = [], heat
               onClick={handleWater}
               className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
-              💧 Water
+              {t.plantQuickSheet.water}
+            </button>
+            <button
+              onClick={handleFertilize}
+              className="flex-1 bg-emerald-green/15 text-emerald-green rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+            >
+              {t.plantQuickSheet.fertilize}
             </button>
             <button
               onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
               className="flex-1 bg-bg text-text rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
             >
-              ✏️ Bewerken
+              {t.plantQuickSheet.editPlant}
             </button>
           </div>
         </div>

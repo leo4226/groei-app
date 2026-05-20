@@ -6,6 +6,7 @@ import {
   ROOM_FILL,
   STRUCTURE_FILL,
 } from '../../constants/mapDefaults'
+import { computeClipPoints } from '../../utils/clipPath'
 import DoorRenderer from './DoorRenderer'
 import WindowRenderer from './WindowRenderer'
 
@@ -70,6 +71,51 @@ function getEdgeGaps(
 // ── Shared-wall helpers ──────────────────────────────────────────────────────
 
 const FLUSH_TOL = 3  // px
+
+/**
+ * Returns true when this room's edge is flush against another room's opposite edge.
+ * Only one of the two adjacent rooms suppresses its wall — determined by which
+ * zone has the higher string ID (lexicographic comparison ensures exactly one
+ * winner).  This prevents two interior walls stacking into what looks like one
+ * thick wall.
+ */
+function isEdgeFlushWithRoom(
+  zone: EditorZone,
+  edge: RoomEdge,
+  allZones: EditorZone[],
+): boolean {
+  const isVert = edge === 'left' || edge === 'right'
+  let edgeCoord: number, perpMin: number, perpMax: number
+  switch (edge) {
+    case 'left':   edgeCoord = zone.x;               perpMin = zone.y; perpMax = zone.y + zone.height; break
+    case 'right':  edgeCoord = zone.x + zone.width;   perpMin = zone.y; perpMax = zone.y + zone.height; break
+    case 'top':    edgeCoord = zone.y;               perpMin = zone.x; perpMax = zone.x + zone.width;  break
+    case 'bottom': edgeCoord = zone.y + zone.height;  perpMin = zone.x; perpMax = zone.x + zone.width;  break
+  }
+
+  for (const other of allZones) {
+    if (other.id === zone.id || other.type !== 'room') continue
+
+    // The other room's opposite-side edge coordinate
+    let otherEdgeCoord: number
+    let otherPerpMin: number, otherPerpMax: number
+    switch (edge) {
+      case 'left':   otherEdgeCoord = other.x + other.width;  otherPerpMin = other.y; otherPerpMax = other.y + other.height; break
+      case 'right':  otherEdgeCoord = other.x;                otherPerpMin = other.y; otherPerpMax = other.y + other.height; break
+      case 'top':    otherEdgeCoord = other.y + other.height; otherPerpMin = other.x; otherPerpMax = other.x + other.width;  break
+      case 'bottom': otherEdgeCoord = other.y;                otherPerpMin = other.x; otherPerpMax = other.x + other.width;  break
+    }
+
+    if (Math.abs(edgeCoord - otherEdgeCoord) > FLUSH_TOL) continue
+
+    // Perpendicular overlap
+    if (Math.min(perpMax, otherPerpMax) <= Math.max(perpMin, otherPerpMin)) continue
+
+    // Tiebreaker: only the zone with the higher ID suppresses — ensures exactly one wall stays
+    if (zone.id > other.id) return true
+  }
+  return false
+}
 
 /**
  * Fix 2 — Should wall RECTS be suppressed on this room edge?
@@ -206,36 +252,87 @@ function getInheritedGaps(
   return result
 }
 
-// ── Clip-path helpers (corner cut) ─────────────────────────────────────────
+/**
+ * Reverse of getInheritedGaps — for a ROOM zone flush against a STRUCTURE's inner
+ * face, inherit gaps from the structure's wall elements on the same edge.
+ * This makes a door placed on the exterior wall punch through the interior wall
+ * behind it as well.
+ */
+function getInheritedStructureGaps(
+  room: EditorZone,
+  edge: RoomEdge,
+  allZones: EditorZone[],
+  allWallElements: WallElement[],
+  scalePxPerM: number,
+): { start: number; end: number; element: WallElement }[] {
+  const isVert = edge === 'left' || edge === 'right'
 
-function computeClipPoints(
-  x: number, y: number, w: number, h: number,
-  cut: CornerCut
-): string {
-  const { corner, widthPx: cw, heightPx: ch } = cut
-  const safeW = Math.min(cw, w * 0.9)
-  const safeH = Math.min(ch, h * 0.9)
+  // Room's edge coordinate and perpendicular range
+  let roomEdgeCoord: number
+  let roomAbsOrigin: number
+  let roomEdgeLength: number
+  let perpMin: number, perpMax: number
 
-  switch (corner) {
-    case 'tl': return [
-      [x + safeW, y], [x + w, y], [x + w, y + h], [x, y + h],
-      [x, y + safeH], [x + safeW, y + safeH],
-    ].map(p => p.join(',')).join(' ')
-    case 'tr': return [
-      [x, y], [x + w - safeW, y], [x + w - safeW, y + safeH],
-      [x + w, y + safeH], [x + w, y + h], [x, y + h],
-    ].map(p => p.join(',')).join(' ')
-    case 'br': return [
-      [x, y], [x + w, y], [x + w, y + h - safeH],
-      [x + w - safeW, y + h - safeH], [x + w - safeW, y + h], [x, y + h],
-    ].map(p => p.join(',')).join(' ')
-    case 'bl': return [
-      [x, y], [x + w, y], [x + w, y + h],
-      [x + safeW, y + h], [x + safeW, y + h - safeH], [x, y + h - safeH],
-    ].map(p => p.join(',')).join(' ')
+  switch (edge) {
+    case 'left':   roomEdgeCoord = room.x;               roomAbsOrigin = room.y; roomEdgeLength = room.height; perpMin = room.y; perpMax = room.y + room.height; break
+    case 'right':  roomEdgeCoord = room.x + room.width;   roomAbsOrigin = room.y; roomEdgeLength = room.height; perpMin = room.y; perpMax = room.y + room.height; break
+    case 'top':    roomEdgeCoord = room.y;               roomAbsOrigin = room.x; roomEdgeLength = room.width;  perpMin = room.x; perpMax = room.x + room.width;  break
+    case 'bottom': roomEdgeCoord = room.y + room.height;  roomAbsOrigin = room.x; roomEdgeLength = room.width;  perpMin = room.x; perpMax = room.x + room.width;  break
   }
+
+  const result: { start: number; end: number; element: WallElement }[] = []
+
+  for (const struct of allZones) {
+    if (struct.id === room.id || struct.type !== 'structure') continue
+
+    const st = getWallThicknessPx(struct, scalePxPerM)
+
+    // Structure's inner face on the SAME edge side
+    let structInnerFace: number
+    let structEdge: RoomEdge
+    let structAbsOrigin: number
+    let structEdgeLength: number
+    let sPerpMin: number, sPerpMax: number
+
+    switch (edge) {
+      case 'left':
+        structInnerFace = struct.x + st; structEdge = 'left'
+        structAbsOrigin = struct.y; structEdgeLength = struct.height
+        sPerpMin = struct.y; sPerpMax = struct.y + struct.height; break
+      case 'right':
+        structInnerFace = struct.x + struct.width - st; structEdge = 'right'
+        structAbsOrigin = struct.y; structEdgeLength = struct.height
+        sPerpMin = struct.y; sPerpMax = struct.y + struct.height; break
+      case 'top':
+        structInnerFace = struct.y + st; structEdge = 'top'
+        structAbsOrigin = struct.x; structEdgeLength = struct.width
+        sPerpMin = struct.x; sPerpMax = struct.x + struct.width; break
+      case 'bottom':
+        structInnerFace = struct.y + struct.height - st; structEdge = 'bottom'
+        structAbsOrigin = struct.x; structEdgeLength = struct.width
+        sPerpMin = struct.x; sPerpMax = struct.x + struct.width; break
+    }
+
+    // Room's edge must be at the structure's inner face
+    if (Math.abs(roomEdgeCoord - structInnerFace) > FLUSH_TOL) continue
+
+    // Perpendicular overlap
+    if (Math.min(perpMax, sPerpMax) <= Math.max(perpMin, sPerpMin)) continue
+
+    // Inherit structure's wall elements on this edge
+    const structElements = allWallElements.filter(w => w.zoneId === struct.id && w.edge === structEdge)
+    for (const el of structElements) {
+      const widthPx = (el.widthCm * scalePxPerM) / 100
+      const absCenter = structAbsOrigin + el.position * structEdgeLength
+      const localCenter = absCenter - roomAbsOrigin
+      if (localCenter + widthPx / 2 <= 0 || localCenter - widthPx / 2 >= roomEdgeLength) continue
+      result.push({ start: localCenter - widthPx / 2, end: localCenter + widthPx / 2, element: el })
+    }
+  }
+  return result
 }
 
+// ── Corner-cut wall helper ────────────────────────────────────────────────
 function getCornerCutWallRects(
   x: number, y: number, w: number, h: number,
   cut: CornerCut, t: number
@@ -300,10 +397,10 @@ export default function RoomWallRenderer({
   // Pre-compute suppressions for ALL four edges so vertical walls can fill the
   // corner caps that would otherwise be left empty when an adjacent horizontal
   // wall is suppressed (the cap gap bug).
-  const topSup    = !isStructure && isEdgeFlushWithStructure(zone, 'top',    zones, scalePxPerM)
-  const bottomSup = !isStructure && isEdgeFlushWithStructure(zone, 'bottom', zones, scalePxPerM)
-  const leftSup   = !isStructure && isEdgeFlushWithStructure(zone, 'left',   zones, scalePxPerM)
-  const rightSup  = !isStructure && isEdgeFlushWithStructure(zone, 'right',  zones, scalePxPerM)
+  const topSup    = !isStructure && (isEdgeFlushWithStructure(zone, 'top',    zones, scalePxPerM) || isEdgeFlushWithRoom(zone, 'top',    zones))
+  const bottomSup = !isStructure && (isEdgeFlushWithStructure(zone, 'bottom', zones, scalePxPerM) || isEdgeFlushWithRoom(zone, 'bottom', zones))
+  const leftSup   = !isStructure && (isEdgeFlushWithStructure(zone, 'left',   zones, scalePxPerM) || isEdgeFlushWithRoom(zone, 'left',   zones))
+  const rightSup  = !isStructure && (isEdgeFlushWithStructure(zone, 'right',  zones, scalePxPerM) || isEdgeFlushWithRoom(zone, 'right',  zones))
 
   function edgeSuppressed(edge: RoomEdge) {
     return edge === 'top' ? topSup : edge === 'bottom' ? bottomSup
@@ -352,7 +449,13 @@ export default function RoomWallRenderer({
             ? getInheritedGaps(zone, edge, zones, wallElements, scalePxPerM)
             : []
 
-          const allGaps = [...ownGaps, ...inheritedGaps]
+          // Fix 3: rooms inherit gaps from structures flush against their outer face
+          // (e.g. a front door on the exterior wall punches through the room wall behind it)
+          const inheritedStructGaps = !isStructure
+            ? getInheritedStructureGaps(zone, edge, zones, wallElements, scalePxPerM)
+            : []
+
+          const allGaps = [...ownGaps, ...inheritedGaps, ...inheritedStructGaps]
           const segments = suppressWalls ? [] : splitWallForGaps(len, allGaps)
           const isHorizontal = edge === 'top' || edge === 'bottom'
 
@@ -396,8 +499,8 @@ export default function RoomWallRenderer({
                     <rect
                       x={hitRect.x - 4} y={hitRect.y - 4}
                       width={hitRect.width + 8} height={hitRect.height + 8}
-                      fill={isWallElemSelected ? 'rgba(37,68,160,0.15)' : 'transparent'}
-                      stroke={isWallElemSelected ? '#2544a0' : 'none'}
+                      fill={isWallElemSelected ? 'rgba(74,144,217,0.15)' : 'transparent'}
+                      stroke={isWallElemSelected ? '#4A90D9' : 'none'}
                       strokeWidth={1.5}
                       strokeDasharray={isWallElemSelected ? '4 2' : undefined}
                       style={{ cursor: 'grab' }}
@@ -421,25 +524,8 @@ export default function RoomWallRenderer({
         <rect key={`cw-${i}`} {...r} fill={WALL_COLOR} pointerEvents="none" />
       ))}
 
-      {/* Structure label above the top outer wall */}
-      {isStructure && w > 40 && (
-        <text
-          x={x + w / 2}
-          y={y - 6}
-          textAnchor="middle"
-          dominantBaseline="auto"
-          fill="#d4b896"
-          fontSize={9.5}
-          fontWeight={600}
-          fontFamily="sans-serif"
-          pointerEvents="none"
-        >
-          {zone.label ? `${zone.label} · ${widthM} × ${heightM} m` : `${widthM} × ${heightM} m`}
-        </text>
-      )}
-
       {/* Room label + dimensions + area — fits dynamically inside the interior */}
-      {!isStructure && (
+      {!isStructure && false && (
         <g pointerEvents="none">
           {(() => {
             const iw = Math.max(0, w - 2 * t)
@@ -490,7 +576,7 @@ export default function RoomWallRenderer({
       {isSelected && (
         <rect
           x={x} y={y} width={w} height={h}
-          fill="none" stroke="#2544a0"
+          fill="none" stroke="#4A90D9"
           strokeWidth={2} strokeDasharray="6 3"
           pointerEvents="none"
         />

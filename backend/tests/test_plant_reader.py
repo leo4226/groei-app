@@ -192,15 +192,15 @@ async def test_enrich_plants_batch():
         await db.executescript("""
             CREATE TABLE care_schedules (
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
-                next_due TEXT, last_done_by INTEGER, is_active INTEGER DEFAULT 1
+                next_due TEXT, last_done TEXT, last_done_by INTEGER, is_active INTEGER DEFAULT 1
             );
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
-            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done_by, is_active)
-            VALUES (1, 1, 'water', '2025-12-31', NULL, 1);
-            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done_by, is_active)
-            VALUES (2, 2, 'water', '2026-12-31', NULL, 1);
-            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done_by, is_active)
-            VALUES (3, 3, 'fertilize', '2026-06-15', NULL, 1);
+            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done, last_done_by, is_active)
+            VALUES (1, 1, 'water', '2025-12-31', NULL, NULL, 1);
+            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done, last_done_by, is_active)
+            VALUES (2, 2, 'water', '2026-12-31', NULL, NULL, 1);
+            INSERT INTO care_schedules (id, plant_id, care_type, next_due, last_done, last_done_by, is_active)
+            VALUES (3, 3, 'fertilize', '2026-06-15', NULL, NULL, 1);
         """)
         await db.commit()
 

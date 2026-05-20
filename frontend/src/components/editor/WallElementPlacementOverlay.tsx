@@ -106,8 +106,8 @@ export default function WallElementPlacementOverlay({
     highlightRect = { x: x + w - t, y: y + t + gapStart, width: t, height: widthPx }
   }
 
-  const accentColor = isDoor ? '#2544a0' : '#24e34c'
-  const fillColor = isDoor ? 'rgba(37,68,160,0.35)' : 'rgba(36,227,76,0.35)'
+  const accentColor = isDoor ? '#4A90D9' : '#5B9A6F'
+  const fillColor = isDoor ? 'rgba(74,144,217,0.35)' : 'rgba(91,154,111,0.35)'
 
   return (
     <g onClick={() => onPlace(target.zoneId, target.edge, target.position)}>

@@ -1,43 +1,93 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchMapById, updateMap } from '../api/client'
+import { fetchMapById, updateMap, fetchObjects, updateObjectPosition, archiveObject, updateObject } from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
-import type { CanvasData, MapInfo } from '../types'
+import type { CanvasData, MapInfo, MapObject, MapType } from '../types'
 import EditorCanvas from '../components/editor/EditorCanvas'
 import EditorToolbar from '../components/editor/EditorToolbar'
 import EditorLegendPanel from '../components/editor/EditorLegendPanel'
 import ZonePropertiesPanel from '../components/editor/ZonePropertiesPanel'
 import WallElementPropertiesPanel from '../components/editor/WallElementPropertiesPanel'
-import { TOOLBAR_NL, OPSLAAN_NL, EDITOR_NL } from '../utils/editorStrings.nl'
+import ShadowCasterPropertiesPanel from '../components/editor/ShadowCasterPropertiesPanel'
+import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
+import { useT } from '../context/LanguageContext'
+import { deriveGardenBounds } from '../utils/gardenFromCanvas'
 
 export default function LayoutEditorPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const mapId = id ? parseInt(id, 10) : null
 
   const [map, setMap] = useState<MapInfo | null>(null)
+  const [objects, setObjects] = useState<MapObject[]>([])
+  const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [previewMode, setPreviewMode] = useState(false)
-  const [exporting, setExporting] = useState(false)
 
   const editor = useEditorState()
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const gardenBounds = useMemo(
+    () => deriveGardenBounds(editor.zones),
+    [editor.zones],
+  )
+  // React 19 StrictMode simulates Activity (off-screen) by remounting with preserved state.
+  // This ref prevents re-fetching and re-calling loadCanvasData on those remounts,
+  // which would overwrite the user's unsaved changes with stale server data.
+  const loadedMapIdRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!mapId) return
-    fetchMapById(mapId)
-      .then((m) => {
+    // Skip if already loaded for this map. The check inside `.then()` handles the
+    // StrictMode initial double-mount (where the ref isn't set yet when both
+    // effects start); this top-level check handles Activity remounts that fire
+    // after the editor has real data.
+    if (loadedMapIdRef.current === mapId) return
+    let cancelled = false
+    Promise.all([
+      fetchMapById(mapId),
+      fetchObjects(),
+    ]).then(([m, objs]) => {
+        if (cancelled) return
+        // Guard again inside .then() to handle the StrictMode double-mount race:
+        // both effects start before the ref is written, but only the first to
+        // complete should load.
+        if (loadedMapIdRef.current === mapId) return
+        loadedMapIdRef.current = mapId
         setMap(m)
+        setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
         if (m.canvas_data) {
           try {
             const data = JSON.parse(m.canvas_data) as CanvasData
-            data.mapType = m.map_type
+            // Normalise mapType to 'outdoor'|'indoor', mapping legacy 'garden'/'house' values
+            const raw = (data.mapType as string) || m.map_type
+            data.mapType = (raw === 'indoor' || raw === 'house') ? 'indoor' : 'outdoor'
             editor.loadCanvasData(data)
           } catch { /* start blank */ }
         }
       })
-      .finally(() => setLoading(false))
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [mapId])
+
+  const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
+    setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
+    try {
+      await updateObjectPosition(objectId, { map_x: Math.round(x * 10) / 10, map_y: Math.round(y * 10) / 10 })
+    } catch {
+      const objs = await fetchObjects()
+      setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+    }
+  }, [mapId])
+
+  const handleObjectRotate = useCallback(async (objectId: number, rotation: number) => {
+    setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, rotation } : o))
+    try {
+      await updateObject(objectId, { rotation })
+    } catch {
+      const objs = await fetchObjects()
+      setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+    }
   }, [mapId])
 
   const doSave = useCallback(
@@ -55,35 +105,55 @@ export default function LayoutEditorPage() {
     [mapId, editor.markClean]
   )
 
+  const isSavingRef = useRef(false)
+
+  useEffect(() => {
+    setSaveStatus(editor.isDirty ? 'unsaved' : 'saved')
+  }, [editor.isDirty])
+
+  // Save + navigate helper — used by back/exit buttons
+  const handleExit = useCallback(
+    async (url: string) => {
+      if (!editor.isDirty || !mapId || isSavingRef.current) {
+        navigate(url)
+        return
+      }
+      isSavingRef.current = true
+      setSaveStatus('saving')
+      try {
+        await updateMap(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
+        editor.markClean()
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('unsaved')
+      }
+      isSavingRef.current = false
+      navigate(url)
+    },
+    [mapId, editor.isDirty, editor.markClean, editor.toCanvasData, navigate],
+  )
+
+  // Warn on tab close / refresh when unsaved
   useEffect(() => {
     if (!editor.isDirty) return
-    setSaveStatus('unsaved')
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      doSave(editor.toCanvasData())
-    }, 1000)
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-  }, [editor.isDirty, editor.zones, editor.wallElements, editor.scalePxPerM, editor.mapType, doSave, editor.toCanvasData])
-
-  async function handleExport() {
-    if (!mapId) return
-    setExporting(true)
-    try {
-      const res = await fetch(`/api/maps/${mapId}/render-svg`, { method: 'POST' })
-      if (!res.ok) throw new Error('Export failed')
-      setSaveStatus('saved')
-    } catch {
-      alert('SVG export failed')
-    } finally {
-      setExporting(false)
-    }
-  }
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editor.isDirty])
 
   function handleDelete() {
     if (editor.selectedWallElementId) {
       editor.deleteWallElement(editor.selectedWallElementId)
     } else if (editor.selectedZoneId) {
       editor.deleteZone(editor.selectedZoneId)
+    } else if (editor.selectedShadowCasterId) {
+      editor.deleteShadowCaster(editor.selectedShadowCasterId)
+    } else if (selectedObjectId !== null) {
+      archiveObject(selectedObjectId).then(() => {
+        setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
+        setSelectedObjectId(null)
+        editor.setTool('select')
+      }).catch(() => {})
     }
   }
 
@@ -108,27 +178,46 @@ export default function LayoutEditorPage() {
         } else if (editor.selectedZoneId) {
           e.preventDefault()
           editor.deleteZone(editor.selectedZoneId)
+        } else if (editor.selectedShadowCasterId) {
+          e.preventDefault()
+          editor.deleteShadowCaster(editor.selectedShadowCasterId)
+        } else if (selectedObjectId !== null) {
+          e.preventDefault()
+          archiveObject(selectedObjectId).then(() => {
+            setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
+            setSelectedObjectId(null)
+            editor.setTool('select')
+          }).catch(() => {})
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [editor.selectedZoneId, editor.selectedWallElementId, editor.deleteZone, editor.deleteWallElement, editor.undo])
+  }, [editor.selectedZoneId, editor.selectedWallElementId, editor.selectedShadowCasterId, selectedObjectId, editor.deleteZone, editor.deleteWallElement, editor.deleteShadowCaster, editor.undo])
 
   const selectedZone = editor.zones.find((z) => z.id === editor.selectedZoneId) ?? null
   const selectedWallElement = editor.wallElements.find((w) => w.id === editor.selectedWallElementId) ?? null
+  const selectedShadowCaster = editor.shadowCasters.find((s) => s.id === editor.selectedShadowCasterId) ?? null
+  const selectedObject = objects.find((o) => o.id === selectedObjectId) ?? null
 
-  if (loading) return <div className="p-6 text-text-muted text-center">{EDITOR_NL.laden}</div>
-  if (!map) return <div className="p-6 text-overdue text-center">{EDITOR_NL.kaartNietGevonden}</div>
+  if (loading) return <div className="p-6 text-text-muted text-center">{t.editor.loading}</div>
+  if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>
 
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-border">
-        <button onClick={() => navigate('/maps')} className="text-text-muted text-sm shrink-0">
-          {TOOLBAR_NL.terug}
+        <button onClick={() => handleExit('/dashboard')} className="text-text-muted text-sm shrink-0">
+          {t.editor.toolbar.back}
         </button>
         <h1 className="text-sm font-semibold text-text flex-1 truncate">{map.name}</h1>
+
+        <button
+          onClick={() => handleExit(`/map/${map.slug}`)}
+          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg"
+        >
+          Bekijken →
+        </button>
 
         {/* Undo button */}
         <button
@@ -137,7 +226,7 @@ export default function LayoutEditorPage() {
           title="Ctrl+Z"
           className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-bg"
         >
-          ↩ {TOOLBAR_NL.ongedaanMaken}
+          ↩ {t.editor.toolbar.undo}
         </button>
 
         <button
@@ -148,21 +237,14 @@ export default function LayoutEditorPage() {
               : 'text-text-muted border-border'
           }`}
         >
-          {previewMode ? TOOLBAR_NL.bewerken : TOOLBAR_NL.voorbeeld}
-        </button>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="text-xs px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/5 text-primary shrink-0 disabled:opacity-50"
-        >
-          {exporting ? '...' : TOOLBAR_NL.svgExporteren}
+          {previewMode ? t.editor.toolbar.edit : t.editor.toolbar.preview}
         </button>
         <span className={`text-xs shrink-0 ${
           saveStatus === 'saved' ? 'text-primary' :
           saveStatus === 'saving' ? 'text-text-muted' :
           'text-pumpkin-swirl'
         }`}>
-          {saveStatus === 'saved' ? OPSLAAN_NL.opgeslagen : saveStatus === 'saving' ? OPSLAAN_NL.bezig : OPSLAAN_NL.nietOpgeslagen}
+          {saveStatus === 'saved' ? t.editor.save.saved : saveStatus === 'saving' ? t.editor.save.saving : t.editor.save.unsaved}
         </span>
       </div>
 
@@ -172,6 +254,8 @@ export default function LayoutEditorPage() {
           activeTool={editor.activeTool}
           selectedZoneId={editor.selectedZoneId}
           selectedWallElementId={editor.selectedWallElementId}
+          selectedShadowCasterId={editor.selectedShadowCasterId}
+          selectedObjectId={selectedObjectId}
           onSetTool={editor.setTool}
           onDelete={handleDelete}
         />
@@ -182,18 +266,35 @@ export default function LayoutEditorPage() {
         <EditorCanvas
           zones={editor.zones}
           wallElements={editor.wallElements}
+          objects={objects}
           selectedZoneId={editor.selectedZoneId}
           selectedWallElementId={editor.selectedWallElementId}
           activeTool={editor.activeTool}
           activeZoneType={editor.activeZoneType}
+          objectPreset={editor.objectPreset}
           scalePxPerM={editor.scalePxPerM}
           previewMode={previewMode}
+          mapType={editor.mapType}
+          mapId={mapId}
           onAddZone={editor.addZone}
           onUpdateZone={editor.updateZone}
           onUpdateWallElement={editor.updateWallElement}
           onSelectZone={editor.selectZone}
           onSelectWallElement={editor.selectWallElement}
           onPlaceWallElement={editor.addWallElement}
+          selectedObjectId={selectedObjectId}
+          onMoveObject={handleObjectMove}
+          onRotateObject={handleObjectRotate}
+          onSelectObject={setSelectedObjectId}
+          onObjectCreated={() => {
+            if (!mapId) return
+            fetchObjects().then((objs) => setObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
+          }}
+          shadowCasters={editor.shadowCasters}
+          selectedShadowCasterId={editor.selectedShadowCasterId}
+          onAddShadowCaster={editor.addShadowCaster}
+          onUpdateShadowCaster={editor.updateShadowCaster}
+          onSelectShadowCaster={editor.selectShadowCaster}
         />
 
         {!previewMode && (
@@ -202,9 +303,11 @@ export default function LayoutEditorPage() {
               activeZoneType={editor.activeZoneType}
               activeTool={editor.activeTool}
               mapType={editor.mapType}
+              objectPreset={editor.objectPreset}
               onSetZoneType={editor.setZoneType}
               onSetTool={editor.setTool}
-              onSetMapType={(t) => editor.setMapType(t as import('../types').MapType)}
+              onSetMapType={(t) => editor.setMapType(t as MapType)}
+              onSetObjectPreset={editor.setObjectPreset}
             />
             {selectedZone && !selectedWallElement && (
               <ZonePropertiesPanel
@@ -221,6 +324,69 @@ export default function LayoutEditorPage() {
                 onUpdate={(updates) => editor.updateWallElement(selectedWallElement.id, updates)}
                 onDelete={handleDelete}
               />
+            )}
+            {selectedShadowCaster && (
+              <ShadowCasterPropertiesPanel
+                caster={selectedShadowCaster}
+                scalePxPerM={editor.scalePxPerM}
+                gardenBounds={gardenBounds}
+                onUpdate={(updates) => editor.updateShadowCaster(selectedShadowCaster.id, updates)}
+                onDelete={handleDelete}
+              />
+            )}
+            {selectedObject && (
+              <ObjectPropertiesPanel
+                object={selectedObject}
+                onRotate={(rotation) => handleObjectRotate(selectedObject.id, rotation)}
+                onDelete={handleDelete}
+              />
+            )}
+
+            {/* Shadow caster list — shows all casters including off-canvas ones */}
+            {editor.shadowCasters.length > 0 && (
+              <div className="p-3 border-b border-border">
+                <p className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">
+                  Schaduw objecten ({editor.shadowCasters.length})
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {editor.shadowCasters.map((sc) => {
+                    const isSelected = sc.id === editor.selectedShadowCasterId
+                    const isRect = sc.type === 'rect'
+                    const scx = sc.type === 'rect' ? sc.x : sc.type === 'circle' ? sc.cx : sc.points[0]?.[0] ?? 0
+                    const scy = sc.type === 'rect' ? sc.y : sc.type === 'circle' ? sc.cy : sc.points[0]?.[1] ?? 0
+                    const onCanvas = scx >= -50 && scx <= 730 && scy >= -50 && scy <= 730
+                    return (
+                      <button
+                        key={sc.id}
+                        onClick={() => {
+                          editor.selectShadowCaster(sc.id)
+                          editor.setTool('select')
+                        }}
+                        className={`flex items-center gap-2 px-2 py-1 rounded text-left text-xs transition-colors ${
+                          isSelected
+                            ? 'bg-primary/10 ring-1 ring-primary/30'
+                            : 'hover:bg-bg'
+                        }`}
+                      >
+                        {/* Type icon */}
+                        <span className="shrink-0 text-[10px]">
+                          {isRect ? '🏢' : '🌳'}
+                        </span>
+                        {/* Name */}
+                        <span className={`flex-1 truncate ${isSelected ? 'font-semibold text-text' : 'text-text-muted'}`}>
+                          {sc.label || (isRect ? 'Gebouw' : 'Boom')}
+                        </span>
+                        {/* Off-canvas indicator */}
+                        {!onCanvas && (
+                          <span className="shrink-0 text-[9px] text-pumpkin-swirl" title="Buiten canvas">
+                            ◈
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}

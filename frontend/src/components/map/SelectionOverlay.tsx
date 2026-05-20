@@ -68,7 +68,7 @@ export default function SelectionOverlay({
             {/* Handle circle */}
             <circle
               r={7}
-              fill={isRotating ? '#160572' : '#2544a0'}
+              fill={isRotating ? '#2563eb' : '#4A90D9'}
               stroke="white"
               strokeWidth={1.5}
             />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ObjectShapeType, ObjectType, ObjectCategory } from '../../types'
 import { createObject } from '../../api/client'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   mapId: number
@@ -38,9 +39,10 @@ const HARDSCAPE_PRESETS: Preset[] = [
 ]
 
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
-const COLOR_SWATCHES = ['#d64e2e', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#24e34c', '#333333', '#ff7701']
+const COLOR_SWATCHES = ['#B7654B', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#5B9A6F', '#333333', '#D4A843']
 
 export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
+  const t = useT()
   const [name, setName] = useState('')
   const [objectType, setObjectType] = useState<ObjectType>('pot')
   const [shape, setShape] = useState<ObjectShapeType>('circle')
@@ -104,10 +106,10 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
         <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 mb-4 shrink-0" />
 
         <div className="px-5 overflow-y-auto flex-1">
-          <h3 className="text-lg font-semibold text-text mb-4">Add object</h3>
+          <h3 className="text-lg font-semibold text-text mb-4">{t.addObject.title}</h3>
 
           {/* Container presets */}
-          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Containers</span>
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.containers}</span>
           <div className="flex gap-2 overflow-x-auto pb-2 mt-1 mb-3 -mx-1 px-1">
             {CONTAINER_PRESETS.map((preset) => (
               <button
@@ -126,7 +128,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
           </div>
 
           {/* Hardscape & utility presets */}
-          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Hardscape & Utility</span>
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.hardscape}</span>
           <div className="flex gap-2 overflow-x-auto pb-3 mt-1 mb-4 -mx-1 px-1">
             {HARDSCAPE_PRESETS.map((preset) => (
               <button
@@ -146,12 +148,12 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
 
           {/* Name */}
           <label className="block mb-3">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Name</span>
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.name}</span>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Front deck pot"
+              placeholder={t.addObject.namePlaceholder}
               className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
             />
           </label>
@@ -159,7 +161,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
           {/* Shape — containers only */}
           {isContainer && (
             <div className="mb-3">
-              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Shape</span>
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.shape}</span>
               <div className="flex gap-2 mt-1">
                 {(['circle', 'square', 'rectangle'] as ObjectShapeType[]).map((s) => (
                   <button
@@ -169,7 +171,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
                       shape === s ? 'bg-primary text-white' : 'bg-bg text-text-muted'
                     }`}
                   >
-                    {s === 'circle' ? 'Round' : s === 'square' ? 'Square' : 'Rect'}
+                    {s === 'circle' ? t.addObject.round : s === 'square' ? t.addObject.square : t.addObject.rect}
                   </button>
                 ))}
               </div>
@@ -178,11 +180,11 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
 
           {/* Dimensions */}
           <div className="mb-3">
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Dimensions (cm)</span>
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.dimensions}</span>
             <div className="flex gap-2 mt-1">
               {shape === 'circle' ? (
                 <label className="flex-1">
-                  <span className="text-xs text-text-muted">Diameter</span>
+                  <span className="text-xs text-text-muted">{t.addObject.diameter}</span>
                   <input
                     type="number"
                     value={diameterCm}
@@ -193,7 +195,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
               ) : (
                 <>
                   <label className="flex-1">
-                    <span className="text-xs text-text-muted">Width</span>
+                    <span className="text-xs text-text-muted">{t.addObject.width}</span>
                     <input
                       type="number"
                       value={widthCm}
@@ -203,7 +205,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
                   </label>
                   {shape === 'rectangle' && (
                     <label className="flex-1">
-                      <span className="text-xs text-text-muted">Depth</span>
+                      <span className="text-xs text-text-muted">{t.addObject.depth}</span>
                       <input
                         type="number"
                         value={depthCm}
@@ -220,7 +222,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
           {/* Material — containers only */}
           {isContainer && (
             <label className="block mb-3">
-              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Material</span>
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.material}</span>
               <select
                 value={material}
                 onChange={(e) => setMaterial(e.target.value)}
@@ -236,7 +238,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
           {/* Color — containers only */}
           {isContainer && (
             <div className="mb-5">
-              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">Color</span>
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.color}</span>
               <div className="flex gap-2 mt-1.5 flex-wrap">
                 {COLOR_SWATCHES.map((c) => (
                   <button
@@ -266,13 +268,13 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
             disabled={!name.trim() || saving}
             className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform disabled:opacity-50"
           >
-            {saving ? 'Adding...' : 'Add to map'}
+            {saving ? t.addObject.adding : t.addObject.addToMap}
           </button>
           <button
             onClick={onClose}
             className="flex-1 bg-bg text-text rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
           >
-            Cancel
+            {t.addObject.cancel}
           </button>
         </div>
       </div>

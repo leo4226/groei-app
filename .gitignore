@@ -25,10 +25,10 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Uploaded photos and generated static files
+# Uploaded photos (keep directory, ignore contents)
 backend/photos/*
 !backend/photos/.gitkeep
-backend/static/
 
-# Claude Code session data
-.claude/
+# Alembic
+alembic/__pycache__/
+.vercel

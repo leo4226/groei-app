@@ -2,25 +2,21 @@ import { useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
-import { updatePlantPosition, updateObjectPosition, updateObject, updatePlantContainer, updatePlantDisplayRadius, updatePlantGroundZone } from '../../api/client'
+import { updatePlantPosition, updatePlantContainer, updatePlantDisplayRadius, updatePlantGroundZone, updateObjectPosition } from '../../api/client'
 import { screenToSVG, resolveDropTarget } from '../../utils/svgCoords'
 import type { DropTarget } from '../../utils/svgCoords'
 import { useMapSelection } from '../../hooks/useMapSelection'
-import { useResize } from '../../hooks/useResize'
-import { useRotate } from '../../hooks/useRotate'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { GARDEN_CLIP, GARDEN_FLOOR } from '../../utils/gardenStructures'
+import { isInsideGarden } from '../../utils/gardenFromCanvas'
 import ObjectsLayer from './ObjectsLayer'
 import PlantsLayer from './PlantsLayer'
-import SelectionOverlay from './SelectionOverlay'
 import PlantResizeOverlay from './PlantResizeOverlay'
 import ShadowLayer from './ShadowLayer'
 import SunDirectionArrow from './SunDirectionArrow'
 import SunHeatmap from '../sun/SunHeatmap'
 import PlantSuitabilityLayer from '../sun/PlantSuitabilityLayer'
 import FixedPlantsLayer from './FixedPlantsLayer'
-import GroundZonesLayer from './GroundZonesLayer'
 import GardenCompass from './GardenCompass'
 import CanvasZonesLayer from './CanvasZonesLayer'
 import { MapRotationContext } from '../../context/MapRotationContext'
@@ -33,7 +29,6 @@ interface Props {
   map: MapDetail
   plants: MapPlant[]
   objects: MapObject[]
-  groundZones?: GroundZone[]
   onPlantTap?: (plant: MapPlant) => void
   onObjectTap?: (object: MapObject) => void
   onMapTap?: () => void
@@ -53,11 +48,15 @@ interface Props {
   onHeatmapCellTap?: (cell: HeatmapCell) => void
   /** Arbitrary SVG content rendered on top of everything (used by ?debug=svf). */
   debugOverlay?: ReactNode
+  // Dynamic garden geometry
+  gardenPerimeter?: [number, number][]
+  gardenBounds?: { minX: number; minY: number; maxX: number; maxY: number }
+  gardenViewBox?: string
 }
 
-type DragItem = { type: 'plant'; id: number } | { type: 'object'; id: number }
+type DragItem = { type: 'plant'; id: number } | { type: 'container'; id: number }
 
-export default function MapView({ map, plants, objects, groundZones = [], onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dragging, setDragging] = useState<DragItem | null>(null)
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({})
@@ -67,13 +66,11 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
   const pendingTapRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { selection, dispatch } = useMapSelection()
-  const { resizeDims, startResize, updateResize, endResize } = useResize()
-  const { liveRotation, startRotate, updateRotate, endRotate } = useRotate()
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
 
-  // Remove-button state: which item is showing the floating remove button
-  const [removeTarget, setRemoveTarget] = useState<{ type: 'plant' | 'object'; id: number; x: number; y: number } | null>(null)
+  // Remove-button state: which plant is showing the floating remove button
+  const [removeTarget, setRemoveTarget] = useState<{ type: 'plant'; id: number; x: number; y: number } | null>(null)
 
   // Plant resize state — use a ref to mirror the state so handlePointerUp avoids stale closures
   const [plantResizeRadius, setPlantResizeRadius] = useState<number | null>(null)
@@ -84,6 +81,33 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     setPlantResizeRadius(r)
     plantResizeRadiusRef.current = r
   }
+
+  // --- Parse canvas_data for live zone rendering ---
+  const canvasData = useMemo<CanvasData | null>(() => {
+    if (!map.canvas_data) return null
+    try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
+  }, [map.canvas_data])
+  const isHouseMap = !!(canvasData && map.map_type === 'indoor')
+
+  // Derive plantable ground zones from canvas_data soil zones
+  const soilGroundZones = useMemo((): GroundZone[] => {
+    if (!canvasData) return []
+    return canvasData.zones
+      .filter(z => z.type === 'soil')
+      .map(z => ({
+        id: z.id,
+        map_id: map.id,
+        name: z.label || 'Grond',
+        zone_type: 'soil' as const,
+        polygon: JSON.stringify([
+          [z.x, z.y],
+          [z.x + z.width, z.y],
+          [z.x + z.width, z.y + z.height],
+          [z.x, z.y + z.height],
+        ]),
+        soil_note: null,
+      }))
+  }, [canvasData, map.id])
 
   const dragKey = dragging ? `${dragging.type}-${dragging.id}` : null
 
@@ -100,8 +124,16 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
   const hoveredZoneId = dropTarget?.type === 'zone' ? dropTarget.target.id : null
   const hoveredZoneName = dropTarget?.type === 'zone' ? dropTarget.target.name : null
 
-  // --- Item tap: single-click opens sheet, double-click selects (drag/resize mode) ---
+  // --- Item tap: single-click opens sheet, double-click selects (plants only, objects are static) ---
   const handleItemSelect = useCallback((itemType: 'plant' | 'object', id: number) => {
+    // Objects are static — single tap always opens the sheet immediately
+    if (itemType === 'object') {
+      const obj = objects.find((o) => o.id === id)
+      if (obj) onObjectTap?.(obj)
+      onOpenDetails?.('object', id)
+      return
+    }
+
     const key = `${itemType}-${id}`
     const now = Date.now()
     const last = lastTapRef.current
@@ -110,45 +142,30 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
       lastTapRef.current = null
       pendingTapRef.current = null
       onOpenDetails?.(itemType, id)
-      if (itemType === 'plant') {
-        const plant = plants.find((p) => p.id === id)
-        if (plant) onPlantTap?.(plant)
-      } else {
-        const obj = objects.find((o) => o.id === id)
-        if (obj) onObjectTap?.(obj)
-      }
+      const plant = plants.find((p) => p.id === id)
+      if (plant) onPlantTap?.(plant)
     }
 
     // Double-click detected
     if (last && last.id === key && now - last.time < 300) {
-      // Cancel pending single-click
       if (pendingTapRef.current) {
         clearTimeout(pendingTapRef.current)
         pendingTapRef.current = null
       }
       lastTapRef.current = null
 
-      // Double-click on already-selected → show remove button
       if (selection.selectedId === key) {
-        let pos = { x: 0, y: 0 }
-        if (itemType === 'plant') {
-          const plant = plants.find((p) => p.id === id)
-          if (plant) pos = { x: plant.map_x, y: plant.map_y }
-        } else {
-          const obj = objects.find((o) => o.id === id)
-          if (obj) pos = { x: obj.map_x ?? 0, y: obj.map_y ?? 0 }
-        }
-        setRemoveTarget({ type: itemType, id, x: pos.x, y: pos.y })
+        const plant = plants.find((p) => p.id === id)
+        const pos = plant ? { x: plant.map_x, y: plant.map_y } : { x: 0, y: 0 }
+        setRemoveTarget({ type: 'plant', id, x: pos.x, y: pos.y })
         return
       }
 
-      // Double-click on unselected → select it (drag/resize mode)
       setRemoveTarget(null)
       dispatch({ type: 'SELECT', id: key, itemType })
       return
     }
 
-    // First click → schedule details open after 280ms
     lastTapRef.current = { id: key, time: now }
     setRemoveTarget(null)
     if (pendingTapRef.current) clearTimeout(pendingTapRef.current)
@@ -167,32 +184,19 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     setDragPositions((prev) => ({ ...prev, [key]: { x: plant.map_x, y: plant.map_y } }))
   }, [selection.mode])
 
-  const handleObjectPointerDown = useCallback((e: React.PointerEvent, object: MapObject) => {
-    if (selection.mode === 'resizing' || selection.mode === 'rotating') return
+  const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
     e.stopPropagation()
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
-    const key = `object-${object.id}`
-    setDragging({ type: 'object', id: object.id })
+    const key = `container-${obj.id}`
+    setDragging({ type: 'container', id: obj.id })
     didDrag.current = false
-    setDragPositions((prev) => ({ ...prev, [key]: { x: object.map_x ?? 0, y: object.map_y ?? 0 } }))
-  }, [selection.mode])
+    setDragPositions((prev) => ({ ...prev, [key]: { x: obj.map_x ?? 0, y: obj.map_y ?? 0 } }))
+  }, [])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return
 
-    // Rotation takes priority
-    if (selection.mode === 'rotating') {
-      const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
-      if (!pt || !selection.selectedId) return
-      const objId = parseInt(selection.selectedId.replace('object-', ''))
-      const obj = objects.find((o) => o.id === objId)
-      if (!obj) return
-      const center = dragPositions[selection.selectedId] ?? { x: obj.map_x ?? 0, y: obj.map_y ?? 0 }
-      updateRotate(center, pt)
-      return
-    }
-
-    // Resize takes priority
+    // Resize takes priority (plants only)
     if (selection.mode === 'resizing') {
       const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
       if (!pt) return
@@ -211,7 +215,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         return
       }
 
-      updateResize(pt)
+      // Object resize disabled — objects are static
       return
     }
 
@@ -221,39 +225,24 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     if (!pt) return
     didDrag.current = true
     const key = `${dragging.type}-${dragging.id}`
+    const gb = gardenBounds
     const clampedX = isHouseMap && canvasData
       ? Math.max(0, Math.min(canvasData.canvas_w, pt.x))
-      : Math.max(GARDEN_FLOOR[0][0], Math.min(GARDEN_FLOOR[1][0], pt.x))
+      : gb ? Math.max(gb.minX, Math.min(gb.maxX, pt.x))
+      : Math.max(0, Math.min(680, pt.x))
     const clampedY = isHouseMap && canvasData
       ? Math.max(0, Math.min(canvasData.canvas_h, pt.y))
-      : Math.max(GARDEN_FLOOR[0][1], Math.min(GARDEN_FLOOR[2][1], pt.y))
+      : gb ? Math.max(gb.minY, Math.min(gb.maxY, pt.y))
+      : Math.max(0, Math.min(680, pt.y))
     setDragPositions((prev) => ({ ...prev, [key]: { x: clampedX, y: clampedY } }))
 
     if (dragging.type === 'plant') {
-      setDropTarget(resolveDropTarget(pt.x, pt.y, objects, groundZones))
+      setDropTarget(resolveDropTarget(pt.x, pt.y, objects, soilGroundZones))
     }
-  }, [dragging, selection.mode, updateResize, updateRotate, dragPositions, objects, groundZones])
+  }, [dragging, selection.mode, dragPositions, objects, soilGroundZones])
 
   const handlePointerUp = useCallback(async () => {
-    // End rotation
-    if (selection.mode === 'rotating') {
-      const finalRot = endRotate()
-      dispatch({ type: 'END_ROTATE' })
-      if (finalRot !== null && selection.selectedId) {
-        const objId = parseInt(selection.selectedId.replace('object-', ''))
-        const obj = objects.find((o) => o.id === objId)
-        const pos = dragPositions[selection.selectedId] ?? { x: obj?.map_x ?? 0, y: obj?.map_y ?? 0 }
-        try {
-          await updateObjectPosition(objId, { map_x: pos.x, map_y: pos.y, rotation: finalRot })
-          onPositionUpdate?.()
-        } catch (err) {
-          console.error('Failed to update rotation:', err)
-        }
-      }
-      return
-    }
-
-    // End resize
+    // End resize (plants only)
     if (selection.mode === 'resizing') {
       if (plantResizeRef.current && plantResizeRadiusRef.current !== null) {
         const plantId = plantResizeRef.current.plantId
@@ -267,29 +256,11 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         } catch (err) {
           console.error('Failed to update plant size:', err)
         }
-        return
-      }
-
-      // Object resize
-      const finalDims = endResize()
-      dispatch({ type: 'END_RESIZE' })
-      if (finalDims && selection.selectedId) {
-        const objId = parseInt(selection.selectedId.replace('object-', ''))
-        try {
-          await updateObject(objId, {
-            width_cm: finalDims.width_cm,
-            depth_cm: finalDims.depth_cm,
-            diameter_cm: finalDims.diameter_cm,
-          })
-          onPositionUpdate?.()
-        } catch (err) {
-          console.error('Failed to update dimensions:', err)
-        }
       }
       return
     }
 
-    // End drag
+    // End drag (plants only)
     if (!dragging) return
     const key = `${dragging.type}-${dragging.id}`
     const pos = dragPositions[key]
@@ -297,18 +268,15 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
       try {
         if (dragging.type === 'plant') {
           if (dropTarget?.type === 'container') {
-            // Dropped into a pot/planter
             await updatePlantContainer(dragging.id, dropTarget.target.id)
           } else if (dropTarget?.type === 'zone') {
-            // Dropped into a ground zone
             const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
             await updatePlantGroundZone(dragging.id, dropTarget.target.id, rounded.map_x, rounded.map_y)
           } else {
-            // Dropped on open map — free-standing
             const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
             await updatePlantPosition(dragging.id, { map_id: map.id, ...rounded, ground_zone_id: null })
           }
-        } else {
+        } else if (dragging.type === 'container') {
           const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
           await updateObjectPosition(dragging.id, rounded)
         }
@@ -317,42 +285,16 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         console.error('Failed to update position:', err)
       }
     }
+    if (dragging.type === 'container') {
+      setDragPositions((prev) => {
+        const { [key]: _, ...rest } = prev
+        return rest
+      })
+    }
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
-  }, [dragging, dragPositions, map.id, dropTarget, onPositionUpdate, selection, endResize, endRotate, objects, dispatch])
-
-  // --- Handle pointer down on resize handle ---
-  const handleResizePointerDown = useCallback((e: React.PointerEvent, handle: string) => {
-    e.stopPropagation()
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
-
-    if (!svgRef.current || !selection.selectedId) return
-    const objId = parseInt(selection.selectedId.replace('object-', ''))
-    const obj = objects.find((o) => o.id === objId)
-    if (!obj) return
-
-    const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
-    if (!pt) return
-
-    dispatch({ type: 'START_RESIZE', handle })
-    startResize(obj, handle, pt)
-  }, [selection.selectedId, objects, dispatch, startResize])
-
-  // --- Rotation handle ---
-  const handleRotatePointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation()
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
-    if (!svgRef.current || !selection.selectedId) return
-    const objId = parseInt(selection.selectedId.replace('object-', ''))
-    const obj = objects.find((o) => o.id === objId)
-    if (!obj) return
-    const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
-    if (!pt) return
-    const center = dragPositions[selection.selectedId] ?? { x: obj.map_x ?? 0, y: obj.map_y ?? 0 }
-    dispatch({ type: 'START_ROTATE' })
-    startRotate(center, obj.rotation || 0, pt)
-  }, [selection.selectedId, objects, dragPositions, dispatch, startRotate])
+  }, [dragging, dragPositions, map.id, dropTarget, onPositionUpdate])
 
   // --- Plant resize handles ---
   const handlePlantResizeDown = useCallback((e: React.PointerEvent, handle: string) => {
@@ -373,13 +315,6 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     dispatch({ type: 'START_RESIZE', handle })
   }, [selection.selectedId, plants, dispatch])
 
-  // --- Parse canvas_data for house maps (live zone rendering) ---
-  const canvasData = useMemo<CanvasData | null>(() => {
-    if (!map.canvas_data) return null
-    try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
-  }, [map.canvas_data])
-  const isHouseMap = !!canvasData
-
   // --- Background tap: cancel pending single-click, dismiss remove button, deselect ---
   const handleMapClick = useCallback(() => {
     // Cancel any pending single-click-to-open-sheet
@@ -399,15 +334,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
     onMapTap?.()
   }, [selection.selectedId, dispatch, onMapTap, removeTarget])
 
-  // --- Find selected object/plant for overlay ---
-  const selectedObject = selection.selectedType === 'object' && selection.selectedId
-    ? objects.find((o) => o.id === parseInt(selection.selectedId!.replace('object-', '')))
-    : null
-
-  const selectedObjPos = selectedObject
-    ? (dragPositions[selection.selectedId!] ?? { x: selectedObject.map_x ?? 0, y: selectedObject.map_y ?? 0 })
-    : null
-
+  // --- Find selected plant for overlay ---
   const selectedPlant = selection.selectedType === 'plant' && selection.selectedId
     ? plants.find((p) => p.id === parseInt(selection.selectedId!.replace('plant-', '')))
     : null
@@ -418,7 +345,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
 
   return (
     <div ref={containerRef} className="relative w-full h-full" onClick={handleMapClick}>
-      {!isHouseMap && <GardenCompass isMobile={isMobile} />}
+      {!isHouseMap && <GardenCompass bearing={map.bearing ?? 0} />}
       {cw > 0 && ch > 0 && (
       <div
         style={{
@@ -453,7 +380,7 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         viewBox={
           isHouseMap
             ? map.viewbox
-            : `${GARDEN_CLIP.x - 15} ${GARDEN_CLIP.y - 15} ${GARDEN_CLIP.width + 30} ${GARDEN_CLIP.height + 30}`
+            : gardenViewBox || map.viewbox || '0 0 680 680'
         }
         preserveAspectRatio="xMidYMid meet"
         className="absolute"
@@ -472,38 +399,44 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
         onPointerUp={handlePointerUp}
       >
       <MapRotationContext.Provider value={isMobile ? 90 : 0}>
-        {/* Background: live canvas zones (house maps) or static SVG (garden maps) */}
-        {isHouseMap && canvasData
-          ? <CanvasZonesLayer canvasData={canvasData} />
-          : (() => {
+        {/* Background: static SVG (garden maps) + live canvas zones */}
+        {canvasData ? (
+          <>
+            {!isHouseMap && (() => {
               const [,, w, h] = map.viewbox.split(' ').map(Number)
               return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
-            })()
-        }
+            })()}
+            <CanvasZonesLayer canvasData={canvasData} showBackground={isHouseMap} />
+          </>
+        ) : (
+          (() => {
+            const [,, w, h] = map.viewbox.split(' ').map(Number)
+            return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
+          })()
+        )}
         <g style={{ pointerEvents: 'all' }}>
           {/* Sun shadow overlay (behind everything interactive) */}
           {sunModeActive && shadows && shadows.length > 0 && (
-            <ShadowLayer shadows={shadows} />
+            <ShadowLayer shadows={shadows} clipPolygon={gardenPerimeter} />
           )}
           {/* Night overlay — sun is below the horizon */}
-          {sunModeActive && sunPosition && !sunPosition.isUp && (
-            <rect
-              x={GARDEN_CLIP.x} y={GARDEN_CLIP.y}
-              width={GARDEN_CLIP.width} height={GARDEN_CLIP.height}
+          {sunModeActive && sunPosition && !sunPosition.isUp && gardenPerimeter && gardenPerimeter.length >= 3 && (
+            <polygon
+              points={gardenPerimeter.map(([x, y]) => `${x},${y}`).join(' ')}
               fill="rgba(10,15,35,0.72)"
               style={{ pointerEvents: 'none' }}
             />
           )}
           {sunModeActive && sunPosition && sunPosition.isUp && (
-            <SunDirectionArrow sunPosition={sunPosition} />
+            <SunDirectionArrow sunPosition={sunPosition} clipRect={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} bearing={map.bearing ?? 0} />
           )}
 
           {/* Heatmap overlay (behind everything interactive) */}
           {heatmapCells && heatmapCells.length > 0 && (
-            <SunHeatmap cells={heatmapCells} isCalculating={!!heatmapCalculating} layer={heatmapLayer} onCellTap={onHeatmapCellTap} />
+            <SunHeatmap cells={heatmapCells} isCalculating={!!heatmapCalculating} layer={heatmapLayer} onCellTap={onHeatmapCellTap} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} />
           )}
           {heatmapCalculating && !heatmapCells?.length && (
-            <SunHeatmap cells={[]} isCalculating={true} layer={heatmapLayer} />
+            <SunHeatmap cells={[]} isCalculating={true} layer={heatmapLayer} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} />
           )}
           {heatmapCells && heatmapProfile && (
             <PlantSuitabilityLayer cells={heatmapCells} profile={heatmapProfile} />
@@ -516,28 +449,20 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
           {/* Fixed plants (e.g. neighbour's tree) — permanent, not draggable */}
           <FixedPlantsLayer onTap={(plant) => onFixedPlantTap?.(plant)} />
 
-          {/* Ground zone outlines + hover highlight */}
-          {groundZones.length > 0 && (
-            <GroundZonesLayer zones={groundZones} hoveredZoneId={hoveredZoneId} />
-          )}
-
           {/* Objects layer behind plants */}
           <ObjectsLayer
             objects={objects}
-            dragPositions={dragPositions}
-            draggingKey={dragKey}
-            selectedId={selection.selectedId}
             hoveredContainerId={hoveredContainerId}
             showLabels={showLabels}
             heatmapCells={heatmapCells}
             onObjectTap={(obj) => handleItemSelect('object', obj.id)}
-            onPointerDown={handleObjectPointerDown}
-            liveRotationId={selection.mode === 'rotating' ? selection.selectedId ?? undefined : undefined}
-            liveRotation={liveRotation ?? undefined}
+            onContainerPointerDown={handleContainerPointerDown}
+            dragPositions={dragPositions}
           />
           {/* Plants layer on top */}
           <PlantsLayer
             plants={plants}
+            mapType={map.map_type as 'outdoor' | 'indoor'}
             dragPositions={dragPositions}
             draggingKey={dragKey}
             selectedId={selection.selectedId}
@@ -546,27 +471,6 @@ export default function MapView({ map, plants, objects, groundZones = [], onPlan
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
           />
-
-          {/* Selection overlay with resize handles (on top of everything) */}
-          {selectedObject && selectedObjPos && (
-            <SelectionOverlay
-              object={selectedObject}
-              x={selectedObjPos.x}
-              y={selectedObjPos.y}
-              currentDimensions={resizeDims ?? {
-                width_cm: selectedObject.width_cm,
-                depth_cm: selectedObject.depth_cm,
-                diameter_cm: selectedObject.diameter_cm,
-              }}
-              isResizing={selection.mode === 'resizing'}
-              activeHandle={selection.resizeHandle}
-              onHandlePointerDown={handleResizePointerDown}
-              showRotate={(selectedObject.category || 'container') !== 'container'}
-              isRotating={selection.mode === 'rotating'}
-              liveRotation={liveRotation ?? undefined}
-              onRotatePointerDown={handleRotatePointerDown}
-            />
-          )}
 
           {/* Plant resize overlay */}
           {selectedPlant && selectedPlantPos && (
