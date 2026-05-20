@@ -25,10 +25,10 @@ A self-contained card component renders at the top of the dashboard (below the g
 
 Two checklist items, in order:
 
-| Step | Done when | Link |
+| Step | Done when | Action |
 |---|---|---|
-| Create your first map | `maps.length > 0` | `/maps` (via MapsListPage) |
-| Add your first plant | `dashboardV2.total_plants > 0` | `/plants/add` |
+| Create your first map | `maps.length > 0` | Calls `onCreateMap()` callback → opens the existing inline create-map modal in Dashboard |
+| Add your first plant | `dashboardV2.total_plants > 0` | Navigates to `/plants/add` |
 
 Each incomplete step shows a "Go →" link. Completed steps show a filled green checkmark and strikethrough text. The subtitle updates as progress is made ("Two quick steps to set up your garden." → "One more step to go.").
 
@@ -44,10 +44,11 @@ Self-contained component. Responsible for:
 
 **Props:**
 ```ts
-interface WelcomChecklistProps {
+interface WelcomeChecklistProps {
   hasMap: boolean
   hasPlant: boolean
-  accountId: number
+  accountId: number    // used to scope the localStorage key
+  onCreateMap: () => void
 }
 ```
 
@@ -57,14 +58,19 @@ interface WelcomChecklistProps {
 
 - `hasMap` — `maps.length > 0`. `maps` is already loaded in the Zustand store when Dashboard mounts.
 - `hasPlant` — `dashboardV2.total_plants > 0`. `dashboardV2` is already fetched on Dashboard mount. If `total_plants` is not currently part of the `dashboardV2` payload, add it to the backend response (single extra count query, no new endpoint).
-- `accountId` — available via the JWT token stored in localStorage (`getToken()` → decode).
+- `accountId` — use `activeUserId` from the Zustand store (already available in Dashboard).
 
 ## Dashboard integration
 
 In `Dashboard.tsx`, resolve `hasMap`, `hasPlant`, and `accountId`, then render:
 
 ```tsx
-<WelcomeChecklist hasMap={hasMap} hasPlant={hasPlant} accountId={accountId} />
+<WelcomeChecklist
+  hasMap={hasMap}
+  hasPlant={hasPlant}
+  accountId={activeUserId}
+  onCreateMap={openNewMap}
+/>
 ```
 
 Placed between the greeting row and the care tasks section.
