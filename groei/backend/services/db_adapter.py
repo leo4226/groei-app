@@ -1,12 +1,14 @@
 # groei/backend/services/db_adapter.py
 """asyncpg adapter preserving the legacy aiosqlite call surface used by routers."""
 
+import re
+
 import asyncpg
 
 
 def qm_to_pg(sql: str) -> str:
-    """Convert `?` placeholders to `$N` (Postgres style). Pragmatic — does not
-    parse out `?` inside string literals."""
+    """Convert ? placeholders to $N and SQLite boolean literals to PG syntax."""
+    # Step 1: convert ? → $N placeholders
     out = []
     i = 0
     for ch in sql:
@@ -15,7 +17,37 @@ def qm_to_pg(sql: str) -> str:
             out.append(f"${i}")
         else:
             out.append(ch)
-    return "".join(out)
+    sql = "".join(out)
+
+    # Step 2: convert SQLite boolean comparisons (column = 1/0) to PG (column = TRUE/FALSE)
+    # Pattern: optional table_alias.column_name = 1/0
+    sql = re.sub(
+        r"(\w+(?:\.\w+)?)\s*=\s*1\b(?!\s*\))",
+        lambda m: f"{m.group(1)} = TRUE" if _is_known_boolean(m.group(1)) else m.group(0),
+        sql,
+    )
+    sql = re.sub(
+        r"(\w+(?:\.\w+)?)\s*=\s*0\b(?!\s*\))",
+        lambda m: f"{m.group(1)} = FALSE" if _is_known_boolean(m.group(1)) else m.group(0),
+        sql,
+    )
+    return sql
+
+
+# Known boolean columns in the PG schema that were compared to 1/0 in SQLite
+_BOOLEAN_COLUMNS = frozenset({
+    "is_active",
+    "edible",
+    "native_to_nl",
+    "skipped",
+    "leaf_retention",
+})
+
+
+def _is_known_boolean(ref: str) -> bool:
+    """Check if the SQL reference (e.g. 'is_active' or 'p.is_active') is a known boolean column."""
+    col = ref.split(".")[-1]  # handle table_alias.column_name
+    return col in _BOOLEAN_COLUMNS
 
 
 class DbAdapter:
