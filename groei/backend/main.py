@@ -12,7 +12,7 @@ try:
 except ImportError:
     pass
 
-from database import init_db
+from database import init_pool, close_pool
 from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
 from routers import plant_care, species, spots, icons
 from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
@@ -22,8 +22,9 @@ from routers import plant_id as plant_id_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    await init_pool()
     yield
+    await close_pool()
 
 
 app = FastAPI(title="Floreren", version="0.1.0", lifespan=lifespan)
