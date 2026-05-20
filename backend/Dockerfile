@@ -1,5 +1,4 @@
 # groei/backend/Dockerfile
-# Build context = groei/ (project root), see fly.toml [build] context
 FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,14 +11,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Copy backend code
-COPY backend/ .
-
-# Copy frontend icons to the path the backend expects (/frontend/public/icons/)
-COPY frontend/public/icons /frontend/public/icons
+COPY . .
 
 EXPOSE 8000
 
