@@ -7,37 +7,36 @@ router = APIRouter(tags=["objects"])
 
 @router.get("/objects", response_model=list[ObjectOut])
 async def list_objects(db = Depends(db_dep)):
-    cursor = await db.execute(
+    rows = await db.execute_fetchall(
         "SELECT * FROM objects WHERE is_active = 1 ORDER BY name"
     )
-    return [dict(row) for row in await cursor.fetchall()]
+    return rows
 
 
 @router.get("/objects/{object_id}", response_model=MapObjectOut)
 async def get_object(object_id: int, db = Depends(db_dep)):
-    cursor = await db.execute(
+    rows = await db.execute_fetchall(
         "SELECT * FROM objects WHERE id = ? AND is_active = 1", (object_id,)
     )
-    row = await cursor.fetchone()
-    if not row:
+    if not rows:
         raise HTTPException(status_code=404, detail="Object not found")
 
-    obj = dict(row)
+    obj = dict(rows[0])
     obj["contained_plants"] = await _get_contained_plants(db, object_id)
     return obj
 
 
 async def _get_contained_plants(db, object_id: int) -> list[dict]:
-    cursor = await db.execute("""
+    plant_rows = await db.execute_fetchall("""
         SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path, p.container_id
         FROM plants p
         WHERE p.container_id = ? AND p.is_active = 1
     """, (object_id,))
     plants = []
-    for row in await cursor.fetchall():
+    for row in plant_rows:
         plant = dict(row)
         # Compute care_status
-        sched_cursor = await db.execute("""
+        sched_rows = await db.execute_fetchall("""
             SELECT care_type, next_due,
                    EXTRACT(epoch FROM (next_due::timestamp - CURRENT_TIMESTAMP)) / 86400.0 as days_until,
                    (SELECT u.name FROM users u WHERE u.id = cs.last_done_by) as last_done_by
@@ -45,7 +44,7 @@ async def _get_contained_plants(db, object_id: int) -> list[dict]:
             WHERE cs.plant_id = $1 AND cs.is_active = 1
             ORDER BY days_until ASC
         """, (plant["id"],))
-        schedules = [dict(s) for s in await sched_cursor.fetchall()]
+        schedules = [dict(s) for s in sched_rows]
 
         care_status = "good"
         most_urgent = None
@@ -71,7 +70,7 @@ async def _get_contained_plants(db, object_id: int) -> list[dict]:
 
 @router.post("/objects", response_model=ObjectOut)
 async def create_object(data: ObjectCreate, db = Depends(db_dep)):
-    cursor = await db.execute(
+    await db.execute(
         """INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm,
            material, color, map_id, map_x, map_y, rotation, notes,
            category, label, preset)
@@ -81,11 +80,10 @@ async def create_object(data: ObjectCreate, db = Depends(db_dep)):
          data.map_id, data.map_x, data.map_y, data.rotation, data.notes,
          data.category, data.label, data.preset),
     )
-    await db.commit()
-    object_id = cursor.lastrowid
+    object_id = db.lastrowid
 
-    cursor = await db.execute("SELECT * FROM objects WHERE id = ?", (object_id,))
-    return dict(await cursor.fetchone())
+    rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
+    return rows[0]
 
 
 @router.put("/objects/{object_id}", response_model=ObjectOut)
@@ -101,19 +99,17 @@ async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep)
         f"UPDATE objects SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1",
         values,
     )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM objects WHERE id = ?", (object_id,))
-    row = await cursor.fetchone()
-    if not row:
+    rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
+    if not rows:
         raise HTTPException(status_code=404, detail="Object not found")
-    return dict(row)
+    return rows[0]
 
 
 @router.put("/objects/{object_id}/position", response_model=ObjectOut)
 async def update_object_position(object_id: int, data: ObjectPositionUpdate, db = Depends(db_dep)):
-    cursor = await db.execute("SELECT id FROM objects WHERE id = ? AND is_active = 1", (object_id,))
-    if not await cursor.fetchone():
+    rows = await db.execute_fetchall("SELECT id FROM objects WHERE id = ? AND is_active = 1", (object_id,))
+    if not rows:
         raise HTTPException(status_code=404, detail="Object not found")
 
     if data.rotation is not None:
@@ -126,10 +122,9 @@ async def update_object_position(object_id: int, data: ObjectPositionUpdate, db 
             "UPDATE objects SET map_x = ?, map_y = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (data.map_x, data.map_y, object_id),
         )
-    await db.commit()
 
-    cursor = await db.execute("SELECT * FROM objects WHERE id = ?", (object_id,))
-    return dict(await cursor.fetchone())
+    rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
+    return rows[0]
 
 
 @router.delete("/objects/{object_id}")
@@ -143,7 +138,6 @@ async def archive_object(object_id: int, db = Depends(db_dep)):
         "UPDATE objects SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (object_id,),
     )
-    await db.commit()
     return {"ok": True}
 
 

@@ -51,11 +51,18 @@ def _is_known_boolean(ref: str) -> bool:
 
 
 class DbAdapter:
-    """Wraps an asyncpg.Connection (or pool-acquired connection)."""
+    """Wraps an asyncpg.Connection (or pool-acquired connection).
+
+    Preserves the legacy aiosqlite call surface:
+      cursor = await db.execute("SELECT ...")  → returns self
+      rows = await cursor.fetchall()           → returns list[dict]
+      row = await cursor.fetchone()            → returns dict | None
+    """
 
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
         self.lastrowid: int | None = None
+        self._last_result: list[dict] | None = None
 
     async def execute_fetchall(
         self, sql: str, params: tuple | list = ()
@@ -66,17 +73,33 @@ class DbAdapter:
     async def execute(self, sql: str, params: tuple | list = ()) -> "DbAdapter":
         pg_sql = qm_to_pg(sql)
         head = pg_sql.lstrip().upper()
+
         if head.startswith("INSERT") and "RETURNING" not in head:
             pg_sql_returning = pg_sql.rstrip(" ;") + " RETURNING id"
             row = await self._conn.fetchrow(pg_sql_returning, *params)
             self.lastrowid = row["id"] if row else None
+            self._last_result = None
         elif head.startswith("INSERT") and "RETURNING ID" in head:
             row = await self._conn.fetchrow(pg_sql, *params)
             self.lastrowid = row["id"] if row else None
+            self._last_result = None
+        elif head.startswith("SELECT") or head.startswith("WITH"):
+            # Return rows so fetchall()/fetchone() work
+            rows = await self._conn.fetch(pg_sql, *params)
+            self._last_result = [dict(r) for r in rows]
+            self.lastrowid = None
         else:
+            # DELETE, UPDATE, etc. — no rows returned
             await self._conn.execute(pg_sql, *params)
+            self._last_result = None
             self.lastrowid = None
         return self
+
+    async def fetchall(self) -> list[dict]:
+        return list(self._last_result) if self._last_result else []
+
+    async def fetchone(self) -> dict | None:
+        return self._last_result[0] if self._last_result else None
 
     async def commit(self) -> None:
         # asyncpg auto-commits outside an explicit transaction. No-op here.
