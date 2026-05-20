@@ -1159,7 +1159,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
               overflow: 'hidden', flexShrink: 0,
             }}>
               {entry.icon_key ? (
-                <img src={`/api/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                <img src={`/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
               ) : (
                 <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>
               )}
@@ -1308,7 +1308,7 @@ function CareTipCard({ fact, t }: { fact: PlantFactOut; t: Translations }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {fact.icon_key && (
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <img src={`/api/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
+              <img src={`/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
             </div>
           )}
           <div>

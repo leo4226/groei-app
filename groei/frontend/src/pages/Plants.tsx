@@ -549,7 +549,7 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
         position: 'relative',
       }}>
         <img
-          src={`/api/icons/${plant.icon_key}.svg`}
+          src={`/icons/${plant.icon_key}.svg`}
           alt={plant.name}
           style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
           className="card-icon"

@@ -126,7 +126,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                 >
                   {plant.iconKey ? (
                     <img
-                      src={`/api/icons/${plant.iconKey}.svg`}
+                      src={`/icons/${plant.iconKey}.svg`}
                       alt={plant.dutchName}
                       className="w-8 h-8 object-contain"
                     />

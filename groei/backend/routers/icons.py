@@ -9,7 +9,7 @@ from auth import get_current_account
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
-ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "icons"))
+ICONS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons"))
 MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 
 

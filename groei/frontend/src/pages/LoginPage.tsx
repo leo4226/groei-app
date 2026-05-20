@@ -69,7 +69,7 @@ export default function LoginPage() {
         {DECOR.map((d) => (
           <img
             key={d.name}
-            src={`/api/icons/${d.name}.svg`}
+            src={`/icons/${d.name}.svg`}
             alt=""
             style={{ position: 'absolute', left: d.left, top: d.top, width: d.size, height: d.size, transform: `rotate(${d.rotate}deg)`, opacity: d.opacity, userSelect: 'none' }}
           />

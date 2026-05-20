@@ -37,10 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve plant icons
-icons_dir = os.path.join(os.path.dirname(__file__), "..", "icons")
-app.mount("/api/icons", StaticFiles(directory=icons_dir), name="icons")
-
 # Mount routers
 app.include_router(users.router, prefix="/api")
 app.include_router(locations.router, prefix="/api")

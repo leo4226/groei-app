@@ -120,7 +120,7 @@ export default function PageDecor() {
       {PAGE_DECOR.map((d) => (
         <img
           key={d.id}
-          src={`/api/icons/${d.name}.svg`}
+          src={`/icons/${d.name}.svg`}
           alt=""
           style={{
             position: 'absolute',

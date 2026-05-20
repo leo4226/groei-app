@@ -41,8 +41,8 @@ export default function CalendarAgendaCard({ selectedIso, events }: Props) {
         )}
         {events.map(e => {
           const def = EVENT_TYPE_BY_ID[e.type]
-          const iconSrc = e.plant_icon_variant ? `/api/icons/${e.plant_icon_variant}.svg`
-            : e.plant_id ? '/api/icons/seed.svg' : null
+          const iconSrc = e.plant_icon_variant ? `/icons/${e.plant_icon_variant}.svg`
+            : e.plant_id ? '/icons/seed.svg' : null
           return (
             <div key={e.id} className="agenda-item">
               <div className={`agenda-icon ${def?.cssClass ?? ''}`}>

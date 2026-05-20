@@ -79,7 +79,7 @@ export default function IconPicker({ value, onChange }: Props) {
         {selected ? (
           <>
             <img
-              src={`/api/icons/${selected.id}.svg`}
+              src={`/icons/${selected.id}.svg`}
               alt={selected.name}
               className="w-9 h-9 flex-shrink-0"
             />
@@ -185,7 +185,7 @@ export default function IconPicker({ value, onChange }: Props) {
                     }`}
                   >
                     <img
-                      src={`/api/icons/${icon.id}.svg`}
+                      src={`/icons/${icon.id}.svg`}
                       alt={icon.name}
                       className="w-12 h-12"
                       loading="lazy"

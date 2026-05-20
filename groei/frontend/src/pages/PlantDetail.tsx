@@ -171,7 +171,7 @@ export default function PlantDetail() {
           <img src={plant.photo_path} alt={plant.name} className="w-full h-52 object-cover" />
         ) : plant.icon_key ? (
           <div className="w-full h-52 flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)' }}>
-            <img src={`/api/icons/${plant.icon_key}.svg`} alt={plant.name} className="h-40 w-40 object-contain" />
+            <img src={`/icons/${plant.icon_key}.svg`} alt={plant.name} className="h-40 w-40 object-contain" />
           </div>
         ) : (
           <div className="w-full h-52 bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-7xl">🌿</div>
