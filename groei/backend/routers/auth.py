@@ -97,7 +97,7 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
 
     if account:
         token = secrets.token_urlsafe(32)
-        expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
         await db.execute(
             "INSERT INTO password_reset_tokens (account_id, token, expires_at) VALUES (?, ?, ?)",
             (account[0]["id"], token, expires_at),
@@ -136,7 +136,9 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
         )
 
     # Expired?
-    expires = datetime.fromisoformat(token_row["expires_at"])
+    expires = token_row["expires_at"]
+    if isinstance(expires, str):
+        expires = datetime.fromisoformat(expires)
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     if now > expires:
@@ -156,7 +158,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     )
     await db.execute(
         "UPDATE password_reset_tokens SET used_at = ? WHERE id = ?",
-        (now.isoformat(), token_row["id"]),
+        (now, token_row["id"]),
     )
     await db.commit()
 
