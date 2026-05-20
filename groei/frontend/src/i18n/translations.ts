@@ -87,6 +87,8 @@ export type Translations = {
     prune: string
     protect_cold: string
     protect_heat: string
+    frost_protect: string     // "Frost protect" / "Vorst-bescherming"
+    heat_protect: string      // "Heat protect" / "Hitte-bescherming"
   }
 
   plants: {
@@ -539,6 +541,9 @@ export type Translations = {
     open: string  // "Open"
     filter: string
     heading: string  // "Calendar"
+    filterDescAll: string      // "alle planten" / "all plants"
+    filterDescGarden: string    // "buitenplanten" / "outdoor plants"
+    filterDescHouse: string     // "kamerplanten" / "indoor plants"
     upcoming: string  // "Upcoming"
     upcomingSubtitle: string  // "The coming days - sorted by date."
     upcomingTitlePrefix: string  // "What" / "Wat " — text before the italic word
@@ -626,6 +631,9 @@ export type Translations = {
     eventHarvest: string
     eventScan: string
     eventRain: string
+    eventRotate: string
+    eventDust: string
+    eventPestCheck: string
   }
 
   // ── Plants page (list view) ──────────────────────────────
@@ -699,5 +707,11 @@ export type Translations = {
     saving: string       // "Saving..." / "Opslaan..."
     saved: string        // "Saved" / "Opgeslagen"
     deleting: string     // "Deleting..." / "Verwijderen..."
+    all: string          // "Alles" / "All"
+    garden: string       // "Tuin" / "Garden"
+    house: string        // "Huis" / "House"
+    envGround: string    // "Ground" / "Grond"
+    envPotted: string    // "Potted" / "Pot"
+    envIndoor: string    // "Indoor" / "Binnen"
   }
 }

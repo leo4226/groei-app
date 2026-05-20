@@ -82,6 +82,8 @@ export const nl: Translations = {
     prune: 'Snoeien',
     protect_cold: 'Beschermen tegen kou',
     protect_heat: 'Beschermen tegen hitte',
+    frost_protect: 'Vorst-bescherming',
+    heat_protect: 'Hitte-bescherming',
   },
 
   plants: {
@@ -579,6 +581,9 @@ export const nl: Translations = {
     open: 'Open',
     filter: 'Filter',
     heading: 'Kalender',
+    filterDescAll: 'alle planten',
+    filterDescGarden: 'buitenplanten',
+    filterDescHouse: 'kamerplanten',
     upcoming: '§ Op komst',
     upcomingSubtitle: 'De komende dagen — gesorteerd op datum.',
     upcomingTitlePrefix: 'Wat ',
@@ -623,6 +628,9 @@ export const nl: Translations = {
     eventHarvest: 'Oogsten',
     eventScan: 'Plaag · scan',
     eventRain: 'Neerslag',
+    eventRotate: 'Draaien',
+    eventDust: 'Afstoffen',
+    eventPestCheck: 'Plaagcheck',
   },
 
   // ── Plants page (list view) ──────────────────────────────
@@ -734,5 +742,11 @@ export const nl: Translations = {
     saving: 'Opslaan...',
     saved: 'Opgeslagen',
     deleting: 'Verwijderen...',
+    all: 'Alles',
+    garden: 'Tuin',
+    house: 'Huis',
+    envGround: 'Grond',
+    envPotted: 'Pot',
+    envIndoor: 'Binnen',
   },
 }

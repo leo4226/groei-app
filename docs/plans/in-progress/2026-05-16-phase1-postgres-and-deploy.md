@@ -91,6 +91,9 @@ R2_SECRET_ACCESS_KEY=
 R2_BUCKET=floreren-uploads
 R2_PUBLIC_BASE_URL=
 RESEND_API_KEY=
+PLANTNET_API_KEY=
+TREFLE_TOKEN=
+ANTHROPIC_API_KEY=
 ```
 
 Then copy: `cp groei/backend/.env.example groei/backend/.env`
@@ -558,7 +561,20 @@ def downgrade() -> None:
     raise NotImplementedError("Drop the database and re-run upgrade instead.")
 ```
 
-**Implementer note:** This task is the largest in the plan because `schema.py` has many tables. Open `groei/backend/database/schema.py`, copy each `CREATE TABLE` block into the `upgrade()` function, and apply the Postgres translations listed above. Keep all `CREATE INDEX` statements too. **Do not invent columns** — translate exactly what's in `schema.py`.
+**Implementer note:** This task is the largest in the plan because the schema has many tables. The current schema is defined by **two files together** — `schema.py` (base CREATE TABLE statements) and `migrations.py` (ALTER TABLE additions). You must translate both to produce a migration that matches the live DB.
+
+Open `groei/backend/database/schema.py` and copy each `CREATE TABLE` block. Then open `groei/backend/database/migrations.py` and merge every `ALTER TABLE ADD COLUMN` into the relevant CREATE TABLE in your migration — do not run them as separate ALTER TABLE statements. The columns that only exist in migrations.py and must be folded in are:
+
+| Column(s) | Table |
+|---|---|
+| `care_thresholds`, `phase`, `sown_date`, `care_profile` | `plants` |
+| `care_thresholds`, `water_interval_days` | `plant_species` |
+| `household_id` | all user-scoped tables (plants, maps, locations, etc.) |
+| `language` | `users` |
+| `water_amount` | `garden_water_log` |
+| `is_ephemeral` | `care_schedules` |
+
+Apply the Postgres type translations listed above. Keep all `CREATE INDEX` statements. **Do not invent columns** — translate exactly what schema.py + migrations.py together define.
 
 - [ ] **Step 4: Run the migration**
 
@@ -602,10 +618,11 @@ The shim handles `?` placeholders, but it can't translate function calls. From t
 - `groei/backend/seed_common_plants.py` (2)
 - `groei/backend/seed_missing_from_manifest.py` (3)
 - `groei/backend/seed_weed_catalog.py` (2)
+- `groei/backend/scripts/backfill_species_defaults.py` (1 — `INSERT OR REPLACE`)
 - `groei/backend/routers/dashboard.py` (1)
 - `groei/backend/routers/plants.py` (1)
-- `groei/backend/routers/objects.py` (1)
-- `groei/backend/routers/plant_care.py` (2)
+- `groei/backend/routers/objects.py` (1 — `julianday`)
+- `groei/backend/routers/plant_care.py` (2 — `INSERT OR REPLACE` + `date('now')`)
 
 - [ ] **Step 1: Re-grep to confirm the full set**
 
@@ -943,6 +960,7 @@ Clean up: in the R2 dashboard, delete `test.txt`.
 
 **Files:**
 - Modify: `groei/backend/routers/plants.py` — the `POST /plants/{id}/photo` route (search for `UploadFile` or `photos`)
+- Modify: `groei/backend/routers/plant_id.py` — `_save_identify_photo()` function saves identify photos to local disk; Fly.io containers are ephemeral so these are lost on every restart
 - Modify: `groei/backend/main.py` — remove the `/api/photos` static mount
 
 - [ ] **Step 1: Find the current upload route**

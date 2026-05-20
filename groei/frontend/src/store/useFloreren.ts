@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { User, Location, Plant, DashboardData, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut } from '../types'
+import type { User, Location, Plant, DashboardData, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
 import * as api from '../api/client'
 
 interface FlorerStore {
@@ -9,6 +9,7 @@ interface FlorerStore {
   plants: Plant[]
   dashboard: DashboardData | null
   dashboardV2: DashboardV2Data | null
+  warningSummary: WarningSummaryOut | null
   plantFact: PlantFactOut | null
   activeUserId: number | null
   isLoading: boolean
@@ -19,13 +20,14 @@ interface FlorerStore {
   loadMaps: () => Promise<void>
   loadDashboard: () => Promise<void>
   loadDashboardV2: () => Promise<void>
+  loadWarningSummary: (env?: string) => Promise<void>
   loadPlants: () => Promise<void>
   loadPlantFact: () => Promise<void>
   addPlant: (data: PlantCreateInput) => Promise<Plant>
   updatePlant: (id: number, data: Partial<Plant>) => Promise<void>
   archivePlant: (id: number) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
-  markCareDone: (plantId: number, careType: string, notes?: string) => Promise<void>
+  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
@@ -61,6 +63,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   plants: [],
   dashboard: null,
   dashboardV2: null,
+  warningSummary: null,
   plantFact: null,
   activeUserId: getSavedUserId(),
   isLoading: false,
@@ -114,6 +117,15 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     }
   },
 
+  loadWarningSummary: async (env = 'all') => {
+    try {
+      const warningSummary = await api.fetchWarningSummary(env)
+      set({ warningSummary })
+    } catch (e) {
+      set({ error: (e as Error).message })
+    }
+  },
+
   loadPlants: async () => {
     try {
       const plants = await api.fetchPlants()
@@ -144,10 +156,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     set((s) => ({ plants: s.plants.map((p) => (p.id === plantId ? updated : p)) }))
   },
 
-  markCareDone: async (plantId, careType, notes) => {
+  markCareDone: async (plantId, careType, notes, water_amount) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
-    await api.markCareDone(plantId, careType, userId, notes)
+    await api.markCareDone(plantId, careType, userId, notes, water_amount)
     // Surgical update: adjust the plant's care_status and remove task from dashboard
     set((s) => ({
       plants: s.plants.map((p) =>

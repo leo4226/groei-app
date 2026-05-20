@@ -66,12 +66,37 @@ def _environment_for_plant(plant: dict) -> Environment:
     return "outdoor_ground"
 
 
-def _load_care_profile(care_thresholds_json: str | None, environment: Environment) -> dict:
-    """Translate the legacy care_thresholds JSON into the new care-profile shape.
+def _load_care_profile(
+    care_profile_json: str | None,
+    care_thresholds_json: str | None,
+    environment: Environment,
+) -> dict:
+    """Read care_profile from the new JSON column, with fallback to legacy care_thresholds.
 
-    This shim lets Phase A work against current production data without a
-    schema migration. Phase B will replace this with reading plants.care_profile
-    directly.
+    Phase B: reads plants.care_profile directly.
+    Phase A fallback: if care_profile is null/empty, falls back to the old shim
+    that built a profile from care_thresholds + CARE_TYPES defaults.
+    """
+    if care_profile_json:
+        try:
+            profile = json.loads(care_profile_json)
+            if isinstance(profile, dict):
+                # Ensure all care types have at least an 'active' key
+                for care_type in CARE_TYPES:
+                    if care_type not in profile:
+                        profile[care_type] = {"active": False}
+                return profile
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Fallback: legacy shim from care_thresholds
+    return _load_care_profile_legacy(care_thresholds_json, environment)
+
+
+def _load_care_profile_legacy(care_thresholds_json: str | None, environment: Environment) -> dict:
+    """Translate the legacy care_thresholds JSON into the care-profile shape.
+
+    Phase A fallback — will be removed in Phase D cleanup.
     """
     legacy: dict = {}
     if care_thresholds_json:
@@ -158,9 +183,15 @@ def _schedule_warning_for_type(
 
 
 def _weather_warnings_for_plant(
-    profile: dict, *, temp_data: dict | None
+    profile: dict, *, temp_data: dict | None, today: date, environment: str = "outdoor_container"
 ) -> list[CareWarning]:
-    """Build weather-triggered warnings for one plant given its profile + week temp data."""
+    """Build weather-triggered warnings given profile + temp forecast data.
+
+    Uses forecast-aware timing: finds the closest future day triggering a
+    threshold and produces messages like "Vorst vannacht — min -2°C",
+    "Morgen vorst — min -2°C", "Over 3 dagen vorst — min -2°C".
+    If all triggering days are in the past, no warning is generated.
+    """
     warnings: list[CareWarning] = []
     if not temp_data:
         return warnings
@@ -168,66 +199,137 @@ def _weather_warnings_for_plant(
     days = temp_data.get("days") or []
     if not days:
         return warnings
-    week_min = min(d["min"] for d in days)
-    week_max = max(d["max"] for d in days)
 
-    # Frost
+    def _days_until(d: dict) -> int:
+        """Return days from today. 0 = today, negative = past, positive = future."""
+        return (date.fromisoformat(d["date"]) - today).days
+
+    # ── Frost ──────────────────────────────────────────────────────────
     frost = profile.get("frost_protect") or {}
-    if frost.get("active"):
+    # Only potted/container plants can be moved inside — skip for ground & indoor
+    if frost.get("active") and environment == "outdoor_container":
         t = frost.get("thresholds") or {}
         min_temp = t.get("min_temp_c")
         bring_in = t.get("bring_inside_below_c")
-        urgent_threshold = min_temp if min_temp is not None else bring_in
-        if urgent_threshold is not None and week_min <= urgent_threshold:
-            warnings.append(CareWarning(
-                care_type="frost_protect",
-                severity="urgent",
-                trigger="weather_event",
-                days_overdue=None,
-                message_nl=f"Vorst-bescherming — min {week_min:.0f}°C",
-                message_en=f"Frost protect — min {week_min:.0f}°C",
-                icon=CARE_TYPES["frost_protect"]["icon"],
-                color=WEATHER_COLDHEAT_COLORS["frost_protect_urgent"],
-            ))
-        elif bring_in is not None and week_min <= bring_in:
-            warnings.append(CareWarning(
-                care_type="frost_protect",
-                severity="warning",
-                trigger="weather_event",
-                days_overdue=None,
-                message_nl=f"Koud aankomend — min {week_min:.0f}°C",
-                message_en=f"Cold approaching — min {week_min:.0f}°C",
-                icon=CARE_TYPES["frost_protect"]["icon"],
-                color=WEATHER_COLDHEAT_COLORS["frost_protect_warning"],
-            ))
 
-    # Heat
+        # Urgent frost: below dangerous threshold
+        if min_temp is not None:
+            bad_days = [d for d in days if d["min"] <= min_temp]
+            future_bad = [d for d in bad_days if _days_until(d) >= 0]
+            if future_bad:
+                closest = min(future_bad, key=_days_until)
+                du = _days_until(closest)
+                val = closest["min"]
+                if du == 0:
+                    msg_nl = f"Vorst vannacht — min {val:.0f}°C"
+                    msg_en = f"Frost tonight — min {val:.0f}°C"
+                elif du == 1:
+                    msg_nl = f"Morgen vorst — min {val:.0f}°C"
+                    msg_en = f"Frost tomorrow — min {val:.0f}°C"
+                else:
+                    msg_nl = f"Over {du} dagen vorst — min {val:.0f}°C"
+                    msg_en = f"Frost in {du} days — min {val:.0f}°C"
+                warnings.append(CareWarning(
+                    care_type="frost_protect",
+                    severity="urgent",
+                    trigger="weather_event",
+                    days_overdue=None,
+                    message_nl=msg_nl,
+                    message_en=msg_en,
+                    icon=CARE_TYPES["frost_protect"]["icon"],
+                    color=WEATHER_COLDHEAT_COLORS["frost_protect_urgent"],
+                ))
+
+        # Warning frost: cold approaching bring_inside threshold (only if not already urgent)
+        if bring_in is not None:
+            filtered = [d for d in days if d["min"] <= bring_in]
+            if min_temp is not None:
+                filtered = [d for d in filtered if d["min"] > min_temp]
+            future_bad = [d for d in filtered if _days_until(d) >= 0]
+            if future_bad:
+                closest = min(future_bad, key=_days_until)
+                du = _days_until(closest)
+                val = closest["min"]
+                if du == 0:
+                    msg_nl = f"Koud vannacht — min {val:.0f}°C"
+                    msg_en = f"Cold tonight — min {val:.0f}°C"
+                elif du == 1:
+                    msg_nl = f"Morgen koud — min {val:.0f}°C"
+                    msg_en = f"Cold tomorrow — min {val:.0f}°C"
+                else:
+                    msg_nl = f"Over {du} dagen koud — min {val:.0f}°C"
+                    msg_en = f"Cold in {du} days — min {val:.0f}°C"
+                warnings.append(CareWarning(
+                    care_type="frost_protect",
+                    severity="warning",
+                    trigger="weather_event",
+                    days_overdue=None,
+                    message_nl=msg_nl,
+                    message_en=msg_en,
+                    icon=CARE_TYPES["frost_protect"]["icon"],
+                    color=WEATHER_COLDHEAT_COLORS["frost_protect_warning"],
+                ))
+
+    # ── Heat ───────────────────────────────────────────────────────────
     heat = profile.get("heat_protect") or {}
     if heat.get("active"):
         t = heat.get("thresholds") or {}
         max_temp = t.get("max_temp_c")
-        if max_temp is not None and week_max >= max_temp:
-            warnings.append(CareWarning(
-                care_type="heat_protect",
-                severity="urgent",
-                trigger="weather_event",
-                days_overdue=None,
-                message_nl=f"Hitte-stress — max {week_max:.0f}°C",
-                message_en=f"Heat stress — max {week_max:.0f}°C",
-                icon=CARE_TYPES["heat_protect"]["icon"],
-                color=WEATHER_COLDHEAT_COLORS["heat_protect_urgent"],
-            ))
-        elif max_temp is not None and week_max >= max_temp - 3:
-            warnings.append(CareWarning(
-                care_type="heat_protect",
-                severity="warning",
-                trigger="weather_event",
-                days_overdue=None,
-                message_nl=f"Hitte nadert — max {week_max:.0f}°C",
-                message_en=f"Heat approaching — max {week_max:.0f}°C",
-                icon=CARE_TYPES["heat_protect"]["icon"],
-                color=WEATHER_COLDHEAT_COLORS["heat_protect_warning"],
-            ))
+
+        if max_temp is not None:
+            # Urgent: >= max_temp
+            bad_days = [d for d in days if d["max"] >= max_temp]
+            future_bad = [d for d in bad_days if _days_until(d) >= 0]
+            if future_bad:
+                closest = min(future_bad, key=_days_until)
+                du = _days_until(closest)
+                val = closest["max"]
+                if du == 0:
+                    msg_nl = f"Hitte vandaag — max {val:.0f}°C"
+                    msg_en = f"Heat today — max {val:.0f}°C"
+                elif du == 1:
+                    msg_nl = f"Morgen hitte — max {val:.0f}°C"
+                    msg_en = f"Heat tomorrow — max {val:.0f}°C"
+                else:
+                    msg_nl = f"Over {du} dagen hitte — max {val:.0f}°C"
+                    msg_en = f"Heat in {du} days — max {val:.0f}°C"
+                warnings.append(CareWarning(
+                    care_type="heat_protect",
+                    severity="urgent",
+                    trigger="weather_event",
+                    days_overdue=None,
+                    message_nl=msg_nl,
+                    message_en=msg_en,
+                    icon=CARE_TYPES["heat_protect"]["icon"],
+                    color=WEATHER_COLDHEAT_COLORS["heat_protect_urgent"],
+                ))
+            else:
+                # Warning: >= max_temp - 3 (approaching)
+                near_days = [d for d in days if d["max"] >= max_temp - 3]
+                future_near = [d for d in near_days if _days_until(d) >= 0]
+                if future_near:
+                    closest = min(future_near, key=_days_until)
+                    du = _days_until(closest)
+                    val = closest["max"]
+                    if du == 0:
+                        msg_nl = f"Hitte op komst vandaag — max {val:.0f}°C"
+                        msg_en = f"Heat building today — max {val:.0f}°C"
+                    elif du == 1:
+                        msg_nl = f"Morgen hitte op komst — max {val:.0f}°C"
+                        msg_en = f"Heat building tomorrow — max {val:.0f}°C"
+                    else:
+                        msg_nl = f"Over {du} dagen hitte op komst — max {val:.0f}°C"
+                        msg_en = f"Heat building in {du} days — max {val:.0f}°C"
+                    warnings.append(CareWarning(
+                        care_type="heat_protect",
+                        severity="warning",
+                        trigger="weather_event",
+                        days_overdue=None,
+                        message_nl=msg_nl,
+                        message_en=msg_en,
+                        icon=CARE_TYPES["heat_protect"]["icon"],
+                        color=WEATHER_COLDHEAT_COLORS["heat_protect_warning"],
+                    ))
 
     return warnings
 
@@ -286,7 +388,11 @@ def compute_plant_warnings(
         Fully-populated PlantWarningState. top_warning is None if no warnings fire.
     """
     environment = _environment_for_plant(plant)
-    profile = _load_care_profile(plant.get("care_thresholds"), environment)
+    profile = _load_care_profile(
+        plant.get("care_profile"),
+        plant.get("care_thresholds"),
+        environment,
+    )
 
     active_care_types = [ct for ct, entry in profile.items() if entry.get("active")]
 
@@ -307,7 +413,7 @@ def compute_plant_warnings(
 
     # Weather warnings
     temp_data = (weather or {}).get("temp")
-    weather_warnings = _weather_warnings_for_plant(profile, temp_data=temp_data)
+    weather_warnings = _weather_warnings_for_plant(profile, temp_data=temp_data, today=today, environment=environment)
 
     all_warnings = _sort_warnings(schedule_warnings + weather_warnings)
     top = all_warnings[0] if all_warnings else None

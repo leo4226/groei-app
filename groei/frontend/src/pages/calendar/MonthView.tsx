@@ -17,9 +17,10 @@ import { useT } from '../../context/LanguageContext'
 interface Props {
   viewMode: CalendarViewMode
   onSetView(v: CalendarViewMode): void
+  env: string
 }
 
-export default function MonthView({ viewMode, onSetView }: Props) {
+export default function MonthView({ viewMode, onSetView, env }: Props) {
   const t = useT()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -30,7 +31,7 @@ export default function MonthView({ viewMode, onSetView }: Props) {
     () => new Set(EVENT_TYPES.map(t => t.id)),
   )
 
-  const { events, loading, error } = useCalendarEvents(year, month1)
+  const { events, loading, error } = useCalendarEvents(year, month1, env)
   const isNarrow = useIsNarrow(1200)
 
   const filtered = useMemo(

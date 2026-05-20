@@ -26,6 +26,8 @@ export function useGardenWater(): UseGardenWaterReturn {
       .then(data => setGardenWater(data ?? null))
   }, [])
 
+  const closePicker = () => setShowPicker(false)
+
   const togglePicker = () => {
     if (showPicker) {
       setShowPicker(false)
@@ -67,6 +69,7 @@ export function useGardenWater(): UseGardenWaterReturn {
     showPicker,
     pickerDate,
     setPickerDate,
+    closePicker,
     togglePicker,
     save,
     deleteLast,

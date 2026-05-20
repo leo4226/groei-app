@@ -61,7 +61,7 @@ def test_environment_outdoor_defaults_to_ground():
 def test_load_care_profile_from_legacy_thresholds():
     """Legacy care_thresholds JSON gets translated into the new care-profile shape."""
     legacy = '{"min_temp_c": 0, "max_temp_c": 30, "bring_inside_below_c": 5, "drought_mm_per_week": 15}'
-    profile = _load_care_profile(legacy, environment="outdoor_container")
+    profile = _load_care_profile(None, legacy, environment="outdoor_container")
 
     # Water + fertilize active by default for this env (intervals from catalog).
     assert profile["water"]["active"] is True
@@ -81,7 +81,7 @@ def test_load_care_profile_from_legacy_thresholds():
 
 
 def test_load_care_profile_indoor_activates_indoor_types():
-    profile = _load_care_profile(None, environment="indoor")
+    profile = _load_care_profile(None, None, environment="indoor")
     assert profile["water"]["active"] is True
     assert profile["mist"]["active"] is True
     assert profile["rotate"]["active"] is True
@@ -92,7 +92,7 @@ def test_load_care_profile_indoor_activates_indoor_types():
 
 def test_load_care_profile_invalid_json_does_not_raise():
     """Malformed JSON should yield a complete 10-key profile, not raise."""
-    profile = _load_care_profile("{not json", environment="outdoor_ground")
+    profile = _load_care_profile(None, "{not json", environment="outdoor_ground")
     assert len(profile) == 10
     assert "water" in profile
     assert profile["water"]["active"] is True
@@ -147,8 +147,8 @@ def test_frost_urgent_when_min_below_threshold():
             "thresholds": {"min_temp_c": 0, "bring_inside_below_c": 5},
         }
     }
-    temp = {"days": [{"min": -2, "max": 8}, {"min": -1, "max": 10}]}
-    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    temp = {"days": [{"date": "2026-05-17", "min": -2, "max": 8}, {"date": "2026-05-18", "min": -1, "max": 10}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     assert any(w.care_type == "frost_protect" and w.severity == "urgent" for w in warns)
 
 
@@ -159,8 +159,8 @@ def test_frost_warning_when_min_near_bring_inside():
             "thresholds": {"min_temp_c": -5, "bring_inside_below_c": 5},
         }
     }
-    temp = {"days": [{"min": 3, "max": 12}]}
-    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    temp = {"days": [{"date": "2026-05-17", "min": 3, "max": 12}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     cold = [w for w in warns if w.care_type == "frost_protect"]
     assert len(cold) == 1
     assert cold[0].severity == "warning"
@@ -168,8 +168,8 @@ def test_frost_warning_when_min_near_bring_inside():
 
 def test_no_frost_when_inactive():
     profile = {"frost_protect": {"active": False, "thresholds": {"min_temp_c": 0}}}
-    temp = {"days": [{"min": -5, "max": 5}]}
-    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    temp = {"days": [{"date": "2026-05-17", "min": -5, "max": 5}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     assert all(w.care_type != "frost_protect" for w in warns)
 
 
@@ -180,15 +180,15 @@ def test_heat_urgent_when_max_above_threshold():
             "thresholds": {"max_temp_c": 28},
         }
     }
-    temp = {"days": [{"min": 18, "max": 32}]}
-    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    temp = {"days": [{"date": "2026-05-17", "min": 18, "max": 32}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     assert any(w.care_type == "heat_protect" and w.severity == "urgent" for w in warns)
 
 
 def test_weather_color_overrides_apply():
     profile = {"frost_protect": {"active": True, "thresholds": {"min_temp_c": 0}}}
-    temp = {"days": [{"min": -3, "max": 5}]}
-    warns = _weather_warnings_for_plant(profile, temp_data=temp)
+    temp = {"days": [{"date": "2026-05-17", "min": -3, "max": 5}]}
+    warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     cold = next(w for w in warns if w.care_type == "frost_protect")
     assert cold.color == "#2544a0"   # cold-blue, not red
 
@@ -300,7 +300,7 @@ def test_compute_outdoor_container_frost_beats_water():
         "care_thresholds": '{"min_temp_c": 0, "bring_inside_below_c": 5}',
     }
     schedules = [{"care_type": "water", "next_due": "2026-05-13"}]   # urgent overdue
-    weather = {"temp": {"days": [{"min": -2, "max": 8}]}}
+    weather = {"temp": {"days": [{"date": "2026-05-16", "min": -2, "max": 8}]}}
     state = compute_plant_warnings(plant, schedules, weather=weather, today=date(2026, 5, 16))
     assert state.top_warning.care_type == "frost_protect"
     assert state.top_warning.trigger == "weather_event"
@@ -336,7 +336,7 @@ def test_compute_weather_only_care_summary_reflects_active_warning():
         "id": 5, "map_type": "outdoor", "container_id": 1, "ground_zone_id": None,
         "care_thresholds": '{"min_temp_c": 0, "bring_inside_below_c": 5}',
     }
-    weather = {"temp": {"days": [{"min": -3, "max": 5}]}}
+    weather = {"temp": {"days": [{"date": "2026-05-16", "min": -3, "max": 5}]}}
     state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
     assert state.care_summary["frost_protect"].status == "overdue"
     assert state.care_summary["frost_protect"].last_done is None

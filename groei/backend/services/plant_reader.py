@@ -1,8 +1,10 @@
 import json
+from dataclasses import asdict
 from datetime import date
 
 from models import MostUrgent
 from services.alert_service import compute_top_alert, compute_all_alerts
+from services.warnings import compute_plant_warnings
 
 
 def _compute_care_status(schedules, today):
@@ -119,6 +121,20 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
     return plant
 
 
+def _care_warning_to_dict(w):
+    """Convert a CareWarning dataclass to a plain dict for JSON serialization."""
+    return {
+        "care_type": w.care_type,
+        "severity": w.severity,
+        "trigger": w.trigger,
+        "days_overdue": w.days_overdue,
+        "message_nl": w.message_nl,
+        "message_en": w.message_en,
+        "icon": w.icon,
+        "color": w.color,
+    }
+
+
 async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, last_watered=None, last_fertilized=None, map_type="outdoor"):
     """Batch-enrich plant dicts. Single query for all schedules (fixes N+1)."""
     if not plant_rows:
@@ -129,7 +145,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
 
     placeholders = ",".join("?" for _ in plant_ids)
     sched_rows = await db.execute_fetchall(
-        f"""SELECT cs.care_type, cs.next_due, cs.plant_id, u.name as last_done_by_name
+        f"""SELECT cs.care_type, cs.next_due, cs.plant_id, cs.last_done, u.name as last_done_by_name
             FROM care_schedules cs
             LEFT JOIN users u ON cs.last_done_by = u.id
             WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
@@ -144,6 +160,9 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
         if pid not in schedules_by_plant:
             schedules_by_plant[pid] = []
         schedules_by_plant[pid].append(r)
+
+    # Build weather dict for the new pipeline (shape: {"temp": {"days": [...]}})
+    weather = {"temp": temp_data} if temp_data else None
 
     for plant in plants:
         pid = plant["id"]
@@ -181,6 +200,26 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
                 in_ground=in_ground,
             )
         ]
+
+        # New pipeline: compute warnings via compute_plant_warnings
+        try:
+            # Recreate the plant dict shape compute_plant_warnings expects
+            warn_plant = {
+                "id": pid,
+                "map_type": map_type,
+                "container_id": plant.get("container_id"),
+                "ground_zone_id": plant.get("ground_zone_id"),
+                "care_profile": plant.get("care_profile"),
+                "care_thresholds": care_thresholds,
+            }
+            today_date = date.fromisoformat(today) if isinstance(today, str) else today
+            result = compute_plant_warnings(warn_plant, schedules, weather=weather, today=today_date)
+            plant["top_warning"] = _care_warning_to_dict(result.top_warning) if result.top_warning else None
+            plant["warnings"] = [_care_warning_to_dict(w) for w in result.warnings]
+        except Exception:
+            # Degrade gracefully: new pipeline failure shouldn't break the map
+            plant["top_warning"] = None
+            plant["warnings"] = []
 
         phenology_json = plant.pop("phenology_json", None)
         plant["phenology"] = json.loads(phenology_json) if phenology_json else None

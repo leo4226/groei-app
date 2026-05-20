@@ -82,6 +82,8 @@ export const en: Translations = {
     prune: 'Prune',
     protect_cold: 'Cold protection',
     protect_heat: 'Heat protection',
+    frost_protect: 'Frost protect',
+    heat_protect: 'Heat protect',
   },
 
   plants: {
@@ -579,6 +581,9 @@ export const en: Translations = {
     open: 'Open',
     filter: 'Filter',
     heading: 'Calendar',
+    filterDescAll: 'all plants',
+    filterDescGarden: 'outdoor plants',
+    filterDescHouse: 'indoor plants',
     upcoming: '§ Upcoming',
     upcomingSubtitle: 'The coming days — sorted by date.',
     upcomingTitlePrefix: 'What',
@@ -623,6 +628,9 @@ export const en: Translations = {
     eventHarvest: 'Harvest',
     eventScan: 'Pest scan',
     eventRain: 'Rain',
+    eventRotate: 'Rotate',
+    eventDust: 'Dust',
+    eventPestCheck: 'Pest check',
   },
 
   // ── Plants page (list view) ──────────────────────────────
@@ -734,5 +742,11 @@ export const en: Translations = {
     saving: 'Saving...',
     saved: 'Saved',
     deleting: 'Deleting...',
+    all: 'All',
+    garden: 'Garden',
+    house: 'House',
+    envGround: 'Ground',
+    envPotted: 'Potted',
+    envIndoor: 'Indoor',
   },
 }
