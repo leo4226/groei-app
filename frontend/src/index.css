@@ -323,3 +323,26 @@ input:focus, select:focus, textarea:focus {
     flex: 0 0 48px !important;
   }
 }
+
+/* Map toolbar responsive: mobile vs desktop visibility */
+@media (max-width: 720px) {
+  .forced-hidden-mobile {
+    display: none !important;
+  }
+  .forced-hidden-desktop {
+    display: flex !important;
+  }
+  .map-action-primary {
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+    gap: 4px !important;
+  }
+}
+@media (min-width: 721px) {
+  .forced-hidden-mobile {
+    display: flex !important;
+  }
+  .forced-hidden-desktop {
+    display: none !important;
+  }
+}

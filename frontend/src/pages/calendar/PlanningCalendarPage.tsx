@@ -2,6 +2,7 @@ import { useState } from 'react'
 import MonthView from './MonthView'
 import PhenologyView from './PhenologyView'
 import { useT } from '../../context/LanguageContext'
+import { useIsNarrow } from './useIsNarrow'
 import './calendar.css'
 
 export type CalendarViewMode = 'month' | 'agenda'
@@ -23,7 +24,8 @@ function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: Ca
 
 export default function PlanningCalendarPage() {
   const t = useT()
-  const [view, setView] = useState<CalendarViewMode>('month')
+  const isNarrow = useIsNarrow()
+  const [view, setView] = useState<CalendarViewMode>(isNarrow ? 'agenda' : 'month')
   const [env, setEnv] = useState('all')
 
   return (
