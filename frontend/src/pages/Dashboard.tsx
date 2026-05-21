@@ -204,47 +204,73 @@ export default function Dashboard() {
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
-            <Link to="/weeds/identify" style={{ textDecoration: 'none', display: 'block' }}>
-              <div style={{
-                borderRadius: 14, overflow: 'hidden', marginBottom: 18,
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                padding: '18px 18px',
-                cursor: 'pointer',
-                transition: 'border-color 0.15s',
-              }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
-                  🌿 {t.weeds.identifyCard.title}
+            <div className="identify-cards-row">
+              <Link to="/weeds/identify" style={{ textDecoration: 'none', display: 'block' }}>
+                <div className="identify-card" style={{
+                  height: '100%',
+                  borderRadius: 14, overflow: 'hidden',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  padding: '14px 14px',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s',
+                  boxSizing: 'border-box',
+                }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                    🚧 {t.dashboard.comingSoon}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
+                    🌿 {t.weeds.identifyCard.title}
+                  </div>
+                  <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    {t.weeds.identifyCard.subtitle}
+                  </p>
                 </div>
-                <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  {t.weeds.identifyCard.subtitle}
-                </p>
-              </div>
-            </Link>
-            <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
-              <div style={{
-                borderRadius: 14, overflow: 'hidden', marginBottom: 18,
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                padding: '18px 18px',
-                cursor: 'pointer',
-                transition: 'border-color 0.15s',
-              }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
-                  📷 Foto-identificatie
+              </Link>
+              <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
+                <div className="identify-card" style={{
+                  height: '100%',
+                  borderRadius: 14, overflow: 'hidden',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  padding: '14px 14px',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s',
+                  boxSizing: 'border-box',
+                }}>
+                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
+                    📷 Foto-identificatie
+                  </div>
+                  <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    Richt de camera op een plant om hem te identificeren.
+                  </p>
                 </div>
-                <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Richt de camera op een plant om hem te identificeren.
-                </p>
-              </div>
-            </Link>
+              </Link>
+            </div>
           </div>
         </div>
 
       </div>
 
       <style>{`
+        /* Identify cards: side-by-side on mobile, stacked in desktop sidebar */
+        .identify-cards-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-bottom: 18px;
+        }
         @media (min-width: 900px) {
+          .identify-cards-row {
+            grid-template-columns: 1fr;
+            gap: 0;
+          }
+          .identify-cards-row > a {
+            margin-bottom: 18px;
+          }
+          .identify-card {
+            padding: 18px 18px !important;
+          }
           .dashboard-grid {
             grid-template-columns: 1fr 340px !important;
             align-items: start;
