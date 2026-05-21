@@ -4,13 +4,13 @@ echo Starting Groei...
 echo.
 
 :: Start backend
-start "Groei API" cmd /k "cd /d %~dp0groei\backend && .venv\Scripts\python -m uvicorn main:app --reload --host 0.0.0.0 --port 1415"
+start "Groei API" cmd /k "cd /d %~dp0groei\groei\backend && .venv\Scripts\python -m uvicorn main:app --reload --host 0.0.0.0 --port 1415"
 
 :: Wait a moment for backend to start
 timeout /t 2 /nobreak >nul
 
 :: Start frontend
-start "Groei Frontend" cmd /k "cd /d %~dp0groei\frontend && npm run dev"
+start "Groei Frontend" cmd /k "cd /d %~dp0groei\groei\frontend && npm run dev"
 
 :: Wait for frontend to be ready
 timeout /t 3 /nobreak >nul

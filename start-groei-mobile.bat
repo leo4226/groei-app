@@ -7,7 +7,7 @@ echo.
 
 :: Build the frontend
 echo Stap 1/2: Frontend bouwen...
-cd /d %~dp0groei\frontend
+cd /d %~dp0groei\groei\frontend
 call npm run build:mobile
 if %errorlevel% neq 0 (
     echo [FOUT] Build mislukt. Controleer de output hierboven.
@@ -19,7 +19,7 @@ echo.
 
 :: Start only the backend (it now serves the frontend too)
 echo Stap 2/2: Backend starten (serveert ook de app)...
-cd /d %~dp0groei\backend
+cd /d %~dp0groei\groei\backend
 echo.
 echo ============================================
 echo  App draait op: http://localhost:1415
