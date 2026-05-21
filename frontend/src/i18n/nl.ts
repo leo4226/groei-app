@@ -260,6 +260,24 @@ export const nl: Translations = {
     buildingWall: 'Gebouw / Muur',
     top: 'Boven',
     bottom: 'Onder',
+    tour: {
+      skip: 'Overslaan',
+      next: 'Volgende →',
+      done: 'Klaar',
+      goToSettings: 'Ga naar Instellingen →',
+      skipSettings: 'Nu overslaan',
+      outdoor: {
+        step1: { title: 'Welkom in de editor', body: 'Hier teken je de indeling van je tuin. Voeg zones toe, plaats objecten en definieer schaduwen.' },
+        step2: { title: 'Zones tekenen', body: 'Kies een zonetype in de zijbalk (grond, gazon, terras…) en klik op het canvas om de vorm te tekenen.' },
+        step3: { title: 'Schaduw objecten', body: 'Voeg gebouwen of bomen toe die buiten je tuin staan maar wel schaduw werpen. Dit voedt de zonnekaart — hoe nauwkeuriger, hoe beter de heatmap.' },
+        step4: { title: 'Kompas instellen', body: 'Voor een correcte zonnekaart geef je aan welke richting "omhoog" is op jouw kaart. Stel dit in via Kaartinstellingen → Kompasrichting.' },
+      },
+      indoor: {
+        step1: { title: 'Welkom in de editor', body: 'Hier teken je de plattegrond van je huis. Voeg kamers toe, plaats muren, deuren en ramen.' },
+        step2: { title: 'Kamers tekenen', body: 'Kies een kamertype in de zijbalk en teken elke ruimte op het canvas.' },
+        step3: { title: 'Deuren & ramen', body: 'Klik op een muur om een deur of raam te plaatsen. Dit helpt bij het bijhouden van licht per kamer.' },
+      },
+    },
   },
 
   settings: {
@@ -746,6 +764,49 @@ export const nl: Translations = {
     },
     dismiss: 'Later',
     completed: '✅ Klaar! Je hebt alle stappen doorlopen',
+  },
+
+  weeds: {
+    identifyCard: {
+      title: 'Onkruid herkennen',
+      subtitle: 'Maak een foto en identificeer onkruid',
+    },
+    privacy: {
+      notice: 'Je foto wordt gedeeld met Pl@ntNet voor herkenning. Er worden geen persoonlijke gegevens opgeslagen.',
+      ack: 'Akkoord, verder',
+    },
+    identifying: 'Onkruid herkennen...',
+    noMatch: {
+      retry: 'Opnieuw proberen',
+      dismiss: 'Sluiten',
+    },
+    knownWeed: 'Bekend onkruid',
+    notAWeed: 'Niet in onkruidcatalogus',
+    logSighting: 'Locatie vastleggen',
+    sightingSheet: {
+      title: 'Waar zit het?',
+      pickMap: 'Kies een tuin',
+      pinInstruction: 'Tik op de plek in de tuin',
+      confirm: 'Opslaan',
+      cancel: 'Annuleren',
+      saved: 'Opgeslagen!',
+    },
+    errorService: 'Kon de herkenningsdienst niet bereiken.',
+  },
+
+  help: {
+    title: 'Hulp nodig?',
+    close: 'Sluiten',
+    tips: {
+      dashboard: 'Hier zie je een overzicht van al je tuinen en wat er vandaag moet gebeuren.  👀',
+      plants: 'Al je planten op een rij. Tik er een aan voor details en verzorging.',
+      maps: 'Bekijk je tuin op de kaart. Sleep om te pannen, knijp om te zoomen.',
+      calendar: 'Je verzorgingsschema op de kalender. Alle taken die gepland staan.',
+      settings: 'Pas je profiel aan. Beheer je abonnement en app-voorkeuren.',
+      editor: 'Teken muren, plaats deuren/ramen en voeg schaduwobjecten toe. Dubbeltik een object om te verwijderen.',
+      plantDetail: '"Verzorging" toont het schema — tik taken af als je ze gedaan hebt.',
+      addPlant: 'Kies een plant uit de database of typ een eigen naam. Voeg plek en foto toe!',
+    },
   },
 
   common: {

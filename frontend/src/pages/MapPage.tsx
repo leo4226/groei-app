@@ -291,6 +291,16 @@ export default function MapPage() {
           </button>
           {isOutdoor && (
             <button
+              onClick={() => navigate('/weeds/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/15 text-green-700 rounded-full text-sm font-medium hover:bg-green-500/25 transition-colors"
+              title={t.weeds.identifyCard.title}
+            >
+              <span>🌿</span>
+              <span>{t.weeds.identifyCard.title}</span>
+            </button>
+          )}
+          {isOutdoor && (
+            <button
               onClick={sun.available ? sun.toggle : undefined}
               title={sun.available
                 ? t.mapPage.sun

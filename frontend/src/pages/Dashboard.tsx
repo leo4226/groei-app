@@ -204,12 +204,23 @@ export default function Dashboard() {
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
-            <UnderConstructionCard
-              t={t}
-              icon="🌿"
-              title="Detectie"
-              description={`Onkruid & ziektes herkennen — ${t.dashboard.comingSoon.toLowerCase()} beschikbaar.`}
-            />
+            <Link to="/weeds/identify" style={{ textDecoration: 'none', display: 'block' }}>
+              <div style={{
+                borderRadius: 14, overflow: 'hidden', marginBottom: 18,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                padding: '18px 18px',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s',
+              }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 18, color: 'var(--color-text)', marginBottom: 4 }}>
+                  🌿 {t.weeds.identifyCard.title}
+                </div>
+                <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t.weeds.identifyCard.subtitle}
+                </p>
+              </div>
+            </Link>
             <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
               <div style={{
                 borderRadius: 14, overflow: 'hidden', marginBottom: 18,

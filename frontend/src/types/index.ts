@@ -515,3 +515,33 @@ export type IdentifyCommitResult = {
   care_thresholds: Record<string, unknown>
   photo_path: string
 }
+
+// ── Weed catalog & sightings ──
+
+export type WeedSpeciesListItem = {
+  id: number
+  slug: string
+  common_name_nl: string
+  latin_name: string
+  family: string | null
+  flower_color: string | null
+  places: string[]
+}
+
+export type WeedSightingCreate = {
+  weed_id: number
+  map_id: number
+  map_x: number
+  map_y: number
+  notes?: string
+  sighted_at: string
+}
+
+export type WeedSightingOut = WeedSightingCreate & {
+  id: number
+  weed_name: string
+  weed_slug: string
+  latin_name: string
+  removal_difficulty: string | null
+  created_at: string
+}

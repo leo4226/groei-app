@@ -39,6 +39,7 @@ export default function EditorToolbar({
       </button>
       <button
         onClick={() => onSetTool('draw')}
+        data-tour-id="tool-draw"
         className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'draw' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
@@ -50,6 +51,7 @@ export default function EditorToolbar({
       </button>
       <button
         onClick={() => onSetTool('shadow_caster')}
+        data-tour-id="tool-shadow-caster"
         className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'shadow_caster' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}

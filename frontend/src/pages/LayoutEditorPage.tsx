@@ -12,6 +12,8 @@ import ShadowCasterPropertiesPanel from '../components/editor/ShadowCasterProper
 import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
 import { useT } from '../context/LanguageContext'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
+import { useEditorTour, hasTourBeenSeen } from '../hooks/useEditorTour'
+import EditorTour from '../components/editor/EditorTour'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -29,6 +31,7 @@ export default function LayoutEditorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const editor = useEditorState()
+  const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
   const gardenBounds = useMemo(
     () => deriveGardenBounds(editor.zones),
     [editor.zones],
@@ -75,6 +78,14 @@ export default function LayoutEditorPage() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [mapId])
+
+  // Auto-start tour on first open of an empty canvas
+  useEffect(() => {
+    if (loading || !mapId) return
+    if (editor.zones.length === 0 && !hasTourBeenSeen(mapId)) {
+      tour.start()
+    }
+  }, [loading, mapId])
 
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
     setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
@@ -233,6 +244,15 @@ export default function LayoutEditorPage() {
           className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-bg"
         >
           ↩ {t.editor.toolbar.undo}
+        </button>
+
+        {/* Tour replay button */}
+        <button
+          onClick={tour.start}
+          title="Rondleiding"
+          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg"
+        >
+          ?
         </button>
 
         <button
@@ -453,6 +473,11 @@ export default function LayoutEditorPage() {
           </>
         )}
       </div>
+
+      <EditorTour
+        tour={tour}
+        onNavigateToSettings={() => navigate(`/maps/${mapId}/settings`)}
+      />
     </div>
   )
 }

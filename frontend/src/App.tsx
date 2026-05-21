@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
+import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
@@ -18,6 +19,7 @@ const PlantDetail = lazy(() => import('./pages/PlantDetail'))
 const EditPlant = lazy(() => import('./pages/EditPlant'))
 const PlantCareDetail = lazy(() => import('./pages/PlantCareDetail'))
 const IdentifyPlantPage = lazy(() => import('./pages/IdentifyPlant').then(m => ({ default: m.IdentifyPlantPage })))
+const IdentifyWeedPage = lazy(() => import('./pages/IdentifyWeedPage').then(m => ({ default: m.IdentifyWeedPage })))
 const Settings = lazy(() => import('./pages/Settings'))
 const PlanningCalendarPage = lazy(() => import('./pages/calendar/PlanningCalendarPage'))
 const LayoutEditorPage = lazy(() => import('./pages/LayoutEditorPage'))
@@ -199,6 +201,14 @@ export default function App() {
               }
             />
             <Route
+              path="/weeds/identify"
+              element={
+                <RequireAuth>
+                  <IdentifyWeedPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/calendar"
               element={
                 <RequireAuth>
@@ -219,6 +229,8 @@ export default function App() {
       </main>
 
       {!isLoginPage && <BottomNav />}
+
+      {!isLoginPage && <HelpAssistant />}
 
       {showPlantPicker && (
         <PlantPickerSheet

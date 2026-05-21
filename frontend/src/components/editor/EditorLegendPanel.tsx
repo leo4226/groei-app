@@ -202,6 +202,7 @@ export default function EditorLegendPanel({
             <div className="flex flex-col gap-1 mt-2">
               <button
                 onClick={() => onSetTool('place_door')}
+                data-tour-id="tool-place-door"
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium ${
                   activeTool === 'place_door' ? 'ring-2 ring-primary ring-offset-1' : ''
                 }`}
@@ -218,6 +219,7 @@ export default function EditorLegendPanel({
               </button>
               <button
                 onClick={() => onSetTool('place_window')}
+                data-tour-id="tool-place-window"
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium ${
                   activeTool === 'place_window' ? 'ring-2 ring-primary ring-offset-1' : ''
                 }`}

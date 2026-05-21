@@ -239,3 +239,15 @@ export async function commitIdentification(
     body: { scientific_name: scientificName, photo_base64: photoBase64 },
   })
 }
+
+// ── Weed catalog & sightings ──
+
+export async function fetchWeedCatalog(): Promise<import('../types').WeedSpeciesListItem[]> {
+  return api<import('../types').WeedSpeciesListItem[]>('GET', '/weed-catalog')
+}
+
+export async function createWeedSighting(
+  body: import('../types').WeedSightingCreate,
+): Promise<import('../types').WeedSightingOut> {
+  return api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body })
+}

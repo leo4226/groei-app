@@ -260,6 +260,24 @@ export const en: Translations = {
     buildingWall: 'Building / Wall',
     top: 'Top',
     bottom: 'Bottom',
+    tour: {
+      skip: 'Skip',
+      next: 'Next →',
+      done: 'Done',
+      goToSettings: 'Go to Settings →',
+      skipSettings: 'Skip for now',
+      outdoor: {
+        step1: { title: 'Welcome to the editor', body: 'Draw your garden layout here. Add zones, place objects and define shadows.' },
+        step2: { title: 'Drawing zones', body: 'Pick a zone type in the sidebar (soil, lawn, deck…) and click on the canvas to draw the shape.' },
+        step3: { title: 'Shadow objects', body: 'Add buildings or trees outside your garden that cast shadows into it. This feeds the sun heatmap — the more accurate, the better.' },
+        step4: { title: 'Set compass bearing', body: 'For an accurate sun heatmap, tell the app which direction is "up" on your map. Set this via Map Settings → Compass bearing.' },
+      },
+      indoor: {
+        step1: { title: 'Welcome to the editor', body: 'Draw your floor plan here. Add rooms, place walls, doors and windows.' },
+        step2: { title: 'Drawing rooms', body: 'Pick a room type in the sidebar and draw each space on the canvas.' },
+        step3: { title: 'Doors & windows', body: 'Click on a wall to place a door or window. This helps track light per room.' },
+      },
+    },
   },
 
   settings: {
@@ -746,6 +764,49 @@ export const en: Translations = {
     },
     dismiss: 'Later',
     completed: '✅ All done! You\'ve completed all the steps',
+  },
+
+  weeds: {
+    identifyCard: {
+      title: 'Identify weeds',
+      subtitle: 'Take a photo to identify weeds in your garden',
+    },
+    privacy: {
+      notice: 'Your photo will be shared with Pl@ntNet for identification. No personal data is stored.',
+      ack: 'OK, continue',
+    },
+    identifying: 'Identifying weed...',
+    noMatch: {
+      retry: 'Try again',
+      dismiss: 'Close',
+    },
+    knownWeed: 'Known weed',
+    notAWeed: 'Not in weed catalog',
+    logSighting: 'Log location',
+    sightingSheet: {
+      title: 'Where is it?',
+      pickMap: 'Choose a garden',
+      pinInstruction: 'Tap the location in your garden',
+      confirm: 'Save',
+      cancel: 'Cancel',
+      saved: 'Saved!',
+    },
+    errorService: 'Could not reach the identification service.',
+  },
+
+  help: {
+    title: 'Need help?',
+    close: 'Close',
+    tips: {
+      dashboard: 'An overview of all your gardens and what needs doing today.  👀',
+      plants: 'All your plants in one list. Tap one for details and care.',
+      maps: 'View your garden on the map. Drag to pan, pinch to zoom.',
+      calendar: 'Your care schedule on the calendar. All planned tasks at a glance.',
+      settings: 'Edit your profile. Manage subscription and app preferences.',
+      editor: 'Draw walls, place doors/windows, and add shadow casters. Double-tap an object to remove it.',
+      plantDetail: '"Care" shows the schedule — tick tasks off when you\'re done.',
+      addPlant: 'Pick a plant from the database or type a custom name. Add location and photo!',
+    },
   },
 
   common: {

@@ -217,6 +217,24 @@ export type Translations = {
     buildingWall: string           // "Gebouw / Muur" / "Building / Wall"
     top: string                    // "Boven" / "Top"
     bottom: string                 // "Onder" / "Bottom"
+    tour: {
+      skip: string
+      next: string
+      done: string
+      goToSettings: string
+      skipSettings: string
+      outdoor: {
+        step1: { title: string; body: string }
+        step2: { title: string; body: string }
+        step3: { title: string; body: string }
+        step4: { title: string; body: string }
+      }
+      indoor: {
+        step1: { title: string; body: string }
+        step2: { title: string; body: string }
+        step3: { title: string; body: string }
+      }
+    }
   }
 
   settings: {
@@ -711,6 +729,49 @@ export type Translations = {
     }
     dismiss: string     // "Sluiten" / "Dismiss"
     completed: string   // "✅ Klaar! Je hebt alle stappen voltooid"
+  }
+
+  weeds: {
+    identifyCard: {
+      title: string
+      subtitle: string
+    }
+    privacy: {
+      notice: string
+      ack: string
+    }
+    identifying: string
+    noMatch: {
+      retry: string
+      dismiss: string
+    }
+    knownWeed: string
+    notAWeed: string
+    logSighting: string
+    sightingSheet: {
+      title: string
+      pickMap: string
+      pinInstruction: string
+      confirm: string
+      cancel: string
+      saved: string
+    }
+    errorService: string
+  }
+
+  help: {
+    title: string
+    close: string
+    tips: {
+      dashboard: string
+      plants: string
+      maps: string
+      calendar: string
+      settings: string
+      editor: string
+      plantDetail: string
+      addPlant: string
+    }
   }
 
   common: {

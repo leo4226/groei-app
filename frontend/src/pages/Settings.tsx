@@ -57,7 +57,7 @@ export default function Settings() {
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.whoIsGardening}</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {users.map((user) => (
             <button
               key={user.id}
@@ -84,7 +84,7 @@ export default function Settings() {
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.language}</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(['nl', 'en'] as const).map((lang) => {
             const activeUser = users.find((u) => u.id === activeUserId)
             const isSelected = (activeUser?.language ?? 'nl') === lang
