@@ -291,9 +291,11 @@ export default function Plants() {
         </button>
       </div>
 
+      {/* Filters — horizontal strip on mobile */}
+      <div className="plants-filter-strip">
       {/* Filter row 1: Locatie */}
-      <div style={{ padding: '14px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{
+      <div className="filter-row" style={{ padding: '14px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="filter-label" style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
           textTransform: 'uppercase',
@@ -308,8 +310,8 @@ export default function Plants() {
       </div>
 
       {/* Filter row 2: Plant type */}
-      <div style={{ padding: '6px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{
+      <div className="filter-row" style={{ padding: '6px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="filter-label" style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
           textTransform: 'uppercase',
@@ -335,8 +337,8 @@ export default function Plants() {
       </div>
 
       {/* Filter row 3: Form */}
-      <div style={{ padding: '6px 24px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{
+      <div className="filter-row" style={{ padding: '6px 24px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className="filter-label" style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 9,
           textTransform: 'uppercase',
@@ -360,6 +362,7 @@ export default function Plants() {
             />
           )
         })}
+      </div>
       </div>
 
       <div style={{ padding: '0 24px' }}>

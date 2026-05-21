@@ -49,7 +49,7 @@ interface Props {
   /** Arbitrary SVG content rendered on top of everything (used by ?debug=svf). */
   debugOverlay?: ReactNode
   // Dynamic garden geometry
-  gardenPerimeter?: [number, number][]
+  gardenPerimeter?: [number, number][] | null
   gardenBounds?: { minX: number; minY: number; maxX: number; maxY: number }
   gardenViewBox?: string
 }

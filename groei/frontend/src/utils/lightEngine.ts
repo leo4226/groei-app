@@ -12,7 +12,7 @@ export interface MapLightConfig {
   bearing: number
   shadowCasters: ShadowCaster[]
   gardenBounds: GardenBounds
-  gardenPerimeter: [number, number][]
+  gardenPerimeter: [number, number][] | null
 }
 
 export interface LightEngine {

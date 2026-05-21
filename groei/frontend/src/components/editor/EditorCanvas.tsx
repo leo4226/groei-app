@@ -188,6 +188,8 @@ interface Props {
   previewMode: boolean
   mapType: MapType
   mapId: number | null
+  showSunPreview?: boolean
+  perimeterPolygon?: [number, number][] | null
   onAddZone: (x: number, y: number, w: number, h: number, type: ZoneStyleType) => void
   onUpdateZone: (id: string, updates: Partial<EditorZone>) => void
   onUpdateWallElement: (id: string, updates: Partial<WallElement>) => void
@@ -240,6 +242,7 @@ export default function EditorCanvas({
   zones, wallElements, shadowCasters, objects,
   selectedZoneId, selectedWallElementId, selectedShadowCasterId,
   activeTool, activeZoneType, objectPreset, scalePxPerM, previewMode, mapType, mapId,
+  showSunPreview, perimeterPolygon,
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
   selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
@@ -690,6 +693,18 @@ export default function EditorCanvas({
             width={shadowCasterDrawRect.width} height={shadowCasterDrawRect.height}
             fill="rgba(107,114,128,0.2)" stroke="#6b7280"
             strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
+          />
+        )}
+
+        {/* Garden perimeter preview (sun polygon) */}
+        {perimeterPolygon && perimeterPolygon.length >= 3 && (
+          <polygon
+            points={perimeterPolygon.map(([x, y]) => `${x},${y}`).join(' ')}
+            fill="rgba(251,191,36,0.08)"
+            stroke="#fbbf24"
+            strokeWidth={2}
+            strokeDasharray="8 4"
+            pointerEvents="none"
           />
         )}
 

@@ -1,14 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
-
-const DECOR = [
-  { name: 'oak',      left: '68%', top: '60px',  size: 200, rotate: -8,  opacity: 0.07 },
-  { name: 'foxglove', left: '-3%', top: '180px', size: 90,  rotate: 12,  opacity: 0.07 },
-  { name: 'daisy',    left: '80%', top: '320px', size: 50,  rotate: -20, opacity: 0.06 },
-  { name: 'peony',    left: '5%',  top: '480px', size: 80,  rotate: -8,  opacity: 0.07 },
-  { name: 'lavender_bare', left: '75%', top: '520px', size: 70, rotate: 15, opacity: 0.08 },
-]
+import PageDecor from '../components/PageDecor'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
@@ -70,25 +63,16 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: '100dvh', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       {/* Botanical decor */}
-      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-        {DECOR.map((d) => (
-          <img
-            key={d.name}
-            src={`/icons/${d.name}.svg`}
-            alt=""
-            style={{ position: 'absolute', left: d.left, top: d.top, width: d.size, height: d.size, transform: `rotate(${d.rotate}deg)`, opacity: d.opacity, userSelect: 'none' }}
-          />
-        ))}
-      </div>
+      <PageDecor />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '360px' }}>
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.8rem', color: 'var(--color-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-            Groei
+            Floreren
           </h1>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', margin: '6px 0 0' }}>
-            Track your plants, grow your garden
+            Laat je tuin floreren
           </p>
         </div>
 

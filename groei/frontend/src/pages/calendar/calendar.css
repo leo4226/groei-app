@@ -701,3 +701,18 @@
   .cal-page .title-row { grid-template-columns: 1fr; }
   .cal-page .month-switch { border-left: 0; padding-left: 0; border-top: 1px solid var(--cal-rule); padding-top: 18px; }
 }
+
+@media (max-width: 720px) {
+  .cal-page .standalone-toggle-container {
+    padding: 16px 24px 0 !important;
+  }
+  .cal-page .masthead {
+    padding: 20px 24px 12px;
+  }
+  .cal-page .legend-strip {
+    padding: 12px 24px 0;
+  }
+  .cal-page main {
+    padding: 16px 24px 48px;
+  }
+}

@@ -123,6 +123,7 @@ export default function PlantDetail() {
   }
 
   async function handleArchive() {
+    if (!window.confirm(t.plantDetail.deleteConfirm)) return
     await archivePlant(plantId)
     navigate('/plants')
   }

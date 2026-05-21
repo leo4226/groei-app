@@ -1,9 +1,21 @@
 /**
  * Static compass rose showing the garden's cardinal orientation.
  *
- * The landscape SVG has top = brick fence (NNW, ~347°), so N is 13° CW from screen-top.
+ * `bearing` is the azimuth the map's "up" direction points to (0–360°).
+ * The compass rotates so North appears in the correct direction relative to the map.
+ * Default bearing 347° = top of garden = NNW (Leon's garden).
  */
-export default function GardenCompass({ isMobile = false }: { isMobile?: boolean }) {
+export default function GardenCompass({
+  isMobile = false,
+  bearing = 347,
+}: {
+  isMobile?: boolean
+  bearing?: number
+}) {
+  // North is (360 - bearing)° clockwise from map-up.
+  // On mobile the SVG is CSS-rotated -90°, so subtract 90° more.
+  const rotation = isMobile ? 270 - bearing : 360 - bearing
+
   return (
     <div
       style={{
@@ -14,7 +26,7 @@ export default function GardenCompass({ isMobile = false }: { isMobile?: boolean
         pointerEvents: 'none',
         width: 56,
         height: 56,
-        transform: isMobile ? 'rotate(-77deg)' : 'rotate(13deg)',
+        transform: `rotate(${rotation}deg)`,
       }}
     >
       <svg width="56" height="56" viewBox="0 0 56 56">

@@ -5,6 +5,73 @@ import type { EditorZone, CanvasData, ShadowCaster } from '../types'
 // stopping at the nearest surface zone.
 const GARDEN_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'fence'])
 
+// Surface zones only (no fences) — used for auto-detected garden boundary
+const SURFACE_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water'])
+
+// ── Convex hull (Andrew's monotone chain) ─────────────────────────────────────
+
+/**
+ * Compute the convex hull of a set of 2D points.
+ * Returns the hull in clockwise order. Uses Andrew's monotone chain algorithm.
+ */
+function convexHull(points: [number, number][]): [number, number][] {
+  if (points.length <= 2) return points.slice()
+  
+  // Sort by x, then y
+  const sorted = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  
+  // Lower hull
+  const lower: [number, number][] = []
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+      lower.pop()
+    }
+    lower.push(p)
+  }
+  
+  // Upper hull
+  const upper: [number, number][] = []
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i]
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+      upper.pop()
+    }
+    upper.push(p)
+  }
+  
+  // Remove last point of each half (duplicate of first of other half)
+  lower.pop()
+  upper.pop()
+  return lower.concat(upper)
+}
+
+/**
+ * Compute the garden perimeter from surface zones using convex hull.
+ * Convex hull creates a clean polygon that wraps all zones tightly —
+ * no jagged edges, no gaps between disconnected zones.
+ * Returns null when there are fewer than 3 points (no meaningful perimeter).
+ */
+function computeSurfacePerimeter(zones: EditorZone[]): [number, number][] | null {
+  const surface = zones.filter(z => SURFACE_ZONE_TYPES.has(z.type))
+  if (surface.length === 0) return null
+  
+  // Collect all 4 corners of every surface zone
+  const points: [number, number][] = []
+  for (const z of surface) {
+    points.push([z.x, z.y])
+    points.push([z.x + z.width, z.y])
+    points.push([z.x + z.width, z.y + z.height])
+    points.push([z.x, z.y + z.height])
+  }
+  
+  const hull = convexHull(points)
+  if (hull.length < 3) return null
+  return hull
+}
+
 // ── Garden boundary (zone union: surface + fence) ────────────────────────────
 
 /**
@@ -185,21 +252,41 @@ function perimeterToBounds(perimeter: [number, number][]): { minX: number; minY:
 }
 
 /**
- * Derive the garden perimeter polygon from all garden-defining zones (surface + fences).
- * No margin — the perimeter follows the outer edges of the fence zones exactly.
- * Used for heatmap masking and live shadow clipping.
+ * Derive the garden perimeter polygon.
+ *
+ * Priority:
+ * 1. Fence zones → union of fence rectangles (exact drawn boundary)
+ * 2. No fences → convex hull of all surface zones (clean auto-detected boundary)
+ * 3. Nothing → null (no masking; full canvas)
  */
-export function deriveGardenPerimeter(zones: EditorZone[]): [number, number][] {
-  return computeZoneUnion(zones, 5)
+export function deriveGardenPerimeter(zones: EditorZone[]): [number, number][] | null {
+  const fenceZones = zones.filter(z => z.type === 'fence')
+  if (fenceZones.length > 0) {
+    return computeZoneUnion(fenceZones, 5)
+  }
+  return computeSurfacePerimeter(zones)
 }
 
 /**
  * Garden bounds (bounding box) for heatmap grid computation.
- * Uses a margin so the grid extends past the perimeter — edge cells whose
- * centers fall outside the perimeter are masked out, but the grid still
- * reaches all the way to the fence lines.
+ *
+ * Priority:
+ * 1. Fence zones → bounding box of fence union
+ * 2. No fences → bounding box of surface zone convex hull
+ * 3. Nothing → null
  */
-export function deriveGardenBounds(zones: EditorZone[]): { minX: number; minY: number; maxX: number; maxY: number } {
+export function deriveGardenBounds(zones: EditorZone[]): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const fenceZones = zones.filter(z => z.type === 'fence')
+  if (fenceZones.length > 0) {
+    return deriveGardenBoundsFromUnion(fenceZones)
+  }
+  const hull = computeSurfacePerimeter(zones)
+  if (hull) return perimeterToBounds(hull)
+  return null
+}
+
+/** Internal: derive bounds from zones using the grid union (for fence zones) */
+function deriveGardenBoundsFromUnion(zones: EditorZone[]): { minX: number; minY: number; maxX: number; maxY: number } {
   const perimeter = computeZoneUnion(zones, 10)
   return perimeterToBounds(perimeter)
 }

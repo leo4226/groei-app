@@ -41,8 +41,10 @@ async def get_dashboard(db = Depends(db_dep), account = Depends(get_current_acco
     upcoming = []
 
     for row in rows:
-        next_due = row["next_due"]
-        days_diff = (date.fromisoformat(next_due) - date.today()).days
+        due = row["next_due"]
+        if isinstance(due, str):
+            due = date.fromisoformat(due)
+        days_diff = (due - date.today()).days
 
         task = CareTask(
             plant_id=row["plant_id"],
@@ -137,7 +139,10 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
 
     overdue, due_today, upcoming = [], [], []
     for row in rows:
-        days_diff = (date.fromisoformat(row["next_due"]) - date.today()).days
+        due = row["next_due"]
+        if isinstance(due, str):
+            due = date.fromisoformat(due)
+        days_diff = (due - date.today()).days
         task = CareTask(
             plant_id=row["plant_id"],
             plant_name=row["plant_name"],

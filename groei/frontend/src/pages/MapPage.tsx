@@ -214,7 +214,7 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-[calc(100dvh-5rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {indoorMap && outdoorMap && (
             <div className="flex gap-0.5 bg-surface rounded-lg p-0.5 border border-border shrink-0">
               <button
@@ -239,7 +239,7 @@ export default function MapPage() {
               </button>
             </div>
           )}
-          <h1 className="text-xl font-bold text-text">{map.name}</h1>
+          <h1 className="text-xl font-bold text-text truncate">{map.name}</h1>
           <button
             onClick={() => navigate(`/maps/${map.id}/settings`)}
             className="w-7 h-7 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
@@ -251,7 +251,7 @@ export default function MapPage() {
             </svg>
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 map-toolbar">
           {/* Bewater */}
           <button
             onClick={water.togglePicker}
@@ -291,11 +291,16 @@ export default function MapPage() {
           </button>
           {isOutdoor && (
             <button
-              onClick={sun.toggle}
+              onClick={sun.available ? sun.toggle : undefined}
+              title={sun.available
+                ? t.mapPage.sun
+                : 'Stel GPS-coordinaten in om de zon-modus te gebruiken'}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 sun.active
                   ? 'bg-amber-400/30 text-amber-700'
-                  : 'bg-amber-400/15 text-amber-600 hover:bg-amber-400/25'
+                  : sun.available
+                    ? 'bg-amber-400/15 text-amber-600 hover:bg-amber-400/25'
+                    : 'bg-amber-400/10 text-amber-600/40 cursor-not-allowed'
               }`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -390,11 +395,11 @@ export default function MapPage() {
             onRemoveItem={handleRemoveItem}
             onFixedPlantTap={setSelectedFixedPlant}
             showLabels={showLabels}
-            sunModeActive={sun.isLiveActive}
+            sunModeActive={sun.active}
             shadows={sun.shadows}
             sunPosition={sun.sunPosition}
-            heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
-            heatmapCalculating={sun.isHeatmapActive ? sun.isCalculating : undefined}
+            heatmapCells={sun.cells}
+            heatmapCalculating={sun.isCalculating}
             heatmapLayer="sun_hours"
             heatmapProfile={sun.isHeatmapActive ? sun.profile : undefined}
             onHeatmapCellTap={sun.isHeatmapActive ? sun.handleCellTap : undefined}
@@ -454,7 +459,7 @@ export default function MapPage() {
           plant={selectedPlant}
           objects={objects}
           soilGroundZones={soilGroundZones}
-          heatmapCells={sun.isHeatmapActive ? sun.cells : undefined}
+          heatmapCells={sun.cells}
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
           onAction={handleCareAction}

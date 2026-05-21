@@ -2,7 +2,7 @@ import type { ShadowPolygon } from '../../utils/shadowGeometry'
 
 interface Props {
   shadows: ShadowPolygon[]
-  clipPolygon?: [number, number][]
+  clipPolygon?: [number, number][] | null
 }
 
 export default function ShadowLayer({ shadows, clipPolygon }: Props) {

@@ -139,13 +139,13 @@ export default function Dashboard() {
           {/* MAIN column */}
           <div>
             {/* Mijn Tuinen */}
-            <section style={{ padding: '0 24px' }}>
+            <section className="dash-section-hpad" style={{ padding: '0 24px' }}>
               <SectionHeader
                 leftLede={maps.length === 0 ? t.dashboard.actions.addGarden : maps.length === 1 ? t.dashboard.actions.view : `${t.dashboard.actions.view} (${maps.length})`}
                 rightMarker={t.dashboard.sections.myGardens}
               />
               {maps.length > 0 ? (
-                <div className="no-scrollbar" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '4px 24px 16px' }}>
+                <div className="no-scrollbar dash-map-scroll" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '4px 24px 16px' }}>
                   {maps.map((map) => <MapCard key={map.id} map={map} t={t} />)}
                   <NewMapCard t={t} onNewMap={openNewMap} />
                 </div>
@@ -164,7 +164,7 @@ export default function Dashboard() {
             </section>
 
             {/* Vandaag */}
-            <section style={{ padding: '0 24px' }}>
+            <section className="dash-section-hpad" style={{ padding: '0 24px' }}>
               <SectionHeader
                 leftLede={summaryLede(overdueCount, dueTodayCount, upcomingCount)}
                 rightMarker={t.dashboard.sections.today}
@@ -182,7 +182,7 @@ export default function Dashboard() {
 
             {/* Logboek */}
             {dashboardV2 && dashboardV2.recent_log.length > 0 && (
-              <section style={{ padding: '0 24px' }}>
+              <section className="dash-section-hpad" style={{ padding: '0 24px' }}>
                 <SectionHeader leftLede="" rightMarker={t.dashboard.sections.logbook} />
                 <LogboekSection t={t} entries={dashboardV2.recent_log} />
               </section>
@@ -190,7 +190,7 @@ export default function Dashboard() {
           </div>
 
           {/* SIDEBAR column */}
-          <div className="dashboard-sidebar" style={{ padding: '0 24px' }}>
+          <div className="dash-section-hpad dashboard-sidebar" style={{ padding: '0 24px' }}>
             <WeatherCard t={t} weather={weather} />
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
@@ -459,7 +459,7 @@ function StatusBanner({ t, counts }: { t: Translations; counts: { total: number;
     { label: t.dashboard.status.dry, value: counts.dry, color: counts.dry > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)' },
   ]
   return (
-    <div style={{
+    <div className="status-banner" style={{
       display: 'grid', gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
       border: '1px solid var(--color-border)',
       borderLeft: 'none', borderRight: 'none',
@@ -544,7 +544,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
   const subLine = dims ? `${typeLabel} · ${dims.w} m × ${dims.h} m` : typeLabel
   return (
     <div
-      className="card"
+      className="card dash-map-card"
       style={{
         flexShrink: 0,
         width: 300,
@@ -1157,7 +1157,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
         const actionLabel = t.care[entry.care_type as keyof typeof t.care] ?? entry.care_type
 
         return (
-          <div key={entry.id} style={{
+          <div key={entry.id} className="log-entry" style={{
             display: 'grid', gridTemplateColumns: '56px 1fr auto',
             gap: 14, padding: '16px 18px', alignItems: 'flex-start',
             borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none',

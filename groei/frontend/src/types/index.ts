@@ -218,6 +218,7 @@ export interface CanvasData {
   canvas_h: number
   mapType?: MapType
   shadowCasters?: ShadowCaster[]  // external casters (buildings, trees) stored alongside zone data
+  gardenPerimeter?: [number, number][]  // manually saved garden boundary (sun polygon)
 }
 
 export interface MapDetail extends MapInfo {}

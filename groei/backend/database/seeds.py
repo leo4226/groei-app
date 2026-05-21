@@ -18,10 +18,13 @@ async def apply(db):
     await db.execute("INSERT INTO locations (id, name, icon, sort_order) VALUES (2, 'Huis', '🏠', 1) ON CONFLICT DO NOTHING")
 
     # ── Garden map ──
+    # Amsterdam, 52.3715°N 4.8499°E. Map "up" points to 347° (NNW toward brick fence).
     await db.execute("""
-        INSERT INTO maps (id, name, slug, svg_file, viewbox, scale_info, sort_order)
+        INSERT INTO maps (id, name, slug, svg_file, viewbox, scale_info, sort_order,
+                          map_type, lat, lon, bearing)
         VALUES (1, 'Garden', 'garden', 'garden_background.svg', '0 0 680 680',
-                '{"px_per_meter": 46, "origin_x": 162, "origin_y": 54}', 0)
+                '{"px_per_meter": 46, "origin_x": 162, "origin_y": 54}', 0,
+                'outdoor', 52.3715, 4.8499, 347)
         ON CONFLICT DO NOTHING
     """)
 

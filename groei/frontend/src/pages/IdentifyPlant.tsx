@@ -56,7 +56,12 @@ export function IdentifyPlantPage() {
     try {
       const enriched = await commitIdentification(candidate.scientific_name, capturedPhotoDataUrl)
       navigate('/plants/add', { state: { prefill: enriched, from: 'identify' } })
-    } catch {
+    } catch (e) {
+      const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
+      if (isNotFound) {
+        navigate('/plants/add', { state: { prefill: { scientific_name: candidate.scientific_name }, from: 'identify' } })
+        return
+      }
       setStep({
         kind: 'error',
         message: t.identify.errorService,

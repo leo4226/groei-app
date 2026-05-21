@@ -42,9 +42,10 @@ function ArrowHead({ x, y, angle }: { x: number; y: number; angle: number }) {
 
 interface Props {
   sunPosition?: SunPosition | null
+  bearing?: number
 }
 
-export default function SunDebugOverlay({ sunPosition: externalSun }: Props) {
+export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GARDEN_SVG_TOP_AZIMUTH }: Props) {
   const [sunDate, setSunDate] = useState<Date>(parseSunTime)
 
   // Re-read URL ?t= on mount

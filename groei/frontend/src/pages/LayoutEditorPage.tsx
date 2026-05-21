@@ -11,7 +11,7 @@ import WallElementPropertiesPanel from '../components/editor/WallElementProperti
 import ShadowCasterPropertiesPanel from '../components/editor/ShadowCasterPropertiesPanel'
 import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
 import { useT } from '../context/LanguageContext'
-import { deriveGardenBounds } from '../utils/gardenFromCanvas'
+import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -25,10 +25,16 @@ export default function LayoutEditorPage() {
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [previewMode, setPreviewMode] = useState(false)
+  const [showSunPreview, setShowSunPreview] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const editor = useEditorState()
   const gardenBounds = useMemo(
     () => deriveGardenBounds(editor.zones),
+    [editor.zones],
+  )
+  const gardenPerimeter = useMemo(
+    () => deriveGardenPerimeter(editor.zones),
     [editor.zones],
   )
   // React 19 StrictMode simulates Activity (off-screen) by remounting with preserved state.
@@ -239,6 +245,22 @@ export default function LayoutEditorPage() {
         >
           {previewMode ? t.editor.toolbar.edit : t.editor.toolbar.preview}
         </button>
+
+        {/* Sun perimeter preview toggle — outdoor maps only */}
+        {editor.mapType === 'outdoor' && (
+          <button
+            onClick={() => setShowSunPreview((p) => !p)}
+            className={`text-xs px-2.5 py-1 rounded-lg border shrink-0 transition-colors ${
+              showSunPreview
+                ? 'bg-amber-500 text-amber-950 border-amber-500'
+                : 'text-text-muted border-border'
+            }`}
+            title="Toon zon-perimeter"
+          >
+            ☀ {showSunPreview ? 'Aan' : 'Uit'}
+          </button>
+        )}
+
         <span className={`text-xs shrink-0 ${
           saveStatus === 'saved' ? 'text-primary' :
           saveStatus === 'saving' ? 'text-text-muted' :
@@ -295,10 +317,49 @@ export default function LayoutEditorPage() {
           onAddShadowCaster={editor.addShadowCaster}
           onUpdateShadowCaster={editor.updateShadowCaster}
           onSelectShadowCaster={editor.selectShadowCaster}
+          showSunPreview={showSunPreview}
+          perimeterPolygon={showSunPreview ? gardenPerimeter : null}
         />
 
         {!previewMode && (
-          <div className="w-56 flex flex-col bg-surface border-l border-border overflow-y-auto shrink-0">
+          <>
+            {/* Toggle button — mobile only */}
+            <button
+              onClick={() => setSidebarOpen((o) => !o)}
+              className="lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {sidebarOpen ? (
+                  <>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </>
+                )}
+              </svg>
+            </button>
+
+            {/* Overlay backdrop — mobile only */}
+            {sidebarOpen && (
+              <div
+                className="lg:hidden fixed inset-0 z-40 bg-black/30"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
+
+            {/* Sidebar panel */}
+            <div
+              className={`w-56 lg:w-56 flex flex-col bg-surface border-l border-border overflow-y-auto shrink-0 ${
+                sidebarOpen
+                  ? 'fixed right-0 top-0 bottom-0 z-50 shadow-2xl'
+                  : 'hidden lg:flex'
+              }`}
+            >
             <EditorLegendPanel
               activeZoneType={editor.activeZoneType}
               activeTool={editor.activeTool}
@@ -329,7 +390,7 @@ export default function LayoutEditorPage() {
               <ShadowCasterPropertiesPanel
                 caster={selectedShadowCaster}
                 scalePxPerM={editor.scalePxPerM}
-                gardenBounds={gardenBounds}
+                gardenBounds={gardenBounds ?? { minX: 0, minY: 0, maxX: 680, maxY: 680 }}
                 onUpdate={(updates) => editor.updateShadowCaster(selectedShadowCaster.id, updates)}
                 onDelete={handleDelete}
               />
@@ -389,6 +450,7 @@ export default function LayoutEditorPage() {
               </div>
             )}
           </div>
+          </>
         )}
       </div>
     </div>

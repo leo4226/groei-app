@@ -386,6 +386,7 @@ export type Translations = {
     skipped: string  // "skipped:"
     did: string  // "did:"
     archivePlant: string
+    deleteConfirm: string
     edit: string  // "Edit"
     whatCanYouDo: string  // "What can you do now?"
     sunHoursLabel: string  // "Sun hours:"

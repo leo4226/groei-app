@@ -19,6 +19,7 @@ export type { SpotInspectorResult }
 export interface SunVisualization {
   // Sun mode
   active: boolean
+  available: boolean  // lat/lon set + isOutdoor → engine can be created
   toggle: () => void
   // Time
   month: number
@@ -53,7 +54,7 @@ export interface SunVisualization {
   isHeatmapActive: boolean
   gardenObstructions: Obstruction[]
   // Dynamic garden geometry
-  gardenPerimeter: [number, number][]
+  gardenPerimeter: [number, number][] | null  // null = no masking
   gardenBounds: { minX: number; minY: number; maxX: number; maxY: number }
   gardenViewBox: string
   // Encapsulates inspector-vs-tappedCell branch
@@ -78,10 +79,15 @@ export function useSunVisualization(options: {
   const gardenBounds = useMemo(() => {
     if (!canvasData) return { minX: 0, minY: 0, maxX: 680, maxY: 680 }
     return deriveGardenBounds(canvasData.zones)
+      ?? { minX: 0, minY: 0, maxX: canvasData.canvas_w, maxY: canvasData.canvas_h }
   }, [canvasData])
 
-  const gardenPerimeter = useMemo((): [number, number][] => {
+  const gardenPerimeter = useMemo((): [number, number][] | null => {
     if (!canvasData) return [[0, 0], [680, 0], [680, 680], [0, 680]]
+    // Prefer manually saved perimeter over auto-detection
+    if (canvasData.gardenPerimeter && canvasData.gardenPerimeter.length >= 3) {
+      return canvasData.gardenPerimeter
+    }
     return deriveGardenPerimeter(canvasData.zones)
   }, [canvasData])
 
@@ -96,6 +102,8 @@ export function useSunVisualization(options: {
       : null,
     [lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter]
   )
+
+  const sunAvailable = isOutdoor && lat != null && lon != null
 
   const {
     sunModeActive, toggleSunMode,
@@ -162,6 +170,7 @@ export function useSunVisualization(options: {
 
   return {
     active: sunModeActive,
+    available: sunAvailable,
     toggle: toggleSunMode,
     month: selectedMonth,
     hour: selectedHour,

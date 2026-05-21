@@ -186,4 +186,82 @@ input:focus, select:focus, textarea:focus {
   .home-header {
     padding: 24px 16px 14px !important;
   }
+
+  /* Filter strip: 3 rows → 1 horizontal scroll */
+  .plants-filter-strip {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding: 8px 16px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .plants-filter-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .plants-filter-strip .filter-label {
+    display: none !important;
+  }
+  .plants-filter-strip .filter-row {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    padding: 2px 0 !important;
+    align-items: center !important;
+  }
+
+  /* Dashboard StatusBanner: compact on mobile */
+  .status-banner {
+    margin-left: 16px !important;
+    margin-right: 16px !important;
+    border-radius: 10px;
+  }
+  .status-banner > div {
+    padding: 10px 8px !important;
+  }
+  .status-banner > div > div:last-child {
+    font-size: 22px !important;
+  }
+
+  /* MapPage: scrollable toolbar on mobile */
+  .map-toolbar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+  }
+  .map-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .map-toolbar > button,
+  .map-toolbar > div {
+    flex: 0 0 auto !important;
+  }
+
+  /* Dashboard: compact horizontal padding on mobile */
+  .dash-section-hpad {
+    padding: 0 16px !important;
+  }
+
+  /* Dashboard map scroll: match negative margin with 16px padding */
+  .dash-map-scroll {
+    margin: 0 -16px !important;
+    padding: 4px 16px 16px !important;
+  }
+
+  /* Dashboard map card: more compact on mobile */
+  .dash-map-card {
+    width: min(280px, 70vw) !important;
+  }
+
+  /* Log entry: tag wraps below text on narrow screens */
+  .log-entry {
+    grid-template-columns: 56px 1fr !important;
+  }
+  .log-entry > :nth-child(3) {
+    grid-column: 2;
+    justify-self: start;
+  }
 }

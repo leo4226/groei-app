@@ -8,7 +8,7 @@ interface Props {
   isCalculating: boolean
   layer: HeatmapLayer
   onCellTap?: (cell: HeatmapCell) => void
-  maskPolygon?: [number, number][]
+  maskPolygon?: [number, number][] | null
   bounds?: { x: number; y: number; width: number; height: number }
 }
 

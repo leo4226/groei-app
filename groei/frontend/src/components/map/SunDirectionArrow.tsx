@@ -3,20 +3,28 @@ import { GARDEN_CLIP, GARDEN_SVG_TOP_AZIMUTH } from '../../utils/gardenStructure
 
 interface Props {
   sunPosition: SunPosition
+  /** Garden bounding rectangle in SVG coordinates (default: GARDEN_CLIP) */
+  clipRect?: { x: number; y: number; width: number; height: number }
+  /** Map bearing — compass direction of the map's "up" (default: 347°) */
+  bearing?: number
 }
 
 /**
  * Yellow circle indicator on the garden edge showing where the sun is.
  * Positioned at the point on the garden boundary closest to the sun's direction.
  */
-export default function SunDirectionArrow({ sunPosition }: Props) {
+export default function SunDirectionArrow({
+  sunPosition,
+  clipRect = GARDEN_CLIP,
+  bearing = GARDEN_SVG_TOP_AZIMUTH,
+}: Props) {
   if (!sunPosition.isUp) return null
 
-  const { x, y: clipY, width, height } = GARDEN_CLIP
+  const { x, y: clipY, width, height } = clipRect
   const cx = x + width / 2
   const cy = clipY + height / 2
 
-  const svgAngleRad = (sunPosition.azimuthDeg - GARDEN_SVG_TOP_AZIMUTH) * Math.PI / 180
+  const svgAngleRad = (sunPosition.azimuthDeg - bearing) * Math.PI / 180
   const sunDirX = Math.sin(svgAngleRad)
   const sunDirY = -Math.cos(svgAngleRad)
 

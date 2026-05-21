@@ -9,7 +9,7 @@ export type CalendarViewMode = 'month' | 'agenda'
 function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
   const t = useT()
   return (
-    <div style={{
+    <div className="standalone-toggle-container" style={{
       maxWidth: 1480, margin: '0 auto', padding: '24px 48px 0',
       display: 'flex', justifyContent: 'flex-end',
     }}>

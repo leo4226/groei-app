@@ -70,7 +70,7 @@ export default function SunControls({
         <button
           onClick={() => onViewModeChange('live')}
           className={`flex-1 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-            viewMode === 'live' ? 'bg-amber-500/25 text-amber-300' : 'text-text-muted'
+            viewMode === 'live' ? 'bg-amber-500/25 text-amber-800' : 'text-text-muted'
           }`}
         >
           {t.sun.live}
@@ -78,7 +78,7 @@ export default function SunControls({
         <button
           onClick={() => onViewModeChange('heatmap')}
           className={`flex-1 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-            viewMode === 'heatmap' ? 'bg-amber-500/25 text-amber-300' : 'text-text-muted'
+            viewMode === 'heatmap' ? 'bg-amber-500/25 text-amber-800' : 'text-text-muted'
           }`}
         >
           {t.sun.heatmap}
