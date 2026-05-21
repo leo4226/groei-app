@@ -59,10 +59,10 @@ async def list_calendar_events(
         return []
     if env:
         placeholders = ','.join('?' * len(plants))
-        sched_params = (account["household_id"],) + tuple(p["id"] for p in plants) + (from_, to)
+        sched_params = (account["household_id"],) + tuple(p["id"] for p in plants) + (from_dt, to_dt)
         extra_where = f" AND cs.plant_id IN ({placeholders})"
     else:
-        sched_params = (account["household_id"], from_, to)
+        sched_params = (account["household_id"], from_dt, to_dt)
         extra_where = ""
 
     rows = await db.execute_fetchall(
