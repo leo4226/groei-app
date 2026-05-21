@@ -12,8 +12,8 @@ router = APIRouter()
 
 TREFLE_TOKEN       = os.getenv("TREFLE_TOKEN") or ""
 TREFLE_BASE        = "https://trefle.io/api/v1"
-ANTHROPIC_API_KEY  = os.getenv("ANTHROPIC_API_KEY") or ""
-ANTHROPIC_URL      = "https://api.anthropic.com/v1/messages"
+DEEPSEEK_API_KEY  = os.getenv("DEEPSEEK_API_KEY") or ""
+DEEPSEEK_URL      = "https://api.deepseek.com/v1/chat/completions"
 
 _grow_here_cache: dict = {}  # key: (sun_hours_rounded, month) → response dict
 
@@ -273,9 +273,9 @@ async def _fetch_trefle(scientific_name: str) -> dict | None:
     return None
 
 
-async def _fetch_claude_species(scientific_name: str) -> dict | None:
-    """Ask Claude for care data when Trefle has no results."""
-    if not ANTHROPIC_API_KEY:
+async def _fetch_ai_species(scientific_name: str) -> dict | None:
+    """Ask Deepseek for care data when Trefle has no results."""
+    if not DEEPSEEK_API_KEY:
         return None
 
     prompt = f"""Geef verzorgingsdata voor de plantensoort: {scientific_name}
@@ -300,14 +300,13 @@ Geef alleen geldige JSON terug met dit formaat:
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
-            ANTHROPIC_URL,
+            DEEPSEEK_URL,
             headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-haiku-4-5-20251001",
+                "model": "deepseek-chat",
                 "max_tokens": 600,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -397,7 +396,7 @@ async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
             data = {"trefle_slug": None, "common_name": None, "family": None,
                     "humidity_raw": None, "image_url": None, **curated}
         else:
-            data = await _fetch_claude_species(scientific_name)
+            data = await _fetch_ai_species(scientific_name)
         if not data:
             return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
     else:
@@ -410,7 +409,7 @@ async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
             data = {"trefle_slug": None, "common_name": None, "family": None,
                     "humidity_raw": None, "image_url": None, **curated}
         else:
-            data = await _fetch_claude_species(scientific_name)
+            data = await _fetch_ai_species(scientific_name)
         if not data:
             return {"source": "not_found", "scientific_name": scientific_name, "plant_notes": plant_notes}
 
@@ -492,7 +491,7 @@ MONTH_NAMES_NL = [
 
 @router.post("/garden/grow-here")
 async def grow_here(req: GrowHereRequest):
-    if not ANTHROPIC_API_KEY:
+    if not DEEPSEEK_API_KEY:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
     cache_key = (round(req.sun_hours, 1), req.selected_month)
@@ -536,24 +535,25 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            ANTHROPIC_URL,
+            DEEPSEEK_URL,
             headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-sonnet-4-6",
+                "model": "deepseek-chat",
                 "max_tokens": 1500,
-                "system": system,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
             },
         )
 
     if resp.status_code != 200:
         raise HTTPException(status_code=502, detail="AI request failed")
 
-    raw_text = resp.json()["content"][0]["text"]
+    raw_text = resp.json()["choices"][0]["message"]["content"]
     # Strip markdown fences if present
     text = raw_text.strip()
     if text.startswith("```"):

@@ -4,8 +4,8 @@ import re
 
 import httpx
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY") or ""
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 
 _token_usage = {"input": 0, "output": 0}
 
@@ -62,18 +62,17 @@ Let op:
 """
 
 
-async def _generate_from_claude(plant_name: str) -> dict:
+async def _generate_species(plant_name: str) -> dict:
     prompt = _SPECIES_PROMPT.format(plant_name=plant_name)
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
-            ANTHROPIC_URL,
+            DEEPSEEK_URL,
             headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-sonnet-4-6",
+                "model": "deepseek-chat",
                 "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -81,9 +80,9 @@ async def _generate_from_claude(plant_name: str) -> dict:
         resp.raise_for_status()
         body = resp.json()
         usage = body.get("usage", {})
-        _token_usage["input"] += usage.get("input_tokens", 0)
-        _token_usage["output"] += usage.get("output_tokens", 0)
-        raw = body["content"][0]["text"].strip()
+        _token_usage["input"] += usage.get("prompt_tokens", 0)
+        _token_usage["output"] += usage.get("completion_tokens", 0)
+        raw = body["choices"][0]["message"]["content"].strip()
 
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
@@ -99,7 +98,7 @@ async def get_or_create_species(db, plant_name: str) -> int:
     if row:
         return row[0]["id"]
 
-    data = await _generate_from_claude(plant_name)
+    data = await _generate_species(plant_name)
 
     slug = data.get("slug") or plant_name.lower().replace(" ", "-")
     phenology_json = json.dumps(data.get("phenology", {}), ensure_ascii=False)
