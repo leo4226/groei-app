@@ -18,9 +18,18 @@ Thumbs.db
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
 
 # Node
 node_modules/
+dist/
+
+# Backend photos (uploaded to R2)
+backend/photos/*
+!backend/photos/.gitkeep
 
 # Local databases & backups
 *.db

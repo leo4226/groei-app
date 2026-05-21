@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Rubberplant"><title>Rubberplant — Ficus elastica</title>
+  
+    <path d="M 29 78 L 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 71 78 Z" fill="#B2664A"></path>
+    <rect x="27" y="75" width="46" height="5" rx="1.5" fill="#C77B5D"></rect>
+    <path d="M 33 98 Q 33 100 35 100 L 65 100 Q 67 100 67 98 L 65 96 L 35 96 Z" fill="#8E4A33" opacity="0.5"></path>
+    <ellipse cx="50" cy="77.5" rx="19" ry="1.8" fill="#4A3429"></ellipse>
+  
+  <path d="M 50 78 Q 50 45 50 22" stroke="#6B4A35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+  
+    <g transform="translate(34 64) rotate(-35)">
+      <ellipse cx="0" cy="-10" rx="10" ry="14" fill="#2F5D3A"></ellipse>
+      <path d="M 0 -22 L 0 2" stroke="#4A7C4E" stroke-width="0.8" fill="none"></path>
+      <ellipse cx="-3" cy="-14" rx="3" ry="5" fill="#4A7C4E" opacity="0.35"></ellipse>
+    </g>
+  
+    <g transform="translate(66 58) rotate(35)">
+      <ellipse cx="0" cy="-10" rx="10" ry="14" fill="#2F5D3A"></ellipse>
+      <path d="M 0 -22 L 0 2" stroke="#4A7C4E" stroke-width="0.8" fill="none"></path>
+      <ellipse cx="-3" cy="-14" rx="3" ry="5" fill="#4A7C4E" opacity="0.35"></ellipse>
+    </g>
+  
+    <g transform="translate(32 42) rotate(-30)">
+      <ellipse cx="0" cy="-10" rx="10" ry="14" fill="#2F5D3A"></ellipse>
+      <path d="M 0 -22 L 0 2" stroke="#4A7C4E" stroke-width="0.8" fill="none"></path>
+      <ellipse cx="-3" cy="-14" rx="3" ry="5" fill="#4A7C4E" opacity="0.35"></ellipse>
+    </g>
+  
+    <g transform="translate(68 38) rotate(32)">
+      <ellipse cx="0" cy="-10" rx="10" ry="14" fill="#2F5D3A"></ellipse>
+      <path d="M 0 -22 L 0 2" stroke="#4A7C4E" stroke-width="0.8" fill="none"></path>
+      <ellipse cx="-3" cy="-14" rx="3" ry="5" fill="#4A7C4E" opacity="0.35"></ellipse>
+    </g>
+  
+    <g transform="translate(50 24) rotate(0)">
+      <ellipse cx="0" cy="-10" rx="10" ry="14" fill="#2F5D3A"></ellipse>
+      <path d="M 0 -22 L 0 2" stroke="#4A7C4E" stroke-width="0.8" fill="none"></path>
+      <ellipse cx="-3" cy="-14" rx="3" ry="5" fill="#4A7C4E" opacity="0.35"></ellipse>
+    </g>
+  
+</svg>
