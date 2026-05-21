@@ -1260,8 +1260,8 @@ function WeatherIcon({ icon, size = 22 }: { icon: WeatherIcon; size?: number }) 
 
 function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translations }) {
   return (
-    <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-      <div style={{ padding: '16px 18px 6px' }}>
+    <div className="card weather-card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+      <div className="weather-card-header" style={{ padding: '16px 18px 6px' }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.weather}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
           {weather ? (
@@ -1274,7 +1274,7 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
       </div>
       {weather && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--color-border-soft)', borderBottom: '1px solid var(--color-border-soft)' }}>
+          <div className="weather-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--color-border-soft)', borderBottom: '1px solid var(--color-border-soft)' }}>
             {(() => {
               const need = dailyWaterNeedMm()
               const rainOk = weather.todayRainMm >= need
@@ -1290,7 +1290,7 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
               </div>
             ))})()}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '12px 8px 14px' }}>
+          <div className="weather-forecast" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '12px 8px 14px' }}>
             {weather.forecast.map((day, i) => {
               const d = new Date(day.date)
               const dayLabel = d.toLocaleDateString(t.locale, { weekday: 'short' }).slice(0, 2).toLowerCase()

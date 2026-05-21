@@ -56,6 +56,7 @@ export default function MapPage() {
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
   const [showLabels, setShowLabels] = useState(true)
   const [showPotPicker, setShowPotPicker] = useState(false)
+  const [showMoreActions, setShowMoreActions] = useState(false)
 
   async function handleCreateContainer(preset: ObjectPreset) {
     if (!map) return
@@ -258,7 +259,7 @@ export default function MapPage() {
             title={water.gardenWater?.watered_at
               ? t.mapPage.lastWatered(new Date(water.gardenWater.watered_at).toLocaleDateString('nl-NL'))
               : t.mapPage.recordWatering}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-600 rounded-full text-sm font-medium hover:bg-blue-500/25 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-600 rounded-full text-sm font-medium hover:bg-blue-500/25 transition-colors map-action-primary"
           >
             <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
             <span>{t.mapPage.water}</span>
@@ -269,84 +270,95 @@ export default function MapPage() {
             title={fertilize.fertilize?.fertilized_at
               ? t.mapPage.lastFertilized(new Date(fertilize.fertilize.fertilized_at).toLocaleDateString('nl-NL'))
               : t.mapPage.recordFertilizing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-600 rounded-full text-sm font-medium hover:bg-emerald-500/25 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-600 rounded-full text-sm font-medium hover:bg-emerald-500/25 transition-colors map-action-primary"
           >
             <span className="text-sm leading-none">🌿</span>
             <span>{t.mapPage.fertilize}</span>
           </button>
-          <button
-            onClick={() => setShowLabels(v => !v)}
-            title={showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-colors ${
-              showLabels
-                ? 'bg-surface text-text-muted hover:bg-surface/80'
-                : 'bg-primary/20 text-primary hover:bg-primary/30'
-            }`}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="18" height="4" rx="1" />
-              <rect x="3" y="11" width="12" height="4" rx="1" />
-              <rect x="3" y="17" width="8" height="4" rx="1" />
-            </svg>
-          </button>
-          {isOutdoor && (
+
+          {/* Mobile: Meer-knop met dropdown voor overige acties */}
+          <div className="relative" style={{ flex: '0 0 auto' }}>
             <button
-              onClick={() => navigate('/weeds/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/15 text-green-700 rounded-full text-sm font-medium hover:bg-green-500/25 transition-colors"
-              title={t.weeds.identifyCard.title}
+              onClick={() => setShowMoreActions(v => !v)}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-surface text-text-muted rounded-full text-xs font-medium hover:bg-surface/80 transition-colors border border-border map-more-trigger"
             >
-              <span>🌿</span>
-              <span>{t.weeds.identifyCard.title}</span>
+              <span className="text-sm leading-none">⋮</span>
+              <span className="map-more-label">{t.mapPage.more ?? 'Meer'}</span>
             </button>
-          )}
-          {isOutdoor && (
-            <button
-              onClick={sun.available ? sun.toggle : undefined}
-              title={sun.available
-                ? t.mapPage.sun
-                : 'Stel GPS-coordinaten in om de zon-modus te gebruiken'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                sun.active
-                  ? 'bg-amber-400/30 text-amber-700'
-                  : sun.available
-                    ? 'bg-amber-400/15 text-amber-600 hover:bg-amber-400/25'
-                    : 'bg-amber-400/10 text-amber-600/40 cursor-not-allowed'
-              }`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-              <span>{t.mapPage.sun}</span>
-            </button>
-          )}
-          <button
-            onClick={sun.toggleInspectorMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              sun.inspectorMode
-                ? 'bg-orange-500/30 text-orange-600'
-                : 'bg-orange-500/15 text-orange-500 hover:bg-orange-500/25'
-            }`}
-          >
-            <span>{t.mapPage.inspect}</span>
-          </button>
-          <button
-            onClick={() => setShowPotPicker(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700/15 text-amber-800 rounded-full text-sm font-medium hover:bg-amber-700/25 transition-colors"
-          >
-            <span className="text-lg leading-none">+</span>
-            <span>{t.mapPage.pot}</span>
-          </button>
-          <button
-            onClick={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium hover:bg-primary/30 transition-colors"
-          >
-            <span className="text-lg leading-none">+</span>
-            <span>{t.mapPage.plant}</span>
-          </button>
+            {showMoreActions && (
+              <>
+                {/* Backdrop om dropdown te sluiten bij klik erbuiten */}
+                <div onClick={() => setShowMoreActions(false)} className="fixed inset-0 z-30" />
+                <div className="absolute right-0 top-full mt-1 z-40 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[140px] overflow-hidden map-more-menu">
+                  <button
+                    onClick={() => { setShowMoreActions(false); setShowLabels(v => !v) }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="5" width="18" height="4" rx="1" />
+                      <rect x="3" y="11" width="12" height="4" rx="1" />
+                      <rect x="3" y="17" width="8" height="4" rx="1" />
+                    </svg>
+                    {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
+                  </button>
+                  {isOutdoor && (
+                    <button
+                      onClick={() => { setShowMoreActions(false); navigate('/weeds/identify', { state: { mapId: map.id, mapSlug: map.slug } }) }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
+                    >
+                      <span className="text-sm">🌿</span>
+                      {t.weeds.identifyCard.title}
+                    </button>
+                  )}
+                  {isOutdoor && (
+                    <button
+                      onClick={() => { setShowMoreActions(false); if (sun.available) sun.toggle() }}
+                      className={`flex items-center gap-2 px-3 py-2 text-xs font-medium w-full text-left transition-colors ${
+                        sun.active
+                          ? 'text-amber-700 bg-amber-400/10'
+                          : sun.available
+                            ? 'text-text-muted hover:bg-bg/60'
+                            : 'text-text-muted/50 cursor-not-allowed'
+                      }`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                      </svg>
+                      {t.mapPage.sun}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setShowMoreActions(false); sun.toggleInspectorMode() }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-medium w-full text-left transition-colors ${
+                      sun.inspectorMode
+                        ? 'text-orange-600 bg-orange-500/10'
+                        : 'text-text-muted hover:bg-bg/60'
+                    }`}
+                  >
+                    {t.mapPage.inspect}
+                  </button>
+                  <button
+                    onClick={() => { setShowMoreActions(false); setShowPotPicker(true) }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
+                  >
+                    <span className="text-sm leading-none">+</span>
+                    {t.mapPage.pot}
+                  </button>
+                  <button
+                    onClick={() => { setShowMoreActions(false); navigate('/plants/add', { state: { fromMap: location.pathname } }) }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
+                  >
+                    <span className="text-sm leading-none">+</span>
+                    {t.mapPage.plant}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

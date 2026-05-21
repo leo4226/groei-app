@@ -220,6 +220,11 @@ input:focus, select:focus, textarea:focus {
     align-items: center !important;
   }
 
+  /* Mobile: hide scrollbar on inline filter row */
+  .plants-mobile-filters::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Dashboard StatusBanner: compact on mobile */
   .status-banner {
     margin-left: 16px !important;
@@ -271,5 +276,50 @@ input:focus, select:focus, textarea:focus {
   .log-entry > :nth-child(3) {
     grid-column: 2;
     justify-self: start;
+  }
+
+  /* WeatherCard: compact on mobile */
+  .weather-card-header {
+    padding: 10px 12px 4px !important;
+  }
+  .weather-card-header > div:last-child {
+    font-size: 18px !important;
+  }
+  .weather-card-header > div:last-child em {
+    font-size: 22px !important;
+  }
+
+  .weather-stats {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 4px 0 !important;
+  }
+  .weather-stats > div {
+    padding: 6px 0 !important;
+  }
+  .weather-stats > div:last-child {
+    display: none !important;
+  }
+  .weather-stats span:first-child {
+    font-size: 13px !important;
+  }
+  .weather-stats span:last-child {
+    font-size: 7px !important;
+  }
+
+  .weather-forecast {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0 !important;
+    padding: 8px 4px 10px !important;
+  }
+  .weather-forecast::-webkit-scrollbar {
+    display: none;
+  }
+  .weather-forecast > div {
+    flex: 0 0 48px !important;
   }
 }
