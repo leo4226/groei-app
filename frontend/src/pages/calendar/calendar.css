@@ -704,15 +704,22 @@
 
 @media (max-width: 720px) {
   .cal-page .standalone-toggle-container {
-    padding: 16px 24px 0 !important;
+    padding: 16px 16px 0 !important;
   }
   .cal-page .masthead {
-    padding: 20px 24px 12px;
+    padding: 24px 16px 12px;
+  }
+  .cal-page .title-block h1 {
+    font-size: 36px;
   }
   .cal-page .legend-strip {
-    padding: 12px 24px 0;
+    padding: 12px 16px 0;
   }
   .cal-page main {
-    padding: 16px 24px 48px;
+    padding: 16px 16px 48px;
+    gap: 16px;
+  }
+  .cal-page .title-row {
+    gap: 16px;
   }
 }

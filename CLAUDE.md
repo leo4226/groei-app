@@ -1,10 +1,10 @@
-# Groei — Plant Care PWA
+# Floreren — Plant Care PWA
 
 Mobile-first PWA for Leon & Lisbeth (Amsterdam) to track plants, log care, and visualise their garden and indoor spaces. Built to eventually support other users with their own gardens.
 
 ## Dev
 
-All commands run from `groei/`:
+All commands run from the repo root:
 
 ```
 npm run dev          # starts both frontend (port 5173) and backend (port 8000)
@@ -19,14 +19,14 @@ Verify features in a desktop browser. Mobile testing not required during develop
 | Layer | Tech |
 |---|---|
 | Frontend | React 19 + TypeScript + Vite + Tailwind CSS |
-| State | Zustand — `useGroeiStore` |
-| Backend | FastAPI + Python + SQLite + aiosqlite |
+| State | Zustand — `useFloreren` (FlorerStore) |
+| Backend | FastAPI + Python + asyncpg (prod: PostgreSQL, dev: SQLite) |
 | PWA | vite-plugin-pwa |
 
 ## Project structure
 
 ```
-groei/
+Floreren/
   frontend/src/
     pages/          # route-level components
     components/
@@ -34,14 +34,14 @@ groei/
       editor/       # layout editor (draw zones, rooms, walls)
       sheets/       # bottom sheet panels
       sun/          # sun position + heatmap overlays
-    store/          # useGroeiStore.ts (Zustand)
+    store/          # useFloreren.ts (Zustand)
     utils/          # coordinate math, sun calc, shadow geometry
     hooks/
   backend/
     routers/        # FastAPI route modules
     models.py       # Pydantic response models
     main.py
-    groei.db
+    groei.db        # local SQLite (dev only)
 ```
 
 ## Routes

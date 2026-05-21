@@ -732,6 +732,22 @@ export const nl: Translations = {
     archive: (name: string) => `Archiveer "${name}"? Planten in bak worden vrijgegeven.`,
   },
 
+  // ── Onboarding checklist ────────────────────────────────────────
+  onboarding: {
+    title: 'Welkom bij Floreren! 🌱',
+    stepLabel: (c, t) => `Stap ${c} van ${t}`,
+    createMap: {
+      label: 'Maak je eerste tuin aan',
+      cta: 'Tuin aanmaken',
+    },
+    addPlant: {
+      label: 'Voeg je eerste plant toe',
+      cta: 'Plant toevoegen',
+    },
+    dismiss: 'Later',
+    completed: '✅ Klaar! Je hebt alle stappen doorlopen',
+  },
+
   common: {
     loading: 'Laden…',
     notFound: 'Niet gevonden',

@@ -11,6 +11,7 @@ import { useT } from '../context/LanguageContext'
 import { getToken } from '../api/auth'
 import type { Translations } from '../i18n/translations'
 import PageDecor from '../components/PageDecor'
+import WelcomeChecklist from '../components/WelcomeChecklist'
 
 const PX_PER_M = 46
 
@@ -35,7 +36,7 @@ const RAIN_OK = 'var(--color-primary)'   // green
 const RAIN_DRY = 'var(--color-overdue)'  // red
 
 export default function Dashboard() {
-  const { dashboardV2, activeUserId, users, maps, loadDashboardV2, isLoading, createMap } = useFloreren()
+  const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, isLoading, createMap } = useFloreren()
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
@@ -82,8 +83,8 @@ export default function Dashboard() {
   const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
 
   useEffect(() => {
-    if (getToken()) loadDashboardV2()
-  }, [loadDashboardV2])
+    if (getToken()) { loadDashboardV2(); loadPlants() }
+  }, [loadDashboardV2, loadPlants])
 
   const overdueCount = dashboardV2?.overdue.length ?? 0
   const dueTodayCount = dashboardV2?.due_today.length ?? 0
@@ -127,6 +128,14 @@ export default function Dashboard() {
         {dashboardV2 && (
           <StatusBanner t={t} counts={dashboardV2.status_counts} />
         )}
+
+        {/* ── Onboarding Checklist ── */}
+        <WelcomeChecklist
+          hasMap={maps.length > 0}
+          hasPlant={plants.length > 0}
+          accountId={activeUserId ?? 0}
+          onCreateMap={openNewMap}
+        />
 
         {/* ── Responsive grid: main + sidebar ── */}
         <div style={{

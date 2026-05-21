@@ -1,4 +1,4 @@
-# Groei
+# Floreren
 
 A plant care and garden management app for households. Users register plants, log care tasks, and visualise their outdoor gardens and indoor spaces on Maps.
 
@@ -101,7 +101,7 @@ A personal flag on a Plant indicating the household wants elevated care visibili
 _Avoid_: Priority (implies ranking), Favourite (implies affection not care intent), Alert level
 
 **Icon**:
-A named SVG file in the icon manifest (`groei/icons/manifest.json`) providing the visual identity of a Species on the map and in the picker. Every Icon has a canonical base entry; additional entries for the same Species are Variants.
+A named SVG file in the icon manifest (`icons/manifest.json`) providing the visual identity of a Species on the map and in the picker. Every Icon has a canonical base entry; additional entries for the same Species are Variants.
 _Avoid_: Plant image, Sprite
 
 **Icon variant**:

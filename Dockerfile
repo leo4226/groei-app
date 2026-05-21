@@ -1,4 +1,4 @@
-# groei/Dockerfile — build context is project root, includes backend + icons
+# Floreren/Dockerfile — build context is project root, includes backend + icons
 FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

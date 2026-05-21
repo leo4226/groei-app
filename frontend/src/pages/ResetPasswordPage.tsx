@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
         <div style={{ width: '100%', maxWidth: '360px', textAlign: 'center' }}>
           <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.8rem', color: 'var(--color-primary)', margin: '0 0 24px', letterSpacing: '-0.02em' }}>
-            Groei
+            Floreren
           </h1>
           <div className="card" style={{ padding: '24px' }}>
             <p style={{ color: 'var(--color-overdue)', margin: '0 0 20px', fontSize: '0.95rem' }}>
@@ -98,7 +98,7 @@ export default function ResetPasswordPage() {
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.8rem', color: 'var(--color-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-            Groei
+            Floreren
           </h1>
         </div>
 

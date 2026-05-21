@@ -31,7 +31,7 @@ def send_password_reset(
     If RESEND_API_KEY is not set, logs the reset link to stdout (dev fallback).
     """
     link = reset_link
-    app_name = "Groei"
+    app_name = "Floreren"
 
     html = f"""\
 <!DOCTYPE html>
@@ -86,7 +86,7 @@ If you didn't request this, you can safely ignore this email. Your password won'
         params = {
             "from": "noreply@floreren.app",
             "to": [to_email],
-            "subject": "Reset your Groei password",
+            "subject": "Reset your Floreren password",
             "html": html,
         }
         r = resend.Emails.send(params)

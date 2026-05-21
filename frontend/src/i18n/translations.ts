@@ -697,6 +697,22 @@ export type Translations = {
     allGood: string          // "All good" / "Alles goed"
   }
 
+  // ── Onboarding checklist ────────────────────────────────────────
+  onboarding: {
+    title: string        // "Welkom bij Floreren!"
+    stepLabel: (current: number, total: number) => string  // "Stap 1 van 2"
+    createMap: {
+      label: string     // "Maak je eerste tuin"
+      cta: string       // "Tuin aanmaken"
+    }
+    addPlant: {
+      label: string     // "Voeg je eerste plant toe"
+      cta: string       // "Plant toevoegen"
+    }
+    dismiss: string     // "Sluiten" / "Dismiss"
+    completed: string   // "✅ Klaar! Je hebt alle stappen voltooid"
+  }
+
   common: {
     loading: string
     notFound: string

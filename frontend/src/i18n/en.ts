@@ -732,6 +732,22 @@ export const en: Translations = {
     archive: (name: string) => `Archive "${name}"? Contained plants will be released.`,
   },
 
+  // ── Onboarding checklist ────────────────────────────────────────
+  onboarding: {
+    title: 'Welcome to Floreren! 🌱',
+    stepLabel: (c, t) => `Step ${c} of ${t}`,
+    createMap: {
+      label: 'Create your first garden',
+      cta: 'Create garden',
+    },
+    addPlant: {
+      label: 'Add your first plant',
+      cta: 'Add plant',
+    },
+    dismiss: 'Later',
+    completed: '✅ All done! You\'ve completed all the steps',
+  },
+
   common: {
     loading: 'Loading…',
     notFound: 'Not found',
