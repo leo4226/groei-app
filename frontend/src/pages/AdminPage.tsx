@@ -4,7 +4,7 @@ import {
   fetchAdminOverview, fetchAdminUsers, fetchAdminPlants,
   fetchAdminSpecies, fetchAdminActivity,
   runBackfillThresholds, runBackfillCareSchedules,
-  deleteAdminAccount,
+  deleteAdminAccount, fetchAdminPanelMe,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
   type AdminSpeciesRow, type AdminActivityEvent,
 } from '../api/client'
@@ -29,12 +29,8 @@ export default function AdminPage() {
   useEffect(() => {
     const token = localStorage.getItem('floreren-token')
     if (!token) { navigate('/dashboard', { replace: true }); return }
-    fetch('/api/admin-panel/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => {
-        if (!r.ok) { navigate('/dashboard', { replace: true }); return null }
-        return r.json()
-      })
-      .then(d => { if (d) { setEmail(d.email); setChecking(false) } })
+    fetchAdminPanelMe()
+      .then(d => { setEmail(d.email); setChecking(false) })
       .catch(() => navigate('/dashboard', { replace: true }))
   }, [navigate])
 

@@ -318,6 +318,9 @@ export const fetchAdminSpecies = () =>
 export const fetchAdminActivity = () =>
   api<AdminActivityEvent[]>('GET', '/admin-panel/activity')
 
+export const fetchAdminPanelMe = () =>
+  api<{ email: string }>('GET', '/admin-panel/me')
+
 export const runBackfillThresholds = () =>
   api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds')
 

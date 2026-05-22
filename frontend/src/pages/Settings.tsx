@@ -8,6 +8,7 @@ import type { IconSyncResult, IconGapReport } from '../types'
 
 export default function Settings() {
   const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
+  const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
   const [syncing, setSyncing] = useState(false)
@@ -313,10 +314,10 @@ export default function Settings() {
         <h2 className="text-base font-bold mb-3">About</h2>
         <div className="card p-4">
           <p className="text-sm text-text-muted">
-            <span className="font-bold text-primary text-base">Floreren</span> v0.1
+            <span className="font-bold text-primary text-base">Floreren</span> v1.0
           </p>
           <p className="text-xs text-text-muted mt-1">
-            Plant care for Leon & Lisbeth 🌱
+            Plant care for {activeUser?.name ?? 'your'}'s garden 🌱
           </p>
         </div>
       </section>
