@@ -20,19 +20,15 @@ def qm_to_pg(sql: str) -> str:
     sql = "".join(out)
 
     # Step 2: convert SQLite boolean comparisons (column = 1/0) to PG (column = TRUE/FALSE)
-    # Pattern: optional table_alias.column_name = 1/0
-    # We use a negative lookbehind to avoid matching inside function calls like
-    # COUNT(CASE WHEN x = 1 THEN 1 END) — the lookbehind checks the context
-    # is NOT a function-argument position. A simple negative lookahead for )
-    # would break subqueries.  Matching is always guarded by _is_known_boolean
-    # so only known boolean columns get converted.
+    # Pattern: word-boundary + optional table_alias.column_name = 1/0
+    # Word boundary \b anchors to start of column name without consuming space.
     sql = re.sub(
-        r"(?<![(,])\s*(\w+(?:\.\w+)?)\s*=\s*1\b",
+        r"\b(\w+(?:\.\w+)?)\s*=\s*1\b",
         lambda m: f"{m.group(1)} = TRUE" if _is_known_boolean(m.group(1)) else m.group(0),
         sql,
     )
     sql = re.sub(
-        r"(?<![(,])\s*(\w+(?:\.\w+)?)\s*=\s*0\b",
+        r"\b(\w+(?:\.\w+)?)\s*=\s*0\b",
         lambda m: f"{m.group(1)} = FALSE" if _is_known_boolean(m.group(1)) else m.group(0),
         sql,
     )

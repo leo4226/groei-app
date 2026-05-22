@@ -138,7 +138,6 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
             {plant.name}
           </text>
         )}
-        </g>
 
         {/* Lock badge — top-right of icon, sole interactive tap target */}
         <g
@@ -155,6 +154,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
           >
             🔒
           </text>
+        </g>
         </g>
 
       </g>
