@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { createWeedSighting } from '../../api/client'
+import { weeds } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { screenToSVG } from '../../utils/svgCoords'
@@ -44,7 +44,7 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
     setSaving(true)
     setError(null)
     try {
-      await createWeedSighting({
+      await weeds.createSighting({
         weed_id: weedId,
         map_id: selectedMapId,
         map_x: pin.x,

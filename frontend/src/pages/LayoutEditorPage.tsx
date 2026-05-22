@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchMapById, updateMap, fetchObjects, updateObjectPosition, archiveObject, updateObject } from '../api/client'
+import { maps, objects } from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
 import type { CanvasData, MapInfo, MapObject, MapType } from '../types'
 import EditorCanvas from '../components/editor/EditorCanvas'
@@ -54,8 +54,8 @@ export default function LayoutEditorPage() {
     if (loadedMapIdRef.current === mapId) return
     let cancelled = false
     Promise.all([
-      fetchMapById(mapId),
-      fetchObjects(),
+      maps.byId(mapId),
+      objects.list(),
     ]).then(([m, objs]) => {
         if (cancelled) return
         // Guard again inside .then() to handle the StrictMode double-mount race:
@@ -90,9 +90,9 @@ export default function LayoutEditorPage() {
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
     setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
     try {
-      await updateObjectPosition(objectId, { map_x: Math.round(x * 10) / 10, map_y: Math.round(y * 10) / 10 })
+      await objects.setPosition(objectId, { map_x: Math.round(x * 10) / 10, map_y: Math.round(y * 10) / 10 })
     } catch {
-      const objs = await fetchObjects()
+      const objs = await objects.list()
       setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
     }
   }, [mapId])
@@ -100,9 +100,9 @@ export default function LayoutEditorPage() {
   const handleObjectRotate = useCallback(async (objectId: number, rotation: number) => {
     setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, rotation } : o))
     try {
-      await updateObject(objectId, { rotation })
+      await objects.update(objectId, { rotation })
     } catch {
-      const objs = await fetchObjects()
+      const objs = await objects.list()
       setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
     }
   }, [mapId])
@@ -112,7 +112,7 @@ export default function LayoutEditorPage() {
       if (!mapId) return
       setSaveStatus('saving')
       try {
-        await updateMap(mapId, { canvas_data: JSON.stringify(data) })
+        await maps.update(mapId, { canvas_data: JSON.stringify(data) })
         editor.markClean()
         setSaveStatus('saved')
       } catch {
@@ -138,7 +138,7 @@ export default function LayoutEditorPage() {
       isSavingRef.current = true
       setSaveStatus('saving')
       try {
-        await updateMap(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
+        await maps.update(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
         editor.markClean()
         setSaveStatus('saved')
       } catch {
@@ -166,7 +166,7 @@ export default function LayoutEditorPage() {
     } else if (editor.selectedShadowCasterId) {
       editor.deleteShadowCaster(editor.selectedShadowCasterId)
     } else if (selectedObjectId !== null) {
-      archiveObject(selectedObjectId).then(() => {
+      objects.archive(selectedObjectId).then(() => {
         setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
         setSelectedObjectId(null)
         editor.setTool('select')
@@ -200,7 +200,7 @@ export default function LayoutEditorPage() {
           editor.deleteShadowCaster(editor.selectedShadowCasterId)
         } else if (selectedObjectId !== null) {
           e.preventDefault()
-          archiveObject(selectedObjectId).then(() => {
+          objects.archive(selectedObjectId).then(() => {
             setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
             setSelectedObjectId(null)
             editor.setTool('select')
@@ -330,7 +330,7 @@ export default function LayoutEditorPage() {
           onSelectObject={setSelectedObjectId}
           onObjectCreated={() => {
             if (!mapId) return
-            fetchObjects().then((objs) => setObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
+            objects.list().then((objs) => setObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
           }}
           shadowCasters={editor.shadowCasters}
           selectedShadowCasterId={editor.selectedShadowCasterId}

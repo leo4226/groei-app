@@ -84,12 +84,6 @@ export interface CareTask {
   is_ephemeral: boolean
 }
 
-export interface DashboardData {
-  overdue: CareTask[]
-  due_today: CareTask[]
-  upcoming: CareTask[]
-}
-
 export interface StatusCounts {
   total: number
   on_schedule: number
@@ -192,6 +186,7 @@ export interface EditorZone {
   fenceMaterial?: FenceMaterial  // wood or brick, only for fence type
   fenceHeightM?: number  // fence height in metres (affects shadow casting)
   structureHeightM?: number  // structure/shed height in metres (affects shadow casting)
+  soil_note?: string  // gardener's note for soil quality, only for soil type
 }
 
 export interface WallElement {

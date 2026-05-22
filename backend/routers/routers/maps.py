@@ -220,6 +220,26 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
                 svg_url = storage.put(key, svg_content.encode("utf-8"), content_type="image/svg+xml")
                 updates.append("svg_file = ?")
                 params.append(svg_url)
+
+            # Sync soil zones from canvas_data to ground_zones table
+            soil_zones = [z for z in zones if z.get("type") == "soil"]
+            for z in soil_zones:
+                polygon = json.dumps([
+                    [z["x"], z["y"]],
+                    [z["x"] + z["width"], z["y"]],
+                    [z["x"] + z["width"], z["y"] + z["height"]],
+                    [z["x"], z["y"] + z["height"]],
+                ])
+                await db.execute(
+                    """INSERT INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note)
+                       VALUES (?, ?, ?, 'soil', ?, ?)
+                       ON CONFLICT (id) DO UPDATE SET
+                         name = EXCLUDED.name,
+                         polygon = EXCLUDED.polygon,
+                         zone_type = 'soil',
+                         soil_note = EXCLUDED.soil_note""",
+                    (z["id"], map_id, z.get("label", "Grond"), polygon, z.get("soil_note")),
+                )
         except (json.JSONDecodeError, TypeError):
             pass
         # Generate thumbnail SVG from zone blocks

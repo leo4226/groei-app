@@ -546,6 +546,22 @@ class ResetPasswordInput(BaseModel):
     new_password: str
 
 
+class InviteInput(BaseModel):
+    """Generate an invite code (from the creator's household)."""
+
+
+class InviteOutput(BaseModel):
+    code: str
+    expires_at: str
+
+
+class JoinInput(BaseModel):
+    code: str
+    email: str
+    password: str
+    name: str
+
+
 class AccountOut(BaseModel):
     id: int
     household_id: int

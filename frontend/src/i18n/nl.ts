@@ -24,6 +24,7 @@ export const nl: Translations = {
       logbook: '§ Logboek',
       weather: '§ Weer & sensoren',
       didYouKnow: '§ Wist je dat',
+      careSignals: '§ Zorgsignalen',
     },
     actions: {
       done: 'Gedaan',
@@ -71,6 +72,14 @@ export const nl: Translations = {
       loading: 'Weer laden…',
     },
     comingSoon: 'Binnenkort',
+    warnings: {
+      allOnSchedule: 'Alles op schema ✨',
+      signalCount: (n: number) => `${n} signaal${n !== 1 ? 'en' : ''}`,
+      plantCount: (n: number) => `${n} plant${n !== 1 ? 'en' : ''}`,
+      bucketNow: 'Nu',
+      bucketToday: 'Vandaag',
+      bucketThisWeek: 'Komende week',
+    },
   },
 
   care: {

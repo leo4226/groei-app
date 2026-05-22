@@ -1,5 +1,5 @@
 import type { MapObject, MapPlant, ObjectShapeType } from '../../types'
-import { archiveObject, updatePlantContainer, updateObject } from '../../api/client'
+import { objects, plants as plantsApi } from '../../api/client'
 import { STATUS_COLORS } from '../map/PlantMarker'
 import { useState } from 'react'
 import { useT } from '../../context/LanguageContext'
@@ -68,7 +68,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
   const handleSave = async () => {
     setBusy(true)
     try {
-      await updateObject(object.id, {
+      await objects.update(object.id, {
         name,
         shape: isContainer ? shape : undefined,
         diameter_cm: shape === 'circle' ? diameterCm : undefined,
@@ -89,7 +89,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
   const handleArchive = async () => {
     if (!confirm(t.addObject.archive(object.name))) return
     try {
-      await archiveObject(object.id)
+      await objects.archive(object.id)
       onAction()
     } catch (e) {
       console.error('Failed to archive object:', e)
@@ -99,7 +99,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
   const handleAssignPlant = async (plantId: number) => {
     setBusy(true)
     try {
-      await updatePlantContainer(plantId, object.id)
+      await plantsApi.setContainer(plantId, object.id)
       onAction()
     } catch (e) {
       console.error('Failed to assign plant:', e)
@@ -111,7 +111,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
   const handleReleasePlant = async (plantId: number) => {
     setBusy(true)
     try {
-      await updatePlantContainer(plantId, null)
+      await plantsApi.setContainer(plantId, null)
       onAction()
     } catch (e) {
       console.error('Failed to release plant:', e)

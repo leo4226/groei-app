@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useFloreren } from '../../store/useFloreren'
-import { fetchAlertSummary } from '../../api/client'
+import { alerts } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import type { Plant, Phenology, MonthPhenology } from '../../types'
 
@@ -26,7 +26,7 @@ export default function PhenologyView() {
   const [alertPlantIds, setAlertPlantIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
-    fetchAlertSummary()
+    alerts.summary()
       .then(s => setAlertPlantIds(new Set(s.plant_ids_with_alerts)))
       .catch(() => {})
   }, [])

@@ -71,19 +71,10 @@ export default function HelpAssistant() {
 
   const pageKey = detectPage(location.pathname)
 
-  // Don't render at all if not on an allowed page
-  if (!pageKey || dismissed) return null
-
-  const tip = t.help.tips[pageKey as keyof typeof t.help.tips]
-
-  function handleDismiss() {
-    localStorage.setItem(DISMISS_KEY, 'true')
-    setDismissed(true)
-  }
-
   // Show a random speech bubble every ~15s while the sheet is closed
+  // MUST be before the early return so all hooks always run (prevent #310).
   useEffect(() => {
-    if (open) {
+    if (!pageKey || dismissed || open) {
       if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
       setBubbleVisible(false)
       return
@@ -103,7 +94,17 @@ export default function HelpAssistant() {
       clearInterval(interval)
       if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
     }
-  }, [pageKey, open, userName])
+  }, [pageKey, open, userName, dismissed])
+
+  // Don't render at all if not on an allowed page (after all hooks for #310 safety)
+  if (!pageKey || dismissed) return null
+
+  const tip = t.help.tips[pageKey as keyof typeof t.help.tips]
+
+  function handleDismiss() {
+    localStorage.setItem(DISMISS_KEY, 'true')
+    setDismissed(true)
+  }
 
   return (
     <>

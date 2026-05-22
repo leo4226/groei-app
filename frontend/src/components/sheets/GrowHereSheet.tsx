@@ -4,7 +4,7 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import type { MapPlant } from '../../types'
 import { PLANT_SUN_PROFILES, getSunFit } from '../../utils/plantSunRequirements'
 import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
-import { fetchGrowHereSuggestions, type GrowHereResponse, type AISuggestion } from '../../api/client'
+import { garden, type GrowHereResponse, type AISuggestion } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import type { Translations } from '../../i18n/translations'
@@ -149,7 +149,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
 
     const existingPlantNames = mapPlants.map(p => p.species ?? p.name)
 
-    fetchGrowHereSuggestions(sunHours, selectedMonth, existingPlantNames)
+    garden.growHere(sunHours, selectedMonth, existingPlantNames)
       .then(data => {
         _aiCache.set(key, data)
         setAiData(data)

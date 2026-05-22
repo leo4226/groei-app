@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { syncIcons, fetchIconGaps, fetchAdminAccounts, deleteAdminAccount, type AdminAccount } from '../api/client'
+import { icons, admin, type AdminAccount, household } from '../api/client'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult, IconGapReport } from '../types'
 
@@ -19,9 +19,92 @@ export default function Settings() {
   const [gapsError, setGapsError] = useState<string | null>(null)
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
   const [trollClicked, setTrollClicked] = useState(false)
+  const [inviteCode, setInviteCode] = useState<string | null>(null)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  function InviteSection() {
+    async function generateCode() {
+      setInviteLoading(true)
+      setInviteError(null)
+      setInviteCode(null)
+      try {
+        const result = await household.invite()
+        setInviteCode(result.code)
+      } catch (e) {
+        setInviteError(e instanceof Error ? e.message : 'Fout bij genereren code')
+      } finally {
+        setInviteLoading(false)
+      }
+    }
+
+    async function copyCode() {
+      if (inviteCode) {
+        await navigator.clipboard.writeText(inviteCode)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    }
+
+    return (
+      <div className="space-y-3">
+        {!inviteCode && !inviteLoading && (
+          <button
+            onClick={generateCode}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform"
+          >
+            Genereer uitnodigingscode
+          </button>
+        )}
+
+        {inviteLoading && (
+          <div className="flex items-center justify-center gap-2 py-2.5">
+            <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm text-text-muted">Code genereren...</span>
+          </div>
+        )}
+
+        {inviteCode && (
+          <div className="text-center space-y-3">
+            <p className="text-xs text-text-muted">Deel deze code met wie je wilt uitnodigen:</p>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-2xl font-bold tracking-[0.3em] text-primary bg-primary/10 px-4 py-2 rounded-xl font-mono select-all">
+                {inviteCode}
+              </span>
+              <button
+                onClick={copyCode}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-surface border border-border text-text active:scale-[0.95] transition-transform"
+                title="Kopieer code"
+              >
+                {copied ? (
+                  <span className="text-sm text-primary font-bold">✓</span>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <button
+              onClick={generateCode}
+              disabled={inviteLoading}
+              className="text-xs text-text-muted underline active:text-text transition-colors"
+            >
+              Nieuwe code genereren (oude vervalt)
+            </button>
+          </div>
+        )}
+
+        {inviteError && (
+          <p className="text-sm text-fiery-red">{inviteError}</p>
+        )}
+      </div>
+    )
+  }
 
   useEffect(() => {
-    fetchAdminAccounts()
+    admin.accounts()
       .then(setAdminAccounts)
       .catch(() => setAdminAccounts(null))
   }, [])
@@ -31,7 +114,7 @@ export default function Settings() {
     setSyncResult(null)
     setSyncError(null)
     try {
-      const result = await syncIcons()
+      const result = await icons.sync()
       setSyncResult(result)
     } catch (e) {
       setSyncError(e instanceof Error ? e.message : t.common.error)
@@ -44,7 +127,7 @@ export default function Settings() {
     setGapsLoading(true)
     setGapsError(null)
     try {
-      const report = await fetchIconGaps()
+      const report = await icons.gaps()
       setGapReport(report)
     } catch (e) {
       setGapsError(e instanceof Error ? e.message : t.common.error)
@@ -112,6 +195,16 @@ export default function Settings() {
               </button>
             )
           })}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">Nodig iemand uit</h2>
+        <div className="card p-4 space-y-3">
+          <p className="text-sm text-text-muted">
+            Genereer een code waarmee iemand jouw tuin kan joinen. De code is 7 dagen geldig.
+          </p>
+          <InviteSection />
         </div>
       </section>
 
@@ -288,7 +381,7 @@ export default function Settings() {
                       onClick={async () => {
                         if (window.confirm(`Delete account "${acct.name}" (${acct.email})?\n\nAll plants, locations and data will be permanently removed.`)) {
                           try {
-                            await deleteAdminAccount(acct.id)
+                            await admin.deleteAccount(acct.id)
                             setAdminAccounts(prev => prev ? prev.filter(a => a.id !== acct.id) : prev)
                           } catch (e) {
                             alert('Failed to delete: ' + (e instanceof Error ? e.message : 'Unknown error'))

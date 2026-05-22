@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
-import { updatePlantContainer, updatePlantGroundZone, updatePlantLock, fetchPlant } from '../../api/client'
+import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 
 import type { HeatmapCell } from '../../utils/heatmapCalc'
@@ -32,14 +32,14 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
 
   useEffect(() => {
     setDetail(null)
-    fetchPlant(plant.id).then(setDetail).catch(() => {})
+    plantsApi.get(plant.id).then(setDetail).catch(() => {})
   }, [plant.id])
 
   const handleToggleLock = async () => {
     const next = !locked
     setLocked(next)
     try {
-      await updatePlantLock(plant.id, next)
+      await plantsApi.setLock(plant.id, next)
       onAction()
     } catch {
       setLocked(!next)
@@ -93,12 +93,12 @@ export default function PlantQuickSheet({ plant, objects, soilGroundZones = [], 
   })()
 
   const handleRemoveFromContainer = async () => {
-    await updatePlantContainer(plant.id, null)
+    await plantsApi.setContainer(plant.id, null)
     onAction()
   }
 
   const handleLiftFromZone = async () => {
-    await updatePlantGroundZone(plant.id, null, plant.map_x, plant.map_y)
+    await plantsApi.setGroundZone(plant.id, null, plant.map_x, plant.map_y)
     onAction()
   }
 

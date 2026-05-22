@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { PlantWarningStateOut } from '../types'
-import { fetchPlantWarnings } from '../api/client'
+import { plants as plantsApi } from '../api/client'
 
 const _cache = new Map<number, { data: PlantWarningStateOut; ts: number }>()
 const CACHE_TTL = 60_000 // 1 minute
@@ -43,7 +43,7 @@ export function usePlantCareProfile(plantId: number | null): UseCareProfileResul
     let cancelled = false
     setState(s => ({ ...s, loading: true }))
 
-    fetchPlantWarnings(plantId).then(data => {
+    plantsApi.warnings(plantId).then(data => {
       if (cancelled) return
       _cache.set(plantId, { data, ts: Date.now() })
       setState({ data, loading: false, error: false })

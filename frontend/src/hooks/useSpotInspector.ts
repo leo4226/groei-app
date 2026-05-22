@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { getSunHoursAtPosition } from '../utils/heatmapCalc'
 import type { LightEngine } from '../utils/lightEngine'
 
 export interface SpeciesSuggestion {
@@ -36,7 +35,7 @@ export function useSpotInspector(engine?: LightEngine | null) {
       if (engine) {
         return engine.getSunHoursAtPosition(x, y, i + 1) ?? 0
       }
-      return getSunHoursAtPosition(x, y, i + 1)
+      return 0
     })
 
     try {

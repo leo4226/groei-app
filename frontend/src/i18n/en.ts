@@ -24,6 +24,7 @@ export const en: Translations = {
       logbook: '§ Log',
       weather: '§ Weather & sensors',
       didYouKnow: '§ Did you know',
+      careSignals: '§ Care Signals',
     },
     actions: {
       done: 'Done',
@@ -71,6 +72,14 @@ export const en: Translations = {
       loading: 'Loading weather…',
     },
     comingSoon: 'Coming soon',
+    warnings: {
+      allOnSchedule: 'All on schedule ✨',
+      signalCount: (n: number) => `${n} signal${n !== 1 ? 's' : ''}`,
+      plantCount: (n: number) => `${n} plant${n !== 1 ? 's' : ''}`,
+      bucketNow: 'Now',
+      bucketToday: 'Today',
+      bucketThisWeek: 'This week',
+    },
   },
 
   care: {

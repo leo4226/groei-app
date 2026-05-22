@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { CareLogEntry } from '../types'
-import { fetchCareLog } from '../api/client'
+import { care } from '../api/client'
 
 const _cache = new Map<number, CareLogEntry[]>()
 
@@ -41,7 +41,7 @@ export function useCareLog(plantId: number | null): UseCareLogResult {
     let cancelled = false
     setState({ data: null, loading: true, error: false })
 
-    fetchCareLog(plantId)
+    care.log(plantId)
       .then(data => {
         if (cancelled) return
         _cache.set(plantId, data)

@@ -1,5 +1,5 @@
 import { getSunPosition, getSunTimes, GARDEN_LAT, GARDEN_LNG } from './sunCalc'
-import { SHADOW_CASTERS, GARDEN_FLOOR, GARDEN_SVG_TOP_AZIMUTH, PX_PER_M, PX_PER_CM } from './gardenStructures'
+import { PX_PER_M, PX_PER_CM } from './gardenStructures'
 import type { ShadowCaster } from './gardenStructures'
 import { computeShadowRegions, getSunFraction } from './shadowGeometry'
 import { computeSkyOpenness } from './skyViewFactor'
@@ -100,8 +100,7 @@ function isInGarden(px: number, py: number, bounds?: GardenBounds): boolean {
   if (bounds) {
     return px >= bounds.minX && px <= bounds.maxX && py >= bounds.minY && py <= bounds.maxY
   }
-  const [tl, tr, , bl] = GARDEN_FLOOR
-  return px >= tl[0] && px <= tr[0] && py >= tl[1] && py <= bl[1]
+  return true
 }
 
 /**
@@ -130,8 +129,8 @@ export function computeHeatmap(
 
   const useLat = lat ?? GARDEN_LAT
   const useLon = lon ?? GARDEN_LNG
-  const useBearing = bearing ?? GARDEN_SVG_TOP_AZIMUTH
-  const useCasters = shadowCasters ?? SHADOW_CASTERS
+  const useBearing = bearing ?? 0
+  const useCasters = shadowCasters ?? []
 
   // Get sunrise/sunset
   const times = getSunTimes(day, useLat, useLon)
@@ -153,10 +152,10 @@ export function computeHeatmap(
 
   // Build grid
   const cellPx = gridResM * PX_PER_M
-  const minX = gardenBounds?.minX ?? GARDEN_FLOOR[0][0]
-  const minY = gardenBounds?.minY ?? GARDEN_FLOOR[0][1]
-  const maxX = gardenBounds?.maxX ?? GARDEN_FLOOR[1][0]
-  const maxY = gardenBounds?.maxY ?? GARDEN_FLOOR[3][1]
+  const minX = gardenBounds?.minX ?? 0
+  const minY = gardenBounds?.minY ?? 0
+  const maxX = gardenBounds?.maxX ?? 680
+  const maxY = gardenBounds?.maxY ?? 680
 
   const cols = Math.ceil((maxX - minX) / cellPx)
   const rows = Math.ceil((maxY - minY) / cellPx)
@@ -236,29 +235,3 @@ function trimRaggedEdges(cells: HeatmapCell[], threshold = 0.75): HeatmapCell[] 
   return cells.filter(c => keepY.has(c.y) && keepX.has(c.x))
 }
 
-const _heatmapCache = new Map<number, HeatmapCell[]>()
-
-function getCachedCells(month: number): HeatmapCell[] {
-  if (!_heatmapCache.has(month)) {
-    _heatmapCache.set(month, computeHeatmap(month))
-  }
-  return _heatmapCache.get(month)!
-}
-
-function findCell(cells: HeatmapCell[], x: number, y: number): HeatmapCell | undefined {
-  return cells.find(c => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h)
-}
-
-/** Return sun hours at SVG position (x, y) for the given month (1-12). */
-export function getSunHoursAtPosition(x: number, y: number, month: number): number {
-  return findCell(getCachedCells(month), x, y)?.sunHours ?? 0
-}
-
-/**
- * Return sky openness (cosine-weighted SVF) at SVG position (x, y).
- * SVF is time-independent, so month only matters for cache warming.
- * Use month=1 if you just want SVF without triggering a full month re-compute.
- */
-export function getSkyOpennessAtPosition(x: number, y: number, month: number): number {
-  return findCell(getCachedCells(month), x, y)?.skyOpenness ?? 0
-}

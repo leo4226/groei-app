@@ -7,6 +7,7 @@ import { shadowCastersToObstructions } from '../utils/heatmapCalc'
 import { deriveAllShadowCasters, deriveGardenBounds, deriveGardenPerimeter, deriveViewBoxString } from '../utils/gardenFromCanvas'
 import type { SunPosition } from '../utils/sunCalc'
 import type { ShadowPolygon } from '../utils/shadowGeometry'
+import type { ShadowCaster } from '../utils/gardenStructures'
 import type { HeatmapCell } from '../utils/heatmapCalc'
 import type { PlantSunProfile } from '../utils/plantSunRequirements'
 
@@ -50,6 +51,7 @@ export interface SunVisualization {
   // Computed outputs for MapView
   sunPosition: SunPosition | null
   shadows: ShadowPolygon[]
+  shadowCasters: ShadowCaster[]
   isLiveActive: boolean
   isHeatmapActive: boolean
   gardenObstructions: Obstruction[]
@@ -194,6 +196,7 @@ export function useSunVisualization(options: {
     clearInspector,
     sunPosition,
     shadows,
+    shadowCasters,
     isLiveActive,
     isHeatmapActive,
     gardenObstructions,

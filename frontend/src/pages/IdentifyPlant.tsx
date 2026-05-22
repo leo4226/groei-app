@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
-import { identifyPlant, commitIdentification } from '../api/client'
+import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import type { PlantIdCandidate } from '../types'
@@ -34,7 +34,7 @@ export function IdentifyPlantPage() {
     setCapturedPhotoDataUrl(dataUrl)
     setStep({ kind: 'identifying', thumbnail: dataUrl })
     try {
-      const resp = await identifyPlant(blob)
+      const resp = await plantsApi.identify(blob)
       setStep({
         kind: 'results',
         candidates: resp.candidates,
@@ -54,7 +54,7 @@ export function IdentifyPlantPage() {
     if (!capturedPhotoDataUrl) return
     setStep({ kind: 'enriching' })
     try {
-      const enriched = await commitIdentification(candidate.scientific_name, capturedPhotoDataUrl)
+      const enriched = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
       navigate('/plants/add', { state: { prefill: enriched, from: 'identify' } })
     } catch (e) {
       const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')

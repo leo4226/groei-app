@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  fetchAdminOverview, fetchAdminUsers, fetchAdminPlants,
-  fetchAdminSpecies, fetchAdminActivity,
-  runBackfillThresholds, runBackfillCareSchedules,
-  deleteAdminAccount, fetchAdminPanelMe,
+  adminPanel, admin,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
   type AdminSpeciesRow, type AdminActivityEvent,
 } from '../api/client'
@@ -29,7 +26,7 @@ export default function AdminPage() {
   useEffect(() => {
     const token = localStorage.getItem('floreren-token')
     if (!token) { navigate('/dashboard', { replace: true }); return }
-    fetchAdminPanelMe()
+    adminPanel.me()
       .then(d => { setEmail(d.email); setChecking(false) })
       .catch(() => navigate('/dashboard', { replace: true }))
   }, [navigate])
@@ -203,7 +200,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
   const [err, setErr] = useState('')
 
   useEffect(() => {
-    fetchAdminOverview().then(setData).catch(e => setErr(e.message))
+    adminPanel.overview().then(setData).catch(e => setErr(e.message))
   }, [])
 
   if (err) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><ErrorMsg msg={err} /></div>
@@ -264,13 +261,13 @@ function UsersView() {
   const [confirmId, setConfirmId] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchAdminUsers().then(setUsers).catch(e => setErr(e.message))
+    adminPanel.users().then(setUsers).catch(e => setErr(e.message))
   }, [])
 
   async function handleDelete(id: number) {
     setDeletingId(id)
     try {
-      await deleteAdminAccount(id)
+      await admin.deleteAccount(id)
       setUsers(u => u ? u.filter(x => x.id !== id) : u)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Delete failed')
@@ -349,7 +346,7 @@ function PlantsView() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    fetchAdminPlants().then(setPlants).catch(e => setErr(e.message))
+    adminPanel.plants().then(setPlants).catch(e => setErr(e.message))
   }, [])
 
   const filtered = (plants ?? []).filter(p => {
@@ -401,7 +398,7 @@ function SpeciesView() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    fetchAdminSpecies().then(setSpecies).catch(e => setErr(e.message))
+    adminPanel.species().then(setSpecies).catch(e => setErr(e.message))
   }, [])
 
   const filtered = (species ?? []).filter(s => {
@@ -455,7 +452,7 @@ function ToolsView() {
     setThresholdsRunning(true)
     setThresholdsResult('')
     try {
-      const r = await runBackfillThresholds()
+      const r = await admin.backfillThresholds()
       setThresholdsResult(`✓ ${r.succeeded} updated · ${r.failed} failed out of ${r.processed}`)
     } catch (e) {
       setThresholdsResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
@@ -468,7 +465,7 @@ function ToolsView() {
     setSchedulesRunning(true)
     setSchedulesResult('')
     try {
-      const r = await runBackfillCareSchedules()
+      const r = await admin.backfillCareSchedules()
       setSchedulesResult(`✓ ${r.seeded} schedules seeded out of ${r.checked} checked`)
     } catch (e) {
       setSchedulesResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
@@ -523,7 +520,7 @@ function ActivityView() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    fetchAdminActivity().then(setEvents).catch(e => setErr(e.message))
+    adminPanel.activity().then(setEvents).catch(e => setErr(e.message))
   }, [])
 
   const kindLabel: Record<string, string> = {

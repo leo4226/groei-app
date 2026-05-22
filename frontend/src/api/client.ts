@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardData, DashboardV2Data, StatusCounts, RecentLogEntry, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -43,7 +43,6 @@ async function apiRequest<T>(method: string, path: string, options: ApiOptions =
   }
 
   if (res.status === 403) {
-    // 403 = forbidden, not expired — let the caller handle it gracefully
     let detail = 'Forbidden'
     try { const body = await res.json(); if (body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail) } catch {}
     throw new Error(detail)
@@ -63,7 +62,6 @@ async function api<T>(method: string, path: string, options: ApiOptions = {}): P
     try {
       return await apiRequest<T>(method, path, options)
     } catch (e) {
-      // Only retry on genuine network errors (e.g. DNS failure, cold start timeout)
       const isNetworkError = e instanceof TypeError
       if (!isNetworkError || attempt === MAX_RETRIES) throw e
       lastError = e
@@ -74,7 +72,7 @@ async function api<T>(method: string, path: string, options: ApiOptions = {}): P
   throw lastError
 }
 
-// ── Local types ──
+// ── Exported local types ──
 
 export interface GardenWaterStatus {
   status: 'hydrated' | 'thirsty' | 'dry'
@@ -84,6 +82,11 @@ export interface GardenWaterStatus {
   biweekly_budget_mm: number
   season: string
   watered_at: string | null
+}
+
+export interface GardenFertilizeStatus {
+  fertilized_at: string | null
+  pending_count: number
 }
 
 export interface AISuggestion {
@@ -97,123 +100,6 @@ export interface AISuggestion {
 }
 export interface GrowHereResponse { suggestions: AISuggestion[]; spotSummary: string }
 
-// ── Users ──
-
-export const fetchUsers            = ()                    => api<User[]>('GET', '/users')
-export const fetchLocations        = ()                    => api<Location[]>('GET', '/locations')
-export const updateUserLanguage    = (userId: number, language: 'nl' | 'en') => api<User>('PATCH', `/users/${userId}/language`, { body: { language } })
-
-// ── Plants ──
-
-export const fetchPlants           = ()                    => api<Plant[]>('GET', '/plants')
-export const fetchPlant            = (id: number)          => api<Plant>('GET', `/plants/${id}`)
-export const createPlant           = (data: PlantCreateInput) => api<Plant>('POST', '/plants', { body: data })
-export const updatePlant           = (id: number, data: Partial<Plant>) => api<Plant>('PUT', `/plants/${id}`, { body: data })
-export const archivePlant          = (id: number)          => api<void>('DELETE', `/plants/${id}`)
-export const restorePlant          = (id: number)          => api<void>('PATCH', `/plants/${id}/restore`)
-export const uploadPlantPhoto      = (plantId: number, file: File) => { const f = new FormData(); f.append('file', file); return api<Plant>('POST', `/plants/${plantId}/photo`, { form: f }) }
-export const updatePlantPosition   = (plantId: number, data: { map_id: number; map_x: number; map_y: number }) => api<void>('PUT', `/plants/${plantId}/position`, { body: data })
-export const updatePlantContainer  = (plantId: number, containerId: number | null) => api<void>('PUT', `/plants/${plantId}/container`, { body: { container_id: containerId } })
-export const updatePlantGroundZone = (plantId: number, groundZoneId: string | null, mapX: number | null, mapY: number | null) => api<void>('PUT', `/plants/${plantId}/ground-zone`, { body: { ground_zone_id: groundZoneId, map_x: mapX, map_y: mapY } })
-export const updatePlantDisplayRadius = (plantId: number, display_radius_cm: number | null) => api<void>('PUT', `/plants/${plantId}`, { body: { display_radius_cm } })
-export const updatePlantLock       = (plantId: number, locked: boolean) => api<void>('PATCH', `/plants/${plantId}/lock`, { params: { locked: String(locked) } })
-export const duplicatePlant        = (plantId: number)    => api<Plant>('POST', `/plants/${plantId}/duplicate`)
-export const fetchPlantAlerts      = (plantId: number)    => api<PlantAlert[]>('GET', `/plants/${plantId}/alerts`)
-
-// ── Dashboard ──
-
-export const fetchDashboard        = ()                    => api<DashboardData>('GET', '/dashboard')
-export const fetchDashboardV2      = ()                    => api<DashboardV2Data>('GET', '/dashboard/v2')
-
-// ── Maps ──
-
-export const fetchMaps             = ()                    => api<MapInfo[]>('GET', '/maps')
-export const createMap             = (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('POST', '/maps', { body: data })
-export const updateMap             = (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data })
-export const deleteMap             = (id: number)          => api<void>('DELETE', `/maps/${id}`)
-export const fetchMapById          = (id: number)          => api<MapInfo>('GET', `/maps/by-id/${id}`)
-export const fetchMapDetail        = (slug: string)        => api<MapDetail>('GET', `/maps/${slug}`)
-export const fetchMapPlants        = (slug: string)        => api<MapPlant[]>('GET', `/maps/${slug}/plants`)
-export const fetchMapItems         = (slug: string)        => api<MapItems>('GET', `/maps/${slug}/items`)
-
-// ── Objects ──
-
-export const fetchObjects          = ()                    => api<MapObject[]>('GET', '/objects')
-export const createObject          = (data: ObjectCreateInput) => api<MapObject>('POST', '/objects', { body: data })
-export const updateObject          = (id: number, data: Partial<MapObject>) => api<MapObject>('PUT', `/objects/${id}`, { body: data })
-export const updateObjectPosition  = (id: number, data: { map_x: number; map_y: number; rotation?: number }) => api<void>('PUT', `/objects/${id}/position`, { body: data })
-export const archiveObject         = (id: number)          => api<void>('DELETE', `/objects/${id}`)
-export const restoreObject         = (id: number)          => api<void>('PATCH', `/objects/${id}/restore`)
-
-// ── Ground Zones ──
-
-export const fetchGroundZones      = (slug: string)        => api<GroundZone[]>('GET', `/maps/${slug}/ground-zones`)
-
-// ── Care ──
-
-export const markCareDone          = (plantId: number, careType: string, userId: number, notes?: string) => api<void>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes } })
-export const skipCare              = (plantId: number, careType: string, userId: number) => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } })
-export const deleteCareSchedule    = (scheduleId: number)  => api<void>('DELETE', `/care/schedules/${scheduleId}`)
-export const fetchCareLog          = (plantId: number)    => api<CareLogEntry[]>('GET', `/care/log/${plantId}`)
-export const fetchPlantWarnings    = (plantId: number)    => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`)
-export const fetchWarningSummary   = (env: string = 'all') => api<import('../types').WarningSummaryOut>('GET', '/warnings/summary', { params: { env } })
-export const patchCareProfile      = (plantId: number, data: Record<string, { active: boolean }>) => api<void>('PATCH', `/plants/${plantId}/care-profile`, { body: data })
-
-// ── Garden Water ──
-
-export const fetchLatestGardenWatering  = ()               => api<{ watered_at: string | null }>('GET', '/garden/water-log/latest').then(d => d.watered_at ?? null)
-export const fetchGardenWaterStatus     = ()               => api<GardenWaterStatus>('GET', '/garden/water-status')
-export const logGardenWatering          = (wateredAt?: string, userId?: number) => api<{ watered_at: string }>('POST', '/garden/water-log', { body: { watered_at: wateredAt ?? null, watered_by: userId ?? null } }).then(d => d.watered_at)
-export const deleteLatestGardenWatering = ()               => api<void>('DELETE', '/garden/water-log/latest')
-
-export interface GardenFertilizeStatus {
-  fertilized_at: string | null
-  pending_count: number
-}
-export const fetchGardenFertilizeStatus     = ()               => api<GardenFertilizeStatus>('GET', '/garden/fertilize-status')
-export const logGardenFertilizing           = (fertilizedAt?: string, userId?: number) => api<{ fertilized_at: string; schedules_updated: number }>('POST', '/garden/fertilize-log', { body: { fertilized_at: fertilizedAt ?? null, fertilized_by: userId ?? null } })
-export const deleteLatestGardenFertilizing  = ()               => api<void>('DELETE', '/garden/fertilize-log/latest')
-
-// ── Alerts ──
-
-export const fetchAlertSummary     = ()                    => api<AlertSummary>('GET', '/alerts/summary')
-
-// ── Calendar ──
-
-import type { CalendarEvent } from '../pages/calendar/calendarTypes'
-
-export const fetchCalendarEvents   = (from: string, to: string, env?: string) => {
-  const params: Record<string, string> = { from, to }
-  if (env && env !== 'all') params.env = env
-  return api<CalendarEvent[]>('GET', '/calendar/events', { params })
-}
-
-// ── Icons ──
-
-/**
- * Fetch icon catalog from the static manifest.json served by the frontend,
- * since the backend API (/api/icon-catalog) is unavailable on Vercel.
- * The manifest is copied from public/icons/ during the Vite build.
- */
-export const fetchIconCatalog: () => Promise<PlantIcon[]> =
-  async () => {
-    const res = await fetch('/icons/manifest.json')
-    if (!res.ok) throw new Error(`Failed to fetch icon manifest: ${res.status}`)
-    const data = await res.json()
-    const entries: PlantIcon[] = data.plants ?? data
-    return entries.sort((a, b) => a.name.localeCompare(b.name))
-  }
-
-export const syncIcons             = ()                    => api<IconSyncResult>('POST', '/icon-catalog/sync')
-export const fetchIconGaps         = ()                    => api<IconGapReport>('GET', '/icon-catalog/gaps')
-export const requestIcon           = (plantId: number)     => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`)
-
-// ── Plant Fact ──
-
-export const fetchPlantFact      = ()                    => api<PlantFactOut>('GET', '/plant-fact')
-
-// ── Admin ──
-
 export interface AdminAccount {
   id: number
   email: string
@@ -221,45 +107,6 @@ export interface AdminAccount {
   created_at: string
   household_name: string
 }
-
-export const fetchAdminAccounts = () => api<AdminAccount[]>('GET', '/admin/accounts')
-export const deleteAdminAccount = (id: number) => api<void>('DELETE', `/admin/accounts/${id}`)
-
-// ── Grow Here ──
-
-export const fetchGrowHereSuggestions = (sunHours: number, selectedMonth: number, existingPlants: string[]) =>
-  api<GrowHereResponse>('POST', '/garden/grow-here', { body: { sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants } })
-
-// ── Plant identification (Pl@ntNet) ──
-
-export async function identifyPlant(imageBlob: Blob): Promise<import('../types').IdentifyResponse> {
-  const form = new FormData()
-  form.append('image', imageBlob, 'plant.jpg')
-  return api<import('../types').IdentifyResponse>('POST', '/plants/identify', { form })
-}
-
-export async function commitIdentification(
-  scientificName: string,
-  photoBase64: string,
-): Promise<import('../types').IdentifyCommitResult> {
-  return api<import('../types').IdentifyCommitResult>('POST', '/plants/identify/commit', {
-    body: { scientific_name: scientificName, photo_base64: photoBase64 },
-  })
-}
-
-// ── Weed catalog & sightings ──
-
-export async function fetchWeedCatalog(): Promise<import('../types').WeedSpeciesListItem[]> {
-  return api<import('../types').WeedSpeciesListItem[]>('GET', '/weed-catalog')
-}
-
-export async function createWeedSighting(
-  body: import('../types').WeedSightingCreate,
-): Promise<import('../types').WeedSightingOut> {
-  return api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body })
-}
-
-// ── Admin panel ───────────────────────────────────────────────────────────────
 
 export interface AdminUserRow {
   id: number
@@ -310,26 +157,141 @@ export interface AdminSpeciesRow {
   plant_count: number
 }
 
-export const fetchAdminOverview = () =>
-  api<AdminOverview>('GET', '/admin-panel/overview')
+// ── Domain namespaces ──
 
-export const fetchAdminUsers = () =>
-  api<AdminUserRow[]>('GET', '/admin-panel/users')
+export const users = {
+  list:        ()                                          => api<User[]>('GET', '/users'),
+  locations:   ()                                          => api<Location[]>('GET', '/locations'),
+  setLanguage: (userId: number, language: 'nl' | 'en')   => api<User>('PATCH', `/users/${userId}/language`, { body: { language } }),
+}
 
-export const fetchAdminPlants = () =>
-  api<AdminPlantRow[]>('GET', '/admin-panel/plants')
+export const plants = {
+  list:              ()                                            => api<Plant[]>('GET', '/plants'),
+  get:               (id: number)                                  => api<Plant>('GET', `/plants/${id}`),
+  create:            (data: PlantCreateInput)                      => api<Plant>('POST', '/plants', { body: data }),
+  update:            (id: number, data: Partial<Plant>)            => api<Plant>('PUT', `/plants/${id}`, { body: data }),
+  archive:           (id: number)                                  => api<void>('DELETE', `/plants/${id}`),
+  restore:           (id: number)                                  => api<void>('PATCH', `/plants/${id}/restore`),
+  uploadPhoto:       (plantId: number, file: File)                 => { const f = new FormData(); f.append('file', file); return api<Plant>('POST', `/plants/${plantId}/photo`, { form: f }) },
+  setPosition:       (plantId: number, data: { map_id: number; map_x: number; map_y: number; ground_zone_id: null }) => api<void>('PUT', `/plants/${plantId}/position`, { body: data }),
+  setContainer:      (plantId: number, containerId: number | null) => api<void>('PUT', `/plants/${plantId}/container`, { body: { container_id: containerId } }),
+  setGroundZone:     (plantId: number, groundZoneId: string | null, mapX: number | null, mapY: number | null) => api<void>('PUT', `/plants/${plantId}/ground-zone`, { body: { ground_zone_id: groundZoneId, map_x: mapX, map_y: mapY } }),
+  setRadius:         (plantId: number, display_radius_cm: number | null) => api<void>('PUT', `/plants/${plantId}`, { body: { display_radius_cm } }),
+  setLock:           (plantId: number, locked: boolean)            => api<void>('PATCH', `/plants/${plantId}/lock`, { params: { locked: String(locked) } }),
+  duplicate:         (plantId: number)                             => api<Plant>('POST', `/plants/${plantId}/duplicate`),
+  alerts:            (plantId: number)                             => api<PlantAlert[]>('GET', `/plants/${plantId}/alerts`),
+  warnings:          (plantId: number)                             => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`),
+  warningSummary:    (env: string = 'all')                         => api<import('../types').WarningSummaryOut>('GET', '/warnings/summary', { params: { env } }),
+  patchCareProfile:  (plantId: number, data: Record<string, { active: boolean }>) => api<void>('PATCH', `/plants/${plantId}/care-profile`, { body: data }),
+  fact:              ()                                            => api<PlantFactOut>('GET', '/plant-fact'),
+  identify:          async (imageBlob: Blob)                       => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', '/plants/identify', { form: f }) },
+  commitIdentify:    (scientificName: string, photoBase64: string) => api<import('../types').IdentifyCommitResult>('POST', '/plants/identify/commit', { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
+}
 
-export const fetchAdminSpecies = () =>
-  api<AdminSpeciesRow[]>('GET', '/admin-panel/species')
+export const dashboard = {
+  v2: () => api<DashboardV2Data>('GET', '/dashboard/v2'),
+}
 
-export const fetchAdminActivity = () =>
-  api<AdminActivityEvent[]>('GET', '/admin-panel/activity')
+export const maps = {
+  list:    ()                                                                                                     => api<MapInfo[]>('GET', '/maps'),
+  create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number })             => api<MapInfo>('POST', '/maps', { body: data }),
+  update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
+  delete:  (id: number)                                                                                          => api<void>('DELETE', `/maps/${id}`),
+  byId:    (id: number)                                                                                          => api<MapInfo>('GET', `/maps/by-id/${id}`),
+  detail:  (slug: string)                                                                                        => api<MapDetail>('GET', `/maps/${slug}`),
+  plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
+  items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
+}
 
-export const fetchAdminPanelMe = () =>
-  api<{ email: string }>('GET', '/admin-panel/me')
+export const objects = {
+  list:        ()                                                                           => api<MapObject[]>('GET', '/objects'),
+  create:      (data: ObjectCreateInput)                                                    => api<MapObject>('POST', '/objects', { body: data }),
+  update:      (id: number, data: Partial<MapObject>)                                      => api<MapObject>('PUT', `/objects/${id}`, { body: data }),
+  setPosition: (id: number, data: { map_x: number; map_y: number; rotation?: number })    => api<void>('PUT', `/objects/${id}/position`, { body: data }),
+  archive:     (id: number)                                                                 => api<void>('DELETE', `/objects/${id}`),
+  restore:     (id: number)                                                                 => api<void>('PATCH', `/objects/${id}/restore`),
+}
 
-export const runBackfillThresholds = () =>
-  api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds')
+export const groundZones = {
+  list: (slug: string) => api<GroundZone[]>('GET', `/maps/${slug}/ground-zones`),
+}
 
-export const runBackfillCareSchedules = () =>
-  api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules')
+export const care = {
+  done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number) => api<void>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount } }),
+  skip:           (plantId: number, careType: string, userId: number)                  => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } }),
+  deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),
+  log:            (plantId: number)                                                     => api<CareLogEntry[]>('GET', `/care/log/${plantId}`),
+}
+
+export const garden = {
+  latestWatering:  ()                                                    => api<{ watered_at: string | null }>('GET', '/garden/water-log/latest').then(d => d.watered_at ?? null),
+  waterStatus:     ()                                                    => api<GardenWaterStatus>('GET', '/garden/water-status'),
+  logWater:        (wateredAt?: string, userId?: number)                 => api<{ watered_at: string }>('POST', '/garden/water-log', { body: { watered_at: wateredAt ?? null, watered_by: userId ?? null } }).then(d => d.watered_at),
+  deleteWater:     ()                                                    => api<void>('DELETE', '/garden/water-log/latest'),
+  fertilizeStatus: ()                                                    => api<GardenFertilizeStatus>('GET', '/garden/fertilize-status'),
+  logFertilize:    (fertilizedAt?: string, userId?: number)             => api<{ fertilized_at: string; schedules_updated: number }>('POST', '/garden/fertilize-log', { body: { fertilized_at: fertilizedAt ?? null, fertilized_by: userId ?? null } }),
+  deleteFertilize: ()                                                    => api<void>('DELETE', '/garden/fertilize-log/latest'),
+  growHere:        (sunHours: number, selectedMonth: number, existingPlants: string[]) => api<GrowHereResponse>('POST', '/garden/grow-here', { body: { sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants } }),
+}
+
+export const alerts = {
+  summary: () => api<AlertSummary>('GET', '/alerts/summary'),
+}
+
+import type { CalendarEvent } from '../pages/calendar/calendarTypes'
+
+export const calendar = {
+  events: (from: string, to: string, env?: string) => {
+    const params: Record<string, string> = { from, to }
+    if (env && env !== 'all') params.env = env
+    return api<CalendarEvent[]>('GET', '/calendar/events', { params })
+  },
+}
+
+export const icons = {
+  catalog: async (): Promise<PlantIcon[]> => {
+    const res = await fetch('/icons/manifest.json')
+    if (!res.ok) throw new Error(`Failed to fetch icon manifest: ${res.status}`)
+    const data = await res.json()
+    const entries: PlantIcon[] = data.plants ?? data
+    return entries.sort((a: PlantIcon, b: PlantIcon) => a.name.localeCompare(b.name))
+  },
+  sync:    () => api<IconSyncResult>('POST', '/icon-catalog/sync'),
+  gaps:    () => api<IconGapReport>('GET', '/icon-catalog/gaps'),
+  request: (plantId: number) => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`),
+}
+
+export const weeds = {
+  catalog:        ()                                            => api<import('../types').WeedSpeciesListItem[]>('GET', '/weed-catalog'),
+  createSighting: (body: import('../types').WeedSightingCreate) => api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body }),
+}
+
+export const admin = {
+  accounts:             ()           => api<AdminAccount[]>('GET', '/admin/accounts'),
+  deleteAccount:        (id: number) => api<void>('DELETE', `/admin/accounts/${id}`),
+  backfillThresholds:   ()           => api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds'),
+  backfillCareSchedules:()           => api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules'),
+}
+
+export const adminPanel = {
+  overview: () => api<AdminOverview>('GET', '/admin-panel/overview'),
+  users:    () => api<AdminUserRow[]>('GET', '/admin-panel/users'),
+  plants:   () => api<AdminPlantRow[]>('GET', '/admin-panel/plants'),
+  species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),
+  activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
+  me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
+}
+
+export interface HouseholdMember {
+  id: number
+  name: string
+  email: string
+  avatar: string | null
+  created_at: string
+}
+
+export const household = {
+  invite:   ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
+  join:     (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
+  members:  ()                             => api<HouseholdMember[]>('GET', '/household/members'),
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { fetchMapById, updateMap } from '../api/client'
+import { maps } from '../api/client'
 import type { MapInfo } from '../types'
 import CompassBearingPicker from '../components/settings/CompassBearingPicker'
 import { useT } from '../context/LanguageContext'
@@ -30,7 +30,7 @@ export default function MapSettingsPage() {
 
   useEffect(() => {
     mounted.current = true
-    fetchMapById(mapId).then(m => {
+    maps.byId(mapId).then(m => {
       if (!mounted.current) return
       setMap(m)
       setName(m.name)
@@ -49,7 +49,7 @@ export default function MapSettingsPage() {
   const doSave = useCallback((fields: Record<string, unknown>) => {
     if (!mapId) return
     setSaveStatus('saving')
-    updateMap(mapId, fields).then(updated => {
+    maps.update(mapId, fields).then(updated => {
       if (mounted.current) {
         setMap(updated)
         setSaveStatus('saved')

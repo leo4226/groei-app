@@ -24,6 +24,7 @@ from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
 from routers import admin_panel
 from routers import warnings as warnings_router
 from routers import plant_id as plant_id_router
+from routers import household
 
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(calendar.router, prefix="/api")
 app.include_router(warnings_router.router, prefix="/api")
 app.include_router(plant_id_router.router, prefix="/api")
+app.include_router(household.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

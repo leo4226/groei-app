@@ -1,9 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { getSunPosition } from '../utils/sunCalc'
-import { SHADOW_CASTERS } from '../utils/gardenStructures'
-import { computeShadows } from '../utils/shadowGeometry'
 import type { SunPosition } from '../utils/sunCalc'
-import type { ShadowPolygon } from '../utils/shadowGeometry'
 
 export function useSunPosition() {
   const now = new Date()
@@ -28,11 +25,6 @@ export function useSunPosition() {
     return getSunPosition(date)
   }, [sunModeActive, selectedMonth, selectedHour])
 
-  const shadows: ShadowPolygon[] = useMemo(() => {
-    if (!sunPosition) return []
-    return computeShadows(sunPosition, SHADOW_CASTERS)
-  }, [sunPosition])
-
   return {
     sunModeActive,
     toggleSunMode,
@@ -41,7 +33,6 @@ export function useSunPosition() {
     selectedHour,
     setSelectedHour,
     sunPosition,
-    shadows,
     setToNow,
   }
 }

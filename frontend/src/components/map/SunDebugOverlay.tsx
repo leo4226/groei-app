@@ -12,7 +12,8 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { GARDEN_CLIP, GARDEN_SVG_TOP_AZIMUTH, SHADOW_CASTERS } from '../../utils/gardenStructures'
+import { GARDEN_CLIP, GARDEN_SVG_TOP_AZIMUTH } from '../../utils/gardenStructures'
+import type { ShadowCaster } from '../../utils/gardenStructures'
 import { getSunPosition } from '../../utils/sunCalc'
 import type { SunPosition } from '../../utils/sunCalc'
 
@@ -43,9 +44,10 @@ function ArrowHead({ x, y, angle }: { x: number; y: number; angle: number }) {
 interface Props {
   sunPosition?: SunPosition | null
   bearing?: number
+  shadowCasters?: ShadowCaster[]
 }
 
-export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GARDEN_SVG_TOP_AZIMUTH }: Props) {
+export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GARDEN_SVG_TOP_AZIMUTH, shadowCasters = [] }: Props) {
   const [sunDate, setSunDate] = useState<Date>(parseSunTime)
 
   // Re-read URL ?t= on mount
@@ -77,7 +79,7 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
 
   // Shadow-tip dots for each caster
   const shadowTips = sun.isUp && sunRad !== null
-    ? SHADOW_CASTERS.map((c) => {
+    ? shadowCasters.map((c) => {
         const altRad = sun.altitudeDeg * (Math.PI / 180)
         const factor = Math.min(1 / Math.tan(altRad), 6)
         const dx = -Math.sin(sunRad) * c.heightCm * 0.46 * factor

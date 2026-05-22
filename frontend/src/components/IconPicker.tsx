@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { PlantIcon } from '../types'
-import { fetchIconCatalog } from '../api/client'
+import { icons } from '../api/client'
 import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
 import { useT } from '../context/LanguageContext'
 
@@ -25,7 +25,7 @@ export default function IconPicker({ value, onChange }: Props) {
   useEffect(() => {
     if (icons.length > 0) return
     setLoading(true)
-    fetchIconCatalog()
+    icons.catalog()
       .then(setIcons)
       .catch(console.error)
       .finally(() => {

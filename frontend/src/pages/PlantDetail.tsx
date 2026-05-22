@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
 import type { Phenology, PlantAlert } from '../types'
-import { fetchPlant, deleteCareSchedule, duplicatePlant, fetchPlantAlerts } from '../api/client'
+import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import PlantCareInfo from '../components/PlantCareInfo'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
@@ -36,7 +36,7 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
   const t = useT()
 
   useEffect(() => {
-    fetchPlantAlerts(plantId).then(setAlerts).catch(() => {})
+    plantsApi.alerts(plantId).then(setAlerts).catch(() => {})
   }, [plantId])
 
   if (alerts.length === 0) return null
@@ -97,7 +97,7 @@ export default function PlantDetail() {
       setPlant(cached)
       setLoading(false)
     } else {
-      fetchPlant(plantId).then(p => {
+      plantsApi.get(plantId).then(p => {
         setPlant(p)
         setLoading(false)
       }).catch(() => navigate('/plants'))
@@ -118,7 +118,7 @@ export default function PlantDetail() {
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
-    await deleteCareSchedule(scheduleId)
+    await care.deleteSchedule(scheduleId)
     await loadPlants() // store.sync effect picks up the updated plant
   }
 
@@ -131,7 +131,7 @@ export default function PlantDetail() {
   async function handleDuplicate() {
     setDuplicating(true)
     try {
-      const copy = await duplicatePlant(plantId)
+      const copy = await plantsApi.duplicate(plantId)
       navigate(`/plants/${copy.id}`)
     } finally {
       setDuplicating(false)

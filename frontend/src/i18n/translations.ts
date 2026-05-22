@@ -28,6 +28,7 @@ export type Translations = {
       logbook: string
       weather: string
       didYouKnow: string
+      careSignals: string
     }
     actions: {
       done: string
@@ -76,6 +77,14 @@ export type Translations = {
     }
     comingSoon: string
     columnType: string     // "Type" / "Type"
+    warnings: {
+      allOnSchedule: string
+      signalCount: (n: number) => string
+      plantCount: (n: number) => string
+      bucketNow: string
+      bucketToday: string
+      bucketThisWeek: string
+    }
   }
 
   care: {

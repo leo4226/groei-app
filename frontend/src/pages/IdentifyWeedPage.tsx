@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
-import { identifyPlant } from '../api/client'
+import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyWeedResults } from '../components/identify/IdentifyWeedResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
@@ -36,7 +36,7 @@ export function IdentifyWeedPage() {
   async function handleCapture(blob: Blob, dataUrl: string) {
     setStep({ kind: 'identifying', thumbnail: dataUrl })
     try {
-      const res = await identifyPlant(blob)
+      const res = await plantsApi.identify(blob)
       setStep({ kind: 'results', candidates: res.candidates, thumbnail: dataUrl })
     } catch {
       setStep({ kind: 'error', message: t.weeds.errorService })

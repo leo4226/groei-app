@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchWeedCatalog } from '../../api/client'
+import { weeds } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import type { PlantIdCandidate, WeedSpeciesListItem } from '../../types'
 
@@ -17,7 +17,7 @@ export function IdentifyWeedResults({ candidates, thumbnail, onLogSighting, onRe
   const [catalogError, setCatalogError] = useState(false)
 
   useEffect(() => {
-    fetchWeedCatalog()
+    weeds.catalog()
       .then(setCatalog)
       .catch(() => setCatalogError(true))
   }, [])

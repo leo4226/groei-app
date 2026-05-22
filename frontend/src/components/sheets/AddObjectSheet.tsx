@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ObjectShapeType, ObjectType, ObjectCategory } from '../../types'
-import { createObject } from '../../api/client'
+import { objects } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
@@ -74,7 +74,7 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
     if (!name.trim()) return
     setSaving(true)
     try {
-      await createObject({
+      await objects.create({
         name: name.trim(),
         object_type: objectType,
         shape,

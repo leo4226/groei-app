@@ -1,16 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone } from '../types'
-import {
-  fetchMapDetail,
-  fetchMapItems,
-  fetchGroundZones,
-  archivePlant,
-  archiveObject,
-  restorePlant,
-  restoreObject,
-  duplicatePlant,
-  updatePlantPosition,
-} from '../api/client'
+import { maps, groundZones, plants as plantsApi, objects } from '../api/client'
 
 export interface RestoreInfo {
   label: string
@@ -40,9 +30,9 @@ export function useMapData(slug: string): UseMapDataReturn {
     setLoading(true)
     try {
       const [mapDetail, items, zones] = await Promise.all([
-        fetchMapDetail(slug),
-        fetchMapItems(slug),
-        fetchGroundZones(slug),
+        maps.detail(slug),
+        maps.items(slug),
+        groundZones.list(slug),
       ])
       setMap(mapDetail)
       setPlants(items.plants)
@@ -66,14 +56,14 @@ export function useMapData(slug: string): UseMapDataReturn {
           const item = plants.find((p) => p.id === id)
           if (!item) return null
 
-          await archivePlant(id)
+          await plantsApi.archive(id)
           await refresh()
 
           return {
             label: item.name,
             canUndo: true,
             restore: async () => {
-              await restorePlant(id)
+              await plantsApi.restore(id)
               await refresh()
             },
           }
@@ -88,14 +78,14 @@ export function useMapData(slug: string): UseMapDataReturn {
             if (!confirmed) return null
           }
 
-          await archiveObject(id)
+          await objects.archive(id)
           await refresh()
 
           return {
             label: item.name,
             canUndo: item.contained_plants.length === 0,
             restore: async () => {
-              await restoreObject(id)
+              await objects.restore(id)
               await refresh()
             },
           }
@@ -111,14 +101,15 @@ export function useMapData(slug: string): UseMapDataReturn {
   const duplicate = useCallback(
     async (plantId: number): Promise<void> => {
       try {
-        const newPlant = await duplicatePlant(plantId)
+        const newPlant = await plantsApi.duplicate(plantId)
 
         if (map) {
           const [, , vw, vh] = map.viewbox.split(' ').map(Number)
-          await updatePlantPosition(newPlant.id, {
+          await plantsApi.setPosition(newPlant.id, {
             map_id: map.id,
             map_x: vw / 2,
             map_y: vh / 2,
+            ground_zone_id: null,
           })
         }
 

@@ -19,7 +19,7 @@ import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import type { CareType, CareScheduleInput } from '../types'
 import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
-import { fetchIconCatalog } from '../api/client'
+import { icons } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
@@ -202,7 +202,7 @@ export default function AddPlant() {
 
   // Load icon catalog once for auto-matching and pot/bare switching
   useEffect(() => {
-    fetchIconCatalog().then(setIconCatalog).catch(() => {})
+    icons.catalog().then(setIconCatalog).catch(() => {})
   }, [])
 
   // Sync form fields when prefill changes from a later navigation (e.g. pick from list)

@@ -16,13 +16,12 @@ import { useSunVisualization } from '../hooks/useSunVisualization'
 import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
 import { useMapData } from '../hooks/useMapData'
-import { useGardenWater } from '../hooks/useGardenWater'
-import { useGardenFertilize } from '../hooks/useGardenFertilize'
+import { useGardenWater, useGardenFertilize } from '../hooks/useGardenActions'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
-import { createObject } from '../api/client'
+import { objects } from '../api/client'
 import { useT } from '../context/LanguageContext'
 
 export default function MapPage() {
@@ -49,7 +48,7 @@ export default function MapPage() {
     if (maps.length === 0) loadMaps()
   }, [loadMaps])
 
-  const { map, plants, objects, loading } = mapData
+  const { map, plants, objects, groundZones, loading } = mapData
 
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
@@ -64,7 +63,7 @@ export default function MapPage() {
     const parts = map.viewbox.trim().split(/\s+/).map(Number)
     const cx = parts.length === 4 ? parts[0] + parts[2] / 2 : 200
     const cy = parts.length === 4 ? parts[1] + parts[3] / 2 : 200
-    await createObject({
+    await objects.create({
       name: preset.label,
       object_type: preset.object_type,
       shape: preset.shape,
@@ -92,25 +91,28 @@ export default function MapPage() {
     try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
   }, [map?.canvas_data])
 
-  // Derive plantable soil zones from canvas_data
+  // Derive plantable soil zones from canvas_data, merging soil_note from API
   const soilGroundZones = useMemo((): GroundZone[] => {
     if (!canvasData) return []
     return canvasData.zones
       .filter(z => z.type === 'soil')
-      .map(z => ({
-        id: z.id,
-        map_id: map!.id,
-        name: z.label || 'Grond',
-        zone_type: 'soil' as const,
-        polygon: JSON.stringify([
-          [z.x, z.y],
-          [z.x + z.width, z.y],
-          [z.x + z.width, z.y + z.height],
-          [z.x, z.y + z.height],
-        ]),
-        soil_note: null,
-      }))
-  }, [canvasData, map])
+      .map(z => {
+        const apiZone = groundZones.find(gz => gz.id === z.id)
+        return {
+          id: z.id,
+          map_id: map!.id,
+          name: z.label || 'Grond',
+          zone_type: 'soil' as const,
+          polygon: JSON.stringify([
+            [z.x, z.y],
+            [z.x + z.width, z.y],
+            [z.x + z.width, z.y + z.height],
+            [z.x, z.y + z.height],
+          ]),
+          soil_note: z.soil_note ?? apiZone?.soil_note ?? null,
+        }
+      })
+  }, [canvasData, map, groundZones])
 
   const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData })
 
@@ -506,7 +508,7 @@ export default function MapPage() {
             debugOverlay={
               new URLSearchParams(window.location.search).has('debug') &&
               new URLSearchParams(window.location.search).get('debug') === 'sun'
-                ? <SunDebugOverlay sunPosition={sun.sunPosition} bearing={mapBearing} />
+                ? <SunDebugOverlay sunPosition={sun.sunPosition} bearing={mapBearing} shadowCasters={sun.shadowCasters} />
                 : sun.isHeatmapActive && sun.tappedCell
                   ? <DebugSvfOverlay cell={sun.tappedCell} obstructions={sun.gardenObstructions} />
                   : undefined

@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
+import { household } from '../api/client'
 import PageDecor from '../components/PageDecor'
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [code, setCode] = useState('')
   const [householdName, setHouseholdName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +29,10 @@ export default function LoginPage() {
       } else if (mode === 'register') {
         const hName = householdName.trim() || `${name.trim()}'s Garden`
         const res = await register(email, password, name, hName)
+        saveToken(res.token)
+        navigate('/dashboard', { replace: true })
+      } else if (mode === 'join') {
+        const res = await household.join({ code: code.toUpperCase().trim(), email, password, name })
         saveToken(res.token)
         navigate('/dashboard', { replace: true })
       } else {
@@ -81,7 +87,7 @@ export default function LoginPage() {
           {/* Mode toggle — only login/register, not forgot */}
           {mode !== 'forgot' && (
             <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', padding: '3px', marginBottom: '22px' }}>
-              {(['login', 'register'] as const).map((m) => (
+              {(['login', 'register', 'join'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -101,7 +107,7 @@ export default function LoginPage() {
                     fontFamily: 'inherit',
                   }}
                 >
-                  {m === 'login' ? 'Log in' : 'Register'}
+                  {m === 'login' ? 'Log in' : m === 'register' ? 'Register' : 'Join'}
                 </button>
               ))}
             </div>
@@ -154,6 +160,32 @@ export default function LoginPage() {
                       value={householdName}
                       onChange={(e) => setHouseholdName(e.target.value)}
                       placeholder={name ? `${name}'s Garden` : "Korbee Garden"}
+                      style={inputStyle}
+                    />
+                  </div>
+                </>
+              )}
+              {mode === 'join' && (
+                <>
+                  <div>
+                    <label style={labelStyle}>Invite code</label>
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      required
+                      placeholder="A3K9XZ"
+                      style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'monospace' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Your name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      placeholder="Lisbeth"
                       style={inputStyle}
                     />
                   </div>
@@ -249,7 +281,7 @@ export default function LoginPage() {
                   marginTop: '4px',
                 }}
               >
-                {loading ? '…' : mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : 'Send reset link'}
+                {loading ? '…' : mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : mode === 'join' ? 'Join garden' : 'Send reset link'}
               </button>
 
               {mode === 'forgot' && (

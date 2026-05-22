@@ -1,13 +1,12 @@
 import { create } from 'zustand'
-import type { User, Location, Plant, DashboardData, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
-import * as api from '../api/client'
+import type { User, Location, Plant, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
+import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, dashboard as dashboardApi } from '../api/client'
 
 interface FlorerStore {
   users: User[]
   locations: Location[]
   maps: MapInfo[]
   plants: Plant[]
-  dashboard: DashboardData | null
   dashboardV2: DashboardV2Data | null
   warningSummary: WarningSummaryOut | null
   plantFact: PlantFactOut | null
@@ -18,7 +17,6 @@ interface FlorerStore {
 
   load: () => Promise<void>
   loadMaps: () => Promise<void>
-  loadDashboard: () => Promise<void>
   loadDashboardV2: () => Promise<void>
   loadWarningSummary: (env?: string) => Promise<void>
   loadPlants: () => Promise<void>
@@ -44,12 +42,12 @@ function getSavedUserId(): number | null {
   return saved ? parseInt(saved, 10) : null
 }
 
-/** Surgically remove a care task from the dashboard's buckets. */
-function _removeDashboardTask(dashboard: DashboardData | null, plantId: number, careType: string): DashboardData | null {
+function _removeTask(dashboard: DashboardV2Data | null, plantId: number, careType: string): DashboardV2Data | null {
   if (!dashboard) return null
-  const remove = (tasks: typeof dashboard.overdue) =>
+  const remove = (tasks: DashboardV2Data['overdue']) =>
     tasks.filter(t => !(t.plant_id === plantId && t.care_type === careType))
   return {
+    ...dashboard,
     overdue: remove(dashboard.overdue),
     due_today: remove(dashboard.due_today),
     upcoming: remove(dashboard.upcoming),
@@ -61,7 +59,6 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   locations: [],
   maps: [],
   plants: [],
-  dashboard: null,
   dashboardV2: null,
   warningSummary: null,
   plantFact: null,
@@ -74,10 +71,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const [users, locations, maps, plants] = await Promise.all([
-        api.fetchUsers(),
-        api.fetchLocations(),
-        api.fetchMaps(),
-        api.fetchPlants(),
+        usersApi.list(),
+        usersApi.locations(),
+        mapsApi.list(),
+        plantsApi.list(),
       ])
       const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false }
       if (!get().activeUserId && users.length > 0) {
@@ -92,17 +89,8 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
 
   loadMaps: async () => {
     try {
-      const maps = await api.fetchMaps()
+      const maps = await mapsApi.list()
       set({ maps })
-    } catch (e) {
-      set({ error: (e as Error).message })
-    }
-  },
-
-  loadDashboard: async () => {
-    try {
-      const dashboard = await api.fetchDashboard()
-      set({ dashboard })
     } catch (e) {
       set({ error: (e as Error).message })
     }
@@ -110,7 +98,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
 
   loadDashboardV2: async () => {
     try {
-      const dashboardV2 = await api.fetchDashboardV2()
+      const dashboardV2 = await dashboardApi.v2()
       set({ dashboardV2 })
     } catch (e) {
       set({ error: (e as Error).message })
@@ -119,7 +107,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
 
   loadWarningSummary: async (env = 'all') => {
     try {
-      const warningSummary = await api.fetchWarningSummary(env)
+      const warningSummary = await plantsApi.warningSummary(env)
       set({ warningSummary })
     } catch (e) {
       set({ error: (e as Error).message })
@@ -128,7 +116,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
 
   loadPlants: async () => {
     try {
-      const plants = await api.fetchPlants()
+      const plants = await plantsApi.list()
       set({ plants })
     } catch (e) {
       set({ error: (e as Error).message })
@@ -136,42 +124,36 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   },
 
   addPlant: async (data) => {
-    const plant = await api.createPlant(data)
+    const plant = await plantsApi.create(data)
     set((s) => ({ plants: [...s.plants, plant] }))
     return plant
   },
 
   updatePlant: async (id, data) => {
-    const updated = await api.updatePlant(id, data)
+    const updated = await plantsApi.update(id, data)
     set((s) => ({ plants: s.plants.map((p) => (p.id === id ? updated : p)) }))
   },
 
   archivePlant: async (id) => {
-    await api.archivePlant(id)
+    await plantsApi.archive(id)
     set((s) => ({ plants: s.plants.filter((p) => p.id !== id) }))
   },
 
   uploadPhoto: async (plantId, file) => {
-    const updated = await api.uploadPlantPhoto(plantId, file)
+    const updated = await plantsApi.uploadPhoto(plantId, file)
     set((s) => ({ plants: s.plants.map((p) => (p.id === plantId ? updated : p)) }))
   },
 
   markCareDone: async (plantId, careType, notes, water_amount) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
-    await api.markCareDone(plantId, careType, userId, notes, water_amount)
+    await careApi.done(plantId, careType, userId, notes, water_amount)
     // Surgical update: adjust the plant's care_status and remove task from dashboard
     set((s) => ({
       plants: s.plants.map((p) =>
         p.id === plantId ? { ...p, care_status: 'good' as const, most_urgent: undefined } : p,
       ),
-      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
-      dashboardV2: s.dashboardV2 ? {
-        ...s.dashboardV2,
-        overdue: s.dashboardV2.overdue.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-        due_today: s.dashboardV2.due_today.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-        upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-      } : null,
+      dashboardV2: _removeTask(s.dashboardV2, plantId, careType),
     }))
     // Refetch to get correct status_counts
     get().loadDashboardV2()
@@ -180,33 +162,25 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   skipCare: async (plantId, careType) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
-    await api.skipCare(plantId, careType, userId)
-    set((s) => ({
-      dashboard: _removeDashboardTask(s.dashboard, plantId, careType),
-      dashboardV2: s.dashboardV2 ? {
-        ...s.dashboardV2,
-        overdue: s.dashboardV2.overdue.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-        due_today: s.dashboardV2.due_today.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-        upcoming: s.dashboardV2.upcoming.filter(t => !(t.plant_id === plantId && t.care_type === careType)),
-      } : null,
-    }))
+    await careApi.skip(plantId, careType, userId)
+    set((s) => ({ dashboardV2: _removeTask(s.dashboardV2, plantId, careType) }))
     get().loadDashboardV2()
   },
 
   createMap: async (data) => {
-    const map = await api.createMap(data)
+    const map = await mapsApi.create(data)
     set((s) => ({ maps: [...s.maps, map] }))
     return map
   },
 
   deleteMap: async (id) => {
-    await api.deleteMap(id)
+    await mapsApi.delete(id)
     set((s) => ({ maps: s.maps.filter((m) => m.id !== id) }))
   },
 
   loadPlantFact: async () => {
     try {
-      const fact = await api.fetchPlantFact()
+      const fact = await plantsApi.fact()
       set({ plantFact: fact })
     } catch {
       set({ plantFact: null })
@@ -221,7 +195,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   setShowPlantPicker: (show) => set({ showPlantPicker: show }),
 
   updateUserLanguage: async (userId, language) => {
-    const updated = await api.updateUserLanguage(userId, language)
+    const updated = await usersApi.setLanguage(userId, language)
     set((s) => ({ users: s.users.map((u) => (u.id === userId ? updated : u)) }))
   },
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { fetchPlant } from '../api/client'
+import { plants as plantsApi } from '../api/client'
 import type { Plant } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import IconPicker from '../components/IconPicker'
@@ -63,7 +63,7 @@ export default function EditPlant() {
   useEffect(() => {
     async function load() {
       try {
-        const p = await fetchPlant(plantId)
+        const p = await plantsApi.get(plantId)
         setPlant(p)
         setName(p.name)
         setSpecies(p.species ?? '')

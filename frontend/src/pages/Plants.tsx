@@ -5,7 +5,7 @@ import { PLANT_ICONS } from '../constants/plantIcons'
 import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/plantLabels'
 import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
-import { fetchAlertSummary, fetchIconCatalog } from '../api/client'
+import { alerts, icons } from '../api/client'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -58,12 +58,12 @@ export default function Plants() {
   const [showFilterSheet, setShowFilterSheet] = useState(false)
 
   useEffect(() => {
-    fetchIconCatalog().then(setIconCatalog).catch(() => {})
+    icons.catalog().then(setIconCatalog).catch(() => {})
   }, [])
 
   useEffect(() => {
     if (alertsOnly) {
-      fetchAlertSummary()
+      alerts.summary()
         .then(s => setAlertPlantIds(s.plant_ids_with_alerts))
         .catch(() => setAlertPlantIds([]))
     } else {

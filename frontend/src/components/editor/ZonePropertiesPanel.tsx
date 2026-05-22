@@ -79,6 +79,20 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         </select>
       </div>
 
+      {/* Soil note — only for soil zones */}
+      {zone.type === 'soil' && (
+        <div className="mb-2">
+          <label className="text-xs text-text-muted block mb-1">Bodemnotitie</label>
+          <textarea
+            value={zone.soil_note ?? ''}
+            onChange={(e) => onUpdate({ soil_note: e.target.value || undefined })}
+            placeholder="bijv. rijke kleigrond, goede drainage..."
+            rows={2}
+            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text resize-none"
+          />
+        </div>
+      )}
+
       {/* Wall thickness toggle for rooms */}
       {isRoom && (
         <div className="mb-2">
