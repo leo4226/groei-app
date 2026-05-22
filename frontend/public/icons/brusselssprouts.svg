@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Spruitjes"><title>Spruitjes — Brassica oleracea gemmifera</title>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  
+  <rect x="49" y="22" width="2" height="54" fill="#8E6B4E"></rect>
+  
+  <g transform="translate(44 68)">
+    <circle r="3.2" fill="#4A7C4E"></circle>
+    <path d="M -1.92 -0.6400000000000001 Q 0 -3.2 1.92 -0.6400000000000001" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.96" rx="1.2800000000000002" ry="2.5600000000000005" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(56 68)">
+    <circle r="3.2" fill="#4A7C4E"></circle>
+    <path d="M -1.92 -0.6400000000000001 Q 0 -3.2 1.92 -0.6400000000000001" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.96" rx="1.2800000000000002" ry="2.5600000000000005" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(42 60)">
+    <circle r="3" fill="#4A7C4E"></circle>
+    <path d="M -1.7999999999999998 -0.6000000000000001 Q 0 -3 1.7999999999999998 -0.6000000000000001" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.8999999999999999" rx="1.2000000000000002" ry="2.4000000000000004" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(58 60)">
+    <circle r="3" fill="#4A7C4E"></circle>
+    <path d="M -1.7999999999999998 -0.6000000000000001 Q 0 -3 1.7999999999999998 -0.6000000000000001" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.8999999999999999" rx="1.2000000000000002" ry="2.4000000000000004" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(43 52)">
+    <circle r="2.8" fill="#4A7C4E"></circle>
+    <path d="M -1.68 -0.5599999999999999 Q 0 -2.8 1.68 -0.5599999999999999" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.84" rx="1.1199999999999999" ry="2.2399999999999998" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(57 52)">
+    <circle r="2.8" fill="#4A7C4E"></circle>
+    <path d="M -1.68 -0.5599999999999999 Q 0 -2.8 1.68 -0.5599999999999999" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.84" rx="1.1199999999999999" ry="2.2399999999999998" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(44 44)">
+    <circle r="2.6" fill="#4A7C4E"></circle>
+    <path d="M -1.56 -0.52 Q 0 -2.6 1.56 -0.52" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.78" rx="1.04" ry="2.08" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(56 44)">
+    <circle r="2.6" fill="#4A7C4E"></circle>
+    <path d="M -1.56 -0.52 Q 0 -2.6 1.56 -0.52" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.78" rx="1.04" ry="2.08" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(45 36)">
+    <circle r="2.4" fill="#4A7C4E"></circle>
+    <path d="M -1.44 -0.48 Q 0 -2.4 1.44 -0.48" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.72" rx="0.96" ry="1.92" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  <g transform="translate(55 36)">
+    <circle r="2.4" fill="#4A7C4E"></circle>
+    <path d="M -1.44 -0.48 Q 0 -2.4 1.44 -0.48" stroke="#2F5D3A" stroke-width="0.4" fill="none"></path>
+    <ellipse cx="0" cy="-0.72" rx="0.96" ry="1.92" fill="#6DA86F" opacity="0.6"></ellipse>
+  </g>
+  
+  <g transform="translate(50 24)">
+    <path d="M 0 0 Q -6 -2 -8 -8 Q -4 -12 0 -8 Q 4 -12 8 -8 Q 6 -2 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M -4 -2 Q -8 -6 -8 -12 Q -4 -14 -2 -8 Z" fill="#5C8A4E"></path>
+    <path d="M 4 -2 Q 8 -6 8 -12 Q 4 -14 2 -8 Z" fill="#5C8A4E"></path>
+  </g>
+  
+  <path d="M 50 14 L 50 10" stroke="#3D5C3A" stroke-width="1"></path>
+</svg>

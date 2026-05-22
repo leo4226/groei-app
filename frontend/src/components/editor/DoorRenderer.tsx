@@ -98,16 +98,8 @@ export default function DoorRenderer({
         d={`M ${pivotX},${pivotY} A ${radius},${radius} 0 0,${sweepFlag} ${arcEndX},${arcEndY}`}
         fill="none"
         stroke={WALL_COLOR}
-        strokeWidth={0.8}
-        strokeDasharray="3 2"
-      />
-      <line
-        x1={pivotX}
-        y1={pivotY}
-        x2={arcEndX}
-        y2={arcEndY}
-        stroke={WALL_COLOR}
-        strokeWidth={0.8}
+        strokeWidth={0.7}
+        opacity={0.35}
       />
     </g>
   )

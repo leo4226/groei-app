@@ -1,6 +1,6 @@
 # Plant Icons
 
-139 original plant icons as individual SVG files.
+219 original plant icons as individual SVG files.
 
 ## Files
 - `icons/<id>.svg` — one file per plant (100×100 viewBox, no fixed pixel size)
@@ -173,3 +173,83 @@ data.plants.forEach(p => console.log(p.name, p.sci, p.form, "→", p.file));
 137. **Bevriezing** (`state_freezing`) — *op of onder min_temp* — state · state
 138. **Hittestress** (`state_heatstress`) — *op of boven max_temp* — state · state
 139. **Comfortabel** (`state_comfortable`) — *geen zorg (geen icon getoond)* — state · state
+140. **Bruine Boon** (`brownbean_nopot`) — *Phaseolus vulgaris* — edible · nopot (variant of `brownbean`)
+141. **Pampasgras** (`cortaderia_bare`) — *Cortaderia selloana* — grass · bare
+142. **Zaad** (`seed`) — *pas geplant* — growth · stage
+143. **Zaad (in de grond)** (`seed_bare`) — *pas geplant in tuin* — growth · stage_bare (variant of `seed`)
+144. **Appel** (`apple`) — *Malus domestica* — edible · fruit
+145. **Asperge** (`asparagus`) — *Asparagus officinalis* — edible · potted
+146. **Biet** (`beet`) — *Beta vulgaris* — edible · potted
+147. **Braam** (`blackberry`) — *Rubus fruticosus* — edible · fruit
+148. **Zwarte bes** (`blackcurrant`) — *Ribes nigrum* — edible · fruit
+149. **Broccoli** (`broccoli`) — *Brassica oleracea* — edible · potted
+150. **Spruitjes** (`brusselssprouts`) — *Brassica oleracea var. gemmifera* — edible · potted
+151. **Kool** (`cabbage`) — *Brassica oleracea* — edible · potted
+152. **Bloemkool** (`cauliflower`) — *Brassica oleracea var. botrytis* — edible · potted
+153. **Kers** (`cherry`) — *Prunus avium* — edible · fruit
+154. **Witlof** (`chicory`) — *Cichorium intybus* — edible · potted
+155. **Andijvie** (`endive`) — *Cichorium endivia* — edible · potted
+156. **Druif** (`grape`) — *Vitis vinifera* — edible · fruit
+157. **Snijbonen** (`greenbeans`) — *Phaseolus vulgaris* — edible · potted
+158. **Boerenkool** (`kale`) — *Brassica oleracea var. sabellica* — edible · potted
+159. **Prei** (`leek`) — *Allium porrum* — edible · potted
+160. **Leon** (`leon`) — *Homo sapiens* — houseplant · potted
+161. **Peer** (`pear`) — *Pyrus communis* — edible · fruit
+162. **Erwten** (`peas`) — *Pisum sativum* — edible · potted
+163. **Pruim** (`plum`) — *Prunus domestica* — edible · fruit
+164. **Rode kool** (`redcabbage`) — *Brassica oleracea var. capitata f. rubra* — edible · potted
+165. **Rode bes** (`redcurrant`) — *Ribes rubrum* — edible · fruit
+166. **Rabarber** (`rhubarb`) — *Rheum rhabarbarum* — edible · potted
+167. **Spinazie** (`spinach`) — *Spinacia oleracea* — edible · potted
+168. **Appel** (`apple_bare`) — *Malus domestica* — edible · bare (variant of `apple`)
+169. **Appel** (`apple_fruit`) — *Malus domestica* — edible · fruit (variant of `apple`)
+170. **Asperge** (`asparagus_bare`) — *Asparagus officinalis* — edible · bare (variant of `asparagus`)
+171. **Biet** (`beet_bare`) — *Beta vulgaris* — edible · bare (variant of `beet`)
+172. **Braam** (`blackberry_bare`) — *Rubus fruticosus* — edible · bare (variant of `blackberry`)
+173. **Braam** (`blackberry_fruit`) — *Rubus fruticosus* — edible · fruit (variant of `blackberry`)
+174. **Zwarte bes** (`blackcurrant_bare`) — *Ribes nigrum* — edible · bare (variant of `blackcurrant`)
+175. **Zwarte bes** (`blackcurrant_fruit`) — *Ribes nigrum* — edible · fruit (variant of `blackcurrant`)
+176. **Blauwe Bes** (`blueberry_bare`) — *Vaccinium corymbosum* — edible · bare (variant of `blueberry`)
+177. **Blauwe Bes** (`blueberry_fruit`) — *Vaccinium corymbosum* — edible · fruit (variant of `blueberry`)
+178. **Broccoli** (`broccoli_bare`) — *Brassica oleracea* — edible · bare (variant of `broccoli`)
+179. **Spruitjes** (`brusselssprouts_bare`) — *Brassica oleracea var. gemmifera* — edible · bare (variant of `brusselssprouts`)
+180. **Kool** (`cabbage_bare`) — *Brassica oleracea* — edible · bare (variant of `cabbage`)
+181. **Wortel** (`carrot_bare`) — *Daucus carota* — edible · bare (variant of `carrot`)
+182. **Wortel** (`carrot_fruit`) — *Daucus carota* — edible · fruit (variant of `carrot`)
+183. **Bloemkool** (`cauliflower_bare`) — *Brassica oleracea var. botrytis* — edible · bare (variant of `cauliflower`)
+184. **Kers** (`cherry_bare`) — *Prunus avium* — edible · bare (variant of `cherry`)
+185. **Kers** (`cherry_fruit`) — *Prunus avium* — edible · fruit (variant of `cherry`)
+186. **Witlof** (`chicory_bare`) — *Cichorium intybus* — edible · bare (variant of `chicory`)
+187. **Mais** (`corn_bare`) — *Zea mays* — edible · bare (variant of `corn`)
+188. **Mais** (`corn_fruit`) — *Zea mays* — edible · fruit (variant of `corn`)
+189. **Komkommer** (`cucumber_bare`) — *Cucumis sativus* — edible · bare (variant of `cucumber`)
+190. **Komkommer** (`cucumber_fruit`) — *Cucumis sativus* — edible · fruit (variant of `cucumber`)
+191. **Andijvie** (`endive_bare`) — *Cichorium endivia* — edible · bare (variant of `endive`)
+192. **Knoflook** (`garlic_bare`) — *Allium sativum* — edible · bare (variant of `garlic`)
+193. **Knoflook** (`garlic_fruit`) — *Allium sativum* — edible · fruit (variant of `garlic`)
+194. **Druif** (`grape_bare`) — *Vitis vinifera* — edible · bare (variant of `grape`)
+195. **Druif** (`grape_fruit`) — *Vitis vinifera* — edible · fruit (variant of `grape`)
+196. **Snijbonen** (`greenbeans_bare`) — *Phaseolus vulgaris* — edible · bare (variant of `greenbeans`)
+197. **Boerenkool** (`kale_bare`) — *Brassica oleracea var. sabellica* — edible · bare (variant of `kale`)
+198. **Prei** (`leek_bare`) — *Allium porrum* — edible · bare (variant of `leek`)
+199. **Ui** (`onion_bare`) — *Allium cepa* — edible · bare (variant of `onion`)
+200. **Ui** (`onion_fruit`) — *Allium cepa* — edible · fruit (variant of `onion`)
+201. **Peer** (`pear_bare`) — *Pyrus communis* — edible · bare (variant of `pear`)
+202. **Peer** (`pear_fruit`) — *Pyrus communis* — edible · fruit (variant of `pear`)
+203. **Erwten** (`peas_bare`) — *Pisum sativum* — edible · bare (variant of `peas`)
+204. **Pruim** (`plum_bare`) — *Prunus domestica* — edible · bare (variant of `plum`)
+205. **Pruim** (`plum_fruit`) — *Prunus domestica* — edible · fruit (variant of `plum`)
+206. **Aardappel** (`potato_bare`) — *Solanum tuberosum* — edible · bare (variant of `potato`)
+207. **Aardappel** (`potato_fruit`) — *Solanum tuberosum* — edible · fruit (variant of `potato`)
+208. **Pompoen** (`pumpkin_bare`) — *Cucurbita pepo* — edible · bare (variant of `pumpkin`)
+209. **Pompoen** (`pumpkin_fruit`) — *Cucurbita pepo* — edible · fruit (variant of `pumpkin`)
+210. **Radijs** (`radish_bare`) — *Raphanus sativus* — edible · bare (variant of `radish`)
+211. **Radijs** (`radish_fruit`) — *Raphanus sativus* — edible · fruit (variant of `radish`)
+212. **Framboos** (`raspberry_bare`) — *Rubus idaeus* — edible · bare (variant of `raspberry`)
+213. **Rode kool** (`redcabbage_bare`) — *Brassica oleracea var. capitata f. rubra* — edible · bare (variant of `redcabbage`)
+214. **Rode bes** (`redcurrant_bare`) — *Ribes rubrum* — edible · bare (variant of `redcurrant`)
+215. **Rode bes** (`redcurrant_fruit`) — *Ribes rubrum* — edible · fruit (variant of `redcurrant`)
+216. **Rabarber** (`rhubarb_bare`) — *Rheum rhabarbarum* — edible · bare (variant of `rhubarb`)
+217. **Spinazie** (`spinach_bare`) — *Spinacia oleracea* — edible · bare (variant of `spinach`)
+218. **Courgette** (`zucchini_bare`) — *Cucurbita pepo* — edible · bare (variant of `zucchini`)
+219. **Courgette** (`zucchini_fruit`) — *Cucurbita pepo* — edible · fruit (variant of `zucchini`)

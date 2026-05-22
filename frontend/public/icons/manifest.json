@@ -1,6 +1,6 @@
 {
-  "count": 143,
-  "iconCount": 143,
+  "count": 219,
+  "iconCount": 219,
   "categories": [
     {
       "id": "all",
@@ -1361,35 +1361,777 @@
     },
     {
       "id": "brownbean_nopot",
-      "name": "Brownbean Nopot",
-      "sci": "",
-      "cat": "unknown",
-      "family": "",
-      "file": "brownbean_nopot.svg"
+      "name": "Bruine Boon",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "family": "Fabaceae",
+      "file": "brownbean_nopot.svg",
+      "form": "nopot",
+      "variant_of": "brownbean"
     },
     {
       "id": "cortaderia_bare",
-      "name": "Cortaderia Bare",
-      "sci": "",
-      "cat": "unknown",
-      "family": "",
-      "file": "cortaderia_bare.svg"
+      "name": "Pampasgras",
+      "sci": "Cortaderia selloana",
+      "cat": "grass",
+      "family": "Poaceae",
+      "file": "cortaderia_bare.svg",
+      "form": "bare"
     },
     {
       "id": "seed",
-      "name": "Seed",
-      "sci": "",
-      "cat": "unknown",
-      "family": "",
-      "file": "seed.svg"
+      "name": "Zaad",
+      "sci": "pas geplant",
+      "cat": "growth",
+      "family": "Fase 1 · in pot",
+      "file": "seed.svg",
+      "form": "stage"
     },
     {
       "id": "seed_bare",
-      "name": "Seed Bare",
-      "sci": "",
-      "cat": "unknown",
-      "family": "",
-      "file": "seed_bare.svg"
+      "name": "Zaad (in de grond)",
+      "sci": "pas geplant in tuin",
+      "cat": "growth",
+      "family": "Fase 1 · open grond",
+      "file": "seed_bare.svg",
+      "form": "stage_bare",
+      "variant_of": "seed"
+    },
+    {
+      "id": "apple",
+      "name": "Appel",
+      "sci": "Malus domestica",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "file": "apple.svg"
+    },
+    {
+      "id": "asparagus",
+      "name": "Asperge",
+      "sci": "Asparagus officinalis",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Asparagaceae",
+      "file": "asparagus.svg"
+    },
+    {
+      "id": "beet",
+      "name": "Biet",
+      "sci": "Beta vulgaris",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Amaranthaceae",
+      "file": "beet.svg"
+    },
+    {
+      "id": "blackberry",
+      "name": "Braam",
+      "sci": "Rubus fruticosus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "file": "blackberry.svg"
+    },
+    {
+      "id": "blackcurrant",
+      "name": "Zwarte bes",
+      "sci": "Ribes nigrum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Grossulariaceae",
+      "file": "blackcurrant.svg"
+    },
+    {
+      "id": "broccoli",
+      "name": "Broccoli",
+      "sci": "Brassica oleracea",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "broccoli.svg"
+    },
+    {
+      "id": "brusselssprouts",
+      "name": "Spruitjes",
+      "sci": "Brassica oleracea var. gemmifera",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "brusselssprouts.svg"
+    },
+    {
+      "id": "cabbage",
+      "name": "Kool",
+      "sci": "Brassica oleracea",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "cabbage.svg"
+    },
+    {
+      "id": "cauliflower",
+      "name": "Bloemkool",
+      "sci": "Brassica oleracea var. botrytis",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "cauliflower.svg"
+    },
+    {
+      "id": "cherry",
+      "name": "Kers",
+      "sci": "Prunus avium",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "file": "cherry.svg"
+    },
+    {
+      "id": "chicory",
+      "name": "Witlof",
+      "sci": "Cichorium intybus",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "chicory.svg"
+    },
+    {
+      "id": "endive",
+      "name": "Andijvie",
+      "sci": "Cichorium endivia",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Asteraceae",
+      "file": "endive.svg"
+    },
+    {
+      "id": "grape",
+      "name": "Druif",
+      "sci": "Vitis vinifera",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Vitaceae",
+      "file": "grape.svg"
+    },
+    {
+      "id": "greenbeans",
+      "name": "Snijbonen",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Fabaceae",
+      "file": "greenbeans.svg"
+    },
+    {
+      "id": "kale",
+      "name": "Boerenkool",
+      "sci": "Brassica oleracea var. sabellica",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "kale.svg"
+    },
+    {
+      "id": "leek",
+      "name": "Prei",
+      "sci": "Allium porrum",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Amaryllidaceae",
+      "file": "leek.svg"
+    },
+    {
+      "id": "leon",
+      "name": "Leon",
+      "sci": "Homo sapiens",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "Hominidae",
+      "file": "leon.svg"
+    },
+    {
+      "id": "pear",
+      "name": "Peer",
+      "sci": "Pyrus communis",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "file": "pear.svg"
+    },
+    {
+      "id": "peas",
+      "name": "Erwten",
+      "sci": "Pisum sativum",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Fabaceae",
+      "file": "peas.svg"
+    },
+    {
+      "id": "plum",
+      "name": "Pruim",
+      "sci": "Prunus domestica",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "file": "plum.svg"
+    },
+    {
+      "id": "redcabbage",
+      "name": "Rode kool",
+      "sci": "Brassica oleracea var. capitata f. rubra",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Brassicaceae",
+      "file": "redcabbage.svg"
+    },
+    {
+      "id": "redcurrant",
+      "name": "Rode bes",
+      "sci": "Ribes rubrum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Grossulariaceae",
+      "file": "redcurrant.svg"
+    },
+    {
+      "id": "rhubarb",
+      "name": "Rabarber",
+      "sci": "Rheum rhabarbarum",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Polygonaceae",
+      "file": "rhubarb.svg"
+    },
+    {
+      "id": "spinach",
+      "name": "Spinazie",
+      "sci": "Spinacia oleracea",
+      "cat": "edible",
+      "form": "potted",
+      "family": "Amaranthaceae",
+      "file": "spinach.svg"
+    },
+    {
+      "id": "apple_bare",
+      "name": "Appel",
+      "sci": "Malus domestica",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "apple",
+      "file": "apple_bare.svg"
+    },
+    {
+      "id": "apple_fruit",
+      "name": "Appel",
+      "sci": "Malus domestica",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "apple",
+      "file": "apple_fruit.svg"
+    },
+    {
+      "id": "asparagus_bare",
+      "name": "Asperge",
+      "sci": "Asparagus officinalis",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "variant_of": "asparagus",
+      "file": "asparagus_bare.svg"
+    },
+    {
+      "id": "beet_bare",
+      "name": "Biet",
+      "sci": "Beta vulgaris",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Amaranthaceae",
+      "variant_of": "beet",
+      "file": "beet_bare.svg"
+    },
+    {
+      "id": "blackberry_bare",
+      "name": "Braam",
+      "sci": "Rubus fruticosus",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "blackberry",
+      "file": "blackberry_bare.svg"
+    },
+    {
+      "id": "blackberry_fruit",
+      "name": "Braam",
+      "sci": "Rubus fruticosus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "blackberry",
+      "file": "blackberry_fruit.svg"
+    },
+    {
+      "id": "blackcurrant_bare",
+      "name": "Zwarte bes",
+      "sci": "Ribes nigrum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Grossulariaceae",
+      "variant_of": "blackcurrant",
+      "file": "blackcurrant_bare.svg"
+    },
+    {
+      "id": "blackcurrant_fruit",
+      "name": "Zwarte bes",
+      "sci": "Ribes nigrum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Grossulariaceae",
+      "variant_of": "blackcurrant",
+      "file": "blackcurrant_fruit.svg"
+    },
+    {
+      "id": "blueberry_bare",
+      "name": "Blauwe Bes",
+      "sci": "Vaccinium corymbosum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Ericaceae",
+      "variant_of": "blueberry",
+      "file": "blueberry_bare.svg"
+    },
+    {
+      "id": "blueberry_fruit",
+      "name": "Blauwe Bes",
+      "sci": "Vaccinium corymbosum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Ericaceae",
+      "variant_of": "blueberry",
+      "file": "blueberry_fruit.svg"
+    },
+    {
+      "id": "broccoli_bare",
+      "name": "Broccoli",
+      "sci": "Brassica oleracea",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "broccoli",
+      "file": "broccoli_bare.svg"
+    },
+    {
+      "id": "brusselssprouts_bare",
+      "name": "Spruitjes",
+      "sci": "Brassica oleracea var. gemmifera",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "brusselssprouts",
+      "file": "brusselssprouts_bare.svg"
+    },
+    {
+      "id": "cabbage_bare",
+      "name": "Kool",
+      "sci": "Brassica oleracea",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "cabbage",
+      "file": "cabbage_bare.svg"
+    },
+    {
+      "id": "carrot_bare",
+      "name": "Wortel",
+      "sci": "Daucus carota",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Apiaceae",
+      "variant_of": "carrot",
+      "file": "carrot_bare.svg"
+    },
+    {
+      "id": "carrot_fruit",
+      "name": "Wortel",
+      "sci": "Daucus carota",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Apiaceae",
+      "variant_of": "carrot",
+      "file": "carrot_fruit.svg"
+    },
+    {
+      "id": "cauliflower_bare",
+      "name": "Bloemkool",
+      "sci": "Brassica oleracea var. botrytis",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "cauliflower",
+      "file": "cauliflower_bare.svg"
+    },
+    {
+      "id": "cherry_bare",
+      "name": "Kers",
+      "sci": "Prunus avium",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "cherry",
+      "file": "cherry_bare.svg"
+    },
+    {
+      "id": "cherry_fruit",
+      "name": "Kers",
+      "sci": "Prunus avium",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "cherry",
+      "file": "cherry_fruit.svg"
+    },
+    {
+      "id": "chicory_bare",
+      "name": "Witlof",
+      "sci": "Cichorium intybus",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Asteraceae",
+      "variant_of": "chicory",
+      "file": "chicory_bare.svg"
+    },
+    {
+      "id": "corn_bare",
+      "name": "Mais",
+      "sci": "Zea mays",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Poaceae",
+      "variant_of": "corn",
+      "file": "corn_bare.svg"
+    },
+    {
+      "id": "corn_fruit",
+      "name": "Mais",
+      "sci": "Zea mays",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Poaceae",
+      "variant_of": "corn",
+      "file": "corn_fruit.svg"
+    },
+    {
+      "id": "cucumber_bare",
+      "name": "Komkommer",
+      "sci": "Cucumis sativus",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Cucurbitaceae",
+      "variant_of": "cucumber",
+      "file": "cucumber_bare.svg"
+    },
+    {
+      "id": "cucumber_fruit",
+      "name": "Komkommer",
+      "sci": "Cucumis sativus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "variant_of": "cucumber",
+      "file": "cucumber_fruit.svg"
+    },
+    {
+      "id": "endive_bare",
+      "name": "Andijvie",
+      "sci": "Cichorium endivia",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Asteraceae",
+      "variant_of": "endive",
+      "file": "endive_bare.svg"
+    },
+    {
+      "id": "garlic_bare",
+      "name": "Knoflook",
+      "sci": "Allium sativum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "variant_of": "garlic",
+      "file": "garlic_bare.svg"
+    },
+    {
+      "id": "garlic_fruit",
+      "name": "Knoflook",
+      "sci": "Allium sativum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Amaryllidaceae",
+      "variant_of": "garlic",
+      "file": "garlic_fruit.svg"
+    },
+    {
+      "id": "grape_bare",
+      "name": "Druif",
+      "sci": "Vitis vinifera",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Vitaceae",
+      "variant_of": "grape",
+      "file": "grape_bare.svg"
+    },
+    {
+      "id": "grape_fruit",
+      "name": "Druif",
+      "sci": "Vitis vinifera",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Vitaceae",
+      "variant_of": "grape",
+      "file": "grape_fruit.svg"
+    },
+    {
+      "id": "greenbeans_bare",
+      "name": "Snijbonen",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Fabaceae",
+      "variant_of": "greenbeans",
+      "file": "greenbeans_bare.svg"
+    },
+    {
+      "id": "kale_bare",
+      "name": "Boerenkool",
+      "sci": "Brassica oleracea var. sabellica",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "kale",
+      "file": "kale_bare.svg"
+    },
+    {
+      "id": "leek_bare",
+      "name": "Prei",
+      "sci": "Allium porrum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "variant_of": "leek",
+      "file": "leek_bare.svg"
+    },
+    {
+      "id": "onion_bare",
+      "name": "Ui",
+      "sci": "Allium cepa",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "variant_of": "onion",
+      "file": "onion_bare.svg"
+    },
+    {
+      "id": "onion_fruit",
+      "name": "Ui",
+      "sci": "Allium cepa",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Amaryllidaceae",
+      "variant_of": "onion",
+      "file": "onion_fruit.svg"
+    },
+    {
+      "id": "pear_bare",
+      "name": "Peer",
+      "sci": "Pyrus communis",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "pear",
+      "file": "pear_bare.svg"
+    },
+    {
+      "id": "pear_fruit",
+      "name": "Peer",
+      "sci": "Pyrus communis",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "pear",
+      "file": "pear_fruit.svg"
+    },
+    {
+      "id": "peas_bare",
+      "name": "Erwten",
+      "sci": "Pisum sativum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Fabaceae",
+      "variant_of": "peas",
+      "file": "peas_bare.svg"
+    },
+    {
+      "id": "plum_bare",
+      "name": "Pruim",
+      "sci": "Prunus domestica",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "plum",
+      "file": "plum_bare.svg"
+    },
+    {
+      "id": "plum_fruit",
+      "name": "Pruim",
+      "sci": "Prunus domestica",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Rosaceae",
+      "variant_of": "plum",
+      "file": "plum_fruit.svg"
+    },
+    {
+      "id": "potato_bare",
+      "name": "Aardappel",
+      "sci": "Solanum tuberosum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Solanaceae",
+      "variant_of": "potato",
+      "file": "potato_bare.svg"
+    },
+    {
+      "id": "potato_fruit",
+      "name": "Aardappel",
+      "sci": "Solanum tuberosum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Solanaceae",
+      "variant_of": "potato",
+      "file": "potato_fruit.svg"
+    },
+    {
+      "id": "pumpkin_bare",
+      "name": "Pompoen",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Cucurbitaceae",
+      "variant_of": "pumpkin",
+      "file": "pumpkin_bare.svg"
+    },
+    {
+      "id": "pumpkin_fruit",
+      "name": "Pompoen",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "variant_of": "pumpkin",
+      "file": "pumpkin_fruit.svg"
+    },
+    {
+      "id": "radish_bare",
+      "name": "Radijs",
+      "sci": "Raphanus sativus",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "radish",
+      "file": "radish_bare.svg"
+    },
+    {
+      "id": "radish_fruit",
+      "name": "Radijs",
+      "sci": "Raphanus sativus",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Brassicaceae",
+      "variant_of": "radish",
+      "file": "radish_fruit.svg"
+    },
+    {
+      "id": "raspberry_bare",
+      "name": "Framboos",
+      "sci": "Rubus idaeus",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Rosaceae",
+      "variant_of": "raspberry",
+      "file": "raspberry_bare.svg"
+    },
+    {
+      "id": "redcabbage_bare",
+      "name": "Rode kool",
+      "sci": "Brassica oleracea var. capitata f. rubra",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Brassicaceae",
+      "variant_of": "redcabbage",
+      "file": "redcabbage_bare.svg"
+    },
+    {
+      "id": "redcurrant_bare",
+      "name": "Rode bes",
+      "sci": "Ribes rubrum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Grossulariaceae",
+      "variant_of": "redcurrant",
+      "file": "redcurrant_bare.svg"
+    },
+    {
+      "id": "redcurrant_fruit",
+      "name": "Rode bes",
+      "sci": "Ribes rubrum",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Grossulariaceae",
+      "variant_of": "redcurrant",
+      "file": "redcurrant_fruit.svg"
+    },
+    {
+      "id": "rhubarb_bare",
+      "name": "Rabarber",
+      "sci": "Rheum rhabarbarum",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Polygonaceae",
+      "variant_of": "rhubarb",
+      "file": "rhubarb_bare.svg"
+    },
+    {
+      "id": "spinach_bare",
+      "name": "Spinazie",
+      "sci": "Spinacia oleracea",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Amaranthaceae",
+      "variant_of": "spinach",
+      "file": "spinach_bare.svg"
+    },
+    {
+      "id": "zucchini_bare",
+      "name": "Courgette",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "bare",
+      "family": "Cucurbitaceae",
+      "variant_of": "zucchini",
+      "file": "zucchini_bare.svg"
+    },
+    {
+      "id": "zucchini_fruit",
+      "name": "Courgette",
+      "sci": "Cucurbita pepo",
+      "cat": "edible",
+      "form": "fruit",
+      "family": "Cucurbitaceae",
+      "variant_of": "zucchini",
+      "file": "zucchini_fruit.svg"
     }
   ]
 }

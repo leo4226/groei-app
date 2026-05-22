@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Druif"><title>Druif — Vitis vinifera</title>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  <rect x="14" y="32" width="72" height="1" fill="#8E6B4E"></rect>
+  <rect x="14" y="52" width="72" height="1" fill="#8E6B4E"></rect>
+  <rect x="49.5" y="22" width="1" height="54" fill="#8E6B4E"></rect>
+  <path d="M 50 76 L 49 52 Q 48 42 50 32" stroke="#6B4A35" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 52 Q 38 50 30 50 Q 26 50 22 52" stroke="#6B4A35" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 52 Q 62 50 70 50 Q 74 50 78 52" stroke="#6B4A35" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 32 Q 40 30 32 32" stroke="#6B4A35" stroke-width="1" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 32 Q 60 30 68 32" stroke="#6B4A35" stroke-width="1" fill="none" stroke-linecap="round"></path>
+  <g transform="translate(28 46) rotate(-10) scale(1)">
+    <path d="M 0 0 Q -10 -4 -12 -10 Q -8 -16 -2 -12 Q -4 -18 0 -16 Q 4 -18 2 -12 Q 8 -16 12 -10 Q 10 -4 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.5"></path>
+    <path d="M -4 -2 L -8 -8 M 4 -2 L 8 -8" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+  </g>
+  <g transform="translate(72 46) rotate(10) scale(1)">
+    <path d="M 0 0 Q -10 -4 -12 -10 Q -8 -16 -2 -12 Q -4 -18 0 -16 Q 4 -18 2 -12 Q 8 -16 12 -10 Q 10 -4 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.5"></path>
+    <path d="M -4 -2 L -8 -8 M 4 -2 L 8 -8" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+  </g>
+  <g transform="translate(30 26) rotate(-15) scale(0.9)">
+    <path d="M 0 0 Q -10 -4 -12 -10 Q -8 -16 -2 -12 Q -4 -18 0 -16 Q 4 -18 2 -12 Q 8 -16 12 -10 Q 10 -4 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.5"></path>
+    <path d="M -4 -2 L -8 -8 M 4 -2 L 8 -8" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+  </g>
+  <g transform="translate(70 26) rotate(15) scale(0.9)">
+    <path d="M 0 0 Q -10 -4 -12 -10 Q -8 -16 -2 -12 Q -4 -18 0 -16 Q 4 -18 2 -12 Q 8 -16 12 -10 Q 10 -4 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.5"></path>
+    <path d="M -4 -2 L -8 -8 M 4 -2 L 8 -8" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+  </g>
+  <g transform="translate(50 26) rotate(0) scale(1.05)">
+    <path d="M 0 0 Q -10 -4 -12 -10 Q -8 -16 -2 -12 Q -4 -18 0 -16 Q 4 -18 2 -12 Q 8 -16 12 -10 Q 10 -4 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.5"></path>
+    <path d="M -4 -2 L -8 -8 M 4 -2 L 8 -8" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+  </g>
+  <g transform="translate(42 56)">
+    <circle cx="0" cy="0" r="2" fill="#6B4A94"></circle><circle cx="-3" cy="0" r="2" fill="#6B4A94"></circle><circle cx="3" cy="0" r="2" fill="#6B4A94"></circle><circle cx="-5" cy="3" r="2" fill="#6B4A94"></circle><circle cx="0" cy="3" r="2" fill="#6B4A94"></circle><circle cx="5" cy="3" r="2" fill="#6B4A94"></circle><circle cx="-3" cy="6" r="2" fill="#6B4A94"></circle><circle cx="3" cy="6" r="2" fill="#6B4A94"></circle><circle cx="0" cy="6" r="2" fill="#6B4A94"></circle><circle cx="-2" cy="9" r="2" fill="#6B4A94"></circle><circle cx="2" cy="9" r="2" fill="#6B4A94"></circle><circle cx="0" cy="12" r="2" fill="#6B4A94"></circle>
+    <circle cx="-0.6" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-3.6" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="2.4" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-5.6" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-0.6" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="4.4" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle>
+  </g>
+  <g transform="translate(58 56)">
+    <circle cx="0" cy="0" r="2" fill="#6B4A94"></circle><circle cx="-3" cy="0" r="2" fill="#6B4A94"></circle><circle cx="3" cy="0" r="2" fill="#6B4A94"></circle><circle cx="-5" cy="3" r="2" fill="#6B4A94"></circle><circle cx="0" cy="3" r="2" fill="#6B4A94"></circle><circle cx="5" cy="3" r="2" fill="#6B4A94"></circle><circle cx="-3" cy="6" r="2" fill="#6B4A94"></circle><circle cx="3" cy="6" r="2" fill="#6B4A94"></circle><circle cx="0" cy="6" r="2" fill="#6B4A94"></circle><circle cx="-2" cy="9" r="2" fill="#6B4A94"></circle><circle cx="2" cy="9" r="2" fill="#6B4A94"></circle><circle cx="0" cy="12" r="2" fill="#6B4A94"></circle>
+    <circle cx="-0.6" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-3.6" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="2.4" cy="-0.6" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-5.6" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="-0.6" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle><circle cx="4.4" cy="2.4" r="0.7" fill="#9477BB" opacity="0.7"></circle>
+  </g>
+  <g transform="translate(50 36)">
+    <circle cx="0" cy="0" r="1.8" fill="#6B4A94"></circle><circle cx="-3" cy="0" r="1.8" fill="#6B4A94"></circle><circle cx="3" cy="0" r="1.8" fill="#6B4A94"></circle><circle cx="-5" cy="3" r="1.8" fill="#6B4A94"></circle><circle cx="0" cy="3" r="1.8" fill="#6B4A94"></circle><circle cx="5" cy="3" r="1.8" fill="#6B4A94"></circle><circle cx="-3" cy="6" r="1.8" fill="#6B4A94"></circle><circle cx="3" cy="6" r="1.8" fill="#6B4A94"></circle><circle cx="0" cy="6" r="1.8" fill="#6B4A94"></circle><circle cx="-2" cy="9" r="1.8" fill="#6B4A94"></circle><circle cx="2" cy="9" r="1.8" fill="#6B4A94"></circle><circle cx="0" cy="12" r="1.8" fill="#6B4A94"></circle>
+    <circle cx="-0.54" cy="-0.54" r="0.63" fill="#9477BB" opacity="0.7"></circle><circle cx="-3.54" cy="-0.54" r="0.63" fill="#9477BB" opacity="0.7"></circle><circle cx="2.46" cy="-0.54" r="0.63" fill="#9477BB" opacity="0.7"></circle><circle cx="-5.54" cy="2.46" r="0.63" fill="#9477BB" opacity="0.7"></circle><circle cx="-0.54" cy="2.46" r="0.63" fill="#9477BB" opacity="0.7"></circle><circle cx="4.46" cy="2.46" r="0.63" fill="#9477BB" opacity="0.7"></circle>
+  </g>
+</svg>

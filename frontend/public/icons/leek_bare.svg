@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Prei"><title>Prei — Allium ampeloprasum porrum</title>
+  <path d="M 44 90 L 44 58 Q 44 54 50 54 Q 56 54 56 58 L 56 90 Z" fill="#FBF7EE"></path>
+  <path d="M 44 70 Q 50 68 56 70 M 44 76 Q 50 74 56 76 M 44 82 Q 50 80 56 82" stroke="#C9C0A8" stroke-width="0.5" fill="none"></path>
+  <path d="M 44 58 Q 50 56 56 58" stroke="#A5C68F" stroke-width="0.5" fill="none"></path>
+  <g fill="#4A7C4E">
+    <path d="M 44 58 Q 34 40 26 14 L 28 12 Q 40 32 46 56 Z"></path>
+    <path d="M 56 58 Q 66 40 74 14 L 72 12 Q 60 32 54 56 Z"></path>
+    <path d="M 50 54 Q 50 28 50 6 L 52 6 Q 52 28 52 54 Z"></path>
+    <path d="M 47 55 Q 40 36 34 12 L 36 10 Q 44 32 49 54 Z" opacity="0.85"></path>
+    <path d="M 53 55 Q 60 36 66 12 L 64 10 Q 56 32 51 54 Z" opacity="0.85"></path>
+  </g>
+  
+  <path d="M 46 90 Q 46 94 44 96 M 50 90 Q 50 95 50 97 M 54 90 Q 54 94 56 96" stroke="#FBF7EE" stroke-width="0.5" fill="none" opacity="0.8"></path>
+  <path d="M 24 92 Q 50 90 76 92" stroke="#6B4A35" stroke-width="0.8" fill="none" opacity="0.3" stroke-dasharray="1.5 2"></path>
+</svg>

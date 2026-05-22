@@ -1,33 +1,56 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
 
-type PageKey = 'dashboard' | 'plants' | 'maps' | 'calendar' | 'settings' | 'editor' | 'plantDetail' | 'addPlant'
+type PageKey = 'dashboard' | 'calendar' | 'settings' | 'editor'
 
-function detectPage(pathname: string): PageKey {
+/** Pages where Leonnetje is allowed to appear */
+const ALLOWED_PAGES = new Set<PageKey>(['dashboard', 'calendar', 'settings', 'editor'])
+
+function detectPage(pathname: string): PageKey | null {
   if (pathname.startsWith('/maps/') && pathname.includes('/edit-layout')) return 'editor'
   if (pathname.startsWith('/maps/') && pathname.includes('/settings')) return 'editor'
-  if (pathname.startsWith('/map/')) return 'maps'
-  if (pathname.startsWith('/plants/add')) return 'addPlant'
-  if (pathname.startsWith('/plants/') && pathname.includes('/care')) return 'plantDetail'
-  if (pathname.startsWith('/plants/') && pathname.includes('/edit')) return 'addPlant'
-  if (pathname.startsWith('/plants/')) return 'plantDetail'
   if (pathname.startsWith('/dashboard')) return 'dashboard'
   if (pathname.startsWith('/calendar')) return 'calendar'
   if (pathname.startsWith('/settings')) return 'settings'
-  return 'dashboard'
+  return null
 }
 
-const BUBBLE_TEXTS: Record<PageKey, string[]> = {
-  dashboard: ['Nou, weer wakker?', 'Mag ik iets voor je doen? Nee? Mooi.', 'Je planten kijken verdrietig.', 'Wist je dat Leon de grappigste jaargenoot is? Nou ik niet.'],
-  plants: ['Zoveel planten, zoveel verwaarlozing.', 'Kijk ze nou toch…', 'De helft gaat het niet redden.'],
-  maps: ['Weet jij eigenlijk wel waar je tuin is?', 'Verdwaald? Weer?', 'Je kaart klopt voor geen meter.'],
-  calendar: ['Alsof je je hieraan gaat houden.', 'Veel succes met die planning.', 'Haha, leuk geprobeerd.'],
-  settings: ['Alsof instellingen je gaat helpen.', 'Veel klikken, niks veranderen.', 'Gaat het al beter? Nee.'],
-  editor: ['Nog meer muren optrekken?', 'Tekenen kan je ook niet.', 'Dit wordt vast weer een rommeltje.'],
-  plantDetail: ['Nou… doe je best maar.', 'Ziet eruit alsof je water geven vergeten bent.', 'Die had beter dood kunnen zijn.'],
-  addPlant: ['Nog een plant om te verwaarlozen?', 'Oh nee hè, nog een.', 'Deze gaat ook dood hoor.'],
+/**
+ * Generate a random personal bubble for Leonnetje.
+ * Takes the user's name so he can be a personal pestkop.
+ */
+function randomBubble(pageKey: PageKey, name: string): string {
+  const bubbles: Record<PageKey, string[]> = {
+    dashboard: [
+      `Nou ${name}, weer wakker?`,
+      `Mag ik iets voor je doen, ${name}? Nee? Mooi.`,
+      `${name}, je planten kijken verdrietig.`,
+      `Wist je dat ${name} de grappigste gebruiker is? Nou ik niet.`,
+    ],
+    calendar: [
+      `Alsof jij je hieraan gaat houden, ${name}.`,
+      `Veel succes met die planning, ${name}.`,
+      `Haha ${name}, leuk geprobeerd.`,
+      `Nog een herinnering vergeten, ${name}?`,
+    ],
+    settings: [
+      `Alsof instellingen ${name} gaan helpen.`,
+      `Veel klikken, niks veranderen, ${name}.`,
+      `Gaat het al beter, ${name}? Nee.`,
+      `${name} denkt dat instellingen het probleem oplossen. Schattig.`,
+    ],
+    editor: [
+      `Nog meer muren optrekken, ${name}?`,
+      `Tekenen kan je ook niet, ${name}.`,
+      `Dit wordt vast weer een rommeltje, ${name}.`,
+      `${name} is weer aan het slepen… hou ons op de hoogte.`,
+    ],
+  }
+  const texts = bubbles[pageKey]
+  return texts[Math.floor(Math.random() * texts.length)]
 }
 
 const DISMISS_KEY = 'floreren_help_dismissed'
@@ -41,11 +64,17 @@ export default function HelpAssistant() {
   const [bubbleVisible, setBubbleVisible] = useState(false)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === 'true')
 
-  const pageKey = detectPage(location.pathname)
-  const tip = t.help.tips[pageKey]
+  // Get the active user's name for personalization
+  const users = useFloreren((s) => s.users)
+  const activeUserId = useFloreren((s) => s.activeUserId)
+  const userName = users.find((u) => u.id === activeUserId)?.name ?? 'gebruiker'
 
-  // If dismissed, render nothing
-  if (dismissed) return null
+  const pageKey = detectPage(location.pathname)
+
+  // Don't render at all if not on an allowed page
+  if (!pageKey || dismissed) return null
+
+  const tip = t.help.tips[pageKey as keyof typeof t.help.tips]
 
   function handleDismiss() {
     localStorage.setItem(DISMISS_KEY, 'true')
@@ -61,8 +90,7 @@ export default function HelpAssistant() {
     }
 
     const showBubble = () => {
-      const texts = BUBBLE_TEXTS[pageKey] || BUBBLE_TEXTS.dashboard
-      setBubble(texts[Math.floor(Math.random() * texts.length)])
+      setBubble(randomBubble(pageKey, userName))
       setBubbleVisible(true)
       bubbleTimerRef.current = setTimeout(() => setBubbleVisible(false), 4000)
     }
@@ -75,7 +103,7 @@ export default function HelpAssistant() {
       clearInterval(interval)
       if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
     }
-  }, [pageKey, open])
+  }, [pageKey, open, userName])
 
   return (
     <>
@@ -150,7 +178,7 @@ export default function HelpAssistant() {
                   {t.help.title}
                 </p>
                 <p className="text-xs text-text-muted font-heading italic">
-                  — Je persoonlijke plantenpestkop
+                  — {userName}s persoonlijke plantenpestkop
                 </p>
               </div>
             </div>
@@ -164,8 +192,6 @@ export default function HelpAssistant() {
             <div className="text-xs text-text-muted text-center">
               {pageKey === 'editor' && <p>  Dubbeltik = verwijderen |  Sleep = pannen</p>}
               {pageKey === 'dashboard' && <p>  Wist je dat je planten kunt toevoegen via de + knop?</p>}
-              {pageKey === 'addPlant' && <p>  Je kunt ook gewoon een eigen naam intypen!</p>}
-              {pageKey === 'plantDetail' && <p>  ️ Vergeet niet taken af te tikken na verzorging</p>}
             </div>
 
             {/* Close button */}

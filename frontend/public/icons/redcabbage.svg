@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Rode Kool"><title>Rode Kool — Brassica oleracea capitata rubra</title>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  <g transform="translate(50 74) rotate(0) scale(1.05)">
+    <path d="M 0 0 Q -16 -2 -16 -12 Q -12 -16 -6 -14 Q 0 -18 6 -14 Q 12 -16 16 -12 Q 16 -2 0 0 Z" fill="#6B4A94"></path>
+    <path d="M -10 -6 Q -8 -10 0 -12 Q 8 -10 10 -6" stroke="#2F5D3A" stroke-width="0.5" fill="none" opacity="0.5"></path>
+  </g>
+  <g transform="translate(50 72) rotate(0) scale(0.85)">
+    <path d="M 0 0 Q -16 -2 -16 -12 Q -12 -16 -6 -14 Q 0 -18 6 -14 Q 12 -16 16 -12 Q 16 -2 0 0 Z" fill="#8E6BB8"></path>
+    <path d="M -10 -6 Q -8 -10 0 -12 Q 8 -10 10 -6" stroke="#2F5D3A" stroke-width="0.5" fill="none" opacity="0.5"></path>
+  </g>
+  <circle cx="50" cy="58" r="14" fill="#A98DCC"></circle>
+  <circle cx="46" cy="55" r="11" fill="#C9B6E0" opacity="0.7"></circle>
+  <path d="M 38 58 Q 50 50 62 58 M 40 64 Q 50 56 60 64 M 50 46 Q 50 56 50 66" stroke="#6B4A94" stroke-width="0.7" fill="none" opacity="0.6"></path>
+</svg>

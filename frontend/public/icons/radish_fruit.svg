@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Radijs"><title>Radijs — Raphanus sativus</title>
+  ${[-18,0,18].map(a=&gt;`
+    <g transform="translate(50 38) rotate(${a})">
+      <path d="M 0 0 L 0 -24" stroke="${C.stem}" stroke-width="1.2"></path>
+      <path d="M 0 -4 Q -6 -8 -8 -14 Q -4 -16 0 -10 Z" fill="${C.leafMid}"></path>
+      <path d="M 0 -4 Q 6 -8 8 -14 Q 4 -16 0 -10 Z" fill="${C.leafMid}"></path>
+      <path d="M 0 -14 Q -5 -18 -6 -24 Q -2 -24 0 -20 Z" fill="${C.leafLight}"></path>
+      <path d="M 0 -14 Q 5 -18 6 -24 Q 2 -24 0 -20 Z" fill="${C.leafLight}"></path>
+    </g>
+  `).join(&#39;&#39;)}
+  <circle cx="50" cy="56" r="18" fill="${C.red}"></circle>
+  <path d="M 50 74 Q 46 78 48 82 Q 50 84 52 82 Q 54 78 50 74 Z" fill="${C.white}"></path>
+  <ellipse cx="44" cy="50" rx="3" ry="6" fill="#FFF" opacity="0.35"></ellipse>
+</svg>

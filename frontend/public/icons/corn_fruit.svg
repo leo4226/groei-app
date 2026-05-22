@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Mais"><title>Mais — Zea mays</title>
+  <path d="M 50 14 Q 46 10 42 12 M 50 14 Q 54 10 58 12" stroke="${C.yellow}" stroke-width="1" fill="none" stroke-linecap="round"></path>
+  <path d="M 34 30 Q 26 44 28 70 Q 34 72 38 60 Q 36 44 40 32 Z" fill="${C.leafLight}"></path>
+  <path d="M 66 30 Q 74 44 72 70 Q 66 72 62 60 Q 64 44 60 32 Z" fill="${C.leafLight}"></path>
+  <path d="M 38 18 Q 36 50 42 82 Q 50 86 58 82 Q 64 50 62 18 Q 56 14 50 14 Q 44 14 38 18 Z" fill="${C.yellow}"></path>
+  ${Array.from({length: 7}).map((_,row) =&gt; {
+    const y = 26 + row * 9;
+    return [44, 50, 56].map(x =&gt; `<circle cx="${x}" cy="${y}" r="1.8" fill="${C.yellow}" stroke="${C.yellowDark}" stroke-width="0.5"></circle>`).join(&#39;&#39;);
+  }).join(&#39;&#39;)}
+</svg>

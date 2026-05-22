@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Witlof"><title>Witlof — Cichorium intybus</title>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  
+  <g transform="translate(40 74) rotate(-40) scale(0.9)">
+    <path d="M 0 0 Q -4 -3 -6 -8 Q -8 -14 -4 -16 Q -2 -12 -2 -8 Q -4 -16 0 -18 Q 4 -16 2 -8 Q 2 -12 4 -16 Q 8 -14 6 -8 Q 4 -3 0 0 Z" fill="#5C8A4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#4A7C4E" stroke-width="0.4"></path>
+  </g>
+  <g transform="translate(60 74) rotate(40) scale(0.9)">
+    <path d="M 0 0 Q -4 -3 -6 -8 Q -8 -14 -4 -16 Q -2 -12 -2 -8 Q -4 -16 0 -18 Q 4 -16 2 -8 Q 2 -12 4 -16 Q 8 -14 6 -8 Q 4 -3 0 0 Z" fill="#5C8A4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#4A7C4E" stroke-width="0.4"></path>
+  </g>
+  
+  <g transform="translate(50 74)">
+    <path d="M -8 0 Q -10 -8 -8 -20 Q -4 -28 0 -28 Q 4 -28 8 -20 Q 10 -8 8 0 Z" fill="#F0E4C8"></path>
+    <path d="M -6 -2 Q -7 -10 -6 -20 Q -3 -26 0 -26" stroke="#C9C0A8" stroke-width="0.5" fill="none"></path>
+    <path d="M 6 -2 Q 7 -10 6 -20 Q 3 -26 0 -26" stroke="#C9C0A8" stroke-width="0.5" fill="none"></path>
+    <path d="M 0 0 L 0 -26" stroke="#C9C0A8" stroke-width="0.5"></path>
+    
+    <path d="M -4 -22 Q -2 -28 0 -28 Q 2 -28 4 -22 Q 0 -24 -4 -22 Z" fill="#E8DFC8"></path>
+  </g>
+</svg>

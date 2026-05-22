@@ -212,6 +212,7 @@ interface DrawState {
 
 interface DragState {
   zoneId: string; startSvgX: number; startSvgY: number; origX: number; origY: number
+  containedZones?: Array<{ id: string; origX: number; origY: number }>
 }
 
 interface ResizeState {
@@ -296,7 +297,12 @@ export default function EditorCanvas({
       const zone = zones.find((z) => z.id === zoneId)
       if (zone) {
         ;(e.target as Element).setPointerCapture(e.pointerId)
-        setDragging({ zoneId, startSvgX: pt.x, startSvgY: pt.y, origX: zone.x, origY: zone.y })
+        const containedZones = zone.type === 'structure'
+          ? zones
+              .filter(z => z.id !== zoneId && z.x >= zone.x && z.y >= zone.y && z.x + z.width <= zone.x + zone.width && z.y + z.height <= zone.y + zone.height)
+              .map(z => ({ id: z.id, origX: z.x, origY: z.y }))
+          : undefined
+        setDragging({ zoneId, startSvgX: pt.x, startSvgY: pt.y, origX: zone.x, origY: zone.y, containedZones })
       }
     } else {
       onSelectZone(zoneId)
@@ -429,10 +435,22 @@ export default function EditorCanvas({
       if (zone) {
         let rawX = Math.max(0, Math.min(CANVAS_W - zone.width,  dragging.origX + dx))
         let rawY = Math.max(0, Math.min(CANVAS_H - zone.height, dragging.origY + dy))
-        const { xTargets, yTargets } = getSnapTargets(zones, dragging.zoneId, scalePxPerM)
-        const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, zones, dragging.zoneId, xTargets, yTargets)
+        // Exclude contained zones so the structure doesn't snap to its own interior rooms
+        const excludeIds = new Set([dragging.zoneId, ...(dragging.containedZones?.map(cz => cz.id) ?? [])])
+        const snapZones = zones.filter(z => !excludeIds.has(z.id))
+        const { xTargets, yTargets } = getSnapTargets(snapZones, dragging.zoneId, scalePxPerM)
+        const { x, y, snapLines: lines } = snapPosition(rawX, rawY, zone.width, zone.height, snapZones, dragging.zoneId, xTargets, yTargets)
         setSnapLines(lines)
-        onUpdateZone(dragging.zoneId, { x: Math.round(x), y: Math.round(y) })
+        const newX = Math.round(x)
+        const newY = Math.round(y)
+        onUpdateZone(dragging.zoneId, { x: newX, y: newY })
+        if (dragging.containedZones) {
+          const actualDX = newX - dragging.origX
+          const actualDY = newY - dragging.origY
+          for (const cz of dragging.containedZones) {
+            onUpdateZone(cz.id, { x: cz.origX + actualDX, y: cz.origY + actualDY })
+          }
+        }
       }
       return
     }
@@ -631,7 +649,7 @@ export default function EditorCanvas({
         })}
 
         {zones.map((zone) => {
-          const isIndoorZone = mapType === 'indoor' && (zone.type === 'room' || zone.type === 'structure')
+          const isIndoorZone = zone.type === 'room' || zone.type === 'structure'
           return isIndoorZone ? (
             <RoomWallRenderer
               key={zone.id}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Aardappel"><title>Aardappel — Solanum tuberosum</title>
+  <ellipse cx="50" cy="54" rx="30" ry="22" fill="${C.barkLight}"></ellipse>
+  ${[[36,46,2],[56,42,1.6],[66,56,2],[42,64,1.6],[58,66,2],[48,52,1.4]].map(([x,y,r])=&gt;`
+    <ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r*0.7}" fill="${C.bark}" opacity="0.5"></ellipse>
+    <ellipse cx="${x-0.4}" cy="${y-0.4}" rx="${r*0.5}" ry="${r*0.3}" fill="${C.leafDark}"></ellipse>
+  `).join(&#39;&#39;)}
+  <ellipse cx="38" cy="44" rx="6" ry="3" fill="#FFF" opacity="0.3"></ellipse>
+</svg>

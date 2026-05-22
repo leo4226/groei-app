@@ -350,6 +350,8 @@ export default function Plants() {
   // ───────────────────────── MOBILE LAYOUT ─────────────────────────
   return (
     <div style={{ paddingBottom: 80 }}>
+      {/* Browser chrome spacer — zorgt dat sticky header niet achter URL bar verdwijnt op mobiel */}
+      <div style={{ height: 'max(env(safe-area-inset-top, 0px), 48px)' }} />
       {/* Sticky compact header */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20,

@@ -16,8 +16,7 @@ const noop = () => {}
  * thickness auto-detect), and EditorZoneShape for outdoor / ground zones.
  */
 export default function CanvasZonesLayer({ canvasData }: Props) {
-  const { zones, wallElements = [], scale_px_per_m, canvas_w, canvas_h, mapType } = canvasData
-  const isIndoor = mapType === 'indoor'
+  const { zones, wallElements = [], scale_px_per_m, canvas_w, canvas_h } = canvasData
 
   return (
     <g>
@@ -28,7 +27,7 @@ export default function CanvasZonesLayer({ canvasData }: Props) {
       <rect width={canvas_w} height={canvas_h} fill="#f5f3ee" />
 
       {zones.map((zone) => {
-        const isIndoorZone = isIndoor && (zone.type === 'room' || zone.type === 'structure')
+        const isIndoorZone = zone.type === 'room' || zone.type === 'structure'
         return isIndoorZone ? (
           <RoomWallRenderer
             key={zone.id}

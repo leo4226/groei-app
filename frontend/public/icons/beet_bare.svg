@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Rode Biet"><title>Rode Biet — Beta vulgaris</title>
+  <g transform="translate(50 82) rotate(0) scale(1.5)">
+    <path d="M 0 0 Q -5 -4 -6 -12 Q -2 -18 0 -14 Q 2 -18 6 -12 Q 5 -4 0 0 Z" fill="#3D6A32"></path>
+    <path d="M 0 -1 L 0 -15" stroke="#A8342A" stroke-width="0.7"></path>
+    <path d="M -2 -4 L -4 -8 M 2 -4 L 4 -8 M -3 -9 L -5 -13 M 3 -9 L 5 -13" stroke="#A8342A" stroke-width="0.4" opacity="0.7"></path>
+    <path d="M -1 0 Q 0 1 1 0" stroke="#A8342A" stroke-width="1"></path>
+  </g>
+  <g transform="translate(40 84) rotate(-25) scale(1.3)">
+    <path d="M 0 0 Q -5 -4 -6 -12 Q -2 -18 0 -14 Q 2 -18 6 -12 Q 5 -4 0 0 Z" fill="#3D6A32"></path>
+    <path d="M 0 -1 L 0 -15" stroke="#A8342A" stroke-width="0.7"></path>
+    <path d="M -2 -4 L -4 -8 M 2 -4 L 4 -8 M -3 -9 L -5 -13 M 3 -9 L 5 -13" stroke="#A8342A" stroke-width="0.4" opacity="0.7"></path>
+    <path d="M -1 0 Q 0 1 1 0" stroke="#A8342A" stroke-width="1"></path>
+  </g>
+  <g transform="translate(60 84) rotate(25) scale(1.3)">
+    <path d="M 0 0 Q -5 -4 -6 -12 Q -2 -18 0 -14 Q 2 -18 6 -12 Q 5 -4 0 0 Z" fill="#3D6A32"></path>
+    <path d="M 0 -1 L 0 -15" stroke="#A8342A" stroke-width="0.7"></path>
+    <path d="M -2 -4 L -4 -8 M 2 -4 L 4 -8 M -3 -9 L -5 -13 M 3 -9 L 5 -13" stroke="#A8342A" stroke-width="0.4" opacity="0.7"></path>
+    <path d="M -1 0 Q 0 1 1 0" stroke="#A8342A" stroke-width="1"></path>
+  </g>
+  <g transform="translate(30 86) rotate(-50) scale(1.15)">
+    <path d="M 0 0 Q -5 -4 -6 -12 Q -2 -18 0 -14 Q 2 -18 6 -12 Q 5 -4 0 0 Z" fill="#3D6A32"></path>
+    <path d="M 0 -1 L 0 -15" stroke="#A8342A" stroke-width="0.7"></path>
+    <path d="M -2 -4 L -4 -8 M 2 -4 L 4 -8 M -3 -9 L -5 -13 M 3 -9 L 5 -13" stroke="#A8342A" stroke-width="0.4" opacity="0.7"></path>
+    <path d="M -1 0 Q 0 1 1 0" stroke="#A8342A" stroke-width="1"></path>
+  </g>
+  <g transform="translate(70 86) rotate(50) scale(1.15)">
+    <path d="M 0 0 Q -5 -4 -6 -12 Q -2 -18 0 -14 Q 2 -18 6 -12 Q 5 -4 0 0 Z" fill="#3D6A32"></path>
+    <path d="M 0 -1 L 0 -15" stroke="#A8342A" stroke-width="0.7"></path>
+    <path d="M -2 -4 L -4 -8 M 2 -4 L 4 -8 M -3 -9 L -5 -13 M 3 -9 L 5 -13" stroke="#A8342A" stroke-width="0.4" opacity="0.7"></path>
+    <path d="M -1 0 Q 0 1 1 0" stroke="#A8342A" stroke-width="1"></path>
+  </g>
+  
+  <g transform="translate(50 90)">
+    <path d="M -6 -4 Q -8 0 -6 4 Q -2 6 0 4 Q 2 6 6 4 Q 8 0 6 -4 Q 0 -2 -6 -4 Z" fill="#6B4A94"></path>
+    <path d="M 0 4 L 0 8" stroke="#6B4A94" stroke-width="0.8" stroke-linecap="round"></path>
+    <ellipse cx="-2" cy="-1" rx="2" ry="2.4" fill="#FFF" opacity="0.2"></ellipse>
+  </g>
+  <path d="M 24 92 Q 50 90 76 92" stroke="#6B4A35" stroke-width="0.8" fill="none" opacity="0.3" stroke-dasharray="1.5 2"></path>
+</svg>

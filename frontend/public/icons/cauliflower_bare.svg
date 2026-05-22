@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Bloemkool"><title>Bloemkool — Brassica oleracea botrytis</title>
+  <g transform="translate(50 88) rotate(0) scale(1.25)">
+    <path d="M 0 0 Q -16 -2 -16 -12 Q -12 -16 -6 -14 Q 0 -18 6 -14 Q 12 -16 16 -12 Q 16 -2 0 0 Z" fill="#5C8A4E"></path>
+    <path d="M -10 -6 Q -8 -10 0 -12 Q 8 -10 10 -6" stroke="#2F5D3A" stroke-width="0.5" fill="none" opacity="0.5"></path>
+  </g>
+  <g transform="translate(50 84) rotate(0) scale(1)">
+    <path d="M 0 0 Q -16 -2 -16 -12 Q -12 -16 -6 -14 Q 0 -18 6 -14 Q 12 -16 16 -12 Q 16 -2 0 0 Z" fill="#6DA86F"></path>
+    <path d="M -10 -6 Q -8 -10 0 -12 Q 8 -10 10 -6" stroke="#2F5D3A" stroke-width="0.5" fill="none" opacity="0.5"></path>
+  </g>
+  <circle cx="50" cy="66" r="16" fill="#FBF7EE"></circle>
+  <g fill="#FBF7EE">
+    <circle cx="40" cy="60" r="6" fill="undefined"></circle>
+    <circle cx="50" cy="56" r="6" fill="undefined"></circle>
+    <circle cx="60" cy="60" r="6" fill="undefined"></circle>
+    <circle cx="44" cy="70" r="5.5" fill="undefined"></circle>
+    <circle cx="54" cy="72" r="5.5" fill="undefined"></circle>
+    <circle cx="60" cy="68" r="5" fill="undefined"></circle>
+    <circle cx="48" cy="66" r="5" fill="undefined"></circle>
+  </g>
+  <g fill="#E8DFC8" opacity="0.6">
+    <circle cx="38" cy="58" r="2.5" fill="undefined"></circle>
+    <circle cx="56" cy="72" r="2.5" fill="undefined"></circle>
+    <circle cx="50" cy="66" r="2.5" fill="undefined"></circle>
+  </g>
+  <path d="M 24 92 Q 50 90 76 92" stroke="#6B4A35" stroke-width="0.8" fill="none" opacity="0.3" stroke-dasharray="1.5 2"></path>
+</svg>

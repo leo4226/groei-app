@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Knoflook"><title>Knoflook — Allium sativum</title>
+  
+  <g transform="translate(50 88)">
+    <ellipse cx="0" cy="0" rx="6" ry="5" fill="#FBF7EE"></ellipse>
+    <path d="M -5 0 Q -3 -5 0 -5 Q 3 -5 5 0 Q 3 5 0 5 Q -3 5 -5 0 Z" fill="#E8DFC8"></path>
+    <path d="M -2 -5 L -2 5 M 2 -5 L 2 5" stroke="#C9C0A8" stroke-width="0.4"></path>
+    <path d="M 0 -5 L 0 5" stroke="#C9C0A8" stroke-width="0.5"></path>
+  </g>
+  <g>
+    <path d="M 46 84 Q 42 51 43.6 18" stroke="#4A7C4E" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
+  </g>
+  <g>
+    <path d="M 54 84 Q 58 52 56.4 20" stroke="#4A7C4E" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
+  </g>
+  <g>
+    <path d="M 50 82 Q 50 47 50 12" stroke="#4A7C4E" stroke-width="1.8" fill="none" stroke-linecap="round"></path>
+  </g>
+  <g>
+    <path d="M 42 84 Q 35 57 37.8 30" stroke="#4A7C4E" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  </g>
+  <g>
+    <path d="M 58 84 Q 65 58 62.2 32" stroke="#4A7C4E" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  </g>
+  <path d="M 50 24 Q 58 18 54 12 Q 50 8 52 6" stroke="#4A7C4E" stroke-width="1.2" fill="none" stroke-linecap="round"></path>
+  <ellipse cx="52" cy="6" rx="2" ry="2.4" fill="#C9DDB4"></ellipse>
+  <path d="M 24 92 Q 50 90 76 92" stroke="#6B4A35" stroke-width="0.8" fill="none" opacity="0.3" stroke-dasharray="1.5 2"></path>
+</svg>
