@@ -662,6 +662,7 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
   const typeLabel = map.map_type === 'outdoor' ? t.dashboard.actions.mapTypeOutdoor : t.dashboard.actions.mapTypeIndoor
   const dims = parseMapDimensions(map.viewbox)
   const subLine = dims ? `${typeLabel} · ${dims.w} m × ${dims.h} m` : typeLabel
+  const [imgLoaded, setImgLoaded] = useState(false)
   return (
     <div
       className="card dash-map-card"
@@ -687,10 +688,25 @@ function MapCard({ map, t }: { map: MapInfo; t: Translations }) {
           alignItems: 'center',
           justifyContent: 'center',
           padding: map.thumbnail_file ? '6%' : '14%',
+          position: 'relative',
         }}>
+          {!imgLoaded && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1,
+            }}>
+              <div className="skeleton" style={{ width: '60%', height: '60%', borderRadius: 10 }} />
+            </div>
+          )}
           <img
             src={map.thumbnail_file ?? map.svg_file ?? ''}
             alt={map.name}
+            onLoad={() => setImgLoaded(true)}
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
           />
         </div>

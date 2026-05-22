@@ -360,7 +360,32 @@ export default function EditorCanvas({
     setSvgPointer(pt)
 
     if (drawing) {
-      setDrawing((d) => d ? { ...d, currentX: pt.x, currentY: pt.y } : null)
+      // Size-match snap: if current width/height is close to any zone's dimension, lock to it
+      const SIZE_SNAP = 15
+      const rawW = Math.abs(pt.x - drawing.startX)
+      const rawH = Math.abs(pt.y - drawing.startY)
+      let snapX = pt.x
+      let snapY = pt.y
+      let bestW = SIZE_SNAP
+      let bestH = SIZE_SNAP
+      const drawSnapLines: SnapLine[] = []
+      for (const z of zones) {
+        if (z.type === 'wall') continue
+        const dW = Math.abs(rawW - z.width)
+        if (dW < bestW) {
+          bestW = dW
+          snapX = drawing.startX + (pt.x >= drawing.startX ? z.width : -z.width)
+        }
+        const dH = Math.abs(rawH - z.height)
+        if (dH < bestH) {
+          bestH = dH
+          snapY = drawing.startY + (pt.y >= drawing.startY ? z.height : -z.height)
+        }
+      }
+      if (bestW < SIZE_SNAP) drawSnapLines.push({ axis: 'x', value: snapX })
+      if (bestH < SIZE_SNAP) drawSnapLines.push({ axis: 'y', value: snapY })
+      setSnapLines(drawSnapLines)
+      setDrawing((d) => d ? { ...d, currentX: snapX, currentY: snapY } : null)
       return
     }
 
@@ -466,6 +491,7 @@ export default function EditorCanvas({
 
   function handlePointerLeave() {
     setSvgPointer(null)
+    setSnapLines([])
   }
 
   function handlePointerUp() {
@@ -519,11 +545,12 @@ export default function EditorCanvas({
         }
       }
       setDrawing(null)
+      setSnapLines([])
     }
     if (shadowCasterDragging) setShadowCasterDragging(null)
     if (wallElementDragging) setWallElementDragging(null)
     if (dragging) { setDragging(null); setSnapLines([]) }
-    if (resizing) setResizing(null)
+    if (resizing) { setResizing(null); setSnapLines([]) }
   }
 
   // Standard draw preview (non-wall zone types)
