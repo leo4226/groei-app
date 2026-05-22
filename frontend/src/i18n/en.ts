@@ -178,7 +178,7 @@ export const en: Translations = {
       lawn:      { name: 'Lawn',      description: 'Grass or lawn area' },
       path:      { name: 'Path',      description: 'Walking path or paving' },
       water:     { name: 'Water',     description: 'Pond, fountain or water feature' },
-      structure: { name: 'Structure', description: 'Shed, storage, canopy or exterior wall' },
+      structure: { name: 'Structure', description: 'Building outer shell — place first, then add rooms inside' },
       room:      { name: 'Room',      description: 'Room, hallway or space inside the building' },
       wall:      { name: 'Wall',      description: 'Interior wall or partition' },
       fence:     { name: 'Fence',     description: 'Wooden or stone fence' },

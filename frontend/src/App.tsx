@@ -7,6 +7,7 @@ import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
+import { Analytics } from '@vercel/analytics/react'
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -249,6 +250,7 @@ export default function App() {
           onCustomName={handleCustomName}
         />
       )}
+      <Analytics />
       </div>
     </LanguageProvider>
   )

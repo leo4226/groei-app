@@ -178,7 +178,7 @@ export const nl: Translations = {
       lawn:      { name: 'Gazon',    description: 'Gras of grasveld' },
       path:      { name: 'Pad',      description: 'Looppad of bestrating' },
       water:     { name: 'Water',    description: 'Vijver, fontein of waterpartij' },
-      structure: { name: 'Gebouw',   description: 'Schuur, berging, overkapping of buitenmuur' },
+      structure: { name: 'Gebouw',   description: 'Buitenschil van het gebouw — eerst plaatsen, dan kamers toevoegen' },
       room:      { name: 'Kamer',    description: 'Kamer, hal of ruimte binnen het gebouw' },
       wall:      { name: 'Muur',     description: 'Binnenmuur of scheidingswand' },
       fence:     { name: 'Hek',      description: 'Houten of stenen omheining' },
