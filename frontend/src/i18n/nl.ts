@@ -658,7 +658,7 @@ export const nl: Translations = {
 
   // ── Plants page (list view) ──────────────────────────────
   plantsPage: {
-    title: 'Planten <em>Icons</em>.',
+    title: 'Planten',
     subtitle: 'Een botanische gids voor je plantencollectie — binnen en buiten.',
     subtitleEst: 'Mijn Tuin · Est. 2026',
     countPlants: 'Planten',

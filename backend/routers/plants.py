@@ -87,7 +87,6 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
                 ORDER BY cs.plant_id, cs.next_due ASC""",
             plant_ids,
         )
-    if sched_rows:
         by_plant: dict[int, list] = {}
         for row in sched_rows:
             r = dict(row)

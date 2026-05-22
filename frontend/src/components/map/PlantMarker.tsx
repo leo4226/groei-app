@@ -251,12 +251,11 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
           </text>
         </g>
       )}
-      </g>
 
-      {/* Alert badges — arc around top of plant */}
+      {/* Alert badges — counter-rotated with icon so they arc around the visual top */}
       {alerts.length > 0 && alerts.map((a, i) => {
         const count = alerts.length
-        const totalArc = Math.min(count * 30, 140) // degrees
+        const totalArc = Math.min(count * 30, 140)
         const startDeg = -(totalArc / 2)
         const step = count > 1 ? totalArc / (count - 1) : 0
         const deg = startDeg + i * step
@@ -265,28 +264,15 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
         const bx = orbitR * Math.sin(rad)
         const by = -(orbitR * Math.cos(rad))
         return (
-        <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
-          <circle
-            cx={bx}
-            cy={by}
-            r={7}
-            fill="white"
-            stroke={haloColor ?? '#888'}
-            strokeWidth={1.5}
-          />
-          <text
-            x={bx}
-            y={by}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={8}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {a.icon}
-          </text>
-        </g>
+          <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
+            <circle cx={bx} cy={by} r={7} fill="white" stroke={haloColor ?? '#888'} strokeWidth={1.5} />
+            <text x={bx} y={by} textAnchor="middle" dominantBaseline="central" fontSize={8} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              {a.icon}
+            </text>
+          </g>
         )
       })}
+      </g>
     </g>
   )
 }

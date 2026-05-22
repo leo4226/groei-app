@@ -61,7 +61,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-black flex flex-col">
       <div className="flex items-center justify-between p-4 text-white">
         <button onClick={onCancel} aria-label={t.identify.camera.cancel} className="text-2xl">×</button>
         <span className="text-sm opacity-75">{t.identify.camera.title}</span>
@@ -83,7 +83,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
         )}
       </div>
       {!error && (
-        <div className="p-6 flex justify-center">
+        <div className="p-6 pb-20 flex justify-center">
           <button
             onClick={capture}
             aria-label={t.identify.camera.capture}

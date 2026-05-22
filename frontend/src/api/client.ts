@@ -36,10 +36,17 @@ async function apiRequest<T>(method: string, path: string, options: ApiOptions =
 
   const res = await fetch(url, init)
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     localStorage.removeItem('floreren-token')
     window.location.href = '/login'
     throw new Error('Session expired — redirecting to login')
+  }
+
+  if (res.status === 403) {
+    // 403 = forbidden, not expired — let the caller handle it gracefully
+    let detail = 'Forbidden'
+    try { const body = await res.json(); if (body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail) } catch {}
+    throw new Error(detail)
   }
 
   await ensureOk(res, `Failed: ${method} ${path}`)
