@@ -7,78 +7,16 @@ export function screenToSVG(
   clientX: number,
   clientY: number
 ): { x: number; y: number } | null {
-  const rect = svg.getBoundingClientRect()
-  const vb = svg.viewBox.baseVal
-  if (!vb || vb.width === 0 || vb.height === 0) return null
-
-  const relX = clientX - rect.left
-  const relY = clientY - rect.top
-
-  // Get CSS dimensions using getComputedStyle — this ALWAYS reflects the
-  // pre-transform computed pixel values, unlike clientWidth/clientHeight
-  // which can return post-transform (rotated) dimensions on some mobile
-  // browsers (notably iOS Safari / WebKit).
-  //
-  // parseFloat strips the "px" suffix, and fallback values (NaN → 0)
-  // pair with the rect-based fallback below.
-  let cssW = parseFloat(window.getComputedStyle(svg).width)
-  let cssH = parseFloat(window.getComputedStyle(svg).height)
-
-  // getComputedStyle returns the CSS logical dimensions, so once we have
-  // them reliably, the rotation detection below is correct on all browsers.
-  if (!cssW || !cssH) {
-    // Last-resort fallback: some older mobile browsers report 0 for SVG
-    // computed dimensions. Use the visual rect as a proxy — without rotation
-    // detection, coordinates will be slightly off but at least functional.
-    cssW = rect.width
-    cssH = rect.height
-  }
-
-  let cssX = relX
-  let cssY = relY
-
-  // Detect CSS visual rotation by comparing pre-transform (getComputedStyle)
-  // with post-transform (getBoundingClientRect) dimensions.
-  // A 90-degree rotation swaps width ↔ height.
-  // After rotate(-90deg): rect.width ≈ cssH, rect.height ≈ cssW
-  const isRotated90 =
-    cssW > 0 && cssH > 0 &&
-    Math.abs(rect.width - cssH) < 1 &&
-    Math.abs(rect.height - cssW) < 1
-
-  if (isRotated90) {
-    // The SVG has a CSS rotation (rotate(-90deg) translateX(-100%) with
-    // transform-origin: top left). The full transform matrix M maps
-    // CSS space (x, y) → screen-relative (sx, sy):
-    //
-    //   Step 1: translate(-cssW, 0)  →  (x - cssW, y)
-    //   Step 2: rotate(-90deg)       →  (y, cssW - x)
-    //
-    // Visual bounding rect corners:
-    //   (0,0)       → (0, cssW)
-    //   (cssW, 0)   → (0, 0)
-    //   (cssW,cssH) → (cssH, 0)
-    //   (0, cssH)   → (cssH, cssW)
-    //
-    // Visual rect top-left is at (0, 0) in screen-relative space,
-    // spanning width=cssH, height=cssW.
-    //
-    // Inverse: given screen-relative (relX, relY):
-    //   relX = cssY          →  cssY = relX
-    //   relY = cssW - cssX   →  cssX = cssW - relY
-    cssX = cssW - relY
-    cssY = relX
-  }
-
-  // Map CSS-space coordinates to viewBox with preserveAspectRatio="xMidYMid meet"
-  const scale = Math.min(cssW / vb.width, cssH / vb.height)
-  const offsetX = (cssW - vb.width * scale) / 2
-  const offsetY = (cssH - vb.height * scale) / 2
-
-  return {
-    x: (cssX - offsetX) / scale,
-    y: (cssY - offsetY) / scale,
-  }
+  // Use SVG's native coordinate transformation matrix. This automatically
+  // handles CSS transforms (including 90° rotation on mobile), viewBox
+  // mapping, and preserveAspectRatio — no manual rotation detection needed.
+  const pt = svg.createSVGPoint()
+  pt.x = clientX
+  pt.y = clientY
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return null
+  const svgPt = pt.matrixTransform(ctm.inverse())
+  return { x: svgPt.x, y: svgPt.y }
 }
 
 export function svgToObjectLocal(
