@@ -54,6 +54,7 @@ body {
   color: var(--color-text);
   margin: 0;
   min-height: 100dvh;
+  overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-image:
@@ -278,6 +279,18 @@ input:focus, select:focus, textarea:focus {
     justify-self: start;
   }
 
+  /* Dashboard lede text: compact on mobile */
+  .dashboard-lede {
+    max-width: none !important;
+    font-size: 13px !important;
+    margin: 4px 0 10px 0 !important;
+  }
+
+  /* Dashboard header: less padding on mobile */
+  .dashboard-header {
+    padding: 24px 16px 16px !important;
+  }
+
   /* WeatherCard: compact on mobile */
   .weather-card-header {
     padding: 10px 12px 4px !important;
@@ -287,6 +300,13 @@ input:focus, select:focus, textarea:focus {
   }
   .weather-card-header > div:last-child em {
     font-size: 22px !important;
+  }
+  .weather-card-header > div:last-child br {
+    display: none !important;
+  }
+  .weather-card-header > div:last-child span {
+    display: inline !important;
+    margin-left: 4px !important;
   }
 
   .weather-stats {

@@ -499,6 +499,10 @@ export type Translations = {
       notice: string  // "Photos are sent to Pl@ntNet for identification."
       ack: string     // "OK, got it"
     }
+    card: {
+      title: string     // "Photo identification"
+      subtitle: string  // "Take a photo to identify a plant"
+    }
   }
 
   editPlant: {
@@ -664,6 +668,7 @@ export type Translations = {
     countCategories: string // "Categorieën" (plural label next to count)
     searchPlaceholder: string // "Zoek op naam of soort…"
     addButton: string       // "+ Toevoegen"
+    filterButton: string    // "Filters"
     filterLocation: string  // "Locatie"
     filterType: string      // "Type"
     filterForm: string      // "Vorm"
@@ -704,6 +709,7 @@ export type Translations = {
     recordFertilizing: string               // "Registreer tuin bemesting"
     spotInspectorHint: string               // "Zet de zonkaart aan en tik op een plek in de tuin"
     addPot: string                          // "Pot toevoegen"
+    more: string                             // "Meer" / "More" (mobile overflow menu button)
     deleted: (label: string) => string      // "Verwijderd: {label}"
     undo: string                            // "Ongedaan maken"
     soilDefaultName: string                 // "Grond"
@@ -762,6 +768,7 @@ export type Translations = {
   help: {
     title: string
     close: string
+    dismiss: string
     tips: {
       dashboard: string
       plants: string

@@ -17,6 +17,7 @@ export default function Settings() {
   const [gapsLoading, setGapsLoading] = useState(false)
   const [gapsError, setGapsError] = useState<string | null>(null)
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
+  const [trollClicked, setTrollClicked] = useState(false)
 
   useEffect(() => {
     fetchAdminAccounts()
@@ -320,6 +321,24 @@ export default function Settings() {
         </div>
       </section>
 
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">Assistent</h2>
+        <div className="card p-4 space-y-3">
+          <button
+            onClick={() => setTrollClicked(true)}
+            disabled={trollClicked}
+            className="w-full py-2.5 rounded-xl border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-70"
+          >
+            Knappe assistent uitzetten
+          </button>
+          {trollClicked && (
+            <p className="text-center text-sm font-bold text-primary animate-pulse">
+              Dacht het niet 👹
+            </p>
+          )}
+        </div>
+      </section>
+
       <section className="mt-8 mb-4">
         <button
           onClick={() => { clearToken(); navigate('/login') }}
@@ -328,6 +347,17 @@ export default function Settings() {
           Log uit
         </button>
       </section>
+
+      {adminAccounts !== null && (
+        <div className="mt-4 mb-8 text-center">
+          <a
+            href="/admin"
+            className="font-mono text-[10px] uppercase tracking-widest text-text-muted no-underline"
+          >
+            Admin panel →
+          </a>
+        </div>
+      )}
     </div>
   )
 }

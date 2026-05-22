@@ -244,7 +244,7 @@ export default function MapPage() {
           <button
             onClick={() => navigate(`/maps/${map.id}/settings`)}
             className="w-7 h-7 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
-            title="Kaart instellingen"
+            title={t.mapPage.mapSettings}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -252,7 +252,9 @@ export default function MapPage() {
             </svg>
           </button>
         </div>
-        <div className="flex items-center gap-1.5 map-toolbar">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Scrollable toolbar: water + fertilize always visible; desktop-only buttons hidden on mobile */}
+          <div className="flex items-center gap-1.5 map-toolbar">
           {/* Bewater */}
           <button
             onClick={water.togglePicker}
@@ -347,15 +349,16 @@ export default function MapPage() {
             <span className="text-lg leading-none">+</span>
             <span>{t.mapPage.plant}</span>
           </button>
+          </div>
 
-          {/* Mobile: Meer-knop met dropdown voor overige acties — verborgen op desktop */}
-          <div className="relative forced-hidden-desktop">
+          {/* Mobile: Meer-knop buiten de scrollbare toolbar zodat de dropdown niet afgeknipt wordt */}
+          <div className="relative forced-hidden-desktop shrink-0">
             <button
               onClick={() => setShowMoreActions(v => !v)}
               className="flex items-center gap-1 px-2.5 py-1.5 bg-surface text-text-muted rounded-full text-xs font-medium hover:bg-surface/80 transition-colors border border-border map-more-trigger"
             >
               <span className="text-sm leading-none">⋮</span>
-              <span className="map-more-label">Meer</span>
+              <span className="map-more-label">{t.mapPage.more}</span>
             </button>
             {showMoreActions && (
               <>
@@ -469,7 +472,7 @@ export default function MapPage() {
               disabled={fertilize.fertilizing}
               className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
             >
-              Wis
+              {t.mapPage.clearLabel}
             </button>
           )}
         </div>

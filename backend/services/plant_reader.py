@@ -1,8 +1,28 @@
 import json
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
 
 from models import MostUrgent
+
+
+_DATE_STRING_FIELDS = frozenset({
+    "acquired_date",
+    "sown_date",
+    "last_repotted",
+    "next_due",
+    "last_done",
+    "created_at",
+    "updated_at",
+})
+
+
+def _coerce_dates(obj: dict) -> dict:
+    """Convert datetime.date/datetime.datetime values to ISO strings in-place."""
+    for k in list(obj.keys()):
+        v = obj[k]
+        if isinstance(v, (date, datetime)):
+            obj[k] = v.isoformat()
+    return obj
 from services.alert_service import compute_top_alert, compute_all_alerts
 from services.warnings import compute_plant_warnings
 
@@ -105,9 +125,15 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
            ORDER BY cs.next_due ASC""",
         (plant["id"],),
     )
-    plant["care_schedules"] = [dict(row) for row in sched_rows]
+    schedules = [dict(row) for row in sched_rows]
+    plant["care_schedules"] = schedules
 
-    plant["care_status"], _ = _compute_care_status(plant["care_schedules"], today)
+    plant["care_status"], _ = _compute_care_status(schedules, today)
+
+    # Convert dates to strings for Pydantic model
+    _coerce_dates(plant)
+    for s in schedules:
+        _coerce_dates(s)
 
     # Compute temp_status
     care_thresholds = plant.pop("care_thresholds", None)

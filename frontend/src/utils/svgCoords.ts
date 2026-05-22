@@ -7,14 +7,66 @@ export function screenToSVG(
   clientX: number,
   clientY: number
 ): { x: number; y: number } | null {
-  const ctm = svg.getScreenCTM()
-  if (!ctm) return null
-  const inverse = ctm.inverse()
-  const pt = svg.createSVGPoint()
-  pt.x = clientX
-  pt.y = clientY
-  const svgPt = pt.matrixTransform(inverse)
-  return { x: svgPt.x, y: svgPt.y }
+  const rect = svg.getBoundingClientRect()
+  const vb = svg.viewBox.baseVal
+  if (!vb || vb.width === 0 || vb.height === 0) return null
+
+  const relX = clientX - rect.left
+  const relY = clientY - rect.top
+
+  // Get CSS dimensions (before CSS transforms like rotation/scale)
+  const cssW = svg.clientWidth
+  const cssH = svg.clientHeight
+
+  let cssX = relX
+  let cssY = relY
+
+  // Detect CSS visual rotation by comparing pre-transform (clientWidth/clientHeight)
+  // with post-transform (getBoundingClientRect) dimensions.
+  // A 90-degree rotation swaps width ↔ height.
+  if (cssW > 0 && cssH > 0) {
+    const visualW = rect.width
+    const visualH = rect.height
+    // After rotate(-90deg): visual_W ≈ cssH, visual_H ≈ cssW
+    // So cssAspect × visualAspect ≈ (w/h) × (h/w) = 1
+    const cssAspect = cssW / cssH
+    const visualAspect = visualW / visualH
+    const isRotated90 = Math.abs(cssAspect * visualAspect - 1) < 0.5
+
+    if (isRotated90) {
+      // The SVG has a CSS rotation (rotate(-90deg) translateX(-100%) with
+      // transform-origin: top left). The full transform matrix M maps
+      // CSS space (x, y) → screen-relative (sx, sy):
+      //
+      //   Step 1: translate(-cssW, 0)  →  (x - cssW, y)
+      //   Step 2: rotate(-90deg)       →  (y, cssW - x)
+      //
+      // Visual bounding rect corners:
+      //   (0,0)       → (0, cssW)
+      //   (cssW, 0)   → (0, 0)
+      //   (cssW,cssH) → (cssH, 0)
+      //   (0, cssH)   → (cssH, cssW)
+      //
+      // Visual rect top-left is at (0, 0) in screen-relative space,
+      // spanning width=cssH, height=cssW.
+      //
+      // Inverse: given screen-relative (relX, relY):
+      //   relX = cssY          →  cssY = relX
+      //   relY = cssW - cssX   →  cssX = cssW - relY
+      cssX = cssW - relY
+      cssY = relX
+    }
+  }
+
+  // Map CSS-space coordinates to viewBox with preserveAspectRatio="xMidYMid meet"
+  const scale = Math.min(cssW / vb.width, cssH / vb.height)
+  const offsetX = (cssW - vb.width * scale) / 2
+  const offsetY = (cssH - vb.height * scale) / 2
+
+  return {
+    x: (cssX - offsetX) / scale,
+    y: (cssY - offsetY) / scale,
+  }
 }
 
 export function svgToObjectLocal(

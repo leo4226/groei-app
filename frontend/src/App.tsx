@@ -24,6 +24,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const PlanningCalendarPage = lazy(() => import('./pages/calendar/PlanningCalendarPage'))
 const LayoutEditorPage = lazy(() => import('./pages/LayoutEditorPage'))
 const MapSettingsPage = lazy(() => import('./pages/MapSettingsPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -76,6 +77,7 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
+  const isAdminPage = location.pathname.startsWith('/admin')
 
   useEffect(() => {
     if (getToken()) load()
@@ -93,7 +95,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <div className="flex flex-col min-h-dvh bg-bg">
+      <div className="flex flex-col h-dvh bg-bg overflow-hidden">
       {error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
           <span>{error}</span>
@@ -101,7 +103,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={`flex-1 ${!isLoginPage ? 'pb-20' : ''}`}>
+      <main className="flex-1 overflow-y-auto overscroll-contain">
         <SuspenseWrapper>
           <Routes>
             <Route
@@ -224,13 +226,21 @@ export default function App() {
                 </RequireAuth>
               }
             />
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth>
+                  <AdminPage />
+                </RequireAuth>
+              }
+            />
           </Routes>
         </SuspenseWrapper>
       </main>
 
-      {!isLoginPage && <BottomNav />}
+      {!isLoginPage && !isAdminPage && <BottomNav />}
 
-      {!isLoginPage && <HelpAssistant />}
+      {!isLoginPage && !isAdminPage && <HelpAssistant />}
 
       {showPlantPicker && (
         <PlantPickerSheet

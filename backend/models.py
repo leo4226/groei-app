@@ -103,9 +103,9 @@ class PlantOut(BaseModel):
     map_x: float | None = None
     map_y: float | None = None
     photo_path: str | None = None
-    acquired_date: str | None = None
+    acquired_date: date | None = None
     pot_size_cm: int | None = None
-    last_repotted: str | None = None
+    last_repotted: date | None = None
     container_id: int | None = None
     notes: str | None = None
     is_active: bool = True
@@ -116,7 +116,7 @@ class PlantOut(BaseModel):
     icon_key: str | None = None
     icon_requested: bool = False
     phase: str = 'established'
-    sown_date: str | None = None
+    sown_date: date | None = None
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []

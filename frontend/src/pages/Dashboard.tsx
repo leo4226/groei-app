@@ -181,11 +181,12 @@ export default function Dashboard() {
               {isLoading && <TaskSkeletons />}
               {!isLoading && totalTasks === 0 && <CalmEmptyState t={t} />}
               {!isLoading && dashboardV2 && totalTasks > 0 && (
-                <TodayGrid
-                  t={t}
-                  overdue={dashboardV2.overdue}
-                  dueToday={dashboardV2.due_today}
-                />
+          <TodayGrid
+            t={t}
+            overdue={dashboardV2.overdue}
+            dueToday={dashboardV2.due_today}
+            upcoming={dashboardV2.upcoming}
+          />
               )}
             </section>
 
@@ -216,9 +217,6 @@ export default function Dashboard() {
                   transition: 'border-color 0.15s',
                   boxSizing: 'border-box',
                 }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                    🚧 {t.dashboard.comingSoon}
-                  </div>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
                     🌿 {t.weeds.identifyCard.title}
                   </div>
@@ -239,10 +237,10 @@ export default function Dashboard() {
                   boxSizing: 'border-box',
                 }}>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
-                    📷 Foto-identificatie
+                    {t.identify.card.title || '📷 Photo identification'}
                   </div>
                   <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    Richt de camera op een plant om hem te identificeren.
+                    {t.identify.card.subtitle || 'Take a photo to identify a plant'}
                   </p>
                 </div>
               </Link>
@@ -253,23 +251,37 @@ export default function Dashboard() {
       </div>
 
       <style>{`
-        /* Identify cards: side-by-side on mobile, stacked in desktop sidebar */
+        /* Identify cards: full-width on mobile, side-by-side on tablet, stacked in desktop sidebar */
         .identify-cards-row {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           gap: 10px;
           margin-bottom: 18px;
+          width: calc(100% + 48px);
+          margin-left: -24px;
+          padding: 0 24px;
+          box-sizing: border-box;
+        }
+        @media (min-width: 721px) {
+          .identify-cards-row {
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            margin-left: 0;
+            padding: 0;
+          }
         }
         @media (min-width: 900px) {
-          .identify-cards-row {
-            grid-template-columns: 1fr;
-            gap: 0;
-          }
           .identify-cards-row > a {
             margin-bottom: 18px;
           }
           .identify-card {
             padding: 18px 18px !important;
+          }
+          .identify-cards-row {
+            grid-template-columns: 1fr;
+            width: 100%;
+            margin-left: 0;
+            padding: 0;
           }
           .dashboard-grid {
             grid-template-columns: 1fr 340px !important;
@@ -279,6 +291,68 @@ export default function Dashboard() {
           }
           .dashboard-sidebar {
             padding: 0 !important;
+          }
+        }
+        /* Weather card: fix overflow on small screens */
+        .weather-card-header {
+          padding: 16px 18px 6px;
+        }
+        .weather-card-header .condition-text {
+          font-size: 16px;
+        }
+        .weather-stats {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          border-top: 1px solid var(--color-border-soft);
+          border-bottom: 1px solid var(--color-border-soft);
+        }
+        .weather-stats-cell {
+          padding: 10px 4px;
+          text-align: center;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .weather-stats-cell:not(:last-child) {
+          border-right: 1px solid var(--color-border-soft);
+        }
+        .weather-stats-value {
+          font-family: var(--font-heading);
+          font-size: 16px;
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .weather-stats-label {
+          font-family: var(--font-mono);
+          font-size: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: var(--color-text-muted);
+        }
+        .weather-forecast {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          padding: 12px 8px 14px;
+        }
+        @media (max-width: 480px) {
+          .weather-card-header {
+            padding: 12px 14px 4px !important;
+          }
+          .weather-card-header .condition-text {
+            font-size: 14px !important;
+          }
+          .weather-stats {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .weather-stats-cell:nth-child(3) {
+            display: none !important;
+          }
+          .weather-stats-value {
+            font-size: 12px !important;
+          }
+          .weather-forecast {
+            padding: 8px 4px 10px !important;
           }
         }
       `}</style>
@@ -415,7 +489,7 @@ function DashboardHeader({
     : t.dashboard.almanac.onTrack
 
   return (
-    <header style={{
+    <header className="dashboard-header" style={{
       padding: '40px 24px 20px',
       borderBottom: '1px solid var(--color-border)',
       display: 'flex',
@@ -449,7 +523,7 @@ function DashboardHeader({
         </h1>
 
         {/* Lede */}
-        <p style={{
+        <p className="dashboard-lede" style={{
           fontFamily: 'var(--font-heading)', fontStyle: 'italic',
           fontSize: 15, lineHeight: 1.5, color: 'var(--color-text-soft)',
           maxWidth: 440, margin: '8px 0 16px 0',
@@ -514,7 +588,7 @@ function StatusBanner({ t, counts }: { t: Translations; counts: { total: number;
     }}>
       {cells.map((cell, i) => (
         <div key={cell.label} style={{
-          padding: '14px 16px', textAlign: 'center',
+          padding: '12px 16px 18px', textAlign: 'center',
           borderRight: i < cells.length - 1 ? '1px solid var(--color-border-soft)' : 'none',
         }}>
           <div style={{
@@ -1027,8 +1101,8 @@ function LocationGroup({
   )
 }
 
-function TodayGrid({ overdue, dueToday, t }: { overdue: CareTask[]; dueToday: CareTask[]; t: Translations }) {
-  const allDue = [...overdue, ...dueToday]
+function TodayGrid({ overdue, dueToday, upcoming, t }: { overdue: CareTask[]; dueToday: CareTask[]; upcoming: CareTask[]; t: Translations }) {
+  const allDue = [...overdue, ...dueToday, ...upcoming]
   const waterFeedTypes = new Set(['water', 'fertilize'])
   const waterFeedTasks = allDue.filter(task => waterFeedTypes.has(task.care_type))
   const attnTasks  = allDue.filter(task => !waterFeedTypes.has(task.care_type))
@@ -1287,11 +1361,11 @@ function WeatherIcon({ icon, size = 22 }: { icon: WeatherIcon; size?: number }) 
 function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translations }) {
   return (
     <div className="card weather-card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
-      <div className="weather-card-header" style={{ padding: '16px 18px 6px' }}>
+      <div className="weather-card-header">
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.weather}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
           {weather ? (
-            <><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.<br />
+            <><span className="condition-text"><em style={{ color: 'var(--color-overdue)', fontStyle: 'italic', fontWeight: 400 }}>{weather.currentTemp}°</em> — {weather.currentConditionNl}.</span><br />
             <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)', fontWeight: 400 }}>
               {t.dashboard.weather.tonight}: {weather.tonightMin}°
             </span></>
@@ -1300,7 +1374,7 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
       </div>
       {weather && (
         <>
-          <div className="weather-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderTop: '1px solid var(--color-border-soft)', borderBottom: '1px solid var(--color-border-soft)' }}>
+          <div className="weather-stats">
             {(() => {
               const need = dailyWaterNeedMm()
               const rainOk = weather.todayRainMm >= need
@@ -1310,13 +1384,13 @@ function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translati
                 { v: `${weather.windSpeedKmh} km/u`, l: 'Wind', color: 'var(--color-text)' },
               ]
               return cells.map((cell, i) => (
-              <div key={i} style={{ padding: '10px 0', textAlign: 'center', borderRight: i < 2 ? '1px solid var(--color-border-soft)' : 'none' }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, color: cell.color, display: 'block' }}>{cell.v}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)' }}>{cell.l}</span>
+              <div key={i} className="weather-stats-cell">
+                <span className="weather-stats-value" style={{ color: cell.color }}>{cell.v}</span>
+                <span className="weather-stats-label">{cell.l}</span>
               </div>
             ))})()}
           </div>
-          <div className="weather-forecast" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '12px 8px 14px' }}>
+          <div className="weather-forecast">
             {weather.forecast.map((day, i) => {
               const d = new Date(day.date)
               const dayLabel = d.toLocaleDateString(t.locale, { weekday: 'short' }).slice(0, 2).toLowerCase()

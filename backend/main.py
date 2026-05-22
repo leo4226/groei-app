@@ -16,6 +16,7 @@ from database import init_pool, close_pool
 from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
 from routers import plant_care, species, spots, icons
 from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
+from routers import admin_panel
 from routers import warnings as warnings_router
 from routers import plant_id as plant_id_router
 
@@ -53,6 +54,7 @@ app.include_router(species.router, prefix="/api")
 app.include_router(spots.router, prefix="/api")
 app.include_router(icons.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(admin_panel.router, prefix="/api")
 app.include_router(alerts.router, prefix="/api")
 app.include_router(weed_catalog.router, prefix="/api")
 app.include_router(weed_sightings.router, prefix="/api")

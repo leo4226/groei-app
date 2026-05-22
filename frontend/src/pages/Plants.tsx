@@ -55,6 +55,7 @@ export default function Plants() {
   const alertsOnly = searchParams.get('alerts') === '1'
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
 
   useEffect(() => {
     fetchIconCatalog().then(setIconCatalog).catch(() => {})
@@ -379,7 +380,7 @@ export default function Plants() {
             border: 'none', borderRadius: 100, padding: '6px 14px',
             cursor: 'pointer', whiteSpace: 'nowrap',
           }}>
-            + {t.plantsPage.addButton}
+            {t.plantsPage.addButton}
           </button>
         </div>
 
@@ -406,45 +407,144 @@ export default function Plants() {
           />
         </div>
 
-        {/* Single-row horizontally scrollable filter chips */}
-        <div style={{
-          display: 'flex', gap: 6, padding: '0 16px 10px',
-          overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
-          alignItems: 'center',
-        }} className="plants-mobile-filters">
-          {/* All */}
-          <FilterChip label={t.plantsPage.filterAll} active={!hasActiveFilters} onClick={clearFilters} compact />
-
-          {/* Locatie */}
-          <FilterChip label={t.plantsPage.filterHouse} count={huisCount}
-            active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} compact />
-          <FilterChip label={t.plantsPage.filterGarden} count={tuinCount}
-            active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} compact />
-
-          {/* Types */}
-          {Object.entries(PLANT_TYPE_LABELS).map(([key, label]) => {
-            const count = typeCounts[key] || 0
-            if (count === 0) return null
-            return (
-              <FilterChip key={key} label={label} compact
-                active={filterType === key}
-                onClick={() => setFilterType(filterType === key ? 'all' : key)}
-              />
-            )
-          })}
-
-          {/* Forms */}
-          {Object.entries(FORM_LABELS).map(([key, label]) => {
-            const count = formCounts[key] || 0
-            if (count === 0 || key === 'all') return null
-            return (
-              <FilterChip key={key} label={label} compact
-                active={filterForm === key} variant="terra"
-                onClick={() => setFilterForm(filterForm === key ? 'all' : key)}
-              />
-            )
-          })}
+        {/* Filter button — opens bottom sheet */}
+        <div style={{ padding: '0 16px 10px' }}>
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 100,
+              border: '1px solid var(--color-border)',
+              background: hasActiveFilters ? 'var(--color-primary)' : 'transparent',
+              color: hasActiveFilters ? 'var(--color-surface)' : 'var(--color-text-soft)',
+              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            >
+              <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+              <circle cx="4" cy="14" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="20" cy="16" r="2" />
+            </svg>
+            {t.plantsPage.filterButton}
+            {hasActiveFilters && (
+              <span style={{
+                background: 'var(--color-surface)', color: 'var(--color-primary)',
+                fontSize: 9, fontWeight: 600, borderRadius: 20,
+                padding: '1px 6px', lineHeight: '16px',
+              }}>
+                {(filterArea !== 'all' ? 1 : 0) + (filterType !== 'all' ? 1 : 0) + (filterForm !== 'all' ? 1 : 0)}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Filter bottom sheet */}
+        {showFilterSheet && (
+          <>
+            {/* Overlay */}
+            <div
+              onClick={() => setShowFilterSheet(false)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 200,
+                background: 'rgba(0,0,0,0.4)',
+              }}
+            />
+            {/* Sheet */}
+            <div
+              style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 210,
+                background: 'var(--color-surface)',
+                borderTopLeftRadius: 24, borderTopRightRadius: 24,
+                borderTop: '2px solid var(--color-primary)',
+                boxShadow: '0 -8px 30px rgba(0,0,0,0.15)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+                maxHeight: '70vh', overflowY: 'auto',
+                animation: 'slide-up 0.25s ease-out',
+              }}
+            >
+              {/* Drag handle */}
+              <div style={{
+                width: 40, height: 4,
+                background: 'var(--color-border)',
+                borderRadius: 999, margin: '12px auto 8px',
+              }} />
+              <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* Location */}
+                <div>
+                  <p style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10,
+                    textTransform: 'uppercase', letterSpacing: '0.2em',
+                    color: 'var(--color-text-muted)', margin: '0 0 8px 0',
+                  }}>
+                    {t.plantsPage.filterLocation}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <FilterChip label={t.plantsPage.filterAll} count={plants.length}
+                      active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
+                    <FilterChip label={t.plantsPage.filterHouse} count={huisCount}
+                      active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
+                    <FilterChip label={t.plantsPage.filterGarden} count={tuinCount}
+                      active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
+                  </div>
+                </div>
+
+                {/* Type */}
+                <div>
+                  <p style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10,
+                    textTransform: 'uppercase', letterSpacing: '0.2em',
+                    color: 'var(--color-text-muted)', margin: '0 0 8px 0',
+                  }}>
+                    {t.plantsPage.filterType}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <FilterChip label={t.plantsPage.filterAll} count={typeCounts.all}
+                      active={filterType === 'all'} onClick={() => setFilterType('all')} />
+                    {Object.entries(PLANT_TYPE_LABELS).map(([key, label]) => {
+                      const count = typeCounts[key] || 0
+                      if (count === 0) return null
+                      return (
+                        <FilterChip key={key} label={label} count={count}
+                          active={filterType === key}
+                          onClick={() => setFilterType(filterType === key ? 'all' : key)}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Form */}
+                <div>
+                  <p style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10,
+                    textTransform: 'uppercase', letterSpacing: '0.2em',
+                    color: 'var(--color-text-muted)', margin: '0 0 8px 0',
+                  }}>
+                    {t.plantsPage.filterForm}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(FORM_LABELS).map(([key, label]) => {
+                      const count = formCounts[key] || 0
+                      const disabled = count === 0 && key !== 'all'
+                      return (
+                        <FilterChip key={key} label={label} count={count}
+                          active={filterForm === key}
+                          onClick={() => setFilterForm(filterForm === key ? 'all' : key)}
+                          disabled={disabled} variant="terra"
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Main content */}

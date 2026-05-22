@@ -23,42 +23,42 @@ export default function LeonAvatar({ size = 100, className }: Props) {
       {/* Shirt body */}
       <rect x="24" y="92" width="52" height="8" rx="2" fill="#4A7C4E" />
 
-      {/* Head */}
-      <circle cx="50" cy="48" r="26" fill="#E8C09A" />
+      {/* Head — lowered to connect to neck */}
+      <circle cx="50" cy="58" r="26" fill="#E8C09A" />
       {/* Cheek highlights */}
-      <ellipse cx="36" cy="52" rx="5" ry="3" fill="#F5D8B8" opacity="0.5" />
-      <ellipse cx="64" cy="52" rx="5" ry="3" fill="#F5D8B8" opacity="0.5" />
+      <ellipse cx="36" cy="62" rx="5" ry="3" fill="#F5D8B8" opacity="0.5" />
+      <ellipse cx="64" cy="62" rx="5" ry="3" fill="#F5D8B8" opacity="0.5" />
 
       {/* Blond curly hair */}
       <path
-        d="M 26 40 Q 24 28 32 22 Q 38 18 44 18 Q 48 16 52 18 Q 58 16 64 20 Q 72 24 74 32 Q 76 40 74 42 Q 72 34 66 28 Q 60 22 50 20 Q 40 22 34 28 Q 28 34 26 40 Z"
+        d="M 26 50 Q 24 38 32 32 Q 38 28 44 28 Q 48 26 52 28 Q 58 26 64 30 Q 72 34 74 42 Q 76 50 74 52 Q 72 44 66 38 Q 60 32 50 30 Q 40 32 34 38 Q 28 44 26 50 Z"
         fill="#E8C06A"
       />
       {/* Hair curls detail */}
-      <ellipse cx="34" cy="28" rx="5" ry="6" fill="#D4A84E" />
-      <ellipse cx="48" cy="22" rx="6" ry="5" fill="#D4A84E" />
-      <ellipse cx="62" cy="26" rx="5" ry="6" fill="#D4A84E" />
-      <ellipse cx="70" cy="34" rx="4" ry="5" fill="#D4A84E" />
+      <ellipse cx="34" cy="38" rx="5" ry="6" fill="#D4A84E" />
+      <ellipse cx="48" cy="32" rx="6" ry="5" fill="#D4A84E" />
+      <ellipse cx="62" cy="36" rx="5" ry="6" fill="#D4A84E" />
+      <ellipse cx="70" cy="44" rx="4" ry="5" fill="#D4A84E" />
       {/* Hair highlight */}
-      <ellipse cx="42" cy="24" rx="3" ry="2" fill="#F0D48A" opacity="0.6" />
-      <ellipse cx="56" cy="22" rx="3" ry="2" fill="#F0D48A" opacity="0.6" />
+      <ellipse cx="42" cy="34" rx="3" ry="2" fill="#F0D48A" opacity="0.6" />
+      <ellipse cx="56" cy="32" rx="3" ry="2" fill="#F0D48A" opacity="0.6" />
 
       {/* Eyes */}
-      <circle cx="40" cy="44" r="3" fill="#4A3429" />
-      <circle cx="60" cy="44" r="3" fill="#4A3429" />
-      <circle cx="41" cy="43" r="1" fill="#FFF" opacity="0.6" />
-      <circle cx="61" cy="43" r="1" fill="#FFF" opacity="0.6" />
+      <circle cx="40" cy="54" r="3" fill="#4A3429" />
+      <circle cx="60" cy="54" r="3" fill="#4A3429" />
+      <circle cx="41" cy="53" r="1" fill="#FFF" opacity="0.6" />
+      <circle cx="61" cy="53" r="1" fill="#FFF" opacity="0.6" />
 
       {/* Eyebrows: evil arched */}
       <path
-        d="M 33 38 Q 36 34 42 37"
+        d="M 33 48 Q 36 44 42 47"
         stroke="#D4A84E"
         strokeWidth="1.8"
         fill="none"
         strokeLinecap="round"
       />
       <path
-        d="M 58 37 Q 64 34 67 38"
+        d="M 58 47 Q 64 44 67 48"
         stroke="#D4A84E"
         strokeWidth="1.8"
         fill="none"
@@ -67,11 +67,11 @@ export default function LeonAvatar({ size = 100, className }: Props) {
 
       {/* Mustache */}
       <path
-        d="M 36 52 Q 40 56 50 56 Q 54 56 58 54 Q 62 52 64 52 Q 62 60 50 60 Q 40 60 36 52 Z"
+        d="M 36 62 Q 40 66 50 66 Q 54 66 58 64 Q 62 62 64 62 Q 62 70 50 70 Q 40 70 36 62 Z"
         fill="#D4A84E"
       />
       <path
-        d="M 40 54 Q 50 58 58 54"
+        d="M 40 64 Q 50 68 58 64"
         stroke="#C49A3E"
         strokeWidth="0.8"
         fill="none"
@@ -80,7 +80,7 @@ export default function LeonAvatar({ size = 100, className }: Props) {
 
       {/* Subtle smile behind stache */}
       <path
-        d="M 44 62 Q 50 66 56 62"
+        d="M 44 72 Q 50 76 56 72"
         stroke="#C48960"
         strokeWidth="1.5"
         fill="none"
@@ -88,7 +88,7 @@ export default function LeonAvatar({ size = 100, className }: Props) {
       />
 
       {/* Highlight on nose */}
-      <path d="M 48 47 Q 50 46 52 47 L 51 51 Q 50 52 49 51 Z" fill="#C48960" />
+      <path d="M 48 57 Q 50 56 52 57 L 51 61 Q 50 62 49 61 Z" fill="#C48960" />
     </svg>
   )
 }

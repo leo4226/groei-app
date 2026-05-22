@@ -541,6 +541,10 @@ export const en: Translations = {
       notice: 'Photos are sent to Pl@ntNet for identification.',
       ack: 'OK, got it',
     },
+    card: {
+      title: '📷 Photo identification',
+      subtitle: 'Take a photo to identify a plant',
+    },
   },
 
   editPlant: {
@@ -661,6 +665,7 @@ export const en: Translations = {
     countCategories: 'Categories',
     searchPlaceholder: 'Search by name or species…',
     addButton: '+ Add',
+    filterButton: 'Filters',
     filterLocation: 'Location',
     filterType: 'Type',
     filterForm: 'Form',
@@ -700,6 +705,7 @@ export const en: Translations = {
     lastFertilized: (date) => `Last fertilized: ${date}`,
     recordFertilizing: 'Record garden fertilizing',
     spotInspectorHint: 'Turn on the sun map and tap a spot in the garden',
+    more: 'More',
     addPot: 'Add pot',
     deleted: (label) => `Deleted: ${label}`,
     undo: 'Undo',
@@ -797,6 +803,7 @@ export const en: Translations = {
   help: {
     title: 'Need help?',
     close: 'Close',
+    dismiss: 'Don\'t show again',
     tips: {
       dashboard: 'An overview of all your gardens and what needs doing today.  👀',
       plants: 'All your plants in one list. Tap one for details and care.',

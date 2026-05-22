@@ -541,6 +541,10 @@ export const nl: Translations = {
       notice: "Foto's worden naar Pl@ntNet gestuurd voor identificatie.",
       ack: 'OK, begrepen',
     },
+    card: {
+      title: '📷 Foto-identificatie',
+      subtitle: 'Maak een foto om een plant te identificeren',
+    },
   },
 
   editPlant: {
@@ -661,6 +665,7 @@ export const nl: Translations = {
     countCategories: 'Categorieën',
     searchPlaceholder: 'Zoek op naam of soort…',
     addButton: '+ Toevoegen',
+    filterButton: 'Filters',
     filterLocation: 'Locatie',
     filterType: 'Type',
     filterForm: 'Vorm',
@@ -700,6 +705,7 @@ export const nl: Translations = {
     lastFertilized: (date) => `Laatst bemest: ${date}`,
     recordFertilizing: 'Registreer tuin bemesting',
     spotInspectorHint: 'Zet de zonkaart aan en tik op een plek in de tuin',
+    more: 'Meer',
     addPot: 'Pot toevoegen',
     deleted: (label) => `Verwijderd: ${label}`,
     undo: 'Ongedaan maken',
@@ -795,18 +801,19 @@ export const nl: Translations = {
   },
 
   help: {
-    title: 'Hulp nodig?',
-    close: 'Sluiten',
+    title: 'Hulp? Waarom zou ik helpen',
+    close: 'Rot op',
+    dismiss: 'Laat me met rust',
     tips: {
-      dashboard: 'Hier zie je een overzicht van al je tuinen en wat er vandaag moet gebeuren.  👀',
-      plants: 'Al je planten op een rij. Tik er een aan voor details en verzorging.',
-      maps: 'Bekijk je tuin op de kaart. Sleep om te pannen, knijp om te zoomen.',
-      calendar: 'Je verzorgingsschema op de kalender. Alle taken die gepland staan.',
-      settings: 'Pas je profiel aan. Beheer je abonnement en app-voorkeuren.',
-      editor: 'Teken muren, plaats deuren/ramen en voeg schaduwobjecten toe. Dubbeltik een object om te verwijderen.',
-      plantDetail: '"Verzorging" toont het schema — tik taken af als je ze gedaan hebt.',
-      addPlant: 'Kies een plant uit de database of typ een eigen naam. Voeg plek en foto toe!',
-    },
+      dashboard: 'Kijk je nou naar een leeg scherm? Wat een verrassing.',
+      plants: 'Wist je dat je planten kunt toevoegen via de + knop? Of wil je dat ik het voordoe?',
+      maps: 'Je tuin ziet er vanaf hier een stuk beter uit dan in het echt.',
+      calendar: 'Leuk hoor, een schema. Alsof je je eraan gaat houden.',
+      settings: 'Instellingen veranderen, niks verandert eigenlijk.',
+      editor: 'Veel slepen, weinig voorstellen. Veel succes.',
+      plantDetail: 'Staat ie er nog? Verrassend.',
+      addPlant: 'Oh, je wilt nóg een plant laten doodgaan?',
+    }
   },
 
   common: {

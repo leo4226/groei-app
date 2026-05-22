@@ -10,7 +10,7 @@ from auth import get_current_account
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
 from routers.icons import find_variant
 from services.scheduling import calculate_next_due
-from services.plant_reader import enrich_plant_full, _compute_care_status
+from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from services.storage import build_storage_from_env
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
@@ -87,6 +87,7 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
                 ORDER BY cs.plant_id, cs.next_due ASC""",
             plant_ids,
         )
+    if sched_rows:
         by_plant: dict[int, list] = {}
         for row in sched_rows:
             r = dict(row)
@@ -96,10 +97,14 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
         by_plant = {}
 
     for plant in plants:
-        schedules = by_plant.get(plant["id"], [])
-        plant["care_schedules"] = schedules
+        pid = plant["id"]
+        schedules = by_plant.get(pid, [])
         plant["care_status"], _ = _compute_care_status(schedules, today)
-        plant["temp_status"] = "comfortable"
+        # Convert dates to strings for Pydantic model
+        _coerce_dates(plant)
+        for s in schedules:
+            _coerce_dates(s)
+        plant["care_schedules"] = schedules
         if plant.get("phenology_json"):
             plant["phenology"] = json.loads(plant.pop("phenology_json"))
         else:
@@ -131,24 +136,23 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, household_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
-         str(data.acquired_date) if data.acquired_date else None,
+         data.acquired_date,
          data.pot_size_cm, data.notes,
          data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key,
-         data.phase, str(data.sown_date) if data.sown_date else None, account["household_id"]),
+         data.phase, data.sown_date, account["household_id"]),
     )
     plant_id = cursor.lastrowid
 
-    # Create care schedules
+    # Create care schedules — set next_due to today so tasks appear immediately
     for sched in data.care_schedules:
-        next_due = calculate_next_due(
-            None, sched.interval_days, sched.season_adjust
-        )
+        from datetime import date as _date_today
+        next_due = _date_today.today()
         await db.execute(
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, season_adjust, next_due, notes)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (plant_id, sched.care_type, sched.interval_days,
-             sched.season_adjust, str(next_due), sched.notes),
+             sched.season_adjust, next_due, sched.notes),
         )
 
     await db.commit()

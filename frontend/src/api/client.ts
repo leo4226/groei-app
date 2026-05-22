@@ -251,3 +251,75 @@ export async function createWeedSighting(
 ): Promise<import('../types').WeedSightingOut> {
   return api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body })
 }
+
+// ── Admin panel ───────────────────────────────────────────────────────────────
+
+export interface AdminUserRow {
+  id: number
+  name: string
+  email: string
+  created_at: string
+  household_id: number
+  household_name: string
+  plant_count: number
+  map_count: number
+  last_activity: string | null
+}
+
+export interface AdminActivityEvent {
+  kind: string
+  label: string
+  household: string
+  ts: string | null
+}
+
+export interface AdminOverview {
+  total_accounts: number
+  total_plants: number
+  total_maps: number
+  missing_icons: number
+  recent_accounts: AdminUserRow[]
+  recent_activity: AdminActivityEvent[]
+}
+
+export interface AdminPlantRow {
+  id: number
+  name: string
+  species: string | null
+  icon_key: string | null
+  phase: string
+  icon_requested: boolean
+  has_thresholds: boolean
+  household_name: string
+  created_at: string
+}
+
+export interface AdminSpeciesRow {
+  id: number
+  common_name_nl: string
+  latin_name: string | null
+  has_thresholds: boolean
+  has_latin_name: boolean
+  plant_count: number
+}
+
+export const fetchAdminOverview = () =>
+  api<AdminOverview>('GET', '/admin-panel/overview')
+
+export const fetchAdminUsers = () =>
+  api<AdminUserRow[]>('GET', '/admin-panel/users')
+
+export const fetchAdminPlants = () =>
+  api<AdminPlantRow[]>('GET', '/admin-panel/plants')
+
+export const fetchAdminSpecies = () =>
+  api<AdminSpeciesRow[]>('GET', '/admin-panel/species')
+
+export const fetchAdminActivity = () =>
+  api<AdminActivityEvent[]>('GET', '/admin-panel/activity')
+
+export const runBackfillThresholds = () =>
+  api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds')
+
+export const runBackfillCareSchedules = () =>
+  api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules')

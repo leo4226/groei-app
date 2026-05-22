@@ -20,15 +20,17 @@ function detectPage(pathname: string): PageKey {
 }
 
 const BUBBLE_TEXTS: Record<PageKey, string[]> = {
-  dashboard: ['Kijk eens aan! 🌱', 'Hulp nodig?', 'Ben je er klaar voor?'],
-  plants: ['Planten genoeg!', 'Ziet er groen uit!', 'Allemaal in bloei?'],
-  maps: ['Navigeren maar!', 'Waar staan je planten?', 'Lekker aan het tuinieren?'],
-  calendar: ['Plannen is het halve werk!', 'Op schema blijven!'],
-  settings: ['Instellingen naar wens?', 'Alles naar je zin?'],
-  editor: ['Tijd om te tekenen!', 'Creatief bezig?', 'Zon of schaduw?'],
-  plantDetail: ['Mooie plant!', 'Lekker aan het verzorgen?', 'Ziet er gezond uit!'],
-  addPlant: ['Nieuwe aanwinst?', 'Welke plant wordt het?', 'Another one! 🌿'],
+  dashboard: ['Nou, weer wakker?', 'Mag ik iets voor je doen? Nee? Mooi.', 'Je planten kijken verdrietig.', 'Wist je dat Leon de grappigste jaargenoot is? Nou ik niet.'],
+  plants: ['Zoveel planten, zoveel verwaarlozing.', 'Kijk ze nou toch…', 'De helft gaat het niet redden.'],
+  maps: ['Weet jij eigenlijk wel waar je tuin is?', 'Verdwaald? Weer?', 'Je kaart klopt voor geen meter.'],
+  calendar: ['Alsof je je hieraan gaat houden.', 'Veel succes met die planning.', 'Haha, leuk geprobeerd.'],
+  settings: ['Alsof instellingen je gaat helpen.', 'Veel klikken, niks veranderen.', 'Gaat het al beter? Nee.'],
+  editor: ['Nog meer muren optrekken?', 'Tekenen kan je ook niet.', 'Dit wordt vast weer een rommeltje.'],
+  plantDetail: ['Nou… doe je best maar.', 'Ziet eruit alsof je water geven vergeten bent.', 'Die had beter dood kunnen zijn.'],
+  addPlant: ['Nog een plant om te verwaarlozen?', 'Oh nee hè, nog een.', 'Deze gaat ook dood hoor.'],
 }
+
+const DISMISS_KEY = 'floreren_help_dismissed'
 
 export default function HelpAssistant() {
   const t = useT()
@@ -37,9 +39,18 @@ export default function HelpAssistant() {
   const [bubble, setBubble] = useState('')
   const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [bubbleVisible, setBubbleVisible] = useState(false)
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === 'true')
 
   const pageKey = detectPage(location.pathname)
   const tip = t.help.tips[pageKey]
+
+  // If dismissed, render nothing
+  if (dismissed) return null
+
+  function handleDismiss() {
+    localStorage.setItem(DISMISS_KEY, 'true')
+    setDismissed(true)
+  }
 
   // Show a random speech bubble every ~15s while the sheet is closed
   useEffect(() => {
@@ -68,15 +79,38 @@ export default function HelpAssistant() {
 
   return (
     <>
-      {/* Speech bubble */}
+      {/* Speech bubble — to the left of Leonnetje (who's on the right) */}
       {bubbleVisible && !open && (
-        <div className="fixed bottom-24 right-4 z-[100] animate-slide-up">
-          <div className="relative bg-surface border border-border rounded-2xl px-4 py-2.5 shadow-lg max-w-[200px]">
-            <p className="text-sm text-text-soft leading-snug">{bubble}</p>
-            {/* Triangle pointing down */}
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 100,
+            right: 72,
+            zIndex: 100,
+            animation: 'slide-up 0.25s ease-out',
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 16,
+              padding: '10px 16px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              maxWidth: 200,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-soft)', lineHeight: 1.4 }}>{bubble}</p>
+            {/* Triangle pointing right (towards avatar) */}
             <div
-              className="absolute -bottom-[6px] right-6 w-3 h-3 bg-surface border-r border-b border-border rotate-45"
-              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+              style={{
+                position: 'absolute', right: -6, top: '50%', transform: 'translateY(-50%) rotate(-45deg)',
+                width: 12, height: 12,
+                background: 'var(--color-surface)',
+                borderRight: '1px solid var(--color-border)',
+                borderTop: '1px solid var(--color-border)',
+              }}
             />
           </div>
         </div>
@@ -116,7 +150,7 @@ export default function HelpAssistant() {
                   {t.help.title}
                 </p>
                 <p className="text-xs text-text-muted font-heading italic">
-                  — Je persoonlijke plantenmaatje
+                  — Je persoonlijke plantenpestkop
                 </p>
               </div>
             </div>
@@ -140,6 +174,14 @@ export default function HelpAssistant() {
               className="w-full py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:opacity-90 transition-opacity"
             >
               {t.help.close}
+            </button>
+
+            {/* Dismiss permanently */}
+            <button
+              onClick={handleDismiss}
+              className="text-xs text-text-muted/60 hover:text-text-muted transition-colors text-center underline underline-offset-2"
+            >
+              {t.help.dismiss}
             </button>
           </div>
         </div>
