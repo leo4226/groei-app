@@ -8,6 +8,7 @@ import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { Analytics } from '@vercel/analytics/react'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -105,138 +106,140 @@ export default function App() {
       )}
 
       <main className="flex-1 overflow-y-auto overscroll-contain">
-        <SuspenseWrapper>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Navigate to={getToken() ? '/dashboard' : '/login'} replace />
-              }
-            />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route
-              path="/maps"
-              element={
-                <RequireAuth>
-                  <MapRedirect />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/maps/:id/edit-layout"
-              element={
-                <RequireAuth>
-                  <LayoutEditorPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/maps/:id/settings"
-              element={
-                <RequireAuth>
-                  <MapSettingsPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/map/:slug"
-              element={
-                <RequireAuth>
-                  <MapPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <RequireAuth>
-                  <Dashboard />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/plants"
-              element={
-                <RequireAuth>
-                  <Plants />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/plants/add"
-              element={
-                <RequireAuth>
-                  <AddPlant />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/plants/:id"
-              element={
-                <RequireAuth>
-                  <PlantDetail />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/plants/:id/edit"
-              element={
-                <RequireAuth>
-                  <EditPlant />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/plants/:id/care"
-              element={
-                <RequireAuth>
-                  <PlantCareDetail />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/identify"
-              element={
-                <RequireAuth>
-                  <IdentifyPlantPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/weeds/identify"
-              element={
-                <RequireAuth>
-                  <IdentifyWeedPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/calendar"
-              element={
-                <RequireAuth>
-                  <PlanningCalendarPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <RequireAuth>
-                  <Settings />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth>
-                  <AdminPage />
-                </RequireAuth>
-              }
-            />
-          </Routes>
-        </SuspenseWrapper>
+        <ErrorBoundary>
+          <SuspenseWrapper>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Navigate to={getToken() ? '/dashboard' : '/login'} replace />
+                }
+              />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route
+                path="/maps"
+                element={
+                  <RequireAuth>
+                    <MapRedirect />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/maps/:id/edit-layout"
+                element={
+                  <RequireAuth>
+                    <LayoutEditorPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/maps/:id/settings"
+                element={
+                  <RequireAuth>
+                    <MapSettingsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/map/:slug"
+                element={
+                  <RequireAuth>
+                    <MapPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireAuth>
+                    <Dashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants"
+                element={
+                  <RequireAuth>
+                    <Plants />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants/add"
+                element={
+                  <RequireAuth>
+                    <AddPlant />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants/:id"
+                element={
+                  <RequireAuth>
+                    <PlantDetail />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants/:id/edit"
+                element={
+                  <RequireAuth>
+                    <EditPlant />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants/:id/care"
+                element={
+                  <RequireAuth>
+                    <PlantCareDetail />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/identify"
+                element={
+                  <RequireAuth>
+                    <IdentifyPlantPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/weeds/identify"
+                element={
+                  <RequireAuth>
+                    <IdentifyWeedPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <RequireAuth>
+                    <PlanningCalendarPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <Settings />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth>
+                    <AdminPage />
+                  </RequireAuth>
+                }
+              />
+            </Routes>
+          </SuspenseWrapper>
+        </ErrorBoundary>
       </main>
 
       {!isLoginPage && !isAdminPage && <BottomNav />}

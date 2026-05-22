@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import time
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -12,6 +13,51 @@ from database import db_dep
 from auth import get_current_account
 from services.plant_id import identify, PlantIdQuotaExceeded, PlantIdServiceError
 from services.storage import build_storage_from_env
+
+
+_ADMIN_EMAIL = "leon_korbee@hotmail.com"
+_DAILY_QUOTA = 20
+
+
+async def _check_quota(db, account: dict) -> str | None:
+    """Check daily PlantNet quota for a non-admin account.
+
+    Returns the account email if admin (unlimited), None otherwise.
+    Raises HTTPException 429 if quota exceeded.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT email FROM accounts WHERE id = ?", (account["account_id"],)
+    )
+    if not rows:
+        raise HTTPException(status_code=403, detail="Account not found")
+
+    email = rows[0]["email"]
+    if email == _ADMIN_EMAIL:
+        return email  # admin = unlimited
+
+    today = date.today().isoformat()
+    quota_rows = await db.execute_fetchall(
+        "SELECT count FROM plantnet_quota WHERE account_id = ? AND date = ?",
+        (account["account_id"], today),
+    )
+    used = quota_rows[0]["count"] if quota_rows else 0
+    if used >= _DAILY_QUOTA:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Je hebt vandaag al {_DAILY_QUOTA} identificaties gebruikt. Morgen weer!",
+        )
+    return None
+
+
+async def _increment_quota(db, account_id: int) -> None:
+    """Increment the daily quota counter for this account."""
+    today = date.today().isoformat()
+    await db.execute_fetchall(
+        """INSERT INTO plantnet_quota (account_id, date, count)
+           VALUES (?, ?, 1)
+           ON CONFLICT (account_id, date) DO UPDATE SET count = count + 1""",
+        (account_id, today),
+    )
 
 
 router = APIRouter(prefix="/plants", tags=["plant-id"])
@@ -61,18 +107,26 @@ async def identify_endpoint(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
+    # 1. Validate image
     image_bytes = await image.read()
     if len(image_bytes) > _MAX_IMAGE_BYTES:
         raise HTTPException(status_code=400, detail="Afbeelding te groot (max 5 MB)")
     if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
 
+    # 2. Check daily quota (admin = unlimited)
+    await _check_quota(db, account)
+
+    # 3. Call PlantNet API
     try:
         candidates = await identify(image_bytes)
     except PlantIdQuotaExceeded:
         raise HTTPException(status_code=503, detail="Identificatie tijdelijk niet beschikbaar")
     except PlantIdServiceError:
         raise HTTPException(status_code=502, detail="Kon niet verbinden met identificatieservice")
+
+    # 4. Increment quota counter on success
+    await _increment_quota(db, account["account_id"])
 
     if not candidates or candidates[0].confidence < _MIN_CONFIDENCE_FOR_RESULT:
         return IdentifyResponse(candidates=[], low_confidence=False)

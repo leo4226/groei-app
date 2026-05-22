@@ -114,7 +114,9 @@ export default function EditorLegendPanel({
                       {t.editor.zones[type]?.name ?? type}
                     </div>
                     <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                      {t.editor.zones[type]?.description ?? ''}
+                      {(type === 'structure' && mapType === 'outdoor'
+                        ? t.editor.zones['structureGarden']
+                        : t.editor.zones[type])?.description ?? ''}
                     </div>
                   </div>
                 </button>

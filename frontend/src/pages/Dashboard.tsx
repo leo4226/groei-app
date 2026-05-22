@@ -1203,6 +1203,8 @@ function EmptyCol({ t }: { t: Translations }) {
 
 function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
   const markCareDone = useFloreren(s => s.markCareDone)
+  const plants = useFloreren(s => s.plants)
+  const iconKey = plants.find(p => p.id === task.plant_id)?.icon_key ?? null
   const careLabel = t.care[task.care_type as keyof typeof t.care] ?? task.care_type
   const isOverdue = task.days_overdue > 0
 
@@ -1229,7 +1231,9 @@ function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
         {task.plant_photo ? (
           <img src={task.plant_photo} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', display: 'block', position: 'relative' }} />
         ) : (
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)' }} />
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            {iconKey && <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
+          </div>
         )}
       </div>
 

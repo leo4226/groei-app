@@ -14,12 +14,22 @@ export function screenToSVG(
   const relX = clientX - rect.left
   const relY = clientY - rect.top
 
-  // Get CSS dimensions (before CSS transforms like rotation/scale)
-  // Prefer clientWidth/clientHeight; fall back to getBoundingClientRect for
-  // browsers where SVG clientWidth returns 0 (rare but possible on mobile).
-  let cssW = svg.clientWidth
-  let cssH = svg.clientHeight
+  // Get CSS dimensions using getComputedStyle — this ALWAYS reflects the
+  // pre-transform computed pixel values, unlike clientWidth/clientHeight
+  // which can return post-transform (rotated) dimensions on some mobile
+  // browsers (notably iOS Safari / WebKit).
+  //
+  // parseFloat strips the "px" suffix, and fallback values (NaN → 0)
+  // pair with the rect-based fallback below.
+  let cssW = parseFloat(window.getComputedStyle(svg).width)
+  let cssH = parseFloat(window.getComputedStyle(svg).height)
+
+  // getComputedStyle returns the CSS logical dimensions, so once we have
+  // them reliably, the rotation detection below is correct on all browsers.
   if (!cssW || !cssH) {
+    // Last-resort fallback: some older mobile browsers report 0 for SVG
+    // computed dimensions. Use the visual rect as a proxy — without rotation
+    // detection, coordinates will be slightly off but at least functional.
     cssW = rect.width
     cssH = rect.height
   }
@@ -27,7 +37,7 @@ export function screenToSVG(
   let cssX = relX
   let cssY = relY
 
-  // Detect CSS visual rotation by comparing pre-transform (clientWidth/clientHeight)
+  // Detect CSS visual rotation by comparing pre-transform (getComputedStyle)
   // with post-transform (getBoundingClientRect) dimensions.
   // A 90-degree rotation swaps width ↔ height.
   // After rotate(-90deg): rect.width ≈ cssH, rect.height ≈ cssW
