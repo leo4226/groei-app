@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 
 interface Props {
   children: ReactNode
@@ -10,14 +11,35 @@ interface State {
   error: Error | null
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+/**
+ * Wraps ErrorBoundary so it can consume the router location hook.
+ * Resets the error boundary on every route change so a stale error
+ * from a previous page doesn't persist.
+ */
+export function ErrorBoundary({ children, fallback }: Props) {
+  const location = useLocation()
+  return <ErrorBoundaryImpl locationKey={location.key} fallback={fallback}>{children}</ErrorBoundaryImpl>
+}
+
+interface ImplProps extends Props {
+  locationKey: string
+}
+
+class ErrorBoundaryImpl extends Component<ImplProps, State> {
+  constructor(props: ImplProps) {
     super(props)
     this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidUpdate(prevProps: ImplProps) {
+    if (prevProps.locationKey !== this.props.locationKey) {
+      // Clear error state when navigating to a new page
+      this.setState({ hasError: false, error: null })
+    }
   }
 
   handleRetry = () => {

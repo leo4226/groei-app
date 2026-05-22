@@ -8,7 +8,7 @@ import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { Analytics } from '@vercel/analytics/react'
-import ErrorBoundary from './components/ErrorBoundary'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -46,22 +46,22 @@ function MapRedirect() {
   const maps = useFloreren((s) => s.maps)
   const loadMaps = useFloreren((s) => s.loadMaps)
   const isLoading = useFloreren((s) => s.isLoading)
-  const navigate = useNavigate()
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(maps.length > 0)
 
+  // Load maps on mount if not already loaded
   useEffect(() => {
-    if (maps.length > 0) {
-      const indoor = maps.find((m) => m.map_type === 'indoor')
-      if (indoor) {
-        navigate(`/map/${indoor.slug}`, { replace: true })
-      } else if (maps[0]) {
-        navigate(`/map/${maps[0].slug}`, { replace: true })
-      }
-      setReady(true)
-    } else if (!isLoading) {
+    if (maps.length === 0 && !isLoading) {
       loadMaps().then(() => setReady(true))
     }
-  }, [maps, isLoading, loadMaps, navigate])
+  }, [isLoading, loadMaps, maps.length])
+
+  // If maps are already loaded, redirect synchronously in render —
+  // no flash of a loading state.
+  if (maps.length > 0) {
+    const indoor = maps.find((m) => m.map_type === 'indoor')
+    const target = indoor || maps[0]
+    return <Navigate to={`/map/${target.slug}`} replace />
+  }
 
   if (!ready) {
     return <div className="p-6 text-text-muted text-center">Loading maps…</div>

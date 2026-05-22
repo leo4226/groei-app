@@ -1,10 +1,15 @@
+import logging
+import traceback
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pathlib import Path
 import os
+
+logging.basicConfig(level=logging.INFO)
+_log = logging.getLogger("floreren")
 
 try:
     from dotenv import load_dotenv
@@ -39,6 +44,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global exception handler — catches all unhandled exceptions so the API
+# always returns a proper JSON error with CORS headers instead of a raw 500.
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    _log.error("Unhandled exception: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 # Mount routers
 app.include_router(users.router, prefix="/api")

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { useRef, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
@@ -67,6 +67,25 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   // Throttle drag state updates with requestAnimationFrame for smooth performance
   const rafThrottleRef = useRef<number | null>(null)
   const dragPositionsRef = useRef<Record<string, { x: number; y: number }>>({})
+  // Offset between the item's centre and the grab point, so the item doesn't jump on drag start
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  // Document-level pointer listeners: setPointerCapture is unreliable on SVG <g> elements
+  // on mobile browsers (esp. with CSS transforms). We attach document listeners during
+  // drag and remove on pointer-up so the browser can never intercept events.
+  const ptrMoveRef = useRef<((e: PointerEvent) => void) | null>(null)
+  const ptrUpRef = useRef<((e: PointerEvent) => void) | null>(null)
+
+  // Stable document-level listeners — attach during drag, remove on up.
+  // Always call through ptrMoveRef/ptrUpRef to avoid stale closures.
+  const onDocMove = useCallback((e: PointerEvent) => {
+    e.preventDefault()
+    ptrMoveRef.current?.(e as unknown as React.PointerEvent<SVGSVGElement>)
+  }, [])
+  const onDocUp = useCallback((e: PointerEvent) => {
+    document.removeEventListener('pointermove', onDocMove)
+    document.removeEventListener('pointerup', onDocUp)
+    ptrUpRef.current?.(e as unknown as React.PointerEvent<SVGSVGElement>)
+  }, [])
 
   const { selection, dispatch } = useMapSelection()
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
@@ -180,8 +199,15 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     if (selection.mode === 'resizing') return
     if (plant.is_locked) return
     e.stopPropagation()
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    // Document-level listeners instead of setPointerCapture (unreliable on SVG <g>
+    // elements with CSS transforms on mobile browsers).
+    document.addEventListener('pointermove', onDocMove, { passive: false })
+    document.addEventListener('pointerup', onDocUp)
     const key = `plant-${plant.id}`
+    if (svgRef.current) {
+      const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
+      dragOffsetRef.current = pt ? { x: plant.map_x - pt.x, y: plant.map_y - pt.y } : { x: 0, y: 0 }
+    }
     setDragging({ type: 'plant', id: plant.id })
     didDrag.current = false
     setDragPositions((prev) => ({ ...prev, [key]: { x: plant.map_x, y: plant.map_y } }))
@@ -189,8 +215,16 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
     e.stopPropagation()
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    // Document-level listeners instead of setPointerCapture
+    document.addEventListener('pointermove', onDocMove, { passive: false })
+    document.addEventListener('pointerup', onDocUp)
     const key = `container-${obj.id}`
+    if (svgRef.current) {
+      const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
+      const ox = obj.map_x ?? 0
+      const oy = obj.map_y ?? 0
+      dragOffsetRef.current = pt ? { x: ox - pt.x, y: oy - pt.y } : { x: 0, y: 0 }
+    }
     setDragging({ type: 'container', id: obj.id })
     didDrag.current = false
     setDragPositions((prev) => ({ ...prev, [key]: { x: obj.map_x ?? 0, y: obj.map_y ?? 0 } }))
@@ -228,15 +262,24 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     if (!pt) return
     didDrag.current = true
     const key = `${dragging.type}-${dragging.id}`
+    // Apply grab offset so the item centre follows the grab point, not the cursor centre
+    const rawX = pt.x + dragOffsetRef.current.x
+    const rawY = pt.y + dragOffsetRef.current.y
     const gb = gardenBounds
+    // Only apply gardenBounds clamping when the range is meaningful (>20px).
+    // Narrow bounds (e.g. zones with zero-height Y range) would otherwise lock
+    // the plant on one axis — notably on mobile where screen ⇔ SVG axes are
+    // swapped by the 90° rotation, making left/right draggin impossible.
+    const hasUsableX = gb && (gb.maxX - gb.minX) > 20
+    const hasUsableY = gb && (gb.maxY - gb.minY) > 20
     const clampedX = isHouseMap && canvasData
-      ? Math.max(0, Math.min(canvasData.canvas_w, pt.x))
-      : gb ? Math.max(gb.minX, Math.min(gb.maxX, pt.x))
-      : Math.max(0, Math.min(680, pt.x))
+      ? Math.max(0, Math.min(canvasData.canvas_w, rawX))
+      : hasUsableX ? Math.max(gb!.minX, Math.min(gb!.maxX, rawX))
+      : Math.max(0, Math.min(680, rawX))
     const clampedY = isHouseMap && canvasData
-      ? Math.max(0, Math.min(canvasData.canvas_h, pt.y))
-      : gb ? Math.max(gb.minY, Math.min(gb.maxY, pt.y))
-      : Math.max(0, Math.min(680, pt.y))
+      ? Math.max(0, Math.min(canvasData.canvas_h, rawY))
+      : hasUsableY ? Math.max(gb!.minY, Math.min(gb!.maxY, rawY))
+      : Math.max(0, Math.min(680, rawY))
 
     // Update ref immediately (zero-latency, no re-render)
     dragPositionsRef.current = { ...dragPositionsRef.current, [key]: { x: clampedX, y: clampedY } }
@@ -250,7 +293,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     }
 
     if (dragging.type === 'plant') {
-      setDropTarget(resolveDropTarget(pt.x, pt.y, objects, soilGroundZones))
+      setDropTarget(resolveDropTarget(rawX, rawY, objects, soilGroundZones))
     }
   }, [dragging, selection.mode, objects, soilGroundZones])
 
@@ -319,6 +362,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     didDrag.current = false
   }, [dragging, map.id, dropTarget, onPositionUpdate])
 
+  // Keep ptrMoveRef/ptrUpRef in sync with latest handler callbacks
+  useEffect(() => {
+    ptrMoveRef.current = handlePointerMove
+    ptrUpRef.current = handlePointerUp
+  })
+
   // --- Plant resize handles ---
   const handlePlantResizeDown = useCallback((e: React.PointerEvent, handle: string) => {
     e.stopPropagation()
@@ -367,7 +416,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     : null
 
   return (
-    <div ref={containerRef} className="relative w-full h-full" onClick={handleMapClick}>
+    <div ref={containerRef} className="relative w-full h-full" style={{ touchAction: 'none' }} onClick={handleMapClick}>
       {!isHouseMap && <GardenCompass bearing={map.bearing ?? 0} />}
       {cw > 0 && ch > 0 && (
       <div
@@ -378,6 +427,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           width: cw,
           height: ch,
           transform: 'translate(-50%, -50%)',
+          touchAction: 'none',
         }}
       >
       {/* Zone name banner — shown during drag over a zone */}
@@ -409,6 +459,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         className="absolute"
         style={{
           pointerEvents: 'none',
+          touchAction: 'none',
           top: 0,
           left: 0,
           width:  isMobile ? ch : '100%',

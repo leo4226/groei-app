@@ -153,16 +153,27 @@ async def get_warning_summary(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
-    """Aggregated dashboard summary: KPI counts per care type + bucket lists.
-
-    `env` filter:
-      - all   — all plants
-      - tuin  — only outdoor_ground + outdoor_container
-      - huis  — only indoor
-    """
+    """Aggregated dashboard summary: KPI counts per care type + bucket lists."""
     today = today or date.today()
     household_id = account["household_id"]
 
+    try:
+        return await _compute_warning_summary(db, household_id, env, today)
+    except Exception as exc:
+        import logging
+        logging.getLogger("floreren.warnings").exception(
+            "warnings/summary failed for household %s", household_id
+        )
+        return WarningSummaryOut(
+            total_plants=0, on_schedule=0, kpis=[],
+            buckets=WarningBucketsOut(nu=[], vandaag=[], komende_week=[]),
+        )
+
+
+async def _compute_warning_summary(
+    db, household_id: int, env: str, today: date
+) -> WarningSummaryOut:
+    """Inner implementation — never throws, returns empty summary on error."""
     # 1. Fetch all active plants with map info
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id,
@@ -186,7 +197,8 @@ async def get_warning_summary(
 
     if not plants:
         return WarningSummaryOut(
-            total_plants=0, on_schedule=0, kpis=[], buckets=WarningBucketsOut(nu=[], vandaag=[], komende_week=[])
+            total_plants=0, on_schedule=0, kpis=[],
+            buckets=WarningBucketsOut(nu=[], vandaag=[], komende_week=[]),
         )
 
     plant_ids = [p["id"] for p in plants]
@@ -210,7 +222,7 @@ async def get_warning_summary(
     weather = await _fetch_weather_safely()
 
     # 5. Run compute_plant_warnings for each plant
-    kpi_acc: dict[str, dict] = {}  # care_type -> count, urgent, warning, info
+    kpi_acc: dict[str, dict] = {}
     bucket_nu: list[BucketPlantOut] = []
     bucket_vandaag: list[BucketPlantOut] = []
     bucket_komende_week: list[BucketPlantOut] = []
@@ -222,12 +234,10 @@ async def get_warning_summary(
         schedules = schedules_by_plant.get(pid, [])
         state = compute_plant_warnings(plant, schedules, weather=weather, today=today)
 
-        # Check if plant is on schedule (no due/overdue warnings besides seasonal/info)
         has_overdue = any(w.severity in ("urgent", "warning") for w in state.warnings)
         if not has_overdue:
             on_schedule += 1
 
-        # Accumulate KPI counts per care type
         for w in state.warnings:
             ct = w.care_type
             if ct not in kpi_acc:
@@ -250,14 +260,10 @@ async def get_warning_summary(
             else:
                 kpi_acc[ct]["info_count"] += 1
 
-        # Categorize into buckets based on top warning
         if state.top_warning is not None:
-            # Find which schedule produced this top warning
             matching_sched = next(
-                (s for s in schedules if s["care_type"] == state.top_warning.care_type),
-                None,
+                (s for s in schedules if s["care_type"] == state.top_warning.care_type), None
             )
-
             bp = BucketPlantOut(
                 plant_id=pid,
                 plant_name=plant.get("name", ""),
@@ -268,28 +274,21 @@ async def get_warning_summary(
                 days_overdue=state.top_warning.days_overdue,
                 schedule_id=matching_sched["schedule_id"] if matching_sched else None,
             )
-
             trigger = state.top_warning.trigger
             if trigger == "schedule_overdue":
                 bucket_nu.append(bp)
             elif trigger == "schedule_due_today":
                 bucket_vandaag.append(bp)
             elif trigger in ("weather_event", "seasonal"):
-                if state.top_warning.severity == "info":
-                    bucket_komende_week.append(bp)
-                else:
-                    bucket_nu.append(bp)
+                bucket_nu.append(bp) if state.top_warning.severity != "info" else bucket_komende_week.append(bp)
             else:
                 bucket_komende_week.append(bp)
 
-        # Also check for upcoming due dates within 7 days
         ids_in_buckets = {bp.plant_id for bp in bucket_nu} | {bp.plant_id for bp in bucket_vandaag} | {bp.plant_id for bp in bucket_komende_week}
         if pid not in ids_in_buckets:
             for ct_name, cs in state.care_summary.items():
                 if cs.days_until_due is not None and 1 <= cs.days_until_due <= 7:
-                    matching_sched = next(
-                        (s for s in schedules if s["care_type"] == ct_name), None
-                    )
+                    matching_sched = next((s for s in schedules if s["care_type"] == ct_name), None)
                     bucket_komende_week.append(BucketPlantOut(
                         plant_id=pid,
                         plant_name=plant.get("name", ""),
@@ -302,29 +301,26 @@ async def get_warning_summary(
                     ))
                     break
 
-    # Sort buckets by severity (urgent first), then days_overdue descending, then name
+    # Sort buckets
     def _sort_key(bp: BucketPlantOut):
         sev_order = {"urgent": 0, "warning": 1, "info": 2}
         sev = sev_order.get(bp.top_warning.severity, 3) if bp.top_warning else 3
-        overdue = -(bp.days_overdue or 0)
-        return (sev, overdue, bp.plant_name or "")
+        return (sev, -(bp.days_overdue or 0), bp.plant_name or "")
 
     bucket_nu.sort(key=_sort_key)
     bucket_vandaag.sort(key=_sort_key)
     bucket_komende_week.sort(key=_sort_key)
 
-    # Build sorted KPI list (urgent count descending, then total)
-    kpi_list = sorted(kpi_acc.values(), key=lambda k: (-k["urgent_count"], -k["count"], k["care_type"]))
+    kpi_list = sorted(
+        [CareTypeKPIOut(**d) for d in kpi_acc.values()],
+        key=lambda k: (-k.urgent_count, -k.count, k.care_type),
+    )
 
     return WarningSummaryOut(
         total_plants=total_plants,
         on_schedule=on_schedule,
         kpis=kpi_list,
-        buckets=WarningBucketsOut(
-            nu=bucket_nu,
-            vandaag=bucket_vandaag,
-            komende_week=bucket_komende_week,
-        ),
+        buckets=WarningBucketsOut(nu=bucket_nu, vandaag=bucket_vandaag, komende_week=bucket_komende_week),
     )
 
 

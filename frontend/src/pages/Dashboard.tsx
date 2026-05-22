@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
-import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut } from '../types'
+import type { CareTask, RecentLogEntry, MapInfo, PlantFactOut, WarningSummaryOut, BucketPlantOut } from '../types'
 import type { WeatherData, WeatherIcon } from '../hooks/useWeather'
 import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
@@ -36,7 +36,7 @@ const RAIN_OK = 'var(--color-primary)'   // green
 const RAIN_DRY = 'var(--color-overdue)'  // red
 
 export default function Dashboard() {
-  const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, isLoading, createMap } = useFloreren()
+  const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, loadWarningSummary, warningSummary, isLoading, createMap } = useFloreren()
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
@@ -83,8 +83,8 @@ export default function Dashboard() {
   const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
 
   useEffect(() => {
-    if (getToken()) { loadDashboardV2(); loadPlants() }
-  }, [loadDashboardV2, loadPlants])
+    if (getToken()) { loadDashboardV2(); loadPlants(); loadWarningSummary() }
+  }, [loadDashboardV2, loadPlants, loadWarningSummary])
 
   const overdueCount = dashboardV2?.overdue.length ?? 0
   const dueTodayCount = dashboardV2?.due_today.length ?? 0
@@ -171,6 +171,10 @@ export default function Dashboard() {
                 </button>
               )}
             </section>
+
+            {warningSummary && (
+              <CareWarningsSection summary={warningSummary} plants={plants} t={t} />
+            )}
 
             {/* Vandaag */}
             <section className="dash-section-hpad" style={{ padding: '0 24px' }}>
@@ -602,6 +606,145 @@ function StatusBanner({ t, counts }: { t: Translations; counts: { total: number;
           }}>{cell.value}</div>
         </div>
       ))}
+    </div>
+  )
+}
+
+function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOut; plants: { id: number; icon_key: string | null }[]; t: Translations }) {
+  const hasIssues = summary.total_plants - summary.on_schedule > 0
+
+  if (!hasIssues) {
+    return (
+      <section style={{ padding: '0 24px' }}>
+        <SectionHeader leftLede="" rightMarker="Zorgsignalen" />
+        <div style={{ textAlign: 'center', padding: '20px 0 36px', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14 }}>
+          Alles op schema ✨
+        </div>
+      </section>
+    )
+  }
+
+  const totalWarnings = summary.kpis.reduce((s, k) => s + k.count, 0)
+
+  return (
+    <section style={{ padding: '0 24px' }}>
+      <SectionHeader leftLede={`${totalWarnings} signaal${totalWarnings !== 1 ? 'en' : ''}`} rightMarker="Zorgsignalen" />
+
+      {/* KPI chips */}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
+        {summary.kpis.map(kpi => (
+          <span key={kpi.care_type} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            padding: '4px 9px', borderRadius: 20,
+            background: kpi.urgent_count > 0 ? 'rgba(200,60,60,.08)' : 'rgba(47,93,58,.06)',
+            border: `1px solid ${kpi.urgent_count > 0 ? 'rgba(200,60,60,.2)' : 'rgba(47,93,58,.12)'}`,
+            fontFamily: 'var(--font-mono)', fontSize: 9,
+            textTransform: 'uppercase', letterSpacing: '0.08em',
+          }}>
+            <span>{kpi.icon}</span>
+            <span>{kpi.label_nl}</span>
+            <span style={{ fontWeight: 600, marginLeft: 2 }}>{kpi.count}</span>
+            {kpi.urgent_count > 0 && (
+              <span style={{ color: 'var(--color-overdue)', marginLeft: 1 }}>!{kpi.urgent_count}</span>
+            )}
+          </span>
+        ))}
+      </div>
+
+      {/* Buckets */}
+      <WarningBucket label="Nu" icon="🔴" plants={summary.buckets.nu} plantsLookup={plants} t={t} />
+      <WarningBucket label="Vandaag" icon="🟡" plants={summary.buckets.vandaag} plantsLookup={plants} t={t} />
+      <WarningBucket label="Komende week" icon="🟢" plants={summary.buckets.komende_week} plantsLookup={plants} t={t} noBorder />
+    </section>
+  )
+}
+
+function WarningBucket({ label, icon, plants, plantsLookup, t, noBorder }: { label: string; icon: string; plants: BucketPlantOut[]; plantsLookup: { id: number; icon_key: string | null }[]; t: Translations; noBorder?: boolean }) {
+  if (plants.length === 0) return null
+
+  return (
+    <div style={{ marginBottom: noBorder ? 0 : 10, marginTop: noBorder ? 0 : 10 }}>
+      <div style={{
+        fontFamily: 'var(--font-mono)', fontSize: 9,
+        textTransform: 'uppercase', letterSpacing: '0.18em',
+        color: 'var(--color-text-muted)', marginBottom: 6,
+      }}>
+        {icon} {label} · {plants.length} plant{plants.length !== 1 ? 'en' : ''}
+      </div>
+      <div style={{
+        border: '1px solid var(--color-border-soft)',
+        borderRadius: 10, overflow: 'hidden',
+      }}>
+        {plants.map((plant, i) => {
+          const iconKey = plantsLookup.find(p => p.id === plant.plant_id)?.icon_key ?? plant.plant_icon_variant
+          const careInfo = plant.care_type ? CARE_TYPE_INFO[plant.care_type as keyof typeof CARE_TYPE_INFO] : null
+
+          return (
+            <Link
+              key={plant.plant_id}
+              to={`/plants/${plant.plant_id}`}
+              style={{
+                display: 'block', textDecoration: 'none', color: 'inherit',
+                padding: '10px 12px',
+                borderBottom: i < plants.length - 1 ? '1px solid var(--color-border-soft)' : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: 'linear-gradient(145deg, #FDFAF1, #F4EEDB)',
+                  border: '1px solid var(--color-border-soft)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, overflow: 'hidden',
+                }}>
+                  {iconKey ? (
+                    <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontSize: 16 }}>🌱</span>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 13,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {plant.plant_name}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
+                    {careInfo && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '2px 7px', borderRadius: 99,
+                        fontFamily: 'var(--font-mono)', fontSize: 9,
+                        textTransform: 'uppercase', letterSpacing: '0.08em',
+                        background: plant.top_warning?.severity === 'urgent' ? 'rgba(200,60,60,.08)' : 'rgba(47,93,58,.06)',
+                        border: `1px solid ${plant.top_warning?.severity === 'urgent' ? 'rgba(200,60,60,.2)' : 'rgba(47,93,58,.12)'}`,
+                        color: plant.top_warning?.severity === 'urgent' ? 'var(--color-overdue)' : 'var(--color-primary)',
+                      }}>
+                        {careInfo.icon} {t.care[plant.care_type as keyof typeof t.care] ?? plant.care_type}{plant.days_overdue != null && plant.days_overdue > 0 ? ` +${plant.days_overdue}` : ''}
+                      </span>
+                    )}
+                    {plant.top_warning?.message_nl && !['schedule_overdue', 'schedule_due_today', 'seasonal'].includes(plant.top_warning.trigger) && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '2px 7px', borderRadius: 99,
+                        fontFamily: 'var(--font-mono)', fontSize: 9,
+                        background: 'rgba(250,200,50,.1)',
+                        border: '1px solid rgba(250,200,50,.25)',
+                        color: 'var(--color-text)',
+                        whiteSpace: 'nowrap' as const,
+                      }}>
+                        {plant.top_warning.icon} {plant.top_warning.message_nl}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>→</span>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -1065,6 +1208,15 @@ function LocationGroup({
 }) {
   const [open, setOpen] = useState(tasks.length > 0)
 
+  // Group tasks by plant_id so a plant with multiple care types shows one row
+  const grouped = tasks.reduce<Map<number, CareTask[]>>((acc, task) => {
+    const existing = acc.get(task.plant_id)
+    if (existing) { existing.push(task) }
+    else { acc.set(task.plant_id, [task]) }
+    return acc
+  }, new Map())
+  const entries = Array.from(grouped.entries())
+
   return (
     <div>
       <button
@@ -1102,7 +1254,7 @@ function LocationGroup({
         }}>▶</span>
       </button>
       {open && (
-        tasks.length === 0 ? (
+        grouped.size === 0 ? (
           <div style={{ padding: '14px 16px', textAlign: 'center' }}>
             <span style={{
               fontFamily: 'var(--font-heading)', fontStyle: 'italic',
@@ -1110,7 +1262,11 @@ function LocationGroup({
             }}>{t.dashboard.almanac.onTrack}</span>
           </div>
         ) : (
-          tasks.map(task => <TodayTaskRow key={task.schedule_id} task={task} t={t} />)
+          entries.map(([plantId, plantTasks]) =>
+            plantTasks.length === 1
+              ? <TodayTaskRow key={plantId} task={plantTasks[0]} t={t} />
+              : <GroupedTaskRow key={plantId} tasks={plantTasks} t={t} />
+          )
         )
       )}
     </div>
@@ -1274,6 +1430,99 @@ function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
         onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)' }}
         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)' }}
       >{t.dashboard.actions.done}</button>
+    </div>
+  )
+}
+
+function GroupedTaskRow({ tasks, t }: { tasks: CareTask[]; t: Translations }) {
+  const markCareDone = useFloreren(s => s.markCareDone)
+  const plants = useFloreren(s => s.plants)
+  const plant = tasks[0]
+  const iconKey = plants.find(p => p.id === plant.plant_id)?.icon_key ?? null
+  const allOverdue = tasks.some(task => task.days_overdue > 0)
+  const maxOverdue = Math.max(...tasks.map(t => t.days_overdue))
+
+  const hasWaterHalo = tasks.some(
+    t => t.care_type === 'water' && t.days_overdue >= 0
+  )
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '44px 1fr',
+      gap: 10, alignItems: 'start',
+      padding: '12px 14px',
+      borderBottom: '1px dashed var(--color-border-soft)',
+    }}>
+      {/* Plant icon */}
+      <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+        {hasWaterHalo && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 10,
+            background: `radial-gradient(circle, ${HALO_COLORS.needs_care} 0%, transparent 70%)`,
+            opacity: 0.5, pointerEvents: 'none',
+          }} />
+        )}
+        {plant.plant_photo ? (
+          <img src={plant.plant_photo} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', display: 'block', position: 'relative' }} />
+        ) : (
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            {iconKey && <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
+          </div>
+        )}
+      </div>
+
+      {/* Plant name + care type badges */}
+      <Link to={`/plants/${plant.plant_id}`} style={{ minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+        <p style={{
+          margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 14,
+          color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{plant.plant_name}</p>
+        {allOverdue ? (
+          <p style={{ margin: '2px 0 4px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-overdue)' }}>
+            {t.dashboard.tasks.daysLate(maxOverdue)}
+          </p>
+        ) : (
+          <p style={{ margin: '2px 0 4px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-due)' }}>
+            {t.dashboard.tasks.today}
+          </p>
+        )}
+        {/* Care type badges */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+          {tasks.map((task) => {
+            const careIcon = CARE_TYPE_INFO[task.care_type as keyof typeof CARE_TYPE_INFO]?.icon ?? '·'
+            const careLabel = t.care[task.care_type as keyof typeof t.care] ?? task.care_type
+            const overdue = task.days_overdue > 0
+            const badgeBg = overdue ? 'rgba(200,60,60,.1)' : 'rgba(47,93,58,.08)'
+            const badgeColor = overdue ? 'var(--color-overdue)' : 'var(--color-primary)'
+            const badgeBorder = overdue ? 'rgba(200,60,60,.2)' : 'rgba(47,93,58,.2)'
+            return (
+              <span key={task.care_type} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 8px', borderRadius: 99,
+                fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                background: badgeBg, color: badgeColor,
+                border: `1px solid ${badgeBorder}`,
+              }}>
+                {careIcon} {careLabel}
+                {overdue && <span style={{ fontWeight: 600 }}> +{task.days_overdue}</span>}
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); markCareDone(task.plant_id, task.care_type) }}
+                  style={{
+                    fontFamily: 'var(--font-body)', fontSize: 8, fontWeight: 600,
+                    color: badgeColor, border: 'none', borderRadius: 100,
+                    background: 'transparent', padding: '0 0 0 3px',
+                    cursor: 'pointer', lineHeight: 1, opacity: 0.6,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '0.6' }}
+                  title={`Markeer ${careLabel} als gedaan`}
+                >✓</button>
+              </span>
+            )
+          })}
+        </div>
+      </Link>
     </div>
   )
 }
