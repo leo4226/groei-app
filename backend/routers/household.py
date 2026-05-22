@@ -23,7 +23,6 @@ def _generate_code(length: int = 6) -> str:
 
 @router.post("/invite", response_model=InviteOutput)
 async def create_invite(
-    body: InviteInput,
     current=Depends(get_current_account),
     db=Depends(db_dep),
 ):

@@ -43,12 +43,20 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
   function capture() {
     const video = videoRef.current
     if (!video) return
+    const MAX = 1920
+    let w = video.videoWidth
+    let h = video.videoHeight
+    if (w > MAX || h > MAX) {
+      const scale = Math.min(MAX / w, MAX / h)
+      w = Math.round(w * scale)
+      h = Math.round(h * scale)
+    }
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, 0, 0, w, h)
     canvas.toBlob(
       (blob) => {
         if (!blob) return

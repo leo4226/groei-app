@@ -45,7 +45,9 @@ export function IdentifyPlantPage() {
     } catch (e) {
       const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
         ? t.identify.errorQuota
-        : t.identify.errorService
+        : e instanceof Error && e.message
+          ? e.message
+          : t.identify.errorService
       setStep({ kind: 'error', message, thumbnail: dataUrl })
     }
   }
