@@ -6,6 +6,7 @@ import { useCategoryLabels, useTypeLabels, useFormLabels } from '../constants/pl
 import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
 import { alerts, icons } from '../api/client'
+import { resolveIconUrl } from '../utils/icons'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
 const isTuin = (plant: Plant) =>
@@ -722,7 +723,7 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16%', position: 'relative',
       }}>
-        <img src={`/icons/${plant.icon_key}.svg`} alt={plant.name}
+        <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name}
           style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
           className="card-icon"
         />

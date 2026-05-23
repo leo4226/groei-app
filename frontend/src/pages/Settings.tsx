@@ -6,8 +6,11 @@ import { icons, admin, type AdminAccount, household } from '../api/client'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult, IconGapReport } from '../types'
 
+const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
+
 export default function Settings() {
   const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
+  const [groupOutdoor, setGroupOutdoor] = useState(() => localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
@@ -139,6 +142,26 @@ export default function Settings() {
   return (
     <div className="px-4 pt-6">
       <h1 className="text-2xl font-extrabold mb-6">{t.settings.title}</h1>
+
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">{t.settings.display}</h2>
+        <div className="card p-4 flex items-center justify-between gap-4">
+          <div>
+            <div className="font-semibold text-sm">{t.settings.groupOutdoorWarnings}</div>
+            <div className="text-xs text-text-muted mt-0.5">{t.settings.groupOutdoorWarningsDesc}</div>
+          </div>
+          <button
+            onClick={() => {
+              const next = !groupOutdoor
+              setGroupOutdoor(next)
+              localStorage.setItem(GROUP_OUTDOOR_KEY, String(next))
+            }}
+            className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${groupOutdoor ? 'bg-primary' : 'bg-border'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${groupOutdoor ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      </section>
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.whoIsGardening}</h2>
@@ -366,42 +389,6 @@ export default function Settings() {
           )}
         </div>
       </section>
-
-      {adminAccounts && adminAccounts.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-base font-bold mb-3">Accounts ({adminAccounts.length})</h2>
-          <div className="card divide-y divide-border/50">
-            {adminAccounts.map((acct) => (
-              <div key={acct.id} className="px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{acct.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-text-muted">{acct.created_at?.slice(0, 10)}</span>
-                    <button
-                      onClick={async () => {
-                        if (window.confirm(`Delete account "${acct.name}" (${acct.email})?\n\nAll plants, locations and data will be permanently removed.`)) {
-                          try {
-                            await admin.deleteAccount(acct.id)
-                            setAdminAccounts(prev => prev ? prev.filter(a => a.id !== acct.id) : prev)
-                          } catch (e) {
-                            alert('Failed to delete: ' + (e instanceof Error ? e.message : 'Unknown error'))
-                          }
-                        }
-                      }}
-                      className="text-red-400/60 hover:text-red-400 text-xs ml-2 p-1"
-                      title={`Delete ${acct.name}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-text-muted mt-0.5">{acct.email}</p>
-                <p className="text-[10px] text-primary/60 mt-0.5">{acct.household_name}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section>
         <h2 className="text-base font-bold mb-3">About</h2>

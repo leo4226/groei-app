@@ -4,6 +4,7 @@ import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { useMapRotation } from '../../context/MapRotationContext'
 import { getHaloColor } from '../../hooks/usePlantStatus'
+import { resolveIconUrl } from '../../utils/icons'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -183,7 +184,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
           <g transform={counterRot ? `rotate(${counterRot})` : undefined}>
             {plant.icon_key ? (
               <image
-                href={`/icons/${plant.icon_key}.svg`}
+                href={resolveIconUrl(plant.icon_key)!}
                 x={-iconHalf}
                 y={-iconHalf}
                 width={iconHalf * 2}

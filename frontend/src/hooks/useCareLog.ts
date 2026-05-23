@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { CareLogEntry } from '../types'
 import { care } from '../api/client'
+import { useFloreren } from '../store/useFloreren'
 
 const _cache = new Map<number, CareLogEntry[]>()
 
@@ -8,11 +9,22 @@ interface UseCareLogResult {
   data: CareLogEntry[] | null
   loading: boolean
   error: boolean
-  invalidate: () => void
 }
 
 export function useCareLog(plantId: number | null): UseCareLogResult {
   const [version, setVersion] = useState(0)
+  const careVersion = useFloreren(s => s.careVersions[plantId ?? -1] ?? 0)
+  const prevCareVersionRef = useRef(careVersion)
+
+  // Auto-invalidate when care is marked done/skipped
+  useEffect(() => {
+    if (prevCareVersionRef.current !== careVersion) {
+      prevCareVersionRef.current = careVersion
+      if (plantId != null) _cache.delete(plantId)
+      setVersion(v => v + 1)
+    }
+  }, [careVersion, plantId])
+
   const [state, setState] = useState<{
     data: CareLogEntry[] | null
     loading: boolean
@@ -22,13 +34,6 @@ export function useCareLog(plantId: number | null): UseCareLogResult {
     loading: plantId != null && !_cache.has(plantId),
     error: false,
   }))
-
-  const invalidate = useCallback(() => {
-    if (plantId != null) {
-      _cache.delete(plantId)
-    }
-    setVersion(v => v + 1)
-  }, [plantId])
 
   useEffect(() => {
     if (plantId == null) return
@@ -55,5 +60,5 @@ export function useCareLog(plantId: number | null): UseCareLogResult {
     return () => { cancelled = true }
   }, [plantId, version])
 
-  return { ...state, invalidate }
+  return state
 }

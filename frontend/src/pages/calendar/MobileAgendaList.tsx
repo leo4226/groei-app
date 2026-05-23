@@ -1,12 +1,18 @@
 import { useMemo } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
-import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
+import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
 import { DAY_LONG_NL, MONTH_SHORT_NL, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
 
-interface Props { events: CalendarEvent[]; todayIso: string }
+interface Props {
+  events: CalendarEvent[]
+  todayIso: string
+  saving: string | null
+  onDone: (e: CalendarEvent) => void
+  onSkip: (e: CalendarEvent) => void
+}
 
-export default function MobileAgendaList({ events, todayIso }: Props) {
+export default function MobileAgendaList({ events, todayIso, saving, onDone, onSkip }: Props) {
   const t = useT()
   const grouped = useMemo(() => {
     const m = new Map<string, CalendarEvent[]>()
@@ -44,10 +50,22 @@ export default function MobileAgendaList({ events, todayIso }: Props) {
                   padding: '10px 12px', background: '#FFFEF9',
                   borderLeft: `3px solid ${def?.color ?? '#2F5D3A'}`,
                   borderRadius: 4, marginBottom: 6,
+                  opacity: saving === e.id ? 0.5 : 1, transition: 'opacity 0.15s',
                 }}>
                   <span style={{ fontSize: 12, color: '#8A9482', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
                   <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{e.plant_name ?? '—'}</span>
-                  {e.overdue && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B2664A' }}>{t.calendar.overdueLabel}</span>}
+                  {isActionable(e, todayIso) ? (
+                    <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>
+                      <button disabled={saving === e.id} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: '#2F5D3A', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
+                        {t.dashboard.actions.done}
+                      </button>
+                      <button disabled={saving === e.id} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: '#8A9482', border: '1px solid #D8D3C8', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: 'pointer' }}>
+                        {t.dashboard.actions.skip}
+                      </button>
+                    </div>
+                  ) : e.overdue ? (
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#B2664A' }}>{t.calendar.overdueLabel}</span>
+                  ) : null}
                 </div>
               )
             })}

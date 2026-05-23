@@ -14,6 +14,8 @@ interface FlorerStore {
   isLoading: boolean
   error: string | null
   showPlantPicker: boolean
+  careVersions: Record<number, number>
+  profileVersions: Record<number, number>
 
   load: () => Promise<void>
   loadMaps: () => Promise<void>
@@ -29,6 +31,7 @@ interface FlorerStore {
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
+  patchCareProfile: (plantId: number, data: Record<string, { active: boolean }>) => Promise<void>
   setActiveUser: (id: number) => void
   setShowPlantPicker: (show: boolean) => void
   updateUserLanguage: (userId: number, language: 'nl' | 'en') => Promise<void>
@@ -66,6 +69,8 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   isLoading: false,
   error: null,
   showPlantPicker: false,
+  careVersions: {},
+  profileVersions: {},
 
   load: async () => {
     set({ isLoading: true, error: null })
@@ -154,17 +159,30 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         p.id === plantId ? { ...p, care_status: 'good' as const, most_urgent: undefined } : p,
       ),
       dashboardV2: _removeTask(s.dashboardV2, plantId, careType),
+      careVersions: { ...s.careVersions, [plantId]: (s.careVersions[plantId] ?? 0) + 1 },
     }))
-    // Refetch to get correct status_counts
+    // Refetch to get correct status_counts and warning summary
     get().loadDashboardV2()
+    get().loadWarningSummary()
   },
 
   skipCare: async (plantId, careType) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
     await careApi.skip(plantId, careType, userId)
-    set((s) => ({ dashboardV2: _removeTask(s.dashboardV2, plantId, careType) }))
+    set((s) => ({
+      dashboardV2: _removeTask(s.dashboardV2, plantId, careType),
+      careVersions: { ...s.careVersions, [plantId]: (s.careVersions[plantId] ?? 0) + 1 },
+    }))
     get().loadDashboardV2()
+    get().loadWarningSummary()
+  },
+
+  patchCareProfile: async (plantId, data) => {
+    await plantsApi.patchCareProfile(plantId, data)
+    set((s) => ({
+      profileVersions: { ...s.profileVersions, [plantId]: (s.profileVersions[plantId] ?? 0) + 1 },
+    }))
   },
 
   createMap: async (data) => {

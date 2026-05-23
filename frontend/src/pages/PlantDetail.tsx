@@ -1,14 +1,16 @@
 import { useT } from '../context/LanguageContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
 import type { Phenology, PlantAlert } from '../types'
 import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
+import { useSunAt } from '../hooks/useSunAt'
 import PlantCareInfo from '../components/PlantCareInfo'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
+import { resolveIconUrl } from '../utils/icons'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -79,16 +81,24 @@ export default function PlantDetail() {
   const { id }     = useParams<{ id: string }>()
   const navigate   = useNavigate()
   const plants = useFloreren(s => s.plants)
+  const maps = useFloreren(s => s.maps)
   const loadPlants = useFloreren(s => s.loadPlants)
   const { markCareDone, archivePlant } = useFloreren()
 
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [duplicating, setDuplicating] = useState(false)
-  const [sunHours, setSunHours]   = useState<number | null>(null)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
+
+  const mapInfo = plant?.map_id ? (maps.find(m => m.id === plant.map_id) ?? null) : null
+  const sunCoord = useMemo(
+    () => plant?.map_x != null && plant?.map_y != null ? { x: plant.map_x, y: plant.map_y } : null,
+    [plant?.map_x, plant?.map_y],
+  )
+  const currentMonth = new Date().getMonth() + 1
+  const { sunHours } = useSunAt(sunCoord, currentMonth, mapInfo)
 
   useEffect(() => {
     // Use cached plant from store if available, else fetch directly
@@ -114,7 +124,6 @@ export default function PlantDetail() {
 
   async function handleQuickAction(careType: string) {
     await markCareDone(plantId, careType)
-    careLog.invalidate()
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
@@ -172,7 +181,7 @@ export default function PlantDetail() {
           <img src={plant.photo_path} alt={plant.name} className="w-full h-52 object-cover" />
         ) : plant.icon_key ? (
           <div className="w-full h-52 flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)' }}>
-            <img src={`/icons/${plant.icon_key}.svg`} alt={plant.name} className="h-40 w-40 object-contain" />
+            <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name} className="h-40 w-40 object-contain" />
           </div>
         ) : (
           <div className="w-full h-52 bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-7xl">🌿</div>

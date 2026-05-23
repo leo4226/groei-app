@@ -163,6 +163,9 @@ export default function LoginPage() {
                       style={inputStyle}
                     />
                   </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '-4px 0 0', lineHeight: 1.4 }}>
+                    ⚠️ Names must be unique across all users. If someone already uses this name, registration will fail.
+                  </p>
                 </>
               )}
               {mode === 'join' && (

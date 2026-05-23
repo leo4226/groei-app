@@ -6,6 +6,7 @@ import type { CareTask } from '../../types'
 import { HALO_COLORS } from '../../hooks/usePlantStatus'
 import { useT } from '../../context/LanguageContext'
 import type { Translations } from '../../i18n/translations'
+import { resolveIconUrl } from '../../utils/icons'
 
 function classifyTaskLocation(task: CareTask): 'buiten' | 'binnen' {
   if (task.location === 'Tuin') return 'buiten'
@@ -85,7 +86,7 @@ function TodayTaskRow({ task, t }: { task: CareTask; t: Translations }) {
           <img src={task.plant_photo} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', display: 'block', position: 'relative' }} />
         ) : (
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-            {iconKey && <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
+            {iconKey && <img src={resolveIconUrl(iconKey)!} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
           </div>
         )}
       </div>
@@ -158,7 +159,7 @@ function GroupedTaskRow({ tasks, t }: { tasks: CareTask[]; t: Translations }) {
           <img src={plant.plant_photo} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', display: 'block', position: 'relative' }} />
         ) : (
           <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-            {iconKey && <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
+            {iconKey && <img src={resolveIconUrl(iconKey)!} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />}
           </div>
         )}
       </div>

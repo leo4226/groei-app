@@ -78,3 +78,12 @@ export interface CalendarEvent {
   color: string | null
   icon: string | null
 }
+
+const CARE_ACTION_TYPES = new Set<EventTypeId>([
+  'water', 'fertilize', 'prune', 'mist', 'rotate',
+  'pest_check', 'dust', 'repot', 'sow', 'harvest', 'scan',
+])
+
+export function isActionable(event: CalendarEvent, todayIso: string): boolean {
+  return event.plant_id !== null && CARE_ACTION_TYPES.has(event.type) && event.date <= todayIso
+}

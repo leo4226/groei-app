@@ -28,6 +28,7 @@ export const en: Translations = {
     },
     actions: {
       done: 'Done',
+      skip: 'Skip',
       manage: 'Manage →',
       view: 'View',
       edit: 'Edit',
@@ -292,6 +293,9 @@ export const en: Translations = {
 
   settings: {
     title: 'Settings',
+    display: 'Display',
+    groupOutdoorWarnings: 'Group outdoor care warnings',
+    groupOutdoorWarningsDesc: 'Show one row per care type for all garden plants',
     whoIsGardening: "Who's gardening?",
     active: 'Active',
     locations: 'Locations',

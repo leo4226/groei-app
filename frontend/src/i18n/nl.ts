@@ -28,6 +28,7 @@ export const nl: Translations = {
     },
     actions: {
       done: 'Gedaan',
+      skip: 'Sla over',
       manage: 'Beheer →',
       view: 'Bekijk',
       edit: 'Bewerk',
@@ -292,6 +293,9 @@ export const nl: Translations = {
 
   settings: {
     title: 'Instellingen',
+    display: 'Weergave',
+    groupOutdoorWarnings: 'Groepeer buiten zorgsignalen',
+    groupOutdoorWarningsDesc: 'Toon één rij per zorgtype voor alle tuinplanten',
     whoIsGardening: 'Wie tuiniert er?',
     active: 'Actief',
     locations: 'Locaties',

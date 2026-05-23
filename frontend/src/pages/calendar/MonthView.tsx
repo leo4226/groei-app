@@ -9,10 +9,11 @@ import CalendarMoon from './CalendarMoon'
 import MobileAgendaList from './MobileAgendaList'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useIsNarrow } from './useIsNarrow'
-import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
+import { EVENT_TYPES, type CalendarEvent, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
 import { useT } from '../../context/LanguageContext'
+import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
   viewMode: CalendarViewMode
@@ -22,6 +23,7 @@ interface Props {
 
 export default function MonthView({ viewMode, onSetView, env }: Props) {
   const t = useT()
+  const { markCareDone, skipCare } = useFloreren()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -30,13 +32,37 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
   const [activeTypes, setActiveTypes] = useState<Set<EventTypeId>>(
     () => new Set(EVENT_TYPES.map(t => t.id)),
   )
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState<string | null>(null)
 
   const { events, loading, error } = useCalendarEvents(year, month1, env)
   const isNarrow = useIsNarrow(1200)
 
+  async function handleDone(event: CalendarEvent) {
+    if (!event.plant_id) return
+    setSaving(event.id)
+    try {
+      await markCareDone(event.plant_id, event.type)
+      setDoneIds(prev => new Set([...prev, event.id]))
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleSkip(event: CalendarEvent) {
+    if (!event.plant_id) return
+    setSaving(event.id)
+    try {
+      await skipCare(event.plant_id, event.type)
+      setDoneIds(prev => new Set([...prev, event.id]))
+    } finally {
+      setSaving(null)
+    }
+  }
+
   const filtered = useMemo(
-    () => events.filter(e => activeTypes.has(e.type)),
-    [events, activeTypes],
+    () => events.filter(e => activeTypes.has(e.type) && !doneIds.has(e.id)),
+    [events, activeTypes, doneIds],
   )
   const selectedEvents = useMemo(
     () => filtered.filter(e => e.date === selectedIso),
@@ -70,7 +96,7 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
       />
       <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
       {isNarrow ? (
-        <MobileAgendaList events={filtered} todayIso={todayIso} />
+        <MobileAgendaList events={filtered} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
       ) : (
         <main>
           <CalendarGrid
@@ -81,7 +107,7 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
             onSelect={setSelectedIso}
           />
           <aside className="col-side">
-            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} />
+            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
             <CalendarAlmanac month1={month1} />
             <CalendarUpcoming todayIso={todayIso} events={filtered} />
             <CalendarMoon year={year} month1={month1} todayDay={now.getDate()} />

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { PlantWarningStateOut } from '../types'
 import { plants as plantsApi } from '../api/client'
+import { useFloreren } from '../store/useFloreren'
 
 const _cache = new Map<number, { data: PlantWarningStateOut; ts: number }>()
 const CACHE_TTL = 60_000 // 1 minute
@@ -9,11 +10,27 @@ interface UseCareProfileResult {
   state: PlantWarningStateOut | null
   loading: boolean
   error: boolean
-  invalidate: () => void
 }
 
 export function usePlantCareProfile(plantId: number | null): UseCareProfileResult {
   const [version, setVersion] = useState(0)
+  const careVersion = useFloreren(s => s.careVersions[plantId ?? -1] ?? 0)
+  const profileVersion = useFloreren(s => s.profileVersions[plantId ?? -1] ?? 0)
+  const prevCareRef = useRef(careVersion)
+  const prevProfileRef = useRef(profileVersion)
+
+  // Auto-invalidate when care is marked done/skipped or care profile is patched
+  useEffect(() => {
+    const careChanged = prevCareRef.current !== careVersion
+    const profileChanged = prevProfileRef.current !== profileVersion
+    if (careChanged || profileChanged) {
+      prevCareRef.current = careVersion
+      prevProfileRef.current = profileVersion
+      if (plantId !== null) _cache.delete(plantId)
+      setVersion(v => v + 1)
+    }
+  }, [careVersion, profileVersion, plantId])
+
   const [state, setState] = useState<{
     data: PlantWarningStateOut | null
     loading: boolean
@@ -25,11 +42,6 @@ export function usePlantCareProfile(plantId: number | null): UseCareProfileResul
     }
     return { data: null, loading: true, error: false }
   })
-
-  const invalidate = useCallback(() => {
-    if (plantId !== null) _cache.delete(plantId)
-    setVersion(v => v + 1)
-  }, [plantId])
 
   useEffect(() => {
     if (plantId === null) return
@@ -58,6 +70,5 @@ export function usePlantCareProfile(plantId: number | null): UseCareProfileResul
     state: state.data,
     loading: state.loading,
     error: state.error,
-    invalidate,
   }
 }

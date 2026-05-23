@@ -32,6 +32,7 @@ export type Translations = {
     }
     actions: {
       done: string
+      skip: string
       manage: string
       view: string
       edit: string
@@ -248,6 +249,9 @@ export type Translations = {
 
   settings: {
     title: string
+    display: string
+    groupOutdoorWarnings: string
+    groupOutdoorWarningsDesc: string
     whoIsGardening: string
     active: string
     locations: string

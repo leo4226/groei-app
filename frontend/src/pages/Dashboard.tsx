@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
@@ -13,8 +13,8 @@ import type { Translations } from '../i18n/translations'
 import PageDecor from '../components/PageDecor'
 import WelcomeChecklist from '../components/WelcomeChecklist'
 import WeatherCard from '../components/dashboard/WeatherCard'
-import TodayGrid from '../components/dashboard/TodayGrid'
 import NewMapModal from '../components/dashboard/NewMapModal'
+import { resolveIconUrl } from '../utils/icons'
 
 const PX_PER_M = 46
 
@@ -27,7 +27,7 @@ function parseMapDimensions(viewbox: string): { w: number; h: number } | null {
 }
 
 export default function Dashboard() {
-  const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, loadWarningSummary, warningSummary, isLoading } = useFloreren()
+  const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, loadWarningSummary, warningSummary } = useFloreren()
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
 
@@ -50,8 +50,6 @@ export default function Dashboard() {
 
   const overdueCount = dashboardV2?.overdue.length ?? 0
   const dueTodayCount = dashboardV2?.due_today.length ?? 0
-  const upcomingCount = dashboardV2?.upcoming.length ?? 0
-  const totalTasks = overdueCount + dueTodayCount + upcomingCount
   const nextCareTask = dashboardV2?.overdue[0] ?? dashboardV2?.due_today[0] ?? null
 
   const date = new Date().toLocaleDateString(t.locale, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -60,14 +58,6 @@ export default function Dashboard() {
     if (overdue > 0) return `${overdue} ${overdue === 1 ? 'plant' : t.dashboard.status.collection.toLowerCase()} ${t.dashboard.tasks.overdue.toLowerCase()}.`
     if (due > 0) return t.dashboard.tasks.calm
     return t.dashboard.tasks.calm
-  }
-
-  function summaryLede(overdue: number, due: number, upcoming: number): string {
-    const parts: string[] = []
-    if (overdue > 0) parts.push(`${overdue} ${t.dashboard.tasks.overdue.toLowerCase()}`)
-    if (due > 0) parts.push(`${due} ${t.dashboard.tasks.today.toLowerCase()}`)
-    if (upcoming > 0) parts.push(`${upcoming} ${t.dashboard.tasks.upcoming.toLowerCase()}`)
-    return parts.join(' · ')
   }
 
   return (
@@ -131,24 +121,6 @@ export default function Dashboard() {
             {warningSummary && (
               <CareWarningsSection summary={warningSummary} plants={plants} t={t} />
             )}
-
-            {/* Vandaag */}
-            <section className="dash-section-hpad" style={{ padding: '0 24px' }}>
-              <SectionHeader
-                leftLede={summaryLede(overdueCount, dueTodayCount, upcomingCount)}
-                rightMarker={t.dashboard.sections.today}
-              />
-              {isLoading && <TaskSkeletons />}
-              {!isLoading && totalTasks === 0 && <CalmEmptyState t={t} />}
-              {!isLoading && dashboardV2 && totalTasks > 0 && (
-                <TodayGrid
-                  t={t}
-                  overdue={dashboardV2.overdue}
-                  dueToday={dashboardV2.due_today}
-                  upcoming={dashboardV2.upcoming}
-                />
-              )}
-            </section>
 
             {/* Logboek */}
             {dashboardV2 && dashboardV2.recent_log.length > 0 && (
@@ -312,10 +284,136 @@ function StatusBanner({ t, counts }: { t: Translations; counts: { total: number;
   )
 }
 
-function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOut; plants: { id: number; icon_key: string | null }[]; t: Translations }) {
-  const hasIssues = summary.total_plants - summary.on_schedule > 0
+// ── Grouped warning types ──
 
-  if (!hasIssues) {
+interface GroupedWarning {
+  care_type: string
+  plants: BucketPlantOut[]
+  severity: string
+  maxDaysOverdue: number
+  hint: string | null
+}
+
+type BucketItem =
+  | { kind: 'individual'; plant: BucketPlantOut }
+  | { kind: 'group'; group: GroupedWarning }
+
+const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
+
+function buildBucketItems(plants: BucketPlantOut[], doneIds: Set<string>, grouped: boolean): BucketItem[] {
+  const visible = plants.filter(p => !doneIds.has(`${p.plant_id}_${p.care_type ?? ''}`))
+  if (!grouped) return visible.map(p => ({ kind: 'individual', plant: p }))
+
+  const outdoor = visible.filter(p => p.environment !== 'indoor' && p.care_type)
+  const indoor  = visible.filter(p => p.environment === 'indoor' || !p.care_type)
+
+  const byType = new Map<string, BucketPlantOut[]>()
+  for (const p of outdoor) {
+    const arr = byType.get(p.care_type!) ?? []
+    arr.push(p)
+    byType.set(p.care_type!, arr)
+  }
+
+  const sevOrder: Record<string, number> = { urgent: 0, warning: 1, info: 2 }
+  const groupItems: BucketItem[] = [...byType.entries()].map(([care_type, ps]) => {
+    const sorted = [...ps].sort((a, b) => (sevOrder[a.top_warning?.severity ?? 'info'] ?? 3) - (sevOrder[b.top_warning?.severity ?? 'info'] ?? 3))
+    const top = sorted[0]
+    return {
+      kind: 'group' as const,
+      group: {
+        care_type,
+        plants: sorted,
+        severity: top?.top_warning?.severity ?? 'info',
+        maxDaysOverdue: Math.max(...ps.map(p => p.days_overdue ?? 0)),
+        hint: top?.top_warning?.message_nl ?? null,
+      },
+    }
+  })
+
+  return [...groupItems, ...indoor.map(p => ({ kind: 'individual' as const, plant: p }))]
+}
+
+function itemsPlantCount(items: BucketItem[]): number {
+  return items.reduce((sum, item) => sum + (item.kind === 'group' ? item.group.plants.length : 1), 0)
+}
+
+function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOut; plants: { id: number; icon_key: string | null }[]; t: Translations }) {
+  const { markCareDone, skipCare } = useFloreren()
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [isGrouped] = useState(() => localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
+
+  function showToast(msg: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast(msg)
+    toastTimer.current = setTimeout(() => setToast(null), 3000)
+  }
+
+  function bucketKey(p: BucketPlantOut) { return `${p.plant_id}_${p.care_type ?? ''}` }
+
+  const nuItems          = buildBucketItems(summary.buckets.nu,           doneIds, isGrouped)
+  const vandaagItems     = buildBucketItems(summary.buckets.vandaag,      doneIds, isGrouped)
+  const komende_weekItems = buildBucketItems(summary.buckets.komende_week, doneIds, isGrouped)
+  const totalVisible = nuItems.length + vandaagItems.length + komende_weekItems.length
+
+  async function handleDone(plant: BucketPlantOut) {
+    if (!plant.care_type) return
+    const key = bucketKey(plant)
+    setSaving(key)
+    try {
+      await markCareDone(plant.plant_id, plant.care_type)
+      setDoneIds(prev => new Set([...prev, key]))
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleSkip(plant: BucketPlantOut) {
+    if (!plant.care_type) return
+    const key = bucketKey(plant)
+    setSaving(key)
+    try {
+      await skipCare(plant.plant_id, plant.care_type)
+      setDoneIds(prev => new Set([...prev, key]))
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleDoneGroup(group: GroupedWarning) {
+    setSaving(`group_${group.care_type}`)
+    try {
+      await Promise.all(group.plants.map(p => markCareDone(p.plant_id, p.care_type!)))
+      setDoneIds(prev => {
+        const next = new Set([...prev])
+        group.plants.forEach(p => next.add(`${p.plant_id}_${p.care_type ?? ''}`))
+        return next
+      })
+      const careLabel = CARE_TYPE_INFO[group.care_type as keyof typeof CARE_TYPE_INFO]?.label ?? group.care_type
+      showToast(`${group.plants.length} ${group.plants.length === 1 ? 'plant' : t.dashboard.status.collection.toLowerCase()} ${careLabel.toLowerCase()} ${t.dashboard.actions.done.toLowerCase()}`)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleSkipGroup(group: GroupedWarning) {
+    setSaving(`group_${group.care_type}`)
+    try {
+      await Promise.all(group.plants.map(p => skipCare(p.plant_id, p.care_type!)))
+      setDoneIds(prev => {
+        const next = new Set([...prev])
+        group.plants.forEach(p => next.add(`${p.plant_id}_${p.care_type ?? ''}`))
+        return next
+      })
+      showToast(`${group.plants.length} ${group.plants.length === 1 ? 'plant' : t.dashboard.status.collection.toLowerCase()} ${t.dashboard.actions.skip.toLowerCase()}`)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  if (totalVisible === 0) {
     return (
       <section style={{ padding: '0 24px' }}>
         <SectionHeader leftLede="" rightMarker={t.dashboard.sections.careSignals} />
@@ -326,11 +424,11 @@ function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOu
     )
   }
 
-  const totalWarnings = summary.kpis.reduce((s, k) => s + k.count, 0)
+  const totalPlants = itemsPlantCount(nuItems) + itemsPlantCount(vandaagItems) + itemsPlantCount(komende_weekItems)
 
   return (
     <section style={{ padding: '0 24px' }}>
-      <SectionHeader leftLede={t.dashboard.warnings.signalCount(totalWarnings)} rightMarker={t.dashboard.sections.careSignals} />
+      <SectionHeader leftLede={t.dashboard.warnings.signalCount(totalPlants)} rightMarker={t.dashboard.sections.careSignals} />
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
         {summary.kpis.map(kpi => (
           <span key={kpi.care_type} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 9px', borderRadius: 20, background: kpi.urgent_count > 0 ? 'rgba(200,60,60,.08)' : 'rgba(47,93,58,.06)', border: `1px solid ${kpi.urgent_count > 0 ? 'rgba(200,60,60,.2)' : 'rgba(47,93,58,.12)'}`, fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -341,31 +439,92 @@ function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOu
           </span>
         ))}
       </div>
-      <WarningBucket label={t.dashboard.warnings.bucketNow} icon="🔴" plants={summary.buckets.nu} plantsLookup={plants} t={t} />
-      <WarningBucket label={t.dashboard.warnings.bucketToday} icon="🟡" plants={summary.buckets.vandaag} plantsLookup={plants} t={t} />
-      <WarningBucket label={t.dashboard.warnings.bucketThisWeek} icon="🟢" plants={summary.buckets.komende_week} plantsLookup={plants} t={t} noBorder />
+      <WarningBucket label={t.dashboard.warnings.bucketNow} icon="🔴" items={nuItems} plantsLookup={plants} t={t} saving={saving} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+      <WarningBucket label={t.dashboard.warnings.bucketToday} icon="🟡" items={vandaagItems} plantsLookup={plants} t={t} saving={saving} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+      <WarningBucket label={t.dashboard.warnings.bucketThisWeek} icon="🟢" items={komende_weekItems} plantsLookup={plants} t={t} saving={saving} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} noBorder />
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-text)', color: 'var(--color-surface)', padding: '10px 20px', borderRadius: 99, fontSize: 13, fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', zIndex: 1000, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', pointerEvents: 'none' }}>
+          {toast}
+        </div>
+      )}
     </section>
   )
 }
 
-function WarningBucket({ label, icon, plants, plantsLookup, t, noBorder }: { label: string; icon: string; plants: BucketPlantOut[]; plantsLookup: { id: number; icon_key: string | null }[]; t: Translations; noBorder?: boolean }) {
-  if (plants.length === 0) return null
+function GroupedWarningRow({ group, saving, onDone, onSkip, t }: {
+  group: GroupedWarning; saving: string | null
+  onDone: (g: GroupedWarning) => void; onSkip: (g: GroupedWarning) => void; t: Translations
+}) {
+  const careInfo = CARE_TYPE_INFO[group.care_type as keyof typeof CARE_TYPE_INFO]
+  const key = `group_${group.care_type}`
+  const isSaving = saving === key
+  const isUrgent = group.severity === 'urgent'
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', opacity: isSaving ? 0.5 : 1, transition: 'opacity 0.15s' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 13 }}>
+          {careInfo?.icon ?? '🌿'} {careInfo?.label ?? group.care_type}
+          <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}> · {group.plants.length} {group.plants.length === 1 ? 'plant' : t.dashboard.status.collection.toLowerCase()}</span>
+          {group.maxDaysOverdue > 0 && (
+            <span style={{ color: isUrgent ? 'var(--color-overdue)' : 'var(--color-due)', marginLeft: 4, fontSize: 11 }}>+{group.maxDaysOverdue}d</span>
+          )}
+        </div>
+        {group.hint && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, fontFamily: 'var(--font-heading)', fontStyle: 'italic' }}>
+            {group.hint}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+        <button disabled={isSaving} onClick={() => onDone(group)} style={{ padding: '5px 11px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {t.dashboard.actions.done}
+        </button>
+        <button disabled={isSaving} onClick={() => onSkip(group)} style={{ padding: '5px 11px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {t.dashboard.actions.skip}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function WarningBucket({ label, icon, items, plantsLookup, t, saving, onDone, onSkip, onDoneGroup, onSkipGroup, noBorder }: {
+  label: string; icon: string; items: BucketItem[]
+  plantsLookup: { id: number; icon_key: string | null }[]
+  t: Translations; saving: string | null
+  onDone: (p: BucketPlantOut) => void; onSkip: (p: BucketPlantOut) => void
+  onDoneGroup: (g: GroupedWarning) => void; onSkipGroup: (g: GroupedWarning) => void
+  noBorder?: boolean
+}) {
+  if (items.length === 0) return null
+  const plantCount = itemsPlantCount(items)
   return (
     <div style={{ marginBottom: noBorder ? 0 : 10, marginTop: noBorder ? 0 : 10 }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 6 }}>
-        {icon} {label} · {t.dashboard.warnings.plantCount(plants.length)}
+        {icon} {label} · {t.dashboard.warnings.plantCount(plantCount)}
       </div>
       <div style={{ border: '1px solid var(--color-border-soft)', borderRadius: 10, overflow: 'hidden' }}>
-        {plants.map((plant, i) => {
+        {items.map((item, i) => {
+          const borderBottom = i < items.length - 1 ? '1px solid var(--color-border-soft)' : 'none'
+          if (item.kind === 'group') {
+            return (
+              <div key={`group_${item.group.care_type}`} style={{ borderBottom }}>
+                <GroupedWarningRow group={item.group} saving={saving} onDone={onDoneGroup} onSkip={onSkipGroup} t={t} />
+              </div>
+            )
+          }
+          const plant = item.plant
           const iconKey = plantsLookup.find(p => p.id === plant.plant_id)?.icon_key ?? plant.plant_icon_variant
           const careInfo = plant.care_type ? CARE_TYPE_INFO[plant.care_type as keyof typeof CARE_TYPE_INFO] : null
+          const key = `${plant.plant_id}_${plant.care_type ?? ''}`
+          const isSaving = saving === key
           return (
-            <Link key={plant.plant_id} to={`/plants/${plant.plant_id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit', padding: '10px 12px', borderBottom: i < plants.length - 1 ? '1px solid var(--color-border-soft)' : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div key={plant.plant_id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom, opacity: isSaving ? 0.5 : 1, transition: 'opacity 0.15s' }}>
+              <Link to={`/plants/${plant.plant_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(145deg, #FDFAF1, #F4EEDB)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                  {iconKey ? <img src={`/icons/${iconKey}.svg`} alt="" style={{ width: '70%', height: '70%', objectFit: 'contain' }} /> : <span style={{ fontSize: 16 }}>🌱</span>}
+                  {iconKey ? <img src={resolveIconUrl(iconKey)!} alt="" style={{ width: '70%', height: '70%', objectFit: 'contain' }} /> : <span style={{ fontSize: 16 }}>🌱</span>}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{plant.plant_name}</div>
                   <div style={{ display: 'flex', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
                     {careInfo && (
@@ -380,9 +539,20 @@ function WarningBucket({ label, icon, plants, plantsLookup, t, noBorder }: { lab
                     )}
                   </div>
                 </div>
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>→</span>
-              </div>
-            </Link>
+              </Link>
+              {plant.care_type ? (
+                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                  <button disabled={isSaving} onClick={() => onDone(plant)} style={{ padding: '5px 11px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {t.dashboard.actions.done}
+                  </button>
+                  <button disabled={isSaving} onClick={() => onSkip(plant)} style={{ padding: '5px 11px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {t.dashboard.actions.skip}
+                  </button>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', flexShrink: 0 }}>→</span>
+              )}
+            </div>
           )
         })}
       </div>
@@ -444,32 +614,6 @@ function NewMapCard({ t, onNewMap }: { t: Translations; onNewMap: () => void }) 
   )
 }
 
-function TaskSkeletons() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="card" style={{ borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 10 }} />
-          <div style={{ flex: 1 }}>
-            <div className="skeleton" style={{ height: 16, width: '60%', marginBottom: 6 }} />
-            <div className="skeleton" style={{ height: 10, width: '40%' }} />
-          </div>
-          <div className="skeleton" style={{ width: 70, height: 32, borderRadius: 100 }} />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function CalmEmptyState({ t }: { t: Translations }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-      <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 18, color: 'var(--color-text-soft)', margin: '0 0 8px' }}>{t.dashboard.tasks.calm}</p>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--color-text-muted)', margin: 0 }}>{t.dashboard.tasks.noTasks}</p>
-    </div>
-  )
-}
-
 const LOG_TAG: Record<string, { color: string; bg: string; border: string }> = {
   water:       { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
   fertilize:   { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
@@ -490,7 +634,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
         return (
           <div key={entry.id} className="log-entry" style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 14, padding: '16px 18px', alignItems: 'flex-start', borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none' }}>
             <div style={{ width: 56, height: 56, borderRadius: 8, background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-              {entry.icon_key ? <img src={`/icons/${entry.icon_key}.svg`} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>}
+              {entry.icon_key ? <img src={resolveIconUrl(entry.icon_key)!} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>}
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 3 }}>{dateStr} · {timeStr}</div>
@@ -525,7 +669,7 @@ function CareTipCard({ fact, t }: { fact: PlantFactOut; t: Translations }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {fact.icon_key && (
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <img src={`/icons/${fact.icon_key}.svg`} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
+              <img src={resolveIconUrl(fact.icon_key)!} alt="" style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
             </div>
           )}
           <div>

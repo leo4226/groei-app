@@ -19,6 +19,7 @@ from models import (
 )
 from auth import hash_password, verify_password, create_token, get_current_account
 from services.email import send_password_reset
+import asyncpg
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,11 +46,20 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     account_id = cur2.lastrowid
 
     # Create a user entry for this account so the language endpoint works
-    cur3 = await db.execute(
-        "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-        (body.name.strip(), household_id, "nl"),
-    )
-    user_id = cur3.lastrowid
+    try:
+        cur3 = await db.execute(
+            "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
+            (body.name.strip(), household_id, "nl"),
+        )
+        user_id = cur3.lastrowid
+    except asyncpg.exceptions.UniqueViolationError:
+        # Roll back the account + household inserts
+        await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+        await db.execute("DELETE FROM households WHERE id = ?", (household_id,))
+        raise HTTPException(
+            status_code=409,
+            detail="Deze gebruikersnaam is al in gebruik. Kies een andere naam.",
+        )
 
     # Create default locations for the new household
     for name, icon, sort_order in DEFAULT_LOCATIONS:

@@ -5,6 +5,7 @@ import { computeSuitability } from '../../utils/suitability'
 import { useMapRotation } from '../../context/MapRotationContext'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
+import { resolveIconUrl } from '../../utils/icons'
 
 export const STATUS_COLORS: Record<string, string> = {
   overdue:   'var(--color-overdue)',
@@ -116,7 +117,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
         {/* Plant icon — capped size so it stays within the map frame */}
         {plant.icon_key ? (
           <image
-            href={`/icons/${plant.icon_key}.svg`}
+            href={resolveIconUrl(plant.icon_key)!}
             x={-lockedIconR} y={-lockedIconR}
             width={lockedIconR * 2} height={lockedIconR * 2}
             style={{ pointerEvents: 'none' }}
@@ -206,7 +207,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
       {/* Plant icon or fallback dot */}
       {plant.icon_key ? (
         <image
-          href={`/icons/${plant.icon_key}.svg`}
+          href={resolveIconUrl(plant.icon_key)!}
           x={-iconR} y={-iconR}
           width={iconR * 2} height={iconR * 2}
           style={{ pointerEvents: 'none' }}

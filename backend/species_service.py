@@ -135,4 +135,120 @@ async def get_species_by_id(db, species_id: int) -> dict | None:
         result["phenology"] = json.loads(result.pop("phenology_json"))
     else:
         result.pop("phenology_json", None)
+
+    # Load images
+    img_rows = await db.execute_fetchall(
+        "SELECT id, url, thumbnail_url, source, license, is_primary "
+        "FROM species_images WHERE species_id = ? ORDER BY is_primary DESC",
+        (species_id,),
+    )
+    result["images"] = [dict(r) for r in img_rows] if img_rows else []
     return result
+
+
+async def search_species(
+    db, query: str, page: int = 1, per_page: int = 20
+) -> tuple[list[dict], int]:
+    """Full-text search on NL/EN/Latin names. Returns (results, total_count)."""
+    offset = (page - 1) * per_page
+    like = f"%{query}%"
+
+    # Count
+    count_rows = await db.execute_fetchall(
+        """SELECT COUNT(*) AS total FROM plant_species
+           WHERE common_name_nl ILIKE ?
+              OR common_name_en ILIKE ?
+              OR latin_name ILIKE ?""",
+        (like, like, like),
+    )
+    total = count_rows[0]["total"] if count_rows else 0
+
+    # Results
+    rows = await db.execute_fetchall(
+        """SELECT id, slug, common_name_nl, common_name_en,
+                  latin_name, family, genus, images_count
+           FROM plant_species
+           WHERE common_name_nl ILIKE ?
+              OR common_name_en ILIKE ?
+              OR latin_name ILIKE ?
+           ORDER BY
+             CASE WHEN common_name_nl ILIKE ? THEN 0
+                  WHEN common_name_en ILIKE ? THEN 1
+                  WHEN latin_name ILIKE ?      THEN 2
+                  ELSE 3
+             END,
+             common_name_nl
+           LIMIT ? OFFSET ?""",
+        (like, like, like, query, query, query, per_page, offset),
+    )
+    results = [dict(r) for r in rows]
+
+    # Attach primary image to each result
+    if results:
+        ids = tuple(r["id"] for r in results)
+        placeholders = ",".join("?" * len(ids))
+        img_rows = await db.execute_fetchall(
+            f"""SELECT DISTINCT ON (species_id) species_id, id, url, thumbnail_url,
+                       source, license, is_primary
+               FROM species_images
+               WHERE species_id IN ({placeholders})
+               ORDER BY species_id, is_primary DESC""",
+            ids,
+        )
+        img_map = {r["species_id"]: dict(r) for r in img_rows} if img_rows else {}
+        for r in results:
+            r["primary_image"] = img_map.get(r["id"])
+
+    return results, total
+
+
+async def upsert_species_from_gbif(db, data: dict) -> int | None:
+    """Insert or update a species row from GBIF data. Returns species_id."""
+    await db.execute(
+        """INSERT INTO plant_species
+             (slug, common_name_nl, common_name_en, latin_name,
+              family, genus, growth_form, gbif_taxon_key,
+              images_count, climate_zone)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (slug) DO UPDATE SET
+             common_name_en  = COALESCE(excluded.common_name_en, plant_species.common_name_en),
+             latin_name      = COALESCE(excluded.latin_name, plant_species.latin_name),
+             family          = COALESCE(excluded.family, plant_species.family),
+             genus           = COALESCE(excluded.genus, plant_species.genus),
+             gbif_taxon_key  = COALESCE(excluded.gbif_taxon_key, plant_species.gbif_taxon_key),
+             images_count    = excluded.images_count,
+             updated_at      = CURRENT_TIMESTAMP
+           RETURNING id""",
+        (
+            data.get("slug", ""),
+            data.get("common_name_nl", ""),
+            data.get("common_name_en"),
+            data.get("latin_name"),
+            data.get("family"),
+            data.get("genus"),
+            data.get("growth_form"),
+            data.get("gbif_taxon_key"),
+            data.get("images_count", 0),
+            data.get("climate_zone", "temperate"),
+        ),
+    )
+    return db.lastrowid
+
+
+async def insert_species_image(db, species_id: int, img: dict) -> None:
+    """Insert a species image record."""
+    await db.execute(
+        """INSERT INTO species_images
+             (species_id, url, thumbnail_url, source, license, width, height, is_primary)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            species_id,
+            img["url"],
+            img.get("thumbnail_url"),
+            img.get("source", "gbif"),
+            img.get("license"),
+            img.get("width"),
+            img.get("height"),
+            img.get("is_primary", False),
+        ),
+    )

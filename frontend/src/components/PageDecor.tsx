@@ -1,3 +1,5 @@
+import { resolveIconUrl } from '../utils/icons'
+
 type DecorIcon = { id: number; name: string; left: string; top: string; size: number; rotate: number; opacity: number }
 
 // Small seeded PRNG — deterministic so icons don't shift on re-render
@@ -120,7 +122,7 @@ export default function PageDecor() {
       {PAGE_DECOR.map((d) => (
         <img
           key={d.id}
-          src={`/icons/${d.name}.svg`}
+          src={resolveIconUrl(d.name)!}
           alt=""
           style={{
             position: 'absolute',

@@ -423,14 +423,47 @@ class PhenologyData(BaseModel):
     climate_zone: str
 
 
+class SpeciesImageOut(BaseModel):
+    id: int
+    url: str
+    thumbnail_url: str | None = None
+    source: str
+    license: str | None = None
+    is_primary: bool = False
+
+
 class PlantSpeciesOut(BaseModel):
     id: int
     slug: str
     common_name_nl: str
     common_name_en: str | None = None
     latin_name: str | None = None
+    family: str | None = None
+    genus: str | None = None
+    growth_form: str | None = None
     climate_zone: str = "temperate"
     phenology: PhenologyData | None = None
+    images_count: int = 0
+    images: list[SpeciesImageOut] = []
+
+
+class PlantSpeciesSearchResult(BaseModel):
+    id: int
+    slug: str
+    common_name_nl: str
+    common_name_en: str | None = None
+    latin_name: str | None = None
+    family: str | None = None
+    genus: str | None = None
+    images_count: int = 0
+    primary_image: SpeciesImageOut | None = None
+
+
+class SpeciesSearchResponse(BaseModel):
+    results: list[PlantSpeciesSearchResult]
+    total: int
+    page: int = 1
+    per_page: int = 20
 
 
 # --- Home / Plant Fact (PlantFactOut defined above, before DashboardV2Response) ---

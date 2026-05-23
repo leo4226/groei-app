@@ -3,6 +3,7 @@ import type { PlantIcon } from '../types'
 import { icons } from '../api/client'
 import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
 import { useT } from '../context/LanguageContext'
+import { resolveIconUrl } from '../utils/icons'
 
 interface Props {
   value: string | null
@@ -79,7 +80,7 @@ export default function IconPicker({ value, onChange }: Props) {
         {selected ? (
           <>
             <img
-              src={`/icons/${selected.id}.svg`}
+              src={resolveIconUrl(selected.id)!}
               alt={selected.name}
               className="w-9 h-9 flex-shrink-0"
             />
@@ -185,7 +186,7 @@ export default function IconPicker({ value, onChange }: Props) {
                     }`}
                   >
                     <img
-                      src={`/icons/${icon.id}.svg`}
+                      src={resolveIconUrl(icon.id)!}
                       alt={icon.name}
                       className="w-12 h-12"
                       loading="lazy"

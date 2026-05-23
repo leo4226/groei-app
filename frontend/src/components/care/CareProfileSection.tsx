@@ -16,8 +16,8 @@ const STATUS_PILL: Record<string, { label: string; className: string }> = {
 }
 
 export function CareProfileSection({ plantId }: Props) {
-  const { state, loading, invalidate } = usePlantCareProfile(plantId)
-  const { markCareDone, loadPlants } = useFloreren()
+  const { state, loading } = usePlantCareProfile(plantId)
+  const { markCareDone, patchCareProfile } = useFloreren()
   const [saving, setSaving] = useState<string | null>(null)
 
   if (loading) {
@@ -40,19 +40,15 @@ export function CareProfileSection({ plantId }: Props) {
 
   async function handleQuickAction(careType: string) {
     await markCareDone(plantId, careType)
-    invalidate()
-    await loadPlants()
   }
 
   async function handleToggle(careType: string, currentActive: boolean) {
     setSaving(careType)
     try {
-      const { patchCareProfile } = await import('../../api/client')
       await patchCareProfile(plantId, { [careType]: { active: !currentActive } })
     } finally {
       setSaving(null)
     }
-    invalidate()
   }
 
   // Combine active care_types with care_summary keys to get all known types

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
 import { LOCAL_PLANTS } from '../../data/plants-dataset'
 import { useT } from '../../context/LanguageContext'
+import { resolveIconUrl } from '../../utils/icons'
 
 const TYPE_COLOR: Record<string, string> = {
   vaste_plant: '#d98199',
@@ -126,7 +127,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                 >
                   {plant.iconKey ? (
                     <img
-                      src={`/icons/${plant.iconKey}.svg`}
+                      src={resolveIconUrl(plant.iconKey)!}
                       alt={plant.dutchName}
                       className="w-8 h-8 object-contain"
                     />

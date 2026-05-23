@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from database import db_dep
 from models import InviteInput, InviteOutput, JoinInput, AuthResponse
 from auth import hash_password, create_token, get_current_account
+import asyncpg
 
 router = APIRouter(prefix="/household", tags=["household"])
 
@@ -110,10 +111,18 @@ async def join_household(
     account_id = cur.lastrowid
 
     # 4. Create a user entry
-    await db.execute(
-        "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-        (body.name.strip(), household_id, "nl"),
-    )
+    try:
+        await db.execute(
+            "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
+            (body.name.strip(), household_id, "nl"),
+        )
+    except asyncpg.exceptions.UniqueViolationError:
+        # Roll back the account we just created
+        await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+        raise HTTPException(
+            status_code=409,
+            detail="Deze gebruikersnaam is al in gebruik. Kies een andere naam.",
+        )
 
     # 5. Mark the invite as used
     await db.execute(

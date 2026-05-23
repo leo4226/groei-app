@@ -1,14 +1,19 @@
 import type { CalendarEvent } from './calendarTypes'
-import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
+import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
 import { DAY_LONG_NL, MONTH_SHORT_NL, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
+import { resolveIconUrl } from '../../utils/icons'
 
 interface Props {
   selectedIso: string
   events: CalendarEvent[]
+  todayIso: string
+  saving: string | null
+  onDone: (e: CalendarEvent) => void
+  onSkip: (e: CalendarEvent) => void
 }
 
-export default function CalendarAgendaCard({ selectedIso, events }: Props) {
+export default function CalendarAgendaCard({ selectedIso, events, todayIso, saving, onDone, onSkip }: Props) {
   const t = useT()
   const [y, m, d] = selectedIso.split('-').map(Number)
   const dayName = DAY_LONG_NL[dowMon(y, m, d)]
@@ -41,10 +46,9 @@ export default function CalendarAgendaCard({ selectedIso, events }: Props) {
         )}
         {events.map(e => {
           const def = EVENT_TYPE_BY_ID[e.type]
-          const iconSrc = e.plant_icon_variant ? `/icons/${e.plant_icon_variant}.svg`
-            : e.plant_id ? '/icons/seed.svg' : null
+          const iconSrc = resolveIconUrl(e.plant_icon_variant) ?? (e.plant_id ? '/icons/seed.svg' : null)
           return (
-            <div key={e.id} className="agenda-item">
+            <div key={e.id} className="agenda-item" style={{ opacity: saving === e.id ? 0.5 : 1, transition: 'opacity 0.15s' }}>
               <div className={`agenda-icon ${def?.cssClass ?? ''}`}>
                 {iconSrc && <img src={iconSrc} alt="" />}
               </div>
@@ -52,9 +56,20 @@ export default function CalendarAgendaCard({ selectedIso, events }: Props) {
                 <p className="what">{t.utility[EVENT_TYPE_UTILITY_KEY[e.type]] ?? e.type} · <em>{e.plant_name ?? '—'}</em></p>
                 <p className="who">{e.overdue ? t.calendar.overdueLabel : ''}</p>
               </div>
-              <div className="agenda-time">
-                —<span className="dur">{t.utility[EVENT_TYPE_UTILITY_KEY[e.type]] ?? e.type}</span>
-              </div>
+              {isActionable(e, todayIso) ? (
+                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                  <button disabled={saving === e.id} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
+                    {t.dashboard.actions.done}
+                  </button>
+                  <button disabled={saving === e.id} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontSize: 10, cursor: 'pointer' }}>
+                    {t.dashboard.actions.skip}
+                  </button>
+                </div>
+              ) : (
+                <div className="agenda-time">
+                  —<span className="dur">{t.utility[EVENT_TYPE_UTILITY_KEY[e.type]] ?? e.type}</span>
+                </div>
+              )}
             </div>
           )
         })}
