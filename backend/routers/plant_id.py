@@ -34,11 +34,15 @@ router = APIRouter(prefix="/plants", tags=["plant-id"])
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 # Confidence calibration thresholds (informed by scripts/eval_bioclip.py output).
-# Update these from a fresh eval run; current values are educated initial guesses.
+# Tuned 2026-05-24 from 126-photo iNat-only eval (see docs/plans/2026-05-24-bioclip-eval-baseline.txt).
+# Key insight from the eval: top-1 score alone barely discriminates correct from wrong
+# (mean 0.302 vs 0.287), but margin (top1 - top2) separates strongly (mean 0.035 vs 0.012).
+# So HIGH requires BOTH a moderate top-1 AND a meaningful margin; MEDIUM is the
+# top-1 band above WRONG median (probably right, but margin doesn't confirm).
 _CONFIDENCE_FLOOR = 0.10       # below this -> no_match (no candidates surfaced)
-_HIGH_TOP1 = 0.30              # top-1 must clear this AND _HIGH_MARGIN to be "high"
-_HIGH_MARGIN = 0.04            # top-1 minus top-2
-_MEDIUM_TOP1 = 0.25            # top-1 above this is at least medium
+_HIGH_TOP1 = 0.28              # top-1 must clear this AND _HIGH_MARGIN to be "high"
+_HIGH_MARGIN = 0.03            # top-1 minus top-2 — primary signal
+_MEDIUM_TOP1 = 0.30            # top-1 above median-of-WRONG is at least medium
 
 # (No legacy aliases — _CONFIDENCE_FLOOR / _HIGH_TOP1 / _HIGH_MARGIN / _MEDIUM_TOP1 are
 #  the only constants. Old names removed; grep confirmed zero external imports.)

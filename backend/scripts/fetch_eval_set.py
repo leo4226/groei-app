@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 _EVAL_DIR = Path(__file__).resolve().parent.parent / "data" / "eval"
 _GBIF_URL = "https://api.gbif.org/v1/occurrence/search"
 _REQUEST_DELAY_S = 1.0
+_INAT_DATASET_KEY = "50c9509d-22c7-4a22-a47d-8c48425ef4a7"  # iNaturalist on GBIF
 
 
 def extract_image_urls(gbif_response: dict, limit: int) -> list[str]:
@@ -51,14 +52,20 @@ def extract_image_urls(gbif_response: dict, limit: int) -> list[str]:
     return urls[:limit]
 
 
-async def fetch_species_images(client: httpx.AsyncClient, latin_name: str, limit: int) -> list[str]:
-    """Fetch up to `limit` StillImage URLs from GBIF for a species; returns [] on any failure."""
+async def fetch_species_images(
+    client: httpx.AsyncClient, latin_name: str, limit: int, inat_only: bool = False,
+) -> list[str]:
+    """Fetch up to `limit` StillImage URLs from GBIF for a species; returns [] on any failure.
+
+    When inat_only=True, restricts to iNaturalist-sourced records (live photos by
+    observers, comparable to BioCLIP's training distribution). Default (False) returns
+    any GBIF source — which mixes herbarium specimens, lab photos, and live photos.
+    """
+    params = {"scientificName": latin_name, "mediaType": "StillImage", "limit": max(20, limit * 4)}
+    if inat_only:
+        params["datasetKey"] = _INAT_DATASET_KEY
     try:
-        resp = await client.get(
-            _GBIF_URL,
-            params={"scientificName": latin_name, "mediaType": "StillImage", "limit": max(20, limit * 4)},
-            timeout=15,
-        )
+        resp = await client.get(_GBIF_URL, params=params, timeout=15)
         if resp.status_code != 200:
             logger.warning("GBIF %s for %s", resp.status_code, latin_name)
             return []
@@ -84,7 +91,7 @@ async def download_image(client: httpx.AsyncClient, url: str, dest: Path) -> boo
         return False
 
 
-async def main(n_species: int, photos_per_species: int):
+async def main(n_species: int, photos_per_species: int, inat_only: bool = False):
     from database import init_pool, close_pool, get_db
 
     await init_pool()
@@ -111,7 +118,7 @@ async def main(n_species: int, photos_per_species: int):
                     stats["skipped"] += 1
                     continue
 
-                urls = await fetch_species_images(client, name, photos_per_species)
+                urls = await fetch_species_images(client, name, photos_per_species, inat_only=inat_only)
                 await asyncio.sleep(_REQUEST_DELAY_S)
                 if not urls:
                     stats["no_images"] += 1
@@ -138,5 +145,11 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--n-species", type=int, default=100)
     p.add_argument("--photos-per-species", type=int, default=3)
+    p.add_argument(
+        "--inat-only",
+        action="store_true",
+        help="Restrict GBIF query to iNaturalist-sourced records (live observer photos). "
+             "Default is all sources, which mixes in herbarium specimens.",
+    )
     args = p.parse_args()
-    asyncio.run(main(args.n_species, args.photos_per_species))
+    asyncio.run(main(args.n_species, args.photos_per_species, inat_only=args.inat_only))

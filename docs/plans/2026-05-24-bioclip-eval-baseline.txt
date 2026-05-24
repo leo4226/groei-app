@@ -1,0 +1,77 @@
+BioCLIP eval baseline — 2026-05-24
+====================================
+
+Source:       backend/scripts/eval_bioclip.py against backend/data/eval/
+Worker:       https://bioclip.floreren.app (Leon's home GPU, RTX 2070, CUDA)
+Eval set:     iNaturalist-only photos via GBIF (datasetKey=50c9509d-22c7-4a22-a47d-8c48425ef4a7)
+              Populated via: python scripts/fetch_eval_set.py --n-species 100 --photos-per-species 3 --inat-only
+
+Eval set stats
+--------------
+Photos:       126
+Species:      47 (of 100 sampled — 53 species had no iNat photos in GBIF)
+
+Caveat
+------
+GBIF eval almost certainly overlaps with BioCLIP's training data, so real-user
+accuracy will be lower than these numbers — treat as an upper bound. The key
+takeaways below are about CALIBRATION SIGNAL (does margin discriminate?), not
+about absolute accuracy.
+
+Results
+-------
+Top-1 accuracy: 18/126  (14%)
+Top-5 accuracy: 33/126  (26%)
+
+Score distribution when CORRECT (top-1):
+  mean=0.302  median=0.306  min=0.248  max=0.353
+Score distribution when WRONG (top-1):
+  mean=0.287  median=0.299  min=0.163  max=0.380
+  → Top-1 score alone barely discriminates (mean diff ~0.015, distributions overlap heavily).
+
+Margin (top1 − top2) when CORRECT:
+  mean=0.035  p25=0.012  p75=0.059
+Margin (top1 − top2) when WRONG:
+  mean=0.012  p25=0.003  p75=0.018
+  → MARGIN is the primary discriminator: correct margins are ~3x wrong margins.
+
+Suggested threshold values (auto from eval)
+-------------------------------------------
+high     :  top1 >= 0.28  AND  margin >= 0.030
+medium   :  top1 >= 0.30
+low      :  top1 >= 0.10
+no_match :  top1 <  0.10
+
+Applied to backend/routers/plant_id.py constants
+------------------------------------------------
+_CONFIDENCE_FLOOR = 0.10
+_HIGH_TOP1        = 0.28
+_HIGH_MARGIN      = 0.03
+_MEDIUM_TOP1      = 0.30
+
+Historical comparison (mixed-source eval, same day, earlier)
+------------------------------------------------------------
+Before restricting to iNat:
+  Photos:       170 (across 73 species)
+  Top-1:        5%, Top-5: 13%
+  Margin CORRECT mean: 0.009 (vs WRONG mean: 0.013 — discriminator WAS BROKEN)
+
+The mixed eval included herbarium specimens (Harvard, Midwest, Naturalis, NRM
+Stockholm) which are pressed dried plants on cardstock — a distribution BioCLIP
+wasn't trained on. The iNat-only filter restricts to live observer photos, the
+distribution BioCLIP IS trained on. The accuracy improvement (5% → 14%) and the
+margin discriminator flip (broken → working) confirm BioCLIP needs live-photo
+inputs to perform.
+
+When to re-run
+--------------
+- After adding many new species to plant_species (the embedding precompute must
+  also re-run; see backend/scripts/precompute_embeddings.py).
+- After upgrading or swapping the BioCLIP model.
+- Quarterly, as a regression check.
+
+Re-run command:
+  python scripts/eval_bioclip.py --worker-url $BIOCLIP_WORKER_URL
+
+If the suggested thresholds drift meaningfully from those in plant_id.py,
+update the constants and re-save this baseline.
