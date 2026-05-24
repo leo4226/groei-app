@@ -10,7 +10,7 @@ type Step =
   | { kind: 'privacy' }
   | { kind: 'camera' }
   | { kind: 'identifying'; thumbnail: string }
-  | { kind: 'results'; candidates: PlantIdCandidate[]; confidence: IdentifyConfidence; thumbnail: string; capturedBlob: Blob }
+  | { kind: 'results'; candidates: PlantIdCandidate[]; confidence: IdentifyConfidence; thumbnail: string; capturedBlob: Blob; source: string }
   | { kind: 'enriching' }
   | { kind: 'error'; message: string; thumbnail: string | null }
 
@@ -41,6 +41,7 @@ export function IdentifyPlantPage() {
         confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
         thumbnail: dataUrl,
         capturedBlob: blob,
+        source: resp.source ?? 'bioclip',
       })
     } catch (e) {
       const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
@@ -84,6 +85,27 @@ export function IdentifyPlantPage() {
   function retry() {
     setStep({ kind: 'camera' })
     setCapturedPhotoDataUrl(null)
+  }
+
+  async function handleTryPlantnet() {
+    if (step.kind !== 'results') return
+    setStep({ kind: 'identifying', thumbnail: step.thumbnail })
+    try {
+      const resp = await plantsApi.identifyPlantnet(step.capturedBlob)
+      setStep({
+        kind: 'results',
+        candidates: resp.candidates,
+        confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
+        thumbnail: step.thumbnail,
+        capturedBlob: step.capturedBlob,
+        source: resp.source ?? 'plantnet',
+      })
+    } catch (e) {
+      const message = e instanceof Error && e.message
+        ? e.message
+        : t.identify.errorService
+      setStep({ kind: 'error', message, thumbnail: step.thumbnail })
+    }
   }
 
   // --- render per step ---
@@ -132,9 +154,11 @@ export function IdentifyPlantPage() {
         candidates={step.candidates}
         confidence={step.confidence}
         capturedThumbnailUrl={step.thumbnail}
+        source={step.source}
         onChoose={handleChoose}
         onRetry={retry}
         onManualFallback={manualFallback}
+        onTryPlantnet={handleTryPlantnet}
       />
     )
   }

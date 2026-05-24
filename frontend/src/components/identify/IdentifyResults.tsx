@@ -6,16 +6,19 @@ type Props = {
   candidates: PlantIdCandidate[]
   confidence: IdentifyConfidence    // was: lowConfidence: boolean
   capturedThumbnailUrl: string | null
+  source: string                     // "bioclip" or "plantnet"
   onChoose: (candidate: PlantIdCandidate) => void
   onRetry: () => void
   onManualFallback: () => void
+  onTryPlantnet: () => void
 }
 
 export function IdentifyResults({
-  candidates, confidence, capturedThumbnailUrl, onChoose, onRetry, onManualFallback,
+  candidates, confidence, capturedThumbnailUrl, source, onChoose, onRetry, onManualFallback, onTryPlantnet,
 }: Props) {
   const t = useT()
   const tone = confidenceTone(confidence)
+  const fromBioclip = source === "bioclip"
 
   if (candidates.length === 0) {
     const bodyText = tone.showDetailedNoMatch
@@ -32,6 +35,11 @@ export function IdentifyResults({
           <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded">
             {t.identify.noMatch.retry}
           </button>
+          {fromBioclip && (
+            <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded flex items-center justify-center gap-2">
+              🔬 Probeer met PlantNet
+            </button>
+          )}
           <button onClick={onManualFallback} className="text-gray-700 px-4 py-3 rounded border">
             {t.identify.noMatch.manualFallback}
           </button>
@@ -80,6 +88,13 @@ export function IdentifyResults({
         })}
       </div>
       <div className="text-center text-xs text-gray-400 mt-6">{t.identify.results.poweredBy}</div>
+      {fromBioclip && (
+        <div className="text-center mt-4">
+          <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded text-sm">
+            🔬 Probeer met PlantNet
+          </button>
+        </div>
+      )}
     </div>
   )
 }

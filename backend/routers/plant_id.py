@@ -14,7 +14,7 @@ import time
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from database import db_dep
@@ -274,6 +274,7 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
 @router.post("/identify", response_model=IdentifyResponse)
 async def identify_endpoint(
     image: UploadFile = File(...),
+    engine: str = Query("bioclip"),
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
@@ -284,13 +285,14 @@ async def identify_endpoint(
     if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
 
-    # 2. Try BioCLIP first (self-hosted, no quota)
-    try:
-        result = await _bioclip_identify(image_bytes, db)
-        if result is not None:
-            return result
-    except Exception as exc:
-        logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
+    # 2. Try BioCLIP first (self-hosted, no quota) — unless user explicitly chose PlantNet
+    if engine != "plantnet":
+        try:
+            result = await _bioclip_identify(image_bytes, db)
+            if result is not None:
+                return result
+        except Exception as exc:
+            logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
 
     # 3. Fallback: Pl@ntNet API
     await _check_quota(db, account)
