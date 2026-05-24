@@ -4,81 +4,20 @@ import random
 from fastapi import APIRouter, Depends
 from database import db_dep
 from auth import get_current_account
-from models import DashboardResponse, DashboardV2Response, StatusCounts, RecentLogEntry, CareTask, PlantFactOut
-from datetime import date
+from models import DashboardResponse, DashboardV2Response, StatusCounts, RecentLogEntry, PlantFactOut
 from services.weather_task_service import sync_ephemeral_schedules
+from services.care_task_service import fetch_household_schedule_rows, classify_care_tasks
 
 router = APIRouter(tags=["dashboard"])
 
 
-@router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(db = Depends(db_dep), account = Depends(get_current_account)):
-    today = str(date.today())
-
-    cursor = await db.execute("""
-        SELECT
-            cs.id as schedule_id,
-            cs.plant_id,
-            p.name as plant_name,
-            p.photo_path as plant_photo,
-            l.name as location,
-            cs.care_type,
-            cs.next_due,
-            cs.last_done_by,
-            u.name as last_done_by_name,
-            cs.last_done as last_done_at
-        FROM care_schedules cs
-        JOIN plants p ON cs.plant_id = p.id
-        LEFT JOIN locations l ON p.location_id = l.id
-        LEFT JOIN users u ON cs.last_done_by = u.id
-        WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
-        ORDER BY cs.next_due ASC
-    """, (account["household_id"],))
-    rows = await cursor.fetchall()
-
-    overdue = []
-    due_today = []
-    upcoming = []
-
-    for row in rows:
-        due = row["next_due"]
-        if isinstance(due, str):
-            due = date.fromisoformat(due)
-        days_diff = (due - date.today()).days
-
-        task = CareTask(
-            plant_id=row["plant_id"],
-            plant_name=row["plant_name"],
-            plant_photo=row["plant_photo"],
-            location=row["location"],
-            care_type=row["care_type"],
-            days_overdue=-days_diff,
-            last_done_by=row["last_done_by_name"],
-            last_done_at=row["last_done_at"],
-            schedule_id=row["schedule_id"],
-        )
-
-        if days_diff < 0:
-            overdue.append(task)
-        elif days_diff == 0:
-            due_today.append(task)
-        elif days_diff <= 7:
-            upcoming.append(task)
-
-    # Sort overdue by most overdue first
-    overdue.sort(key=lambda t: t.days_overdue, reverse=True)
-
-    return DashboardResponse(overdue=overdue, due_today=due_today, upcoming=upcoming)
-
-
-@router.get("/plant-fact", response_model=PlantFactOut)
-async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_account)):
+async def _plant_fact_candidates(db, household_id: int) -> list[PlantFactOut]:
     rows = await db.execute_fetchall("""
         SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
         FROM plants p
         JOIN plant_species ps ON p.species_id = ps.id
         WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
-    """, (account["household_id"],))
+    """, (household_id,))
 
     candidates = []
     for row in rows:
@@ -99,70 +38,33 @@ async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_acc
             fact_nl=fact,
             species_name=row["common_name_nl"],
         ))
+    return candidates
 
+
+@router.get("/dashboard", response_model=DashboardResponse)
+async def get_dashboard(db = Depends(db_dep), account = Depends(get_current_account)):
+    rows = await fetch_household_schedule_rows(db, account["household_id"])
+    overdue, due_today, upcoming = classify_care_tasks(rows)
+    return DashboardResponse(overdue=overdue, due_today=due_today, upcoming=upcoming)
+
+
+@router.get("/plant-fact", response_model=PlantFactOut)
+async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_account)):
+    candidates = await _plant_fact_candidates(db, account["household_id"])
     if not candidates:
         from fastapi.responses import Response
         return Response(status_code=404)
-
     return random.choice(candidates)
 
 
 @router.get("/dashboard/v2", response_model=DashboardV2Response)
 async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_account)):
-    # Sync weather-driven ephemeral tasks
+    # Sync weather-driven ephemeral tasks first
     await sync_ephemeral_schedules()
 
-    # ── Task lists ──
-    cursor = await db.execute("""
-        SELECT
-            cs.id as schedule_id,
-            cs.plant_id,
-            p.name as plant_name,
-            p.photo_path as plant_photo,
-            l.name as location,
-            m.map_type,
-            cs.care_type,
-            cs.next_due,
-            cs.last_done_by,
-            u.name as last_done_by_name,
-            cs.last_done as last_done_at,
-            cs.is_ephemeral
-        FROM care_schedules cs
-        JOIN plants p ON cs.plant_id = p.id
-        LEFT JOIN locations l ON p.location_id = l.id
-        LEFT JOIN maps m ON p.map_id = m.id
-        LEFT JOIN users u ON cs.last_done_by = u.id
-        WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
-        ORDER BY cs.next_due ASC
-    """, (account["household_id"],))
-    rows = await cursor.fetchall()
-
-    overdue, due_today, upcoming = [], [], []
-    for row in rows:
-        due = row["next_due"]
-        if isinstance(due, str):
-            due = date.fromisoformat(due)
-        days_diff = (due - date.today()).days
-        task = CareTask(
-            plant_id=row["plant_id"],
-            plant_name=row["plant_name"],
-            plant_photo=row["plant_photo"],
-            location=row["location"],
-            map_type=row["map_type"],
-            care_type=row["care_type"],
-            days_overdue=-days_diff,
-            last_done_by=row["last_done_by_name"],
-            last_done_at=row["last_done_at"],
-            schedule_id=row["schedule_id"],
-            is_ephemeral=bool(row["is_ephemeral"]) if row["is_ephemeral"] is not None else False,
-        )
-        if days_diff < 0:
-            overdue.append(task)
-        elif days_diff == 0:
-            due_today.append(task)
-        elif days_diff <= 7:
-            upcoming.append(task)
-    overdue.sort(key=lambda t: t.days_overdue, reverse=True)
+    # ── Care tasks ──
+    rows = await fetch_household_schedule_rows(db, account["household_id"])
+    overdue, due_today, upcoming = classify_care_tasks(rows)
 
     # ── Status counts ──
     total_row = await db.execute_fetchall(
@@ -212,31 +114,7 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
     ]
 
     # ── Plant fact ──
-    fact_rows = await db.execute_fetchall("""
-        SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
-        FROM plants p
-        JOIN plant_species ps ON p.species_id = ps.id
-        WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
-    """, (account["household_id"],))
-    candidates = []
-    for row in fact_rows:
-        phen_str = row["phenology_json"]
-        if not phen_str:
-            continue
-        try:
-            phen = json.loads(phen_str) if isinstance(phen_str, str) else phen_str
-        except json.JSONDecodeError:
-            continue
-        fact = phen.get("interesting_facts_nl", "").strip()
-        if not fact:
-            continue
-        candidates.append(PlantFactOut(
-            plant_id=row["id"],
-            plant_name=row["name"],
-            icon_key=row["icon_key"],
-            fact_nl=fact,
-            species_name=row["common_name_nl"],
-        ))
+    candidates = await _plant_fact_candidates(db, account["household_id"])
     plant_fact = random.choice(candidates) if candidates else None
 
     return DashboardV2Response(

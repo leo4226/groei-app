@@ -93,8 +93,8 @@ async def _fetch_weather_safely() -> dict | None:
     keeps working when the weather cache is unavailable (e.g. tests, offline).
     """
     try:
-        from routers.plant_care import _get_temp_data
-        temp_data = await _get_temp_data()
+        from services.environment import get_temp_data
+        temp_data = await get_temp_data()
         if not temp_data:
             return None
         return {"temp": temp_data}

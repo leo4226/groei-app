@@ -13,8 +13,8 @@ async def _get_cached_weather() -> dict:
     """Return {temp_days: [...], min_24h: float, max_24h: float}.
     Uses temp data from plant_care module's open-meteo cache.
     """
-    from routers.plant_care import _get_temp_data
-    temp_data = await _get_temp_data()
+    from services.environment import get_temp_data
+    temp_data = await get_temp_data()
     days = temp_data.get("days", [])
     if not days:
         return {"temp_days": [], "min_24h": None, "max_24h": None}

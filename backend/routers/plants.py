@@ -8,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from database import db_dep
 from auth import get_current_account
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
-from routers.icons import find_variant
+from routers.icons import resolve_placement_icon
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from services.storage import build_storage_from_env
@@ -240,7 +240,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = find_variant(row["icon_key"], "bare")
+    new_icon = resolve_placement_icon(row["icon_key"], container_id=None)
     await db.execute(
         """UPDATE plants
            SET map_id = ?, map_x = ?, map_y = ?, ground_zone_id = ?,
@@ -258,8 +258,7 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    target_form = "potted" if data.container_id is not None else "bare"
-    new_icon = find_variant(row["icon_key"], target_form)
+    new_icon = resolve_placement_icon(row["icon_key"], container_id=data.container_id)
     await db.execute(
         """UPDATE plants
            SET container_id = ?, ground_zone_id = NULL,
@@ -277,7 +276,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = find_variant(row["icon_key"], "bare")
+    new_icon = resolve_placement_icon(row["icon_key"], container_id=None)
     await db.execute(
         """UPDATE plants
            SET ground_zone_id = ?, map_x = ?, map_y = ?,

@@ -65,6 +65,17 @@ def find_variant(icon_key: str | None, target_form: str) -> str | None:
     return icon_key
 
 
+def resolve_placement_icon(icon_key: str | None, *, container_id: int | None) -> str | None:
+    """Pick the right icon variant for a Plant's placement context.
+
+    Form rule (CONTEXT.md): a Plant inside a Container uses `potted`, otherwise
+    `bare`. Phase and Zone-type-based auto-selection are future work — when added,
+    they belong here as additional kwargs.
+    """
+    target_form = "potted" if container_id is not None else "bare"
+    return find_variant(icon_key, target_form)
+
+
 # Dutch common name → icon_id  (covers the most-used Dutch plant names)
 DUTCH_TO_ICON: dict[str, str] = {
     # Houseplants

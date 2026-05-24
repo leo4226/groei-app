@@ -4,7 +4,8 @@ from datetime import date, datetime
 from fastapi import APIRouter, HTTPException, Depends
 
 from database import db_dep
-from routers.plant_care import _get_rain_data, _get_temp_data, get_last_garden_watered, get_last_garden_fertilized
+from services.environment import get_rain_data, get_temp_data
+from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.alert_service import compute_alerts, _SEVERITY_ORDER
 
 router = APIRouter(tags=["alerts"])
@@ -27,7 +28,7 @@ async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
         return []
 
     thresholds = json.loads(raw)
-    rain, temp, last_watered = await _get_rain_data(), await _get_temp_data(), await get_last_garden_watered()
+    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered()
     last_fertilized = await get_last_garden_fertilized()
     map_type = rows[0]["map_type"] or "outdoor"
     in_ground = map_type == "outdoor" and rows[0]["container_id"] is None
@@ -44,7 +45,7 @@ async def get_alerts_summary(db = Depends(db_dep)):
     if not rows:
         return {"total_count": 0, "worst_severity": None, "plant_ids_with_alerts": []}
 
-    rain, temp, last_watered = await _get_rain_data(), await _get_temp_data(), await get_last_garden_watered()
+    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered()
     last_fertilized = await get_last_garden_fertilized()
 
     total_count = 0

@@ -7,7 +7,8 @@ from datetime import date
 from database import db_dep
 from auth import get_current_account
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
-from routers.plant_care import _get_temp_data, _get_rain_data, get_last_garden_watered, get_last_garden_fertilized
+from services.environment import get_rain_data, get_temp_data
+from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 from services.storage import build_storage_from_env
@@ -58,8 +59,8 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
         (map_id,),
     )
     today = date.today().isoformat()
-    temp_data = await _get_temp_data()
-    rain_data = await _get_rain_data()
+    temp_data = await get_temp_data()
+    rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered()
     last_fertilized = await get_last_garden_fertilized()
     return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
@@ -75,8 +76,8 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
     map_id = map_row[0]["id"]
     map_type = map_row[0]["map_type"] or "outdoor"
     today = date.today().isoformat()
-    temp_data = await _get_temp_data()
-    rain_data = await _get_rain_data()
+    temp_data = await get_temp_data()
+    rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered()
 
     # Free-standing + ground-zone plants (not inside a container)
@@ -220,6 +221,26 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
                 svg_url = storage.put(key, svg_content.encode("utf-8"), content_type="image/svg+xml")
                 updates.append("svg_file = ?")
                 params.append(svg_url)
+
+            # Sync soil zones from canvas_data to ground_zones table
+            soil_zones = [z for z in zones if z.get("type") == "soil"]
+            for z in soil_zones:
+                polygon = json.dumps([
+                    [z["x"], z["y"]],
+                    [z["x"] + z["width"], z["y"]],
+                    [z["x"] + z["width"], z["y"] + z["height"]],
+                    [z["x"], z["y"] + z["height"]],
+                ])
+                await db.execute(
+                    """INSERT INTO ground_zones (id, map_id, name, zone_type, polygon, soil_note)
+                       VALUES (?, ?, ?, 'soil', ?, ?)
+                       ON CONFLICT (id) DO UPDATE SET
+                         name = EXCLUDED.name,
+                         polygon = EXCLUDED.polygon,
+                         zone_type = 'soil',
+                         soil_note = EXCLUDED.soil_note""",
+                    (z["id"], map_id, z.get("label", "Grond"), polygon, z.get("soil_note")),
+                )
         except (json.JSONDecodeError, TypeError):
             pass
         # Generate thumbnail SVG from zone blocks

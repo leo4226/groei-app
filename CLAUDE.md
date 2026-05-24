@@ -78,7 +78,7 @@ SVG coordinates are the source of truth. `screenToSVG()` converts pointer events
 
 ### Shadow casters
 
-Shadow casters are derived per-map from canvas data via `deriveAllShadowCasters()` in `utils/gardenFromCanvas.ts`. The function combines fence casters, structure casters (both computed from zones), and per-map `shadowCasters` stored in canvas data. The editor supports adding/editing/deleting shadow casters per map. Legacy hardcoded constants in `gardenStructures.ts` (`SHADOW_CASTERS`, `GARDEN_CLIP`, `GARDEN_FLOOR`) are still imported by `SunDebugOverlay`, `heatmapCalc`, and `useSunPosition` — these are debug/legacy paths, not the primary shadow pipeline.
+Shadow casters are derived per-map from canvas data via `deriveAllShadowCasters()` in `utils/gardenFromCanvas.ts`. The function combines fence casters, structure casters (both computed from zones), and per-map `shadowCasters` stored in canvas data. The editor supports adding/editing/deleting shadow casters per map. `GARDEN_CLIP` in `gardenStructures.ts` is still hardcoded to Leon's garden and used by the sun overlay components (`SunDebugOverlay`, `SunDirectionArrow`, `SunHeatmap`, `DebugSvfOverlay`) for viewbox/centering — this is the last remaining hardcoded garden constant and will need to become per-Map when the second outdoor Map is added.
 
 ## New garden onboarding
 
@@ -89,10 +89,6 @@ When a user creates a new garden, the minimum required fields are:
 - Compass bearing of the map's "up" direction
 
 Indoor maps only need a name and dimensions.
-
-## Known issues
-
-- `heatmapCalc.ts`, `useSunPosition.ts`, and `SunDebugOverlay.tsx` still import hardcoded `SHADOW_CASTERS` from `gardenStructures.ts` — these should be migrated to use `deriveAllShadowCasters(canvasData)` for full per-map support.
 
 ## Users
 
