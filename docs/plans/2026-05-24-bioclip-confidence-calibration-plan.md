@@ -849,77 +849,77 @@ git commit -m "feat(plant-id): margin-based 4-label confidence classifier"
 ## Task 4: Frontend — surface the new confidence field
 
 **Files:**
-- Modify: `frontend/src/types/index.ts` (or wherever the identify response type lives — verify with grep)
+- Modify: `frontend/src/types/index.ts:500-503` (`IdentifyResponse` type)
+- Modify: `frontend/src/i18n/translations.ts:495-507` (typed structure of `t.identify.*`)
+- Modify: `frontend/src/i18n/nl.ts:540-555` (Dutch strings)
+- Modify: `frontend/src/i18n/en.ts:540-555` (English strings)
 - Modify: `frontend/src/components/identify/IdentifyResults.tsx`
 - Modify: `frontend/src/pages/IdentifyPlant.tsx`
-- Modify: `frontend/src/i18n/*` (verify the file with grep)
+- Create: `frontend/src/components/identify/confidenceTone.ts`
 - Create: `frontend/src/components/identify/__tests__/confidenceTone.test.ts`
 
-- [ ] **Step 4.1: Confirm the i18n file location**
+- [ ] **Step 4.1: Add the `confidence` field + `IdentifyConfidence` type to `frontend/src/types/index.ts`**
 
-```bash
-cd "C:\Users\leon_\Projects\Floreren\frontend"
-grep -rn "lowConfidence" src/i18n
-grep -rn "low_confidence" src/types
-grep -rn "PlantIdCandidate\|IdentifyResponse" src/types
-```
-
-Note the exact file path that defines `t.identify.lowConfidence` and the type that mirrors the backend `IdentifyResponse`. Use those paths in the steps below; this plan refers to them as `<i18n-file>` and `<response-type-file>`.
-
-- [ ] **Step 4.2: Add the `confidence` field to the response type**
-
-In `<response-type-file>` (commonly `frontend/src/types/index.ts`), find the existing identify-response type that already contains `low_confidence: boolean`. Add:
+At the end of the existing `IdentifyResponse` type at line 500-503, add the `confidence` field:
 
 ```typescript
 export type IdentifyConfidence = 'high' | 'medium' | 'low' | 'no_match'
 
-// In the existing identify response type, add:
-//   confidence: IdentifyConfidence
-// alongside the existing low_confidence field. Keep low_confidence for now.
-```
-
-Edit the existing response type accordingly. Example diff (the property name may differ — use whatever's there):
-
-```typescript
-export type IdentifyResponseDto = {
+export type IdentifyResponse = {
   candidates: PlantIdCandidate[]
-  confidence: IdentifyConfidence  // ← add
-  low_confidence: boolean
-  source: 'bioclip' | 'plantnet'
+  confidence: IdentifyConfidence    // ← add
+  low_confidence: boolean            // kept for back-compat during deploy window
 }
 ```
 
-- [ ] **Step 4.3: Add the Dutch + English microcopy keys to i18n**
+- [ ] **Step 4.2: Extend the i18n type in `frontend/src/i18n/translations.ts`**
 
-In `<i18n-file>`, find the existing `t.identify.lowConfidence` string. Add four new keys next to it:
+In `frontend/src/i18n/translations.ts` around lines 495-507, the `identify` block lists `lowConfidence: string` and a `noMatch` sub-object. Add a `confidence` sub-object and a `bodyDetailed` field to `noMatch`:
 
 ```typescript
-// Dutch (nl)
-identify: {
-  // ... existing keys ...
-  confidence: {
-    medium: 'Redelijk zeker',
-    low: 'Niet zeker — kies handmatig of probeer een betere foto',
-  },
-  noMatch: {
-    // ... existing noMatch keys ...
-    bodyDetailed: 'Geen herkenning. Probeer een andere foto (kies het blad of de bloem dichterbij).',
-  },
-}
-
-// English (en) — analogous strings:
-identify: {
-  confidence: {
-    medium: 'Fairly confident',
-    low: 'Not sure — pick one manually or try a better photo',
-  },
-  noMatch: {
-    bodyDetailed: 'No identification. Try another photo (focus closer on a leaf or flower).',
-  },
-}
+    identify: {
+      // ... existing keys (camera, results, etc.) ...
+      lowConfidence: string  // DEPRECATED, kept until confidence.low rollout completes
+      confidence: {
+        medium: string       // "Fairly confident" / "Redelijk zeker"
+        low: string          // "Not sure — pick one manually or try a better photo"
+      }
+      noMatch: {
+        title: string
+        body: string
+        bodyDetailed: string  // "No identification. Try another photo (focus closer on a leaf or flower)."
+        retry: string
+        manualFallback: string
+      }
+      // ... existing remaining keys ...
+    }
 ```
 
-Match the surrounding type structure if the i18n file uses a TS-typed object — TypeScript will fail-loud if the shape is wrong.
+Don't remove `lowConfidence` from the type yet — the string stays available so any other call sites keep typechecking.
+
+- [ ] **Step 4.3: Add the matching Dutch + English strings**
+
+In `frontend/src/i18n/nl.ts` around line 544 (next to the existing `lowConfidence` Dutch string), add inside the `identify` block:
+
+```typescript
+    confidence: {
+      medium: 'Redelijk zeker',
+      low: 'Niet zeker — kies handmatig of probeer een betere foto',
+    },
+    // Inside the existing noMatch block, add:
+    //   bodyDetailed: 'Geen herkenning. Probeer een andere foto (kies het blad of de bloem dichterbij).',
+```
+
+In `frontend/src/i18n/en.ts` at the analogous location, add:
+
+```typescript
+    confidence: {
+      medium: 'Fairly confident',
+      low: 'Not sure — pick one manually or try a better photo',
+    },
+    // Inside noMatch:
+    //   bodyDetailed: 'No identification. Try another photo (focus closer on a leaf or flower).',
+```
 
 - [ ] **Step 4.4: Write the failing test for `confidenceTone`**
 
