@@ -8,7 +8,7 @@ import argparse
 import asyncio
 import logging
 import sys
-import time
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -30,13 +30,20 @@ _REQUEST_DELAY_S = 1.0
 
 
 def extract_image_urls(gbif_response: dict, limit: int) -> list[str]:
-    """Pull up to `limit` image URLs from a GBIF Occurrence-Search response."""
+    """Pull up to `limit` image URLs from a GBIF Occurrence-Search response.
+
+    GBIF shape:
+        {"results": [{"key": ..., "media": [{"type": "StillImage", "identifier": "https://..."}]}, ...]}
+
+    Picks one image per record (the first StillImage with an http identifier),
+    then stops at `limit`. Records without StillImage media are skipped.
+    """
     urls: list[str] = []
     for record in gbif_response.get("results") or []:
         media = record.get("media") or []
         for m in media:
             url = m.get("identifier") or ""
-            if url.startswith("http"):
+            if url.startswith("http") and m.get("type") == "StillImage":
                 urls.append(url)
                 break  # one image per record
         if len(urls) >= limit:
@@ -45,10 +52,11 @@ def extract_image_urls(gbif_response: dict, limit: int) -> list[str]:
 
 
 async def fetch_species_images(client: httpx.AsyncClient, latin_name: str, limit: int) -> list[str]:
+    """Fetch up to `limit` StillImage URLs from GBIF for a species; returns [] on any failure."""
     try:
         resp = await client.get(
             _GBIF_URL,
-            params={"scientificName": latin_name, "mediaType": "StillImage", "limit": 20},
+            params={"scientificName": latin_name, "mediaType": "StillImage", "limit": max(20, limit * 4)},
             timeout=15,
         )
         if resp.status_code != 200:
@@ -61,9 +69,13 @@ async def fetch_species_images(client: httpx.AsyncClient, latin_name: str, limit
 
 
 async def download_image(client: httpx.AsyncClient, url: str, dest: Path) -> bool:
+    """Download a single image to `dest`; returns True on success, False on any failure.
+
+    A response < 1 KB is treated as a placeholder or error page and rejected.
+    """
     try:
         resp = await client.get(url, timeout=20, follow_redirects=True)
-        if resp.status_code != 200 or len(resp.content) < 1024:
+        if resp.status_code != 200 or len(resp.content) < 1024:  # <1 KB → likely placeholder/error page
             return False
         dest.write_bytes(resp.content)
         return True
@@ -106,12 +118,16 @@ async def main(n_species: int, photos_per_species: int):
                     continue
 
                 species_dir.mkdir(exist_ok=True)
-                for i, url in enumerate(urls):
-                    dest = species_dir / f"gbif_{int(time.time() * 1000)}_{i}.jpg"
-                    ok = await download_image(client, url, dest)
-                    if ok:
-                        stats["photos"] += 1
-                stats["fetched"] += 1
+                saved_for_this_species = 0
+                for url in urls:
+                    dest = species_dir / f"gbif_{uuid.uuid4().hex}.jpg"
+                    if await download_image(client, url, dest):
+                        saved_for_this_species += 1
+                if saved_for_this_species > 0:
+                    stats["fetched"] += 1
+                    stats["photos"] += saved_for_this_species
+                else:
+                    stats["no_images"] += 1
 
         logger.info("Done. %s", stats)
     finally:
