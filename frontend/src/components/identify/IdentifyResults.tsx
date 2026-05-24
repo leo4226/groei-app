@@ -18,7 +18,7 @@ export function IdentifyResults({
   const tone = confidenceTone(confidence)
 
   if (candidates.length === 0) {
-    const bodyText = tone.noMatchBodyKey
+    const bodyText = tone.showDetailedNoMatch
       ? t.identify.noMatch.bodyDetailed
       : t.identify.noMatch.body
     return (
@@ -67,7 +67,7 @@ export function IdentifyResults({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{commonName}</div>
                 <div className="text-xs italic text-gray-500 truncate">{c.scientific_name}</div>
-                {isTop && tone.subtitleKey === 'confidence.medium' && (
+                {isTop && tone.showMediumSubtitle && (
                   <div className="text-xs text-gray-600 mt-0.5">{t.identify.confidence.medium}</div>
                 )}
                 <div className="mt-1 h-1.5 bg-gray-200 rounded overflow-hidden">

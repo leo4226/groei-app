@@ -2,29 +2,32 @@ import { describe, it, expect } from 'vitest'
 import { confidenceTone } from '../confidenceTone'
 
 describe('confidenceTone', () => {
-  it('returns no-banner tone for high', () => {
-    expect(confidenceTone('high')).toEqual({ showBanner: false, subtitleKey: null, bannerKey: null })
+  it('returns no flags for high', () => {
+    expect(confidenceTone('high')).toEqual({
+      showBanner: false,
+      showMediumSubtitle: false,
+      showDetailedNoMatch: false,
+    })
   })
-  it('returns subtitle key for medium', () => {
+  it('shows medium subtitle for medium', () => {
     expect(confidenceTone('medium')).toEqual({
       showBanner: false,
-      subtitleKey: 'confidence.medium',
-      bannerKey: null,
+      showMediumSubtitle: true,
+      showDetailedNoMatch: false,
     })
   })
-  it('returns banner key for low', () => {
+  it('shows banner for low', () => {
     expect(confidenceTone('low')).toEqual({
       showBanner: true,
-      subtitleKey: null,
-      bannerKey: 'confidence.low',
+      showMediumSubtitle: false,
+      showDetailedNoMatch: false,
     })
   })
-  it('returns special body for no_match', () => {
+  it('shows detailed body for no_match', () => {
     expect(confidenceTone('no_match')).toEqual({
       showBanner: false,
-      subtitleKey: null,
-      bannerKey: null,
-      noMatchBodyKey: 'noMatch.bodyDetailed',
+      showMediumSubtitle: false,
+      showDetailedNoMatch: true,
     })
   })
 })

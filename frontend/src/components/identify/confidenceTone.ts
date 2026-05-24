@@ -1,26 +1,20 @@
 import type { IdentifyConfidence } from '../../types'
 
 export type ConfidenceTone = {
-  showBanner: boolean
-  subtitleKey: string | null
-  bannerKey: string | null
-  noMatchBodyKey?: string
+  showBanner: boolean          // render the yellow "low confidence" banner
+  showMediumSubtitle: boolean  // render the "Fairly confident" subtitle on top candidate
+  showDetailedNoMatch: boolean // use the more-detailed bodyDetailed text in the no-match view
 }
 
 export function confidenceTone(confidence: IdentifyConfidence): ConfidenceTone {
   switch (confidence) {
     case 'high':
-      return { showBanner: false, subtitleKey: null, bannerKey: null }
+      return { showBanner: false, showMediumSubtitle: false, showDetailedNoMatch: false }
     case 'medium':
-      return { showBanner: false, subtitleKey: 'confidence.medium', bannerKey: null }
+      return { showBanner: false, showMediumSubtitle: true, showDetailedNoMatch: false }
     case 'low':
-      return { showBanner: true, subtitleKey: null, bannerKey: 'confidence.low' }
+      return { showBanner: true, showMediumSubtitle: false, showDetailedNoMatch: false }
     case 'no_match':
-      return {
-        showBanner: false,
-        subtitleKey: null,
-        bannerKey: null,
-        noMatchBodyKey: 'noMatch.bodyDetailed',
-      }
+      return { showBanner: false, showMediumSubtitle: false, showDetailedNoMatch: true }
   }
 }

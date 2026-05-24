@@ -38,7 +38,7 @@ export function IdentifyPlantPage() {
       setStep({
         kind: 'results',
         candidates: resp.candidates,
-        confidence: resp.confidence,
+        confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
         thumbnail: dataUrl,
         capturedBlob: blob,
       })
