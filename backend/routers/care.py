@@ -25,7 +25,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     # Insert care log
     await db.execute(
         """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
-           VALUES (?, ?, ?, ?, ?, 0)""",
+           VALUES (?, ?, ?, ?, ?, FALSE)""",
         (action.plant_id, action.care_type, action.user_id, now, action.notes),
     )
 
@@ -64,7 +64,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep)):
     # Insert care log with skipped=1
     await db.execute(
         """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
-           VALUES (?, ?, ?, ?, ?, 1)""",
+           VALUES (?, ?, ?, ?, ?, TRUE)""",
         (action.plant_id, action.care_type, action.user_id, now, action.notes),
     )
 

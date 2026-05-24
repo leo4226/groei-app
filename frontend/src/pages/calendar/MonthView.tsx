@@ -44,6 +44,8 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
     try {
       await markCareDone(event.plant_id, event.type)
       setDoneIds(prev => new Set([...prev, event.id]))
+    } catch (err) {
+      console.error('markCareDone failed:', err)
     } finally {
       setSaving(null)
     }
@@ -55,6 +57,8 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
     try {
       await skipCare(event.plant_id, event.type)
       setDoneIds(prev => new Set([...prev, event.id]))
+    } catch (err) {
+      console.error('skipCare failed:', err)
     } finally {
       setSaving(null)
     }
