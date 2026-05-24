@@ -41,3 +41,4 @@ backend/photos/*
 # Git worktrees
 .worktrees/
 .vercel
+backend/data/

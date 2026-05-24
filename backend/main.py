@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import os
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger("floreren")
@@ -30,6 +31,26 @@ from routers import household
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
+
+    # Preload BioCLIP in background (first load downloads from HF Hub, ~60s)
+    async def _preload_bioclip():
+        try:
+            from services.bioclip_id import get_service
+
+            def _load():
+                svc = get_service()
+                svc.load_model()
+                svc.load_embeddings()
+                return svc
+
+            loop = asyncio.get_event_loop()
+            svc = await loop.run_in_executor(None, _load)
+            _log.info("BioCLIP preloaded: %d species on %s", len(svc._species_ids), svc._device)
+        except Exception as exc:
+            _log.warning("BioCLIP preload failed (lazy-load on request): %s", exc)
+
+    asyncio.ensure_future(_preload_bioclip())
+
     yield
     await close_pool()
 
