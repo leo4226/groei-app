@@ -21,7 +21,7 @@ import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
-import { objects } from '../api/client'
+import * as clientApis from '../api/client'
 import { useT } from '../context/LanguageContext'
 
 export default function MapPage() {
@@ -63,7 +63,7 @@ export default function MapPage() {
     const parts = map.viewbox.trim().split(/\s+/).map(Number)
     const cx = parts.length === 4 ? parts[0] + parts[2] / 2 : 200
     const cy = parts.length === 4 ? parts[1] + parts[3] / 2 : 200
-    await objects.create({
+    await clientApis.objects.create({
       name: preset.label,
       object_type: preset.object_type,
       shape: preset.shape,

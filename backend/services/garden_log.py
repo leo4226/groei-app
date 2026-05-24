@@ -13,6 +13,14 @@ Public API:
 """
 from datetime import date
 
+
+def _as_date(val):
+    """Handle both date objects (asyncpg) and ISO strings (SQLite)."""
+    if isinstance(val, date):
+        return val
+    return date.fromisoformat(val)
+
+
 from database import get_db
 
 
@@ -26,7 +34,7 @@ async def get_last_garden_watered() -> date | None:
         )
     if not rows:
         return None
-    return date.fromisoformat(rows[0]["watered_at"])
+    return _as_date(rows[0]["watered_at"])
 
 
 async def get_last_garden_fertilized() -> date | None:
@@ -37,7 +45,7 @@ async def get_last_garden_fertilized() -> date | None:
         )
     if not rows:
         return None
-    return date.fromisoformat(rows[0]["fertilized_at"])
+    return _as_date(rows[0]["fertilized_at"])
 
 
 # ── event logging (mutates DB) ───────────────────────────────────────────────

@@ -46,7 +46,7 @@ export function IdentifyResults({
       <div className="flex flex-col gap-3">
         {candidates.map((c) => {
           const pct = Math.round(c.confidence * 100)
-          const commonName = c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
+          const commonName = c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name
           return (
             <button
               key={c.scientific_name}

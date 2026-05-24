@@ -100,6 +100,8 @@ async def identify(
 
     if response.status_code == 429:
         raise PlantIdQuotaExceeded("Pl@ntNet daily quota exhausted")
+    if response.status_code == 404:
+        return []  # Plantnet returns 404 when no plant is recognised — not a service error
     if response.status_code >= 400:
         raise PlantIdServiceError(f"Pl@ntNet returned {response.status_code}")
 

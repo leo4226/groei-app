@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone } from '../types'
-import { maps, groundZones, plants as plantsApi, objects } from '../api/client'
+import { maps, groundZones as groundZonesApi, plants as plantsApi, objects as objectsApi } from '../api/client'
 
 export interface RestoreInfo {
   label: string
@@ -32,7 +32,7 @@ export function useMapData(slug: string): UseMapDataReturn {
       const [mapDetail, items, zones] = await Promise.all([
         maps.detail(slug),
         maps.items(slug),
-        groundZones.list(slug),
+        groundZonesApi.list(slug),
       ])
       setMap(mapDetail)
       setPlants(items.plants)
@@ -78,14 +78,14 @@ export function useMapData(slug: string): UseMapDataReturn {
             if (!confirmed) return null
           }
 
-          await objects.archive(id)
+          await objectsApi.archive(id)
           await refresh()
 
           return {
             label: item.name,
             canUndo: item.contained_plants.length === 0,
             restore: async () => {
-              await objects.restore(id)
+              await objectsApi.restore(id)
               await refresh()
             },
           }

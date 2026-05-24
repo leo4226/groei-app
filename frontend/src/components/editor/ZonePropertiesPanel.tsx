@@ -200,9 +200,9 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
           <input
             type="number" min="0.1" step="0.1"
             placeholder={lenM ?? 'bijv. 4.5'}
-            defaultValue={lenM ?? ''}
+            value={lenM ?? ''}
             key={`len-${zone.id}`}
-            onBlur={(e) => handleLengteChange(e.target.value)}
+            onChange={(e) => handleLengteChange(e.target.value)}
             className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
           />
         </div>
@@ -213,9 +213,9 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
           <input
             type="number" min="0.1" step="0.1"
             placeholder={breedM ?? 'bijv. 3.0'}
-            defaultValue={breedM ?? ''}
+            value={breedM ?? ''}
             key={`breed-${zone.id}`}
-            onBlur={(e) => handleBreedteChange(e.target.value)}
+            onChange={(e) => handleBreedteChange(e.target.value)}
             className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
           />
         </div>

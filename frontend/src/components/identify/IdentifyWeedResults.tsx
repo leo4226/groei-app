@@ -50,7 +50,8 @@ export function IdentifyWeedResults({ candidates, thumbnail, onLogSighting, onRe
             <div key={c.scientific_name} className="card p-4 flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-text text-sm">{c.scientific_name}</p>
+                  <p className="font-semibold text-text text-sm">{c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name}</p>
+                  <p className="text-xs italic text-text-muted truncate">{c.scientific_name}</p>
                   <p className="text-xs text-text-muted">{Math.round(c.confidence * 100)}% {t.identify.results.confidence}</p>
                 </div>
                 {loadingBadge && (

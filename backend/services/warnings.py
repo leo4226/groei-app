@@ -9,6 +9,13 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
 
+def _as_date(val):
+    """Handle both date objects (asyncpg) and ISO strings (SQLite)."""
+    if isinstance(val, date):
+        return val
+    return date.fromisoformat(val)
+
+
 from care_types import (
     CARE_TYPES,
     Environment,
@@ -202,7 +209,7 @@ def _weather_warnings_for_plant(
 
     def _days_until(d: dict) -> int:
         """Return days from today. 0 = today, negative = past, positive = future."""
-        return (date.fromisoformat(d["date"]) - today).days
+        return (_as_date(d["date"]) - today).days
 
     # ── Frost ──────────────────────────────────────────────────────────
     frost = profile.get("frost_protect") or {}
@@ -404,7 +411,7 @@ def compute_plant_warnings(
         if entry.get("active") and entry.get("interval_days") is not None:
             sched = by_type.get(care_type)
             if sched and sched.get("next_due"):
-                next_due = date.fromisoformat(sched["next_due"])
+                next_due = _as_date(sched["next_due"])
                 # NB: heating-season boost is honoured by the scheduler that writes next_due,
                 # so we don't recompute next_due here — we trust the stored value.
                 w = _schedule_warning_for_type(care_type, next_due=next_due, today=today)
@@ -423,10 +430,10 @@ def compute_plant_warnings(
     for care_type in active_care_types:
         sched = by_type.get(care_type)
         last_done_iso = sched.get("last_done") if sched else None
-        last_done = date.fromisoformat(last_done_iso) if last_done_iso else None
+        last_done = _as_date(last_done_iso) if last_done_iso else None
         next_due_iso = sched.get("next_due") if sched else None
         if next_due_iso:
-            next_due = date.fromisoformat(next_due_iso)
+            next_due = _as_date(next_due_iso)
             days_until = (next_due - today).days
             if days_until < 0:
                 status: CareStatus = "overdue"

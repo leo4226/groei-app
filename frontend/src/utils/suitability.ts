@@ -37,7 +37,7 @@ export function computeSuitability(
   sunHoursAtSpot: number | null,
   month: number,
 ): SuitabilityResult {
-  if (!phenology) {
+  if (!phenology || !phenology.months) {
     return {
       status: 'unknown',
       badgeLabel: '?',
@@ -106,12 +106,14 @@ export function computeSuitability(
 }
 
 export function getActiveMonths(phenology: Phenology): number[] {
+  if (!phenology.months) return []
   return phenology.months
     .filter(m => ACTIVE_PHASES.has(m.phase))
     .map(m => m.month)
 }
 
 export function getPeakSunNeed(phenology: Phenology): number {
+  if (!phenology.months) return 0
   const active = phenology.months.filter(m => ACTIVE_PHASES.has(m.phase))
   if (!active.length) return 0
   return Math.max(...active.map(m => m.sun_hours_needed))

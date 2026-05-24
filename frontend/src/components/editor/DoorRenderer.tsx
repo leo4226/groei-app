@@ -15,92 +15,52 @@ export default function DoorRenderer({
   scalePxPerM,
 }: Props) {
   const widthPx = (element.widthCm * scalePxPerM) / 100
-  const { edge, position, swingSide = 'left', swingDirection = 'inward' } = element
+  const { edge, position } = element
   const { x, y, width: w, height: h } = zone
   const t = wallThicknessPx
 
   const isHorizontal = edge === 'top' || edge === 'bottom'
   const edgeLength = isHorizontal ? w : h
-
   const center = position * edgeLength
   const gapStart = center - widthPx / 2
-  const radius = widthPx
 
-  let pivotX: number, pivotY: number
-  let arcEndX: number, arcEndY: number
-  let sweepFlag: 0 | 1
+  // 3 stripes clustered in the inner ~60% of the wall thickness
+  // (shorter than window stripes → visually distinct)
+  const lines: { x1: number; y1: number; x2: number; y2: number }[] = []
+  const innerT = t * 0.6  // spread over 60% of wall thickness, centred
+  const offset = (t - innerT) / 2
 
-  if (edge === 'top') {
-    const wallY = y
-    const insideY = y + t
-    const outsideY = y - radius + t
-    pivotX = swingSide === 'left' ? x + gapStart : x + gapStart + widthPx
-    pivotY = wallY + t / 2
-    if (swingDirection === 'inward') {
-      arcEndX = swingSide === 'left' ? pivotX + widthPx : pivotX - widthPx
-      arcEndY = insideY + radius
-      sweepFlag = swingSide === 'left' ? 1 : 0
-    } else {
-      arcEndX = swingSide === 'left' ? pivotX + widthPx : pivotX - widthPx
-      arcEndY = outsideY
-      sweepFlag = swingSide === 'left' ? 0 : 1
-    }
-  } else if (edge === 'bottom') {
-    const wallY = y + h
-    const insideY = y + h - t - radius
-    const outsideY = y + h - t + radius
-    pivotX = swingSide === 'left' ? x + gapStart : x + gapStart + widthPx
-    pivotY = wallY - t / 2
-    if (swingDirection === 'inward') {
-      arcEndX = swingSide === 'left' ? pivotX + widthPx : pivotX - widthPx
-      arcEndY = insideY
-      sweepFlag = swingSide === 'left' ? 0 : 1
-    } else {
-      arcEndX = swingSide === 'left' ? pivotX + widthPx : pivotX - widthPx
-      arcEndY = outsideY
-      sweepFlag = swingSide === 'left' ? 1 : 0
-    }
-  } else if (edge === 'left') {
-    const wallX = x
-    const insideX = x + t + radius
-    const outsideX = x - radius + t
-    pivotX = wallX + t / 2
-    pivotY = swingSide === 'left' ? y + t + gapStart : y + t + gapStart + widthPx
-    if (swingDirection === 'inward') {
-      arcEndX = insideX
-      arcEndY = swingSide === 'left' ? pivotY + widthPx : pivotY - widthPx
-      sweepFlag = swingSide === 'left' ? 0 : 1
-    } else {
-      arcEndX = outsideX
-      arcEndY = swingSide === 'left' ? pivotY + widthPx : pivotY - widthPx
-      sweepFlag = swingSide === 'left' ? 1 : 0
+  if (isHorizontal) {
+    const baseY = edge === 'top' ? y : y + h - t
+    const lx1 = x + gapStart
+    const lx2 = x + gapStart + widthPx
+    for (let i = 0; i < 3; i++) {
+      const ly = baseY + offset + (innerT * (i + 0.5)) / 3
+      lines.push({ x1: lx1, y1: ly, x2: lx2, y2: ly })
     }
   } else {
-    const wallX = x + w
-    const insideX = x + w - t - radius
-    const outsideX = x + w - t + radius
-    pivotX = wallX - t / 2
-    pivotY = swingSide === 'left' ? y + t + gapStart : y + t + gapStart + widthPx
-    if (swingDirection === 'inward') {
-      arcEndX = insideX
-      arcEndY = swingSide === 'left' ? pivotY + widthPx : pivotY - widthPx
-      sweepFlag = swingSide === 'left' ? 1 : 0
-    } else {
-      arcEndX = outsideX
-      arcEndY = swingSide === 'left' ? pivotY + widthPx : pivotY - widthPx
-      sweepFlag = swingSide === 'left' ? 0 : 1
+    const baseX = edge === 'left' ? x : x + w - t
+    const ly1 = y + t + gapStart
+    const ly2 = y + t + gapStart + widthPx
+    for (let i = 0; i < 3; i++) {
+      const lx = baseX + offset + (innerT * (i + 0.5)) / 3
+      lines.push({ x1: lx, y1: ly1, x2: lx, y2: ly2 })
     }
   }
 
   return (
     <g pointerEvents="none">
-      <path
-        d={`M ${pivotX},${pivotY} A ${radius},${radius} 0 0,${sweepFlag} ${arcEndX},${arcEndY}`}
-        fill="none"
-        stroke={WALL_COLOR}
-        strokeWidth={0.7}
-        opacity={0.35}
-      />
+      {lines.map((l, i) => (
+        <line
+          key={i}
+          x1={l.x1}
+          y1={l.y1}
+          x2={l.x2}
+          y2={l.y2}
+          stroke={WALL_COLOR}
+          strokeWidth={0.6}
+        />
+      ))}
     </g>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { maps, objects } from '../api/client'
+import * as client from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
 import type { CanvasData, MapInfo, MapObject, MapType } from '../types'
 import EditorCanvas from '../components/editor/EditorCanvas'
@@ -22,7 +22,7 @@ export default function LayoutEditorPage() {
   const mapId = id ? parseInt(id, 10) : null
 
   const [map, setMap] = useState<MapInfo | null>(null)
-  const [objects, setObjects] = useState<MapObject[]>([])
+  const [mapObjects, setMapObjects] = useState<MapObject[]>([])
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
@@ -54,8 +54,8 @@ export default function LayoutEditorPage() {
     if (loadedMapIdRef.current === mapId) return
     let cancelled = false
     Promise.all([
-      maps.byId(mapId),
-      objects.list(),
+      client.maps.byId(mapId),
+      client.objects.list(),
     ]).then(([m, objs]) => {
         if (cancelled) return
         // Guard again inside .then() to handle the StrictMode double-mount race:
@@ -64,7 +64,7 @@ export default function LayoutEditorPage() {
         if (loadedMapIdRef.current === mapId) return
         loadedMapIdRef.current = mapId
         setMap(m)
-        setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+        setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
         if (m.canvas_data) {
           try {
             const data = JSON.parse(m.canvas_data) as CanvasData
@@ -88,22 +88,22 @@ export default function LayoutEditorPage() {
   }, [loading, mapId])
 
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
-    setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
+    setMapObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
     try {
-      await objects.setPosition(objectId, { map_x: Math.round(x * 10) / 10, map_y: Math.round(y * 10) / 10 })
+      await client.objects.setPosition(objectId, { map_x: Math.round(x * 10) / 10, map_y: Math.round(y * 10) / 10 })
     } catch {
-      const objs = await objects.list()
-      setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+      const objs = await client.objects.list()
+      setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
     }
   }, [mapId])
 
   const handleObjectRotate = useCallback(async (objectId: number, rotation: number) => {
-    setObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, rotation } : o))
+    setMapObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, rotation } : o))
     try {
-      await objects.update(objectId, { rotation })
+      await client.objects.update(objectId, { rotation })
     } catch {
-      const objs = await objects.list()
-      setObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+      const objs = await client.objects.list()
+      setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
     }
   }, [mapId])
 
@@ -112,7 +112,7 @@ export default function LayoutEditorPage() {
       if (!mapId) return
       setSaveStatus('saving')
       try {
-        await maps.update(mapId, { canvas_data: JSON.stringify(data) })
+        await client.maps.update(mapId, { canvas_data: JSON.stringify(data) })
         editor.markClean()
         setSaveStatus('saved')
       } catch {
@@ -138,7 +138,7 @@ export default function LayoutEditorPage() {
       isSavingRef.current = true
       setSaveStatus('saving')
       try {
-        await maps.update(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
+        await client.maps.update(mapId, { canvas_data: JSON.stringify(editor.toCanvasData()) })
         editor.markClean()
         setSaveStatus('saved')
       } catch {
@@ -166,8 +166,8 @@ export default function LayoutEditorPage() {
     } else if (editor.selectedShadowCasterId) {
       editor.deleteShadowCaster(editor.selectedShadowCasterId)
     } else if (selectedObjectId !== null) {
-      objects.archive(selectedObjectId).then(() => {
-        setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
+      client.objects.archive(selectedObjectId).then(() => {
+        setMapObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
         setSelectedObjectId(null)
         editor.setTool('select')
       }).catch(() => {})
@@ -200,8 +200,8 @@ export default function LayoutEditorPage() {
           editor.deleteShadowCaster(editor.selectedShadowCasterId)
         } else if (selectedObjectId !== null) {
           e.preventDefault()
-          objects.archive(selectedObjectId).then(() => {
-            setObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
+          client.objects.archive(selectedObjectId).then(() => {
+            setMapObjects((prev) => prev.filter((o) => o.id !== selectedObjectId))
             setSelectedObjectId(null)
             editor.setTool('select')
           }).catch(() => {})
@@ -215,7 +215,7 @@ export default function LayoutEditorPage() {
   const selectedZone = editor.zones.find((z) => z.id === editor.selectedZoneId) ?? null
   const selectedWallElement = editor.wallElements.find((w) => w.id === editor.selectedWallElementId) ?? null
   const selectedShadowCaster = editor.shadowCasters.find((s) => s.id === editor.selectedShadowCasterId) ?? null
-  const selectedObject = objects.find((o) => o.id === selectedObjectId) ?? null
+  const selectedObject = mapObjects.find((o) => o.id === selectedObjectId) ?? null
 
   if (loading) return <div className="p-6 text-text-muted text-center">{t.editor.loading}</div>
   if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>
@@ -308,7 +308,7 @@ export default function LayoutEditorPage() {
         <EditorCanvas
           zones={editor.zones}
           wallElements={editor.wallElements}
-          objects={objects}
+          objects={mapObjects}
           selectedZoneId={editor.selectedZoneId}
           selectedWallElementId={editor.selectedWallElementId}
           activeTool={editor.activeTool}
@@ -330,7 +330,7 @@ export default function LayoutEditorPage() {
           onSelectObject={setSelectedObjectId}
           onObjectCreated={() => {
             if (!mapId) return
-            objects.list().then((objs) => setObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
+            client.objects.list().then((objs) => setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
           }}
           shadowCasters={editor.shadowCasters}
           selectedShadowCasterId={editor.selectedShadowCasterId}
