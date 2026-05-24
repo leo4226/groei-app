@@ -161,6 +161,10 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
         image_emb = bioclip.embed_image(pil_image)
         matches = bioclip.identify(image_emb, top_k=5)
 
+    if matches:
+        logger.info("BioCLIP top match: species_id=%s confidence=%.4f (all: %s)",
+                     matches[0][0], matches[0][1],
+                     [(m[0], round(m[1], 4)) for m in matches[:3]])
     if not matches or matches[0][1] < _MIN_CONFIDENCE_FOR_RESULT:
         return IdentifyResponse(candidates=[], low_confidence=False, source="bioclip")
 
