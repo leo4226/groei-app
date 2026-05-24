@@ -20,7 +20,8 @@ from pydantic import BaseModel
 from database import db_dep
 from auth import get_current_account
 from services.plant_id import identify, PlantIdQuotaExceeded, PlantIdServiceError
-from services.bioclip_id import get_service as get_bioclip_service
+# bioclip_id is lazily imported in _bioclip_identify (local fallback branch)
+# to avoid requiring numpy/scipy/torch on Fly.io (which uses remote worker)
 from services.storage import build_storage_from_env
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,7 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
     else:
         # Local fallback: load BioCLIP in-process
         from PIL import Image
+        from services.bioclip_id import get_service as get_bioclip_service
         bioclip = get_bioclip_service()
 
         bioclip.load_model()
