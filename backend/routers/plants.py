@@ -56,7 +56,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
             interval = max(30, 365 // len(fertilise_months))
             await db.execute(
                 "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'fertilize', ?, ?)",
-                (plant_id, interval, str(next_due)),
+                (plant_id, interval, next_due),
             )
 
     await db.commit()
@@ -324,7 +324,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
         await db.execute(
             """INSERT INTO care_schedules (plant_id, care_type, interval_days, season_adjust, next_due, notes, is_active)
                VALUES (?, ?, ?, ?, ?, ?, 1)""",
-            (new_id, s["care_type"], s["interval_days"], s["season_adjust"], str(next_due), s["notes"]),
+            (new_id, s["care_type"], s["interval_days"], s["season_adjust"], next_due, s["notes"]),
         )
 
     await db.commit()

@@ -19,7 +19,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     if not schedule:
         raise HTTPException(status_code=404, detail="No active schedule found")
 
-    now = datetime.now().isoformat()
+    now = datetime.now()
     today = date.today()
 
     # Insert care log
@@ -40,7 +40,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
         """UPDATE care_schedules
            SET last_done = ?, last_done_by = ?, next_due = ?
            WHERE id = ?""",
-        (now, action.user_id, str(next_due), schedule["id"]),
+        (now, action.user_id, next_due, schedule["id"]),
     )
 
     await db.commit()
@@ -58,7 +58,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep)):
     if not schedule:
         raise HTTPException(status_code=404, detail="No active schedule found")
 
-    now = datetime.now().isoformat()
+    now = datetime.now()
     today = date.today()
 
     # Insert care log with skipped=1
@@ -77,7 +77,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep)):
         )
     await db.execute(
         "UPDATE care_schedules SET next_due = ? WHERE id = ?",
-        (str(next_due), schedule["id"]),
+        (next_due, schedule["id"]),
     )
 
     await db.commit()

@@ -69,13 +69,13 @@ async def log_garden_water(db, watered_at_iso: str, watered_by: int | None, wate
            JOIN plants p ON cs.plant_id = p.id
            WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1"""
     )
-    today_str = date.today().isoformat()
+    today = date.today()
     updated = 0
     for s in schedules:
-        next_due = calculate_next_due(date.today(), s["interval_days"], s["season_adjust"])
+        next_due = calculate_next_due(today, s["interval_days"], s["season_adjust"])
         await db.execute(
             "UPDATE care_schedules SET last_done = ?, next_due = ? WHERE id = ?",
-            (today_str, str(next_due), s["id"]),
+            (today, next_due, s["id"]),
         )
         updated += 1
     return updated
@@ -100,13 +100,13 @@ async def log_garden_fertilize(db, fertilized_at_iso: str, fertilized_by: int | 
            JOIN plants p ON cs.plant_id = p.id
            WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1"""
     )
-    today_str = date.today().isoformat()
+    today = date.today()
     updated = 0
     for s in schedules:
-        next_due = calculate_next_due(date.today(), s["interval_days"], s["season_adjust"])
+        next_due = calculate_next_due(today, s["interval_days"], s["season_adjust"])
         await db.execute(
             "UPDATE care_schedules SET last_done = ?, next_due = ? WHERE id = ?",
-            (today_str, str(next_due), s["id"]),
+            (today, next_due, s["id"]),
         )
         updated += 1
     return updated
