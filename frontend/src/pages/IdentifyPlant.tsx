@@ -4,13 +4,13 @@ import { useT } from '../context/LanguageContext'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
-import type { PlantIdCandidate } from '../types'
+import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
 type Step =
   | { kind: 'privacy' }
   | { kind: 'camera' }
   | { kind: 'identifying'; thumbnail: string }
-  | { kind: 'results'; candidates: PlantIdCandidate[]; lowConfidence: boolean; thumbnail: string; capturedBlob: Blob }
+  | { kind: 'results'; candidates: PlantIdCandidate[]; confidence: IdentifyConfidence; thumbnail: string; capturedBlob: Blob }
   | { kind: 'enriching' }
   | { kind: 'error'; message: string; thumbnail: string | null }
 
@@ -38,7 +38,7 @@ export function IdentifyPlantPage() {
       setStep({
         kind: 'results',
         candidates: resp.candidates,
-        lowConfidence: resp.low_confidence,
+        confidence: resp.confidence,
         thumbnail: dataUrl,
         capturedBlob: blob,
       })
@@ -130,7 +130,7 @@ export function IdentifyPlantPage() {
     return (
       <IdentifyResults
         candidates={step.candidates}
-        lowConfidence={step.lowConfidence}
+        confidence={step.confidence}
         capturedThumbnailUrl={step.thumbnail}
         onChoose={handleChoose}
         onRetry={retry}

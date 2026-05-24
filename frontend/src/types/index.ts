@@ -497,9 +497,12 @@ export type PlantIdCandidate = {
   thumbnail_url: string | null
 }
 
+export type IdentifyConfidence = 'high' | 'medium' | 'low' | 'no_match'
+
 export type IdentifyResponse = {
   candidates: PlantIdCandidate[]
-  low_confidence: boolean
+  confidence: IdentifyConfidence    // 4-state confidence level
+  low_confidence: boolean            // kept for back-compat during deploy window
 }
 
 export type IdentifyCommitResult = {

@@ -498,10 +498,15 @@ export type Translations = {
       poweredBy: string   // "powered by Pl@ntNet"
       choose: string      // "Pick this one"
     }
-    lowConfidence: string  // "Low confidence — review carefully"
+    lowConfidence: string  // DEPRECATED, kept until confidence.low rollout completes
+    confidence: {
+      medium: string       // "Fairly confident" / "Redelijk zeker"
+      low: string          // "Not sure — pick one manually or try a better photo"
+    }
     noMatch: {
       title: string           // "No match found"
       body: string            // "Try a different photo or add the plant manually."
+      bodyDetailed: string    // "No identification. Try another photo (focus closer on a leaf or flower)."
       retry: string           // "Try again"
       manualFallback: string  // "Enter manually"
     }

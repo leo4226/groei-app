@@ -542,9 +542,14 @@ export const en: Translations = {
       choose: 'Pick this one',
     },
     lowConfidence: 'Low confidence — review carefully',
+    confidence: {
+      medium: 'Fairly confident',
+      low: 'Not sure — pick one manually or try a better photo',
+    },
     noMatch: {
       title: 'No match found',
       body: 'Try a different photo or add the plant manually.',
+      bodyDetailed: 'No identification. Try another photo (focus closer on a leaf or flower).',
       retry: 'Try again',
       manualFallback: 'Enter manually',
     },

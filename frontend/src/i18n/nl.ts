@@ -542,9 +542,14 @@ export const nl: Translations = {
       choose: 'Kies deze',
     },
     lowConfidence: 'Lage zekerheid — controleer de resultaten zorgvuldig',
+    confidence: {
+      medium: 'Redelijk zeker',
+      low: 'Niet zeker — kies handmatig of probeer een betere foto',
+    },
     noMatch: {
       title: 'Geen match gevonden',
       body: 'Probeer een andere foto of vul de plant handmatig in.',
+      bodyDetailed: 'Geen herkenning. Probeer een andere foto (kies het blad of de bloem dichterbij).',
       retry: 'Opnieuw proberen',
       manualFallback: 'Handmatig invullen',
     },

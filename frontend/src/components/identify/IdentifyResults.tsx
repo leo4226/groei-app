@@ -1,9 +1,10 @@
 import { useT } from '../../context/LanguageContext'
-import type { PlantIdCandidate } from '../../types'
+import type { IdentifyConfidence, PlantIdCandidate } from '../../types'
+import { confidenceTone } from './confidenceTone'
 
 type Props = {
   candidates: PlantIdCandidate[]
-  lowConfidence: boolean
+  confidence: IdentifyConfidence    // was: lowConfidence: boolean
   capturedThumbnailUrl: string | null
   onChoose: (candidate: PlantIdCandidate) => void
   onRetry: () => void
@@ -11,15 +12,19 @@ type Props = {
 }
 
 export function IdentifyResults({
-  candidates, lowConfidence, capturedThumbnailUrl, onChoose, onRetry, onManualFallback,
+  candidates, confidence, capturedThumbnailUrl, onChoose, onRetry, onManualFallback,
 }: Props) {
   const t = useT()
+  const tone = confidenceTone(confidence)
 
   if (candidates.length === 0) {
+    const bodyText = tone.noMatchBodyKey
+      ? t.identify.noMatch.bodyDetailed
+      : t.identify.noMatch.body
     return (
       <div className="p-6 max-w-md mx-auto text-center">
         <h2 className="text-xl font-semibold mb-2">{t.identify.noMatch.title}</h2>
-        <p className="text-gray-600 mb-6">{t.identify.noMatch.body}</p>
+        <p className="text-gray-600 mb-6">{bodyText}</p>
         {capturedThumbnailUrl && (
           <img src={capturedThumbnailUrl} alt="" className="w-32 h-32 object-cover rounded mx-auto mb-6 opacity-75" />
         )}
@@ -38,15 +43,16 @@ export function IdentifyResults({
   return (
     <div className="p-4 max-w-md mx-auto">
       <h2 className="text-xl font-semibold mb-2">{t.identify.results.title}</h2>
-      {lowConfidence && (
+      {tone.showBanner && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 p-3 mb-4 text-sm">
-          {t.identify.lowConfidence}
+          {t.identify.confidence.low}
         </div>
       )}
       <div className="flex flex-col gap-3">
-        {candidates.map((c) => {
+        {candidates.map((c, idx) => {
           const pct = Math.round(c.confidence * 100)
           const commonName = c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name
+          const isTop = idx === 0
           return (
             <button
               key={c.scientific_name}
@@ -61,6 +67,9 @@ export function IdentifyResults({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{commonName}</div>
                 <div className="text-xs italic text-gray-500 truncate">{c.scientific_name}</div>
+                {isTop && tone.subtitleKey === 'confidence.medium' && (
+                  <div className="text-xs text-gray-600 mt-0.5">{t.identify.confidence.medium}</div>
+                )}
                 <div className="mt-1 h-1.5 bg-gray-200 rounded overflow-hidden">
                   <div className="h-full bg-green-600" style={{ width: `${pct}%` }} />
                 </div>
