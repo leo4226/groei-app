@@ -1,0 +1,2785 @@
+{
+  "offset": 0,
+  "limit": 10,
+  "endOfRecords": false,
+  "count": 4186,
+  "results": [
+    {
+      "key": 5938345840,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:49:24.484+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/605494677/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "605494677",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "Yasmin Kirby",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/605494677",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-03T12:48:22-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "Yasmin Kirby",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-04T23:29:18",
+      "decimalLatitude": -34.582498,
+      "decimalLongitude": -58.419388,
+      "coordinateUncertaintyInMeters": 18.0,
+      "continent": "SOUTH_AMERICA",
+      "stateProvince": "Ciudad de Buenos Aires",
+      "gadm": {
+        "level0": {
+          "gid": "ARG",
+          "name": "Argentina"
+        },
+        "level1": {
+          "gid": "ARG.5_1",
+          "name": "Ciudad de Buenos Aires"
+        },
+        "level2": {
+          "gid": "ARG.5.1_1",
+          "name": "Distrito Federal"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 3,
+      "eventDate": "2026-01-03T12:48:23",
+      "startDayOfYear": 3,
+      "endDayOfYear": 3,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T18:58:04.000+00:00",
+      "lastInterpreted": "2026-05-23T02:49:24.484+00:00",
+      "references": "https://www.inaturalist.org/observations/333507201",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333507201"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/605494677",
+          "created": "2026-01-03T20:48:22.000+00:00",
+          "creator": "Yasmin Kirby",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "Yasmin Kirby",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/605494677/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "Yasmin Kirby",
+      "identifiedBy": "Yasmin Kirby",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "AR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Argentina",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "Yasmin Kirby",
+      "identifier": "333507201",
+      "http://unknown.org/nick": "gloriousovulation",
+      "verbatimEventDate": "2026-01-03 12:48:23",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Buenos Aires, CABA, AR",
+      "gbifID": "5938345840",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333507201",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333507201",
+      "institutionCode": "iNaturalist",
+      "eventTime": "12:48:23-03:00",
+      "identificationID": "746579098"
+    },
+    {
+      "key": 5938471489,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T03:05:50.456+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/604896056/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "604896056",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "llareta",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/604896056",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-01T18:59:17Z",
+            "http://purl.org/dc/terms/rightsHolder": "llareta",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-03T02:28:23",
+      "decimalLatitude": 5.068253,
+      "decimalLongitude": -75.592453,
+      "coordinateUncertaintyInMeters": 3.0,
+      "continent": "SOUTH_AMERICA",
+      "stateProvince": "Caldas",
+      "gadm": {
+        "level0": {
+          "gid": "COL",
+          "name": "Colombia"
+        },
+        "level1": {
+          "gid": "COL.8_2",
+          "name": "Caldas"
+        },
+        "level2": {
+          "gid": "COL.8.9_2",
+          "name": "Manizales"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 1,
+      "eventDate": "2026-01-01T13:59:17",
+      "startDayOfYear": 1,
+      "endDayOfYear": 1,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:29:39.000+00:00",
+      "lastInterpreted": "2026-05-23T03:05:50.456+00:00",
+      "references": "https://www.inaturalist.org/observations/333213155",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333213155"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/604896056",
+          "created": "2026-01-01T18:59:17.000+00:00",
+          "creator": "llareta",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "llareta",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/604896056/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "llareta",
+      "identifiedBy": "Bayan Izzani",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "CO",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Colombia",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "llareta",
+      "identifier": "333213155",
+      "http://unknown.org/nick": "llareta",
+      "verbatimEventDate": "2026-01-01 13:59:17-05:00",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "San Peregrino, Manizales, Caldas, CO",
+      "gbifID": "5938471489",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333213155",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333213155",
+      "institutionCode": "iNaturalist",
+      "eventTime": "13:59:17-05:00",
+      "identificationID": "745793616"
+    },
+    {
+      "key": 6129861746,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:59:27.379+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/607279104/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "607279104",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "Brenda Jully",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/607279104",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-11T18:49:31-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "Brenda Jully",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-11T21:51:24",
+      "decimalLatitude": -3.737161,
+      "decimalLongitude": -40.984826,
+      "coordinateUncertaintyInMeters": 10.0,
+      "continent": "SOUTH_AMERICA",
+      "stateProvince": "Cear\u00e1",
+      "gadm": {
+        "level0": {
+          "gid": "BRA",
+          "name": "Brazil"
+        },
+        "level1": {
+          "gid": "BRA.6_1",
+          "name": "Cear\u00e1"
+        },
+        "level2": {
+          "gid": "BRA.6.174_2",
+          "name": "Tiangu\u00e1"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 11,
+      "eventDate": "2026-01-11T18:49:32",
+      "startDayOfYear": 11,
+      "endDayOfYear": 11,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T18:57:23.000+00:00",
+      "lastInterpreted": "2026-05-23T02:59:27.379+00:00",
+      "references": "https://www.inaturalist.org/observations/334408551",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "334408551"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/607279104",
+          "created": "2026-01-12T02:49:31.000+00:00",
+          "creator": "Brenda Jully",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "Brenda Jully",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/607279104/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "Brenda Jully",
+      "identifiedBy": "Brenda Jully",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "BR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Brazil",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "Brenda Jully",
+      "identifier": "334408551",
+      "http://unknown.org/nick": "brenda80803",
+      "verbatimEventDate": "2026-01-11 18:49:32",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Tiangu\u00e1, CE, BR",
+      "gbifID": "6129861746",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/334408551",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "334408551",
+      "institutionCode": "iNaturalist",
+      "eventTime": "18:49:32-03:00",
+      "identificationID": "749260429"
+    },
+    {
+      "key": 6129914816,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:31:16.443+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606425430/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606425430",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "Jerry Hamby",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606425430",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-07T08:39:40-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "Jerry Hamby",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-08T17:39:05",
+      "decimalLatitude": 10.202247,
+      "decimalLongitude": -83.778963,
+      "coordinateUncertaintyInMeters": 3.0,
+      "continent": "NORTH_AMERICA",
+      "stateProvince": "Lim\u00f3n",
+      "gadm": {
+        "level0": {
+          "gid": "CRI",
+          "name": "Costa Rica"
+        },
+        "level1": {
+          "gid": "CRI.5_1",
+          "name": "Lim\u00f3n"
+        },
+        "level2": {
+          "gid": "CRI.5.4_1",
+          "name": "Pococ\u00ed"
+        },
+        "level3": {
+          "gid": "CRI.5.4.4_1",
+          "name": "Jim\u00e9nez"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 7,
+      "eventDate": "2026-01-07T08:39:41",
+      "startDayOfYear": 7,
+      "endDayOfYear": 7,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:29:37.000+00:00",
+      "lastInterpreted": "2026-05-23T02:31:16.443+00:00",
+      "references": "https://www.inaturalist.org/observations/333989986",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333989986"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606425430",
+          "created": "2026-01-07T16:39:40.000+00:00",
+          "creator": "Jerry Hamby",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "Jerry Hamby",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606425430/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "Jerry Hamby",
+      "identifiedBy": "Jerry Hamby",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "CR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Costa Rica",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "Jerry Hamby",
+      "identifier": "333989986",
+      "http://unknown.org/nick": "jhamby",
+      "verbatimEventDate": "2026-01-07 08:39:41",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Pococ\u00ed, CR-LI, CR",
+      "gbifID": "6129914816",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333989986",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333989986",
+      "institutionCode": "iNaturalist",
+      "eventTime": "08:39:41-06:00",
+      "identificationID": "748027523"
+    },
+    {
+      "key": 6129932163,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T03:05:31.687+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/608560972/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "608560972",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "L.Joiner",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/608560972",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-16T12:06:45-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "L.Joiner",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          },
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/608560981/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "608560981",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "L.Joiner",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/608560981",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-16T12:07:11-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "L.Joiner",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-17T06:05:37",
+      "decimalLatitude": 22.218062,
+      "decimalLongitude": -159.577012,
+      "coordinateUncertaintyInMeters": 13.0,
+      "continent": "OCEANIA",
+      "stateProvince": "Hawaii",
+      "gadm": {
+        "level0": {
+          "gid": "USA",
+          "name": "United States"
+        },
+        "level1": {
+          "gid": "USA.12_1",
+          "name": "Hawaii"
+        },
+        "level2": {
+          "gid": "USA.12.4_1",
+          "name": "Kauai"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 16,
+      "eventDate": "2026-01-16T12:06:45",
+      "startDayOfYear": 16,
+      "endDayOfYear": 16,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:26:09.000+00:00",
+      "lastInterpreted": "2026-05-23T03:05:31.687+00:00",
+      "references": "https://www.inaturalist.org/observations/335034979",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "335034979"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/608560972",
+          "created": "2026-01-16T20:06:45.000+00:00",
+          "creator": "L.Joiner",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "L.Joiner",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/608560972/original.jpg"
+        },
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/608560981",
+          "created": "2026-01-16T20:07:11.000+00:00",
+          "creator": "L.Joiner",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "L.Joiner",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/608560981/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "L.Joiner",
+      "identifiedBy": "L.Joiner",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "US",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "NORTH_AMERICA",
+      "country": "United States of America",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "L.Joiner",
+      "identifier": "335034979",
+      "http://unknown.org/nick": "lj355",
+      "verbatimEventDate": "2026-01-16 12:06:45",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "H\u0101\u2019ena, HI, US",
+      "gbifID": "6129932163",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/335034979",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "335034979",
+      "institutionCode": "iNaturalist",
+      "eventTime": "12:06:45-10:00",
+      "identificationID": "751248702"
+    },
+    {
+      "key": 6129958787,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:41:10.854+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606163118/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606163118",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "davidalank",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606163118",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-07T16:09:21Z",
+            "http://purl.org/dc/terms/rightsHolder": "davidalank",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-07T17:01:02",
+      "decimalLatitude": -22.981216,
+      "decimalLongitude": -43.200109,
+      "coordinateUncertaintyInMeters": 15.0,
+      "continent": "SOUTH_AMERICA",
+      "stateProvince": "Rio de Janeiro",
+      "gadm": {
+        "level0": {
+          "gid": "BRA",
+          "name": "Brazil"
+        },
+        "level1": {
+          "gid": "BRA.19_1",
+          "name": "Rio de Janeiro"
+        },
+        "level2": {
+          "gid": "BRA.19.68_2",
+          "name": "Rio de Janeiro"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 7,
+      "eventDate": "2026-01-07T13:09:21",
+      "startDayOfYear": 7,
+      "endDayOfYear": 7,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-21T02:11:10.000+00:00",
+      "lastInterpreted": "2026-05-23T02:41:10.854+00:00",
+      "references": "https://www.inaturalist.org/observations/333860745",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333860745"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606163118",
+          "created": "2026-01-07T16:09:21.000+00:00",
+          "creator": "davidalank",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "davidalank",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606163118/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "davidalank",
+      "identifiedBy": "Giovanna Roque de Castro",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "BR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Brazil",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "davidalank",
+      "identifier": "333860745",
+      "http://unknown.org/nick": "davidalank",
+      "verbatimEventDate": "2026-01-07 13:09:21-03:00",
+      "http://unknown.org/crawl_attempt": "593",
+      "dynamicProperties": "{\"leaves\":\"green leaves\"}",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Rua Alberto de Campos, Rio de Janeiro, RJ, BR",
+      "gbifID": "6129958787",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333860745",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333860745",
+      "institutionCode": "iNaturalist",
+      "eventTime": "13:09:21-03:00",
+      "reproductiveCondition": "no flowers or fruits",
+      "identificationID": "747639537"
+    },
+    {
+      "key": 6130161637,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:58:50.953+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606477354/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606477354",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "hunteroutside",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606477354",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-08T11:56:43-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "hunteroutside",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-08T21:56:55",
+      "decimalLatitude": 21.904526,
+      "decimalLongitude": -159.464523,
+      "coordinateUncertaintyInMeters": 4.0,
+      "continent": "OCEANIA",
+      "stateProvince": "Hawaii",
+      "gadm": {
+        "level0": {
+          "gid": "USA",
+          "name": "United States"
+        },
+        "level1": {
+          "gid": "USA.12_1",
+          "name": "Hawaii"
+        },
+        "level2": {
+          "gid": "USA.12.4_1",
+          "name": "Kauai"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 8,
+      "eventDate": "2026-01-08T11:56:44",
+      "startDayOfYear": 8,
+      "endDayOfYear": 8,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:26:27.000+00:00",
+      "lastInterpreted": "2026-05-23T02:58:50.953+00:00",
+      "references": "https://www.inaturalist.org/observations/334015389",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "334015389"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606477354",
+          "created": "2026-01-08T19:56:43.000+00:00",
+          "creator": "hunteroutside",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "hunteroutside",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606477354/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "hunteroutside",
+      "identifiedBy": "hunteroutside",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "US",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "NORTH_AMERICA",
+      "country": "United States of America",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "hunteroutside",
+      "identifier": "334015389",
+      "http://unknown.org/nick": "hunteroutside",
+      "verbatimEventDate": "Thu Jan 08 2026 11:56:44 GMT -1000 (HST)",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "K\u014dloa",
+      "gbifID": "6130161637",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/334015389",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "334015389",
+      "institutionCode": "iNaturalist",
+      "eventTime": "11:56:44-10:00",
+      "identificationID": "748110872"
+    },
+    {
+      "key": 6130187061,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "CA",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:58:32.936+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606521015/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606521015",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "Baylana Hiebert",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606521015",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-08T12:20:20-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "Baylana Hiebert",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-09T01:48:58",
+      "decimalLatitude": 10.437652,
+      "decimalLongitude": -84.708784,
+      "coordinateUncertaintyInMeters": 3.0,
+      "continent": "NORTH_AMERICA",
+      "stateProvince": "Alajuela",
+      "gadm": {
+        "level0": {
+          "gid": "CRI",
+          "name": "Costa Rica"
+        },
+        "level1": {
+          "gid": "CRI.1_1",
+          "name": "Alajuela"
+        },
+        "level2": {
+          "gid": "CRI.1.11_1",
+          "name": "San Carlos"
+        },
+        "level3": {
+          "gid": "CRI.1.11.5_1",
+          "name": "La Fortuna"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 8,
+      "eventDate": "2026-01-08T12:20:16",
+      "startDayOfYear": 8,
+      "endDayOfYear": 8,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:26:26.000+00:00",
+      "lastInterpreted": "2026-05-23T02:58:32.936+00:00",
+      "references": "https://www.inaturalist.org/observations/334036423",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "334036423"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606521015",
+          "created": "2026-01-08T20:20:20.000+00:00",
+          "creator": "Baylana Hiebert",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "Baylana Hiebert",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606521015/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "Baylana Hiebert",
+      "identifiedBy": "Baylana Hiebert",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "CR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Costa Rica",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "Baylana Hiebert",
+      "identifier": "334036423",
+      "http://unknown.org/nick": "bhiebert",
+      "verbatimEventDate": "2026-01-08 12:20:16",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "F76C+FPQ Parque Nacional Volc\u00e1n Arenal, Provincia de Alajuela, El Castillo, Fortuna, Costa Rica",
+      "gbifID": "6130187061",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/334036423",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "334036423",
+      "institutionCode": "iNaturalist",
+      "eventTime": "12:20:16-06:00",
+      "identificationID": "748177927"
+    },
+    {
+      "key": 6130207899,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T02:41:12.892+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606396430/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606396430",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "Karen Semyan",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606396430",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-04T18:43:47Z",
+            "http://purl.org/dc/terms/rightsHolder": "Karen Semyan",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-09T02:10:24",
+      "decimalLatitude": 10.484677,
+      "decimalLongitude": -83.937412,
+      "coordinateUncertaintyInMeters": 16911.0,
+      "continent": "NORTH_AMERICA",
+      "stateProvince": "Heredia",
+      "gadm": {
+        "level0": {
+          "gid": "CRI",
+          "name": "Costa Rica"
+        },
+        "level1": {
+          "gid": "CRI.4_1",
+          "name": "Heredia"
+        },
+        "level2": {
+          "gid": "CRI.4.10_1",
+          "name": "Sarapiqu\u00ed"
+        },
+        "level3": {
+          "gid": "CRI.4.10.5_1",
+          "name": "Puerto Viejo"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 4,
+      "eventDate": "2026-01-04T12:43:47",
+      "startDayOfYear": 4,
+      "endDayOfYear": 4,
+      "issues": [
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:29:38.000+00:00",
+      "lastInterpreted": "2026-05-23T02:41:12.892+00:00",
+      "references": "https://www.inaturalist.org/observations/333975485",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333975485"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606396430",
+          "created": "2026-01-04T18:43:47.000+00:00",
+          "creator": "Karen Semyan",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "Karen Semyan",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606396430/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "Karen Semyan",
+      "identifiedBy": "Pablo Alejandro Montero Herrera",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "CR",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "LATIN_AMERICA",
+      "country": "Costa Rica",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "Karen Semyan",
+      "identifier": "333975485",
+      "http://unknown.org/nick": "karen_semyan",
+      "verbatimEventDate": "2026-01-04 12:43:47-06:00",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Sarapiqui, Heredia, CR",
+      "gbifID": "6130207899",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333975485",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333975485",
+      "institutionCode": "iNaturalist",
+      "eventTime": "12:43:47-06:00",
+      "identificationID": "748183710"
+    },
+    {
+      "key": 6130227459,
+      "datasetKey": "50c9509d-22c7-4a22-a47d-8c48425ef4a7",
+      "publishingOrgKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "installationKey": "997448a8-f762-11e1-a439-00145eb45e9a",
+      "hostingOrganizationKey": "28eb1a3f-1c15-4a95-931a-4af90ecb574d",
+      "publishingCountry": "US",
+      "protocol": "DWC_ARCHIVE",
+      "lastCrawled": "2026-05-22T16:37:52.948+00:00",
+      "lastParsed": "2026-05-23T03:05:27.576+00:00",
+      "crawlId": 593,
+      "extensions": {
+        "http://rs.gbif.org/terms/1.0/Multimedia": [
+          {
+            "http://purl.org/dc/terms/publisher": "iNaturalist",
+            "http://purl.org/dc/terms/identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606094453/original.jpg",
+            "http://rs.tdwg.org/dwc/terms/catalogNumber": "606094453",
+            "http://purl.org/dc/terms/license": "https://creativecommons.org/licenses/by-nc/4.0/",
+            "http://purl.org/dc/terms/creator": "tori_philippi",
+            "http://purl.org/dc/terms/references": "https://www.inaturalist.org/photos/606094453",
+            "http://purl.org/dc/terms/type": "StillImage",
+            "http://purl.org/dc/terms/created": "2026-01-05T13:07:46-08:00",
+            "http://purl.org/dc/terms/rightsHolder": "tori_philippi",
+            "http://purl.org/dc/terms/format": "image/jpeg"
+          }
+        ]
+      },
+      "basisOfRecord": "HUMAN_OBSERVATION",
+      "occurrenceStatus": "PRESENT",
+      "classifications": {
+        "7ddf754f-d193-4cc9-b351-99906754a03b": {
+          "usage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "73PS8",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "code": "BOTANICAL",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "CS5HF",
+              "name": "Eukaryota",
+              "rank": "DOMAIN"
+            },
+            {
+              "key": "P",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "CMQ8S",
+              "name": "Pteridobiotina",
+              "rank": "SUBKINGDOM"
+            },
+            {
+              "key": "TP",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "L2L",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "62287",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6M4",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "8VZGZ",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "73PS8",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        },
+        "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c": {
+          "usage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "acceptedUsage": {
+            "key": "2868241",
+            "name": "Monstera deliciosa Liebm.",
+            "rank": "SPECIES",
+            "authorship": "Liebm.",
+            "genericName": "Monstera",
+            "specificEpithet": "deliciosa",
+            "formattedName": "<i>Monstera</i> <i>deliciosa</i> Liebm."
+          },
+          "taxonomicStatus": "ACCEPTED",
+          "classification": [
+            {
+              "key": "6",
+              "name": "Plantae",
+              "rank": "KINGDOM"
+            },
+            {
+              "key": "7707728",
+              "name": "Tracheophyta",
+              "rank": "PHYLUM"
+            },
+            {
+              "key": "196",
+              "name": "Liliopsida",
+              "rank": "CLASS"
+            },
+            {
+              "key": "551",
+              "name": "Alismatales",
+              "rank": "ORDER"
+            },
+            {
+              "key": "6979",
+              "name": "Araceae",
+              "rank": "FAMILY"
+            },
+            {
+              "key": "2868125",
+              "name": "Monstera",
+              "rank": "GENUS"
+            },
+            {
+              "key": "2868241",
+              "name": "Monstera deliciosa",
+              "rank": "SPECIES"
+            }
+          ],
+          "issues": [
+            "TAXON_ID_NOT_FOUND"
+          ]
+        }
+      },
+      "taxonKey": 2868241,
+      "kingdomKey": 6,
+      "phylumKey": 7707728,
+      "classKey": 196,
+      "orderKey": 551,
+      "familyKey": 6979,
+      "genusKey": 2868125,
+      "speciesKey": 2868241,
+      "acceptedTaxonKey": 2868241,
+      "scientificName": "Monstera deliciosa Liebm.",
+      "scientificNameAuthorship": "Liebm.",
+      "acceptedScientificName": "Monstera deliciosa Liebm.",
+      "kingdom": "Plantae",
+      "phylum": "Tracheophyta",
+      "order": "Alismatales",
+      "family": "Araceae",
+      "genus": "Monstera",
+      "species": "Monstera deliciosa",
+      "genericName": "Monstera",
+      "specificEpithet": "deliciosa",
+      "taxonRank": "SPECIES",
+      "taxonomicStatus": "ACCEPTED",
+      "dateIdentified": "2026-01-07T07:36:15",
+      "decimalLatitude": -33.858587,
+      "decimalLongitude": 151.208695,
+      "coordinateUncertaintyInMeters": 34.0,
+      "continent": "OCEANIA",
+      "stateProvince": "New South Wales",
+      "gadm": {
+        "level0": {
+          "gid": "AUS",
+          "name": "Australia"
+        },
+        "level1": {
+          "gid": "AUS.5_1",
+          "name": "New South Wales"
+        },
+        "level2": {
+          "gid": "AUS.5.122_1",
+          "name": "Sydney"
+        }
+      },
+      "year": 2026,
+      "month": 1,
+      "day": 5,
+      "eventDate": "2026-01-05T13:07:46",
+      "startDayOfYear": 5,
+      "endDayOfYear": 5,
+      "issues": [
+        "COORDINATE_ROUNDED",
+        "CONTINENT_DERIVED_FROM_COORDINATES",
+        "TAXON_ID_NOT_FOUND"
+      ],
+      "modified": "2026-04-19T20:29:41.000+00:00",
+      "lastInterpreted": "2026-05-23T03:05:27.576+00:00",
+      "references": "https://www.inaturalist.org/observations/333826844",
+      "license": "http://creativecommons.org/licenses/by-nc/4.0/legalcode",
+      "isSequenced": false,
+      "identifiers": [
+        {
+          "identifier": "333826844"
+        }
+      ],
+      "media": [
+        {
+          "type": "StillImage",
+          "format": "image/jpeg",
+          "references": "https://www.inaturalist.org/photos/606094453",
+          "created": "2026-01-05T21:07:46.000+00:00",
+          "creator": "tori_philippi",
+          "publisher": "iNaturalist",
+          "license": "http://creativecommons.org/licenses/by-nc/4.0/",
+          "rightsHolder": "tori_philippi",
+          "identifier": "https://inaturalist-open-data.s3.amazonaws.com/photos/606094453/original.jpg"
+        }
+      ],
+      "facts": [],
+      "relations": [],
+      "isInCluster": false,
+      "datasetName": "iNaturalist research-grade observations",
+      "recordedBy": "tori_philippi",
+      "identifiedBy": "tori_philippi",
+      "dnaSequenceID": [],
+      "nucleotideSequence": [],
+      "geodeticDatum": "WGS84",
+      "class": "Liliopsida",
+      "countryCode": "AU",
+      "recordedByIDs": [],
+      "identifiedByIDs": [],
+      "gbifRegion": "OCEANIA",
+      "country": "Australia",
+      "publishedByGbifRegion": "NORTH_AMERICA",
+      "rightsHolder": "tori_philippi",
+      "identifier": "333826844",
+      "http://unknown.org/nick": "tori_philippi",
+      "verbatimEventDate": "2026-01-05 13:07:46",
+      "http://unknown.org/crawl_attempt": "593",
+      "http://unknown.org/status": "not_reviewed",
+      "verbatimLocality": "Sydney - Inner, AU-NS, AU",
+      "gbifID": "6130227459",
+      "collectionCode": "Observations",
+      "occurrenceID": "https://www.inaturalist.org/observations/333826844",
+      "taxonID": "122521",
+      "http://unknown.org/captive_cultivated": "wild",
+      "catalogNumber": "333826844",
+      "institutionCode": "iNaturalist",
+      "eventTime": "13:07:46+11:00",
+      "identificationID": "747511224"
+    }
+  ],
+  "facets": []
+}
