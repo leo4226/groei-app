@@ -53,7 +53,7 @@ def _row_to_task(row, days_overdue: int) -> CareTask:
         care_type=row["care_type"],
         days_overdue=days_overdue,
         last_done_by=row["last_done_by_name"],
-        last_done_at=row["last_done_at"],
+        last_done_at=str(row["last_done_at"]) if row["last_done_at"] else None,
         schedule_id=row["schedule_id"],
         is_ephemeral=bool(row["is_ephemeral"]) if row["is_ephemeral"] is not None else False,
     )
