@@ -19,6 +19,16 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   })
 }
 
+// Recover from stale dynamic-import references after a redeploy: when an
+// already-loaded chunk tries to lazy-load a sibling chunk whose hash no longer
+// exists, reload to pick up the current index.html and fresh chunk graph.
+window.addEventListener('vite:preloadError', () => {
+  if (!sessionStorage.getItem('preloadErrorReloaded')) {
+    sessionStorage.setItem('preloadErrorReloaded', '1')
+    window.location.reload()
+  }
+})
+
 // Dev: actively unregister any stale SW and wipe caches so dev never serves
 // stale prod-built chunks. (Fixes "I see the old page" after switching
 // between prod build and dev server on the same host.)
