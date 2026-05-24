@@ -502,7 +502,10 @@ export type IdentifyConfidence = 'high' | 'medium' | 'low' | 'no_match'
 export type IdentifyResponse = {
   candidates: PlantIdCandidate[]
   confidence: IdentifyConfidence    // 4-state confidence level
-  low_confidence: boolean            // kept for back-compat during deploy window
+  // DEPRECATED. Backend now derives this as (confidence !== "high"), which is
+  // broader than the old "top1 in [0.10, 0.30)" definition — medium-confidence
+  // results now flag as low_confidence too. Read `confidence` directly instead.
+  low_confidence: boolean
 }
 
 export type IdentifyCommitResult = {
