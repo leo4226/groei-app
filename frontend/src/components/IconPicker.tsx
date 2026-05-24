@@ -15,19 +15,19 @@ export default function IconPicker({ value, onChange }: Props) {
   const FORM_LABELS = useFormLabels()
   const t = useT()
   const [open, setOpen] = useState(false)
-  const [icons, setIcons] = useState<PlantIcon[]>([])
+  const [iconList, setIconList] = useState<PlantIcon[]>([])
   const [search, setSearch] = useState('')
   const [formFilter, setFormFilter] = useState<'all' | 'potted' | 'bare' | 'other'>('all')
   const [loading, setLoading] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const selected = icons.find((i) => i.id === value) ?? null
+  const selected = iconList.find((i) => i.id === value) ?? null
 
   useEffect(() => {
-    if (icons.length > 0) return
+    if (iconList.length > 0) return
     setLoading(true)
     icons.catalog()
-      .then(setIcons)
+      .then(setIconList)
       .catch(console.error)
       .finally(() => {
         setLoading(false)
@@ -39,7 +39,7 @@ export default function IconPicker({ value, onChange }: Props) {
     setTimeout(() => searchRef.current?.focus(), 80)
   }, [open])
 
-  const filtered = icons.filter((icon) => {
+  const filtered = iconList.filter((icon) => {
     if (formFilter !== 'all') {
       const matchesForm =
         formFilter === 'other'

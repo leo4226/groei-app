@@ -215,6 +215,25 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
 
         row = rows[0]
         latin_name = row["latin_name"]
+
+        # Enrich if the species has no Dutch common name yet (lazy, one-time LLM call)
+        nl_name = row.get("common_name_nl")
+        if not nl_name:
+            try:
+                await _enrich_species_if_missing(db, latin_name)
+                # Re-fetch after enrichment
+                rows2 = await db.execute_fetchall(
+                    "SELECT common_name_nl, common_name_en FROM plant_species WHERE id = ?",
+                    (species_id,),
+                )
+                if rows2:
+                    nl_name = rows2[0].get("common_name_nl") or ""
+                    en_name = rows2[0].get("common_name_en")
+                    row["common_name_nl"] = nl_name
+                    row["common_name_en"] = en_name
+            except Exception:
+                pass  # Enrichment is best-effort; don't fail the identify request
+
         nl_names = [row["common_name_nl"]] if row.get("common_name_nl") else []
         en_names = [row["common_name_en"]] if row.get("common_name_en") else []
 
