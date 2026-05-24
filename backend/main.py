@@ -32,7 +32,9 @@ from routers import household
 async def lifespan(app: FastAPI):
     await init_pool()
 
-    # Preload BioCLIP in background (first load downloads from HF Hub, ~60s)
+    # Preload BioCLIP in background (first load downloads from HF Hub, ~60s).
+    # Skipped when BIOCLIP_WORKER_URL is set — on Fly we offload to the remote
+    # GPU worker and don't ship torch/open_clip in the image.
     async def _preload_bioclip():
         try:
             from services.bioclip_id import get_service
@@ -49,7 +51,8 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             _log.warning("BioCLIP preload failed (lazy-load on request): %s", exc)
 
-    asyncio.ensure_future(_preload_bioclip())
+    if not os.environ.get("BIOCLIP_WORKER_URL"):
+        asyncio.ensure_future(_preload_bioclip())
 
     yield
     await close_pool()

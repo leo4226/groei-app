@@ -94,7 +94,7 @@ async def _check_quota(db, account: dict) -> str | None:
     if used >= _DAILY_QUOTA:
         raise HTTPException(
             status_code=429,
-            detail="Je hebt vandaag al {_DAILY_QUOTA} identificaties gebruikt. Morgen weer!",
+            detail=f"Je hebt vandaag al {_DAILY_QUOTA} identificaties gebruikt. Morgen weer!",
         )
     return None
 
