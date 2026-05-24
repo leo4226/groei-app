@@ -373,6 +373,35 @@ def _match_icon_key(scientific_name: str) -> str | None:
 
 
 async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
+    """Ensure a species has Dutch common name data. Looks up by latin_name first,
+    enriches existing rows, and only creates a new species as last resort."""
+    # 1. Already exists with common_name_nl?
+    row = await db.execute_fetchall(
+        "SELECT id, common_name_nl FROM plant_species WHERE latin_name = ? LIMIT 1",
+        (scientific_name,),
+    )
+    if row and row[0].get("common_name_nl"):
+        return row[0]["id"]
+
+    # 2. Exists but missing NL name — enrich via DeepSeek
+    if row:
+        species_id = row[0]["id"]
+        from species_service import _generate_species
+        try:
+            data = await _generate_species(scientific_name)
+            nl_name = data.get("common_name_nl") or ""
+            en_name = data.get("common_name_en") or ""
+            if nl_name:
+                await db.execute(
+                    "UPDATE plant_species SET common_name_nl = ?, common_name_en = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (nl_name, en_name, species_id),
+                )
+                await db.commit()
+        except Exception:
+            pass  # best-effort
+        return species_id
+
+    # 3. Doesn't exist at all — create from scratch
     from species_service import get_or_create_species
     try:
         return await get_or_create_species(db, scientific_name)
