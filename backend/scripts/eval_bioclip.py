@@ -29,6 +29,14 @@ logger = logging.getLogger(__name__)
 
 _EVAL_DIR = Path(__file__).resolve().parent.parent / "data" / "eval"
 
+# Threshold floor values for suggest_thresholds. Numbers are intentional minima:
+# even with a degenerate eval (very few samples), the suggested band edges
+# can never fall below these — keeps the surfaced thresholds in a sane range.
+_HIGH_TOP1_FLOOR   = 0.28
+_HIGH_MARGIN_FLOOR = 0.03
+_MEDIUM_TOP1_FLOOR = 0.20
+_LOW_TOP1_FLOOR    = 0.10
+
 
 def classify_prediction(predictions: list[tuple[int, float]], correct_id: int) -> dict:
     """Compare predictions (list of (species_id, score), top-K sorted desc) against correct_id.
@@ -69,24 +77,23 @@ def suggest_thresholds(
     correct_top1: list[float],
     wrong_top1: list[float],
     correct_margins: list[float],
-    wrong_margins: list[float],
 ) -> dict:
     """Compute reasonable threshold candidates from observed distributions.
 
     Heuristic:
-      high_top1   = max(0.28, p25 of CORRECT top-1)
-      high_margin = max(0.03, p25 of CORRECT margins)
-      medium_top1 = max(0.20, median of WRONG top-1)
-      low_top1    = 0.10 (existing floor, unchanged)
+      high_top1   = max(_HIGH_TOP1_FLOOR, p25 of CORRECT top-1)
+      high_margin = max(_HIGH_MARGIN_FLOOR, p25 of CORRECT margins)
+      medium_top1 = max(_MEDIUM_TOP1_FLOOR, median of WRONG top-1)
+      low_top1    = _LOW_TOP1_FLOOR (existing floor, unchanged)
     """
     correct_t1_dist = score_distribution(correct_top1)
     wrong_t1_dist = score_distribution(wrong_top1)
     correct_m_dist = score_distribution(correct_margins)
     return {
-        "high_top1": max(0.28, correct_t1_dist["p25"]),
-        "high_margin": max(0.03, correct_m_dist["p25"]),
-        "medium_top1": max(0.20, wrong_t1_dist["median"]),
-        "low_top1": 0.10,
+        "high_top1": max(_HIGH_TOP1_FLOOR, correct_t1_dist["p25"]),
+        "high_margin": max(_HIGH_MARGIN_FLOOR, correct_m_dist["p25"]),
+        "medium_top1": max(_MEDIUM_TOP1_FLOOR, wrong_t1_dist["median"]),
+        "low_top1": _LOW_TOP1_FLOOR,
     }
 
 
@@ -128,8 +135,9 @@ async def main(worker_url: str):
         logger.error("No photos in %s", _EVAL_DIR)
         return
 
+    unique_species = {sid for sid, _ in photos}
     logger.info("Evaluating %d photos across %d species using worker %s",
-                len(photos), len({sid for sid, _ in photos}), worker_url)
+                len(photos), len(unique_species), worker_url)
 
     correct_top1_scores: list[float] = []
     wrong_top1_scores: list[float] = []
@@ -160,12 +168,12 @@ async def main(worker_url: str):
     wrong_dist = score_distribution(wrong_top1_scores)
     correct_m_dist = score_distribution(correct_margins)
     wrong_m_dist = score_distribution(wrong_margins)
-    suggested = suggest_thresholds(correct_top1_scores, wrong_top1_scores, correct_margins, wrong_margins)
+    suggested = suggest_thresholds(correct_top1_scores, wrong_top1_scores, correct_margins)
 
     print()
     print(f"BioCLIP eval report")
     print(f"Worker:  {worker_url}")
-    print(f"Photos:  {n_with_pred}/{len(photos)}   Species: {len({sid for sid, _ in photos})}")
+    print(f"Photos:  {n_with_pred}/{len(photos)}   Species: {len(unique_species)}")
     print()
     print("  Eval source is GBIF -- likely overlap with BioCLIP training data.")
     print("   Real-user accuracy will be lower than these numbers.")
