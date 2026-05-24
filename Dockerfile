@@ -19,5 +19,6 @@ COPY frontend/public/icons /app/icons/
 
 EXPOSE 8000
 
-# Run migrations before starting the server.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"]
+# Migrations run via fly.toml's [deploy] release_command, not here, so a
+# failed migration aborts the deploy cleanly instead of crashing all machines.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-from database import init_pool, close_pool
+from database import init_pool, close_pool, get_db
 from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
 from routers import plant_care, species, spots, icons
 from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
@@ -76,6 +76,14 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Internal server error"},
     )
+
+# Health check for Fly.io — pings DB to catch silent connection-pool issues.
+@app.get("/health")
+async def health():
+    async with get_db() as db:
+        await db.execute_fetchall("SELECT 1")
+    return {"status": "ok"}
+
 
 # Mount routers
 app.include_router(users.router, prefix="/api")
