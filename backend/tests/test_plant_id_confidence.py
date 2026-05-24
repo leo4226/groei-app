@@ -43,3 +43,13 @@ def test_high_requires_both_top1_and_margin():
     """top1 above high threshold but margin below -> falls to medium."""
     # top1=0.35, margin=0.02 -> high_margin not met
     assert _classify_confidence(0.35, 0.33) == "medium"
+
+
+def test_high_when_top1_exactly_at_high_threshold():
+    """top1=0.30 (== _HIGH_TOP1) with sufficient margin → high (>= is inclusive)."""
+    assert _classify_confidence(0.30, 0.20) == "high"
+
+
+def test_medium_when_top1_exactly_at_medium_threshold():
+    """top1=0.25 (== _MEDIUM_TOP1) → medium (>= is inclusive)."""
+    assert _classify_confidence(0.25, 0.10) == "medium"

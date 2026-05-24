@@ -54,7 +54,8 @@ async def test_identify_endpoint_returns_top_3(client, seeded_db, auth_header):
 
 @pytest.mark.asyncio
 async def test_identify_endpoint_low_confidence_flag(client, seeded_db, auth_header):
-    """When top candidate is between 0.10 and 0.30, low_confidence is true."""
+    """low_confidence is true for any non-high result (was: only in [0.10, 0.30) band).
+    Now derived from the new `confidence` field — see _classify_confidence in plant_id.py."""
     low = _fake_candidates()
     low[0].confidence = 0.20
     with patch("routers.plant_id.identify", new=AsyncMock(return_value=low)):

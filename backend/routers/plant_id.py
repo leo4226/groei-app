@@ -40,10 +40,8 @@ _HIGH_TOP1 = 0.30              # top-1 must clear this AND _HIGH_MARGIN to be "h
 _HIGH_MARGIN = 0.04            # top-1 minus top-2
 _MEDIUM_TOP1 = 0.25            # top-1 above this is at least medium
 
-# Legacy aliases retained so existing call-sites don't break. Prefer the named
-# constants above in new code; remove these once everything migrates.
-_MIN_CONFIDENCE_FOR_RESULT = _CONFIDENCE_FLOOR
-_LOW_CONFIDENCE_UPPER = _HIGH_TOP1
+# (No legacy aliases — _CONFIDENCE_FLOOR / _HIGH_TOP1 / _HIGH_MARGIN / _MEDIUM_TOP1 are
+#  the only constants. Old names removed; grep confirmed zero external imports.)
 
 
 def _classify_confidence(top1: float, top2: float | None) -> str:
@@ -77,7 +75,11 @@ class CandidateOut(BaseModel):
 class IdentifyResponse(BaseModel):
     candidates: list[CandidateOut]
     confidence: str = "no_match"  # high | medium | low | no_match
-    low_confidence: bool = False  # DEPRECATED: derived from confidence; remove once frontend migrates
+    # DEPRECATED: now derived as (confidence != "high"), which is broader than the
+    # old "in band [0.10, 0.30)" definition — strong-but-thin-margin matches
+    # (confidence = "medium") now flag as low_confidence too. Frontend should
+    # migrate to reading `confidence` directly; remove this field after.
+    low_confidence: bool = False
     source: str = "bioclip"
 
 
