@@ -1,0 +1,35 @@
+# Git
+.git/
+.gitignore
+
+# Frontend — alleen icons worden gekopieerd
+frontend/
+!frontend/public/icons/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Backend data (embeddings, uploads) — niet nodig in Docker image
+backend/data/
+backend/uploads/
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
+.env.*
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
