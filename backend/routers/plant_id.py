@@ -32,8 +32,34 @@ _DAILY_QUOTA = 20
 router = APIRouter(prefix="/plants", tags=["plant-id"])
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
-_MIN_CONFIDENCE_FOR_RESULT = 0.10
-_LOW_CONFIDENCE_UPPER = 0.30
+
+# Confidence calibration thresholds (informed by scripts/eval_bioclip.py output).
+# Update these from a fresh eval run; current values are educated initial guesses.
+_CONFIDENCE_FLOOR = 0.10       # below this -> no_match (no candidates surfaced)
+_HIGH_TOP1 = 0.30              # top-1 must clear this AND _HIGH_MARGIN to be "high"
+_HIGH_MARGIN = 0.04            # top-1 minus top-2
+_MEDIUM_TOP1 = 0.25            # top-1 above this is at least medium
+
+# Legacy aliases retained so existing call-sites don't break. Prefer the named
+# constants above in new code; remove these once everything migrates.
+_MIN_CONFIDENCE_FOR_RESULT = _CONFIDENCE_FLOOR
+_LOW_CONFIDENCE_UPPER = _HIGH_TOP1
+
+
+def _classify_confidence(top1: float, top2: float | None) -> str:
+    """Bucket a (top1, top2) pair into one of high / medium / low / no_match.
+
+    See docs/plans/2026-05-24-bioclip-confidence-calibration-design.md section 3.
+    """
+    if top1 < _CONFIDENCE_FLOOR:
+        return "no_match"
+    margin = top1 - (top2 or 0.0)
+    if top1 >= _HIGH_TOP1 and margin >= _HIGH_MARGIN:
+        return "high"
+    if top1 >= _MEDIUM_TOP1:
+        return "medium"
+    return "low"
+
 
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
 
@@ -50,7 +76,8 @@ class CandidateOut(BaseModel):
 
 class IdentifyResponse(BaseModel):
     candidates: list[CandidateOut]
-    low_confidence: bool
+    confidence: str = "no_match"  # high | medium | low | no_match
+    low_confidence: bool = False  # DEPRECATED: derived from confidence; remove once frontend migrates
     source: str = "bioclip"
 
 
@@ -165,8 +192,13 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
         logger.info("BioCLIP top match: species_id=%s confidence=%.4f (all: %s)",
                      matches[0][0], matches[0][1],
                      [(m[0], round(m[1], 4)) for m in matches[:3]])
-    if not matches or matches[0][1] < _MIN_CONFIDENCE_FOR_RESULT:
-        return IdentifyResponse(candidates=[], low_confidence=False, source="bioclip")
+    if not matches or matches[0][1] < _CONFIDENCE_FLOOR:
+        return IdentifyResponse(
+            candidates=[],
+            confidence="no_match",
+            low_confidence=False,
+            source="bioclip",
+        )
 
     out: list[CandidateOut] = []
     for species_id, confidence in matches:
@@ -203,8 +235,15 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
             source="bioclip",
         ))
 
-    low_conf = _MIN_CONFIDENCE_FOR_RESULT <= matches[0][1] < _LOW_CONFIDENCE_UPPER
-    return IdentifyResponse(candidates=out, low_confidence=low_conf, source="bioclip")
+    top1 = matches[0][1]
+    top2 = matches[1][1] if len(matches) > 1 else None
+    confidence = _classify_confidence(top1, top2)
+    return IdentifyResponse(
+        candidates=out,
+        confidence=confidence,
+        low_confidence=(confidence != "high"),
+        source="bioclip",
+    )
 
 
 @router.post("/identify", response_model=IdentifyResponse)
@@ -244,8 +283,13 @@ async def identify_endpoint(
 
     await _increment_quota(db, account["account_id"])
 
-    if not candidates or candidates[0].confidence < _MIN_CONFIDENCE_FOR_RESULT:
-        return IdentifyResponse(candidates=[], low_confidence=False, source="plantnet")
+    if not candidates or candidates[0].confidence < _CONFIDENCE_FLOOR:
+        return IdentifyResponse(
+            candidates=[],
+            confidence="no_match",
+            low_confidence=False,
+            source="plantnet",
+        )
 
     top3 = candidates[:3]
     out: list[CandidateOut] = []
@@ -262,8 +306,15 @@ async def identify_endpoint(
             source="plantnet",
         ))
 
-    low_conf = _MIN_CONFIDENCE_FOR_RESULT <= candidates[0].confidence < _LOW_CONFIDENCE_UPPER
-    return IdentifyResponse(candidates=out, low_confidence=low_conf, source="plantnet")
+    top1 = candidates[0].confidence
+    top2 = candidates[1].confidence if len(candidates) > 1 else None
+    confidence = _classify_confidence(top1, top2)
+    return IdentifyResponse(
+        candidates=out,
+        confidence=confidence,
+        low_confidence=(confidence != "high"),
+        source="plantnet",
+    )
 
 
 class IdentifyCommitRequest(BaseModel):
