@@ -107,7 +107,7 @@ async def get_dashboard_v2(db = Depends(db_dep), account = Depends(get_current_a
             plant_name=r["plant_name"],
             icon_key=r["icon_key"],
             care_type=r["care_type"],
-            done_at=r["done_at"],
+            done_at=str(r["done_at"]),
             notes=r["notes"],
         )
         for r in log_rows
