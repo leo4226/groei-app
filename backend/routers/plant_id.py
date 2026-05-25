@@ -120,7 +120,7 @@ async def _check_quota(db, account: dict) -> str | None:
 
     today = date.today().isoformat()
     quota_rows = await db.execute_fetchall(
-        "SELECT count FROM plantnet_quota WHERE account_id = ? AND date = ?",
+        "SELECT \"count\" FROM plantnet_quota WHERE account_id = ? AND date = ?",
         (account["account_id"], today),
     )
     used = quota_rows[0]["count"] if quota_rows else 0
@@ -135,9 +135,9 @@ async def _check_quota(db, account: dict) -> str | None:
 async def _increment_quota(db, account_id: int) -> None:
     today = date.today().isoformat()
     await db.execute_fetchall(
-        """INSERT INTO plantnet_quota (account_id, date, count)
+        """INSERT INTO plantnet_quota (account_id, date, "count")
            VALUES (?, ?, 1)
-           ON CONFLICT (account_id, date) DO UPDATE SET count = count + 1""",
+           ON CONFLICT (account_id, date) DO UPDATE SET "count" = "count" + 1""",
         (account_id, today),
     )
 
@@ -238,7 +238,11 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
             except Exception:
                 pass  # Enrichment is best-effort; don't fail the identify request
 
-        nl_names = [row["common_name_nl"]] if row.get("common_name_nl") else []
+        # Treat common_name_nl == latin_name as "no real Dutch name" — GBIF import
+        # left the Latin name as a placeholder for ~86% of species. Surface as empty
+        # so the frontend falls back to common_names_en or scientific_name.
+        nl = row.get("common_name_nl") or ""
+        nl_names = [nl] if nl and nl.lower() != latin_name.lower() else []
         en_names = [row["common_name_en"]] if row.get("common_name_en") else []
 
         # Find any image for thumbnail
