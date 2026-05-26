@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://floreren-api.fly.dev/api/$1"
+    },
+    {
       "source": "/((?!api/|assets/|sw\\.js).*)",
       "destination": "/index.html"
     }
