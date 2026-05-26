@@ -5,6 +5,7 @@ Exposes a single POST /identify endpoint that accepts an image and returns
 BioCLIP matches as a JSON array. Designed to run behind a Cloudflare Tunnel
 so the production backend (Fly.io, no GPU) can offload ML inference here.
 """
+import base64
 import io
 import logging
 import os
@@ -66,8 +67,8 @@ def _load_embeddings():
     return True
 
 
-def _identify_image(image: Image.Image, top_k: int = 5) -> list[dict]:
-    """Embed image, match against text embeddings, return top-K."""
+def _identify_image(image: Image.Image, top_k: int = 5) -> tuple[list[dict], np.ndarray]:
+    """Embed image, match against text embeddings, return top-K + the raw embedding."""
     import torch
 
     _load_model()
@@ -76,7 +77,7 @@ def _identify_image(image: Image.Image, top_k: int = 5) -> list[dict]:
     with torch.no_grad():
         embedding = _model.encode_image(image_tensor)
         embedding = embedding / embedding.norm(dim=-1, keepdim=True)
-    image_emb = embedding.cpu().numpy().squeeze()
+    image_emb = embedding.cpu().numpy().squeeze().astype(np.float32)
 
     similarities = _text_embeddings @ image_emb
     top_indices = np.argsort(similarities)[-top_k:][::-1]
@@ -87,7 +88,7 @@ def _identify_image(image: Image.Image, top_k: int = 5) -> list[dict]:
             "species_id": int(_species_ids[idx]),
             "confidence": round(float(similarities[idx]), 4),
         })
-    return results
+    return results, image_emb
 
 
 # --- FastAPI app ---
@@ -108,7 +109,7 @@ async def startup():
 
 @app.post("/identify")
 async def identify(image: UploadFile = File(...)):
-    """Accept an image file, return BioCLIP top-5 matches."""
+    """Accept an image file, return BioCLIP top-5 matches + the query embedding."""
     if _model is None:
         raise HTTPException(status_code=503, detail="BioCLIP model not loaded")
     if _text_embeddings is None:
@@ -124,12 +125,49 @@ async def identify(image: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Could not decode image")
 
     try:
-        matches = _identify_image(pil_image)
+        matches, image_emb = _identify_image(pil_image)
     except Exception as e:
         logger.error("Inference error: %s", e)
         raise HTTPException(status_code=500, detail="Inference failed")
 
-    return {"matches": matches, "source": "bioclip"}
+    return {
+        "matches": matches,
+        "source": "bioclip",
+        "embedding": base64.b64encode(image_emb.tobytes()).decode(),
+    }
+
+
+@app.post("/embed-image")
+async def embed_image(image: UploadFile = File(...)):
+    """Encode an image into BioCLIP's 512-dim embedding space. Returns
+    the raw 2048 bytes (512 × float32) as application/octet-stream.
+
+    Used by the backend to capture user-confirmed image embeddings for
+    the retrieval layer (see /identify/commit).
+    """
+    if _model is None:
+        raise HTTPException(status_code=503, detail="BioCLIP model not loaded")
+
+    image_bytes = await image.read()
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large (max 5 MB)")
+
+    try:
+        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not decode image")
+
+    import torch  # safe — _model already loaded
+    _load_model()
+
+    image_tensor = _preprocess(pil_image).unsqueeze(0).to(_device)
+    with torch.no_grad():
+        emb = _model.encode_image(image_tensor)
+        emb = emb / emb.norm(dim=-1, keepdim=True)
+    arr = emb.cpu().numpy().squeeze().astype(np.float32)
+
+    from fastapi.responses import Response
+    return Response(content=arr.tobytes(), media_type="application/octet-stream")
 
 
 @app.get("/health")
