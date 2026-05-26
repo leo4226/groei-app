@@ -499,22 +499,3 @@ def all_plants() -> list[tuple[str, str]]:
         for name in names:
             out.append((cat, name))
     return out
-
-
-def all_plants() -> list[tuple[str, str]]:
-    """Returns (category, latin_name) tuples for all curated species."""
-    out: list[tuple[str, str]] = []
-    for cat, names in [
-        ("houseplant", PLANTS_HOUSEPLANTS),
-        ("perennial", PLANTS_GARDEN_PERENNIALS),
-        ("annual", PLANTS_GARDEN_ANNUALS),
-        ("shrub", PLANTS_GARDEN_SHRUBS),
-        ("tree", PLANTS_TREES),
-        ("bulb", PLANTS_BULBS),
-        ("edible", PLANTS_EDIBLES),
-        ("herb", PLANTS_HERBS),
-        ("climber", PLANTS_CLIMBERS),
-    ]:
-        for name in names:
-            out.append((cat, name))
-    return out
