@@ -14,6 +14,8 @@ import time
 from datetime import date
 from pathlib import Path
 
+import numpy as np
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
@@ -61,6 +63,42 @@ def _classify_confidence(top1: float, top2: float | None) -> str:
     if top1 >= _MEDIUM_TOP1:
         return "medium"
     return "low"
+
+
+_IMAGE_REF_BOOST = 1.1  # multiplier on image-to-image cosine; image-to-image is
+                        # a stronger signal than image-to-text so we trust it more
+
+
+def _blend_scores(
+    text_matches: list[tuple[int, float]],
+    query_embedding: np.ndarray,
+    refs_by_species: dict[int, np.ndarray],
+    top_k: int = 5,
+) -> list[tuple[int, float]]:
+    """Combine text-based top-K matches with image-to-image similarity from
+    user-confirmed embeddings, return new top-K.
+
+    Per-species score: combined = max(text_score, max_image_cosine * boost)
+    Species present in refs but not in text_matches are still considered.
+    """
+    text_score_map: dict[int, float] = {sid: s for sid, s in text_matches}
+
+    image_score_map: dict[int, float] = {}
+    for sid, ref_matrix in refs_by_species.items():
+        # ref_matrix: shape (N, 512), each row is unit-norm
+        # query_embedding: shape (512,), unit-norm
+        cos = ref_matrix @ query_embedding  # shape (N,)
+        image_score_map[sid] = float(cos.max())
+
+    all_species = set(text_score_map.keys()) | set(image_score_map.keys())
+    combined: list[tuple[int, float]] = []
+    for sid in all_species:
+        t = text_score_map.get(sid, 0.0)
+        i = image_score_map.get(sid, 0.0) * _IMAGE_REF_BOOST
+        combined.append((sid, max(t, i)))
+
+    combined.sort(key=lambda x: x[1], reverse=True)
+    return combined[:top_k]
 
 
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
