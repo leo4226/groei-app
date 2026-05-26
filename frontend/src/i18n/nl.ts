@@ -542,6 +542,7 @@ export const nl: Translations = {
       choose: 'Kies deze',
     },
     lowConfidence: 'Lage zekerheid — controleer de resultaten zorgvuldig',
+    plantnetConfirm: 'Je foto wordt naar Pl@ntNet gestuurd (een externe dienst) voor een tweede identificatie. Doorgaan?',
     confidence: {
       medium: 'Redelijk zeker',
       low: 'Niet zeker — kies handmatig of probeer een betere foto',

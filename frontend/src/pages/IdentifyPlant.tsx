@@ -7,21 +7,20 @@ import { IdentifyResults } from '../components/identify/IdentifyResults'
 import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
 type Step =
-  | { kind: 'privacy' }
   | { kind: 'camera' }
   | { kind: 'identifying'; thumbnail: string }
   | { kind: 'results'; candidates: PlantIdCandidate[]; confidence: IdentifyConfidence; thumbnail: string; capturedBlob: Blob; source: string }
   | { kind: 'enriching' }
   | { kind: 'error'; message: string; thumbnail: string | null }
 
-const PRIVACY_ACK_KEY = 'groei.identify.privacy_ack'
 
 export function IdentifyPlantPage() {
   const t = useT()
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>(() =>
-    localStorage.getItem(PRIVACY_ACK_KEY) === '1' ? { kind: 'camera' } : { kind: 'privacy' }
-  )
+  // BioCLIP is the primary identifier and runs on our own infrastructure — no
+  // upfront third-party consent gate. PlantNet is opt-in via the fallback button
+  // on the results screen; the confirm there names the third party explicitly.
+  const [step, setStep] = useState<Step>({ kind: 'camera' })
   const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -73,11 +72,6 @@ export function IdentifyPlantPage() {
     }
   }
 
-  function ackPrivacy() {
-    localStorage.setItem(PRIVACY_ACK_KEY, '1')
-    setStep({ kind: 'camera' })
-  }
-
   function manualFallback() {
     navigate('/plants/add', { state: { from: 'manual' } })
   }
@@ -89,6 +83,8 @@ export function IdentifyPlantPage() {
 
   async function handleTryPlantnet() {
     if (step.kind !== 'results') return
+    // Explicit opt-in: PlantNet is a third-party service. Confirm before sending.
+    if (!window.confirm(t.identify.plantnetConfirm)) return
     setStep({ kind: 'identifying', thumbnail: step.thumbnail })
     try {
       const resp = await plantsApi.identifyPlantnet(step.capturedBlob)
@@ -109,23 +105,6 @@ export function IdentifyPlantPage() {
   }
 
   // --- render per step ---
-
-  if (step.kind === 'privacy') {
-    return (
-      <div className="p-6 max-w-md mx-auto">
-        <h2 className="text-xl font-semibold mb-2">📸 {t.identify.camera.title}</h2>
-        <p className="text-gray-600 my-4">{t.identify.privacy.notice}</p>
-        <div className="flex flex-col gap-3">
-          <button onClick={ackPrivacy} className="bg-green-700 text-white px-4 py-3 rounded">
-            {t.identify.privacy.ack}
-          </button>
-          <button onClick={() => navigate(-1)} className="text-gray-700 px-4 py-3 rounded border">
-            {t.identify.camera.cancel}
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   if (step.kind === 'camera') {
     return <IdentifyCamera onCapture={handleCapture} onCancel={() => navigate(-1)} />

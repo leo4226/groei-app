@@ -542,6 +542,7 @@ export const en: Translations = {
       choose: 'Pick this one',
     },
     lowConfidence: 'Low confidence — review carefully',
+    plantnetConfirm: 'Your photo will be sent to Pl@ntNet (a third-party service) for a second identification. Continue?',
     confidence: {
       medium: 'Fairly confident',
       low: 'Not sure — pick one manually or try a better photo',

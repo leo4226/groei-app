@@ -499,6 +499,7 @@ export type Translations = {
       choose: string      // "Pick this one"
     }
     lowConfidence: string  // DEPRECATED, kept until confidence.low rollout completes
+    plantnetConfirm: string  // confirm dialog text shown when user clicks the PlantNet fallback button
     confidence: {
       medium: string       // "Fairly confident" / "Redelijk zeker"
       low: string          // "Not sure — pick one manually or try a better photo"
