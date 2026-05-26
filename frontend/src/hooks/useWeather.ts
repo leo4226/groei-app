@@ -75,24 +75,26 @@ export function useWeather(lat: number | null, lon: number | null): {
     setLoading(true)
     setError(null)
 
-    const params = new URLSearchParams({
-      latitude: String(resolvedLat),
-      longitude: String(resolvedLon),
-      current: 'temperature_2m,relative_humidity_2m,weather_code',
-      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,sunrise,sunset',
-      timezone: 'Europe/Amsterdam',
-      forecast_days: '7',
-    })
-
-    fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
+    fetch(`/api/weather?lat=${resolvedLat}&lon=${resolvedLon}`)
       .then(r => {
-        if (!r.ok) throw new Error(`Open-Meteo: ${r.status}`)
+        if (!r.ok) throw new Error(`Weer-API: ${r.status}`)
         return r.json()
       })
       .then(data => {
         if (cancelled) return
         const cur = data.current
         const daily = data.daily
+
+        // Graceful degrade when Open-Meteo is down — daily arrays
+        // are empty and current is null. Keep showing stale weather
+        // if we had any.
+        if (!cur || !daily?.time?.length) {
+          if (!weather) {
+            setWeather(null)
+          }
+          setLoading(false)
+          return
+        }
 
         const forecast: WeatherDay[] = (daily.time as string[]).map((d, i) => ({
           date: d,
@@ -118,7 +120,10 @@ export function useWeather(lat: number | null, lon: number | null): {
       })
       .catch(e => {
         if (cancelled) return
-        setError(e.message)
+        // Keep previous weather on network error — don't flash to null
+        if (!weather) {
+          setError(e.message)
+        }
         setLoading(false)
       })
 
