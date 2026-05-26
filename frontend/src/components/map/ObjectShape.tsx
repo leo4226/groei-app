@@ -2,7 +2,6 @@ import type { MapObject, HardscapePreset } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
-import { useMapRotation } from '../../context/MapRotationContext'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { resolveIconUrl } from '../../utils/icons'
 
@@ -80,7 +79,6 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
 }
 
 export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
-  const counterRot = useMapRotation()
   const color = object.color || '#888888'
   const effectiveRotation = object.rotation || 0
   const fill = color + '33'
@@ -181,20 +179,18 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
               opacity={0.85}
             />
           )}
-          <g transform={counterRot ? `rotate(${counterRot})` : undefined}>
-            {plant.icon_key ? (
-              <image
-                href={resolveIconUrl(plant.icon_key)!}
-                x={-iconHalf}
-                y={-iconHalf}
-                width={iconHalf * 2}
-                height={iconHalf * 2}
-                style={{ pointerEvents: 'none' }}
-              />
-            ) : (
-              <circle r={dotR} fill={dotColor} opacity={0.8} />
-            )}
-          </g>
+          {plant.icon_key ? (
+            <image
+              href={resolveIconUrl(plant.icon_key)!}
+              x={-iconHalf}
+              y={-iconHalf}
+              width={iconHalf * 2}
+              height={iconHalf * 2}
+              style={{ pointerEvents: 'none' }}
+            />
+          ) : (
+            <circle r={dotR} fill={dotColor} opacity={0.8} />
+          )}
           {/* Alert badges — arc around top of plant */}
           {alerts.length > 0 && alerts.map((a, i) => {
             const count = alerts.length
@@ -297,9 +293,9 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
 
       {object.category === 'container' && renderContainedPlants()}
 
-      {/* Label: counter-rotate by object's own rotation + SVG orientation so text is always upright */}
+      {/* Label: counter-rotate by the object's own rotation so text reads upright */}
       {showLabel && object.category === 'container' && (
-        <g transform={`rotate(${counterRot - effectiveRotation})`}>
+        <g transform={`rotate(${-effectiveRotation})`}>
           <text
             y={getShapeBound(object) + 12}
             textAnchor="middle"

@@ -16,7 +16,6 @@ import PlantSuitabilityLayer from '../sun/PlantSuitabilityLayer'
 import FixedPlantsLayer from './FixedPlantsLayer'
 import GardenCompass from './GardenCompass'
 import CanvasZonesLayer from './CanvasZonesLayer'
-import { MapRotationContext } from '../../context/MapRotationContext'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
 import type { FixedPlant } from '../../constants/fixedPlants'
@@ -104,7 +103,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     handleItemSelect,
     handleMapClick,
     handlePlantResizeDown,
-    dragDebug,
   } = useMapInteraction({
     svgRef,
     plants,
@@ -178,17 +176,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           touchAction: 'none',
           top: 0,
           left: 0,
-          width:  isMobile ? ch : '100%',
-          height: isMobile ? cw : '100%',
-          ...(isMobile && {
-            transformOrigin: 'top left',
-            transform: 'rotate(-90deg) translateX(-100%)',
-          }),
+          width: '100%',
+          height: '100%',
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-      <MapRotationContext.Provider value={isMobile ? 90 : 0}>
         {/* Background: static SVG (garden maps) + live canvas zones */}
         {canvasData ? (
           <>
@@ -307,21 +300,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         {/* Debug overlays (e.g. ?debug=svf ray visualisation) */}
         {debugOverlay}
 
-      </MapRotationContext.Provider>
       </svg>
       </div>
-      )}
-
-      {/* ?debug-drag=1 — diagnostic overlay for the cursor-opposite-finger bug.
-          Renders fixed bottom-left, updates as plants are dragged. */}
-      {dragDebug && (
-        <div className="fixed bottom-2 left-2 z-50 bg-black/85 text-white text-xs font-mono p-3 rounded shadow-lg pointer-events-none max-w-[90vw]">
-          <div>mobile: {String(dragDebug.isMobile)}</div>
-          <div>client: {dragDebug.clientX}, {dragDebug.clientY}</div>
-          <div>→ svg: {dragDebug.svgX}, {dragDebug.svgY}</div>
-          <div>key: {dragDebug.dragKey ?? '—'}</div>
-          <div className="break-all">CTM: {dragDebug.ctm}</div>
-        </div>
       )}
     </div>
   )

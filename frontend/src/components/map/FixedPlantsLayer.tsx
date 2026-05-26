@@ -1,6 +1,5 @@
 import { FIXED_PLANTS } from '../../constants/fixedPlants'
 import type { FixedPlant } from '../../constants/fixedPlants'
-import { useMapRotation } from '../../context/MapRotationContext'
 
 const PX_PER_CM = 0.46
 
@@ -33,9 +32,6 @@ function LockIcon({ r }: { r: number }) {
 }
 
 export default function FixedPlantsLayer({ onTap }: Props) {
-  const counterRot = useMapRotation()
-  const rot = counterRot ? `rotate(${counterRot})` : undefined
-
   return (
     <g>
       {FIXED_PLANTS.map((plant) => {
@@ -62,28 +58,26 @@ export default function FixedPlantsLayer({ onTap }: Props) {
             {/* Permanent marker ring — darker + dashed to signal "fixed" */}
             <circle r={r} fill="none" stroke={plant.markerColor} strokeWidth={2.5} opacity={0.5} />
 
-            <g transform={rot}>
-              {/* Lock glyph */}
-              <LockIcon r={r} />
+            {/* Lock glyph */}
+            <LockIcon r={r} />
 
-              {/* Label */}
-              <text
-                y={labelY}
-                textAnchor="middle"
-                fill="#1f2937"
-                fontSize="11"
-                fontWeight="500"
-                style={{
-                  pointerEvents: 'none',
-                  paintOrder: 'stroke',
-                  stroke: 'rgba(255,255,255,0.9)',
-                  strokeWidth: 3,
-                  strokeLinejoin: 'round',
-                }}
-              >
-                {plant.name}
-              </text>
-            </g>
+            {/* Label */}
+            <text
+              y={labelY}
+              textAnchor="middle"
+              fill="#1f2937"
+              fontSize="11"
+              fontWeight="500"
+              style={{
+                pointerEvents: 'none',
+                paintOrder: 'stroke',
+                stroke: 'rgba(255,255,255,0.9)',
+                strokeWidth: 3,
+                strokeLinejoin: 'round',
+              }}
+            >
+              {plant.name}
+            </text>
           </g>
         )
       })}

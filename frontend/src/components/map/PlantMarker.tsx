@@ -2,7 +2,6 @@ import type { MapPlant } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { computeSuitability } from '../../utils/suitability'
-import { useMapRotation } from '../../context/MapRotationContext'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { resolveIconUrl } from '../../utils/icons'
@@ -39,8 +38,6 @@ const PX_PER_CM = 0.46
 
 
 export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
-  const counterRot = useMapRotation()
-  const rot = counterRot ? `rotate(${counterRot})` : undefined
   const { badgeColor: color } = getCareDisplay(plant)
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
@@ -113,7 +110,6 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
             <circle r={lockedIconR * 1.6} fill={`url(#halo-${plant.id})`} style={{ pointerEvents: 'none' }} />
           </>
         )}
-        <g transform={rot}>
         {/* Plant icon — capped size so it stays within the map frame */}
         {plant.icon_key ? (
           <image
@@ -155,7 +151,6 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
           >
             🔒
           </text>
-        </g>
         </g>
 
       </g>
@@ -203,7 +198,6 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
         <circle r={iconR + 4} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.7} />
       )}
 
-      <g transform={rot}>
       {/* Plant icon or fallback dot */}
       {plant.icon_key ? (
         <image
@@ -273,7 +267,6 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
           </g>
         )
       })}
-      </g>
     </g>
   )
 }
