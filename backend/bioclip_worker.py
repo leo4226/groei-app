@@ -12,7 +12,9 @@ import os
 from pathlib import Path
 
 import numpy as np
+import torch
 from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from PIL import Image
 import uvicorn
 
@@ -38,7 +40,6 @@ def _load_model():
     global _model, _preprocess, _device
     if _model is not None:
         return
-    import torch
     import open_clip
 
     _device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -67,17 +68,31 @@ def _load_embeddings():
     return True
 
 
+async def _read_upload_to_pil(image: UploadFile) -> Image.Image:
+    """Read an upload, enforce size cap, decode to PIL RGB. Raises HTTPException(400) on failure."""
+    image_bytes = await image.read()
+    if len(image_bytes) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large (max 5 MB)")
+    try:
+        return Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not decode image")
+
+
+def _embed_pil_to_float32(pil_image: Image.Image) -> np.ndarray:
+    """Encode a PIL image into a 512-dim L2-normalised float32 numpy array."""
+    image_tensor = _preprocess(pil_image).unsqueeze(0).to(_device)
+    with torch.no_grad():
+        emb = _model.encode_image(image_tensor)
+        emb = emb / emb.norm(dim=-1, keepdim=True)
+    return emb.cpu().numpy().squeeze().astype(np.float32)
+
+
 def _identify_image(image: Image.Image, top_k: int = 5) -> tuple[list[dict], np.ndarray]:
     """Embed image, match against text embeddings, return top-K + the raw embedding."""
-    import torch
-
     _load_model()
 
-    image_tensor = _preprocess(image).unsqueeze(0).to(_device)
-    with torch.no_grad():
-        embedding = _model.encode_image(image_tensor)
-        embedding = embedding / embedding.norm(dim=-1, keepdim=True)
-    image_emb = embedding.cpu().numpy().squeeze().astype(np.float32)
+    image_emb = _embed_pil_to_float32(image)
 
     similarities = _text_embeddings @ image_emb
     top_indices = np.argsort(similarities)[-top_k:][::-1]
@@ -115,14 +130,7 @@ async def identify(image: UploadFile = File(...)):
     if _text_embeddings is None:
         raise HTTPException(status_code=503, detail="Embeddings not loaded")
 
-    image_bytes = await image.read()
-    if len(image_bytes) > _MAX_IMAGE_BYTES:
-        raise HTTPException(status_code=400, detail="Image too large (max 5 MB)")
-
-    try:
-        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Could not decode image")
+    pil_image = await _read_upload_to_pil(image)
 
     try:
         matches, image_emb = _identify_image(pil_image)
@@ -148,26 +156,9 @@ async def embed_image(image: UploadFile = File(...)):
     if _model is None:
         raise HTTPException(status_code=503, detail="BioCLIP model not loaded")
 
-    image_bytes = await image.read()
-    if len(image_bytes) > _MAX_IMAGE_BYTES:
-        raise HTTPException(status_code=400, detail="Image too large (max 5 MB)")
-
-    try:
-        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Could not decode image")
-
-    import torch  # safe — _model already loaded
-    _load_model()
-
-    image_tensor = _preprocess(pil_image).unsqueeze(0).to(_device)
-    with torch.no_grad():
-        emb = _model.encode_image(image_tensor)
-        emb = emb / emb.norm(dim=-1, keepdim=True)
-    arr = emb.cpu().numpy().squeeze().astype(np.float32)
-
-    from fastapi.responses import Response
-    return Response(content=arr.tobytes(), media_type="application/octet-stream")
+    pil_image = await _read_upload_to_pil(image)
+    image_emb = _embed_pil_to_float32(pil_image)
+    return Response(content=image_emb.tobytes(), media_type="application/octet-stream")
 
 
 @app.get("/health")
