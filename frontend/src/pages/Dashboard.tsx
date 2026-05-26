@@ -273,10 +273,8 @@ function DashboardHeader({
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20,
     }}>
       <div style={{ flex: 1, minWidth: 240 }}>
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-muted)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ width: 24, height: 1, background: 'var(--color-border)', flex: 'none' }} />
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-muted)', margin: '0 0 8px 0', borderBottom: '1px solid var(--color-border)', paddingBottom: 8 }}>
           {greeting} · {date}
-          <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
         </p>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 'clamp(36px, 5vw, 56px)', lineHeight: 0.95, letterSpacing: '-0.02em', color: 'var(--color-text)', margin: 0 }}>
           {greeting},{' '}

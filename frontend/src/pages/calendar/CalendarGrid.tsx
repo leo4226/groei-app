@@ -12,13 +12,13 @@ interface Props {
 }
 
 const WEEKDAY_HEADER = [
-  { label: 'Maandag', weekend: false },
-  { label: 'Dinsdag', weekend: false },
-  { label: 'Woensdag', weekend: false },
-  { label: 'Donderdag', weekend: false },
-  { label: 'Vrijdag', weekend: false },
-  { label: 'Zaterdag', weekend: true },
-  { label: 'Zondag', weekend: true },
+  { label: 'Ma', weekend: false },
+  { label: 'Di', weekend: false },
+  { label: 'Wo', weekend: false },
+  { label: 'Do', weekend: false },
+  { label: 'Vr', weekend: false },
+  { label: 'Za', weekend: true },
+  { label: 'Zo', weekend: true },
 ]
 
 export default function CalendarGrid({
@@ -63,10 +63,10 @@ export default function CalendarGrid({
     const firstCell = cellInfo(firstIdx)
     const wk = isoWeek(firstCell.y, firstCell.m, firstCell.d)
     cells.push(
-      <div className="wk-num" key={`wk-${r}`}>
-        <span className="wk-no">{wk}</span><span>week</span>
-      </div>,
-    )
+          <div className="wk-num" key={`wk-${r}`}>
+            <span className="wk-no">{wk}</span>
+          </div>,
+        )
     for (let c = 0; c < 7; c++) {
       const idx = r * 7 + c
       const { d, otherMonth, m, y } = cellInfo(idx)
