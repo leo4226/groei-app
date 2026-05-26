@@ -29,6 +29,7 @@ export default function LayoutEditorPage() {
   const [previewMode, setPreviewMode] = useState(false)
   const [showSunPreview, setShowSunPreview] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showMoreActions, setShowMoreActions] = useState(false)
 
   const editor = useEditorState()
   const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
@@ -229,32 +230,34 @@ export default function LayoutEditorPage() {
         </button>
         <h1 className="text-sm font-semibold text-text flex-1 truncate">{map.name}</h1>
 
+        {/* Desktop: "Bekijken →" button */}
         <button
           onClick={() => handleExit(`/map/${map.slug}`)}
-          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg"
+          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
         >
           Bekijken →
         </button>
 
-        {/* Undo button */}
+        {/* Desktop: Undo button */}
         <button
           onClick={editor.undo}
           disabled={!editor.canUndo}
           title="Ctrl+Z"
-          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-bg"
+          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-bg forced-hidden-mobile"
         >
           ↩ {t.editor.toolbar.undo}
         </button>
 
-        {/* Tour replay button */}
+        {/* Desktop: Tour replay button */}
         <button
           onClick={tour.start}
           title="Rondleiding"
-          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg"
+          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
         >
           ?
         </button>
 
+        {/* Preview/Edit toggle — visible on both */}
         <button
           onClick={() => setPreviewMode((p) => !p)}
           className={`text-xs px-2.5 py-1 rounded-lg border shrink-0 ${
@@ -266,11 +269,11 @@ export default function LayoutEditorPage() {
           {previewMode ? t.editor.toolbar.edit : t.editor.toolbar.preview}
         </button>
 
-        {/* Sun perimeter preview toggle — outdoor maps only */}
+        {/* Desktop: Sun perimeter preview toggle — outdoor maps only */}
         {editor.mapType === 'outdoor' && (
           <button
             onClick={() => setShowSunPreview((p) => !p)}
-            className={`text-xs px-2.5 py-1 rounded-lg border shrink-0 transition-colors ${
+            className={`text-xs px-2.5 py-1 rounded-lg border shrink-0 transition-colors forced-hidden-mobile ${
               showSunPreview
                 ? 'bg-amber-500 text-amber-950 border-amber-500'
                 : 'text-text-muted border-border'
@@ -280,6 +283,58 @@ export default function LayoutEditorPage() {
             ☀ {showSunPreview ? 'Aan' : 'Uit'}
           </button>
         )}
+
+        {/* Mobile: more actions dropdown */}
+        <div className="relative forced-hidden-desktop shrink-0">
+          <button
+            onClick={() => setShowMoreActions(v => !v)}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-surface text-text-muted rounded-full text-xs font-medium hover:bg-surface/80 transition-colors border border-border"
+          >
+            <span className="text-sm leading-none">⋮</span>
+            <span className="map-more-label">Meer</span>
+          </button>
+          {showMoreActions && (
+            <>
+              <div onClick={() => setShowMoreActions(false)} className="fixed inset-0 z-30" />
+              <div className="absolute right-0 top-full mt-1 z-40 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[140px] overflow-hidden">
+                {/* Bekijken → */}
+                <button
+                  onClick={() => { setShowMoreActions(false); handleExit(`/map/${map.slug}`) }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text hover:bg-bg/60 w-full text-left transition-colors"
+                >
+                  Bekijken →
+                </button>
+                {/* Undo */}
+                <button
+                  onClick={() => { setShowMoreActions(false); editor.undo() }}
+                  disabled={!editor.canUndo}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text hover:bg-bg/60 w-full text-left transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ↩ {t.editor.toolbar.undo}
+                </button>
+                {/* Tour */}
+                <button
+                  onClick={() => { setShowMoreActions(false); tour.start() }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text hover:bg-bg/60 w-full text-left transition-colors"
+                >
+                  ? Rondleiding
+                </button>
+                {/* Sun preview — outdoor only */}
+                {editor.mapType === 'outdoor' && (
+                  <>
+                    <div className="mx-2 my-1 h-px bg-border" />
+                    <button
+                      onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left transition-colors"
+                    >
+                      ☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <span className={`text-xs shrink-0 ${
           saveStatus === 'saved' ? 'text-primary' :

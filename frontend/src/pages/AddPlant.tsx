@@ -21,6 +21,7 @@ import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
 import { icons } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import { displayToIso, isoToDisplay } from '../utils/dateFormat'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
@@ -123,7 +124,7 @@ export default function AddPlant() {
   const [locationId, setLocationId] = useState<number | undefined>()
   const [area, setArea] = useState<'tuin' | 'huis' | null>(null)
   const [potSize, setPotSize] = useState('')
-  const [acquiredDate, setAcquiredDate] = useState('')
+  const [acquiredDateInput, setAcquiredDateInput] = useState('')
   const [notes, setNotes] = useState(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
       ? (prefill as LocalPlant).amsterdamNotes ?? ''
@@ -163,7 +164,7 @@ export default function AddPlant() {
     isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
   )
   const [submitting, setSubmitting] = useState(false)
-  const [sownDate, setSownDate] = useState('')
+  const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
@@ -305,13 +306,13 @@ export default function AddPlant() {
         map_x: mapPos?.x,
         map_y: mapPos?.y,
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
-        acquired_date: acquiredDate || undefined,
+        acquired_date: displayToIso(acquiredDateInput) || undefined,
         notes: notes.trim() || undefined,
         icon_key: iconKey ?? undefined,
         plant_type: isFromDatabase ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type) : undefined,
         sun_requirement: sunRequirement ?? undefined,
         phase: phase as any,
-        sown_date: sownDate || undefined,
+        sown_date: displayToIso(sownDateInput) || undefined,
         care_schedules: careSchedules,
       })
 
@@ -563,9 +564,12 @@ export default function AddPlant() {
           <div>
             <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.acquiredLabel}</label>
             <input
-              type="date"
-              value={acquiredDate}
-              onChange={(e) => setAcquiredDate(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={acquiredDateInput}
+              onChange={(e) => setAcquiredDateInput(e.target.value)}
+              placeholder="DD-MM-YYYY"
               className={inputClass}
             />
           </div>
@@ -575,9 +579,12 @@ export default function AddPlant() {
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
           <input
-            type="date"
-            value={sownDate}
-            onChange={(e) => setSownDate(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={sownDateInput}
+            onChange={(e) => setSownDateInput(e.target.value)}
+            placeholder="DD-MM-YYYY"
             className={inputClass}
           />
         </div>

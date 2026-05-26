@@ -217,12 +217,12 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-[calc(100dvh-5rem)] px-4 pt-4 pb-2 overflow-hidden">
       <div className="flex items-center justify-between mb-2 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 map-header-scroll">
           {indoorMap && outdoorMap && (
             <div className="flex gap-0.5 bg-surface rounded-lg p-0.5 border border-border shrink-0">
               <button
                 onClick={() => { if (indoorMap.slug !== slug) navigate(`/map/${indoorMap.slug}`) }}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                   isIndoor
                     ? 'bg-primary text-white'
                     : 'text-text-muted hover:text-text'
@@ -232,7 +232,7 @@ export default function MapPage() {
               </button>
               <button
                 onClick={() => { if (outdoorMap.slug !== slug) navigate(`/map/${outdoorMap.slug}`) }}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                   !isIndoor
                     ? 'bg-primary text-white'
                     : 'text-text-muted hover:text-text'
@@ -242,7 +242,7 @@ export default function MapPage() {
               </button>
             </div>
           )}
-          <h1 className="text-xl font-bold text-text truncate">{map.name}</h1>
+          <h1 className="text-xl font-bold text-text truncate whitespace-nowrap">{map.name}</h1>
           <button
             onClick={() => navigate(`/maps/${map.id}/settings`)}
             className="w-7 h-7 flex items-center justify-center rounded-full text-text-muted hover:bg-surface hover:text-text transition-colors"
@@ -360,13 +360,31 @@ export default function MapPage() {
               className="flex items-center gap-1 px-2.5 py-1.5 bg-surface text-text-muted rounded-full text-xs font-medium hover:bg-surface/80 transition-colors border border-border map-more-trigger"
             >
               <span className="text-sm leading-none">⋮</span>
-              <span className="map-more-label">{t.mapPage.more}</span>
+              <span className="map-more-label">{t.mapPage.options}</span>
             </button>
             {showMoreActions && (
               <>
                 {/* Backdrop om dropdown te sluiten bij klik erbuiten */}
                 <div onClick={() => setShowMoreActions(false)} className="fixed inset-0 z-30" />
                 <div className="absolute right-0 top-full mt-1 z-40 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[140px] overflow-hidden map-more-menu">
+                  {/* Water */}
+                  <button
+                    onClick={() => { setShowMoreActions(false); water.togglePicker() }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-bg/60 w-full text-left transition-colors"
+                  >
+                    <WaterStatusIcon status={water.gardenWater?.status ?? 'dry'} size={14} />
+                    {t.mapPage.water}
+                  </button>
+                  {/* Fertilize */}
+                  <button
+                    onClick={() => { setShowMoreActions(false); fertilize.togglePicker() }}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-emerald-600 hover:bg-bg/60 w-full text-left transition-colors"
+                  >
+                    <span className="text-sm">🌿</span>
+                    {t.mapPage.fertilize}
+                  </button>
+                  <div className="h-px bg-border mx-3 my-1" />
+                  {/* Labels toggle */}
                   <button
                     onClick={() => { setShowMoreActions(false); setShowLabels(v => !v) }}
                     className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"

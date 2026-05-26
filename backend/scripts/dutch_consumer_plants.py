@@ -329,6 +329,178 @@ PLANTS_CLIMBERS = [
 ]
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Marktplaats-popular / specialty additions (added 2026-05-26)
+# ──────────────────────────────────────────────────────────────────────────────
+
+PLANTS_TRENDY_HOUSEPLANTS = [
+    # Alocasia (huge Marktplaats genre)
+    "Alocasia amazonica", "Alocasia polly", "Alocasia zebrina",
+    "Alocasia macrorrhizos", "Alocasia cucullata", "Alocasia odora",
+    "Alocasia micholitziana", "Alocasia baginda",
+    # Anthurium (collector-grade)
+    "Anthurium forgetii", "Anthurium magnificum", "Anthurium veitchii",
+    # Caladium / Stromanthe / Syngonium / Ctenanthe
+    "Caladium bicolor", "Caladium lindenii",
+    "Stromanthe sanguinea",
+    "Syngonium podophyllum",
+    "Ctenanthe burle-marxii", "Ctenanthe setosa",
+    # More Hoya (active trading scene)
+    "Hoya obovata", "Hoya krohniana", "Hoya linearis", "Hoya pubicalyx",
+    # More Philodendron
+    "Philodendron erubescens", "Philodendron micans",
+    "Philodendron gloriosum", "Philodendron melanochrysum",
+    # More Calathea / Goeppertia (taxonomically reclassified)
+    "Goeppertia warscewiczii", "Goeppertia rufibarba", "Goeppertia crocata",
+    # Trailing / string plants
+    "Ceropegia woodii", "Senecio radicans",
+    # Coleus / Polka dot / Croton / Aspidistra
+    "Plectranthus scutellarioides",
+    "Hypoestes phyllostachya",
+    "Codiaeum variegatum",
+    "Aspidistra elatior",
+    # More Tradescantia / Spathiphyllum cousins
+    "Tradescantia sillamontana", "Tradescantia spathacea",
+    # Polyscias (Ming aralia etc.)
+    "Polyscias fruticosa", "Polyscias scutellaria",
+]
+
+PLANTS_HOLIDAY_SEASONAL = [
+    "Euphorbia pulcherrima",       # Poinsettia / Kerstster
+    "Hippeastrum hybridum",         # Amaryllis
+    "Cyclamen coum",                # Winter cyclamen
+    "Schlumbergera truncata",       # Thanksgiving cactus
+    "Viscum album",                 # Mistletoe / Maretak
+    "Helleborus argutifolius",      # Corsican hellebore
+    "Skimmia reevesiana",           # Berried Christmas plant
+    "Cornus alba 'Sibirica'",       # red-stem dogwood for winter color
+    "Hamamelis mollis",             # Witch hazel (winter bloom)
+    "Sarcococca confusa",           # Christmas / sweet box
+    "Convallaria majalis",          # Lily of the valley
+    "Erica gracilis",               # Cape heather (autumn favorite)
+]
+
+PLANTS_AQUARIUM = [
+    "Anubias barteri", "Anubias nana", "Anubias afzelii",
+    "Cryptocoryne wendtii", "Cryptocoryne parva", "Cryptocoryne crispatula",
+    "Echinodorus amazonicus", "Echinodorus bleheri",
+    "Vallisneria spiralis", "Vallisneria americana",
+    "Microsorum pteropus",          # Java fern
+    "Vesicularia dubyana",          # Java moss
+    "Ceratophyllum demersum",       # Hornwort
+    "Hygrophila polysperma", "Hygrophila corymbosa",
+    "Ludwigia repens", "Ludwigia palustris",
+    "Rotala rotundifolia",
+    "Eleocharis parvula",           # Dwarf hairgrass
+    "Sagittaria subulata",
+    "Limnophila sessiliflora",
+    "Pogostemon helferi",
+    "Bacopa monnieri",
+]
+
+PLANTS_CARNIVOROUS = [
+    "Dionaea muscipula",            # Venus flytrap
+    "Nepenthes ventricosa", "Nepenthes alata", "Nepenthes rajah",
+    "Sarracenia purpurea", "Sarracenia flava",
+    "Drosera capensis", "Drosera rotundifolia", "Drosera binata",
+    "Pinguicula moranensis",
+    "Cephalotus follicularis",
+]
+
+PLANTS_BONSAI = [
+    "Carmona retusa",               # Fukien tea
+    "Ulmus parvifolia",             # Chinese elm — bonsai classic
+    "Juniperus chinensis",
+    "Pinus pentaphylla",            # Japanese white pine
+    "Acer palmatum",                # Japanese maple
+    "Zelkova serrata",
+    "Pyracantha angustifolia",
+    "Murraya paniculata",           # Orange jasmine bonsai
+    "Punica granatum",              # Pomegranate (bonsai + edible)
+]
+
+PLANTS_MEDITERRANEAN_TERRACE = [
+    # Citrus expansions
+    "Citrus aurantium", "Citrus paradisi", "Citrus japonica",
+    "Citrus madurensis",            # Calamondin
+    # Mediterranean staples
+    "Bougainvillea spectabilis", "Bougainvillea glabra",
+    "Plumbago auriculata",
+    "Hibiscus rosa-sinensis",
+    "Nerium oleander",
+    "Cycas revoluta",               # Sago palm
+    "Phoenix canariensis", "Phoenix roebelenii",
+    "Trachycarpus fortunei",        # Windmill palm — hardy in NL
+    "Cordyline australis",
+    "Agave americana",
+    # More clematis / climbers for pergolas
+    "Clematis paniculata", "Clematis terniflora",
+    # Heritage roses (often sold on Marktplaats)
+    "Rosa damascena", "Rosa centifolia", "Rosa gallica",
+    # Mediterranean fruit
+    "Eriobotrya japonica",          # Loquat
+    "Diospyros kaki",               # Persimmon
+]
+
+PLANTS_PONDS_AND_GAPS = [
+    # Pond / water garden
+    "Nymphaea alba", "Nymphaea odorata",
+    "Iris pseudacorus", "Iris versicolor",
+    "Pontederia cordata",
+    "Sagittaria latifolia",
+    "Typha latifolia",
+    "Equisetum hyemale",            # Horsetail
+    # Big ornamental grasses
+    "Cortaderia selloana",          # Pampas grass
+    "Imperata cylindrica",
+    # Bamboo
+    "Phyllostachys aurea",
+    "Fargesia rufa",
+    "Fargesia murielae",            # already common in NL gardens
+    # Notable trees / oddities
+    "Ginkgo biloba",                # Japanese maidenhair tree
+    "Cornus kousa",                 # Korean dogwood
+    "Davidia involucrata",          # Dove tree
+    # Brassica oleracea cultivars too generic — covered by oleracea
+    # Common European wildflowers gardeners cultivate
+    "Cirsium rivulare",
+    "Echinops ritro",               # Globe thistle
+    "Eryngium planum",              # Sea holly
+    "Verbascum chaixii",
+    # Specialty edibles
+    "Allium ampeloprasum",          # Leek
+    "Helianthus tuberosus",         # Jerusalem artichoke
+    "Stachys affinis",              # Chinese artichoke
+    "Tropaeolum tuberosum",         # Mashua
+]
+
+
+def all_plants() -> list[tuple[str, str]]:
+    """Returns (category, latin_name) tuples for all curated species."""
+    out: list[tuple[str, str]] = []
+    for cat, names in [
+        ("houseplant", PLANTS_HOUSEPLANTS),
+        ("perennial", PLANTS_GARDEN_PERENNIALS),
+        ("annual", PLANTS_GARDEN_ANNUALS),
+        ("shrub", PLANTS_GARDEN_SHRUBS),
+        ("tree", PLANTS_TREES),
+        ("bulb", PLANTS_BULBS),
+        ("edible", PLANTS_EDIBLES),
+        ("herb", PLANTS_HERBS),
+        ("climber", PLANTS_CLIMBERS),
+        ("trendy_houseplant", PLANTS_TRENDY_HOUSEPLANTS),
+        ("holiday", PLANTS_HOLIDAY_SEASONAL),
+        ("aquarium", PLANTS_AQUARIUM),
+        ("carnivorous", PLANTS_CARNIVOROUS),
+        ("bonsai", PLANTS_BONSAI),
+        ("mediterranean", PLANTS_MEDITERRANEAN_TERRACE),
+        ("pond_or_misc", PLANTS_PONDS_AND_GAPS),
+    ]:
+        for name in names:
+            out.append((cat, name))
+    return out
+
+
 def all_plants() -> list[tuple[str, str]]:
     """Returns (category, latin_name) tuples for all curated species."""
     out: list[tuple[str, str]] = []

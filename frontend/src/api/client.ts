@@ -270,6 +270,7 @@ export const weeds = {
 export const admin = {
   accounts:             ()           => api<AdminAccount[]>('GET', '/admin/accounts'),
   deleteAccount:        (id: number) => api<void>('DELETE', `/admin/accounts/${id}`),
+  deleteAccounts:       (ids: number[]) => api<{status: string; account_ids: number[]; names: string[]; households_cleared: number}>('DELETE', '/admin/accounts/bulk', { body: { account_ids: ids } }),
   backfillThresholds:   ()           => api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds'),
   backfillCareSchedules:()           => api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules'),
 }

@@ -266,6 +266,9 @@ function UsersView() {
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkConfirm, setBulkConfirm] = useState(false)
 
   useEffect(() => {
     adminPanel.users().then(setUsers).catch(e => setErr(e.message))
@@ -276,6 +279,7 @@ function UsersView() {
     try {
       await admin.deleteAccount(id)
       setUsers(u => u ? u.filter(x => x.id !== id) : u)
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Delete failed')
     } finally {
@@ -284,31 +288,110 @@ function UsersView() {
     }
   }
 
+  async function handleBulkDelete() {
+    setBulkDeleting(true)
+    try {
+      const ids = [...selectedIds]
+      await admin.deleteAccounts(ids)
+      setUsers(u => u ? u.filter(x => !selectedIds.has(x.id)) : u)
+      setSelectedIds(new Set())
+      setBulkConfirm(false)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Bulk delete failed')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    if (!users) return
+    const deletable = users.filter(u => u.email !== 'leon_korbee@hotmail.com')
+    if (selectedIds.size === deletable.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(deletable.map(u => u.id)))
+    }
+  }
+
   const filtered = (users ?? []).filter(u =>
     !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
   )
+
+  const deletableCount = filtered.filter(u => u.email !== 'leon_korbee@hotmail.com').length
+  const allSelected = deletableCount > 0 && selectedIds.size === deletableCount
 
   return (
     <div>
       <PageHeader title="Users" sub={`${users?.length ?? '…'} accounts across all households`} />
 
-      <input
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search by name or email…"
-        style={{ width: '100%', maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, marginBottom: 18, boxSizing: 'border-box' }}
-      />
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or email…"
+          style={{ flex: 1, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
+        />
+
+        {selectedIds.size > 0 && (
+          bulkConfirm ? (
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-overdue)' }}>
+                Delete {selectedIds.size} account{selectedIds.size > 1 ? 's' : ''} and all data?
+              </span>
+              <button onClick={handleBulkDelete} disabled={bulkDeleting}
+                style={{ background: 'var(--color-overdue)', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: 'pointer' }}>
+                {bulkDeleting ? 'Deleting…' : `Yes, delete ${selectedIds.size}`}
+              </button>
+              <button onClick={() => setBulkConfirm(false)}
+                style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, padding: '4px 12px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button onClick={() => setBulkConfirm(true)}
+              style={{ marginLeft: 'auto', background: 'var(--color-overdue)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontFamily: 'var(--font-mono)', fontSize: 10, cursor: 'pointer', letterSpacing: '.08em' }}>
+              Delete selected ({selectedIds.size})
+            </button>
+          )
+        )}
+      </div>
 
       {err && <ErrorMsg msg={err} />}
       {!users && !err && <Loading />}
 
       {users && (
         <SectionCard title={`${filtered.length} accounts`}>
-          <AdminTable heads={['Name', 'Email', 'Household', 'Plants', 'Maps', 'Joined', 'Actions']}>
+          <AdminTable heads={['', 'Name', 'Email', 'Household', 'Plants', 'Maps', 'Joined', 'Actions']}>
+            <tr style={{ background: 'var(--color-bg-warm)' }}>
+              <th style={{ padding: '8px 18px', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                  style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+              </th>
+              <th colSpan={7} style={{ padding: '8px 0', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)', letterSpacing: '.1em' }}>
+                  {allSelected ? 'All selected' : selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                </span>
+              </th>
+            </tr>
             {filtered.map(u => {
               const joined = new Date(u.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+              const isAdmin = u.email === 'leon_korbee@hotmail.com'
               return (
                 <tr key={u.id}>
+                  <Td>
+                    {!isAdmin && (
+                      <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)}
+                        style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }} />
+                    )}
+                  </Td>
                   <Td><strong>{u.name}</strong></Td>
                   <Td mono>{u.email}</Td>
                   <Td>{u.household_name}</Td>
@@ -316,7 +399,7 @@ function UsersView() {
                   <Td mono>{u.map_count}</Td>
                   <Td mono>{joined}</Td>
                   <Td>
-                    {u.email !== 'leon_korbee@hotmail.com' && (
+                    {!isAdmin && (
                       confirmId === u.id ? (
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-overdue)' }}>Delete all data?</span>

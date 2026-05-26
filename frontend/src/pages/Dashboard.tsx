@@ -61,7 +61,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ paddingBottom: 80, position: 'relative' }}>
       <PageDecor />
       <div style={{ position: 'relative', zIndex: 1 }}>
 
@@ -173,11 +173,19 @@ export default function Dashboard() {
       </div>
 
       <style>{`
+        /* ── Generic card shrink guard ── */
+        .weather-card, .weather-card .card,
+        .log-card, .identify-cards-row { min-width: 0; }
+
+        /* ── Identify cards row ── */
         .identify-cards-row {
           display: grid; grid-template-columns: 1fr; gap: 10px;
           margin-bottom: 18px; width: calc(100% + 48px);
           margin-left: -24px; padding: 0 24px; box-sizing: border-box;
+          min-width: 0; overflow: hidden;
         }
+        .identify-card { overflow-wrap: break-word; word-break: break-word; }
+        .dashboard-grid > div { min-width: 0; }
         @media (min-width: 721px) {
           .identify-cards-row { grid-template-columns: 1fr 1fr; width: 100%; margin-left: 0; padding: 0; }
         }
@@ -188,21 +196,54 @@ export default function Dashboard() {
           .dashboard-grid { grid-template-columns: 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
           .dashboard-sidebar { padding: 0 !important; }
         }
+
+        /* ── Sidebar shrink guard ── */
+        .dashboard-sidebar { min-width: 0; overflow: hidden; }
+
+        /* ── Weather card ── */
+        .weather-card { min-width: 0; }
         .weather-card-header { padding: 16px 18px 6px; }
-        .weather-card-header .condition-text { font-size: 16px; }
-        .weather-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid var(--color-border-soft); border-bottom: 1px solid var(--color-border-soft); }
+        .weather-card-header .condition-text { font-size: 16px; overflow-wrap: break-word; }
+        .weather-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid var(--color-border-soft); border-bottom: 1px solid var(--color-border-soft); min-width: 0; overflow: hidden; }
         .weather-stats-cell { padding: 10px 4px; text-align: center; min-width: 0; overflow: hidden; }
         .weather-stats-cell:not(:last-child) { border-right: 1px solid var(--color-border-soft); }
-        .weather-stats-value { font-family: var(--font-heading); font-size: 16px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .weather-stats-value { font-family: var(--font-heading); font-size: 16px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
         .weather-stats-label { font-family: var(--font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--color-text-muted); }
-        .weather-forecast { display: grid; grid-template-columns: repeat(7, 1fr); padding: 12px 8px 14px; }
+        .weather-forecast { display: grid; grid-template-columns: repeat(7, 1fr); padding: 12px 8px 14px; min-width: 0; overflow: hidden; }
+        .weather-forecast > div { min-width: 0; }
+
+        /* ── Logboek ── */
+        .log-card-wrapper { min-width: 0; }
+        .log-entry { min-width: 0; }
+        .log-entry > div:nth-child(2) { min-width: 0; }
+
         @media (max-width: 480px) {
           .weather-card-header { padding: 12px 14px 4px !important; }
           .weather-card-header .condition-text { font-size: 14px !important; }
           .weather-stats { grid-template-columns: 1fr 1fr !important; }
           .weather-stats-cell:nth-child(3) { display: none !important; }
-          .weather-stats-value { font-size: 12px !important; }
+          .weather-stats-value { font-size: 12px !important; white-space: normal !important; overflow-wrap: break-word !important; }
           .weather-forecast { padding: 8px 4px 10px !important; }
+          .weather-forecast > div > div:first-child { font-size: 7px !important; }
+
+          .log-entry {
+            grid-template-columns: 40px 1fr !important;
+            gap: 10px !important;
+            padding: 12px 14px !important;
+          }
+          .log-entry > div:first-child {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .log-desktop-tag { display: none !important; }
+          .log-mobile-tag { display: inline-flex !important; margin-top: 4px !important; }
+          .log-entry > div:nth-child(2) > div:nth-child(2) {
+            white-space: normal !important;
+            line-height: 1.3 !important;
+          }
+          .log-entry > div:nth-child(2) > div:first-child {
+            font-size: 8px !important;
+          }
         }
       `}</style>
 
@@ -632,16 +673,19 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
         const timeStr = new Date(entry.done_at).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })
         const actionLabel = t.care[entry.care_type as keyof typeof t.care] ?? entry.care_type
         return (
-          <div key={entry.id} className="log-entry" style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 14, padding: '16px 18px', alignItems: 'flex-start', borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none' }}>
+          <div key={entry.id} className="log-entry" style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 14, padding: '16px 18px', alignItems: 'flex-start', borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none', overflow: 'hidden' }}>
             <div style={{ width: 56, height: 56, borderRadius: 8, background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
               {entry.icon_key ? <img src={resolveIconUrl(entry.icon_key)!} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>}
             </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 3 }}>{dateStr} · {timeStr}</div>
-              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--color-text)', marginBottom: 2 }}>{actionLabel} · <em style={{ color: 'var(--color-primary)' }}>{entry.plant_name}</em></div>
-              {entry.notes && <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.notes}</p>}
+            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-text-muted)', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dateStr} · {timeStr}</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--color-text)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {actionLabel} · <em style={{ color: 'var(--color-primary)' }}>{entry.plant_name}</em>
+              </div>
+              {entry.notes && <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{entry.notes}</p>}
+              <span className="log-mobile-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: tag.color, background: tag.bg, padding: '2px 7px', borderRadius: 99, border: `1px solid ${tag.border}`, whiteSpace: 'nowrap', display: 'none' }}>{actionLabel}</span>
             </div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: tag.color, background: tag.bg, padding: '3px 8px', borderRadius: 99, border: `1px solid ${tag.border}`, whiteSpace: 'nowrap', flexShrink: 0 }}>{actionLabel}</span>
+            <span className="log-desktop-tag" style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: tag.color, background: tag.bg, padding: '3px 8px', borderRadius: 99, border: `1px solid ${tag.border}`, whiteSpace: 'nowrap', flexShrink: 0 }}>{actionLabel}</span>
           </div>
         )
       })}

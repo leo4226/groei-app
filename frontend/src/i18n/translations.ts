@@ -728,6 +728,7 @@ export type Translations = {
     spotInspectorHint: string               // "Zet de zonkaart aan en tik op een plek in de tuin"
     addPot: string                          // "Pot toevoegen"
     more: string                             // "Meer" / "More" (mobile overflow menu button)
+    options: string                          // "Opties" / "Options" (mobile menu trigger)
     deleted: (label: string) => string      // "Verwijderd: {label}"
     undo: string                            // "Ongedaan maken"
     soilDefaultName: string                 // "Grond"

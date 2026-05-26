@@ -1,11 +1,16 @@
-from datetime import date
+from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from database import db_dep
 from auth import get_current_account
 from models import CalendarEventOut
 from services.warnings import compute_plant_warnings, CareWarning
+from services.scheduling import calculate_effective_interval
 
 router = APIRouter(tags=["calendar"])
+
+# Safety caps
+MAX_RANGE_DAYS = 366   # refuse ranges longer than a year
+MAX_OCCURRENCES = 200  # per schedule
 
 
 def _care_warning_to_dict(w: CareWarning) -> dict:
@@ -15,6 +20,32 @@ def _care_warning_to_dict(w: CareWarning) -> dict:
         "color": w.color,
         "icon": w.icon,
     }
+
+
+def _generate_occurrences(
+    next_due: date,
+    interval_days: int,
+    season_adjust: str | None,
+    from_dt: date,
+    to_dt: date,
+) -> list[date]:
+    """Generate all occurrence dates for a schedule that fall in [from_dt, to_dt].
+
+    Starts at `next_due` and repeatedly adds the effective interval
+    (season-adjusted) until we pass `to_dt`. Only returns dates >= from_dt.
+    """
+    occurrences: list[date] = []
+    current = next_due
+    count = 0
+
+    while current <= to_dt and count < MAX_OCCURRENCES:
+        if current >= from_dt:
+            occurrences.append(current)
+        effective = calculate_effective_interval(interval_days, season_adjust, current)
+        current = current + timedelta(days=effective)
+        count += 1
+
+    return occurrences
 
 
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
@@ -30,6 +61,10 @@ async def list_calendar_events(
         to_dt = date.fromisoformat(to)
     except ValueError:
         raise HTTPException(400, "Invalid date — expected YYYY-MM-DD")
+
+    # Reject excessive ranges
+    if (to_dt - from_dt).days > MAX_RANGE_DAYS:
+        raise HTTPException(400, f"Date range too large — max {MAX_RANGE_DAYS} days")
 
     # Validate env filter
     if env and env not in ('tuin', 'huis'):
@@ -53,16 +88,18 @@ async def list_calendar_events(
         plants = [p for p in plants if p['map_type'] == 'indoor']
     plant_map = {p["id"]: dict(p) for p in plants}
 
-    # 2. Fetch all schedules in date range (limited to env plants if specified)
+    # 2. Fetch all active schedules that CAN produce events in range
+    #    Regular schedules: next_due <= to_dt (they recur forward from next_due)
+    #    Ephemeral: next_due BETWEEN from_dt AND to_dt (one-shot, no recurrence)
     if env and not plants:
-        # No plants match the filter — return empty
         return []
+
     if env:
         placeholders = ','.join('?' * len(plants))
-        sched_params = (account["household_id"],) + tuple(p["id"] for p in plants) + (from_dt, to_dt)
+        sched_params = (account["household_id"],) + tuple(p["id"] for p in plants) + (to_dt, from_dt, to_dt)
         extra_where = f" AND cs.plant_id IN ({placeholders})"
     else:
-        sched_params = (account["household_id"], from_dt, to_dt)
+        sched_params = (account["household_id"], to_dt, from_dt, to_dt)
         extra_where = ""
 
     rows = await db.execute_fetchall(
@@ -73,6 +110,9 @@ async def list_calendar_events(
             cs.care_type    AS type,
             cs.next_due     AS due_date,
             cs.last_done    AS last_done,
+            cs.interval_days AS interval_days,
+            cs.season_adjust AS season_adjust,
+            cs.is_ephemeral AS is_ephemeral,
             p.name          AS plant_name,
             p.icon_key      AS plant_icon_variant
         FROM care_schedules cs
@@ -80,24 +120,27 @@ async def list_calendar_events(
         WHERE cs.is_active = 1
           AND p.household_id = ?
           """ + extra_where + """
-          AND cs.next_due BETWEEN ? AND ?
+          AND (
+            (cs.is_ephemeral = 0 AND cs.next_due <= ?)
+            OR
+            (cs.is_ephemeral = 1 AND cs.next_due BETWEEN ? AND ?)
+          )
         ORDER BY cs.next_due, cs.care_type
         """,
         sched_params,
     )
 
-    # 3. Group schedules by plant for efficient warning computation
+    # 3. Group raw schedule rows by plant for warning computation
     from collections import defaultdict
-    schedules_by_plant: dict[int, list[dict]] = defaultdict(list)
-    for r in rows:
-        schedules_by_plant[r["plant_id"]].append(dict(r))
-
-    # 4. Compute warnings once per plant, build enrichment cache
-    # cache key: (plant_id, care_type) -> dict {severity, color, icon}
-    enrichment_cache: dict[tuple[int, str], dict] = {}
     today_date = date.today()
 
-    for pid, scheds in schedules_by_plant.items():
+    # Build enrichment cache from ALL raw schedules per plant
+    raw_by_plant: dict[int, list[dict]] = defaultdict(list)
+    for r in rows:
+        raw_by_plant[r["plant_id"]].append(dict(r))
+
+    enrichment_cache: dict[tuple[int, str], dict] = {}
+    for pid, scheds in raw_by_plant.items():
         plant = plant_map.get(pid)
         if not plant:
             continue
@@ -116,34 +159,61 @@ async def list_calendar_events(
             for w in state.warnings:
                 enrichment_cache[(pid, w.care_type)] = _care_warning_to_dict(w)
         except Exception:
-            # Graceful degradation: don't break calendar on warning computation
             pass
 
-    # 5. Build enriched events
-    today = today_date  # keep as date object for safe comparison
+    # 4. Build enriched events — virtual occurrences for regular, one-shot for ephemeral
     events = []
+    today = today_date
+
     for r in rows:
         pid = r["plant_id"]
         ct = r["type"]
         enrichment = enrichment_cache.get((pid, ct), {})
 
         # Normalise: asyncpg returns datetime.date; aiosqlite returns str
-        due = r["due_date"]
-        if isinstance(due, str):
-            due = date.fromisoformat(due)
+        due_raw = r["due_date"]
+        if isinstance(due_raw, str):
+            next_due = date.fromisoformat(due_raw)
+        else:
+            next_due = due_raw
 
-        events.append(CalendarEventOut(
-            id=f"schedule:{r['schedule_id']}:{r['type']}",
-            date=due.isoformat(),
-            type=ct,
-            plant_id=pid,
-            plant_name=r["plant_name"],
-            plant_icon_variant=r["plant_icon_variant"],
-            schedule_id=r["schedule_id"],
-            overdue=due < today,
-            severity=enrichment.get("severity"),
-            color=enrichment.get("color"),
-            icon=enrichment.get("icon"),
-        ))
+        if r.get("is_ephemeral"):
+            # One-shot — only show if in range (already guaranteed by query)
+            events.append(CalendarEventOut(
+                id=f"schedule:{r['schedule_id']}:{ct}",
+                date=next_due.isoformat(),
+                type=ct,
+                plant_id=pid,
+                plant_name=r["plant_name"],
+                plant_icon_variant=r["plant_icon_variant"],
+                schedule_id=r["schedule_id"],
+                overdue=next_due < today,
+                severity=enrichment.get("severity"),
+                color=enrichment.get("color"),
+                icon=enrichment.get("icon"),
+            ))
+        else:
+            # Recurring — generate all occurrences in [from_dt, to_dt]
+            occurrences = _generate_occurrences(
+                next_due,
+                r["interval_days"],
+                r.get("season_adjust"),
+                from_dt,
+                to_dt,
+            )
+            for i, occ in enumerate(occurrences):
+                events.append(CalendarEventOut(
+                    id=f"schedule:{r['schedule_id']}:{ct}:{i}",
+                    date=occ.isoformat(),
+                    type=ct,
+                    plant_id=pid,
+                    plant_name=r["plant_name"],
+                    plant_icon_variant=r["plant_icon_variant"],
+                    schedule_id=r["schedule_id"],
+                    overdue=occ < today,
+                    severity=enrichment.get("severity"),
+                    color=enrichment.get("color"),
+                    icon=enrichment.get("icon"),
+                ))
 
     return events

@@ -725,6 +725,7 @@ export const en: Translations = {
     recordFertilizing: 'Record garden fertilizing',
     spotInspectorHint: 'Turn on the sun map and tap a spot in the garden',
     more: 'More',
+    options: 'Options',
     addPot: 'Add pot',
     deleted: (label) => `Deleted: ${label}`,
     undo: 'Undo',

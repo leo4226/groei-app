@@ -263,6 +263,8 @@ input:focus, select:focus, textarea:focus {
   .dash-map-scroll {
     margin: 0 -16px !important;
     padding: 4px 16px 16px !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 
   /* Dashboard map card: more compact on mobile */
@@ -353,9 +355,17 @@ input:focus, select:focus, textarea:focus {
     display: flex !important;
   }
   .map-action-primary {
-    padding: 5px 8px !important;
-    font-size: 12px !important;
-    gap: 4px !important;
+    display: none !important;
+  }
+  .map-header-scroll {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .map-header-scroll::-webkit-scrollbar {
+    display: none;
   }
 }
 @media (min-width: 721px) {

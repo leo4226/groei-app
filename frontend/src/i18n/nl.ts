@@ -725,6 +725,7 @@ export const nl: Translations = {
     recordFertilizing: 'Registreer tuin bemesting',
     spotInspectorHint: 'Zet de zonkaart aan en tik op een plek in de tuin',
     more: 'Meer',
+    options: 'Opties',
     addPot: 'Pot toevoegen',
     deleted: (label) => `Verwijderd: ${label}`,
     undo: 'Ongedaan maken',

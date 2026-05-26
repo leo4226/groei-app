@@ -6,6 +6,7 @@ import type { Plant } from '../types'
 import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import IconPicker from '../components/IconPicker'
 import { useT } from '../context/LanguageContext'
+import { displayToIso, isoToDisplay } from '../utils/dateFormat'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
@@ -24,15 +25,15 @@ export default function EditPlant() {
   const [species, setSpecies] = useState('')
   const [locationId, setLocationId] = useState<number | undefined>()
   const [potSize, setPotSize] = useState('')
-  const [acquiredDate, setAcquiredDate] = useState('')
-  const [lastRepotted, setLastRepotted] = useState('')
+  const [acquiredDateInput, setAcquiredDateInput] = useState('')
+  const [lastRepottedInput, setLastRepottedInput] = useState('')
   const [notes, setNotes] = useState('')
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
   const [iconKey, setIconKey] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [sownDate, setSownDate] = useState('')
+  const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
@@ -69,13 +70,13 @@ export default function EditPlant() {
         setSpecies(p.species ?? '')
         setLocationId(p.location_id ?? undefined)
         setPotSize(p.pot_size_cm ? String(p.pot_size_cm) : '')
-        setAcquiredDate(p.acquired_date ?? '')
-        setLastRepotted(p.last_repotted ?? '')
+        setAcquiredDateInput(isoToDisplay(p.acquired_date ?? ''))
+        setLastRepottedInput(isoToDisplay(p.last_repotted ?? ''))
         setNotes(p.notes ?? '')
         setSunRequirement(p.sun_requirement ?? null)
         setIconKey(p.icon_key ?? null)
         setPhase(p.phase ?? 'established')
-        setSownDate(p.sown_date ?? '')
+        setSownDateInput(isoToDisplay(p.sown_date ?? ''))
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -111,13 +112,13 @@ export default function EditPlant() {
         species: species.trim() || null,
         location_id: locationId ?? null,
         pot_size_cm: potSize ? parseInt(potSize) : null,
-        acquired_date: acquiredDate || null,
-        last_repotted: lastRepotted || null,
+        acquired_date: displayToIso(acquiredDateInput) || null,
+        last_repotted: displayToIso(lastRepottedInput) || null,
         notes: notes.trim() || null,
         sun_requirement: sunRequirement ?? null,
         icon_key: iconKey,
         phase: phase,
-        sown_date: sownDate || null,
+        sown_date: displayToIso(sownDateInput) || null,
         ...(placedMap && mapPos ? { map_id: placedMap.id, map_x: mapPos.x, map_y: mapPos.y } : {}),
       })
 
@@ -298,9 +299,12 @@ export default function EditPlant() {
           <div>
             <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.acquiredLabel}</label>
             <input
-              type="date"
-              value={acquiredDate}
-              onChange={(e) => setAcquiredDate(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={acquiredDateInput}
+              onChange={(e) => setAcquiredDateInput(e.target.value)}
+              placeholder="DD-MM-YYYY"
               className={inputClass}
             />
           </div>
@@ -309,9 +313,12 @@ export default function EditPlant() {
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.lastRepottedLabel}</label>
           <input
-            type="date"
-            value={lastRepotted}
-            onChange={(e) => setLastRepotted(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={lastRepottedInput}
+            onChange={(e) => setLastRepottedInput(e.target.value)}
+            placeholder="DD-MM-YYYY"
             className={inputClass}
           />
         </div>
@@ -320,9 +327,12 @@ export default function EditPlant() {
         <div>
           <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
           <input
-            type="date"
-            value={sownDate}
-            onChange={(e) => setSownDate(e.target.value)}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={sownDateInput}
+            onChange={(e) => setSownDateInput(e.target.value)}
+            placeholder="DD-MM-YYYY"
             className={inputClass}
           />
         </div>

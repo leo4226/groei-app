@@ -137,7 +137,7 @@ async def _increment_quota(db, account_id: int) -> None:
     await db.execute_fetchall(
         """INSERT INTO plantnet_quota (account_id, date, "count")
            VALUES (?, ?, 1)
-           ON CONFLICT (account_id, date) DO UPDATE SET "count" = "count" + 1""",
+           ON CONFLICT (account_id, date) DO UPDATE SET "count" = plantnet_quota."count" + 1""",
         (account_id, today),
     )
 

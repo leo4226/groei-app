@@ -285,9 +285,31 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
 
 @router.delete("/maps/{map_id}")
 async def delete_map(map_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
-    existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ?", (map_id,))
+    existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = $1", (map_id,))
     if not existing:
         raise HTTPException(404, "Map not found")
-    await db.execute("DELETE FROM maps WHERE id = ?", (map_id,))
+
+    # Cascade delete: PostgreSQL FK constraints require cleaning up child rows first.
+    # Plants stay alive — only map references are NULLed so they lose position on this map.
+
+    # 1. NULL plant references to this map and its child entities
+    await db.execute("UPDATE plants SET map_id = NULL WHERE map_id = $1", (map_id,))
+    await db.execute(
+        "UPDATE plants SET container_id = NULL WHERE container_id IN (SELECT id FROM objects WHERE map_id = $1)",
+        (map_id,),
+    )
+    await db.execute(
+        "UPDATE plants SET ground_zone_id = NULL WHERE ground_zone_id IN (SELECT id FROM ground_zones WHERE map_id = $1)",
+        (map_id,),
+    )
+
+    # 2. Delete child entities bound to this map
+    await db.execute("DELETE FROM weed_sightings WHERE map_id = $1", (map_id,))
+    await db.execute("DELETE FROM ground_zones WHERE map_id = $1", (map_id,))
+    await db.execute("DELETE FROM zones WHERE map_id = $1", (map_id,))
+    await db.execute("DELETE FROM objects WHERE map_id = $1", (map_id,))
+
+    # 3. Delete the map itself
+    await db.execute("DELETE FROM maps WHERE id = $1", (map_id,))
     await db.commit()
     return {"ok": True}
