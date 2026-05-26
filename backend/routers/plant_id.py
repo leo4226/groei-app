@@ -101,6 +101,52 @@ def _blend_scores(
     return combined[:top_k]
 
 
+_USER_REFS_CACHE_TTL_S = 300  # 5 min
+_user_refs_cache: dict = {"loaded_at": None, "by_species": {}}
+
+
+async def _load_user_refs_cache(db) -> dict[int, np.ndarray]:
+    """Load all user_confirmed_embeddings into an in-memory dict, refreshing
+    at most every _USER_REFS_CACHE_TTL_S seconds.
+    """
+    global _user_refs_cache
+    now = time.time()
+    if (
+        _user_refs_cache["loaded_at"] is not None
+        and now - _user_refs_cache["loaded_at"] < _USER_REFS_CACHE_TTL_S
+    ):
+        return _user_refs_cache["by_species"]
+
+    rows = await db.execute_fetchall(
+        "SELECT species_id, embedding FROM user_confirmed_embeddings"
+    )
+    by_species: dict[int, list[np.ndarray]] = {}
+    for r in rows:
+        emb = np.frombuffer(r["embedding"], dtype=np.float32)
+        by_species.setdefault(r["species_id"], []).append(emb)
+    stacked = {sid: np.stack(arrs) for sid, arrs in by_species.items()}
+
+    _user_refs_cache = {"loaded_at": now, "by_species": stacked}
+    return stacked
+
+
+async def _apply_user_refs(
+    text_matches: list[tuple[int, float]],
+    query_embedding: np.ndarray | None,
+    db,
+) -> list[tuple[int, float]]:
+    """Async wrapper: load refs from cache, blend with text matches. If query
+    embedding is None (worker didn't return one — old version), short-circuit
+    to text_matches unchanged.
+    """
+    if query_embedding is None:
+        return text_matches
+    refs = await _load_user_refs_cache(db)
+    if not refs:
+        return text_matches
+    return _blend_scores(text_matches, query_embedding, refs)
+
+
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
 
 
@@ -205,6 +251,15 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
                 if resp.status_code == 200:
                     data = resp.json()
                     matches = [(m["species_id"], m["confidence"]) for m in data.get("matches", [])]
+                    # Decode the query embedding if present (new field; may be absent on old worker)
+                    emb_b64 = data.get("embedding")
+                    if emb_b64:
+                        try:
+                            query_embedding = np.frombuffer(base64.b64decode(emb_b64), dtype=np.float32)
+                            if query_embedding.shape == (512,):
+                                matches = await _apply_user_refs(matches, query_embedding, db)
+                        except Exception as exc:
+                            logger.warning("Failed to decode query embedding for blend: %s", exc)
                 elif resp.status_code == 503:
                     logger.warning("BioCLIP worker not ready (503)")
                     return None
