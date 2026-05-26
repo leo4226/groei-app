@@ -75,3 +75,15 @@ Re-run command:
 
 If the suggested thresholds drift meaningfully from those in plant_id.py,
 update the constants and re-save this baseline.
+
+
+Update 2026-05-26: BioCLIP user-confirmed image retrieval shipped.
+From this point forward, /identify scores blend text matches with
+image-to-image similarity against accumulated user_confirmed_embeddings.
+Re-running eval_bioclip.py with N user-confirmed refs of evaluated
+species will inflate accuracy relative to pure text-only — that's
+expected and is the whole point of the feature.
+
+To re-baseline pure-text accuracy, query against the embedding file
+directly (skipping the worker's /identify endpoint) — eval_bioclip.py
+itself would need an opt-out flag for the blend.
