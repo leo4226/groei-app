@@ -49,7 +49,25 @@ export interface MapInteraction {
   handleItemSelect: (itemType: 'plant' | 'object', id: number) => void
   handleMapClick: () => void
   handlePlantResizeDown: (e: React.PointerEvent, handle: string) => void
+  dragDebug: DragDebug | null
 }
+
+/** Diagnostic snapshot of one pointer-move event during a drag.
+ *  Populated only when the URL has `?debug-drag=1`. See DragDebugOverlay.
+ */
+export interface DragDebug {
+  clientX: number
+  clientY: number
+  svgX: number
+  svgY: number
+  dragKey: string | null
+  ctm: string  // serialised getScreenCTM for cross-checking
+  isMobile: boolean
+}
+
+const DEBUG_DRAG =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('debug-drag') === '1'
 
 export function useMapInteraction({
   svgRef,
@@ -82,6 +100,7 @@ export function useMapInteraction({
   const ptrMoveRef = useRef<((e: PointerEvent) => void) | null>(null)
   const ptrUpRef = useRef<((e: PointerEvent) => void) | null>(null)
 
+  const [dragDebug, setDragDebug] = useState<DragDebug | null>(null)
   const [removeTarget, setRemoveTarget] = useState<{ type: 'plant'; id: number; x: number; y: number } | null>(null)
   const [plantResizeRadius, setPlantResizeRadius] = useState<number | null>(null)
   const plantResizeRadiusRef = useRef<number | null>(null)
@@ -217,6 +236,18 @@ export function useMapInteraction({
     if (!pt) return
     didDrag.current = true
     const key = `${dragging.type}-${dragging.id}`
+    if (DEBUG_DRAG) {
+      const m = svgRef.current.getScreenCTM()
+      setDragDebug({
+        clientX: Math.round(e.clientX),
+        clientY: Math.round(e.clientY),
+        svgX: Math.round(pt.x),
+        svgY: Math.round(pt.y),
+        dragKey: key,
+        ctm: m ? `a=${m.a.toFixed(2)} b=${m.b.toFixed(2)} c=${m.c.toFixed(2)} d=${m.d.toFixed(2)} e=${m.e.toFixed(1)} f=${m.f.toFixed(1)}` : 'null',
+        isMobile,
+      })
+    }
     // Apply grab offset so the item centre follows the grab point, not the cursor centre
     const rawX = pt.x + dragOffsetRef.current.x
     const rawY = pt.y + dragOffsetRef.current.y
@@ -411,6 +442,7 @@ export function useMapInteraction({
     handleContainerPointerDown,
     handlePointerMove,
     handlePointerUp,
+    dragDebug,
     handleItemSelect,
     handleMapClick,
     handlePlantResizeDown,
