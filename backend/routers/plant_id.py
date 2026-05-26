@@ -461,6 +461,34 @@ async def identify_commit(
         raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
     photo_path = _save_identify_photo(image_bytes)
 
+    # Best-effort: capture the image embedding for the user-confirmed retrieval
+    # layer. Failure here must NEVER break the commit flow — log and move on.
+    try:
+        if _BIOCLIP_WORKER_URL:
+            import httpx
+            async with httpx.AsyncClient(timeout=20) as client:
+                emb_resp = await client.post(
+                    f"{_BIOCLIP_WORKER_URL.rstrip('/')}/embed-image",
+                    files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+                )
+            if emb_resp.status_code == 200 and len(emb_resp.content) == 2048:
+                await db.execute(
+                    """INSERT INTO user_confirmed_embeddings
+                         (species_id, embedding, source_account_id, source_photo_url)
+                       VALUES (?, ?, ?, ?)""",
+                    (species_id, emb_resp.content, account["account_id"], photo_path),
+                )
+                await db.commit()
+                logger.info("Captured user-confirmed embedding for species_id=%s", species_id)
+            else:
+                logger.warning(
+                    "Worker /embed-image returned status=%s size=%s — skipping capture",
+                    emb_resp.status_code, len(emb_resp.content),
+                )
+    except Exception as exc:
+        logger.warning("User-ref embedding capture failed for species %s: %s",
+                       species_id, exc)
+
     return IdentifyCommitResponse(
         species_id=species_id,
         name_nl_suggested=name_nl,
