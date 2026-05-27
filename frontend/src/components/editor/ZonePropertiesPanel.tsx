@@ -79,8 +79,8 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         </select>
       </div>
 
-      {/* Soil note — only for soil zones */}
-      {zone.type === 'soil' && (
+      {/* Soil note — only for soil and raised_bed zones */}
+      {(zone.type === 'soil' || zone.type === 'raised_bed') && (
         <div className="mb-2">
           <label className="text-xs text-text-muted block mb-1">Bodemnotitie</label>
           <textarea
@@ -185,6 +185,27 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             onBlur={(e) => {
               const m = parseFloat(e.target.value)
               onUpdate({ structureHeightM: !isNaN(m) && m > 0 ? m : undefined })
+            }}
+            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+          />
+        </div>
+      )}
+
+      {/* Raised bed height */}
+      {zone.type === 'raised_bed' && (
+        <div className="mb-2">
+          <label className="text-xs text-text-muted block mb-1">
+            Hoogte bed (m)
+            <span className="ml-1 text-[10px] text-text-muted/60">schaduw op lagere planten</span>
+          </label>
+          <input
+            type="number" min="0.2" max="1.5" step="0.05"
+            placeholder="bijv. 0.50"
+            defaultValue={zone.raisedBedHeightM ?? 0.5}
+            key={`rbh-${zone.id}`}
+            onBlur={(e) => {
+              const m = parseFloat(e.target.value)
+              onUpdate({ raisedBedHeightM: !isNaN(m) && m > 0 ? m : undefined })
             }}
             className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
           />

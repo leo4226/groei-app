@@ -193,6 +193,7 @@ export const en: Translations = {
       room:      { name: 'Room',      description: 'Room, hallway or space inside the building' },
       wall:      { name: 'Wall',      description: 'Interior wall or partition' },
       fence:     { name: 'Fence',     description: 'Wooden or stone fence' },
+      raised_bed: { name: 'Raised bed', description: 'Raised planting bed — casts shadow on lower plants' },
     },
     toolbar: {
       select: 'Select',
@@ -319,6 +320,9 @@ export const en: Translations = {
       loadGaps: '🔍 Load gaps',
       loadingGaps: 'Loading…',
     },
+    removeConfirm: 'Are you sure you want to remove',
+    removeError: 'Error removing member',
+    removeMember: 'Remove',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────

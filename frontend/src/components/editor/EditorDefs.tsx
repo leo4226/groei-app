@@ -22,13 +22,14 @@ export const ZONE_STYLES: Record<ZoneStyleType, ZoneStyle> = {
   water:     { fill: '#3B8BD4', stroke: 'rgba(60,130,200,0.3)', strokeWidth: 1, opacity: 0.4, label: 'Water', chipColor: '#3B8BD4' },
   structure: { fill: '#C8A060', stroke: '#8a6030', strokeWidth: 1.2, opacity: 1, label: 'Structure', chipColor: '#C8A060' },
   fence:     { fill: 'rgba(160,130,90,0.35)', stroke: 'rgba(120,95,60,0.5)', strokeWidth: 1, opacity: 1, label: 'Fence', chipColor: '#A0825A' },
+  raised_bed: { fill: '#7B6B2D', patternId: 'soilp', patternOpacity: 0.7, stroke: '#5C4E1E', strokeWidth: 0.8, opacity: 0.55, label: 'Raised Bed', chipColor: '#7B6B2D' },
 }
 
 export const ZONE_TYPE_ORDER: ZoneStyleType[] = [
-  'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure', 'fence',
+  'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure', 'fence', 'raised_bed',
 ]
 
-export const GARDEN_ZONE_TYPES: ZoneStyleType[] = ['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'structure', 'fence']
+export const GARDEN_ZONE_TYPES: ZoneStyleType[] = ['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'structure', 'fence', 'raised_bed']
 export const HOUSE_ZONE_TYPES: ZoneStyleType[] = ['room', 'wall', 'structure']
 
 export default function EditorDefs() {

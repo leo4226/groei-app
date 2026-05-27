@@ -193,6 +193,7 @@ export const nl: Translations = {
       room:      { name: 'Kamer',    description: 'Kamer, hal of ruimte binnen het gebouw' },
       wall:      { name: 'Muur',     description: 'Binnenmuur of scheidingswand' },
       fence:     { name: 'Hek',      description: 'Houten of stenen omheining' },
+      raised_bed: { name: 'Verhoogd bed', description: 'Verhoogde plantenbak — geeft schaduw aan lagere planten' },
     },
     toolbar: {
       select: 'Selecteren',
@@ -319,6 +320,9 @@ export const nl: Translations = {
       loadGaps: '🔍 Gaps laden',
       loadingGaps: 'Laden…',
     },
+    removeConfirm: 'Weet je zeker dat je',
+    removeError: 'Fout bij verwijderen',
+    removeMember: 'Verwijderen',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────

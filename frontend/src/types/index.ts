@@ -157,7 +157,7 @@ export interface MapInfo {
 
 // --- Map Editor ---
 
-export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure' | 'fence'
+export type ZoneStyleType = 'deck' | 'soil' | 'gravel' | 'lawn' | 'wall' | 'path' | 'room' | 'water' | 'structure' | 'fence' | 'raised_bed'
 export type WallThickness = 'exterior' | 'interior'
 export type FenceMaterial = 'wood' | 'brick'
 export type RoomEdge = 'top' | 'right' | 'bottom' | 'left'
@@ -186,6 +186,7 @@ export interface EditorZone {
   fenceMaterial?: FenceMaterial  // wood or brick, only for fence type
   fenceHeightM?: number  // fence height in metres (affects shadow casting)
   structureHeightM?: number  // structure/shed height in metres (affects shadow casting)
+  raisedBedHeightM?: number  // raised bed height in metres (affects shadow casting)
   soil_note?: string  // gardener's note for soil quality, only for soil type
 }
 

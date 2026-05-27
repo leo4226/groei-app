@@ -3,10 +3,10 @@ import type { EditorZone, CanvasData, ShadowCaster } from '../types'
 // Surface + boundary zones: everything that defines the garden footprint.
 // NOTE: fences are NOT included here — they're only used for shadow casting,
 // NOT for the garden perimeter polygon (sun heatmap grid).
-const GARDEN_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'fence'])
+const GARDEN_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'fence', 'raised_bed'])
 
 // Surface zones only (no fences) — used for auto-detected garden boundary
-const SURFACE_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water'])
+const SURFACE_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'raised_bed'])
 
 // ── Convex hull (Andrew's monotone chain) ─────────────────────────────────────
 
@@ -157,10 +157,30 @@ export function deriveStructureCasters(zones: EditorZone[], _scalePxPerM: number
     })
 }
 
+export function deriveRaisedBedCasters(zones: EditorZone[], _scalePxPerM: number): ShadowCaster[] {
+  return zones
+    .filter(z => z.type === 'raised_bed')
+    .map((z): ShadowCaster => {
+      const heightM = z.raisedBedHeightM ?? 0.5
+      return {
+        id: `raised-bed-${z.id}`,
+        label: z.label || 'Verhoogd bed',
+        type: 'rect',
+        x: z.x,
+        y: z.y,
+        width: z.width,
+        height: z.height,
+        heightCm: Math.round(heightM * 100),
+        opacity: 0.35,
+      }
+    })
+}
+
 export function deriveAllShadowCasters(canvasData: CanvasData): ShadowCaster[] {
   return [
     ...deriveFenceCasters(canvasData.zones, canvasData.scale_px_per_m),
     ...deriveStructureCasters(canvasData.zones, canvasData.scale_px_per_m),
+    ...deriveRaisedBedCasters(canvasData.zones, canvasData.scale_px_per_m),
     ...(canvasData.shadowCasters ?? []),
   ]
 }
