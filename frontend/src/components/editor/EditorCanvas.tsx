@@ -275,12 +275,10 @@ export default function EditorCanvas({
     }
     return { zoneMinX: minX, zoneMinY: minY, zoneMaxX: maxX, zoneMaxY: maxY }
   }, [zones])
-
-  const getSvgPoint
+  const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
     return screenToSVG(svgRef.current, e.clientX, e.clientY)
   }, [])
-
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
 
