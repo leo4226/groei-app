@@ -1,9 +1,21 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel
 from database import db_dep
 from models import PlantSpeciesOut, SpeciesSearchResponse, PlantSpeciesSearchResult, SpeciesImageOut
 from species_service import get_species_by_id, search_species
+from services.ecology_enrichment import ensure_ecology
 
 router = APIRouter(prefix="/species", tags=["species"])
+
+
+class EcologyOut(BaseModel):
+    native_to_nl: bool | None
+    invasive_nl: bool | None
+    flowering_months: list[int] | None
+    pollinator_value: int | None
+    host_plant_for: list[str] | None
+    data_source: str
+    enriched_at: str
 
 
 @router.get("/search", response_model=SpeciesSearchResponse)
@@ -49,3 +61,13 @@ async def get_species(species_id: int, db=Depends(db_dep)):
     if not species:
         raise HTTPException(status_code=404, detail="Species not found")
     return species
+
+
+@router.get("/{species_id}/ecology", response_model=EcologyOut)
+async def get_species_ecology(species_id: int, db=Depends(db_dep)):
+    """Return the ecology profile for a species. Runs lazy enrichment
+    (GBIF + LLM) on first access, then caches on `plant_species`."""
+    profile = await ensure_ecology(db, species_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Species not found")
+    return profile

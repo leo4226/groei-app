@@ -6,7 +6,7 @@ interface Props {
   zoneMaxX: number
   zoneMaxY: number
   pxPerM: number
-  zones: { x: number; y: number; width: number; height: number; cornerCut?: CornerCut }[]
+  zones: { x: number; y: number; width: number; height: number; cornerCut?: CornerCut; type?: string }[]
   compact?: boolean
 }
 
@@ -30,10 +30,11 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
   // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
   const CUT_OFFSET = 26
 
-  // ── Corner cut arrows ──────────────────────────────────────────────────
+  // ── Corner cut arrows (skip indoor — room & structure) ──────────────
   const cutArrows: CornerCutArrow[] = []
   for (const z of zones) {
     if (!z.cornerCut) continue
+    if (z.type === 'room' || z.type === 'structure') continue
     const { corner, widthPx: cw, heightPx: ch } = z.cornerCut
 
     const arrow = (() => {
@@ -134,6 +135,7 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
       {compact && zones.length > 0 && (
         <g opacity={0.85}>
           {zones.map((z, i) => {
+            if (z.type === 'structure') return null
             const zW = pxPerM > 0 && z.width > 0 ? (z.width / pxPerM).toFixed(1) : null
             const zH = pxPerM > 0 && z.height > 0 ? (z.height / pxPerM).toFixed(1) : null
             if (!zW || !zH) return null
