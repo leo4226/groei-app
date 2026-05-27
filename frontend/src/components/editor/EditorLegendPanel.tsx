@@ -14,6 +14,8 @@ interface Props {
   onSetTool: (tool: EditorTool) => void
   onSetMapType: (type: string) => void
   onSetObjectPreset: (preset: ObjectPreset | null) => void
+  shadowMode: boolean
+  onSetShadowMode: (on: boolean) => void
 }
 
 function SectionHeader({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
@@ -45,6 +47,8 @@ export default function EditorLegendPanel({
   onSetTool,
   onSetMapType,
   onSetObjectPreset,
+  shadowMode,
+  onSetShadowMode,
 }: Props) {
   const t = useT()
   const zoneTypes = mapType === 'indoor' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
@@ -167,7 +171,26 @@ export default function EditorLegendPanel({
       {/* ── Shadows (outdoor mode only) ── */}
       {mapType === 'outdoor' && (
         <div>
-          <SectionHeader label={t.editor.legendShadows} open={open.shadows} onToggle={() => toggle('shadows')} />
+          <button
+            onClick={() => onSetShadowMode(!shadowMode)}
+            className={`flex items-center justify-between w-full text-left py-0.5 rounded transition-colors ${
+              shadowMode ? 'text-amber-400' : ''
+            }`}
+          >
+            <span className={`text-xs font-semibold uppercase tracking-wide ${
+              shadowMode ? 'text-amber-400' : 'text-text-muted'
+            }`}>
+              {t.editor.legendShadows}
+            </span>
+            <svg
+              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform text-text-muted ${open.shadows ? 'rotate-90' : ''}`}
+              onClick={(e) => { e.stopPropagation(); toggle('shadows') }}
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
           {open.shadows && (
             <div className="mt-2">
               <button

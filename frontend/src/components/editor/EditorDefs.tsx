@@ -54,6 +54,9 @@ export default function EditorDefs() {
       <pattern id="editor-grid" width="23" height="23" patternUnits="userSpaceOnUse">
         <path d="M 23 0 L 0 0 0 23" fill="none" stroke="rgba(150,150,140,0.15)" strokeWidth="0.5" />
       </pattern>
+      <filter id="shadow-glow">
+        <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#fbbf24" flood-opacity="0.5" />
+      </filter>
     </defs>
   )
 }

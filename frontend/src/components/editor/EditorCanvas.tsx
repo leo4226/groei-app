@@ -241,6 +241,7 @@ interface Props {
   onRotateObject: (objectId: number, rotation: number) => void
   onSelectObject: (id: number | null) => void
   onObjectCreated: () => void
+  shadowMode?: boolean
 }
 
 interface DrawState {
@@ -284,6 +285,7 @@ export default function EditorCanvas({
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
   selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
+  shadowMode = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<DrawState | null>(null)
@@ -719,8 +721,8 @@ export default function EditorCanvas({
           <EditorDefs />
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
-          {/* Shadow casters — drawn below zones so garden zones overlay them */}
-          {shadowCasters.map((sc) => {
+          {/* Shadow casters — drawn below zones when shadowMode is off (normal layer order) */}
+          {!shadowMode && shadowCasters.map((sc) => {
             const isSelected = !previewMode && sc.id === selectedShadowCasterId
             const fill = 'rgba(107, 114, 128, 0.18)'
             const stroke = isSelected ? '#4A90D9' : '#6b7280'
@@ -788,6 +790,45 @@ export default function EditorCanvas({
                 onWallElementPointerDown={handleWallElementPointerDown}
               />
             )
+          })}
+
+          {/* Shadow casters highlight — drawn ABOVE zones when shadowMode is active */}
+          {shadowMode && shadowCasters.map((sc) => {
+            const isSelected = !previewMode && sc.id === selectedShadowCasterId
+            const fill = 'rgba(251, 191, 36, 0.15)'
+            const stroke = isSelected ? '#f59e0b' : '#fbbf24'
+            const strokeWidth = isSelected ? 2.5 : 2
+            const cursor = activeTool === 'select' ? 'move' : 'default'
+            if (sc.type === 'rect') {
+              return (
+                <rect
+                  key={sc.id}
+                  x={sc.x} y={sc.y}
+                  width={sc.width} height={sc.height}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  filter="url(#shadow-glow)"
+                  style={{ cursor }}
+                  onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+                />
+              )
+            } else if (sc.type === 'circle') {
+              return (
+                <circle
+                  key={sc.id}
+                  cx={sc.cx} cy={sc.cy}
+                  r={sc.radius}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  filter="url(#shadow-glow)"
+                  style={{ cursor }}
+                  onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+                />
+              )
+            }
+            return null
           })}
 
           {/* Resize overlay on selected zone */}
