@@ -29,7 +29,7 @@ export default function PhaseCalendar({
       <div className="flex gap-0.5 mb-1">
         {MONTH_LABELS.map((lbl, i) => {
           const month = i + 1
-          const data = phenology.months.find(m => m.month === month)
+          const data = phenology.months?.find(m => m.month === month)
           const phase = data?.phase ?? 'unknown'
           const active = isActiveMonth?.(month)
           return (

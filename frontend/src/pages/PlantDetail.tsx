@@ -44,7 +44,7 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
   if (alerts.length === 0) return null
 
   const currentMonth = new Date().getMonth() + 1
-  const monthActions = phenology?.months.find(m => m.month === currentMonth)?.actions_nl ?? []
+  const monthActions = phenology?.months?.find(m => m.month === currentMonth)?.actions_nl ?? []
 
   return (
     <Section title={t.plantDetail.weatherAlerts}>

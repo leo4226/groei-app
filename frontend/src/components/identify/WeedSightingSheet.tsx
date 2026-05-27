@@ -13,6 +13,11 @@ interface Props {
   onCancel: () => void
 }
 
+// Sightings get pinned on a (potentially shared household) map, so we gate the
+// first save behind an explicit privacy acknowledgement. Acked-once is stored
+// in localStorage; subsequent saves don't re-prompt.
+const PRIVACY_ACK_KEY = 'groei.identify.privacy_ack'
+
 export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselectedMapSlug, onSaved, onCancel }: Props) {
   const t = useT()
   const maps = useFloreren((s) => s.maps)
@@ -23,6 +28,7 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
   const [pin, setPin] = useState<{ x: number; y: number } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [needsPrivacyAck, setNeedsPrivacyAck] = useState(false)
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   const selectedMap = maps.find((m) => m.id === selectedMapId) ?? null
@@ -41,6 +47,10 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
 
   async function handleConfirm() {
     if (!selectedMapId || !selectedMapSlug || !pin) return
+    if (localStorage.getItem(PRIVACY_ACK_KEY) !== '1') {
+      setNeedsPrivacyAck(true)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -56,6 +66,12 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
       setError('Opslaan mislukt — probeer opnieuw.')
       setSaving(false)
     }
+  }
+
+  function ackPrivacyAndSave() {
+    localStorage.setItem(PRIVACY_ACK_KEY, '1')
+    setNeedsPrivacyAck(false)
+    void handleConfirm()
   }
 
   const viewBox = selectedMap?.canvas_data
@@ -121,6 +137,22 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
             className="w-full py-3 rounded-xl bg-primary text-white font-medium text-sm disabled:opacity-40"
           >
             {saving ? '…' : t.weeds.sightingSheet.confirm}
+          </button>
+        </div>
+      )}
+
+      {needsPrivacyAck && (
+        <div className="fixed inset-0 z-[60] bg-bg/95 flex flex-col items-center justify-center p-8 gap-6 text-center">
+          <span className="text-5xl">🌿</span>
+          <p className="text-sm text-text-muted leading-relaxed max-w-xs">{t.weeds.privacy.notice}</p>
+          <button
+            onClick={ackPrivacyAndSave}
+            className="w-full max-w-xs py-3 rounded-xl bg-primary text-white font-medium"
+          >
+            {t.weeds.privacy.ack}
+          </button>
+          <button onClick={() => setNeedsPrivacyAck(false)} className="text-sm text-text-muted">
+            {t.weeds.sightingSheet.cancel}
           </button>
         </div>
       )}

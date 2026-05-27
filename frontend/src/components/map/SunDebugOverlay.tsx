@@ -5,21 +5,16 @@
  * Features:
  *   1. Sun-direction arrow from garden centre toward the sun bearing
  *   2. Shadow-direction arrow (opposite)
- *   3. Compass rose (N offset by GARDEN_SVG_TOP_AZIMUTH from SVG-top)
+ *   3. Compass rose (N offset by the map's bearing from SVG-top)
  *   4. Shadow-tip dots for each caster
  *   5. Time picker (reads ?t=<iso> from URL, falls back to new Date())
  */
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { GARDEN_CLIP, GARDEN_SVG_TOP_AZIMUTH } from '../../utils/gardenStructures'
 import type { ShadowCaster } from '../../utils/gardenStructures'
 import { getSunPosition } from '../../utils/sunCalc'
 import type { SunPosition } from '../../utils/sunCalc'
-
-// Garden location: Hoofdweg 358, Amsterdam
-const LAT = 52.356
-const LON = 4.840
 
 function parseSunTime(): Date {
   const params = new URLSearchParams(window.location.search)
@@ -42,12 +37,18 @@ function ArrowHead({ x, y, angle }: { x: number; y: number; angle: number }) {
 }
 
 interface Props {
-  sunPosition?: SunPosition | null
-  bearing?: number
+  sunPosition: SunPosition | null
+  /** Map bearing — compass direction of the map's "up" in degrees CW from north */
+  bearing: number
+  /** Garden bounding rectangle in SVG coordinates */
+  gardenBounds: { x: number; y: number; width: number; height: number }
+  /** Map GPS coordinates — used as fallback when no externalSun position is given */
+  lat: number
+  lon: number
   shadowCasters?: ShadowCaster[]
 }
 
-export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GARDEN_SVG_TOP_AZIMUTH, shadowCasters = [] }: Props) {
+export default function SunDebugOverlay({ sunPosition: externalSun, bearing, gardenBounds, lat, lon, shadowCasters = [] }: Props) {
   const [sunDate, setSunDate] = useState<Date>(parseSunTime)
 
   // Re-read URL ?t= on mount
@@ -57,13 +58,13 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
 
   // Prefer the parent's sun position (driven by the same timeline as shadow polygons).
   // Fall back to local date picker only when no external position is provided.
-  const sun = externalSun ?? getSunPosition(sunDate, LAT, LON)
-  const cx = GARDEN_CLIP.x + GARDEN_CLIP.width / 2
-  const cy = GARDEN_CLIP.y + GARDEN_CLIP.height / 2
+  const sun = externalSun ?? getSunPosition(sunDate, lat, lon)
+  const cx = gardenBounds.x + gardenBounds.width / 2
+  const cy = gardenBounds.y + gardenBounds.height / 2
 
   // SVG angle for a compass bearing
-  const compassToSvgRad = (bearing: number) =>
-    (bearing - GARDEN_SVG_TOP_AZIMUTH) * (Math.PI / 180)
+  const compassToSvgRad = (compassDeg: number) =>
+    (compassDeg - bearing) * (Math.PI / 180)
 
   const sunRad = sun.isUp ? compassToSvgRad(sun.azimuthDeg) : null
   const arrowLen = sun.isUp
@@ -76,6 +77,9 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
   // Shadow arrow end (opposite)
   const shdEndX = sunRad !== null ? cx - Math.sin(sunRad) * arrowLen : cx
   const shdEndY = sunRad !== null ? cy + Math.cos(sunRad) * arrowLen : cy
+
+  // Compass-bearing for ArrowHead's local angle param needs the same offset
+  const azToSvgDeg = (compassDeg: number) => compassDeg - bearing
 
   // Shadow-tip dots for each caster
   const shadowTips = sun.isUp && sunRad !== null
@@ -92,11 +96,11 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
       })
     : []
 
-  // Compass rose in top-left corner of GARDEN_CLIP
-  const roseX = GARDEN_CLIP.x + 20
-  const roseY = GARDEN_CLIP.y + 20
+  // Compass rose in top-left corner of garden bounds
+  const roseX = gardenBounds.x + 20
+  const roseY = gardenBounds.y + 20
   const roseR = 18
-  const northAngleDeg = -GARDEN_SVG_TOP_AZIMUTH  // N is GARDEN_SVG_TOP_AZIMUTH CCW from SVG-top
+  const northAngleDeg = -bearing  // N is `bearing` CCW from SVG-top
   const northRad = northAngleDeg * (Math.PI / 180)
   const nX = roseX + Math.sin(northRad) * roseR
   const nY = roseY - Math.cos(northRad) * roseR
@@ -111,7 +115,7 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
         {sun.isUp && (
           <g color="#475569">
             <line x1={cx} y1={cy} x2={shdEndX} y2={shdEndY} stroke="currentColor" strokeWidth={3} strokeDasharray="6 3" opacity={0.8} />
-            <ArrowHead x={shdEndX} y={shdEndY} angle={sun.azimuthDeg + 180 - GARDEN_SVG_TOP_AZIMUTH} />
+            <ArrowHead x={shdEndX} y={shdEndY} angle={azToSvgDeg(sun.azimuthDeg + 180)} />
             <text x={shdEndX + 6} y={shdEndY} fill="currentColor" fontSize={9} fontWeight="600">
               shadow
             </text>
@@ -122,7 +126,7 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing = GA
         {sun.isUp && (
           <g color="#f59e0b">
             <line x1={cx} y1={cy} x2={sunEndX} y2={sunEndY} stroke="currentColor" strokeWidth={3} opacity={0.9} />
-            <ArrowHead x={sunEndX} y={sunEndY} angle={sun.azimuthDeg - GARDEN_SVG_TOP_AZIMUTH} />
+            <ArrowHead x={sunEndX} y={sunEndY} angle={azToSvgDeg(sun.azimuthDeg)} />
             <text x={sunEndX + 6} y={sunEndY} fill="currentColor" fontSize={9} fontWeight="600">
               ☀ az={Math.round(sun.azimuthDeg)}° alt={Math.round(sun.altitudeDeg)}°
             </text>

@@ -1,4 +1,4 @@
-import { useRef, useMemo, type ReactNode } from 'react'
+import { useRef, useMemo, useState, type ReactNode } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
@@ -61,6 +61,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
   }, [map.canvas_data])
   const isHouseMap = !!(canvasData && map.map_type === 'indoor')
+  const [zoom, setZoom] = useState(1)
+  const MIN_ZOOM = 0.25
+  const MAX_ZOOM = 4
 
   // Derive plantable ground zones from canvas_data soil zones
   const soilGroundZones = useMemo((): GroundZone[] => {
@@ -129,6 +132,18 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     ? PLANT_SUN_PROFILES.find(p => p.id === draggingPlant.sun_requirement) ?? null
     : null
 
+  function computeZoomViewBox(baseViewBox: string, z: number): string {
+    if (z === 1) return baseViewBox
+    const parts = baseViewBox.trim().split(/\s+/).map(Number)
+    if (parts.length !== 4) return baseViewBox
+    const [vx, vy, vw, vh] = parts
+    const cx = vx + vw / 2
+    const cy = vy + vh / 2
+    const nw = vw / z
+    const nh = vh / z
+    return `${(cx - nw / 2).toFixed(2)} ${(cy - nh / 2).toFixed(2)} ${nw.toFixed(2)} ${nh.toFixed(2)}`
+  }
+
   return (
     <div ref={containerRef} className="relative w-full h-full" style={{ touchAction: 'none' }} onClick={handleMapClick}>
       {!isHouseMap && <GardenCompass bearing={map.bearing ?? 0} />}
@@ -164,11 +179,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       <svg
         ref={svgRef}
-        viewBox={
-          isHouseMap
-            ? map.viewbox
-            : gardenViewBox || map.viewbox || '0 0 680 680'
-        }
+        viewBox={computeZoomViewBox(isHouseMap ? map.viewbox : gardenViewBox || map.viewbox || '0 0 680 680', zoom)}
         preserveAspectRatio="xMidYMid meet"
         className="absolute"
         style={{
@@ -301,6 +312,22 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         {debugOverlay}
 
       </svg>
+
+      {/* Zoom controls */}
+      <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
+        <button
+          onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z * 1.25).toFixed(2)))}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
+          title="Zoom in">+</button>
+        <button
+          onClick={() => setZoom(1)}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-y border-border/50"
+          title="Reset zoom">{Math.round(zoom * 100)}%</button>
+        <button
+          onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z / 1.25).toFixed(2)))}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
+          title="Zoom uit">−</button>
+      </div>
       </div>
       )}
     </div>

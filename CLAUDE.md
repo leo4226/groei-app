@@ -78,7 +78,7 @@ SVG coordinates are the source of truth. `screenToSVG()` converts pointer events
 
 ### Shadow casters
 
-Shadow casters are derived per-map from canvas data via `deriveAllShadowCasters()` in `utils/gardenFromCanvas.ts`. The function combines fence casters, structure casters (both computed from zones), and per-map `shadowCasters` stored in canvas data. The editor supports adding/editing/deleting shadow casters per map. `GARDEN_CLIP` in `gardenStructures.ts` is still hardcoded to Leon's garden and used by the sun overlay components (`SunDebugOverlay`, `SunDirectionArrow`, `SunHeatmap`, `DebugSvfOverlay`) for viewbox/centering — this is the last remaining hardcoded garden constant and will need to become per-Map when the second outdoor Map is added.
+Shadow casters are derived per-map from canvas data via `deriveAllShadowCasters()` in `utils/gardenFromCanvas.ts`. The function combines fence casters, structure casters (both computed from zones), and per-map `shadowCasters` stored in canvas data. The editor supports adding/editing/deleting shadow casters per map. Sun overlays (`SunDebugOverlay`, `SunDirectionArrow`, `SunHeatmap`, `DebugSvfOverlay`) now take `gardenBounds` (and bearing/lat/lon where relevant) as required per-map props — there is no hardcoded garden constant left. The remaining hardcoded scale is `PX_PER_M = 46` in `gardenStructures.ts`; it is still assumed fixed across maps.
 
 ## New garden onboarding
 

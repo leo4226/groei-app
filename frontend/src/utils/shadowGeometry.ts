@@ -13,7 +13,7 @@ const MAX_SHADOW_FACTOR = 6 // clamp shadow length for very low sun
 /**
  * Convert compass azimuth to SVG shadow direction.
  *
- * SVG-top points toward compass bearing GARDEN_SVG_TOP_AZIMUTH (≈22°, NNE brick fence).
+ * SVG-top points toward the map's compass bearing (stored per-map in MapInfo.bearing).
  * Subtracting that bearing aligns the compass frame with the SVG frame, after which:
  *   sin → SVG-X component, cos → SVG-Y component (standard SVG convention).
  * Shadow falls opposite to the sun direction.

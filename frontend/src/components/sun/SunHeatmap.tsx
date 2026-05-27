@@ -1,15 +1,14 @@
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { sunHoursToColor, skyOpennessToColor } from '../../utils/heatmapCalc'
 import { bucketFor, bucketColor, type HeatmapLayer } from '../../utils/lightQuality'
-import { GARDEN_CLIP } from '../../utils/gardenStructures'
 
 interface Props {
   cells: HeatmapCell[]
   isCalculating: boolean
   layer: HeatmapLayer
+  bounds: { x: number; y: number; width: number; height: number }
   onCellTap?: (cell: HeatmapCell) => void
   maskPolygon?: [number, number][] | null
-  bounds?: { x: number; y: number; width: number; height: number }
 }
 
 function cellColor(cell: HeatmapCell, layer: HeatmapLayer): string {
@@ -22,14 +21,13 @@ function cellColor(cell: HeatmapCell, layer: HeatmapLayer): string {
 
 const CLIP_ID = 'heatmap-clip'
 
-export default function SunHeatmap({ cells, isCalculating, layer, onCellTap, maskPolygon, bounds }: Props) {
+export default function SunHeatmap({ cells, isCalculating, layer, bounds, onCellTap, maskPolygon }: Props) {
   if (isCalculating) {
-    const rect = bounds ?? GARDEN_CLIP
     return (
       <g>
         <rect
-          x={rect.x} y={rect.y}
-          width={rect.width} height={rect.height}
+          x={bounds.x} y={bounds.y}
+          width={bounds.width} height={bounds.height}
           fill="rgba(200,168,48,0.15)"
           style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
         />
@@ -46,7 +44,7 @@ export default function SunHeatmap({ cells, isCalculating, layer, onCellTap, mas
           {maskPolygon && maskPolygon.length >= 3 ? (
             <polygon points={maskPolygon.map(([x, y]) => `${x},${y}`).join(' ')} />
           ) : (
-            <rect x={GARDEN_CLIP.x} y={GARDEN_CLIP.y} width={GARDEN_CLIP.width} height={GARDEN_CLIP.height} />
+            <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height} />
           )}
         </clipPath>
       </defs>

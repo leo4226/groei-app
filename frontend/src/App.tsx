@@ -21,7 +21,6 @@ const PlantDetail = lazy(() => import('./pages/PlantDetail'))
 const EditPlant = lazy(() => import('./pages/EditPlant'))
 const PlantCareDetail = lazy(() => import('./pages/PlantCareDetail'))
 const IdentifyPlantPage = lazy(() => import('./pages/IdentifyPlant').then(m => ({ default: m.IdentifyPlantPage })))
-const IdentifyWeedPage = lazy(() => import('./pages/IdentifyWeedPage').then(m => ({ default: m.IdentifyWeedPage })))
 const Settings = lazy(() => import('./pages/Settings'))
 const PlanningCalendarPage = lazy(() => import('./pages/calendar/PlanningCalendarPage'))
 const LayoutEditorPage = lazy(() => import('./pages/LayoutEditorPage'))
@@ -72,6 +71,8 @@ function MapRedirect() {
 
 export default function App() {
   const load = useFloreren((s) => s.load)
+  const maps = useFloreren((s) => s.maps)
+  const isLoading = useFloreren((s) => s.isLoading)
   const error = useFloreren((s) => s.error)
   const clearError = useFloreren((s) => s.clearError)
   const showPlantPicker = useFloreren((s) => s.showPlantPicker)
@@ -84,9 +85,13 @@ export default function App() {
   // Outside map pages we always show it (otherwise users couldn't navigate after rotating).
   const isMapPage = location.pathname.startsWith('/map')
 
+  // Load initial data: on mount (token from previous session) AND after login
+  // (navigate from /login → protected route). Skip if already loading or loaded.
   useEffect(() => {
-    if (getToken()) load()
-  }, [load])
+    if (getToken() && !isLoginPage && maps.length === 0 && !isLoading) {
+      load()
+    }
+  }, [load, isLoginPage, maps.length, isLoading])
 
   const handleSelectPlant = (plant: LocalPlant) => {
     setShowPlantPicker(false)
@@ -205,14 +210,6 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <IdentifyPlantPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/weeds/identify"
-                element={
-                  <RequireAuth>
-                    <IdentifyWeedPage />
                   </RequireAuth>
                 }
               />

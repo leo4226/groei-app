@@ -154,7 +154,7 @@ class CareLogOut(BaseModel):
     care_type: str
     done_by: int
     done_by_name: str | None = None
-    done_at: str
+    done_at: datetime
     notes: str | None = None
     skipped: bool = False
 

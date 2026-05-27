@@ -28,6 +28,7 @@ function parseMapDimensions(viewbox: string): { w: number; h: number } | null {
 
 export default function Dashboard() {
   const { dashboardV2, activeUserId, users, maps, plants, loadDashboardV2, loadPlants, loadWarningSummary, warningSummary } = useFloreren()
+  const isLoading = useFloreren((s) => s.isLoading)
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
 
@@ -81,13 +82,15 @@ export default function Dashboard() {
           <StatusBanner t={t} counts={dashboardV2.status_counts} />
         )}
 
-        {/* ── Onboarding Checklist ── */}
-        <WelcomeChecklist
-          hasMap={maps.length > 0}
-          hasPlant={plants.length > 0}
-          accountId={activeUserId ?? 0}
-          onCreateMap={() => setShowNewMap(true)}
-        />
+        {/* ── Onboarding Checklist — only show when data is definitely loaded ── */}
+        {!isLoading && (
+          <WelcomeChecklist
+            hasMap={maps.length > 0}
+            hasPlant={plants.length > 0}
+            accountId={activeUserId ?? 0}
+            onCreateMap={() => setShowNewMap(true)}
+          />
+        )}
 
         {/* ── Responsive grid: main + sidebar ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }} className="dashboard-grid">
@@ -103,6 +106,10 @@ export default function Dashboard() {
                 <div className="no-scrollbar dash-map-scroll" style={{ display: 'flex', overflowX: 'auto', gap: 14, margin: '0 -24px', padding: '4px 24px 16px' }}>
                   {maps.map((map) => <MapCard key={map.id} map={map} t={t} />)}
                   <NewMapCard t={t} onNewMap={() => setShowNewMap(true)} />
+                </div>
+              ) : isLoading ? (
+                <div style={{ display: 'flex', width: '100%', height: 132, alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 18 }}>
+                  {t.dashboard.loading ?? 'Loading…'}
                 </div>
               ) : (
                 <button onClick={() => setShowNewMap(true)} style={{
@@ -138,20 +145,6 @@ export default function Dashboard() {
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
             <div className="identify-cards-row">
-              <Link to="/weeds/identify" style={{ textDecoration: 'none', display: 'block' }}>
-                <div className="identify-card" style={{
-                  height: '100%', borderRadius: 14, overflow: 'hidden',
-                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-                  padding: '14px 14px', cursor: 'pointer', transition: 'border-color 0.15s', boxSizing: 'border-box',
-                }}>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
-                    🌿 {t.weeds.identifyCard.title}
-                  </div>
-                  <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {t.weeds.identifyCard.subtitle}
-                  </p>
-                </div>
-              </Link>
               <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
                 <div className="identify-card" style={{
                   height: '100%', borderRadius: 14, overflow: 'hidden',

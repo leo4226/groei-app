@@ -11,7 +11,6 @@ import { useMemo } from 'react'
 import { computeSkyOpennessDebug } from '../../utils/skyViewFactor'
 import type { Obstruction } from '../../utils/skyViewFactor'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { GARDEN_CLIP } from '../../utils/gardenStructures'
 
 const RAY_LEN = 50
 const DOT_R   = 3
@@ -19,18 +18,20 @@ const DOT_R   = 3
 const BOX_W = 150
 const BOX_H = 33
 
-// SVG viewBox bounds — used to clamp the info box so it never leaves the canvas
-const VB_MIN_X = GARDEN_CLIP.x - 15
-const VB_MAX_X = GARDEN_CLIP.x - 15 + GARDEN_CLIP.width  + 30
-const VB_MIN_Y = GARDEN_CLIP.y - 15
-const VB_MAX_Y = GARDEN_CLIP.y - 15 + GARDEN_CLIP.height + 30
-
 interface Props {
   cell: HeatmapCell
   obstructions: Obstruction[]
+  /** Garden bounding rectangle in SVG coordinates — used to clamp the info box */
+  gardenBounds: { x: number; y: number; width: number; height: number }
 }
 
-export default function DebugSvfOverlay({ cell, obstructions }: Props) {
+export default function DebugSvfOverlay({ cell, obstructions, gardenBounds }: Props) {
+  // SVG viewBox bounds — used to clamp the info box so it never leaves the canvas
+  const vbMinX = gardenBounds.x - 15
+  const vbMaxX = gardenBounds.x - 15 + gardenBounds.width  + 30
+  const vbMinY = gardenBounds.y - 15
+  const vbMaxY = gardenBounds.y - 15 + gardenBounds.height + 30
+
   const cx = cell.x + cell.w / 2
   const cy = cell.y + cell.h / 2
 
@@ -45,8 +46,8 @@ export default function DebugSvfOverlay({ cell, obstructions }: Props) {
   const pct     = Math.round(result.svf * 100)
 
   // Default position: above-right of the cell centre, clamped inside viewBox
-  const boxX = Math.min(Math.max(cx + 10, VB_MIN_X + 2), VB_MAX_X - BOX_W - 2)
-  const boxY = Math.min(Math.max(cy - BOX_H - 8, VB_MIN_Y + 2), VB_MAX_Y - BOX_H - 2)
+  const boxX = Math.min(Math.max(cx + 10, vbMinX + 2), vbMaxX - BOX_W - 2)
+  const boxY = Math.min(Math.max(cy - BOX_H - 8, vbMinY + 2), vbMaxY - BOX_H - 2)
 
   return (
     <g style={{ pointerEvents: 'none' }}>

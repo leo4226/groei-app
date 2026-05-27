@@ -201,6 +201,17 @@ export default function AddPlant() {
     () => buildInitialSchedules(prefill)
   )
 
+  // Derive plant_type from selected icon's cat field
+  const derivedPlantType = useMemo(() => {
+    if (!iconKey || iconCatalog.length === 0) return undefined
+    const icon = iconCatalog.find(i => i.id === iconKey || i.variant_of === iconKey)
+    // If we picked a variant (e.g. monstera_bare), resolve to the base icon
+    const baseIcon = icon?.variant_of
+      ? iconCatalog.find(i => i.id === icon.variant_of)
+      : icon
+    return baseIcon?.cat || icon?.cat || undefined
+  }, [iconKey, iconCatalog])
+
   // Load icon catalog once for auto-matching and pot/bare switching
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => {})
@@ -309,7 +320,9 @@ export default function AddPlant() {
         acquired_date: displayToIso(acquiredDateInput) || undefined,
         notes: notes.trim() || undefined,
         icon_key: iconKey ?? undefined,
-        plant_type: isFromDatabase ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type) : undefined,
+        plant_type: isFromDatabase
+          ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type)
+          : derivedPlantType,
         sun_requirement: sunRequirement ?? undefined,
         phase: phase as any,
         sown_date: displayToIso(sownDateInput) || undefined,

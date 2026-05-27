@@ -8,6 +8,7 @@ import {
   WALL_COLOR,
 } from '../../constants/mapDefaults'
 import EditorDefs from './EditorDefs'
+import DimensionArrows from './DimensionArrows'
 import EditorZoneShape from './EditorZoneShape'
 import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
@@ -256,6 +257,12 @@ export default function EditorCanvas({
   const [shadowCasterDragging, setShadowCasterDragging] = useState<ShadowCasterDragState | null>(null)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [panning, setPanning] = useState<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const MIN_ZOOM = 0.25
+  const MAX_ZOOM = 4
+  const ZOOM_STEP = 0.25
 
   const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
@@ -279,6 +286,11 @@ export default function EditorCanvas({
       ;(e.target as Element).setPointerCapture(e.pointerId)
       setDrawing({ startX: pt.x, startY: pt.y, currentX: pt.x, currentY: pt.y })
       onSelectZone(null)
+      onSelectShadowCaster(null)
+    } else if (activeTool === 'select') {
+      setPanning({ startX: pt.x, startY: pt.y, origPanX: pan.x, origPanY: pan.y })
+      onSelectZone(null)
+      onSelectWallElement(null)
       onSelectShadowCaster(null)
     } else {
       onSelectZone(null)
@@ -505,6 +517,16 @@ export default function EditorCanvas({
       setSnapLines(snapLines)
       onUpdateZone(resizing.zoneId, { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
     }
+
+    if (panning) {
+      const dx = pt.x - panning.startX
+      const dy = pt.y - panning.startY
+      setPan({
+        x: panning.origPanX + dx,
+        y: panning.origPanY + dy,
+      })
+      return
+    }
   }
 
   function handlePointerLeave() {
@@ -569,6 +591,14 @@ export default function EditorCanvas({
     if (wallElementDragging) setWallElementDragging(null)
     if (dragging) { setDragging(null); setSnapLines([]) }
     if (resizing) { setResizing(null); setSnapLines([]) }
+    if (panning) setPanning(null)
+  }
+
+  function handleWheel(e: React.WheelEvent<SVGSVGElement>) {
+    if (e.deltaY === 0) return
+    e.preventDefault()
+    const dir = e.deltaY < 0 ? 1 : -1
+    setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, +(z + dir * ZOOM_STEP).toFixed(2))))
   }
 
   // Standard draw preview (non-wall zone types)
@@ -593,7 +623,7 @@ export default function EditorCanvas({
   } : null
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-bg overflow-hidden p-2">
+    <div className="flex-1 flex items-center justify-center bg-bg overflow-hidden p-2 relative">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
@@ -604,156 +634,172 @@ export default function EditorCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerLeave}
+        onWheel={handleWheel}
       >
-        <EditorDefs />
-        <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
+        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          <EditorDefs />
+          <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
-        {/* Shadow casters — drawn below zones so garden zones overlay them */}
-        {shadowCasters.map((sc) => {
-          const isSelected = !previewMode && sc.id === selectedShadowCasterId
-          const fill = 'rgba(107, 114, 128, 0.18)'
-          const stroke = isSelected ? '#4A90D9' : '#6b7280'
-          const strokeWidth = isSelected ? 2 : 1.5
-          const strokeDasharray = isSelected ? undefined : '6 3'
-          const cursor = activeTool === 'select' ? 'move' : 'default'
-          if (sc.type === 'rect') {
-            return (
-              <rect
-                key={sc.id}
-                x={sc.x} y={sc.y}
-                width={sc.width} height={sc.height}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
-                strokeDasharray={strokeDasharray}
-                style={{ cursor }}
-                onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+          {!previewMode && (
+            <DimensionArrows canvasW={CANVAS_W} canvasH={CANVAS_H} pxPerM={scalePxPerM} />
+          )}
+
+          {/* Shadow casters — drawn below zones so garden zones overlay them */}
+          {shadowCasters.map((sc) => {
+            const isSelected = !previewMode && sc.id === selectedShadowCasterId
+            const fill = 'rgba(107, 114, 128, 0.18)'
+            const stroke = isSelected ? '#4A90D9' : '#6b7280'
+            const strokeWidth = isSelected ? 2 : 1.5
+            const strokeDasharray = isSelected ? undefined : '6 3'
+            const cursor = activeTool === 'select' ? 'move' : 'default'
+            if (sc.type === 'rect') {
+              return (
+                <rect
+                  key={sc.id}
+                  x={sc.x} y={sc.y}
+                  width={sc.width} height={sc.height}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
+                  style={{ cursor }}
+                  onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+                />
+              )
+            } else if (sc.type === 'circle') {
+              return (
+                <circle
+                  key={sc.id}
+                  cx={sc.cx} cy={sc.cy}
+                  r={sc.radius}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
+                  style={{ cursor }}
+                  onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
+                />
+              )
+            }
+            return null
+          })}
+
+          {zones.map((zone) => {
+            const isIndoorZone = zone.type === 'room' || zone.type === 'structure'
+            return isIndoorZone ? (
+              <RoomWallRenderer
+                key={zone.id}
+                zone={zone}
+                zones={zones}
+                isSelected={!previewMode && zone.id === selectedZoneId}
+                scalePxPerM={scalePxPerM}
+                wallElements={wallElements}
+                selectedWallElementId={previewMode ? null : selectedWallElementId}
+                onPointerDown={handleZonePointerDown}
+                onSelectWallElement={onSelectWallElement}
+                onWallElementPointerDown={handleWallElementPointerDown}
+              />
+            ) : (
+              <EditorZoneShape
+                key={zone.id}
+                zone={zone}
+                zones={zones}
+                isSelected={!previewMode && zone.id === selectedZoneId}
+                scalePxPerM={scalePxPerM}
+                wallElements={wallElements}
+                selectedWallElementId={previewMode ? null : selectedWallElementId}
+                onPointerDown={handleZonePointerDown}
+                onSelectWallElement={onSelectWallElement}
+                onWallElementPointerDown={handleWallElementPointerDown}
               />
             )
-          } else if (sc.type === 'circle') {
-            return (
-              <circle
-                key={sc.id}
-                cx={sc.cx} cy={sc.cy}
-                r={sc.radius}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
-                strokeDasharray={strokeDasharray}
-                style={{ cursor }}
-                onPointerDown={(e) => handleShadowCasterPointerDown(e, sc.id)}
-              />
-            )
-          }
-          return null
-        })}
+          })}
 
-        {zones.map((zone) => {
-          const isIndoorZone = zone.type === 'room' || zone.type === 'structure'
-          return isIndoorZone ? (
-            <RoomWallRenderer
-              key={zone.id}
-              zone={zone}
-              zones={zones}
-              isSelected={!previewMode && zone.id === selectedZoneId}
-              scalePxPerM={scalePxPerM}
-              wallElements={wallElements}
-              selectedWallElementId={previewMode ? null : selectedWallElementId}
-              onPointerDown={handleZonePointerDown}
-              onSelectWallElement={onSelectWallElement}
-              onWallElementPointerDown={handleWallElementPointerDown}
+          {/* Resize overlay on selected zone */}
+          {!previewMode && selectedZone && activeTool === 'select' && (
+            <EditorResizeOverlay
+              zone={selectedZone}
+              onHandlePointerDown={handleResizeHandlePointerDown}
             />
-          ) : (
-            <EditorZoneShape
-              key={zone.id}
-              zone={zone}
+          )}
+
+          {/* Wall element placement overlay */}
+          {!previewMode && isPlacingWallElement && (
+            <WallElementPlacementOverlay
               zones={zones}
-              isSelected={!previewMode && zone.id === selectedZoneId}
+              activeTool={activeTool}
               scalePxPerM={scalePxPerM}
-              wallElements={wallElements}
-              selectedWallElementId={previewMode ? null : selectedWallElementId}
-              onPointerDown={handleZonePointerDown}
-              onSelectWallElement={onSelectWallElement}
-              onWallElementPointerDown={handleWallElementPointerDown}
+              svgPoint={svgPointer}
+              onPlace={(zoneId, edge, position) => {
+                const type = activeTool === 'place_door' ? 'door' : 'window'
+                onPlaceWallElement(zoneId, type, edge, position)
+              }}
             />
-          )
-        })}
+          )}
 
-        {/* Resize overlay on selected zone */}
-        {!previewMode && selectedZone && activeTool === 'select' && (
-          <EditorResizeOverlay
-            zone={selectedZone}
-            onHandlePointerDown={handleResizeHandlePointerDown}
-          />
-        )}
+          {/* Snap indicator lines */}
+          {snapLines.map((line, i) =>
+            line.axis === 'x'
+              ? <line key={i} x1={line.value} y1={0} x2={line.value} y2={CANVAS_H}
+                  stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
+              : <line key={i} x1={0} y1={line.value} x2={CANVAS_W} y2={line.value}
+                  stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
+          )}
 
-        {/* Wall element placement overlay */}
-        {!previewMode && isPlacingWallElement && (
-          <WallElementPlacementOverlay
-            zones={zones}
-            activeTool={activeTool}
-            scalePxPerM={scalePxPerM}
-            svgPoint={svgPointer}
-            onPlace={(zoneId, edge, position) => {
-              const type = activeTool === 'place_door' ? 'door' : 'window'
-              onPlaceWallElement(zoneId, type, edge, position)
-            }}
-          />
-        )}
+          {/* Draw preview (regular zones) */}
+          {drawRect && drawRect.width > 2 && drawRect.height > 2 && (
+            <rect
+              x={drawRect.x} y={drawRect.y}
+              width={drawRect.width} height={drawRect.height}
+              fill="rgba(74,144,217,0.15)" stroke="#4A90D9"
+              strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
+            />
+          )}
 
-        {/* Snap indicator lines */}
-        {snapLines.map((line, i) =>
-          line.axis === 'x'
-            ? <line key={i} x1={line.value} y1={0} x2={line.value} y2={CANVAS_H}
-                stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
-            : <line key={i} x1={0} y1={line.value} x2={CANVAS_W} y2={line.value}
-                stroke="#4AE8A0" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.65} pointerEvents="none" />
-        )}
+          {/* Draw preview (wall zone — direction-locked solid bar) */}
+          {wallDrawRect && Math.max(wallDrawRect.width, wallDrawRect.height) > 4 && (
+            <rect
+              x={wallDrawRect.x} y={wallDrawRect.y}
+              width={wallDrawRect.width} height={wallDrawRect.height}
+              fill={WALL_COLOR} opacity={0.55}
+              stroke="#4A90D9" strokeWidth={1} strokeDasharray="4 2"
+              pointerEvents="none"
+            />
+          )}
 
-        {/* Draw preview (regular zones) */}
-        {drawRect && drawRect.width > 2 && drawRect.height > 2 && (
-          <rect
-            x={drawRect.x} y={drawRect.y}
-            width={drawRect.width} height={drawRect.height}
-            fill="rgba(74,144,217,0.15)" stroke="#4A90D9"
-            strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
-          />
-        )}
+          {/* Draw preview (shadow caster) */}
+          {shadowCasterDrawRect && shadowCasterDrawRect.width > 2 && shadowCasterDrawRect.height > 2 && (
+            <rect
+              x={shadowCasterDrawRect.x} y={shadowCasterDrawRect.y}
+              width={shadowCasterDrawRect.width} height={shadowCasterDrawRect.height}
+              fill="rgba(107,114,128,0.2)" stroke="#6b7280"
+              strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
+            />
+          )}
 
-        {/* Draw preview (wall zone — direction-locked solid bar) */}
-        {wallDrawRect && Math.max(wallDrawRect.width, wallDrawRect.height) > 4 && (
-          <rect
-            x={wallDrawRect.x} y={wallDrawRect.y}
-            width={wallDrawRect.width} height={wallDrawRect.height}
-            fill={WALL_COLOR} opacity={0.55}
-            stroke="#4A90D9" strokeWidth={1} strokeDasharray="4 2"
-            pointerEvents="none"
-          />
-        )}
-
-        {/* Draw preview (shadow caster) */}
-        {shadowCasterDrawRect && shadowCasterDrawRect.width > 2 && shadowCasterDrawRect.height > 2 && (
-          <rect
-            x={shadowCasterDrawRect.x} y={shadowCasterDrawRect.y}
-            width={shadowCasterDrawRect.width} height={shadowCasterDrawRect.height}
-            fill="rgba(107,114,128,0.2)" stroke="#6b7280"
-            strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
-          />
-        )}
-
-        {/* Garden perimeter preview (sun polygon) */}
-        {perimeterPolygon && perimeterPolygon.length >= 3 && (
-          <polygon
-            points={perimeterPolygon.map(([x, y]) => `${x},${y}`).join(' ')}
-            fill="rgba(251,191,36,0.08)"
-            stroke="#fbbf24"
-            strokeWidth={2}
-            strokeDasharray="8 4"
-            pointerEvents="none"
-          />
-        )}
-
+          {/* Garden perimeter preview (sun polygon) */}
+          {perimeterPolygon && perimeterPolygon.length >= 3 && (
+            <polygon
+              points={perimeterPolygon.map(([x, y]) => `${x},${y}`).join(' ')}
+              fill="rgba(251,191,36,0.08)"
+              stroke="#fbbf24"
+              strokeWidth={2}
+              strokeDasharray="8 4"
+              pointerEvents="none"
+            />
+          )}
+        </g>
       </svg>
+      <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1">
+        <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
+        <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">+</button>
+        <button onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1) }}
+          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5"
+          title="Reset">⟲</button>
+      </div>
     </div>
   )
 }

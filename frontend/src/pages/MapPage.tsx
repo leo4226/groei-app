@@ -295,7 +295,7 @@ export default function MapPage() {
           </button>
           {isOutdoor && (
             <button
-              onClick={() => navigate('/weeds/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
+              onClick={() => navigate('/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/15 text-green-700 rounded-full text-sm font-medium hover:bg-green-500/25 transition-colors map-action-desktop forced-hidden-mobile"
               title={t.weeds.identifyCard.title}
             >
@@ -398,7 +398,7 @@ export default function MapPage() {
                   </button>
                   {isOutdoor && (
                     <button
-                      onClick={() => { setShowMoreActions(false); navigate('/weeds/identify', { state: { mapId: map.id, mapSlug: map.slug } }) }}
+                      onClick={() => { setShowMoreActions(false); navigate('/identify', { state: { mapId: map.id, mapSlug: map.slug } }) }}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
                     >
                       <span className="text-sm">🌿</span>
@@ -523,14 +523,35 @@ export default function MapPage() {
             gardenPerimeter={sun.gardenPerimeter}
             gardenBounds={sun.gardenBounds}
             gardenViewBox={sun.gardenViewBox}
-            debugOverlay={
-              new URLSearchParams(window.location.search).has('debug') &&
-              new URLSearchParams(window.location.search).get('debug') === 'sun'
-                ? <SunDebugOverlay sunPosition={sun.sunPosition} bearing={mapBearing} shadowCasters={sun.shadowCasters} />
-                : sun.isHeatmapActive && sun.tappedCell
-                  ? <DebugSvfOverlay cell={sun.tappedCell} obstructions={sun.gardenObstructions} />
-                  : undefined
-            }
+            debugOverlay={(() => {
+              const gb = sun.gardenBounds
+              const boundsRect = gb
+                ? { x: gb.minX, y: gb.minY, width: gb.maxX - gb.minX, height: gb.maxY - gb.minY }
+                : null
+              const debugParam = new URLSearchParams(window.location.search).get('debug')
+              if (debugParam === 'sun' && boundsRect && mapLat != null && mapLon != null && mapBearing != null) {
+                return (
+                  <SunDebugOverlay
+                    sunPosition={sun.sunPosition}
+                    bearing={mapBearing}
+                    gardenBounds={boundsRect}
+                    lat={mapLat}
+                    lon={mapLon}
+                    shadowCasters={sun.shadowCasters}
+                  />
+                )
+              }
+              if (sun.isHeatmapActive && sun.tappedCell && boundsRect) {
+                return (
+                  <DebugSvfOverlay
+                    cell={sun.tappedCell}
+                    obstructions={sun.gardenObstructions}
+                    gardenBounds={boundsRect}
+                  />
+                )
+              }
+              return undefined
+            })()}
           />
         </div>
 

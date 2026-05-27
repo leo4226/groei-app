@@ -8,6 +8,7 @@ from database import db_dep
 from auth import get_current_account
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
+from routers.icons import load_manifest
 
 router = APIRouter(tags=["admin"])
 
@@ -72,6 +73,55 @@ async def backfill_care_schedules(db = Depends(db_dep)):
             print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
 
     return {"checked": len(rows), "seeded": seeded}
+
+
+@router.post("/admin/backfill-plant-types")
+async def backfill_plant_types(db = Depends(db_dep)):
+    """Backfill NULL plant_type from icon manifest cat field."""
+    manifest = load_manifest()
+    icon_to_cat: dict[str, str] = {
+        p["id"]: p["cat"] for p in manifest if "cat" in p and p["cat"]
+    }
+
+    rows = await db.execute_fetchall(
+        "SELECT id, name, icon_key FROM plants "
+        "WHERE plant_type IS NULL AND icon_key IS NOT NULL"
+    )
+
+    if not rows:
+        return {"status": "ok", "message": "No plants need backfilling", "updated": 0}
+
+    updated = 0
+    skipped = 0
+    details: list[dict] = []
+
+    for row in rows:
+        icon_key = row["icon_key"]
+        cat = icon_to_cat.get(icon_key)
+        if cat:
+            await db.execute(
+                "UPDATE plants SET plant_type = $1 WHERE id = $2",
+                (cat, row["id"]),
+            )
+            updated += 1
+            details.append({
+                "id": row["id"],
+                "name": row["name"],
+                "icon_key": icon_key,
+                "plant_type": cat,
+            })
+        else:
+            skipped += 1
+
+    await db.commit()
+
+    return {
+        "status": "ok",
+        "found": len(rows),
+        "updated": updated,
+        "skipped": skipped,
+        "details": details,
+    }
 
 
 ADMIN_EMAIL = "leon_korbee@hotmail.com"
