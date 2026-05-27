@@ -8,9 +8,11 @@ import type { Plant, PlantIcon } from '../types'
 import { alerts, icons } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
 
-const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas']
-const isTuin = (plant: Plant) =>
-  OUTDOOR_KEYWORDS.some(k => plant.location_name?.toLowerCase().includes(k))
+/** Plant is outdoor (tuin) when its map has map_type='outdoor'. Null map_id → fallback to huis. */
+const isOutdoor = (plant: Plant, mapTypeByMapId: Map<number, 'outdoor' | 'indoor'>) => {
+  if (plant.map_id == null) return false
+  return mapTypeByMapId.get(plant.map_id) === 'outdoor'
+}
 
 const TYPE_BG: Record<string, string> = {
   tree:       '#160572',
@@ -41,7 +43,7 @@ function useIsMobile() {
 }
 
 export default function Plants() {
-  const { plants, isLoading } = useFloreren()
+  const { plants, isLoading, maps } = useFloreren()
   const CATEGORY_LABELS = useCategoryLabels()
   const PLANT_TYPE_LABELS = useTypeLabels()
   const FORM_LABELS = useFormLabels()
@@ -78,8 +80,14 @@ export default function Plants() {
     return m
   }, [iconCatalog])
 
-  const tuinCount = plants.filter(isTuin).length
-  const huisCount = plants.filter(p => !isTuin(p)).length
+  const mapTypeByMapId = useMemo(() => {
+    const m = new Map<number, 'outdoor' | 'indoor'>()
+    maps.forEach(map => m.set(map.id, map.map_type))
+    return m
+  }, [maps])
+
+  const tuinCount = plants.filter(p => isOutdoor(p, mapTypeByMapId)).length
+  const huisCount = plants.filter(p => !isOutdoor(p, mapTypeByMapId)).length
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -105,8 +113,8 @@ export default function Plants() {
 
   const filtered = plants.filter((p) => {
     if (alertsOnly && alertPlantIds !== null && !alertPlantIds.includes(p.id)) return false
-    if (filterArea === 'tuin' && !isTuin(p)) return false
-    if (filterArea === 'huis' && isTuin(p)) return false
+    if (filterArea === 'tuin' && !isOutdoor(p, mapTypeByMapId)) return false
+    if (filterArea === 'huis' && isOutdoor(p, mapTypeByMapId)) return false
     if (filterType !== 'all' && (p.plant_type || 'unknown') !== filterType) return false
     if (filterForm !== 'all') {
       const icon = p.icon_key ? iconMap.get(p.icon_key) : null
