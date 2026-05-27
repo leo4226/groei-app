@@ -16,6 +16,7 @@ class EcologyOut(BaseModel):
     host_plant_for: list[str] | None
     data_source: str
     enriched_at: str
+    score: int | None        # 0..100 biodiversity score; null when no data
 
 
 @router.get("/search", response_model=SpeciesSearchResponse)

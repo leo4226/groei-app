@@ -531,29 +531,45 @@ export default function EditorCanvas({
       // Snap resize edges to other zone edges
       const { xTargets, yTargets } = getSnapTargets(zones, resizing.zoneId, scalePxPerM)
       const snapLines: SnapLine[] = []
-      const rightEdge = x + w
-      const bottomEdge = y + hh
 
-      // Show alignment lines but DON'T snap — just guide the eye
+      // Fixed opposite edges (don't move for this handle)
+      const fixedRight  = resizing.origX + resizing.origW
+      const fixedBottom = resizing.origY + resizing.origH
+
+      // X-axis: snap the moving left/right edge to nearest target
+      let snapXval: number | null = null
       if (h.includes('e')) {
+        let best = SNAP_THRESHOLD
         for (const t of xTargets) {
-          if (Math.abs(rightEdge - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'x', value: t })
+          const d = Math.abs(x + w - t)
+          if (d <= best) { best = d; snapXval = t }
         }
-      }
-      if (h.includes('w')) {
+        if (snapXval !== null) { w = snapXval - x; snapLines.push({ axis: 'x', value: snapXval }) }
+      } else if (h.includes('w')) {
+        let best = SNAP_THRESHOLD
         for (const t of xTargets) {
-          if (Math.abs(x - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'x', value: t })
+          const d = Math.abs(x - t)
+          if (d <= best) { best = d; snapXval = t }
         }
+        if (snapXval !== null) { x = snapXval; w = fixedRight - snapXval; snapLines.push({ axis: 'x', value: snapXval }) }
       }
+
+      // Y-axis: snap the moving top/bottom edge to nearest target
+      let snapYval: number | null = null
       if (h.includes('s')) {
+        let best = SNAP_THRESHOLD
         for (const t of yTargets) {
-          if (Math.abs(bottomEdge - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'y', value: t })
+          const d = Math.abs(y + hh - t)
+          if (d <= best) { best = d; snapYval = t }
         }
-      }
-      if (h.includes('n')) {
+        if (snapYval !== null) { hh = snapYval - y; snapLines.push({ axis: 'y', value: snapYval }) }
+      } else if (h.includes('n')) {
+        let best = SNAP_THRESHOLD
         for (const t of yTargets) {
-          if (Math.abs(y - t) < SNAP_THRESHOLD) snapLines.push({ axis: 'y', value: t })
+          const d = Math.abs(y - t)
+          if (d <= best) { best = d; snapYval = t }
         }
+        if (snapYval !== null) { y = snapYval; hh = fixedBottom - snapYval; snapLines.push({ axis: 'y', value: snapYval }) }
       }
 
       // Re-clamp after snap

@@ -8,6 +8,7 @@ import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
 import PlantCareInfo from '../components/PlantCareInfo'
+import EcologyCard from '../components/EcologyCard'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
 import { resolveIconUrl } from '../utils/icons'
@@ -272,6 +273,9 @@ export default function PlantDetail() {
             <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
           </Section>
         )}
+
+        {/* Ecology */}
+        {plant.species_id != null && <EcologyCard speciesId={plant.species_id} />}
 
         {/* Weather alerts */}
         <PlantAlerts plantId={plantId} phenology={plant.phenology ?? null} />

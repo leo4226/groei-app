@@ -546,3 +546,17 @@ export type WeedSightingOut = WeedSightingCreate & {
   removal_difficulty: string | null
   created_at: string
 }
+
+// ── Species ecology ──
+
+export type EcologyDataSource = 'gbif' | 'llm' | 'mixed' | 'failed'
+
+export type EcologyOut = {
+  native_to_nl: boolean | null
+  invasive_nl: boolean | null
+  flowering_months: number[] | null    // 1-12
+  pollinator_value: number | null       // 0-3
+  host_plant_for: string[] | null
+  data_source: EcologyDataSource
+  enriched_at: string                   // ISO timestamp
+}

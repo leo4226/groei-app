@@ -8,12 +8,19 @@ interface Zone {
   isIndoor: boolean
 }
 
+interface ZonePickerTranslations {
+  newRoom: string
+  newRoomDesc: string
+  plantsLabel: (n: number) => string
+}
+
 interface ZonePickerProps {
   zones?: Zone[]
   value: string | null
   onChange: (id: string) => void
   advice?: string
   className?: string
+  translations?: ZonePickerTranslations
 }
 
 export const DEFAULT_ZONES: Zone[] = [
@@ -28,8 +35,10 @@ export default function ZonePicker({
   value,
   onChange,
   advice,
+  translations,
   className = '',
 }: ZonePickerProps) {
+  const t = translations ?? { newRoom: 'Nieuwe ruimte', newRoomDesc: 'Eigen plek', plantsLabel: (n: number) => `${n} planten` }
   const selectedZone = zones.find(z => z.id === value)
 
   // Sort: indoor first if a zone is selected and it's indoor, or no selection → indoor first

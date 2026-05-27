@@ -193,6 +193,10 @@ export const dashboard = {
   v2: () => api<DashboardV2Data>('GET', '/dashboard/v2'),
 }
 
+export const species = {
+  ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),
+}
+
 export const maps = {
   list:    ()                                                                                                     => api<MapInfo[]>('GET', '/maps'),
   create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number })             => api<MapInfo>('POST', '/maps', { body: data }),

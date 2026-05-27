@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
 import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
@@ -504,77 +504,18 @@ export default function AddPlant() {
     <div key={remountKey}>
       {/* ——— Masthead ——— */}
       <header className="border-b border-border">
-        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8">
-          {/* Navigation bar */}
-          <nav className="flex items-center gap-5 sm:gap-7 font-heading text-xs sm:text-sm text-text-muted">
-            <Link to="/dashboard" className="hover:text-primary transition-colors">Vandaag</Link>
-            <Link to="/maps" className="hover:text-primary transition-colors">Tuinkaart</Link>
-            <Link to="/collection" className="text-text font-semibold">Collectie</Link>
-            <Link to="/calendar" className="hover:text-primary transition-colors">Kalender</Link>
-            <Link to="/settings" className="hover:text-primary transition-colors">Instellingen</Link>
-          </nav>
-
-          {/* Title row + stepper */}
-          <div className="grid grid-cols-[1fr_auto] gap-8 lg:gap-12 items-end mt-5 sm:mt-7 mb-4 sm:mb-5">
-            {/* Title block */}
-            <div>
-              <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
-                <span className="text-primary">§</span>
-                <span>Collectie</span>
-                <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
-              </div>
-              <h1 className="font-heading text-4xl sm:text-5xl lg:text-7xl/[0.92] font-medium leading-[0.92] tracking-[-0.025em] m-0">
-                Toevoegen
-              </h1>
-              <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
-                Een nieuwe plant inpassen op haar beste plek.
-              </p>
-            </div>
-
-            {/* Stepper — hidden on smallest screens, shown as a horizontal bar below 640px */}
-            <div className="hidden sm:block border-l border-border pl-6 lg:pl-7 min-w-[280px] lg:min-w-[320px]">
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-3">
-                Stappen
-              </div>
-              <ul className="list-none m-0 p-0 space-y-1">
-                {/* Step I — done */}
-                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text">
-                  <span className="font-mono text-[10px] text-primary text-right">I</span>
-                  <span>Soort</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-primary">✓</span>
-                </li>
-                {/* Step II — on (active) */}
-                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text italic">
-                  <span className="font-mono text-[10px] text-secondary font-medium text-right">II</span>
-                  <span>Details</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-secondary">on</span>
-                </li>
-                {/* Step III — muted */}
-                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text-soft">
-                  <span className="font-mono text-[10px] text-text-muted text-right">III</span>
-                  <span>Planning</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">—</span>
-                </li>
-                {/* Step IV — muted */}
-                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline py-2 font-heading text-sm lg:text-base text-text-soft">
-                  <span className="font-mono text-[10px] text-text-muted text-right">IV</span>
-                  <span>Foto's</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">—</span>
-                </li>
-              </ul>
-            </div>
+        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8 pb-5">
+          <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
+            <span className="text-primary">§</span>
+            <span>Collectie</span>
+            <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
           </div>
-
-          {/* Stepper — horizontal mini-bar for mobile (< 640px) */}
-          <div className="sm:hidden flex items-center justify-center gap-2 pb-4 text-text-muted font-mono text-[10px] uppercase tracking-[0.18em]">
-            <span className="flex items-center gap-1"><span className="text-primary">I</span>·<span className="text-primary font-semibold">Soort</span></span>
-            <span className="text-text-soft">·</span>
-            <span className="flex items-center gap-1"><span className="text-secondary font-semibold">II</span>·<span className="text-secondary font-semibold">Details</span></span>
-            <span className="text-text-soft">·</span>
-            <span>III·Planning</span>
-            <span className="text-text-soft">·</span>
-            <span>IV·Foto's</span>
-          </div>
+          <h1 className="font-heading text-4xl sm:text-5xl lg:text-7xl/[0.92] font-medium leading-[0.92] tracking-[-0.025em] m-0">
+            Toevoegen
+          </h1>
+          <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
+            Een nieuwe plant inpassen op haar beste plek.
+          </p>
         </div>
       </header>
 

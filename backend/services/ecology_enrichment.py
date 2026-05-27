@@ -40,6 +40,49 @@ class EcologyProfile:
     data_source: str                    # 'gbif' / 'llm' / 'mixed' / 'failed'
 
 
+def compute_biodiversity_score(
+    native_to_nl: bool | None,
+    pollinator_value: int | None,
+    flowering_months: list[int] | None,
+    host_plant_for: list[str] | None,
+) -> int | None:
+    """0-100 per-plant biodiversity score.
+
+    Invasive flag is *not* part of this number — it's a separate warning
+    shown alongside. Otherwise a plant great for butterflies but listed
+    as invasive (e.g. Buddleja davidii) would score 0, which is dishonest
+    to the thousands of butterflies that actually feed on it.
+
+    Components:
+      - Native to NL:        +25
+      - Pollinator value:    +0..30 (value × 10)
+      - Flowering coverage:  +0..30 (months × 30 / 12)
+      - Host plant:          +15 if non-empty
+
+    Returns None when we know nothing — all inputs null. Returns 0 only
+    when the plant is *known* to contribute nothing (pollinator=0,
+    no flowering, non-native, no host)."""
+    has_any_signal = (
+        native_to_nl is not None
+        or pollinator_value is not None
+        or (flowering_months is not None)
+        or (host_plant_for is not None)
+    )
+    if not has_any_signal:
+        return None
+
+    score = 0
+    if native_to_nl is True:
+        score += 25
+    if pollinator_value is not None:
+        score += max(0, min(3, pollinator_value)) * 10
+    if flowering_months:
+        score += min(30, round(len(flowering_months) / 12 * 30))
+    if host_plant_for:
+        score += 15
+    return min(100, score)
+
+
 async def _from_gbif(taxon_key: int) -> dict:
     """Query GBIF distributions endpoint. Returns dict with native_to_nl and
     invasive_nl, or empty dict on failure / no NL record."""
@@ -77,6 +120,10 @@ Species: {latin_name}
 Return ONLY a valid JSON object with this exact schema:
 
 {{
+  "native_to_nl": [boolean — true if this species is indigenous to the
+                   Netherlands (not introduced/cultivated)],
+  "invasive_nl": [boolean — true only if officially listed as invasive
+                  in the Netherlands],
   "flowering_months": [list of integer month numbers 1-12 when this plant
                        blooms outdoors in the Netherlands; empty list if
                        it does not reliably flower here],
@@ -85,14 +132,16 @@ Return ONLY a valid JSON object with this exact schema:
                        butterflies, 3 = top-tier pollinator plant]
 }}
 
-No markdown, no backticks, no explanation. Use an empty list for unknown
-flowering months. Use 0 for plants without floral resources.
+No markdown, no backticks, no explanation. Use null for any field you are
+unsure about. Use an empty list for unknown flowering months. Use 0 for
+plants without floral resources.
 """
 
 
 async def _from_llm(latin_name: str) -> dict:
-    """Ask DeepSeek for flowering_months + pollinator_value. Returns a dict
-    with the validated fields, or empty on failure / invalid response."""
+    """Ask DeepSeek for native_to_nl, invasive_nl, flowering_months and
+    pollinator_value. Returns a dict with the validated fields, or empty
+    on failure / invalid response."""
     if not DEEPSEEK_API_KEY:
         return {}
     prompt = _ECOLOGY_PROMPT.format(latin_name=latin_name)
@@ -125,6 +174,12 @@ async def _from_llm(latin_name: str) -> dict:
         return {}
 
     out: dict = {}
+    native = data.get("native_to_nl")
+    if isinstance(native, bool):
+        out["native_to_nl"] = native
+    invasive = data.get("invasive_nl")
+    if isinstance(invasive, bool):
+        out["invasive_nl"] = invasive
     months = data.get("flowering_months")
     if isinstance(months, list) and all(
         isinstance(m, int) and 1 <= m <= 12 for m in months
@@ -154,8 +209,15 @@ async def enrich(latin_name: str, gbif_taxon_key: int | None) -> EcologyProfile:
 
     llm_data = await _from_llm(latin_name)
     if llm_data:
-        sources_used.add("llm")
-        merged.update(llm_data)
+        # Only fill fields GBIF didn't already provide. GBIF is the
+        # authoritative source for native/invasive; LLM is a fallback.
+        added_from_llm = False
+        for k, v in llm_data.items():
+            if merged.get(k) is None:
+                merged[k] = v
+                added_from_llm = True
+        if added_from_llm:
+            sources_used.add("llm")
 
     if not sources_used:
         data_source = "failed"
@@ -226,24 +288,39 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
         "host_plant_for": profile.host_plant_for,
         "data_source": profile.data_source,
         "enriched_at": enriched_at.isoformat(),
+        "score": compute_biodiversity_score(
+            profile.native_to_nl,
+            profile.pollinator_value,
+            profile.flowering_months,
+            profile.host_plant_for,
+        ),
     }
 
 
 def _row_to_dict(row: dict) -> dict:
     """Coerce a DB row into the API-shaped ecology dict, parsing JSON
     columns that may arrive as strings (SQLite) or already-decoded lists
-    (asyncpg JSONB)."""
+    (asyncpg JSONB). The biodiversity score is computed fresh on every
+    read — no schema change needed if we tune weights later."""
     enriched_at = row.get("ecology_enriched_at")
     if isinstance(enriched_at, datetime):
         enriched_at = enriched_at.isoformat()
+    flowering = _maybe_json(row.get("flowering_months"))
+    host = _maybe_json(row.get("host_plant_for"))
     return {
         "native_to_nl": row.get("native_to_nl"),
         "invasive_nl": row.get("invasive_nl"),
-        "flowering_months": _maybe_json(row.get("flowering_months")),
+        "flowering_months": flowering,
         "pollinator_value": row.get("pollinator_value"),
-        "host_plant_for": _maybe_json(row.get("host_plant_for")),
+        "host_plant_for": host,
         "data_source": row.get("ecology_data_source"),
         "enriched_at": enriched_at,
+        "score": compute_biodiversity_score(
+            row.get("native_to_nl"),
+            row.get("pollinator_value"),
+            flowering,
+            host,
+        ),
     }
 
 

@@ -426,6 +426,25 @@ export type Translations = {
     fitInsufficient: string  // "⚠ Insufficient"
   }
 
+  ecology: {
+    title: string
+    native: string
+    nonNative: string
+    invasive: string
+    pollinatorTopTier: string
+    pollinatorGood: string
+    pollinatorMinor: string
+    pollinatorNone: string
+    floweringPrefix: string
+    hostPrefix: string
+    scoreLabel: string
+    sourceLabel: string
+    sourceLlmWarning: string
+    enrichedAt: string
+    failed: string
+    loading: string
+  }
+
   // ── Plant Care Detail page ─────────────────────────────────────
   plantCare: {
     light: string
@@ -480,6 +499,148 @@ export type Translations = {
       manual: string           // "Enter manually"
       manualSubtitle: string   // "I know what it is"
     }
+    // ── Form header ──
+    breadcrumb: string      // "Collection" / "Collectie"
+    heading: string         // "Add" / "Toevoegen"
+    subheading: string      // "Fit a new plant into its best spot."
+    basic: string           // "BASIC"
+    details: string         // "DETAILS"
+    // ── § I · Identity ──
+    secIdentity: string     // "§ I · Identity"
+    secIdentityTitle: string // "Give her a name."
+    labelNickname: string   // "Nickname"
+    labelNicknameDesc: string
+    labelSpecies: string
+    labelSpeciesDesc: string
+    labelForm: string
+    labelFormDesc: string
+    labelPhase: string
+    labelPhaseDesc: string
+    labelAcquired: string
+    labelAcquiredDesc: string
+    placeholderNickname: string
+    placeholderSpecies: string
+    placeholderSpeciesLatin: string
+    placeholderAcquiredAt: string
+    // ── § II · Placement ──
+    secPlacement: string
+    secPlacementTitle: string
+    secPlacementSubtitle: string
+    labelZone: string
+    labelZoneDesc: string
+    labelLight: string
+    labelLightDesc: string
+    labelPot: string
+    labelPotDesc: string
+    labelPotDiameter: string
+    labelPotHeight: string
+    labelDrainage: string
+    labelDrainageYes: string
+    labelSubstrate: string
+    labelSubstrateDesc: string
+    substrateHelp: string
+    // Light tiles
+    lightDark: string
+    lightDarkSub: string
+    lightShade: string
+    lightShadeSub: string
+    lightIndirect: string
+    lightIndirectSub: string
+    lightBright: string
+    lightBrightSub: string
+    lightFullSun: string
+    lightFullSunSub: string
+    // Pot material tiles
+    potTerracotta: string
+    potTerracottaSub: string
+    potPlastic: string
+    potPlasticSub: string
+    potCeramic: string
+    potCeramicSub: string
+    potBasket: string
+    potBasketSub: string
+    // ── § III · Care ──
+    secCare: string
+    secCareTitle: string
+    secCareSubtitle: string
+    labelWatering: string
+    labelWateringDesc: string
+    labelVolume: string
+    labelVolumeDesc: string
+    volumeUnit: string
+    labelFeeding: string
+    labelFeedingDesc: string
+    labelPruneType: string
+    labelPruneTypeDesc: string
+    labelPruneFreq: string
+    labelPruneFreqDesc: string
+    // Watering presets
+    presetSeldom: string
+    presetWeekly: string
+    presetBiweekly: string
+    presetDaily: string
+    // Feeding tiles
+    feedWeekly: string
+    feedWeeklySub: string
+    feedMonthly: string
+    feedMonthlySub: string
+    feedSeasonal: string
+    feedSeasonalSub: string
+    feedOptional: string
+    feedOptionalSub: string
+    // Pruning type tiles
+    pruneNone: string
+    pruneNoneSub: string
+    pruneLight: string
+    pruneLightSub: string
+    pruneModerate: string
+    pruneModerateSub: string
+    pruneHeavy: string
+    pruneHeavySub: string
+    // Pruning frequency tiles
+    pruneNever: string
+    pruneNeverSub: string
+    pruneW: string       // "Weekly"
+    pruneWSub: string
+    pruneM: string       // "Monthly"
+    pruneMSub: string
+    pruneS: string       // "Seasonal"
+    pruneSSub: string
+    // ── § IV · Album ──
+    secAlbum: string
+    secAlbumTitle: string
+    secAlbumSubtitle: string
+    labelIcon: string
+    labelIconDesc: string
+    labelSown: string
+    labelSownDesc: string
+    labelNotes: string
+    labelNotesDesc: string
+    // ── Form options ──
+    formPot: string
+    formPotSub: string
+    formGround: string
+    formGroundSub: string
+    formSeedling: string
+    formSeedlingSub: string
+    formTree: string
+    formTreeSub: string
+    // ── Phase labels ──
+    phaseSeed: string
+    phaseSprout: string
+    phaseSeedling: string
+    phaseYoung: string
+    phaseEstablished: string
+    // ── Zone picker ──
+    newRoom: string
+    newRoomDesc: string
+    zonePlants: (n: number) => string
+    zoneAdvice: (species: string) => string
+    // ── Substrate options ──
+    substrateOptions: string[]
+    // ── Action bar ──
+    cancel: string
+    submitting: string
   }
 
   // ── Plant identification flow ───────────────────────────────────
