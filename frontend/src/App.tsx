@@ -26,6 +26,7 @@ const PlanningCalendarPage = lazy(() => import('./pages/calendar/PlanningCalenda
 const LayoutEditorPage = lazy(() => import('./pages/LayoutEditorPage'))
 const MapSettingsPage = lazy(() => import('./pages/MapSettingsPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
+const LogboekPage = lazy(() => import('./pages/LogboekPage'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -218,6 +219,14 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <PlanningCalendarPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/log"
+                element={
+                  <RequireAuth>
+                    <SuspenseWrapper><LogboekPage /></SuspenseWrapper>
                   </RequireAuth>
                 }
               />

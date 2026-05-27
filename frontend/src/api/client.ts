@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -222,6 +222,7 @@ export const care = {
   skip:           (plantId: number, careType: string, userId: number)                  => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } }),
   deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),
   log:            (plantId: number)                                                     => api<CareLogEntry[]>('GET', `/care/log/${plantId}`),
+  householdLog:   (limit = 50, offset = 0)                                              => api<RecentLogEntry[]>('GET', '/care/log', { params: { limit: String(limit), offset: String(offset) } }),
 }
 
 export const garden = {

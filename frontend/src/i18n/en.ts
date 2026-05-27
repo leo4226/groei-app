@@ -837,6 +837,12 @@ export const en: Translations = {
     },
   },
 
+  log: {
+    title: '§ Logbook',
+    empty: 'No care actions logged yet.',
+    loadMore: 'Load more',
+  },
+
   common: {
     loading: 'Loading…',
     notFound: 'Not found',

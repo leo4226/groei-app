@@ -837,6 +837,12 @@ export const nl: Translations = {
     }
   },
 
+  log: {
+    title: '§ Logboek',
+    empty: 'Nog geen verzorgingsacties gelogd.',
+    loadMore: 'Meer laden',
+  },
+
   common: {
     loading: 'Laden…',
     notFound: 'Niet gevonden',

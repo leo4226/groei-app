@@ -801,6 +801,12 @@ export type Translations = {
     }
   }
 
+  log: {
+    title: string
+    empty: string
+    loadMore: string
+  }
+
   common: {
     loading: string
     notFound: string

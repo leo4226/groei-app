@@ -681,7 +681,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
         )
       })}
       <div style={{ borderTop: '1px solid var(--color-border-soft)', padding: '12px 18px', display: 'flex', justifyContent: 'flex-end' }}>
-        <Link to="/plants" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-primary)', textDecoration: 'none' }}>{t.dashboard.actions.fullLog}</Link>
+        <Link to="/log" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-primary)', textDecoration: 'none' }}>{t.dashboard.actions.fullLog}</Link>
       </div>
     </div>
   )

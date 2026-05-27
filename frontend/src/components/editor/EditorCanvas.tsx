@@ -652,10 +652,6 @@ export default function EditorCanvas({
           <EditorDefs />
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
-          {!previewMode && zoneBbox && (
-            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} zones={zones} compact={isMobile} />
-          )}
-
           {/* Shadow casters — drawn below zones so garden zones overlay them */}
           {shadowCasters.map((sc) => {
             const isSelected = !previewMode && sc.id === selectedShadowCasterId
@@ -733,6 +729,11 @@ export default function EditorCanvas({
               zone={selectedZone}
               onHandlePointerDown={handleResizeHandlePointerDown}
             />
+          )}
+
+          {/* Dimension arrows — after zones so they render on top in SVG */}
+          {!previewMode && zoneBbox && (
+            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} zones={zones} compact={isMobile} />
           )}
 
           {/* Wall element placement overlay */}

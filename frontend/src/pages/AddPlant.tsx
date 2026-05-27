@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
 import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
@@ -21,7 +21,12 @@ import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
 import { icons } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import EntryBanner from '../components/add/EntryBanner'
 import { displayToIso, isoToDisplay } from '../utils/dateFormat'
+import Card from '../components/ui/Card'
+import FormRow from '../components/ui/FormRow'
+import TileGrid from '../components/ui/TileGrid'
+import SegmentedControl from '../components/ui/SegmentedControl'
 
 const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
 const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
@@ -97,6 +102,8 @@ export default function AddPlant() {
   const remountKey = useMemo(() => Date.now(), [prefill])
   const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
   const isFromIdentify = isIdentifyPrefill(prefill)
+  const initialRoute: 'database' | 'photo' = locState?.from === 'identify' ? 'photo' : 'database'
+  const [activeRoute, setActiveRoute] = useState<'database' | 'photo'>(initialRoute)
   const { locations, maps, addPlant, uploadPhoto } = useFloreren()
 
   // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
@@ -166,6 +173,8 @@ export default function AddPlant() {
   const [submitting, setSubmitting] = useState(false)
   const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
+  const [formType, setFormType] = useState('pot')
+  const [locationText, setLocationText] = useState('')
 
   const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
   const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
@@ -344,7 +353,7 @@ export default function AddPlant() {
         map_x: mapPos?.x,
         map_y: mapPos?.y,
         pot_size_cm: potSize ? parseInt(potSize) : undefined,
-        acquired_date: displayToIso(acquiredDateInput) || undefined,
+        acquired_date: acquiredDateInput.trim() || displayToIso(acquiredDateInput) || undefined,
         notes: notes.trim() || undefined,
         icon_key: iconKey ?? undefined,
         plant_type: isFromDatabase
@@ -370,6 +379,29 @@ export default function AddPlant() {
   }
 
   const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+
+  // Derived Latin name for species row (read-only, from prefill)
+  const latinName = useMemo(() => {
+    if (!prefill) return ''
+    if (isIdentifyPrefill(prefill)) return prefill.scientific_name
+    if ('latinName' in prefill) return prefill.latinName
+    return ''
+  }, [prefill])
+
+  const FORM_OPTIONS = [
+    { id: 'pot', glyph: '🪴', title: 'In pot', subtitle: 'Potted' },
+    { id: 'ground', glyph: '🌱', title: 'In de grond', subtitle: 'Bare' },
+    { id: 'seedling', glyph: '🌿', title: 'Zaailing', subtitle: 'Seedling' },
+    { id: 'tree', glyph: '🌳', title: 'Boomvorm', subtitle: 'Tree' },
+  ]
+
+  const PHASE_OPTIONS = [
+    { id: 'seed', label: 'Zaad' },
+    { id: 'sprout', label: 'Kiem' },
+    { id: 'seedling', label: 'Zaailing' },
+    { id: 'young', label: 'Jong' },
+    { id: 'established', label: 'Volwassen' },
+  ]
 
   // Entry-choice screen: shown when the user lands on Add Plant without a prior path choice.
   if (locState?.from == null) {
@@ -444,18 +476,128 @@ export default function AddPlant() {
   }
 
   return (
-    <div key={remountKey} className="px-4 pt-6 pb-8">
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
-        >
-          ←
-        </button>
-        <h1 className="text-2xl font-extrabold">{t.addPlant.title}</h1>
+    <div key={remountKey}>
+      {/* ——— Masthead ——— */}
+      <header className="border-b border-border">
+        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8">
+          {/* Navigation bar */}
+          <nav className="flex items-center gap-5 sm:gap-7 font-heading text-xs sm:text-sm text-text-muted">
+            <Link to="/dashboard" className="hover:text-primary transition-colors">Vandaag</Link>
+            <Link to="/maps" className="hover:text-primary transition-colors">Tuinkaart</Link>
+            <Link to="/collection" className="text-text font-semibold">Collectie</Link>
+            <Link to="/calendar" className="hover:text-primary transition-colors">Kalender</Link>
+            <Link to="/settings" className="hover:text-primary transition-colors">Instellingen</Link>
+          </nav>
+
+          {/* Title row + stepper */}
+          <div className="grid grid-cols-[1fr_auto] gap-8 lg:gap-12 items-end mt-5 sm:mt-7 mb-4 sm:mb-5">
+            {/* Title block */}
+            <div>
+              <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
+                <span className="text-primary">§</span>
+                <span>Collectie</span>
+                <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
+              </div>
+              <h1 className="font-heading text-4xl sm:text-5xl lg:text-7xl/[0.92] font-medium leading-[0.92] tracking-[-0.025em] m-0">
+                Toevoegen
+              </h1>
+              <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
+                Een nieuwe plant inpassen op haar beste plek.
+              </p>
+            </div>
+
+            {/* Stepper — hidden on smallest screens, shown as a horizontal bar below 640px */}
+            <div className="hidden sm:block border-l border-border pl-6 lg:pl-7 min-w-[280px] lg:min-w-[320px]">
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-3">
+                Stappen
+              </div>
+              <ul className="list-none m-0 p-0 space-y-1">
+                {/* Step I — done */}
+                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text">
+                  <span className="font-mono text-[10px] text-primary text-right">I</span>
+                  <span>Soort</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-primary">✓</span>
+                </li>
+                {/* Step II — on (active) */}
+                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text italic">
+                  <span className="font-mono text-[10px] text-secondary font-medium text-right">II</span>
+                  <span>Details</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-secondary">on</span>
+                </li>
+                {/* Step III — muted */}
+                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline border-b border-dashed border-border py-2 font-heading text-sm lg:text-base text-text-soft">
+                  <span className="font-mono text-[10px] text-text-muted text-right">III</span>
+                  <span>Planning</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">—</span>
+                </li>
+                {/* Step IV — muted */}
+                <li className="grid grid-cols-[24px_1fr_auto] lg:grid-cols-[28px_1fr_auto] gap-3 lg:gap-3.5 items-baseline py-2 font-heading text-sm lg:text-base text-text-soft">
+                  <span className="font-mono text-[10px] text-text-muted text-right">IV</span>
+                  <span>Foto's</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">—</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Stepper — horizontal mini-bar for mobile (< 640px) */}
+          <div className="sm:hidden flex items-center justify-center gap-2 pb-4 text-text-muted font-mono text-[10px] uppercase tracking-[0.18em]">
+            <span className="flex items-center gap-1"><span className="text-primary">I</span>·<span className="text-primary font-semibold">Soort</span></span>
+            <span className="text-text-soft">·</span>
+            <span className="flex items-center gap-1"><span className="text-secondary font-semibold">II</span>·<span className="text-secondary font-semibold">Details</span></span>
+            <span className="text-text-soft">·</span>
+            <span>III·Planning</span>
+            <span className="text-text-soft">·</span>
+            <span>IV·Foto's</span>
+          </div>
+        </div>
+      </header>
+
+      {/* ——— Entry Banner ——— */}
+      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6">
+        <EntryBanner
+          activeRoute={activeRoute}
+          onRouteChange={setActiveRoute}
+          speciesCount={2891}
+          selectedSpeciesName={
+            prefill
+              ? isIdentifyPrefill(prefill)
+                ? undefined // identify case: name shown in photo route instead
+                : 'latinName' in prefill
+                  ? (prefill as LocalPlant).dutchName
+                  : undefined
+              : undefined
+          }
+          selectedSpeciesScientific={
+            prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
+              ? (prefill as LocalPlant).latinName
+              : undefined
+          }
+          selectedSpeciesIcon={undefined}
+          photoPreview={photoPreview}
+          identifyResult={
+            isFromIdentify && isIdentifyPrefill(prefill)
+              ? {
+                  topMatch: {
+                    scientific_name: (prefill as import('../types').IdentifyCommitResult).scientific_name,
+                    common_names_nl: [(prefill as import('../types').IdentifyCommitResult).name_nl_suggested],
+                    common_names_en: [],
+                    confidence: 1,
+                    species_id: (prefill as import('../types').IdentifyCommitResult).species_id,
+                    thumbnail_url: null,
+                  },
+                }
+              : undefined
+          }
+        />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      {/* ——— Two-column form grid ——— */}
+      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8">
+          {/* LEFT: form content */}
+          <div className="space-y-6 min-w-0">
+            <form onSubmit={handleSubmit} className="space-y-5">
         {/* Photo */}
         <label className="card p-4 flex items-center gap-4 cursor-pointer">
           {photoPreview ? (
@@ -478,30 +620,81 @@ export default function AddPlant() {
           />
         </label>
 
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.nameLabel}</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Grote Monstera"
-            required
-            className={inputClass}
-          />
-        </div>
+        {/* ——— § I · Identity Card ——— */}
+        <Card
+          eyebrow="§ I · Identiteit"
+          title={<>Geef haar <em>een naam</em>.</>}
+        >
+          {/* Bijnaam */}
+          <FormRow label="Bijnaam" description="Hoe je haar noemt">
+            <div className="grid grid-cols-[1fr_120px] gap-3">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Lente-orchidee"
+                required
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+              />
+              <input
+                type="text"
+                readOnly
+                value={species ? species.replace(/[^a-zA-Z].*$/, '').slice(0, 4).toUpperCase() + '-' + String(Math.floor(Math.random() * 1000)).padStart(3, '0') : ''}
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-xs text-text-muted"
+                placeholder="---"
+              />
+            </div>
+          </FormRow>
 
-        {/* Species */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.speciesLabel}</label>
-          <input
-            type="text"
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            placeholder="Monstera deliciosa"
-            className={inputClass}
-          />
-        </div>
+          {/* Species */}
+          <FormRow label="Soort" description="Geslacht + soortnaam">
+            <div className="grid grid-cols-[1fr_1fr] gap-3">
+              <input
+                type="text"
+                value={species}
+                onChange={(e) => setSpecies(e.target.value)}
+                placeholder="Phalaenopsis"
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+              />
+              <input
+                type="text"
+                readOnly
+                value={latinName}
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading italic text-sm text-text-soft"
+                placeholder="Phalaenopsis amabilis"
+              />
+            </div>
+          </FormRow>
+
+          {/* Form type */}
+          <FormRow label="Vorm" description="Hoe ze groeit">
+            <TileGrid options={FORM_OPTIONS} value={formType} onChange={setFormType} />
+          </FormRow>
+
+          {/* Life phase */}
+          <FormRow label="Levensfase" description="Huidig groeistadium">
+            <SegmentedControl options={PHASE_OPTIONS} value={phase} onChange={setPhase} />
+          </FormRow>
+
+          {/* Acquisition */}
+          <FormRow label="Verkregen" description="Wanneer + waar">
+            <div className="grid grid-cols-[1fr_1fr] gap-3">
+              <input
+                type="date"
+                value={acquiredDateInput}
+                onChange={(e) => setAcquiredDateInput(e.target.value)}
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+              />
+              <input
+                type="text"
+                value={locationText}
+                onChange={(e) => setLocationText(e.target.value)}
+                placeholder="Tuincentrum Overvecht"
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+              />
+            </div>
+          </FormRow>
+        </Card>
 
         {/* Icon */}
         <div>
@@ -511,27 +704,6 @@ export default function AddPlant() {
             baseIconRef.current = null
             setIconKey(key)
           }} />
-        </div>
-
-        {/* Growth phase */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.growthPhaseLabel}</label>
-          <div className="flex flex-wrap gap-1.5">
-            {(['seed', 'sprout', 'seedling', 'young', 'established'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPhase(p)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-                  phase === p
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-text-muted hover:border-text-muted'
-                }`}
-              >
-                {t.editPlant[`phase${p.charAt(0).toUpperCase() + p.slice(1)}` as keyof typeof t.editPlant] as string}
-              </button>
-            ))}
-          </div>
         </div>
 
         {isFromDatabase && (
@@ -589,30 +761,16 @@ export default function AddPlant() {
           </div>
         </div>
 
-        {/* Pot size & Acquired */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.potSizeLabel}</label>
-            <input
-              type="number"
-              value={potSize}
-              onChange={(e) => setPotSize(e.target.value)}
-              placeholder="15"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.acquiredLabel}</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              value={acquiredDateInput}
-              onChange={(e) => setAcquiredDateInput(e.target.value)}
-              placeholder="DD-MM-YYYY"
-              className={inputClass}
-            />
-          </div>
+        {/* Pot size */}
+        <div>
+          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.potSizeLabel}</label>
+          <input
+            type="number"
+            value={potSize}
+            onChange={(e) => setPotSize(e.target.value)}
+            placeholder="15"
+            className={inputClass}
+          />
         </div>
 
         {/* Sown date */}
@@ -699,6 +857,19 @@ export default function AddPlant() {
           )}
         </button>
       </form>
+          </div>
+
+          {/* RIGHT: Calendar preview + Species reference placeholder */}
+          <div className="space-y-6">
+            <div className="bg-paper border border-border rounded-xl p-5 text-text-muted text-sm italic">
+              § V · Kalender — preview komt in latere fase
+            </div>
+            <div className="bg-paper border border-border rounded-xl p-5 text-text-muted text-sm italic">
+              Soortprofiel — komt in latere fase
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

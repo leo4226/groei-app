@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
-from models import CareAction, CareLogOut
+from models import CareAction, CareLogOut, RecentLogEntry
 from services.scheduling import calculate_next_due
 from datetime import date, datetime, timedelta
+from auth import get_current_account
 
 router = APIRouter(tags=["care"])
 
@@ -114,3 +115,33 @@ async def get_care_log(plant_id: int, db = Depends(db_dep)):
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
+
+
+@router.get("/care/log", response_model=list[RecentLogEntry])
+async def get_household_care_log(
+    account = Depends(get_current_account),
+    db = Depends(db_dep),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    rows = await db.execute_fetchall("""
+        SELECT cl.id, cl.plant_id, p.name as plant_name, p.icon_key,
+               cl.care_type, cl.done_at, cl.notes
+        FROM care_log cl
+        JOIN plants p ON cl.plant_id = p.id
+        WHERE cl.skipped = 0 AND p.household_id = ?
+        ORDER BY cl.done_at DESC
+        LIMIT ? OFFSET ?
+    """, (account["household_id"], limit, offset))
+    return [
+        RecentLogEntry(
+            id=r["id"],
+            plant_id=r["plant_id"],
+            plant_name=r["plant_name"],
+            icon_key=r["icon_key"],
+            care_type=r["care_type"],
+            done_at=str(r["done_at"]),
+            notes=r["notes"],
+        )
+        for r in rows
+    ]
