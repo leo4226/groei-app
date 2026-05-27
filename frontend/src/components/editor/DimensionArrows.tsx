@@ -1,4 +1,4 @@
-import type { CornerCut, CornerPosition } from '../../types'
+import type { CornerCut } from '../../types'
 
 interface Props {
   zoneMinX: number
@@ -80,91 +80,85 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
     return <path d={path} stroke="currentColor" strokeWidth={1} fill="none" />
   }
 
-  // ── Compute text width for compact label background ──
-  const labelText = `${wM} × ${hM} m`
-  const labelWidth = labelText.length * 6.5 // approximate px width at 10px font
-
-  if (compact) {
-    // Compact mode: render dimension labels INSIDE the zone bbox
-    const labelX = zoneMinX + 8
-    const labelY = zoneMinY + 16
-    return (
-      <g pointerEvents="none" style={{ fontFamily: 'system-ui, sans-serif' }}>
-        {/* Main dimension label */}
-        <rect
-          x={labelX - 4} y={labelY - 12}
-          width={labelWidth + 8} height={16}
-          rx={3} ry={3}
-          fill="#1a1a2e" opacity={0.7}
-        />
-        <text x={labelX} y={labelY}
-          textAnchor="start" dominantBaseline="auto"
-          fill="white" fontSize={10} fontWeight={600}>
-          {wM} × {hM} m
+  return (
+    <g pointerEvents="none" style={{ fontFamily: 'system-ui, sans-serif' }}>
+      {/* ══════ Outside dimension arrows (always shown) ══════ */}
+      <g opacity={compact ? 0.45 : 0.45}>
+        {/* Top: zone width */}
+        {renderArrowLine(
+          zoneMinX, zoneMinY - 14, zoneMaxX, zoneMinY - 14,
+          ARROW_L, ARROW_INSET, arrowHead,
+        )}
+        <text x={(zoneMinX + zoneMaxX) / 2} y={zoneMinY - 14 - TEXT_GAP}
+          textAnchor="middle" dominantBaseline="auto"
+          fill="currentColor" fontSize={10} fontWeight={500}>
+          {wM} m
         </text>
 
-        {/* Corner cut labels inside */}
+        {/* Left: zone height */}
+        {renderArrowLine(
+          zoneMinX - 14, zoneMinY, zoneMinX - 14, zoneMaxY,
+          ARROW_L, ARROW_INSET, arrowHead,
+        )}
+        <text x={zoneMinX - 14 - TEXT_GAP} y={(zoneMinY + zoneMaxY) / 2}
+          textAnchor="end" dominantBaseline="central"
+          fill="currentColor" fontSize={10} fontWeight={500}
+          transform={`rotate(-90, ${zoneMinX - 14 - TEXT_GAP}, ${(zoneMinY + zoneMaxY) / 2})`}>
+          {hM} m
+        </text>
+
+        {/* ══════ Corner cut arrows ══════ */}
         {cutArrows.map((a, i) => (
           <g key={i} opacity={0.6}>
-            <text x={a.hx1 + 4} y={a.hy1 + 12}
-              textAnchor="start" dominantBaseline="auto"
-              fill="white" fontSize={8} fontWeight={600}>
-              {pxPerM > 0 ? (a.wPx / pxPerM).toFixed(1) : '?'}×{pxPerM > 0 ? (a.hPx / pxPerM).toFixed(1) : '?'}
+            {/* Horizontal (width of cut) */}
+            {renderArrowLine(a.hx1, a.hy1, a.hx2, a.hy2, 4, 4, arrowHead)}
+            <text x={(a.hx1 + a.hx2) / 2} y={a.hy1 - 5}
+              textAnchor="middle" dominantBaseline="auto"
+              fill="currentColor" fontSize={8} fontWeight={500}>
+              {pxPerM > 0 ? (a.wPx / pxPerM).toFixed(1) : '?'} m
+            </text>
+
+            {/* Vertical (height of cut) */}
+            {renderArrowLine(a.vx1, a.vy1, a.vx2, a.vy2, 4, 4, arrowHead)}
+            <text x={a.vx1 - 5} y={(a.vy1 + a.vy2) / 2}
+              textAnchor="end" dominantBaseline="central"
+              fill="currentColor" fontSize={8} fontWeight={500}
+              transform={`rotate(-90, ${a.vx1 - 5}, ${(a.vy1 + a.vy2) / 2})`}>
+              {pxPerM > 0 ? (a.hPx / pxPerM).toFixed(1) : '?'} m
             </text>
           </g>
         ))}
       </g>
-    )
-  }
 
-  return (
-    <g pointerEvents="none" opacity={0.45} style={{ fontFamily: 'system-ui, sans-serif' }}>
-      {/* ══════ Main dimension lines ══════ */}
-
-      {/* Top: zone width */}
-      {renderArrowLine(
-        zoneMinX, zoneMinY - 14, zoneMaxX, zoneMinY - 14,
-        ARROW_L, ARROW_INSET, arrowHead,
-      )}
-      <text x={(zoneMinX + zoneMaxX) / 2} y={zoneMinY - 14 - TEXT_GAP}
-        textAnchor="middle" dominantBaseline="auto"
-        fill="currentColor" fontSize={10} fontWeight={500}>
-        {wM} m
-      </text>
-
-      {/* Left: zone height */}
-      {renderArrowLine(
-        zoneMinX - 14, zoneMinY, zoneMinX - 14, zoneMaxY,
-        ARROW_L, ARROW_INSET, arrowHead,
-      )}
-      <text x={zoneMinX - 14 - TEXT_GAP} y={(zoneMinY + zoneMaxY) / 2}
-        textAnchor="end" dominantBaseline="central"
-        fill="currentColor" fontSize={10} fontWeight={500}
-        transform={`rotate(-90, ${zoneMinX - 14 - TEXT_GAP}, ${(zoneMinY + zoneMaxY) / 2})`}>
-        {hM} m
-      </text>
-
-      {/* ══════ Corner cut arrows ══════ */}
-      {cutArrows.map((a, i) => (
-        <g key={i} opacity={0.6}>
-          {/* Horizontal (width of cut) */}
-          {renderArrowLine(a.hx1, a.hy1, a.hx2, a.hy2, 4, 4, arrowHead)}
-          <text x={(a.hx1 + a.hx2) / 2} y={a.hy1 - 5}
-            textAnchor="middle" dominantBaseline="auto"
-            fill="currentColor" fontSize={8} fontWeight={500}>
-            {pxPerM > 0 ? (a.wPx / pxPerM).toFixed(1) : '?'} m
-          </text>
-
-          {/* Vertical (height of cut) */}
-          {renderArrowLine(a.vx1, a.vy1, a.vx2, a.vy2, 4, 4, arrowHead)}
-          <text x={a.vx1 - 5} y={(a.vy1 + a.vy2) / 2}
-            textAnchor="end" dominantBaseline="central"
-            fill="currentColor" fontSize={8} fontWeight={500}
-            transform={`rotate(-90, ${a.vx1 - 5}, ${(a.vy1 + a.vy2) / 2})`}>
-            {pxPerM > 0 ? (a.hPx / pxPerM).toFixed(1) : '?'} m
-          </text>
+      {/* ══════ Per-zone compact labels (compact mode only) ══════ */}
+      {compact && zones.length > 0 && (
+        <g opacity={0.85}>
+          {zones.map((z, i) => {
+            const zW = pxPerM > 0 && z.width > 0 ? (z.width / pxPerM).toFixed(1) : null
+            const zH = pxPerM > 0 && z.height > 0 ? (z.height / pxPerM).toFixed(1) : null
+            if (!zW || !zH) return null
+            const labelText = `${zW}×${zH}`
+            const labelWidth = labelText.length * 6
+            const lx = z.x + 6
+            const ly = z.y + 14
+            return (
+              <g key={i}>
+                <rect
+                  x={lx - 3} y={ly - 10}
+                  width={labelWidth + 6} height={13}
+                  rx={2} ry={2}
+                  fill="#1a1a2e" opacity={0.65}
+                />
+                <text x={lx} y={ly}
+                  textAnchor="start" dominantBaseline="auto"
+                  fill="white" fontSize={9} fontWeight={600}>
+                  {zW}×{zH}
+                </text>
+              </g>
+            )
+          })}
         </g>
-      ))}
+      )}
     </g>
   )
 }
@@ -175,7 +169,7 @@ function renderArrowLine(
   x1: number, y1: number,
   x2: number, y2: number,
   arrowL: number, arrowInset: number,
-  arrowHead: (d: string) => JSX.Element,
+  arrowHead: (d: string) => React.ReactNode,
 ) {
   const horizontal = y1 === y2
   const min = horizontal ? Math.min(x1, x2) : Math.min(y1, y2)

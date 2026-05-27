@@ -25,6 +25,7 @@ export default function LogboekPage() {
   const fetchLog = useCallback(async (offset: number, replace: boolean) => {
     setLoading(true)
     const batch = await care.householdLog(PAGE_SIZE, offset)
+    console.log('LOG PAGE: batch=', batch.length, 'entries')
     if (replace) {
       setEntries(batch)
     } else {

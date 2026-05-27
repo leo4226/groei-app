@@ -102,21 +102,6 @@ async def delete_care_schedule(schedule_id: int, db = Depends(db_dep)):
     return {"ok": True}
 
 
-@router.get("/care/log/{plant_id}", response_model=list[CareLogOut])
-async def get_care_log(plant_id: int, db = Depends(db_dep)):
-    cursor = await db.execute(
-        """SELECT cl.*, u.name as done_by_name
-           FROM care_log cl
-           LEFT JOIN users u ON cl.done_by = u.id
-           WHERE cl.plant_id = ?
-           ORDER BY cl.done_at DESC
-           LIMIT 50""",
-        (plant_id,),
-    )
-    rows = await cursor.fetchall()
-    return [dict(row) for row in rows]
-
-
 @router.get("/care/log", response_model=list[RecentLogEntry])
 async def get_household_care_log(
     account = Depends(get_current_account),
@@ -145,3 +130,18 @@ async def get_household_care_log(
         )
         for r in rows
     ]
+
+
+@router.get("/care/log/{plant_id}", response_model=list[CareLogOut])
+async def get_care_log(plant_id: int, db = Depends(db_dep)):
+    cursor = await db.execute(
+        """SELECT cl.*, u.name as done_by_name
+           FROM care_log cl
+           LEFT JOIN users u ON cl.done_by = u.id
+           WHERE cl.plant_id = ?
+           ORDER BY cl.done_at DESC
+           LIMIT 50""",
+        (plant_id,),
+    )
+    rows = await cursor.fetchall()
+    return [dict(row) for row in rows]

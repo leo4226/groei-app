@@ -15,21 +15,22 @@ const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
 }
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
-import { PLANT_SUN_PROFILES } from '../utils/plantSunRequirements'
 import type { CareType, CareScheduleInput } from '../types'
 import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
 import { icons } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 import EntryBanner from '../components/add/EntryBanner'
-import { displayToIso, isoToDisplay } from '../utils/dateFormat'
+import { displayToIso } from '../utils/dateFormat'
 import Card from '../components/ui/Card'
 import FormRow from '../components/ui/FormRow'
 import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
-
-const OUTDOOR_KEYWORDS = ['tuin', 'balkon', 'terras', 'buiten', 'kas', 'moestuin']
-const isTuinLoc = (name: string) => OUTDOOR_KEYWORDS.some(k => name.toLowerCase().includes(k))
+import ChipCluster from '../components/ui/ChipCluster'
+import ZonePicker, { DEFAULT_ZONES } from '../components/add/ZonePicker'
+import FrequencySlider from '../components/add/FrequencySlider'
+import CalendarPreview from '../components/add/CalendarPreview'
+import SpeciesReference from '../components/add/SpeciesReference'
 
 type AddPlantLocState = {
   from?: 'identify' | 'manual' | 'pick'
@@ -75,6 +76,31 @@ const WATER_NEEDS_TO_DAYS: Record<string, number> = {
   hoog: 3,
 }
 
+/** Map database sunRequirement values to TileGrid IDs. */
+const SUN_DB_TO_TILE: Record<string, string> = {
+  shade: 'shade',
+  partial_sun: 'indirect',
+  full_sun: 'full-sun',
+}
+
+/** Reverse: map TileGrid sunRequirement IDs back to database values. */
+const SUN_TILE_TO_DB: Record<string, string> = {
+  shade: 'shade',
+  indirect: 'partial_sun',
+  'full-sun': 'full_sun',
+}
+
+/** Map database plant type to form type. */
+const TYPE_TO_FORM: Record<string, string> = {
+  boom: 'tree',
+  heester: 'tree',
+  gras: 'pot',
+  bol: 'pot',
+  vaste_plant: 'pot',
+  eenjarig: 'pot',
+  klimmer: 'pot',
+}
+
 /** Build an initial schedules map, optionally prefilled from a LocalPlant. */
 function buildInitialSchedules(prefill: unknown): Record<CareType, { enabled: boolean; days: number }> {
   const initial: Record<string, { enabled: boolean; days: number }> = {}
@@ -104,7 +130,8 @@ export default function AddPlant() {
   const isFromIdentify = isIdentifyPrefill(prefill)
   const initialRoute: 'database' | 'photo' = locState?.from === 'identify' ? 'photo' : 'database'
   const [activeRoute, setActiveRoute] = useState<'database' | 'photo'>(initialRoute)
-  const { locations, maps, addPlant, uploadPhoto } = useFloreren()
+  const [showDetails, setShowDetails] = useState(false)
+  const { maps, addPlant, uploadPhoto } = useFloreren()
 
   // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
   const fromMapState = (location.state as any)?.fromMap
@@ -128,9 +155,9 @@ export default function AddPlant() {
           : ''
       : ''
   )
-  const [locationId, setLocationId] = useState<number | undefined>()
+  const [locationId] = useState<number | undefined>()
   const [area, setArea] = useState<'tuin' | 'huis' | null>(null)
-  const [potSize, setPotSize] = useState('')
+  const [potSize] = useState('')
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
   const [notes, setNotes] = useState(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
@@ -139,7 +166,7 @@ export default function AddPlant() {
   )
   const [sunRequirement, setSunRequirement] = useState<string | null>(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
-      ? (prefill as LocalPlant).sunRequirement
+      ? SUN_DB_TO_TILE[(prefill as LocalPlant).sunRequirement] ?? (prefill as LocalPlant).sunRequirement
       : null
   )
   const [iconKey, setIconKey] = useState<string | null>(
@@ -173,11 +200,23 @@ export default function AddPlant() {
   const [submitting, setSubmitting] = useState(false)
   const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
-  const [formType, setFormType] = useState('pot')
+  const [formType, setFormType] = useState(
+    prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
+      ? TYPE_TO_FORM[(prefill as LocalPlant).type] ?? 'pot'
+      : 'pot'
+  )
   const [locationText, setLocationText] = useState('')
+  const [potMaterial, setPotMaterial] = useState('terracotta')
+  const [potDiameter, setPotDiameter] = useState('')
+  const [potHeight, setPotHeight] = useState('')
+  const [hasDrainage, setHasDrainage] = useState(false)
+  const [substrate, setSubstrate] = useState<string[]>([])
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [waterVolume, setWaterVolume] = useState('')
+  const [feedingSchedule, setFeedingSchedule] = useState('monthly')
+  const [pruningType, setPruningType] = useState('none')
+  const [pruningFrequency, setPruningFrequency] = useState('never')
 
-  const tuinLocs = useMemo(() => locations.filter(l => isTuinLoc(l.name)), [locations])
-  const huisLocs = useMemo(() => locations.filter(l => !isTuinLoc(l.name)), [locations])
   const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
   const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
   const isOutdoor = area === 'tuin'
@@ -188,21 +227,6 @@ export default function AddPlant() {
     return {
       x: Math.round((x0 + pad + Math.random() * (w - pad * 2)) * 10) / 10,
       y: Math.round((y0 + pad + Math.random() * (h - pad * 2)) * 10) / 10,
-    }
-  }
-
-  function toggleArea(target: 'tuin' | 'huis') {
-    if (area === target) {
-      setArea(null)
-      setLocationId(undefined)
-      return
-    }
-    setArea(target)
-    const pool = target === 'tuin' ? tuinLocs : huisLocs
-    if (pool.length > 0) {
-      setLocationId(pool[0].id)
-    } else {
-      setLocationId(undefined)
     }
   }
 
@@ -267,7 +291,8 @@ export default function AddPlant() {
       setName(p.dutchName)
       setSpecies(p.latinName)
       setNotes(p.amsterdamNotes ?? '')
-      setSunRequirement(p.sunRequirement ?? null)
+      setSunRequirement(SUN_DB_TO_TILE[p.sunRequirement] ?? p.sunRequirement ?? null)
+      setFormType(TYPE_TO_FORM[p.type] ?? 'pot')
       // Try to auto-match an icon from the catalog
       if (iconCatalog.length > 0) {
         const matchedId = findMatchingIcon(p, iconCatalog)
@@ -359,7 +384,7 @@ export default function AddPlant() {
         plant_type: isFromDatabase
           ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type)
           : derivedPlantType,
-        sun_requirement: sunRequirement ?? undefined,
+        sun_requirement: sunRequirement ? (SUN_TILE_TO_DB[sunRequirement] ?? sunRequirement) : undefined,
         phase: phase as any,
         sown_date: displayToIso(sownDateInput) || undefined,
         care_schedules: careSchedules,
@@ -553,6 +578,30 @@ export default function AddPlant() {
         </div>
       </header>
 
+      {/* ——— BASIS / DETAILS Toggle ——— */}
+      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDetails(false)}
+            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
+              !showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
+            }`}
+          >
+            BASIS
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDetails(true)}
+            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
+              showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
+            }`}
+          >
+            DETAILS
+          </button>
+        </div>
+      </div>
+
       {/* ——— Entry Banner ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6">
         <EntryBanner
@@ -696,177 +745,342 @@ export default function AddPlant() {
           </FormRow>
         </Card>
 
-        {/* Icon */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.iconLabel}</label>
-          <IconPicker value={iconKey} onChange={(key) => {
-            userPickedIconRef.current = true
-            baseIconRef.current = null
-            setIconKey(key)
-          }} />
-        </div>
+        {/* ——— § II · Placement Card ——— */}
+        {showDetails && (
+        <Card
+          eyebrow="§ II · Plaatsing"
+          title={<>Kies haar <em>beste plek.</em></>}
+          subtitle="Licht, pot en substraat bepalen hoe ze groeit."
+        >
+          {/* Zone picker */}
+          <FormRow label="Zone" description="Waar ze komt te staan">
+            <ZonePicker
+              value={selectedZoneId}
+              onChange={(zoneId) => {
+                setSelectedZoneId(zoneId || null)
+                if (!zoneId) return
+                const zone = DEFAULT_ZONES.find(z => z.id === zoneId)
+                if (zone) {
+                  setArea(zone.isIndoor ? 'huis' : 'tuin')
+                }
+              }}
+              advice={species ? `Tip: ${species} staat het liefst op een lichte plek zonder direct zonlicht.` : undefined}
+            />
+          </FormRow>
 
-        {isFromDatabase && (
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
-            <span className="text-base">📋</span>
-            <span>{t.editPlant.databasePrefill}</span>
+          {/* Light measurement */}
+          <FormRow label="Lichtmeting" description="Hoeveel licht ze krijgt">
+            <TileGrid
+              options={[
+                { id: 'dark', title: 'Donker', subtitle: '≤500 lx', glyph: '🌑' },
+                { id: 'shade', title: 'Schaduw', subtitle: '0.5–2k', glyph: '🌒' },
+                { id: 'indirect', title: 'Indirect', subtitle: '2–10k', glyph: '🌓' },
+                { id: 'bright', title: 'Helder', subtitle: '10–25k', glyph: '🌔' },
+                { id: 'full-sun', title: 'Vol zon', subtitle: '>25k', glyph: '🌕' },
+              ]}
+              value={sunRequirement}
+              onChange={(v) => setSunRequirement(v || null)}
+            />
+          </FormRow>
+
+          {/* Pot material */}
+          <FormRow label="Pot" description="Materiaal + afmetingen">
+            <TileGrid
+              options={[
+                { id: 'terracotta', title: 'Terracotta', subtitle: 'Ademt', glyph: '🏺' },
+                { id: 'plastic', title: 'Kunststof', subtitle: 'Licht', glyph: '🪣' },
+                { id: 'ceramic', title: 'Keramiek', subtitle: 'Geglazuurd', glyph: '🫖' },
+                { id: 'basket', title: 'Mand·vlecht', subtitle: 'Luchtig', glyph: '🧺' },
+              ]}
+              value={potMaterial}
+              onChange={setPotMaterial}
+            />
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Diameter (cm)</label>
+                <input
+                  type="number"
+                  value={potDiameter || ''}
+                  onChange={(e) => setPotDiameter(e.target.value)}
+                  placeholder="⌀ 18"
+                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Hoogte (cm)</label>
+                <input
+                  type="number"
+                  value={potHeight || ''}
+                  onChange={(e) => setPotHeight(e.target.value)}
+                  placeholder="↑ 22"
+                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasDrainage}
+                onChange={(e) => setHasDrainage(e.target.checked)}
+                className="sr-only peer"
+              />
+              <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all">
+                {hasDrainage ? '✓ ' : ''}Heeft drainagegat
+              </span>
+            </label>
+          </FormRow>
+
+          {/* Substrate */}
+          <FormRow
+            label="Substraat"
+            description="Waar ze in staat"
+            help="Tip: orchideeën houden van luchtige bast, geen potgrond."
+          >
+            <ChipCluster
+              options={['Orchideeënbast', 'Universeel', 'Kokosvezel', 'Perliet', 'Sphagnum', 'Akadama', 'Kalkrijk', 'Zandig', '+ Anders']}
+              selected={substrate}
+              onChange={setSubstrate}
+            />
+          </FormRow>
+        </Card>
+        )}
+
+        {/* ——— § III · Care Card ——— */}
+        {!showDetails ? (
+          <Card
+            eyebrow="§ III · Verzorging"
+            title={<>Haar <em>routine.</em></>}
+          >
+            {/* Water gift frequency */}
+            <FormRow label="Watergift" description="Hoe vaak ze dorst heeft">
+              <FrequencySlider
+                label="Watergift"
+                value={schedules.water.days}
+                onChange={(v) => {
+                  setSchedules(prev => ({
+                    ...prev,
+                    water: { ...prev.water, days: v },
+                  }))
+                }}
+                presets={[
+                  { label: 'Soms', value: 14 },
+                  { label: 'Wekelijks', value: 7 },
+                  { label: '2× p/w', value: 3 },
+                  { label: 'Dagelijks', value: 1 },
+                ]}
+              />
+            </FormRow>
+
+            {/* Water volume */}
+            <FormRow label="Volume" description="Hoeveel per gift">
+              <div className="flex items-center gap-3 mt-1">
+                <input
+                  type="number"
+                  value={waterVolume || ''}
+                  onChange={(e) => setWaterVolume(e.target.value)}
+                  placeholder="250"
+                  className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
+                />
+                <span className="text-sm text-text-soft">ml per gift</span>
+              </div>
+            </FormRow>
+          </Card>
+        ) : (
+          <Card
+            eyebrow="§ III · Verzorging"
+            title={<>Haar <em>routine.</em></>}
+            subtitle="Water, voeding en onderhoud."
+          >
+            {/* Water gift frequency */}
+            <FormRow label="Watergift" description="Hoe vaak ze dorst heeft">
+              <FrequencySlider
+                label="Watergift"
+                value={schedules.water.days}
+                onChange={(v) => {
+                  setSchedules(prev => ({
+                    ...prev,
+                    water: { ...prev.water, days: v },
+                  }))
+                }}
+                presets={[
+                  { label: 'Soms', value: 14 },
+                  { label: 'Wekelijks', value: 7 },
+                  { label: '2× p/w', value: 3 },
+                  { label: 'Dagelijks', value: 1 },
+                ]}
+              />
+            </FormRow>
+
+            {/* Water volume */}
+            <FormRow label="Volume" description="Hoeveel per gift">
+              <div className="flex items-center gap-3 mt-1">
+                <input
+                  type="number"
+                  value={waterVolume || ''}
+                  onChange={(e) => setWaterVolume(e.target.value)}
+                  placeholder="250"
+                  className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
+                />
+                <span className="text-sm text-text-soft">ml per gift</span>
+              </div>
+            </FormRow>
+
+            {/* Feeding schedule */}
+            <FormRow label="Voeding" description="Extraatjes voor groei">
+              <TileGrid
+                options={[
+                  { id: 'weekly', title: 'Wekelijks', subtitle: '1× p/w', glyph: '💪' },
+                  { id: 'monthly', title: 'Maandelijks', subtitle: '1× p/m', glyph: '📅' },
+                  { id: 'seasonal', title: 'Seizoens', subtitle: '4× p/j', glyph: '🍂' },
+                  { id: 'optional', title: 'Optioneel', subtitle: 'Alleen nodig', glyph: '✨' },
+                ]}
+                value={feedingSchedule}
+                onChange={setFeedingSchedule}
+              />
+            </FormRow>
+
+            {/* Pruning type */}
+            <FormRow label="Type snoei" description="Hoe je haar trimt">
+              <TileGrid
+                options={[
+                  { id: 'none', title: 'Geen', subtitle: 'Bloeit natuurlijk', glyph: '🌿' },
+                  { id: 'light', title: 'Knippen', subtitle: 'Dode bladeren', glyph: '✂️' },
+                  { id: 'moderate', title: 'Snoeien', subtitle: 'Vorm behouden', glyph: '✂️' },
+                  { id: 'heavy', title: 'Terugsnoeien', subtitle: 'Nieuwe groei', glyph: '🪓' },
+                ]}
+                value={pruningType}
+                onChange={setPruningType}
+              />
+            </FormRow>
+
+            {/* Pruning frequency */}
+            <FormRow label="Snoei frequentie" description="Regelmaat">
+              <TileGrid
+                options={[
+                  { id: 'never', title: 'Nooit', subtitle: 'Vormvast', glyph: '—' },
+                  { id: 'weekly', title: 'Wekelijks', subtitle: 'Onderhoud', glyph: '📅' },
+                  { id: 'monthly', title: 'Maandelijks', subtitle: 'Check-up', glyph: '📅' },
+                  { id: 'seasonal', title: 'Seizoens', subtitle: '2-4× p/j', glyph: '🍂' },
+                ]}
+                value={pruningFrequency}
+                onChange={setPruningFrequency}
+              />
+            </FormRow>
+          </Card>
+        )}
+
+        {/* ——— § IV · Album Card ——— */}
+        {showDetails ? (
+          <Card
+            eyebrow="§ IV · Album"
+            title={<>Haar <em>verhaal.</em></>}
+            subtitle="Notities, data en herinneringen."
+          >
+            {/* Icon */}
+            <FormRow label="Icoon" description="Kies een emoji">
+              <IconPicker value={iconKey} onChange={(key) => {
+                userPickedIconRef.current = true
+                baseIconRef.current = null
+                setIconKey(key)
+              }} />
+            </FormRow>
+
+            {isFromDatabase && (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
+                <span className="text-base">📋</span>
+                <span>{t.editPlant.databasePrefill}</span>
+              </div>
+            )}
+
+            {/* Sown date */}
+            <FormRow label="Gezaaid" description="Wanneer begon haar leven?">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={sownDateInput}
+                onChange={(e) => setSownDateInput(e.target.value)}
+                placeholder="DD-MM-YYYY"
+                className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
+              />
+            </FormRow>
+
+            {/* Notes */}
+            <FormRow label="Notities" description="Alles wat je wilt onthouden">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t.editPlant.notesPlaceholder}
+                rows={3}
+                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-body text-sm resize-none"
+              />
+            </FormRow>
+          </Card>
+        ) : (
+          <div className="card p-4 flex items-center gap-4">
+            <span className="font-mono text-[10px] text-text-muted uppercase tracking-[0.15em]">Icoon</span>
+            <IconPicker value={iconKey} onChange={(key) => {
+              userPickedIconRef.current = true
+              baseIconRef.current = null
+              setIconKey(key)
+            }} />
           </div>
         )}
 
-        {/* Sun requirement */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sunRequirementLabel}</label>
-          <div className="flex gap-2">
-            {PLANT_SUN_PROFILES.map((profile) => (
-              <button
-                key={profile.id}
-                type="button"
-                onClick={() => setSunRequirement(sunRequirement === profile.id ? null : profile.id)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl border text-xs font-medium transition-colors ${
-                  sunRequirement === profile.id
-                    ? 'border-transparent text-white'
-                    : 'border-border text-text-muted hover:border-text-muted'
-                }`}
-                style={sunRequirement === profile.id ? { backgroundColor: profile.color } : undefined}
-              >
-                <span className="text-lg">{profile.emoji}</span>
-                <span>{profile.id === 'full_sun' ? t.editPlant.sunFull : profile.id === 'partial_sun' ? t.editPlant.sunPartial : t.editPlant.sunShade}</span>
-              </button>
-            ))}
-          </div>
+        {/* Action Bar */}
+        <div className="sticky bottom-0 bg-bg/95 backdrop-blur border-t border-border mt-6 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 py-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="font-heading font-medium text-sm px-4 py-3 rounded-xl border border-border text-text-soft hover:text-text hover:border-text-muted transition-colors"
+          >
+            ← Annuleren
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            className="font-heading font-bold text-base px-8 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm"
+          >
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Toevoegen...
+              </span>
+            ) : (
+              `${t.addPlant.title} ${name ? `— ${name}` : ''}`
+            )}
+          </button>
         </div>
-
-        {/* Location */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.locationLabel}</label>
-          <div className="flex gap-3">
-            {([
-              tuinMap && { area: 'tuin' as const, label: t.editPlant.garden, emoji: '🌿' },
-              huisMap && { area: 'huis' as const, label: t.editPlant.house, emoji: '🏠' },
-            ].filter(Boolean) as { area: 'tuin' | 'huis'; label: string; emoji: string }[]).map(({ area: btnArea, label, emoji }) => (
-              <button
-                key={btnArea}
-                type="button"
-                onClick={() => toggleArea(btnArea)}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border text-sm font-medium transition-colors ${
-                  area === btnArea
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-text-muted hover:border-text-muted'
-                }`}
-              >
-                <span className="text-2xl">{emoji}</span>
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Pot size */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.potSizeLabel}</label>
-          <input
-            type="number"
-            value={potSize}
-            onChange={(e) => setPotSize(e.target.value)}
-            placeholder="15"
-            className={inputClass}
-          />
-        </div>
-
-        {/* Sown date */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.sownDateLabel}</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            value={sownDateInput}
-            onChange={(e) => setSownDateInput(e.target.value)}
-            placeholder="DD-MM-YYYY"
-            className={inputClass}
-          />
-        </div>
-
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-text-muted mb-1.5">{t.editPlant.notesLabel}</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={t.editPlant.notesPlaceholder}
-            rows={2}
-            className={`${inputClass} resize-none`}
-          />
-        </div>
-
-        {/* Care Schedules */}
-        <div>
-          <h2 className="text-lg font-bold mb-1">{t.editPlant.careScheduleTitle}</h2>
-          <p className="text-xs text-text-muted mb-3">{t.editPlant.careScheduleDesc}</p>
-          <div className="space-y-2">
-            {(Object.entries(CARE_TYPE_INFO) as [CareType, typeof CARE_TYPE_INFO[CareType]][]).map(([type, info]) => {
-              const sched = schedules[type]
-              const defaultDays = isOutdoor ? info.defaultOutdoor : info.defaultIndoor
-              if (defaultDays === 0 && !sched.enabled) return null
-
-              return (
-                <div key={type} className={`card p-3 transition-all ${sched.enabled ? 'border-primary/20' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={sched.enabled}
-                        onChange={() => toggleSchedule(type)}
-                        className="w-5 h-5 rounded accent-primary"
-                      />
-                      <span className="text-lg">{info.icon}</span>
-                      <span className="font-medium text-sm">{t.care[type as keyof typeof t.care]}</span>
-                    </label>
-                    {sched.enabled && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-text-muted">{t.editPlant.everyLabel}</span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={sched.days}
-                          onChange={(e) => setScheduleDays(type, parseInt(e.target.value) || 1)}
-                          className="w-14 px-2 py-1 rounded-lg bg-bg border border-border text-center text-sm font-medium"
-                        />
-                        <span className="text-xs text-text-muted">{t.editPlant.daysLabel}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting || !name.trim()}
-          className="w-full bg-primary text-white py-3.5 rounded-xl font-bold text-lg active:scale-[0.98] transition-transform disabled:opacity-50 shadow-sm"
-        >
-          {submitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {t.editPlant.submitting}
-            </span>
-          ) : (
-            <span>{t.addPlant.title}</span>
-          )}
-        </button>
       </form>
           </div>
 
-          {/* RIGHT: Calendar preview + Species reference placeholder */}
-          <div className="space-y-6">
-            <div className="bg-paper border border-border rounded-xl p-5 text-text-muted text-sm italic">
-              § V · Kalender — preview komt in latere fase
-            </div>
-            <div className="bg-paper border border-border rounded-xl p-5 text-text-muted text-sm italic">
-              Soortprofiel — komt in latere fase
-            </div>
+          {/* RIGHT: Calendar preview + Species reference */}
+          <div className="space-y-5 lg:sticky lg:top-6">
+            {/* Calendar Preview */}
+            {schedules.water?.days > 0 && (
+              <CalendarPreview
+                waterDays={schedules.water.days}
+                waterVolume={waterVolume}
+                feedingSchedule={feedingSchedule}
+                pruningFrequency={pruningFrequency}
+              />
+            )}
+
+            {/* Species Reference */}
+            {species && (
+              <SpeciesReference
+                species={name || species}
+                scientificName={species}
+                description={
+                  prefill && !isIdentifyPrefill(prefill) && 'amsterdamNotes' in prefill
+                    ? (prefill as LocalPlant).amsterdamNotes ?? undefined
+                    : undefined
+                }
+                waterDays={schedules.water?.days}
+                lightLevel={sunRequirement ?? undefined}
+                nutriment={feedingSchedule}
+              />
+            )}
           </div>
         </div>
       </div>
