@@ -6,6 +6,7 @@ export interface ShadowPolygon {
   id: string
   pathD: string
   opacity: number
+  fillRule?: 'evenodd'
 }
 
 const MAX_SHADOW_FACTOR = 6 // clamp shadow length for very low sun
@@ -95,9 +96,23 @@ function computeRectShadow(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: 
   ]
   // 4 projected corners (shadow tips)
   const projected: [number, number][] = corners.map(([cx, cy]) => [cx + dx, cy + dy])
-  // When excludeSelf is set (e.g. raised beds), only the projected shadow is used —
-  // the caster's own area is excluded because plants grow ON TOP of the structure.
-  const points = caster.excludeSelf ? projected : [...corners, ...projected]
+  // When excludeSelf is set (e.g. raised beds), compute the full shadow sweep
+  // (caster + projected) and punch out the caster's own area as a hole.
+  // This way the shadow only appears AROUND the raised bed's border — not
+  // inside it — because plants sit ON TOP of the raised bed.
+  if (caster.excludeSelf) {
+    const allPoints: [number, number][] = [...corners, ...projected]
+    const outerHull = convexHull(allPoints)
+    // Hole path: caster's rect in reverse winding order (for evenodd fill rule)
+    const holePath = `M${x},${y} L${x},${y + height} L${x + width},${y + height} L${x + width},${y}Z`
+    return {
+      id: caster.id,
+      pathD: pointsToPath(outerHull) + ' ' + holePath,
+      opacity: caster.opacity ?? 0.35,
+      fillRule: 'evenodd',
+    }
+  }
+  const points = [...corners, ...projected]
   const hull = convexHull(points)
   return { id: caster.id, pathD: pointsToPath(hull), opacity: caster.opacity ?? 0.35 }
 }
@@ -154,6 +169,7 @@ export function computeShadows(sun: SunPosition, casters: ShadowCaster[], bearin
 export interface ShadowRegion {
   type: 'polygon' | 'circle'
   points?: [number, number][]  // for polygon
+  hole?: [number, number][]    // optional sub-region to exclude (e.g. raised bed's own surface)
   cx?: number; cy?: number; r?: number  // for circle
   /** How much light this region blocks: 1.0 = fully opaque, 0.5 = dappled (50% passes through) */
   blockFactor: number
@@ -173,8 +189,16 @@ function rectShadowRegion(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: n
     [x, y], [x + width, y], [x + width, y + height], [x, y + height],
   ]
   const projected: [number, number][] = corners.map(([cx, cy]) => [cx + dx, cy + dy])
-  const points = caster.excludeSelf ? projected : [...corners, ...projected]
-  return { type: 'polygon', points: convexHull(points), blockFactor: casterBlockFactor(caster) }
+  if (caster.excludeSelf) {
+    const hullPoints: [number, number][] = [...corners, ...projected]
+    return {
+      type: 'polygon',
+      points: convexHull(hullPoints),
+      hole: corners,  // exclude the raised bed's own surface
+      blockFactor: casterBlockFactor(caster),
+    }
+  }
+  return { type: 'polygon', points: convexHull([...corners, ...projected]), blockFactor: casterBlockFactor(caster) }
 }
 
 function circleShadowRegion(caster: Extract<ShadowCaster, { type: 'circle' }>, dx: number, dy: number): ShadowRegion {
@@ -250,6 +274,7 @@ export function getSunFraction(px: number, py: number, regions: ShadowRegion[]):
   for (const r of regions) {
     let hit = false
     if (r.type === 'polygon' && r.points) {
+      if (r.hole && pointInConvexPolygon(px, py, r.hole)) continue // in the hole = not shadowed here
       hit = pointInConvexPolygon(px, py, r.points)
     } else if (r.type === 'circle' && r.cx !== undefined && r.cy !== undefined && r.r !== undefined) {
       const dx = px - r.cx, dy = py - r.cy

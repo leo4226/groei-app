@@ -27,6 +27,7 @@ export default function ShadowLayer({ shadows, clipPolygon }: Props) {
             key={s.id}
             d={s.pathD}
             fill={`rgba(20, 40, 70, ${s.opacity * 0.35})`}
+            fillRule={s.fillRule ?? 'nonzero'}
             style={{ pointerEvents: 'none', transition: 'd 0.15s ease, opacity 0.15s ease' }}
           />
         ))}
