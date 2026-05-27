@@ -180,6 +180,15 @@ input:focus, select:focus, textarea:focus {
   opacity: 0.7;
 }
 
+/* Landscape-mobile fullscreen for map pages.
+   Applied to chrome elements (BottomNav, MapPage header) when the user
+   rotates a phone to landscape. The map then fills the full viewport.
+   Threshold: max-height 500px catches phones in landscape but not tablets
+   or desktops in narrow windows. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-mobile-hide { display: none !important; }
+}
+
 /* Responsive — Plants page */
 @media (max-width: 720px) {
   .plants-header {

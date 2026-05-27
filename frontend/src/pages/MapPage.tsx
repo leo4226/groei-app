@@ -215,8 +215,8 @@ export default function MapPage() {
   const isIndoor = map.map_type === 'indoor'
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-5rem)] px-4 pt-4 pb-2 overflow-hidden">
-      <div className="flex items-center justify-between mb-2 shrink-0">
+    <div className="flex flex-col h-[calc(100dvh-5rem)] [@media(orientation:landscape)and(max-height:500px)]:h-dvh [@media(orientation:landscape)and(max-height:500px)]:p-0 px-4 pt-4 pb-2 overflow-hidden">
+      <div className="flex items-center justify-between mb-2 shrink-0 landscape-mobile-hide">
         <div className="flex items-center gap-2 min-w-0 map-header-scroll">
           {indoorMap && outdoorMap && (
             <div className="flex gap-0.5 bg-surface rounded-lg p-0.5 border border-border shrink-0">

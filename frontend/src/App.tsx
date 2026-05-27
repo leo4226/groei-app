@@ -80,6 +80,9 @@ export default function App() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isAdminPage = location.pathname.startsWith('/admin')
+  // On map pages, BottomNav hides in landscape-mobile so the map can fill the viewport.
+  // Outside map pages we always show it (otherwise users couldn't navigate after rotating).
+  const isMapPage = location.pathname.startsWith('/map')
 
   useEffect(() => {
     if (getToken()) load()
@@ -242,7 +245,11 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      {!isLoginPage && !isAdminPage && <BottomNav />}
+      {!isLoginPage && !isAdminPage && (
+        <div className={isMapPage ? 'landscape-mobile-hide' : ''}>
+          <BottomNav />
+        </div>
+      )}
 
       {!isLoginPage && !isAdminPage && <HelpAssistant />}
 
