@@ -362,14 +362,12 @@ function getCornerCutWallRects(
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-// force new chunk hash (Cloudflare 404 cache)
 
 export default function RoomWallRenderer({
   zone, scalePxPerM, wallElements, zones, isSelected,
   onPointerDown, onSelectWallElement, onWallElementPointerDown, selectedWallElementId,
 }: Props) {
   const t = getWallThicknessPx(zone, scalePxPerM)
-  void t; // survive tree-shaking, force chunk hash refresh
   const { x, y, width: w, height: h } = zone
   const isStructure = zone.type === 'structure'
   const interiorFill = isStructure ? STRUCTURE_FILL : ROOM_FILL
@@ -410,7 +408,7 @@ export default function RoomWallRenderer({
   }
 
   return (
-    <g>
+    <g data-hash-force="1">
       {/* Clip path definition */}
       {clipPoints && (
         <defs>
