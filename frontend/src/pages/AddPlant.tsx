@@ -135,7 +135,7 @@ export default function AddPlant() {
 
   // Build zone list from the user's actual maps (not hardcoded defaults)
   const zoneList = useMemo(() => maps.map(m => ({
-    id: m.id,
+    id: String(m.id),
     name: m.label,
     description: m.slug ? `/${m.slug}` : undefined,
     plantCount: 0, // TODO: count plants per map once backend supports it
@@ -422,21 +422,6 @@ export default function AddPlant() {
     return ''
   }, [prefill])
 
-  const FORM_OPTIONS = [
-    { id: 'pot', glyph: '🪴', title: 'In pot', subtitle: 'Potted' },
-    { id: 'ground', glyph: '🌱', title: 'In de grond', subtitle: 'Bare' },
-    { id: 'seedling', glyph: '🌿', title: 'Zaailing', subtitle: 'Seedling' },
-    { id: 'tree', glyph: '🌳', title: 'Boomvorm', subtitle: 'Tree' },
-  ]
-
-  const PHASE_OPTIONS = [
-    { id: 'seed', label: 'Zaad' },
-    { id: 'sprout', label: 'Kiem' },
-    { id: 'seedling', label: 'Zaailing' },
-    { id: 'young', label: 'Jong' },
-    { id: 'established', label: 'Volwassen' },
-  ]
-
   // Entry-choice screen: shown when the user lands on Add Plant without a prior path choice.
   if (locState?.from == null) {
     return (
@@ -667,12 +652,29 @@ export default function AddPlant() {
 
           {/* Form type */}
           <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
-            <TileGrid options={FORM_OPTIONS} value={formType} onChange={setFormType} />
+            <TileGrid
+              options={[
+                { id: 'pot', glyph: '🪴', title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
+                { id: 'ground', glyph: '🌱', title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
+                { id: 'seedling', glyph: '🌿', title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
+                { id: 'tree', glyph: '🌳', title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
+              ]}
+              value={formType} onChange={setFormType}
+            />
           </FormRow>
 
           {/* Life phase */}
           <FormRow label={t.addPlant.labelPhase} description={t.addPlant.labelPhaseDesc}>
-            <SegmentedControl options={PHASE_OPTIONS} value={phase} onChange={setPhase} />
+            <SegmentedControl
+              options={[
+                { id: 'seed', label: t.addPlant.phaseSeed },
+                { id: 'sprout', label: t.addPlant.phaseSprout },
+                { id: 'seedling', label: t.addPlant.phaseSeedling },
+                { id: 'young', label: t.addPlant.phaseYoung },
+                { id: 'established', label: t.addPlant.phaseEstablished },
+              ]}
+              value={phase} onChange={setPhase}
+            />
           </FormRow>
 
           {/* Acquisition */}
@@ -793,7 +795,7 @@ export default function AddPlant() {
             help={t.addPlant.substrateHelp}
           >
             <ChipCluster
-              options={['Orchideeënbast', 'Universeel', 'Kokosvezel', 'Perliet', 'Sphagnum', 'Akadama', 'Kalkrijk', 'Zandig', '+ Anders']}
+              options={t.addPlant.substrateOptions}
               selected={substrate}
               onChange={setSubstrate}
             />
@@ -1000,7 +1002,7 @@ export default function AddPlant() {
             {submitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t.addPlant.adding}
+                {t.addPlant.submitting}
               </span>
             ) : (
               name ? `${t.addPlant.title} — ${name}` : t.addPlant.title
