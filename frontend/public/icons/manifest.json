@@ -2132,6 +2132,14 @@
       "family": "Cucurbitaceae",
       "variant_of": "zucchini",
       "file": "zucchini_fruit.svg"
+    },
+    {
+      "id": "error",
+      "name": "Fout",
+      "sci": "Error",
+      "cat": "state",
+      "form": "potted",
+      "file": "error-plant.svg"
     }
   ]
 }

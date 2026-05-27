@@ -52,7 +52,7 @@ class ErrorBoundaryImpl extends Component<ImplProps, State> {
 
       return (
         <div className="flex flex-col items-center justify-center p-8 gap-4 text-center min-h-[60vh]">
-          <div className="text-4xl">🌱</div>
+          <img src="/icons/error-plant.svg" alt="" className="w-20 h-20" />
           <p className="text-text-muted text-sm max-w-xs">
             Pagina kon niet geladen worden. Dit gebeurt soms na een update.
           </p>
