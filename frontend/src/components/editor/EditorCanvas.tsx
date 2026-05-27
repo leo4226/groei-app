@@ -567,7 +567,7 @@ export default function EditorCanvas({
             // loses rect-specific fields. The cast is safe — addShadowCaster appends the id.
           } as unknown as Omit<ShadowCaster, 'id'>)
         }
-      } else if (activeZoneType === 'wall') {
+      } else if (activeZoneType === 'wall' || activeZoneType === 'fence') {
         const wr = computeWallDrawRect(drawing, scalePxPerM)
         const length = Math.max(wr.width, wr.height)
         if (length >= MIN_ZONE_SIZE) {
@@ -613,16 +613,16 @@ export default function EditorCanvas({
     setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, +(z + dir * ZOOM_STEP).toFixed(2))))
   }
 
-  // Standard draw preview (non-wall zone types)
-  const drawRect = drawing && activeTool === 'draw' && activeZoneType !== 'wall' ? {
+  // Standard draw preview (non-wall, non-fence zone types)
+  const drawRect = drawing && activeTool === 'draw' && activeZoneType !== 'wall' && activeZoneType !== 'fence' ? {
     x: Math.max(0, Math.min(drawing.startX, drawing.currentX)),
     y: Math.max(0, Math.min(drawing.startY, drawing.currentY)),
     width: Math.min(Math.abs(drawing.currentX - drawing.startX), CANVAS_W),
     height: Math.min(Math.abs(drawing.currentY - drawing.startY), CANVAS_H),
   } : null
 
-  // Wall draw preview — direction-locked, auto-thickness
-  const wallDrawRect = drawing && activeTool === 'draw' && activeZoneType === 'wall'
+  // Wall/fence draw preview — direction-locked, auto-thickness
+  const wallDrawRect = drawing && activeTool === 'draw' && (activeZoneType === 'wall' || activeZoneType === 'fence')
     ? computeWallDrawRect(drawing, scalePxPerM)
     : null
 
