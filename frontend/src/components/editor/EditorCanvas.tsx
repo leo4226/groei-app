@@ -9,6 +9,7 @@ import {
 } from '../../constants/mapDefaults'
 import EditorDefs from './EditorDefs'
 import DimensionArrows from './DimensionArrows'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import EditorZoneShape from './EditorZoneShape'
 import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
@@ -257,6 +258,7 @@ export default function EditorCanvas({
   const [shadowCasterDragging, setShadowCasterDragging] = useState<ShadowCasterDragState | null>(null)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
+  const isMobile = useIsMobile()
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [panning, setPanning] = useState<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -651,7 +653,7 @@ export default function EditorCanvas({
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
           {!previewMode && zoneBbox && (
-            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} zones={zones} />
+            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} zones={zones} compact={isMobile} />
           )}
 
           {/* Shadow casters — drawn below zones so garden zones overlay them */}

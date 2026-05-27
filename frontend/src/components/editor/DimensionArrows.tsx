@@ -7,6 +7,7 @@ interface Props {
   zoneMaxY: number
   pxPerM: number
   zones: { x: number; y: number; width: number; height: number; cornerCut?: CornerCut }[]
+  compact?: boolean
 }
 
 type CornerCutArrow = {
@@ -15,7 +16,7 @@ type CornerCutArrow = {
   wPx: number; hPx: number
 }
 
-export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, pxPerM, zones }: Props) {
+export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, pxPerM, zones, compact }: Props) {
   const zoneW = zoneMaxX - zoneMinX
   const zoneH = zoneMaxY - zoneMinY
   const wM = pxPerM > 0 && zoneW > 0 ? (zoneW / pxPerM).toFixed(1) : null
@@ -77,6 +78,43 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
 
   function arrowHead(path: string) {
     return <path d={path} stroke="currentColor" strokeWidth={1} fill="none" />
+  }
+
+  // ── Compute text width for compact label background ──
+  const labelText = `${wM} × ${hM} m`
+  const labelWidth = labelText.length * 6.5 // approximate px width at 10px font
+
+  if (compact) {
+    // Compact mode: render dimension labels INSIDE the zone bbox
+    const labelX = zoneMinX + 8
+    const labelY = zoneMinY + 16
+    return (
+      <g pointerEvents="none" style={{ fontFamily: 'system-ui, sans-serif' }}>
+        {/* Main dimension label */}
+        <rect
+          x={labelX - 4} y={labelY - 12}
+          width={labelWidth + 8} height={16}
+          rx={3} ry={3}
+          fill="#1a1a2e" opacity={0.7}
+        />
+        <text x={labelX} y={labelY}
+          textAnchor="start" dominantBaseline="auto"
+          fill="white" fontSize={10} fontWeight={600}>
+          {wM} × {hM} m
+        </text>
+
+        {/* Corner cut labels inside */}
+        {cutArrows.map((a, i) => (
+          <g key={i} opacity={0.6}>
+            <text x={a.hx1 + 4} y={a.hy1 + 12}
+              textAnchor="start" dominantBaseline="auto"
+              fill="white" fontSize={8} fontWeight={600}>
+              {pxPerM > 0 ? (a.wPx / pxPerM).toFixed(1) : '?'}×{pxPerM > 0 ? (a.hPx / pxPerM).toFixed(1) : '?'}
+            </text>
+          </g>
+        ))}
+      </g>
+    )
   }
 
   return (
