@@ -152,6 +152,41 @@ function snapPosition(
   return { x, y, snapLines }
 }
 
+const FENCE_EDGE_SNAP_PX = 80
+const FENCE_OFFSET_PX = 3
+
+function snapFenceToPerimeter(
+  fenceRect: { x: number; y: number; width: number; height: number },
+  perimeter: [number, number][],
+): { x: number; y: number; width: number; height: number } | null {
+  // Compute bounding box of perimeter
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const [px, py] of perimeter) {
+    if (px < minX) minX = px; if (py < minY) minY = py
+    if (px > maxX) maxX = px; if (py > maxY) maxY = py
+  }
+  const pW = maxX - minX, pH = maxY - minY
+  const fenceCx = fenceRect.x + fenceRect.width / 2
+  const fenceCy = fenceRect.y + fenceRect.height / 2
+  const thin = Math.max(8, Math.min(fenceRect.width, fenceRect.height)) // keep user's thin dim
+  const isHoriz = fenceRect.width >= fenceRect.height
+
+  // Build 4 candidate sides, filtered by orientation
+  interface Side { x: number; y: number; w: number; h: number; dist: number }
+  const sides: Side[] = [
+    isHoriz ? { x: minX, y: minY - FENCE_OFFSET_PX - thin, w: pW, h: thin, dist: Math.abs(fenceCy - minY) } : null,
+    isHoriz ? { x: minX, y: maxY + FENCE_OFFSET_PX, w: pW, h: thin, dist: Math.abs(fenceCy - maxY) } : null,
+    !isHoriz ? { x: minX - FENCE_OFFSET_PX - thin, y: minY, w: thin, h: pH, dist: Math.abs(fenceCx - minX) } : null,
+    !isHoriz ? { x: maxX + FENCE_OFFSET_PX, y: minY, w: thin, h: pH, dist: Math.abs(fenceCx - maxX) } : null,
+  ].filter((s): s is Side => s !== null)
+
+  sides.sort((a, b) => a.dist - b.dist)
+  const best = sides[0]
+  if (!best || best.dist > FENCE_EDGE_SNAP_PX) return null
+
+  return { x: Math.round(best.x), y: Math.round(best.y), width: Math.round(best.w), height: Math.round(best.h) }
+}
+
 /**
  * When drawing a wall zone, lock direction to H or V and auto-set the thin
  * dimension to the exterior wall thickness.
@@ -568,17 +603,30 @@ export default function EditorCanvas({
           } as unknown as Omit<ShadowCaster, 'id'>)
         }
       } else if (activeZoneType === 'wall' || activeZoneType === 'fence') {
-        const wr = computeWallDrawRect(drawing, scalePxPerM)
+        let wr = computeWallDrawRect(drawing, scalePxPerM)
+        let didPerimeterSnap = false
+        if (activeZoneType === 'fence' && perimeterPolygon && perimeterPolygon.length >= 3) {
+          const perimeterSnapped = snapFenceToPerimeter(wr, perimeterPolygon)
+          if (perimeterSnapped) {
+            wr = perimeterSnapped
+            didPerimeterSnap = true
+          }
+        }
         const length = Math.max(wr.width, wr.height)
         if (length >= MIN_ZONE_SIZE) {
           let wx = Math.max(0, Math.round(wr.x))
           let wy = Math.max(0, Math.round(wr.y))
           const ww = Math.round(Math.min(wr.width,  CANVAS_W - Math.max(0, wr.x)))
           const wh = Math.round(Math.min(wr.height, CANVAS_H - Math.max(0, wr.y)))
-          // Snap new wall to existing zone edges on creation
-          const { xTargets, yTargets } = getSnapTargets(zones, '', scalePxPerM)
-          const snapped = snapPosition(wx, wy, ww, wh, zones, '', xTargets, yTargets)
-          onAddZone(snapped.x, snapped.y, ww, wh, activeZoneType)
+          if (didPerimeterSnap) {
+            // Already snapped to perimeter edge; skip zone snapping to avoid fighting with perimeter
+            onAddZone(wx, wy, ww, wh, activeZoneType)
+          } else {
+            // Snap new wall/fence to existing zone edges on creation
+            const { xTargets, yTargets } = getSnapTargets(zones, '', scalePxPerM)
+            const snapped = snapPosition(wx, wy, ww, wh, zones, '', xTargets, yTargets)
+            onAddZone(snapped.x, snapped.y, ww, wh, activeZoneType)
+          }
         }
       } else {
         const x = Math.min(drawing.startX, drawing.currentX)
