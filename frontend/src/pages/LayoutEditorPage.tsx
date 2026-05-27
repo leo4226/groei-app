@@ -370,6 +370,7 @@ export default function LayoutEditorPage() {
           activeTool={editor.activeTool}
           activeZoneType={editor.activeZoneType}
           objectPreset={editor.objectPreset}
+          shadowCasterPreset={editor.shadowCasterPreset}
           scalePxPerM={editor.scalePxPerM}
           previewMode={previewMode}
           mapType={editor.mapType}
@@ -462,10 +463,12 @@ export default function LayoutEditorPage() {
               activeTool={editor.activeTool}
               mapType={editor.mapType}
               objectPreset={editor.objectPreset}
+              shadowCasterPreset={editor.shadowCasterPreset}
               onSetZoneType={editor.setZoneType}
               onSetTool={editor.setTool}
               onSetMapType={(t) => editor.setMapType(t as MapType)}
               onSetObjectPreset={editor.setObjectPreset}
+              onSetShadowCasterPreset={editor.setShadowCasterPreset}
               shadowMode={shadowMode}
               onSetShadowMode={setShadowMode}
             />

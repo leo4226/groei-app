@@ -222,6 +222,7 @@ interface Props {
   activeTool: EditorTool
   activeZoneType: ZoneStyleType
   objectPreset: ObjectPreset | null
+  shadowCasterPreset: 'building' | 'tree'
   scalePxPerM: number
   previewMode: boolean
   mapType: MapType
@@ -288,6 +289,7 @@ export default function EditorCanvas({
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
   selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
   onPlaceObject,
+  shadowCasterPreset,
   shadowMode = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -614,23 +616,40 @@ export default function EditorCanvas({
   function handlePointerUp() {
     if (drawing) {
       if (activeTool === 'shadow_caster') {
-        const x = Math.min(drawing.startX, drawing.currentX)
-        const y = Math.min(drawing.startY, drawing.currentY)
-        const w = Math.abs(drawing.currentX - drawing.startX)
-        const h = Math.abs(drawing.currentY - drawing.startY)
-        if (w >= MIN_ZONE_SIZE && h >= MIN_ZONE_SIZE) {
-          onAddShadowCaster({
-            label: '',
-            type: 'rect',
-            x: Math.max(0, Math.round(x)),
-            y: Math.max(0, Math.round(y)),
-            width: Math.round(Math.min(w, CANVAS_W - Math.max(0, x))),
-            height: Math.round(Math.min(h, CANVAS_H - Math.max(0, y))),
-            heightCm: 500,
-            opacity: 1,
-            // Omit<ShadowCaster, 'id'> doesn't distribute over the union, so TypeScript
-            // loses rect-specific fields. The cast is safe — addShadowCaster appends the id.
-          } as unknown as Omit<ShadowCaster, 'id'>)
+        if (shadowCasterPreset === 'tree' || shadowCasterPreset === 'building') {
+          const x = Math.min(drawing.startX, drawing.currentX)
+          const y = Math.min(drawing.startY, drawing.currentY)
+          const w = Math.abs(drawing.currentX - drawing.startX)
+          const h = Math.abs(drawing.currentY - drawing.startY)
+          if (w >= MIN_ZONE_SIZE && h >= MIN_ZONE_SIZE) {
+            if (shadowCasterPreset === 'tree') {
+              // Draw circle — use the center and half the average as radius
+              const cx = Math.round(x + w / 2)
+              const cy = Math.round(y + h / 2)
+              const radius = Math.max(10, Math.round((w + h) / 4))
+              onAddShadowCaster({
+                label: '',
+                type: 'circle',
+                cx: Math.max(0, Math.min(cx, CANVAS_W)),
+                cy: Math.max(0, Math.min(cy, CANVAS_H)),
+                radius: Math.min(radius, CANVAS_W / 2, CANVAS_H / 2),
+                heightCm: 500,
+                opacity: 1,
+              } as unknown as Omit<ShadowCaster, 'id'>)
+            } else {
+              // Building — draw rect
+              onAddShadowCaster({
+                label: '',
+                type: 'rect',
+                x: Math.max(0, Math.round(x)),
+                y: Math.max(0, Math.round(y)),
+                width: Math.round(Math.min(w, CANVAS_W - Math.max(0, x))),
+                height: Math.round(Math.min(h, CANVAS_H - Math.max(0, y))),
+                heightCm: 500,
+                opacity: 1,
+              } as unknown as Omit<ShadowCaster, 'id'>)
+            }
+          }
         }
       } else if (activeZoneType === 'wall' || activeZoneType === 'fence') {
         let wr = computeWallDrawRect(drawing, scalePxPerM)
@@ -710,6 +729,16 @@ export default function EditorCanvas({
     y: Math.max(0, Math.min(drawing.startY, drawing.currentY)),
     width: Math.min(Math.abs(drawing.currentX - drawing.startX), CANVAS_W),
     height: Math.min(Math.abs(drawing.currentY - drawing.startY), CANVAS_H),
+  } : null
+
+  const shadowCasterDrawCircle = drawing && activeTool === 'shadow_caster' && shadowCasterPreset === 'tree' ? {
+    cx: Math.max(0, Math.min((drawing.startX + drawing.currentX) / 2, CANVAS_W)),
+    cy: Math.max(0, Math.min((drawing.startY + drawing.currentY) / 2, CANVAS_H)),
+    r: Math.max(5, Math.min(
+      Math.abs(drawing.currentX - drawing.startX) / 2,
+      Math.abs(drawing.currentY - drawing.startY) / 2,
+      CANVAS_W / 2, CANVAS_H / 2
+    )),
   } : null
 
   return (
@@ -909,11 +938,19 @@ export default function EditorCanvas({
           )}
 
           {/* Draw preview (shadow caster) */}
-          {shadowCasterDrawRect && shadowCasterDrawRect.width > 2 && shadowCasterDrawRect.height > 2 && (
+          {shadowCasterDrawRect && shadowCasterDrawRect.width > 2 && shadowCasterDrawRect.height > 2 && shadowCasterPreset !== 'tree' && (
             <rect
               x={shadowCasterDrawRect.x} y={shadowCasterDrawRect.y}
               width={shadowCasterDrawRect.width} height={shadowCasterDrawRect.height}
               fill="rgba(107,114,128,0.2)" stroke="#6b7280"
+              strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
+            />
+          )}
+          {shadowCasterDrawCircle && (
+            <circle
+              cx={shadowCasterDrawCircle.cx} cy={shadowCasterDrawCircle.cy}
+              r={shadowCasterDrawCircle.r}
+              fill="rgba(74,222,128,0.15)" stroke="#4ade80"
               strokeWidth={1.5} strokeDasharray="6 3" pointerEvents="none"
             />
           )}

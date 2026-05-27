@@ -48,6 +48,7 @@ interface EditorState {
   activeTool: EditorTool
   activeZoneType: ZoneStyleType
   objectPreset: ObjectPreset | null
+  shadowCasterPreset: 'building' | 'tree'
   isDirty: boolean
   scalePxPerM: number
   mapType: MapType
@@ -82,6 +83,7 @@ type Action =
   | { type: 'DELETE_SHADOW_CASTER'; id: string }
   | { type: 'SELECT_SHADOW_CASTER'; id: string | null }
   | { type: 'SET_OBJECT_PRESET'; preset: ObjectPreset | null }
+  | { type: 'SET_SHADOW_CASTER_PRESET'; preset: 'building' | 'tree' }
   | { type: 'UNDO'; snapshot: Snapshot }
 
 /** Actions that record undo history before being applied */
@@ -106,6 +108,7 @@ const initialState: EditorState = {
   activeTool: 'draw',
   activeZoneType: 'deck',
   objectPreset: null,
+  shadowCasterPreset: 'building',
   isDirty: false,
   scalePxPerM: 46,
   mapType: 'outdoor',
@@ -266,6 +269,8 @@ function reducer(state: EditorState, action: Action): EditorState {
       }
     case 'SET_OBJECT_PRESET':
       return { ...state, objectPreset: action.preset }
+    case 'SET_SHADOW_CASTER_PRESET':
+      return { ...state, shadowCasterPreset: action.preset }
     case 'UNDO':
       return {
         ...state,
@@ -470,6 +475,10 @@ export function useEditorState() {
     dispatch({ type: 'SET_OBJECT_PRESET', preset })
   }, [])
 
+  const setShadowCasterPreset = useCallback((preset: 'building' | 'tree') => {
+    dispatch({ type: 'SET_SHADOW_CASTER_PRESET', preset })
+  }, [])
+
   const toCanvasData = useCallback((): CanvasData => {
     return {
       zones: state.zones,
@@ -505,6 +514,7 @@ export function useEditorState() {
     deleteShadowCaster,
     selectShadowCaster,
     setObjectPreset,
+    setShadowCasterPreset,
     toCanvasData,
   }
 }

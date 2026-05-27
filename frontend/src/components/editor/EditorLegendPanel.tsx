@@ -10,10 +10,12 @@ interface Props {
   activeTool: EditorTool
   mapType: string
   objectPreset: ObjectPreset | null
+  shadowCasterPreset: 'building' | 'tree'
   onSetZoneType: (type: ZoneStyleType) => void
   onSetTool: (tool: EditorTool) => void
   onSetMapType: (type: string) => void
   onSetObjectPreset: (preset: ObjectPreset | null) => void
+  onSetShadowCasterPreset: (preset: 'building' | 'tree') => void
   shadowMode: boolean
   onSetShadowMode: (on: boolean) => void
 }
@@ -172,7 +174,7 @@ export default function EditorLegendPanel({
       {mapType === 'outdoor' && (
         <div>
           <button
-            onClick={() => onSetShadowMode(!shadowMode)}
+            onClick={() => { onSetShadowMode(!shadowMode); toggle('shadows') }}
             className={`flex items-center justify-between w-full text-left py-0.5 rounded transition-colors ${
               shadowMode ? 'text-amber-400' : ''
             }`}
@@ -186,31 +188,48 @@ export default function EditorLegendPanel({
               width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
               className={`transition-transform text-text-muted ${open.shadows ? 'rotate-90' : ''}`}
-              onClick={(e) => { e.stopPropagation(); toggle('shadows') }}
             >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
           {open.shadows && (
-            <div className="mt-2">
+            <div className="mt-2 space-y-1">
+              {/* Building shadow caster */}
               <button
-                onClick={() => onSetTool('shadow_caster')}
+                onClick={() => { onSetShadowCasterPreset('building'); onSetTool('shadow_caster') }}
                 className={`flex items-start gap-2 px-2 py-1.5 rounded-lg text-left transition-colors w-full ${
-                  activeTool === 'shadow_caster'
+                  activeTool === 'shadow_caster' && shadowCasterPreset === 'building'
                     ? 'bg-primary/10 ring-1 ring-primary/30'
                     : 'hover:bg-bg'
                 }`}
               >
-                <span
-                  className="w-3 h-3 rounded-sm shrink-0 mt-0.5"
-                  style={{ backgroundColor: '#6b7280' }}
-                />
+                <span className="w-3 h-3 rounded-sm shrink-0 mt-0.5" style={{ backgroundColor: '#6b7280' }} />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    {t.editor.shadowObject}
+                    Gebouw
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                    Plaats een gebouw of boom die schaduw werpt
+                    Teken een rechthoek — muur/schuur/burenpand
+                  </div>
+                </div>
+              </button>
+
+              {/* Tree / Plant shadow caster */}
+              <button
+                onClick={() => { onSetShadowCasterPreset('tree'); onSetTool('shadow_caster') }}
+                className={`flex items-start gap-2 px-2 py-1.5 rounded-lg text-left transition-colors w-full ${
+                  activeTool === 'shadow_caster' && shadowCasterPreset === 'tree'
+                    ? 'bg-primary/10 ring-1 ring-primary/30'
+                    : 'hover:bg-bg'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: '#4ade80' }} />
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-text leading-tight">
+                    Boom / Plant
+                  </div>
+                  <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                    Teken een cirkel — boom, hoge haag
                   </div>
                 </div>
               </button>
