@@ -132,6 +132,21 @@ npx vercel deploy --prod --yes           # deploys production build
 npx vercel alias <deploy-url> floreren.app  # point domain to new deploy
 ```
 
+## Error icon
+
+- **`frontend/public/icons/error-plant.svg`** — custom error icon (burning plant in terracotta pot with flames and smoke). Used by `ErrorBoundary.tsx` as fallback when a page crashes.
+- Registered in `manifest.json` for offline/icon consistency.
+- Replaces the old plain 🌱 emoji that showed on error pages.
+
+## Bulk archive (Plants page)
+
+- **Select mode** on `/plants`: toggle with "Selecteer" button in header (desktop & mobile).
+- Checkboxes appear on each PlantCard; selected cards get a visible outline.
+- Floating bottom bar shows count, "Annuleren" and "Archiveer (N)" buttons.
+- **Backend**: `POST /api/plants/bulk-archive` with `{ plant_ids: number[] }` body. Soft-deletes (`is_active = false`).
+- **Route order critical**: the lettered path `bulk-archive` MUST be defined **before** `{plant_id}` in `backend/routers/plants.py`, or FastAPI matches the param route and returns 405.
+- Frontend: `api.client.ts` → `bulkArchive()`, `useFloreren.ts` → `bulkArchivePlants()`, `Plants.tsx` → select mode + floating bar.
+
 ### BioCLIP Worker
 
 Runs on **Windows** (Leon's desktop, AMD Ryzen 7 5800X, RTX 2070, 16 GB) on port `8001`. WSL accesses it at `localhost:8001`. Health: `GET /health` → `{"status":"ok","model_loaded":true,"embeddings_loaded":true,"device":"cuda"}`.

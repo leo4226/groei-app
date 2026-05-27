@@ -253,3 +253,8 @@ data.plants.forEach(p => console.log(p.name, p.sci, p.form, "→", p.file));
 217. **Spinazie** (`spinach_bare`) — *Spinacia oleracea* — edible · bare (variant of `spinach`)
 218. **Courgette** (`zucchini_bare`) — *Cucurbita pepo* — edible · bare (variant of `zucchini`)
 219. **Courgette** (`zucchini_fruit`) — *Cucurbita pepo* — edible · fruit (variant of `zucchini`)
+
+## Special icons
+
+### Error icon
+- **`error-plant.svg`** — a burning plant in a terracotta pot (charred leaves, flames, smoke). Used by `ErrorBoundary.tsx` when a page fails to load. Not a species icon; it's the app's error/fallback visual instead of a plain 🌱 emoji.
