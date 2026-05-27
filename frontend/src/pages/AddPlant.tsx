@@ -27,7 +27,7 @@ import FormRow from '../components/ui/FormRow'
 import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
-import ZonePicker, { DEFAULT_ZONES } from '../components/add/ZonePicker'
+import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
 import CalendarPreview from '../components/add/CalendarPreview'
 import SpeciesReference from '../components/add/SpeciesReference'
@@ -132,6 +132,15 @@ export default function AddPlant() {
   const [activeRoute, setActiveRoute] = useState<'database' | 'photo'>(initialRoute)
   const [showDetails, setShowDetails] = useState(false)
   const { maps, addPlant, uploadPhoto } = useFloreren()
+
+  // Build zone list from the user's actual maps (not hardcoded defaults)
+  const zoneList = useMemo(() => maps.map(m => ({
+    id: m.id,
+    name: m.label,
+    description: m.slug ? `/${m.slug}` : undefined,
+    plantCount: 0, // TODO: count plants per map once backend supports it
+    isIndoor: m.map_type === 'indoor',
+  })), [maps])
 
   // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
   const fromMapState = (location.state as any)?.fromMap
@@ -507,14 +516,13 @@ export default function AddPlant() {
         <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8 pb-5">
           <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
             <span className="text-primary">§</span>
-            <span>Collectie</span>
+            <span>{t.addPlant.breadcrumb}</span>
             <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
           </div>
-          <h1 className="font-heading text-4xl sm:text-5xl lg:text-7xl/[0.92] font-medium leading-[0.92] tracking-[-0.025em] m-0">
-            Toevoegen
+            {t.addPlant.heading}
           </h1>
           <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
-            Een nieuwe plant inpassen op haar beste plek.
+            {t.addPlant.subheading}
           </p>
         </div>
       </header>
@@ -529,7 +537,7 @@ export default function AddPlant() {
               !showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
             }`}
           >
-            BASIS
+            {t.addPlant.basic}
           </button>
           <button
             type="button"
@@ -538,7 +546,7 @@ export default function AddPlant() {
               showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
             }`}
           >
-            DETAILS
+            {t.addPlant.details}
           </button>
         </div>
       </div>
@@ -700,7 +708,7 @@ export default function AddPlant() {
               onChange={(zoneId) => {
                 setSelectedZoneId(zoneId || null)
                 if (!zoneId) return
-                const zone = DEFAULT_ZONES.find(z => z.id === zoneId)
+                const zone = zoneList.find(z => z.id === zoneId)
                 if (zone) {
                   setArea(zone.isIndoor ? 'huis' : 'tuin')
                 }

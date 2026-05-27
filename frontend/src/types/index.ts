@@ -559,4 +559,5 @@ export type EcologyOut = {
   host_plant_for: string[] | null
   data_source: EcologyDataSource
   enriched_at: string                   // ISO timestamp
+  score: number | null                  // 0-100; null when no data
 }

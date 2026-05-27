@@ -19,7 +19,7 @@ const CANVAS_W = 680
 const CANVAS_H = 680
 const MIN_ZONE_SIZE = 20
 const MIN_PX = 10
-const SNAP_THRESHOLD = 60   // px — snap when any edge is within this distance
+const SNAP_THRESHOLD = 20   // px — snap when any edge is within this distance
 
 // ── Snap helpers ────────────────────────────────────────────────────────────
 

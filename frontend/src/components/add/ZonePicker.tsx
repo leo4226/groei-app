@@ -113,7 +113,7 @@ export default function ZonePicker({
 
               {zone.plantCount !== undefined && (
                 <div className="font-heading italic text-xs text-text-muted shrink-0">
-                  {zone.plantCount} planten
+                  {t.plantsLabel(zone.plantCount)}
                 </div>
               )}
             </button>
@@ -135,9 +135,9 @@ export default function ZonePicker({
             <span className="text-lg leading-none">+</span>
           </div>
           <div>
-            <div className="font-heading text-sm text-text-soft">Nieuwe ruimte</div>
+            <div className="font-heading text-sm text-text-soft">{t.newRoom}</div>
             <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-text-muted mt-0.5">
-              Eigen plek
+              {t.newRoomDesc}
             </div>
           </div>
         </button>
