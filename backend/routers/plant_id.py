@@ -171,8 +171,14 @@ class IdentifyResponse(BaseModel):
     source: str = "bioclip"
 
 
-def _split_common_names(names: list[str]) -> tuple[list[str], list[str]]:
-    return names, names
+def _split_common_names(names: list[str], lang: str) -> tuple[list[str], list[str]]:
+    """Route PlantNet's commonNames into the (nl, en) buckets based on the
+    `lang` we asked PlantNet for. We only request one language per call, so
+    the other bucket is empty — the frontend already falls back across
+    buckets and to scientific_name."""
+    if lang == "nl":
+        return names, []
+    return [], names
 
 
 async def _attach_species_id(db, scientific_name: str) -> int | None:
@@ -368,13 +374,18 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
     )
 
 
+_SUPPORTED_PLANTNET_LANGS = {"en", "nl", "fr", "de", "es", "it", "pt"}
+
+
 @router.post("/identify", response_model=IdentifyResponse)
 async def identify_endpoint(
     image: UploadFile = File(...),
     engine: str = Query("bioclip"),
+    lang: str = Query("en"),
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
+    lang = lang if lang in _SUPPORTED_PLANTNET_LANGS else "en"
     # 1. Validate image
     image_bytes = await image.read()
     if len(image_bytes) > _MAX_IMAGE_BYTES:
@@ -395,7 +406,7 @@ async def identify_endpoint(
     await _check_quota(db, account)
 
     try:
-        candidates = await identify(image_bytes)
+        candidates = await identify(image_bytes, lang=lang)
     except PlantIdQuotaExceeded:
         raise HTTPException(
             status_code=503, detail="Identificatie tijdelijk niet beschikbaar"
@@ -418,7 +429,7 @@ async def identify_endpoint(
     top3 = candidates[:3]
     out: list[CandidateOut] = []
     for c in top3:
-        common_nl, common_en = _split_common_names(c.common_names)
+        common_nl, common_en = _split_common_names(c.common_names, lang)
         species_id = await _attach_species_id(db, c.scientific_name)
         out.append(CandidateOut(
             scientific_name=c.scientific_name,

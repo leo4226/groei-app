@@ -32,7 +32,9 @@ class PlantIdServiceError(Exception):
 _PLANTNET_URL = "https://my-api.plantnet.org/v2/identify/all"
 
 
-async def _post_plantnet(image_bytes: bytes, organs: list[str], api_key: str) -> httpx.Response:
+async def _post_plantnet(
+    image_bytes: bytes, organs: list[str], api_key: str, lang: str = "en"
+) -> httpx.Response:
     """Single seam for the HTTP call — patchable in tests.
 
     Note: httpx 0.28 on Python 3.14 raises "Attempted to send a sync request
@@ -45,7 +47,7 @@ async def _post_plantnet(image_bytes: bytes, organs: list[str], api_key: str) ->
     async with httpx.AsyncClient(timeout=30.0) as client:
         return await client.post(
             _PLANTNET_URL,
-            params={"api-key": api_key},
+            params={"api-key": api_key, "lang": lang},
             files={"images": ("plant.jpg", image_bytes, "image/jpeg")},
             data={"organs": primary_organ},
         )
@@ -80,8 +82,12 @@ async def identify(
     image_bytes: bytes,
     organs: list[str] | None = None,
     max_results: int = 5,
+    lang: str = "en",
 ) -> list[IdCandidate]:
     """Identify a plant from one image via Pl@ntNet.
+
+    `lang` controls the language of `commonNames` returned by PlantNet
+    (supported: en, fr, de, es, it, pt, nl, ...). Unknown codes fall back to en.
 
     Raises:
         PlantIdQuotaExceeded: HTTP 429 from Pl@ntNet.
@@ -94,7 +100,7 @@ async def identify(
     organs = organs or ["auto"]
 
     try:
-        response = await _post_plantnet(image_bytes, organs, api_key)
+        response = await _post_plantnet(image_bytes, organs, api_key, lang=lang)
     except httpx.RequestError as e:
         raise PlantIdServiceError(f"network error: {e}") from e
 

@@ -1,22 +1,42 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
+import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
+import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
 import type { PlantIdCandidate, IdentifyConfidence } from '../types'
+
+type ResultsState = {
+  candidates: PlantIdCandidate[]
+  confidence: IdentifyConfidence
+  thumbnail: string
+  capturedBlob: Blob
+  source: string
+}
 
 type Step =
   | { kind: 'camera' }
   | { kind: 'identifying'; thumbnail: string }
-  | { kind: 'results'; candidates: PlantIdCandidate[]; confidence: IdentifyConfidence; thumbnail: string; capturedBlob: Blob; source: string }
+  | ({ kind: 'results' } & ResultsState)
   | { kind: 'enriching' }
+  | ({ kind: 'sighting'; weedId: number; weedName: string; from: ResultsState })
   | { kind: 'error'; message: string; thumbnail: string | null }
 
 
 export function IdentifyPlantPage() {
   const t = useT()
   const navigate = useNavigate()
+  const location = useLocation()
+  // MapPage launches /identify with state {mapId, mapSlug} so the sighting sheet
+  // can preselect the user's current map. From Dashboard the state is absent.
+  const routeState = location.state as { mapId?: number; mapSlug?: string } | null
+
+  const activeLang = useFloreren((s) => {
+    const user = s.users.find((u) => u.id === s.activeUserId)
+    return user?.language === 'en' ? 'en' : 'nl'
+  })
   // BioCLIP is the primary identifier and runs on our own infrastructure — no
   // upfront third-party consent gate. PlantNet is opt-in via the fallback button
   // on the results screen; the confirm there names the third party explicitly.
@@ -72,6 +92,15 @@ export function IdentifyPlantPage() {
     }
   }
 
+  function handleLogSighting(weedId: number, weedName: string) {
+    if (step.kind !== 'results') return
+    setStep({ kind: 'sighting', weedId, weedName, from: step })
+  }
+
+  function handleSightingSaved(mapSlug: string) {
+    navigate(`/map/${mapSlug}`)
+  }
+
   function manualFallback() {
     navigate('/plants/add', { state: { from: 'manual' } })
   }
@@ -87,7 +116,7 @@ export function IdentifyPlantPage() {
     if (!window.confirm(t.identify.plantnetConfirm)) return
     setStep({ kind: 'identifying', thumbnail: step.thumbnail })
     try {
-      const resp = await plantsApi.identifyPlantnet(step.capturedBlob)
+      const resp = await plantsApi.identifyPlantnet(step.capturedBlob, activeLang)
       setStep({
         kind: 'results',
         candidates: resp.candidates,
@@ -127,6 +156,19 @@ export function IdentifyPlantPage() {
     )
   }
 
+  if (step.kind === 'sighting') {
+    return (
+      <WeedSightingSheet
+        weedId={step.weedId}
+        weedName={step.weedName}
+        preselectedMapId={routeState?.mapId}
+        preselectedMapSlug={routeState?.mapSlug}
+        onSaved={handleSightingSaved}
+        onCancel={() => setStep({ kind: 'results', ...step.from })}
+      />
+    )
+  }
+
   if (step.kind === 'results') {
     return (
       <IdentifyResults
@@ -138,6 +180,7 @@ export function IdentifyPlantPage() {
         onRetry={retry}
         onManualFallback={manualFallback}
         onTryPlantnet={handleTryPlantnet}
+        onLogSighting={handleLogSighting}
       />
     )
   }
