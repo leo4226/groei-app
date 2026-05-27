@@ -303,8 +303,11 @@ export default function EditorCanvas({
 
   const zoneBbox = useMemo(() => {
     if (zones.length === 0) return null
+    // Exclude fences — they're thin perimeter strips, not part of the garden surface
+    const measurable = zones.filter(z => z.type !== 'fence')
+    if (measurable.length === 0) return null
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    for (const z of zones) {
+    for (const z of measurable) {
       if (z.x < minX) minX = z.x
       if (z.y < minY) minY = z.y
       if (z.x + z.width > maxX) maxX = z.x + z.width
