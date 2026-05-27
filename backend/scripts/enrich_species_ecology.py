@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""Backfill ecology data for all plant_species rows not yet enriched.
+
+Walks `plant_species WHERE ecology_enriched_at IS NULL` and calls
+`ensure_ecology()` per row — the same code path the live endpoint uses,
+so there is no drift risk between batch and on-demand enrichment.
+
+Rate-limited at ~4 species/second to be courteous to GBIF and DeepSeek.
+~1500 species ≈ 6 minutes; LLM cost ≈ $0.10.
+
+Usage:
+    cd backend
+    python scripts/enrich_species_ecology.py                  # process all
+    python scripts/enrich_species_ecology.py --limit 50       # first 50
+    python scripts/enrich_species_ecology.py --dry-run        # log, no writes
+    python scripts/enrich_species_ecology.py --only-failed    # retry data_source='failed' rows
+"""
+import argparse
+import asyncio
+import logging
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+
+_INTER_REQUEST_DELAY_S = 0.25  # ~4 species/s — well within GBIF + DeepSeek limits
+
+
+async def main(limit: int | None, only_failed: bool, dry_run: bool) -> None:
+    from database import init_pool, close_pool, get_db
+    from services.ecology_enrichment import ensure_ecology
+
+    await init_pool()
+    try:
+        async with get_db() as db:
+            if only_failed:
+                rows = await db.execute_fetchall(
+                    "SELECT id, latin_name FROM plant_species "
+                    "WHERE ecology_data_source = ? "
+                    "ORDER BY id",
+                    ("failed",),
+                )
+            else:
+                rows = await db.execute_fetchall(
+                    "SELECT id, latin_name FROM plant_species "
+                    "WHERE ecology_enriched_at IS NULL "
+                    "ORDER BY id"
+                )
+
+        target = rows[:limit] if limit else rows
+        logger.info("%d species to enrich (limit=%s, only_failed=%s, dry_run=%s)",
+                    len(target), limit, only_failed, dry_run)
+
+        stats = {"enriched": 0, "failed": 0, "errors": 0}
+
+        for i, row in enumerate(target):
+            if (i + 1) % 25 == 0 or i == 0:
+                logger.info("Progress: %d/%d  (enriched=%d, failed=%d, errors=%d)",
+                            i + 1, len(target),
+                            stats["enriched"], stats["failed"], stats["errors"])
+
+            if dry_run:
+                logger.info("  [dry-run] would enrich %s (id=%d)", row["latin_name"], row["id"])
+                await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+                continue
+
+            try:
+                # ensure_ecology only re-enriches when ecology_enriched_at IS NULL.
+                # For --only-failed we need to clear it first so the call actually fires.
+                if only_failed:
+                    async with get_db() as db:
+                        await db.execute(
+                            "UPDATE plant_species SET ecology_enriched_at = NULL WHERE id = ?",
+                            (row["id"],),
+                        )
+                        await db.commit()
+
+                async with get_db() as db:
+                    profile = await ensure_ecology(db, row["id"])
+            except Exception as exc:
+                logger.warning("  ✗ %s (id=%d): %s", row["latin_name"], row["id"], exc)
+                stats["errors"] += 1
+                await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+                continue
+
+            if profile is None:
+                logger.warning("  ? %s (id=%d) vanished", row["latin_name"], row["id"])
+                stats["errors"] += 1
+            elif profile["data_source"] == "failed":
+                stats["failed"] += 1
+            else:
+                stats["enriched"] += 1
+                if stats["enriched"] <= 10 or stats["enriched"] % 100 == 0:
+                    logger.info("  ✓ %s: source=%s score=%s native=%s",
+                                row["latin_name"], profile["data_source"],
+                                profile["score"], profile["native_to_nl"])
+
+            await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+
+        logger.info("Done. %s", stats)
+        if stats["errors"] > 0 or stats["failed"] > 0:
+            logger.info("Re-run with --only-failed to retry the %d failed rows.",
+                        stats["failed"] + stats["errors"])
+    finally:
+        await close_pool()
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--limit", type=int, default=None, help="Process at most N rows")
+    p.add_argument("--only-failed", action="store_true",
+                   help="Retry rows where ecology_data_source = 'failed'")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Log what would be enriched, write nothing")
+    args = p.parse_args()
+    asyncio.run(main(limit=args.limit, only_failed=args.only_failed, dry_run=args.dry_run))

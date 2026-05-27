@@ -537,6 +537,13 @@ function ToolsView() {
   const [thresholdsRunning, setThresholdsRunning] = useState(false)
   const [schedulesResult, setSchedulesResult] = useState('')
   const [schedulesRunning, setSchedulesRunning] = useState(false)
+  const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
+  const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
+
+  useEffect(() => {
+    admin.thresholdsPreview().then(setTp).catch(() => {})
+    admin.schedulesPreview().then(setSp).catch(() => {})
+  }, [])
 
   async function handleBackfillThresholds() {
     setThresholdsRunning(true)
@@ -544,6 +551,7 @@ function ToolsView() {
     try {
       const r = await admin.backfillThresholds()
       setThresholdsResult(`✓ ${r.succeeded} updated · ${r.failed} failed out of ${r.processed}`)
+      admin.thresholdsPreview().then(setTp).catch(() => {})
     } catch (e) {
       setThresholdsResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
     } finally {
@@ -557,6 +565,7 @@ function ToolsView() {
     try {
       const r = await admin.backfillCareSchedules()
       setSchedulesResult(`✓ ${r.seeded} schedules seeded out of ${r.checked} checked`)
+      admin.schedulesPreview().then(setSp).catch(() => {})
     } catch (e) {
       setSchedulesResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
     } finally {
@@ -567,12 +576,14 @@ function ToolsView() {
   const tools = [
     {
       title: 'Backfill thresholds',
-      desc: 'Generate care thresholds via Claude Haiku for all plants that are missing them.',
+      desc: 'Generate care thresholds via DeepSeek for all plants that are missing them.',
+      preview: tp ? `${tp.missing_thresholds} of ${tp.active_total} active plants need thresholds` : 'Loading…',
       running: thresholdsRunning, result: thresholdsResult, onRun: handleBackfillThresholds,
     },
     {
       title: 'Backfill care schedules',
-      desc: 'Seed water schedules for plants that have thresholds but no active schedule.',
+      desc: 'Seed water & fertilize schedules for plants that have thresholds but no active schedule.',
+      preview: sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…',
       running: schedulesRunning, result: schedulesResult, onRun: handleBackfillSchedules,
     },
   ]
@@ -584,7 +595,10 @@ function ToolsView() {
         {tools.map(tool => (
           <div key={tool.title} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px' }}>
             <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>{tool.title}</h3>
-            <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 14px', lineHeight: 1.5 }}>{tool.desc}</p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 8px', lineHeight: 1.5 }}>{tool.desc}</p>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>
+              {tool.preview}
+            </div>
             <button
               onClick={tool.onRun}
               disabled={tool.running}

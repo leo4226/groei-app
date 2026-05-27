@@ -53,6 +53,22 @@ async def backfill_thresholds(db = Depends(db_dep)):
     }
 
 
+@router.get("/admin/backfill-thresholds/preview")
+async def backfill_thresholds_preview(db = Depends(db_dep)):
+    """Preview: count plants that backfill-thresholds would process."""
+    rows = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
+    )
+    total_active = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE is_active = 1"
+    )
+    return {
+        "active_total": len(total_active),
+        "missing_thresholds": len(rows),
+        "has_thresholds": len(total_active) - len(rows),
+    }
+
+
 @router.post("/admin/backfill-care-schedules")
 async def backfill_care_schedules(db = Depends(db_dep)):
     """Seed care_schedules for all active plants that have thresholds but no water schedule."""
@@ -73,6 +89,26 @@ async def backfill_care_schedules(db = Depends(db_dep)):
             print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
 
     return {"checked": len(rows), "seeded": seeded}
+
+
+@router.get("/admin/backfill-care-schedules/preview")
+async def backfill_care_schedules_preview(db = Depends(db_dep)):
+    """Preview: count plants that backfill-care-schedules would seed."""
+    rows = await db.execute_fetchall(
+        """SELECT p.id FROM plants p
+           WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
+           AND p.id NOT IN (
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+           )"""
+    )
+    total_with_thresholds = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1"
+    )
+    return {
+        "total_with_thresholds": len(total_with_thresholds),
+        "missing_schedules": len(rows),
+        "has_schedules": len(total_with_thresholds) - len(rows),
+    }
 
 
 @router.post("/admin/backfill-plant-types")

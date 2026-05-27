@@ -278,6 +278,8 @@ export const admin = {
   deleteAccounts:       (ids: number[]) => api<{status: string; account_ids: number[]; names: string[]; households_cleared: number}>('DELETE', '/admin/accounts/bulk', { body: { account_ids: ids } }),
   backfillThresholds:   ()           => api<{ processed: number; succeeded: number; failed: number }>('POST', '/admin/backfill-thresholds'),
   backfillCareSchedules:()           => api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules'),
+  thresholdsPreview:     ()           => api<{ active_total: number; missing_thresholds: number; has_thresholds: number }>('GET', '/admin/backfill-thresholds/preview'),
+  schedulesPreview:      ()           => api<{ total_with_thresholds: number; missing_schedules: number; has_schedules: number }>('GET', '/admin/backfill-care-schedules/preview'),
 }
 
 export const adminPanel = {
