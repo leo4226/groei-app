@@ -65,8 +65,8 @@ def _classify_confidence(top1: float, top2: float | None) -> str:
     return "low"
 
 
-_IMAGE_REF_BOOST = 1.1  # multiplier on image-to-image cosine; image-to-image is
-                        # a stronger signal than image-to-text so we trust it more
+_IMAGE_REF_BOOST = 1.0  # no multiplier — image-to-image is only used when
+                        # the text already found the species AND ≥2 refs back it up
 
 
 def _blend_scores(
@@ -78,22 +78,24 @@ def _blend_scores(
     """Combine text-based top-K matches with image-to-image similarity from
     user-confirmed embeddings, return new top-K.
 
+    Only species already in text_matches are considered (image-only species
+    are discarded), and only if the species has ≥2 user-confirmed refs.
     Per-species score: combined = max(text_score, max_image_cosine * boost)
-    Species present in refs but not in text_matches are still considered.
     """
     text_score_map: dict[int, float] = {sid: s for sid, s in text_matches}
 
     image_score_map: dict[int, float] = {}
     for sid, ref_matrix in refs_by_species.items():
         # ref_matrix: shape (N, 512), each row is unit-norm
-        # query_embedding: shape (512,), unit-norm
+        # require at least 2 confirmed refs before blending
+        if ref_matrix.shape[0] < 2:
+            continue
         cos = ref_matrix @ query_embedding  # shape (N,)
         image_score_map[sid] = float(cos.max())
 
-    all_species = set(text_score_map.keys()) | set(image_score_map.keys())
     combined: list[tuple[int, float]] = []
-    for sid in all_species:
-        t = text_score_map.get(sid, 0.0)
+    for sid in text_score_map:  # only species already in text top-K
+        t = text_score_map[sid]
         i = image_score_map.get(sid, 0.0) * _IMAGE_REF_BOOST
         combined.append((sid, max(t, i)))
 

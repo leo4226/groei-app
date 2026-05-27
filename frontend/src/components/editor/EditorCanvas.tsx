@@ -651,7 +651,7 @@ export default function EditorCanvas({
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
           {!previewMode && zoneBbox && (
-            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} />
+            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} zones={zones} />
           )}
 
           {/* Shadow casters — drawn below zones so garden zones overlay them */}
