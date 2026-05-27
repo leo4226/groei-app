@@ -30,6 +30,7 @@ export default function LayoutEditorPage() {
   const [showSunPreview, setShowSunPreview] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showMoreActions, setShowMoreActions] = useState(false)
+  const [shadowMode, setShadowMode] = useState(false)
 
   const editor = useEditorState()
   const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
@@ -387,6 +388,26 @@ export default function LayoutEditorPage() {
             if (!mapId) return
             client.objects.list().then((objs) => setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
           }}
+          onPlaceObject={(preset, svgX, svgY) => {
+            if (!map) return
+            client.objects.create({
+              name: preset.label,
+              object_type: preset.object_type,
+              shape: preset.shape,
+              category: preset.category,
+              material: preset.material,
+              color: preset.color,
+              map_id: map.id,
+              map_x: Math.round(svgX),
+              map_y: Math.round(svgY),
+              ...(preset.diameter_cm != null ? { diameter_cm: preset.diameter_cm } : {}),
+              ...(preset.width_cm != null ? { width_cm: preset.width_cm } : {}),
+              ...(preset.depth_cm != null ? { depth_cm: preset.depth_cm } : {}),
+            }).then(() => {
+              client.objects.list().then((objs) => setMapObjects(objs.filter((o: MapObject) => o.map_id === map.id)))
+              editor.setObjectPreset(null)
+            })
+          }}
           shadowCasters={editor.shadowCasters}
           selectedShadowCasterId={editor.selectedShadowCasterId}
           onAddShadowCaster={editor.addShadowCaster}
@@ -394,6 +415,7 @@ export default function LayoutEditorPage() {
           onSelectShadowCaster={editor.selectShadowCaster}
           showSunPreview={showSunPreview}
           perimeterPolygon={showSunPreview ? gardenPerimeter : null}
+          shadowMode={shadowMode}
         />
 
         {!previewMode && (
@@ -444,6 +466,8 @@ export default function LayoutEditorPage() {
               onSetTool={editor.setTool}
               onSetMapType={(t) => editor.setMapType(t as MapType)}
               onSetObjectPreset={editor.setObjectPreset}
+              shadowMode={shadowMode}
+              onSetShadowMode={setShadowMode}
             />
             {selectedZone && !selectedWallElement && (
               <ZonePropertiesPanel

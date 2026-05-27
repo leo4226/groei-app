@@ -8,6 +8,7 @@ import {
   WALL_COLOR,
 } from '../../constants/mapDefaults'
 import EditorDefs from './EditorDefs'
+import ObjectShape from '../map/ObjectShape'
 import DimensionArrows from './DimensionArrows'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import EditorZoneShape from './EditorZoneShape'
@@ -241,6 +242,7 @@ interface Props {
   onRotateObject: (objectId: number, rotation: number) => void
   onSelectObject: (id: number | null) => void
   onObjectCreated: () => void
+  onPlaceObject: (preset: ObjectPreset, svgX: number, svgY: number) => void
   shadowMode?: boolean
 }
 
@@ -285,6 +287,7 @@ export default function EditorCanvas({
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
   selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
+  onPlaceObject,
   shadowMode = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -341,6 +344,12 @@ export default function EditorCanvas({
       onSelectShadowCaster(null)
     } else if (activeTool === 'select') {
       setPanning({ startX: pt.x, startY: pt.y, origPanX: pan.x, origPanY: pan.y })
+      onSelectZone(null)
+      onSelectWallElement(null)
+      onSelectShadowCaster(null)
+    } else if (activeTool === 'place_object' && objectPreset) {
+      e.preventDefault()
+      onPlaceObject(objectPreset, pt.x, pt.y)
       onSelectZone(null)
       onSelectWallElement(null)
       onSelectShadowCaster(null)
@@ -709,7 +718,7 @@ export default function EditorCanvas({
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
         className="max-w-full max-h-full border border-border rounded-lg bg-[#f5f3ee]"
-        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' ? 'crosshair' : 'default' }}
+        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' || activeTool === 'place_object' ? 'crosshair' : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -830,6 +839,17 @@ export default function EditorCanvas({
             }
             return null
           })}
+
+          {/* Objects — rendered above shadow casters and zones */}
+          {!previewMode && objects.map((obj) => (
+            <ObjectShape
+              key={obj.id}
+              object={obj}
+              x={obj.map_x}
+              y={obj.map_y}
+              showLabel={true}
+            />
+          ))}
 
           {/* Resize overlay on selected zone */}
           {!previewMode && selectedZone && activeTool === 'select' && (

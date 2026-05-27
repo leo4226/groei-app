@@ -466,6 +466,7 @@ export function useEditorState() {
   }, [])
 
   const setObjectPreset = useCallback((preset: ObjectPreset | null) => {
+    dispatch({ type: 'SET_TOOL', tool: preset ? 'place_object' : 'select' })
     dispatch({ type: 'SET_OBJECT_PRESET', preset })
   }, [])
 
