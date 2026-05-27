@@ -370,16 +370,6 @@ async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account
     return {"ok": True, "is_locked": locked}
 
 
-@router.delete("/plants/{plant_id}")
-async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
-    await db.execute(
-        "UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (plant_id,),
-    )
-    await db.commit()
-    return {"ok": True}
-
-
 @router.delete("/plants/bulk-archive")
 @router.post("/plants/bulk-archive")
 async def bulk_archive_plants(
@@ -396,6 +386,16 @@ async def bulk_archive_plants(
     )
     await db.commit()
     return {"ok": True, "count": len(body.plant_ids)}
+
+
+@router.delete("/plants/{plant_id}")
+async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    await db.execute(
+        "UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (plant_id,),
+    )
+    await db.commit()
+    return {"ok": True}
 
 
 @router.patch("/plants/{plant_id}/restore")
