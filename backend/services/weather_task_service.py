@@ -34,7 +34,7 @@ async def sync_ephemeral_schedules() -> dict:
     """
     created = 0
     deleted = 0
-    today = date.today().isoformat()
+    today = date.today()
 
     async with get_db() as db:
         weather = await _get_cached_weather()
