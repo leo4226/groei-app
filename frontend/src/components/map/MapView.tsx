@@ -313,7 +313,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       </svg>
 
-      {/* Zoom controls */}
+      {/* Zoom controls — hidden at default zoom */}
+      {zoom !== 1 && (
       <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
           onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z * 1.25).toFixed(2)))}
@@ -328,6 +329,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
           title="Zoom uit">−</button>
       </div>
+      )}
       </div>
       )}
     </div>
