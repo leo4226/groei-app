@@ -611,7 +611,7 @@ export const nl: Translations = {
   calendar: {
     title: '§ Kalender',
     gardenYear: 'Tuinjaar',
-    subtitle: 'Alles wat jouw tuin vraagt — en alles wat zij belooft — geordend per dag.',
+    subtitle: "Wat je tuin vraagt, en belooft — per dag.",
     week: 'Week',
     month: 'Maand',
     agenda: 'Agenda',

@@ -28,40 +28,39 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
   for (const z of zones) {
     if (!z.cornerCut) continue
     const { corner, widthPx: cw, heightPx: ch } = z.cornerCut
-    const SUB_GAP = 8
 
     const arrow = (() => {
       switch (corner) {
         case 'tl':
           return {
-            hx1: z.x,        hy1: z.y - SUB_GAP,
-            hx2: z.x + cw,   hy2: z.y - SUB_GAP,
-            vx1: z.x - SUB_GAP, vy1: z.y,
-            vx2: z.x - SUB_GAP, vy2: z.y + ch,
+            hx1: z.x,        hy1: z.y - CUT_OFFSET,
+            hx2: z.x + cw,   hy2: z.y - CUT_OFFSET,
+            vx1: z.x - CUT_OFFSET, vy1: z.y,
+            vx2: z.x - CUT_OFFSET, vy2: z.y + ch,
             wPx: cw, hPx: ch,
           }
         case 'tr':
           return {
-            hx1: z.x + z.width - cw, hy1: z.y - SUB_GAP,
-            hx2: z.x + z.width,       hy2: z.y - SUB_GAP,
-            vx1: z.x + z.width + SUB_GAP, vy1: z.y,
-            vx2: z.x + z.width + SUB_GAP, vy2: z.y + ch,
+            hx1: z.x + z.width - cw, hy1: z.y - CUT_OFFSET,
+            hx2: z.x + z.width,       hy2: z.y - CUT_OFFSET,
+            vx1: z.x + z.width + CUT_OFFSET, vy1: z.y,
+            vx2: z.x + z.width + CUT_OFFSET, vy2: z.y + ch,
             wPx: cw, hPx: ch,
           }
         case 'bl':
           return {
-            hx1: z.x,        hy1: z.y + z.height + SUB_GAP,
-            hx2: z.x + cw,   hy2: z.y + z.height + SUB_GAP,
-            vx1: z.x - SUB_GAP, vy1: z.y + z.height - ch,
-            vx2: z.x - SUB_GAP, vy2: z.y + z.height,
+            hx1: z.x,        hy1: z.y + z.height + CUT_OFFSET,
+            hx2: z.x + cw,   hy2: z.y + z.height + CUT_OFFSET,
+            vx1: z.x - CUT_OFFSET, vy1: z.y + z.height - ch,
+            vx2: z.x - CUT_OFFSET, vy2: z.y + z.height,
             wPx: cw, hPx: ch,
           }
         case 'br':
           return {
-            hx1: z.x + z.width - cw, hy1: z.y + z.height + SUB_GAP,
-            hx2: z.x + z.width,       hy2: z.y + z.height + SUB_GAP,
-            vx1: z.x + z.width + SUB_GAP, vy1: z.y + z.height - ch,
-            vx2: z.x + z.width + SUB_GAP, vy2: z.y + z.height,
+            hx1: z.x + z.width - cw, hy1: z.y + z.height + CUT_OFFSET,
+            hx2: z.x + z.width,       hy2: z.y + z.height + CUT_OFFSET,
+            vx1: z.x + z.width + CUT_OFFSET, vy1: z.y + z.height - ch,
+            vx2: z.x + z.width + CUT_OFFSET, vy2: z.y + z.height,
             wPx: cw, hPx: ch,
           }
       }
@@ -73,6 +72,8 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
   const ARROW_L = 6
   const ARROW_INSET = 6
   const TEXT_GAP = 10
+  // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
+  const CUT_OFFSET = 26
 
   function arrowHead(path: string) {
     return <path d={path} stroke="currentColor" strokeWidth={1} fill="none" />

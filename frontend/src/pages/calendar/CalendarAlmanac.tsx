@@ -1,7 +1,11 @@
-import { ALMANAC_NL } from './almanacContent'
+import { ALMANAC_NL, ALMANAC_EN } from './almanacContent'
+import { useT } from '../../context/LanguageContext'
 
 export default function CalendarAlmanac({ month1 }: { month1: number }) {
-  const a = ALMANAC_NL[month1 - 1]
+  const t = useT()
+  const isEnglish = t.locale === 'en-GB'
+  const almanac = isEnglish ? ALMANAC_EN : ALMANAC_NL
+  const a = almanac[month1 - 1]
   return (
     <section className="side-card almanac-side">
       <div className="sc-head">
