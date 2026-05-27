@@ -519,6 +519,7 @@ export default function AddPlant() {
             <span>{t.addPlant.breadcrumb}</span>
             <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
           </div>
+          <h1 className="font-heading font-bold text-2xl sm:text-3xl mt-1">
             {t.addPlant.heading}
           </h1>
           <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
@@ -620,17 +621,17 @@ export default function AddPlant() {
 
         {/* ——— § I · Identity Card ——— */}
         <Card
-          eyebrow="§ I · Identiteit"
-          title={<>Geef haar <em>een naam</em>.</>}
+          eyebrow={t.addPlant.secIdentity}
+          title={t.addPlant.secIdentityTitle}
         >
           {/* Bijnaam */}
-          <FormRow label="Bijnaam" description="Hoe je haar noemt">
+          <FormRow label={t.addPlant.labelNickname} description={t.addPlant.labelNicknameDesc}>
             <div className="grid grid-cols-[1fr_120px] gap-3">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Lente-orchidee"
+                placeholder={t.addPlant.placeholderNickname}
                 required
                 className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
               />
@@ -645,13 +646,13 @@ export default function AddPlant() {
           </FormRow>
 
           {/* Species */}
-          <FormRow label="Soort" description="Geslacht + soortnaam">
+          <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
             <div className="grid grid-cols-[1fr_1fr] gap-3">
               <input
                 type="text"
                 value={species}
                 onChange={(e) => setSpecies(e.target.value)}
-                placeholder="Phalaenopsis"
+                placeholder={t.addPlant.placeholderSpecies}
                 className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
               />
               <input
@@ -659,23 +660,23 @@ export default function AddPlant() {
                 readOnly
                 value={latinName}
                 className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading italic text-sm text-text-soft"
-                placeholder="Phalaenopsis amabilis"
+                placeholder={t.addPlant.placeholderSpeciesLatin}
               />
             </div>
           </FormRow>
 
           {/* Form type */}
-          <FormRow label="Vorm" description="Hoe ze groeit">
+          <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
             <TileGrid options={FORM_OPTIONS} value={formType} onChange={setFormType} />
           </FormRow>
 
           {/* Life phase */}
-          <FormRow label="Levensfase" description="Huidig groeistadium">
+          <FormRow label={t.addPlant.labelPhase} description={t.addPlant.labelPhaseDesc}>
             <SegmentedControl options={PHASE_OPTIONS} value={phase} onChange={setPhase} />
           </FormRow>
 
           {/* Acquisition */}
-          <FormRow label="Verkregen" description="Wanneer + waar">
+          <FormRow label={t.addPlant.labelAcquired} description={t.addPlant.labelAcquiredDesc}>
             <div className="grid grid-cols-[1fr_1fr] gap-3">
               <input
                 type="date"
@@ -687,7 +688,7 @@ export default function AddPlant() {
                 type="text"
                 value={locationText}
                 onChange={(e) => setLocationText(e.target.value)}
-                placeholder="Tuincentrum Overvecht"
+                placeholder={t.addPlant.placeholderAcquiredAt}
                 className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
               />
             </div>
@@ -697,13 +698,19 @@ export default function AddPlant() {
         {/* ——— § II · Placement Card ——— */}
         {showDetails && (
         <Card
-          eyebrow="§ II · Plaatsing"
-          title={<>Kies haar <em>beste plek.</em></>}
-          subtitle="Licht, pot en substraat bepalen hoe ze groeit."
+          eyebrow={t.addPlant.secPlacement}
+          title={t.addPlant.secPlacementTitle}
+          subtitle={t.addPlant.secPlacementSubtitle}
         >
           {/* Zone picker */}
-          <FormRow label="Zone" description="Waar ze komt te staan">
+          <FormRow label={t.addPlant.labelZone} description={t.addPlant.labelZoneDesc}>
             <ZonePicker
+              zones={zoneList}
+              translations={{
+                newRoom: t.addPlant.newRoom,
+                newRoomDesc: t.addPlant.newRoomDesc,
+                plantsLabel: t.addPlant.zonePlants,
+              }}
               value={selectedZoneId}
               onChange={(zoneId) => {
                 setSelectedZoneId(zoneId || null)
@@ -713,19 +720,19 @@ export default function AddPlant() {
                   setArea(zone.isIndoor ? 'huis' : 'tuin')
                 }
               }}
-              advice={species ? `Tip: ${species} staat het liefst op een lichte plek zonder direct zonlicht.` : undefined}
+              advice={species ? t.addPlant.zoneAdvice(species) : undefined}
             />
           </FormRow>
 
           {/* Light measurement */}
-          <FormRow label="Lichtmeting" description="Hoeveel licht ze krijgt">
+          <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
               options={[
-                { id: 'dark', title: 'Donker', subtitle: '≤500 lx', glyph: '🌑' },
-                { id: 'shade', title: 'Schaduw', subtitle: '0.5–2k', glyph: '🌒' },
-                { id: 'indirect', title: 'Indirect', subtitle: '2–10k', glyph: '🌓' },
-                { id: 'bright', title: 'Helder', subtitle: '10–25k', glyph: '🌔' },
-                { id: 'full-sun', title: 'Vol zon', subtitle: '>25k', glyph: '🌕' },
+                { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: '🌑' },
+                { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: '🌒' },
+                { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: '🌓' },
+                { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: '🌔' },
+                { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: '🌕' },
               ]}
               value={sunRequirement}
               onChange={(v) => setSunRequirement(v || null)}
@@ -733,20 +740,20 @@ export default function AddPlant() {
           </FormRow>
 
           {/* Pot material */}
-          <FormRow label="Pot" description="Materiaal + afmetingen">
+          <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
             <TileGrid
               options={[
-                { id: 'terracotta', title: 'Terracotta', subtitle: 'Ademt', glyph: '🏺' },
-                { id: 'plastic', title: 'Kunststof', subtitle: 'Licht', glyph: '🪣' },
-                { id: 'ceramic', title: 'Keramiek', subtitle: 'Geglazuurd', glyph: '🫖' },
-                { id: 'basket', title: 'Mand·vlecht', subtitle: 'Luchtig', glyph: '🧺' },
+                { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: '🏺' },
+                { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: '🪣' },
+                { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: '🫖' },
+                { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: '🧺' },
               ]}
               value={potMaterial}
               onChange={setPotMaterial}
             />
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs text-text-muted mb-1 block">Diameter (cm)</label>
+                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotDiameter}</label>
                 <input
                   type="number"
                   value={potDiameter || ''}
@@ -756,7 +763,7 @@ export default function AddPlant() {
                 />
               </div>
               <div>
-                <label className="text-xs text-text-muted mb-1 block">Hoogte (cm)</label>
+                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotHeight}</label>
                 <input
                   type="number"
                   value={potHeight || ''}
@@ -774,16 +781,16 @@ export default function AddPlant() {
                 className="sr-only peer"
               />
               <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all">
-                {hasDrainage ? '✓ ' : ''}Heeft drainagegat
+                {hasDrainage ? '✓ ' : ''}{t.addPlant.labelDrainageYes}
               </span>
             </label>
           </FormRow>
 
           {/* Substrate */}
           <FormRow
-            label="Substraat"
-            description="Waar ze in staat"
-            help="Tip: orchideeën houden van luchtige bast, geen potgrond."
+            label={t.addPlant.labelSubstrate}
+            description={t.addPlant.labelSubstrateDesc}
+            help={t.addPlant.substrateHelp}
           >
             <ChipCluster
               options={['Orchideeënbast', 'Universeel', 'Kokosvezel', 'Perliet', 'Sphagnum', 'Akadama', 'Kalkrijk', 'Zandig', '+ Anders']}
@@ -797,13 +804,13 @@ export default function AddPlant() {
         {/* ——— § III · Care Card ——— */}
         {!showDetails ? (
           <Card
-            eyebrow="§ III · Verzorging"
-            title={<>Haar <em>routine.</em></>}
+            eyebrow={t.addPlant.secCare}
+            title={t.addPlant.secCareTitle}
           >
             {/* Water gift frequency */}
-            <FormRow label="Watergift" description="Hoe vaak ze dorst heeft">
+            <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
               <FrequencySlider
-                label="Watergift"
+                label={t.addPlant.labelWatering}
                 value={schedules.water.days}
                 onChange={(v) => {
                   setSchedules(prev => ({
@@ -812,16 +819,16 @@ export default function AddPlant() {
                   }))
                 }}
                 presets={[
-                  { label: 'Soms', value: 14 },
-                  { label: 'Wekelijks', value: 7 },
-                  { label: '2× p/w', value: 3 },
-                  { label: 'Dagelijks', value: 1 },
+                  { label: t.addPlant.presetSeldom, value: 14 },
+                  { label: t.addPlant.presetWeekly, value: 7 },
+                  { label: t.addPlant.presetBiweekly, value: 3 },
+                  { label: t.addPlant.presetDaily, value: 1 },
                 ]}
               />
             </FormRow>
 
             {/* Water volume */}
-            <FormRow label="Volume" description="Hoeveel per gift">
+            <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
               <div className="flex items-center gap-3 mt-1">
                 <input
                   type="number"
@@ -830,20 +837,20 @@ export default function AddPlant() {
                   placeholder="250"
                   className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
                 />
-                <span className="text-sm text-text-soft">ml per gift</span>
+                <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
               </div>
             </FormRow>
           </Card>
         ) : (
           <Card
-            eyebrow="§ III · Verzorging"
-            title={<>Haar <em>routine.</em></>}
-            subtitle="Water, voeding en onderhoud."
+            eyebrow={t.addPlant.secCare}
+            title={t.addPlant.secCareTitle}
+            subtitle={t.addPlant.secCareSubtitle}
           >
             {/* Water gift frequency */}
-            <FormRow label="Watergift" description="Hoe vaak ze dorst heeft">
+            <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
               <FrequencySlider
-                label="Watergift"
+                label={t.addPlant.labelWatering}
                 value={schedules.water.days}
                 onChange={(v) => {
                   setSchedules(prev => ({
@@ -852,16 +859,16 @@ export default function AddPlant() {
                   }))
                 }}
                 presets={[
-                  { label: 'Soms', value: 14 },
-                  { label: 'Wekelijks', value: 7 },
-                  { label: '2× p/w', value: 3 },
-                  { label: 'Dagelijks', value: 1 },
+                  { label: t.addPlant.presetSeldom, value: 14 },
+                  { label: t.addPlant.presetWeekly, value: 7 },
+                  { label: t.addPlant.presetBiweekly, value: 3 },
+                  { label: t.addPlant.presetDaily, value: 1 },
                 ]}
               />
             </FormRow>
 
             {/* Water volume */}
-            <FormRow label="Volume" description="Hoeveel per gift">
+            <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
               <div className="flex items-center gap-3 mt-1">
                 <input
                   type="number"
@@ -870,18 +877,18 @@ export default function AddPlant() {
                   placeholder="250"
                   className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
                 />
-                <span className="text-sm text-text-soft">ml per gift</span>
+                <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
               </div>
             </FormRow>
 
             {/* Feeding schedule */}
-            <FormRow label="Voeding" description="Extraatjes voor groei">
+            <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
               <TileGrid
                 options={[
-                  { id: 'weekly', title: 'Wekelijks', subtitle: '1× p/w', glyph: '💪' },
-                  { id: 'monthly', title: 'Maandelijks', subtitle: '1× p/m', glyph: '📅' },
-                  { id: 'seasonal', title: 'Seizoens', subtitle: '4× p/j', glyph: '🍂' },
-                  { id: 'optional', title: 'Optioneel', subtitle: 'Alleen nodig', glyph: '✨' },
+                  { id: 'weekly', title: t.addPlant.feedWeekly, subtitle: t.addPlant.feedWeeklySub, glyph: '💪' },
+                  { id: 'monthly', title: t.addPlant.feedMonthly, subtitle: t.addPlant.feedMonthlySub, glyph: '📅' },
+                  { id: 'seasonal', title: t.addPlant.feedSeasonal, subtitle: t.addPlant.feedSeasonalSub, glyph: '🍂' },
+                  { id: 'optional', title: t.addPlant.feedOptional, subtitle: t.addPlant.feedOptionalSub, glyph: '✨' },
                 ]}
                 value={feedingSchedule}
                 onChange={setFeedingSchedule}
@@ -889,13 +896,13 @@ export default function AddPlant() {
             </FormRow>
 
             {/* Pruning type */}
-            <FormRow label="Type snoei" description="Hoe je haar trimt">
+            <FormRow label={t.addPlant.labelPruneType} description={t.addPlant.labelPruneTypeDesc}>
               <TileGrid
                 options={[
-                  { id: 'none', title: 'Geen', subtitle: 'Bloeit natuurlijk', glyph: '🌿' },
-                  { id: 'light', title: 'Knippen', subtitle: 'Dode bladeren', glyph: '✂️' },
-                  { id: 'moderate', title: 'Snoeien', subtitle: 'Vorm behouden', glyph: '✂️' },
-                  { id: 'heavy', title: 'Terugsnoeien', subtitle: 'Nieuwe groei', glyph: '🪓' },
+                  { id: 'none', title: t.addPlant.pruneNone, subtitle: t.addPlant.pruneNoneSub, glyph: '🌿' },
+                  { id: 'light', title: t.addPlant.pruneLight, subtitle: t.addPlant.pruneLightSub, glyph: '✂️' },
+                  { id: 'moderate', title: t.addPlant.pruneModerate, subtitle: t.addPlant.pruneModerateSub, glyph: '✂️' },
+                  { id: 'heavy', title: t.addPlant.pruneHeavy, subtitle: t.addPlant.pruneHeavySub, glyph: '🪓' },
                 ]}
                 value={pruningType}
                 onChange={setPruningType}
@@ -903,13 +910,13 @@ export default function AddPlant() {
             </FormRow>
 
             {/* Pruning frequency */}
-            <FormRow label="Snoei frequentie" description="Regelmaat">
+            <FormRow label={t.addPlant.labelPruneFreq} description={t.addPlant.labelPruneFreqDesc}>
               <TileGrid
                 options={[
-                  { id: 'never', title: 'Nooit', subtitle: 'Vormvast', glyph: '—' },
-                  { id: 'weekly', title: 'Wekelijks', subtitle: 'Onderhoud', glyph: '📅' },
-                  { id: 'monthly', title: 'Maandelijks', subtitle: 'Check-up', glyph: '📅' },
-                  { id: 'seasonal', title: 'Seizoens', subtitle: '2-4× p/j', glyph: '🍂' },
+                  { id: 'never', title: t.addPlant.pruneNever, subtitle: t.addPlant.pruneNeverSub, glyph: '—' },
+                  { id: 'weekly', title: t.addPlant.pruneW, subtitle: t.addPlant.pruneWSub, glyph: '📅' },
+                  { id: 'monthly', title: t.addPlant.pruneM, subtitle: t.addPlant.pruneMSub, glyph: '📅' },
+                  { id: 'seasonal', title: t.addPlant.pruneS, subtitle: t.addPlant.pruneSSub, glyph: '🍂' },
                 ]}
                 value={pruningFrequency}
                 onChange={setPruningFrequency}
@@ -921,12 +928,12 @@ export default function AddPlant() {
         {/* ——— § IV · Album Card ——— */}
         {showDetails ? (
           <Card
-            eyebrow="§ IV · Album"
-            title={<>Haar <em>verhaal.</em></>}
-            subtitle="Notities, data en herinneringen."
+            eyebrow={t.addPlant.secAlbum}
+            title={t.addPlant.secAlbumTitle}
+            subtitle={t.addPlant.secAlbumSubtitle}
           >
             {/* Icon */}
-            <FormRow label="Icoon" description="Kies een emoji">
+            <FormRow label={t.addPlant.labelIcon} description={t.addPlant.labelIconDesc}>
               <IconPicker value={iconKey} onChange={(key) => {
                 userPickedIconRef.current = true
                 baseIconRef.current = null
@@ -942,7 +949,7 @@ export default function AddPlant() {
             )}
 
             {/* Sown date */}
-            <FormRow label="Gezaaid" description="Wanneer begon haar leven?">
+            <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
               <input
                 type="text"
                 inputMode="numeric"
@@ -955,7 +962,7 @@ export default function AddPlant() {
             </FormRow>
 
             {/* Notes */}
-            <FormRow label="Notities" description="Alles wat je wilt onthouden">
+            <FormRow label={t.addPlant.labelNotes} description={t.addPlant.labelNotesDesc}>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -967,7 +974,7 @@ export default function AddPlant() {
           </Card>
         ) : (
           <div className="card p-4 flex items-center gap-4">
-            <span className="font-mono text-[10px] text-text-muted uppercase tracking-[0.15em]">Icoon</span>
+            <span className="font-mono text-[10px] text-text-muted uppercase tracking-[0.15em]">{t.addPlant.labelIcon}</span>
             <IconPicker value={iconKey} onChange={(key) => {
               userPickedIconRef.current = true
               baseIconRef.current = null
@@ -983,7 +990,7 @@ export default function AddPlant() {
             onClick={() => navigate(-1)}
             className="font-heading font-medium text-sm px-3 py-2.5 rounded-xl border border-border text-text-soft hover:text-text hover:border-text-muted transition-colors shrink-0"
           >
-            ← Annuleren
+            {t.addPlant.cancel}
           </button>
           <button
             type="submit"
@@ -993,7 +1000,7 @@ export default function AddPlant() {
             {submitting ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Toevoegen...
+                {t.addPlant.adding}
               </span>
             ) : (
               name ? `${t.addPlant.title} — ${name}` : t.addPlant.title

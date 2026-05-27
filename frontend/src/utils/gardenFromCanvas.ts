@@ -1,8 +1,8 @@
 import type { EditorZone, CanvasData, ShadowCaster } from '../types'
 
 // Surface + boundary zones: everything that defines the garden footprint.
-// Fences are included so the union perimeter follows fence edges rather than
-// stopping at the nearest surface zone.
+// NOTE: fences are NOT included here — they're only used for shadow casting,
+// NOT for the garden perimeter polygon (sun heatmap grid).
 const GARDEN_ZONE_TYPES = new Set(['deck', 'soil', 'gravel', 'lawn', 'path', 'water', 'fence'])
 
 // Surface zones only (no fences) — used for auto-detected garden boundary
@@ -72,172 +72,7 @@ function computeSurfacePerimeter(zones: EditorZone[]): [number, number][] | null
   return hull
 }
 
-// ── Garden boundary (zone union: surface + fence) ────────────────────────────
-
-/**
- * Compute the union polygon of all garden-defining zone rectangles
- * (surface types + fences). Uses a grid-based approach: partition by all
- * unique zone edge coordinates, mark cells that overlap any zone, then
- * trace the outer boundary.
- *
- * Returns the garden perimeter polygon with a small outward margin.
- */
-export function computeZoneUnion(zones: EditorZone[], marginPx = 10): [number, number][] {
-  const surface = zones.filter(z => GARDEN_ZONE_TYPES.has(z.type))
-  if (surface.length === 0) return [
-    [0, 0], [680, 0], [680, 680], [0, 680],
-  ]
-
-  // Collect all unique x and y split lines from zone edges
-  const xs = new Set<number>()
-  const ys = new Set<number>()
-  for (const z of surface) {
-    xs.add(z.x)
-    xs.add(z.x + z.width)
-    ys.add(z.y)
-    ys.add(z.y + z.height)
-  }
-
-  const xSorted = [...xs].sort((a, b) => a - b)
-  const ySorted = [...ys].sort((a, b) => a - b)
-
-  // Build a boolean grid: grid[row][col] = is inside any surface zone
-  const rows = ySorted.length - 1
-  const cols = xSorted.length - 1
-  const grid: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false))
-
-  for (let r = 0; r < rows; r++) {
-    const cellTop = ySorted[r]
-    const cellBottom = ySorted[r + 1]
-    for (let c = 0; c < cols; c++) {
-      const cellLeft = xSorted[c]
-      const cellRight = xSorted[c + 1]
-      grid[r][c] = surface.some(z =>
-        cellLeft < z.x + z.width && cellRight > z.x &&
-        cellTop < z.y + z.height && cellBottom > z.y
-      )
-    }
-  }
-
-  // Find the top-left-most filled cell to start tracing
-  let startR = -1, startC = -1
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c]) { startR = r; startC = c; break }
-    }
-    if (startR >= 0) break
-  }
-  if (startR < 0) return []
-
-  // Trace the outer boundary clockwise
-  // Directions: 0=right, 1=down, 2=left, 3=up
-  const perimeter: [number, number][] = []
-  let r = startR, c = startC, dir = 0
-  const visited = new Set<string>()
-  const MAX_STEPS = 10000
-  let steps = 0
-
-  function cellRight(col: number) { return xSorted[col + 1] }
-  function cellLeft(col: number) { return xSorted[col] }
-  function cellTop(row: number) { return ySorted[row] }
-  function cellBottom(row: number) { return ySorted[row + 1] }
-
-  // Walk the perimeter
-  while (steps < MAX_STEPS) {
-    steps++
-    const stateKey = `${r},${c},${dir}`
-    if (visited.has(stateKey)) break
-    visited.add(stateKey)
-
-    // Determine: is there a filled cell ahead?
-    let aheadR = r, aheadC = c
-    switch (dir) {
-      case 0: aheadC++; break  // right
-      case 1: aheadR++; break  // down
-      case 2: aheadC--; break  // left
-      case 3: aheadR--; break  // up
-    }
-    const aheadFilled = aheadR >= 0 && aheadR < rows && aheadC >= 0 && aheadC < cols && grid[aheadR][aheadC]
-
-    // Determine: is there a filled cell to the right (relative to direction)?
-    const rightDir = (dir + 1) % 4
-    let rightR = r, rightC = c
-    switch (rightDir) {
-      case 0: rightC++; break
-      case 1: rightR++; break
-      case 2: rightC--; break
-      case 3: rightR--; break
-    }
-    const rightFilled = rightR >= 0 && rightR < rows && rightC >= 0 && rightC < cols && grid[rightR][rightC]
-
-    if (rightFilled) {
-      // Turn right
-      dir = rightDir
-      // Record corner at the outer edge
-      switch (dir) {
-        case 0: perimeter.push([cellRight(c), cellTop(r)]); break
-        case 1: perimeter.push([cellRight(c), cellBottom(r)]); break
-        case 2: perimeter.push([cellLeft(c), cellBottom(r)]); break
-        case 3: perimeter.push([cellLeft(c), cellTop(r)]); break
-      }
-      // Move to the right neighbor
-      r = rightR; c = rightC
-    } else if (aheadFilled) {
-      // Move ahead
-      r = aheadR; c = aheadC
-    } else {
-      // Turn left
-      dir = (dir + 3) % 4
-      // Record corner
-      switch (dir) {
-        case 0: perimeter.push([cellLeft(c), cellTop(r)]); break
-        case 1: perimeter.push([cellRight(c), cellTop(r)]); break
-        case 2: perimeter.push([cellRight(c), cellBottom(r)]); break
-        case 3: perimeter.push([cellLeft(c), cellBottom(r)]); break
-      }
-    }
-  }
-
-  // Apply margin: expand outward
-  if (marginPx !== 0 && perimeter.length >= 3) {
-    return expandPolygon(perimeter, marginPx)
-  }
-
-  return perimeter
-}
-
-function expandPolygon(poly: [number, number][], margin: number): [number, number][] {
-  const n = poly.length
-  const result: [number, number][] = []
-  for (let i = 0; i < n; i++) {
-    const prev = poly[(i + n - 1) % n]
-    const curr = poly[i]
-    const next = poly[(i + 1) % n]
-
-    // Inward normals of the two edges meeting at curr
-    const edge1x = curr[0] - prev[0], edge1y = curr[1] - prev[1]
-    const edge2x = next[0] - curr[0], edge2y = next[1] - curr[1]
-
-    // Outward normal of edge1 (rotate counter-clockwise edge direction by -90°)
-    const len1 = Math.sqrt(edge1x * edge1x + edge1y * edge1y) || 1
-    const n1x = -edge1y / len1, n1y = edge1x / len1
-
-    // Outward normal of edge2
-    const len2 = Math.sqrt(edge2x * edge2x + edge2y * edge2y) || 1
-    const n2x = -edge2y / len2, n2y = edge2x / len2
-
-    // Average the two outward normals for the corner offset
-    const nx = (n1x + n2x) / 2
-    const ny = (n1y + n2y) / 2
-    const nLen = Math.sqrt(nx * nx + ny * ny) || 1
-
-    result.push([
-      curr[0] + (nx / nLen) * margin,
-      curr[1] + (ny / nLen) * margin,
-    ])
-  }
-  return result
-}
+// ── Garden boundary helpers ────────────────────────────────────────
 
 function perimeterToBounds(perimeter: [number, number][]): { minX: number; minY: number; maxX: number; maxY: number } {
   if (perimeter.length === 0) return { minX: 0, minY: 0, maxX: 680, maxY: 680 }
@@ -254,41 +89,31 @@ function perimeterToBounds(perimeter: [number, number][]): { minX: number; minY:
 /**
  * Derive the garden perimeter polygon.
  *
+ * Fences are intentionally excluded — they only cast shadows and define
+ * the garden edge visually, but should NOT be used as the sun polygon
+ * (otherwise the heatmap grid collapses to just the fence strips).
+ *
  * Priority:
- * 1. Fence zones → union of fence rectangles (exact drawn boundary)
- * 2. No fences → convex hull of all surface zones (clean auto-detected boundary)
- * 3. Nothing → null (no masking; full canvas)
+ * 1. Surface zones → convex hull of all zone corners (clean auto-detected boundary)
+ * 2. Nothing → null (no masking; full canvas)
  */
 export function deriveGardenPerimeter(zones: EditorZone[]): [number, number][] | null {
-  const fenceZones = zones.filter(z => z.type === 'fence')
-  if (fenceZones.length > 0) {
-    return computeZoneUnion(fenceZones, 5)
-  }
   return computeSurfacePerimeter(zones)
 }
 
 /**
  * Garden bounds (bounding box) for heatmap grid computation.
  *
+ * Fences intentionally excluded (same reasoning as deriveGardenPerimeter).
+ *
  * Priority:
- * 1. Fence zones → bounding box of fence union
- * 2. No fences → bounding box of surface zone convex hull
- * 3. Nothing → null
+ * 1. Surface zones → bounding box of convex hull
+ * 2. Nothing → null
  */
 export function deriveGardenBounds(zones: EditorZone[]): { minX: number; minY: number; maxX: number; maxY: number } | null {
-  const fenceZones = zones.filter(z => z.type === 'fence')
-  if (fenceZones.length > 0) {
-    return deriveGardenBoundsFromUnion(fenceZones)
-  }
   const hull = computeSurfacePerimeter(zones)
   if (hull) return perimeterToBounds(hull)
   return null
-}
-
-/** Internal: derive bounds from zones using the grid union (for fence zones) */
-function deriveGardenBoundsFromUnion(zones: EditorZone[]): { minX: number; minY: number; maxX: number; maxY: number } {
-  const perimeter = computeZoneUnion(zones, 10)
-  return perimeterToBounds(perimeter)
 }
 
 // ── Shadow casters ───────────────────────────────────────────────────────────
