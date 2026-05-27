@@ -362,6 +362,7 @@ function getCornerCutWallRects(
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
+// force new chunk hash (Cloudflare 404 cache)
 
 export default function RoomWallRenderer({
   zone, scalePxPerM, wallElements, zones, isSelected,
