@@ -56,7 +56,7 @@ async def _call_ai(prompt: str) -> dict | None:
     if resp.status_code != 200:
         return None
 
-    raw = resp.json()["content"][0]["text"].strip()
+    raw = resp.json()["choices"][0]["message"]["content"].strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
 
