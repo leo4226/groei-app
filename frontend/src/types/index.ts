@@ -202,9 +202,9 @@ export interface WallElement {
 }
 
 export type ShadowCaster =
-  | { id: string; label: string; type: 'rect'; x: number; y: number; width: number; height: number; heightCm: number; opacity?: number }
-  | { id: string; label: string; type: 'circle'; cx: number; cy: number; radius: number; heightCm: number; opacity?: number }
-  | { id: string; label: string; type: 'polygon'; points: [number, number][]; heightCm: number; opacity?: number }
+  | { id: string; label: string; type: 'rect'; x: number; y: number; width: number; height: number; heightCm: number; opacity?: number; excludeSelf?: boolean }
+  | { id: string; label: string; type: 'circle'; cx: number; cy: number; radius: number; heightCm: number; opacity?: number; excludeSelf?: boolean }
+  | { id: string; label: string; type: 'polygon'; points: [number, number][]; heightCm: number; opacity?: number; excludeSelf?: boolean }
 
 export interface CanvasData {
   zones: EditorZone[]
@@ -551,6 +551,19 @@ export type WeedSightingOut = WeedSightingCreate & {
 // ── Species ecology ──
 
 export type EcologyDataSource = 'gbif' | 'llm' | 'mixed' | 'failed'
+
+export type GardenBiodiversityOut = {
+  score: number                                 // 0..100
+  species_count: number
+  native_count: number
+  invasive_count: number
+  pollinator_coverage_months: boolean[]         // 12 entries, index 0 = January
+  components: {
+    pollinator: number
+    native: number
+    diversity: number
+  }
+}
 
 export type EcologyOut = {
   native_to_nl: boolean | null

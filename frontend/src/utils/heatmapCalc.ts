@@ -29,7 +29,9 @@ export interface HeatmapCell {
  * zMax = heightCm × PX_PER_CM keeps the vertical scale consistent with x/y.
  */
 export function shadowCastersToObstructions(casters: ShadowCaster[]): Obstruction[] {
-  return casters.map((c): Obstruction => {
+  return casters
+    .filter(c => !c.excludeSelf)  // raised beds etc. — plants sit on top, so the structure doesn't block sky rays
+    .map((c): Obstruction => {
     const zMax = c.heightCm * PX_PER_CM
     if (c.type === 'rect') {
       return { type: 'box', xMin: c.x, xMax: c.x + c.width, yMin: c.y, yMax: c.y + c.height, zMin: 0, zMax }

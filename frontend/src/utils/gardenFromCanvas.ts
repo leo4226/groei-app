@@ -172,6 +172,7 @@ export function deriveRaisedBedCasters(zones: EditorZone[], _scalePxPerM: number
         height: z.height,
         heightCm: Math.round(heightM * 100),
         opacity: 0.35,
+        excludeSelf: true,
       }
     })
 }

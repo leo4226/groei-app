@@ -95,8 +95,10 @@ function computeRectShadow(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: 
   ]
   // 4 projected corners (shadow tips)
   const projected: [number, number][] = corners.map(([cx, cy]) => [cx + dx, cy + dy])
-  // Convex hull of all 8 points
-  const hull = convexHull([...corners, ...projected])
+  // When excludeSelf is set (e.g. raised beds), only the projected shadow is used —
+  // the caster's own area is excluded because plants grow ON TOP of the structure.
+  const points = caster.excludeSelf ? projected : [...corners, ...projected]
+  const hull = convexHull(points)
   return { id: caster.id, pathD: pointsToPath(hull), opacity: caster.opacity ?? 0.35 }
 }
 
@@ -109,7 +111,9 @@ function computeCircleShadow(caster: Extract<ShadowCaster, { type: 'circle' }>, 
   for (let i = 0; i < N; i++) {
     const angle = (i / N) * 2 * Math.PI
     const cos = Math.cos(angle), sin = Math.sin(angle)
-    points.push([cx + cos * radius, cy + sin * radius])
+    if (!caster.excludeSelf) {
+      points.push([cx + cos * radius, cy + sin * radius])
+    }
     points.push([cx + dx + cos * radius, cy + dy + sin * radius])
   }
   const hull = convexHull(points)
@@ -118,7 +122,8 @@ function computeCircleShadow(caster: Extract<ShadowCaster, { type: 'circle' }>, 
 
 function computePolygonShadow(caster: Extract<ShadowCaster, { type: 'polygon' }>, dx: number, dy: number): ShadowPolygon {
   const projected: [number, number][] = caster.points.map(([px, py]) => [px + dx, py + dy])
-  const hull = convexHull([...caster.points, ...projected])
+  const points = caster.excludeSelf ? projected : [...caster.points, ...projected]
+  const hull = convexHull(points)
   return { id: caster.id, pathD: pointsToPath(hull), opacity: caster.opacity ?? 0.35 }
 }
 
@@ -168,7 +173,8 @@ function rectShadowRegion(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: n
     [x, y], [x + width, y], [x + width, y + height], [x, y + height],
   ]
   const projected: [number, number][] = corners.map(([cx, cy]) => [cx + dx, cy + dy])
-  return { type: 'polygon', points: convexHull([...corners, ...projected]), blockFactor: casterBlockFactor(caster) }
+  const points = caster.excludeSelf ? projected : [...corners, ...projected]
+  return { type: 'polygon', points: convexHull(points), blockFactor: casterBlockFactor(caster) }
 }
 
 function circleShadowRegion(caster: Extract<ShadowCaster, { type: 'circle' }>, dx: number, dy: number): ShadowRegion {
@@ -177,7 +183,8 @@ function circleShadowRegion(caster: Extract<ShadowCaster, { type: 'circle' }>, d
 
 function polygonShadowRegion(caster: Extract<ShadowCaster, { type: 'polygon' }>, dx: number, dy: number): ShadowRegion {
   const projected: [number, number][] = caster.points.map(([px, py]) => [px + dx, py + dy])
-  return { type: 'polygon', points: convexHull([...caster.points, ...projected]), blockFactor: casterBlockFactor(caster) }
+  const points = caster.excludeSelf ? projected : [...caster.points, ...projected]
+  return { type: 'polygon', points: convexHull(points), blockFactor: casterBlockFactor(caster) }
 }
 
 /**
