@@ -59,6 +59,35 @@ export default function Plants() {
   const [alertPlantIds, setAlertPlantIds] = useState<number[] | null>(null)
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
   const [showFilterSheet, setShowFilterSheet] = useState(false)
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+    setIsSelecting(false)
+  }
+
+  const { bulkArchivePlants } = useFloreren()
+
+  const handleBulkArchive = async () => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    const msg = ids.length === 1
+      ? `Weet je zeker dat je ${ids.length} plant wilt verwijderen?`
+      : `Weet je zeker dat je ${ids.length} planten wilt verwijderen?`
+    if (!window.confirm(msg)) return
+    await bulkArchivePlants(ids)
+    clearSelection()
+  }
 
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => {})
@@ -281,6 +310,28 @@ export default function Plants() {
           >
             {t.plantsPage.addButton}
           </button>
+          {isSelecting ? (
+            <button onClick={clearSelection} style={{
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+              color: 'var(--color-text-soft)', padding: '10px 16px',
+              border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+              transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+            }}>
+              {t.plantsPage.cancel ?? 'Annuleren'}
+            </button>
+          ) : (
+            <button onClick={() => setIsSelecting(true)} style={{
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+              color: 'var(--color-text-soft)', padding: '10px 16px',
+              border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+              transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+            >
+              {'Selecteer'}
+            </button>
+          )}
         </div>
 
         {/* Filters — desktop rows */}
@@ -351,6 +402,42 @@ export default function Plants() {
           <LoadingSkeleton />
           <EmptyState />
           <PlantGrid />
+          {isSelecting && (
+            <div style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+              background: 'var(--color-surface)',
+              borderTop: '1px solid var(--color-border)',
+              padding: '12px 16px',
+              paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text)' }}>
+                {selectedIds.size === 1
+                  ? `1 plant geselecteerd`
+                  : `${selectedIds.size} planten geselecteerd`}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={clearSelection} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                  padding: '8px 16px', borderRadius: 100, cursor: 'pointer',
+                  border: '1px solid var(--color-border)', background: 'transparent',
+                  color: 'var(--color-text)',
+                }}>
+                  Annuleren
+                </button>
+                <button onClick={handleBulkArchive} disabled={selectedIds.size === 0} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+                  padding: '8px 16px', borderRadius: 100, cursor: selectedIds.size === 0 ? 'not-allowed' : 'pointer',
+                  border: 'none', background: selectedIds.size === 0 ? 'var(--color-border)' : 'var(--color-primary)',
+                  color: 'var(--color-surface)',
+                  opacity: selectedIds.size === 0 ? 0.5 : 1,
+                }}>
+                  Archiveer ({selectedIds.size})
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -385,14 +472,28 @@ export default function Plants() {
               borderRadius: 20, border: '1px solid var(--color-border)',
             }}>{filtered.length}</span>
           </h1>
-          <button onClick={() => navigate('/plants/add')} style={{
-            fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
-            color: 'var(--color-surface)', background: 'var(--color-primary)',
-            border: 'none', borderRadius: 100, padding: '6px 14px',
-            cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>
-            {t.plantsPage.addButton}
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button onClick={() => navigate('/plants/add')} style={{
+              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+              color: 'var(--color-surface)', background: 'var(--color-primary)',
+              border: 'none', borderRadius: 100, padding: '6px 14px',
+              cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+              {t.plantsPage.addButton}
+            </button>
+            <button
+              onClick={() => isSelecting ? clearSelection() : setIsSelecting(true)}
+              style={{
+                fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+                color: isSelecting ? 'var(--color-primary)' : 'var(--color-text-soft)',
+                background: isSelecting ? 'var(--color-bg-warm)' : 'transparent',
+                border: '1px solid var(--color-border)', borderRadius: 100,
+                padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {isSelecting ? 'Annuleren' : 'Selecteer'}
+            </button>
+          </div>
         </div>
 
         {/* Search bar */}
@@ -668,7 +769,8 @@ export default function Plants() {
         gap: isMobile ? 10 : 16,
       }}>
         {filtered.map((plant) => (
-          <PlantCard key={plant.id} plant={plant} iconMap={iconMap} index={plants.indexOf(plant) + 1} />
+          <PlantCard key={plant.id} plant={plant} iconMap={iconMap} index={plants.indexOf(plant) + 1}
+            isSelecting={isSelecting} selected={selectedIds.has(plant.id)} onToggle={() => toggleSelect(plant.id)} />
         ))}
       </div>
     ) : null
@@ -764,13 +866,65 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
   )
 }
 
-function PlantCard({ plant, iconMap, index }: { plant: Plant; iconMap: Map<string, PlantIcon>; index: number }) {
+function PlantCard({ plant, iconMap, index, isSelecting, selected, onToggle }: {
+  plant: Plant; iconMap: Map<string, PlantIcon>; index: number;
+  isSelecting?: boolean; selected?: boolean; onToggle?: () => void;
+}) {
   const CATEGORY_LABELS = useCategoryLabels()
   const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
   const typeLabel = icon?.cat || plant.plant_type || null
   const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null
   const formLabel = icon?.form || null
   const familyName = icon?.family || null
+
+  if (isSelecting) {
+    return (
+      <div onClick={onToggle}
+        className="card card-glow block"
+        style={{ borderRadius: 14, overflow: 'hidden', color: 'inherit', cursor: 'pointer',
+          outline: selected ? '2px solid var(--color-primary)' : undefined,
+          outlineOffset: selected ? -2 : undefined,
+          transition: 'outline 0.15s, opacity 0.15s', opacity: selected ? 1 : 0.75,
+        }}
+      >
+        <div style={{ position: 'relative' }}>
+          <PlantIconWell plant={plant} iconMap={iconMap} />
+          <div style={{
+            position: 'absolute', top: 6, right: 6,
+            width: 22, height: 22, borderRadius: 22,
+            border: selected ? 'none' : '2px solid var(--color-border)',
+            background: selected ? 'var(--color-primary)' : 'rgba(251,247,238,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {selected && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-surface)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px 12px' }}>
+          <h3 style={{
+            margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 500,
+            fontSize: 14, lineHeight: 1.2, color: 'var(--color-text)',
+            letterSpacing: '-0.01em', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {plant.name}
+          </h3>
+          {plant.species && (
+            <p style={{
+              margin: '1px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic',
+              fontSize: 11, color: 'var(--color-text-soft)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {plant.species}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Link to={`/plants/${plant.id}`}

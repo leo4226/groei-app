@@ -171,6 +171,7 @@ export const plants = {
   create:            (data: PlantCreateInput)                      => api<Plant>('POST', '/plants', { body: data }),
   update:            (id: number, data: Partial<Plant>)            => api<Plant>('PUT', `/plants/${id}`, { body: data }),
   archive:           (id: number)                                  => api<void>('DELETE', `/plants/${id}`),
+  bulkArchive:       (ids: number[])                               => api<{ok: boolean; count: number}>('POST', '/plants/bulk-archive', { body: { plant_ids: ids } }),
   restore:           (id: number)                                  => api<void>('PATCH', `/plants/${id}/restore`),
   uploadPhoto:       (plantId: number, file: File)                 => { const f = new FormData(); f.append('file', file); return api<Plant>('POST', `/plants/${plantId}/photo`, { form: f }) },
   setPosition:       (plantId: number, data: { map_id: number; map_x: number; map_y: number; ground_zone_id: null }) => api<void>('PUT', `/plants/${plantId}/position`, { body: data }),
@@ -204,6 +205,7 @@ export const maps = {
   delete:  (id: number)                                                                                          => api<void>('DELETE', `/maps/${id}`),
   byId:    (id: number)                                                                                          => api<MapInfo>('GET', `/maps/by-id/${id}`),
   detail:  (slug: string)                                                                                        => api<MapDetail>('GET', `/maps/${slug}`),
+  biodiversity: (slug: string)                                                                                   => api<import('../types').GardenBiodiversityOut>('GET', `/maps/${slug}/biodiversity`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
 }
@@ -300,7 +302,8 @@ export interface HouseholdMember {
 }
 
 export const household = {
-  invite:   ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
-  join:     (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
-  members:  ()                             => api<HouseholdMember[]>('GET', '/household/members'),
+  invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
+  join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
+  members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
+  removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
 }

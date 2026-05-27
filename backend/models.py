@@ -296,6 +296,10 @@ class MapPlantOut(BaseModel):
     warnings: list[dict] = []
 
 
+class BulkArchiveInput(BaseModel):
+    plant_ids: list[int]
+
+
 class PlantPositionUpdate(BaseModel):
     map_id: int
     map_x: float

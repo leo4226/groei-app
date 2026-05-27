@@ -7,7 +7,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
 from database import db_dep
 from auth import get_current_account
-from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate
+from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput
 from routers.icons import resolve_placement_icon
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
@@ -332,7 +332,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
     new_cursor = await db.execute(
         """INSERT INTO plants (name, species, species_id, location_id, photo_path, pot_size_cm, notes,
            map_id, display_radius_cm, sun_requirement, phase, sown_date, is_active, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)""",
         (src["name"], src["species"], src.get("species_id"), src["location_id"], src["photo_path"],
          src["pot_size_cm"], src["notes"], src["map_id"], src.get("display_radius_cm"),
          src.get("sun_requirement"), src.get("phase"), src.get("sown_date"), account["household_id"]),
@@ -341,7 +341,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
 
     # Copy care schedules
     sched_rows = await db.execute_fetchall(
-        "SELECT care_type, interval_days, season_adjust, notes FROM care_schedules WHERE plant_id = ? AND is_active = 1",
+        "SELECT care_type, interval_days, season_adjust, notes FROM care_schedules WHERE plant_id = ? AND is_active = TRUE",
         (plant_id,),
     )
     for s in sched_rows:
@@ -349,7 +349,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
         next_due = calculate_next_due(None, s["interval_days"], s["season_adjust"])
         await db.execute(
             """INSERT INTO care_schedules (plant_id, care_type, interval_days, season_adjust, next_due, notes, is_active)
-               VALUES (?, ?, ?, ?, ?, ?, 1)""",
+               VALUES (?, ?, ?, ?, ?, ?, TRUE)""",
             (new_id, s["care_type"], s["interval_days"], s["season_adjust"], next_due, s["notes"]),
         )
 
@@ -373,17 +373,35 @@ async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account
 @router.delete("/plants/{plant_id}")
 async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     await db.execute(
-        "UPDATE plants SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
     )
     await db.commit()
     return {"ok": True}
 
 
+@router.delete("/plants/bulk-archive")
+@router.post("/plants/bulk-archive")
+async def bulk_archive_plants(
+    body: BulkArchiveInput,
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
+    if not body.plant_ids:
+        return {"ok": True, "count": 0}
+    placeholders = ",".join(["?"] * len(body.plant_ids))
+    await db.execute(
+        f"UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id IN ({placeholders})",
+        body.plant_ids,
+    )
+    await db.commit()
+    return {"ok": True, "count": len(body.plant_ids)}
+
+
 @router.patch("/plants/{plant_id}/restore")
 async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     await db.execute(
-        "UPDATE plants SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE plants SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
     )
     await db.commit()

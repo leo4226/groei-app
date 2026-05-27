@@ -26,6 +26,7 @@ interface FlorerStore {
   addPlant: (data: PlantCreateInput) => Promise<Plant>
   updatePlant: (id: number, data: Partial<Plant>) => Promise<void>
   archivePlant: (id: number) => Promise<void>
+  bulkArchivePlants: (ids: number[]) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
   markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
@@ -144,6 +145,13 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   archivePlant: async (id) => {
     await plantsApi.archive(id)
     set((s) => ({ plants: s.plants.filter((p) => p.id !== id) }))
+  },
+
+  bulkArchivePlants: async (ids) => {
+    if (ids.length === 0) return
+    await plantsApi.bulkArchive(ids)
+    const idSet = new Set(ids)
+    set((s) => ({ plants: s.plants.filter((p) => !idSet.has(p.id)) }))
   },
 
   uploadPhoto: async (plantId, file) => {
