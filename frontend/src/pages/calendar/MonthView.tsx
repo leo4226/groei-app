@@ -112,8 +112,8 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
           />
           <aside className="col-side">
             <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
-            <CalendarAlmanac month1={month1} />
             <CalendarUpcoming todayIso={todayIso} events={filtered} />
+            <CalendarAlmanac month1={month1} />
             <CalendarMoon year={year} month1={month1} todayDay={now.getDate()} />
           </aside>
         </main>

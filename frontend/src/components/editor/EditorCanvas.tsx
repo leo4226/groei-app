@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useMemo } from 'react'
 import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
@@ -264,7 +264,19 @@ export default function EditorCanvas({
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
 
-  const getSvgPoint = useCallback((e: React.PointerEvent) => {
+  const zoneBbox = useMemo(() => {
+    if (zones.length === 0) return null
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const z of zones) {
+      if (z.x < minX) minX = z.x
+      if (z.y < minY) minY = z.y
+      if (z.x + z.width > maxX) maxX = z.x + z.width
+      if (z.y + z.height > maxY) maxY = z.y + z.height
+    }
+    return { zoneMinX: minX, zoneMinY: minY, zoneMaxX: maxX, zoneMaxY: maxY }
+  }, [zones])
+
+  const getSvgPoint
     if (!svgRef.current) return null
     return screenToSVG(svgRef.current, e.clientX, e.clientY)
   }, [])
@@ -640,8 +652,8 @@ export default function EditorCanvas({
           <EditorDefs />
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
 
-          {!previewMode && (
-            <DimensionArrows canvasW={CANVAS_W} canvasH={CANVAS_H} pxPerM={scalePxPerM} />
+          {!previewMode && zoneBbox && (
+            <DimensionArrows {...zoneBbox} pxPerM={scalePxPerM} />
           )}
 
           {/* Shadow casters — drawn below zones so garden zones overlay them */}

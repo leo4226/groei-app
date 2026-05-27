@@ -113,10 +113,6 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, savi
           )
         })}
       </div>
-      <div className="agenda-foot">
-        <span>{t.calendar.editLabel}</span>
-        <span>—</span>
-      </div>
     </section>
   )
 }

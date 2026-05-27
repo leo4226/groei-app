@@ -598,59 +598,6 @@
   margin-bottom: 8px;
 }
 
-.cal-page .agenda-foot {
-  padding: 12px 22px 18px;
-  border-top: 1px solid var(--cal-rule-soft);
-  display: flex; justify-content: space-between; align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--cal-ink-faint);
-}
-
-/* Upcoming list */
-.cal-page .up-list { padding: 6px 0 14px; }
-.cal-page .up-item {
-  display: grid;
-  grid-template-columns: 44px 1fr auto;
-  gap: 12px;
-  padding: 10px 22px;
-  align-items: center;
-  border-bottom: 1px dashed var(--cal-rule-soft);
-}
-.cal-page .up-item:last-child { border-bottom: 0; }
-.cal-page .up-date {
-  font-family: 'Fraunces', serif;
-  text-align: center;
-  line-height: 1;
-}
-.cal-page .up-date .d { font-size: 22px; color: var(--cal-ink); }
-.cal-page .up-date .m {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--cal-ink-faint);
-  display: block;
-  margin-top: 2px;
-}
-.cal-page .up-meta .what {
-  font-family: 'Fraunces', serif;
-  font-size: 13px;
-  color: var(--cal-ink);
-  margin: 0;
-}
-.cal-page .up-meta .who {
-  font-family: 'Fraunces', serif;
-  font-style: italic;
-  font-size: 11px;
-  color: var(--cal-ink-faint);
-}
-.cal-page .up-pip {
-  width: 8px; height: 8px; border-radius: 50%;
-}
-
 /* Moon strip */
 .cal-page .moon-strip { padding: 14px 22px 22px; }
 .cal-page .moon-row {

@@ -1,6 +1,6 @@
-import type { CalendarEvent } from './calendarTypes'
+import { useMemo } from 'react'
+import type { CalendarEvent, EventTypeId } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
-import { MONTH_SHORT_NL } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
@@ -10,36 +10,52 @@ interface Props {
 
 export default function CalendarUpcoming({ todayIso, events }: Props) {
   const t = useT()
-  const future = events
-    .filter(e => e.date > todayIso)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 5)
+
+  const groups = useMemo(() => {
+    const future = events.filter(e => e.date > todayIso)
+    const map: Record<string, CalendarEvent[]> = {}
+    future.forEach(e => {
+      if (!map[e.type]) map[e.type] = []
+      map[e.type].push(e)
+    })
+    // sort groups by count desc so most common tasks appear first
+    return Object.entries(map).sort((a, b) => b[1].length - a[1].length)
+  }, [events, todayIso])
+
+  const total = groups.reduce((s, [, g]) => s + g.length, 0)
+
+  function firstLetter(type: string): string {
+    const key = EVENT_TYPE_UTILITY_KEY[type as EventTypeId]
+    const label = key ? (t.utility[key] ?? type) : type
+    return label[0].toUpperCase()
+  }
 
   return (
     <section className="side-card">
       <div className="sc-head">
         <div className="sc-eye">{t.calendar.upcoming}</div>
         <h2 className="sc-title">{t.calendar.upcomingTitlePrefix}<em>{t.calendar.upcomingTitleEm}</em>.</h2>
-        <p className="sc-sub">{t.calendar.upcomingSubtitle}</p>
+        {total > 0 && (
+          <p className="sc-sub">{total} {total === 1 ? t.calendar.taskSingular! : t.calendar.tasks}.</p>
+        )}
       </div>
-      <div className="up-list">
-        {future.length === 0 && (
+      <div className="agenda-list">
+        {total === 0 && (
           <div className="agenda-empty" style={{ padding: '18px 22px' }}>{t.calendar.silence}</div>
         )}
-        {future.map(e => {
-          const [, m, d] = e.date.split('-').map(Number)
-          const def = EVENT_TYPE_BY_ID[e.type]
+        {groups.map(([type, groupEvents]) => {
+          const def = EVENT_TYPE_BY_ID[type]
+          const label = t.utility[EVENT_TYPE_UTILITY_KEY[type]] ?? type
+
           return (
-            <div key={e.id} className="up-item">
-              <div className="up-date">
-                <span className="d">{d}</span>
-                <span className="m">{MONTH_SHORT_NL[m - 1]}</span>
+            <div key={type} className="agenda-item agenda-group">
+              <div className={`agenda-icon ag-icon-group ${def?.cssClass ?? ''}`}>
+                <span className="ag-type-letter">{firstLetter(type)}</span>
               </div>
-              <div className="up-meta">
-                <p className="what">{e.plant_name ?? t.utility[EVENT_TYPE_UTILITY_KEY[e.type]] ?? e.type}</p>
-                <p className="who">{t.utility[EVENT_TYPE_UTILITY_KEY[e.type]] ?? e.type}</p>
+              <div className="agenda-meta">
+                <p className="what">{label}</p>
               </div>
-              <span className="up-pip" style={{ background: def?.color ?? '#2F5D3A' }} />
+              <span className="ag-group-badge">{groupEvents.length}</span>
             </div>
           )
         })}

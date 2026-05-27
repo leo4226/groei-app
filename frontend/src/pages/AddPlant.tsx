@@ -223,7 +223,34 @@ export default function AddPlant() {
     if (isIdentifyPrefill(prefill)) {
       setName(prefill.name_nl_suggested)
       setSpecies(prefill.scientific_name)
-      setIconKey(prefill.icon_key ?? null)
+      // Resolve icon through catalog so pot/bare switching works
+      if (iconCatalog.length > 0) {
+        const iconKeyFromPrefill = prefill.icon_key
+        const icon = iconKeyFromPrefill
+          ? iconCatalog.find(i => i.id === iconKeyFromPrefill || i.variant_of === iconKeyFromPrefill)
+          : null
+        // If not found by key, try matching by scientific name
+        const match = icon ?? (
+          prefill.scientific_name
+            ? iconCatalog.find(i => i.sci?.toLowerCase() === prefill.scientific_name.toLowerCase())
+            : null
+        )
+        if (match) {
+          const baseId = match.variant_of || match.id
+          baseIconRef.current = baseId
+          userPickedIconRef.current = false
+          const noPot = potSize.trim() === ''
+          const bareExists = iconLookup.bareBases.has(baseId)
+          setIconKey(noPot && bareExists ? `${baseId}_bare` : baseId)
+        } else {
+          baseIconRef.current = null
+          setIconKey(prefill.icon_key ?? null)
+        }
+      } else {
+        // Catalog not loaded yet — plant a flag to retry when it arrives
+        baseIconRef.current = prefill.icon_key ? 'pending' : null
+        setIconKey(prefill.icon_key ?? null)
+      }
       return
     }
     if ('latinName' in (prefill as Record<string, unknown>)) {
