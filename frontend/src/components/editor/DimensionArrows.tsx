@@ -23,6 +23,12 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
 
   if (!wM || !hM) return null
 
+  const ARROW_L = 6
+  const ARROW_INSET = 6
+  const TEXT_GAP = 10
+  // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
+  const CUT_OFFSET = 26
+
   // ── Corner cut arrows ──────────────────────────────────────────────────
   const cutArrows: CornerCutArrow[] = []
   for (const z of zones) {
@@ -68,12 +74,6 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
 
     if (arrow) cutArrows.push(arrow)
   }
-
-  const ARROW_L = 6
-  const ARROW_INSET = 6
-  const TEXT_GAP = 10
-  // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
-  const CUT_OFFSET = 26
 
   function arrowHead(path: string) {
     return <path d={path} stroke="currentColor" strokeWidth={1} fill="none" />

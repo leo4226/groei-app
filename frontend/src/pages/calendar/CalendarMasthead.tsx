@@ -1,10 +1,12 @@
 import { MONTH_LONG_NL, isoWeek } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
+import CalendarMoonMini from './CalendarMoonMini'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
   year: number
   month1: number
+  todayDay: number
   viewMode: CalendarViewMode
   onPrev(): void
   onNext(): void
@@ -15,7 +17,7 @@ interface Props {
 }
 
 export default function CalendarMasthead({
-  year, month1, viewMode, onPrev, onNext, onSetView,
+  year, month1, todayDay, viewMode, onPrev, onNext, onSetView,
   taskCount, bloomCount, openCount,
 }: Props) {
   const t = useT()
@@ -41,6 +43,8 @@ export default function CalendarMasthead({
           <h1>{t.calendar.heading}<em>.</em></h1>
           <p className="lede">{t.calendar.subtitle}</p>
         </div>
+
+        <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />
 
         <div className="month-switch">
           <div className="ms-row">

@@ -94,7 +94,7 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
   return (
     <>
       <CalendarMasthead
-        year={year} month1={month1} viewMode={viewMode}
+        year={year} month1={month1} todayDay={now.getDate()} viewMode={viewMode}
         onPrev={prev} onNext={next} onSetView={onSetView}
         taskCount={filtered.length} bloomCount={bloomCount} openCount={openCount}
       />

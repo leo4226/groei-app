@@ -243,6 +243,7 @@ export default function Settings() {
         </div>
       </section>
 
+      {adminAccounts !== null && (
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.icons.title}</h2>
         <div className="card p-4 space-y-3">
@@ -304,7 +305,9 @@ export default function Settings() {
           )}
         </div>
       </section>
+      )}
 
+      {adminAccounts !== null && (
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.icons.gapsTitle}</h2>
         <div className="card p-4 space-y-3">
@@ -389,6 +392,7 @@ export default function Settings() {
           )}
         </div>
       </section>
+      )}
 
       <section>
         <h2 className="text-base font-bold mb-3">About</h2>

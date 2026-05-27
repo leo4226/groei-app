@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { User, Location, Plant, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
-import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, dashboard as dashboardApi } from '../api/client'
+import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, dashboard as dashboardApi, icons as iconsApi } from '../api/client'
 
 interface FlorerStore {
   users: User[]
@@ -131,6 +131,8 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   addPlant: async (data) => {
     const plant = await plantsApi.create(data)
     set((s) => ({ plants: [...s.plants, plant] }))
+    // Auto-assign icon — fire-and-forget, don't block the UI
+    iconsApi.sync().catch(() => {})
     return plant
   },
 
