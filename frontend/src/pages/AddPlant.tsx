@@ -1032,14 +1032,14 @@ export default function AddPlant() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="font-heading font-medium text-sm px-4 py-3 rounded-xl border border-border text-text-soft hover:text-text hover:border-text-muted transition-colors"
+            className="font-heading font-medium text-sm px-3 py-2.5 rounded-xl border border-border text-text-soft hover:text-text hover:border-text-muted transition-colors shrink-0"
           >
             ← Annuleren
           </button>
           <button
             type="submit"
             disabled={submitting || !name.trim()}
-            className="font-heading font-bold text-base px-8 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm"
+            className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm max-w-[260px] truncate"
           >
             {submitting ? (
               <span className="flex items-center gap-2">
@@ -1047,7 +1047,7 @@ export default function AddPlant() {
                 Toevoegen...
               </span>
             ) : (
-              `${t.addPlant.title} ${name ? `— ${name}` : ''}`
+              name ? `${t.addPlant.title} — ${name}` : t.addPlant.title
             )}
           </button>
         </div>
