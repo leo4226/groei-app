@@ -26,6 +26,7 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
 
   const ARROW_L = 6
   const ARROW_INSET = 6
+  const ARROW_GAP = 22
   const TEXT_GAP = 10
   // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
   const CUT_OFFSET = 26
@@ -87,10 +88,10 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
       <g opacity={compact ? 0.45 : 0.45}>
         {/* Top: zone width */}
         {renderArrowLine(
-          zoneMinX, zoneMinY - 14, zoneMaxX, zoneMinY - 14,
+          zoneMinX, zoneMinY - ARROW_GAP, zoneMaxX, zoneMinY - ARROW_GAP,
           ARROW_L, ARROW_INSET, arrowHead,
         )}
-        <text x={(zoneMinX + zoneMaxX) / 2} y={zoneMinY - 14 - TEXT_GAP}
+        <text x={(zoneMinX + zoneMaxX) / 2} y={zoneMinY - ARROW_GAP - TEXT_GAP}
           textAnchor="middle" dominantBaseline="auto"
           fill="currentColor" fontSize={10} fontWeight={500}>
           {wM} m
@@ -98,13 +99,13 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
 
         {/* Left: zone height */}
         {renderArrowLine(
-          zoneMinX - 14, zoneMinY, zoneMinX - 14, zoneMaxY,
+          zoneMinX - ARROW_GAP, zoneMinY, zoneMinX - ARROW_GAP, zoneMaxY,
           ARROW_L, ARROW_INSET, arrowHead,
         )}
-        <text x={zoneMinX - 14 - TEXT_GAP} y={(zoneMinY + zoneMaxY) / 2}
+        <text x={zoneMinX - ARROW_GAP - TEXT_GAP} y={(zoneMinY + zoneMaxY) / 2}
           textAnchor="end" dominantBaseline="central"
           fill="currentColor" fontSize={10} fontWeight={500}
-          transform={`rotate(-90, ${zoneMinX - 14 - TEXT_GAP}, ${(zoneMinY + zoneMaxY) / 2})`}>
+          transform={`rotate(-90, ${zoneMinX - ARROW_GAP - TEXT_GAP}, ${(zoneMinY + zoneMaxY) / 2})`}>
           {hM} m
         </text>
 
