@@ -108,7 +108,13 @@ async def enrich_plant(db, plant_row, today, temp_data=None):
         plant["temp_status"] = "comfortable"
 
     phenology_json = plant.pop("phenology_json", None)
-    plant["phenology"] = json.loads(phenology_json) if phenology_json else None
+    if phenology_json:
+        try:
+            plant["phenology"] = json.loads(phenology_json)
+        except (json.JSONDecodeError, TypeError):
+            plant["phenology"] = None
+    else:
+        plant["phenology"] = None
 
     return plant
 
@@ -143,7 +149,13 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
         plant["temp_status"] = "comfortable"
 
     phenology_json = plant.pop("phenology_json", None)
-    plant["phenology"] = json.loads(phenology_json) if phenology_json else None
+    if phenology_json:
+        try:
+            plant["phenology"] = json.loads(phenology_json)
+        except (json.JSONDecodeError, TypeError):
+            plant["phenology"] = None
+    else:
+        plant["phenology"] = None
 
     return plant
 
@@ -249,6 +261,12 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             plant["warnings"] = []
 
         phenology_json = plant.pop("phenology_json", None)
-        plant["phenology"] = json.loads(phenology_json) if phenology_json else None
+        if phenology_json:
+            try:
+                plant["phenology"] = json.loads(phenology_json)
+            except (json.JSONDecodeError, TypeError):
+                plant["phenology"] = None
+        else:
+            plant["phenology"] = None
 
     return plants

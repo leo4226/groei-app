@@ -105,7 +105,11 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
             _coerce_dates(s)
         plant["care_schedules"] = schedules
         if plant.get("phenology_json"):
-            plant["phenology"] = json.loads(plant.pop("phenology_json"))
+            try:
+                plant["phenology"] = json.loads(plant.pop("phenology_json"))
+            except (json.JSONDecodeError, TypeError):
+                plant["phenology"] = None
+                plant.pop("phenology_json", None)
         else:
             plant.pop("phenology_json", None)
 
