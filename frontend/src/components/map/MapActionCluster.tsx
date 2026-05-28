@@ -42,13 +42,12 @@ export default function MapActionCluster({
   const iconBtn = "w-8 h-8 flex items-center justify-center rounded-full transition-colors"
 
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center gap-0.5 bg-surface/92 rounded-full border border-border/60 shadow-sm p-1" style={{ backdropFilter: 'blur(6px)' }}>
-        {/* Always visible: water + fertilize + add plant + more */}
+    <div className="flex items-center gap-0.5 bg-surface/92 rounded-full border border-border/60 shadow-sm p-1" style={{ backdropFilter: 'blur(6px)' }}>
+      {/* Always visible: water + fertilize + add plant + more */}
         <button onClick={onWater} title={t.mapPage.water} className={`${iconBtn} text-blue-600 hover:bg-blue-500/15`}>
           <WaterStatusIcon status={waterStatus} size={14} />
         </button>
-        <button onClick={onFertilize} title={t.mapPage.fertilize} className={`${iconBtn} hover:bg-emerald-500/15`}>
+        <button onClick={onFertilize} title={t.mapPage.fertilize} className={`${iconBtn} text-emerald-600 hover:bg-emerald-500/15`}>
           <span className="text-sm leading-none">🌿</span>
         </button>
 
@@ -104,7 +103,7 @@ export default function MapActionCluster({
           {moreOpen && (
             <div className="absolute right-0 top-full mt-1 min-w-[160px] bg-surface border border-border rounded-xl shadow-lg py-1 z-50">
               {isOutdoor && (
-                <button onClick={() => { setMoreOpen(false); if (sunAvailable) onToggleSun() }} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium w-full text-left transition-colors ${sunActive ? 'text-amber-700 bg-amber-400/10' : 'text-text-muted hover:bg-bg/60'}`}>
+                <button onClick={() => { setMoreOpen(false); if (sunAvailable) onToggleSun() }} className={`flex items-center gap-2 px-3 py-2 text-xs font-medium w-full text-left transition-colors ${sunActive ? 'text-amber-700 bg-amber-400/10' : sunAvailable ? 'text-text-muted hover:bg-bg/60' : 'text-text-muted/50 cursor-not-allowed'}`}>
                   <span className="text-sm">☀</span> {t.mapPage.sun}
                 </button>
               )}
