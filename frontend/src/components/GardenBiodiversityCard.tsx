@@ -129,6 +129,13 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
     return () => { cancelled = true }
   }, [slug])
 
+  useEffect(() => {
+    if (!modalOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setModalOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [modalOpen])
+
   if (mode === 'pill') {
     if (loading || error || !data || data.species_count === 0) return null
 
@@ -142,6 +149,7 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
           onClick={() => setModalOpen(true)}
           className="flex items-center gap-2 px-3 py-1 bg-surface/92 rounded-full border border-border/60 shadow-sm hover:bg-surface transition-colors"
           style={{ backdropFilter: 'blur(6px)' }}
+          aria-label={t.garden.biodiversity.title}
         >
           <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
             <circle cx="11" cy="11" r={r} fill="none" stroke="var(--color-border-soft)" strokeWidth="3" />
@@ -155,7 +163,10 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
         {modalOpen && (
           <div
             onClick={() => setModalOpen(false)}
-            className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.garden.biodiversity.title}
           >
             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
               <GardenBiodiversityCardFull data={data} />
