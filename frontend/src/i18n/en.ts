@@ -882,6 +882,8 @@ export const en: Translations = {
     soilDefaultName: 'Soil',
     switchMap: 'Switch map…',
     mapSettingsLabel: 'Settings…',
+    sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`,
+    sheetAllGood: 'All on schedule',
   },
 
   // ── Map legend ──────────────────────────────────────────────────

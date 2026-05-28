@@ -882,6 +882,8 @@ export const nl: Translations = {
     soilDefaultName: 'Grond',
     switchMap: 'Wisselen…',
     mapSettingsLabel: 'Instellingen…',
+    sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 'en'} ${n === 1 ? 'heeft' : 'hebben'} aandacht`,
+    sheetAllGood: 'Alles op schema',
   },
 
   // ── Map legend ──────────────────────────────────────────────────
