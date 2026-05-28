@@ -124,7 +124,7 @@ export default function MapPage() {
     return all.filter((p) => p.top_warning !== null).length
   }, [plants, objects])
 
-  const sheetMode: SheetMode = sun.active ? 'sun' : 'care'
+  const sheetMode: SheetMode = sun.active && isOutdoor ? 'sun' : 'care'
 
   const handlePlantTap = (plant: MapPlant) => {
     setSelectedObject(null)
@@ -305,29 +305,31 @@ export default function MapPage() {
       </div>
 
       {/* Bottom sheet — care needs OR sun controls */}
-      <MapBottomSheet
-        mode={sheetMode}
-        attentionCount={attentionCount}
-        autoExpand={sun.active}
-        careContent={<CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />}
-        sunContent={
-          <SunControls
-            viewMode={sun.viewMode}
-            onViewModeChange={sun.setViewMode}
-            selectedMonth={sun.month}
-            selectedHour={sun.hour}
-            sunPosition={sun.sunPosition}
-            onMonthChange={sun.setMonth}
-            onHourChange={sun.setHour}
-            onNow={sun.setToNow}
-            isCalculating={sun.isCalculating}
-            tappedCell={sun.tappedCell}
-            selectedProfile={sun.profile}
-            onProfileChange={sun.setProfile}
-            onGrowHere={sun.openGrowHere}
-          />
-        }
-      />
+      <div className="landscape-mobile-hide">
+        <MapBottomSheet
+          mode={sheetMode}
+          attentionCount={attentionCount}
+          autoExpand={sun.active}
+          careContent={<CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />}
+          sunContent={
+            <SunControls
+              viewMode={sun.viewMode}
+              onViewModeChange={sun.setViewMode}
+              selectedMonth={sun.month}
+              selectedHour={sun.hour}
+              sunPosition={sun.sunPosition}
+              onMonthChange={sun.setMonth}
+              onHourChange={sun.setHour}
+              onNow={sun.setToNow}
+              isCalculating={sun.isCalculating}
+              tappedCell={sun.tappedCell}
+              selectedProfile={sun.profile}
+              onProfileChange={sun.setProfile}
+              onGrowHere={sun.openGrowHere}
+            />
+          }
+        />
+      </div>
 
       {/* Water sheet */}
       {water.showPicker && (
@@ -344,7 +346,7 @@ export default function MapPage() {
 
       {/* Fertilize inline picker */}
       {fertilize.showPicker && (
-        <div className="absolute bottom-16 left-3 right-3 z-30 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
+        <div className="absolute bottom-20 left-3 right-3 z-40 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
           <span className="text-sm shrink-0">🌿</span>
           <input
             type="date"
