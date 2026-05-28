@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import { WaterStatusIcon } from '../components/PlantStatusIcon'
 import MapView from '../components/map/MapView'
-import MapLegend from '../components/map/MapLegend'
+import CareNeedsList from '../components/map/CareNeedsList'
+import GardenBiodiversityCard from '../components/GardenBiodiversityCard'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
 import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
 import FixedPlantSheet from '../components/sheets/FixedPlantSheet'
@@ -555,8 +556,9 @@ export default function MapPage() {
           />
         </div>
 
-        <div className="hidden sm:flex sm:flex-col shrink-0 min-h-0 overflow-y-auto">
-          <MapLegend plants={plants} objects={objects} onPlantTap={handlePlantTap} />
+        <div className="hidden sm:flex sm:flex-col shrink-0 min-h-0 overflow-y-auto gap-3">
+          {isOutdoor && slug && <GardenBiodiversityCard slug={slug} />}
+          <CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />
         </div>
       </div>
 
