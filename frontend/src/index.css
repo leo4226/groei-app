@@ -249,20 +249,6 @@ input:focus, select:focus, textarea:focus {
     font-size: 22px !important;
   }
 
-  /* MapPage: scrollable toolbar on mobile */
-  .map-toolbar {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap !important;
-  }
-  .map-toolbar::-webkit-scrollbar {
-    display: none;
-  }
-  .map-toolbar > button,
-  .map-toolbar > div {
-    flex: 0 0 auto !important;
-  }
 
   /* Dashboard: compact horizontal padding on mobile */
   .dash-section-hpad {
@@ -363,19 +349,6 @@ input:focus, select:focus, textarea:focus {
   }
   .forced-hidden-desktop {
     display: flex !important;
-  }
-  .map-action-primary {
-    display: none !important;
-  }
-  .map-header-scroll {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
-  }
-  .map-header-scroll::-webkit-scrollbar {
-    display: none;
   }
 }
 @media (min-width: 721px) {
