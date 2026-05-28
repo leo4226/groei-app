@@ -68,9 +68,20 @@ Every map has a `type: 'outdoor' | 'indoor'`:
 ### SVG canvas
 
 - The SVG `viewBox` comes from `map.viewbox` in the DB — never hardcode it.
-- The SVG scales to fill its container using `preserveAspectRatio="xMidYMid meet"` (letterbox, no rotation).
-- On mobile, the SVG container uses a 90° CSS rotation (`rotate(-90deg) translateX(-100%)`) to present landscape maps in portrait. `screenToSVG()` handles this via `getScreenCTM()` — no manual rotation math needed.
+- The SVG scales to fill its container using `preserveAspectRatio="xMidYMid meet"` (letterbox).
+- In landscape-mobile (`@media (orientation: landscape) and (max-height: 500px)`), `.landscape-mobile-hide` hides the BottomNav and the MapTopBar so the map fills the viewport.
 - Scale is `PX_PER_M = 46` (46 px = 1 m). This will become per-map; do not assume it is fixed.
+
+### MapPage layout (floating chrome)
+
+The MapPage is a full-bleed map with four floating components on top:
+
+- `MapTopBar` (top-left) — garden name + ⌄ menu (switch / settings)
+- `MapActionCluster` (top-right) — icon-only actions, shrinks to 4 icons on mobile + ⋯ for the rest
+- `GardenBiodiversityCard mode="pill"` (top-right, below cluster) — outdoor only; click opens full card as modal
+- `MapBottomSheet` — peek state shows care-needs count; expanded shows `CareNeedsList` or, in sun mode, `SunControls`
+
+The right-side sidebar and the top pill-toolbar were removed on 2026-05-27. See `docs/plans/2026-05-27-mappage-redesign-design.md`.
 
 ### Coordinate system
 
