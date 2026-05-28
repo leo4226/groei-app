@@ -880,6 +880,8 @@ export const nl: Translations = {
     deleted: (label) => `Verwijderd: ${label}`,
     undo: 'Ongedaan maken',
     soilDefaultName: 'Grond',
+    switchMap: 'Wisselen…',
+    mapSettingsLabel: 'Instellingen…',
   },
 
   // ── Map legend ──────────────────────────────────────────────────

@@ -894,6 +894,8 @@ export type Translations = {
     deleted: (label: string) => string      // "Verwijderd: {label}"
     undo: string                            // "Ongedaan maken"
     soilDefaultName: string                 // "Grond"
+    switchMap: string                       // "Wisselen…" / "Switch map…"
+    mapSettingsLabel: string               // "Instellingen…" / "Settings…"
   }
 
   // ── Map legend ──────────────────────────────────────────────────

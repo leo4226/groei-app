@@ -880,6 +880,8 @@ export const en: Translations = {
     deleted: (label) => `Deleted: ${label}`,
     undo: 'Undo',
     soilDefaultName: 'Soil',
+    switchMap: 'Switch map…',
+    mapSettingsLabel: 'Settings…',
   },
 
   // ── Map legend ──────────────────────────────────────────────────
