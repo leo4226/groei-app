@@ -14,7 +14,7 @@ interface Props {
 
 export default function MapBottomSheet({ mode, attentionCount, careContent, sunContent, autoExpand }: Props) {
   const t = useT()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(autoExpand)
 
   // Sync expanded with autoExpand transitions: opening sun = expand,
   // closing sun = collapse (per design: don't remember prior care state).
@@ -40,6 +40,8 @@ export default function MapBottomSheet({ mode, attentionCount, careContent, sunC
       {/* Drag handle row — click to toggle */}
       <button
         onClick={() => setExpanded((v) => !v)}
+        aria-label={expanded ? 'Collapse' : 'Expand'}
+        aria-expanded={expanded}
         className="w-full flex flex-col items-center pt-2 pb-1.5 hover:bg-bg/30 transition-colors"
       >
         <div className="w-8 h-[3px] rounded-sm bg-border" />
