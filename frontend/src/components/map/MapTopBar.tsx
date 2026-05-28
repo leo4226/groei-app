@@ -16,11 +16,11 @@ export default function MapTopBar({ map, allMaps }: Props) {
 
   useEffect(() => {
     if (!open) return
-    function onDown(e: MouseEvent) {
+    function onDown(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
   }, [open])
 
   const otherMaps = allMaps.filter((m) => m.id !== map.id)
@@ -29,10 +29,10 @@ export default function MapTopBar({ map, allMaps }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/92 backdrop-blur-sm rounded-full border border-border/60 shadow-sm text-sm font-semibold text-text hover:bg-surface transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/92 rounded-full border border-border/60 shadow-sm text-sm font-semibold text-text hover:bg-surface transition-colors"
         style={{ backdropFilter: 'blur(6px)' }}
       >
-        <span className="text-text-muted text-xs">⌄</span>
+        <span className={`text-text-muted text-xs transition-transform inline-block ${open ? 'rotate-180' : ''}`}>⌄</span>
         <span className="truncate max-w-[180px]">{map.name}</span>
       </button>
 
