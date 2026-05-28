@@ -886,6 +886,22 @@ export const nl: Translations = {
     sheetAllGood: 'Alles op schema',
   },
 
+  garden: {
+    biodiversity: {
+      title: 'Biodiversiteit',
+      loading: 'Laden...',
+      failed: 'Kon niet laden',
+      emptyGarden: 'Voeg planten toe om biodiversiteit bij te houden',
+      speciesCount: (n) => `${n} soor${n === 1 ? 't' : 'ten'}`,
+      nativeCount: (n) => `${n} inheems${n === 1 ? '' : 'e'}`,
+      invasiveCount: (n) => `${n} invasief${n === 1 ? '' : 'e'}`,
+      pollinatorMonths: 'Bloeimaanden voor bestuivers',
+      componentPollinator: 'Bestuivers',
+      componentNative: 'Inheems',
+      componentDiversity: 'Diversiteit',
+    },
+  },
+
   // ── Map legend ──────────────────────────────────────────────────
   mapLegend: {
     attentionNeeded: 'Aandacht nodig',

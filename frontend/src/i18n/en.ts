@@ -886,6 +886,22 @@ export const en: Translations = {
     sheetAllGood: 'All on schedule',
   },
 
+  garden: {
+    biodiversity: {
+      title: 'Biodiversity',
+      loading: 'Loading...',
+      failed: 'Could not load',
+      emptyGarden: 'Add plants to track biodiversity',
+      speciesCount: (n) => `${n} species`,
+      nativeCount: (n) => `${n} native${n === 1 ? '' : 's'}`,
+      invasiveCount: (n) => `${n} invasive${n === 1 ? '' : 's'}`,
+      pollinatorMonths: 'Flowering months for pollinators',
+      componentPollinator: 'Pollinators',
+      componentNative: 'Native',
+      componentDiversity: 'Diversity',
+    },
+  },
+
   // ── Map legend ──────────────────────────────────────────────────
   mapLegend: {
     attentionNeeded: 'Attention needed',

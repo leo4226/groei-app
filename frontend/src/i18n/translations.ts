@@ -900,6 +900,22 @@ export type Translations = {
     sheetAllGood: string                         // "Alles op schema"
   }
 
+  garden: {
+    biodiversity: {
+      title: string             // "Biodiversiteit" / "Biodiversity"
+      loading: string           // "Laden..."
+      failed: string            // "Kon niet laden"
+      emptyGarden: string       // "Voeg planten toe om biodiversiteit bij te houden"
+      speciesCount: (n: number) => string  // "5 soorten"
+      nativeCount: (n: number) => string   // "3 inheems"
+      invasiveCount: (n: number) => string // "1 invasief"
+      pollinatorMonths: string  // "Bloeimaanden voor bestuivers"
+      componentPollinator: string // "Bestuivers"
+      componentNative: string     // "Inheems"
+      componentDiversity: string  // "Diversiteit"
+    }
+  }
+
   // ── Map legend ──────────────────────────────────────────────────
   mapLegend: {
     attentionNeeded: string  // "Attention needed" / "Aandacht nodig"
