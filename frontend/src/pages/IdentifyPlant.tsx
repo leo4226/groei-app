@@ -8,6 +8,8 @@ import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
 import type { PlantIdCandidate, IdentifyConfidence, IdentifyCommitResult, EcologyOut } from '../types'
 
+const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+
 type ResultsState = {
   candidates: PlantIdCandidate[]
   confidence: IdentifyConfidence
@@ -103,7 +105,7 @@ export function IdentifyPlantPage() {
       const hasContent = ecology &&
         ecology.data_source !== 'failed' && (
           ecology.pollinator_value != null ||
-          ecology.native_to_nl != null ||
+          ecology.native_to_nl === true ||
           (ecology.flowering_months && ecology.flowering_months.length > 0)
         )
 
@@ -221,7 +223,6 @@ export function IdentifyPlantPage() {
 
   if (step.kind === 'ecology_preview') {
     const { commitResult, ecology } = step
-    const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
     const fills = (ecology.flowering_months ?? []).filter(m => gapMonths.includes(m))
 
     return (
