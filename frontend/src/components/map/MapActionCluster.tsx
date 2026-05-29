@@ -124,7 +124,6 @@ export default function MapActionCluster({
             </div>
           )}
         </div>
-      </div>
     </div>
   )
 }
