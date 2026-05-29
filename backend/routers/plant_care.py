@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from database import db_dep
+from auth import get_current_account
 from services.environment import get_rain_data, get_temp_data
 from services.species_knowledge import get_species_knowledge
 from services.garden_log import (
@@ -27,6 +28,9 @@ from services.garden_log import (
     log_garden_fertilize,
     compute_water_status,
 )
+from services.plant_suggestions import recommend_for_spot
+from services.garden_biodiversity import compute_for_map as _compute_bio
+from models import RecommendationsOut, PlantRecommendationOut
 
 router = APIRouter()
 
@@ -144,6 +148,28 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
     result = json.loads(text)
     _grow_here_cache[cache_key] = result
     return result
+
+
+# ── DB-first recommendations ─────────────────────────────────────────────────
+
+@router.get("/garden/recommendations", response_model=RecommendationsOut)
+async def get_recommendations(
+    map_id: int,
+    sun_hours: float,
+    month: int,
+    svf: float = 1.0,
+    limit: int = 8,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    """Tier 1 spot recommendations — DB-first, no LLM, returns in ~10 ms."""
+    recs, gap_months = await recommend_for_spot(db, map_id, sun_hours, month, svf, limit)
+    bio = await _compute_bio(db, map_id)
+    return RecommendationsOut(
+        recommendations=[PlantRecommendationOut(**vars(r)) for r in recs],
+        gap_months=gap_months,
+        biodiversity_score=bio.score,
+    )
 
 
 # ── Environment context endpoints ────────────────────────────────────────────

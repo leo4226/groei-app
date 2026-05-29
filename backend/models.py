@@ -630,3 +630,31 @@ class WaterLogOut(BaseModel):
     watered_by: int | None = None
     water_amount: float | None = None  # ml
     created_at: datetime | None = None
+
+
+# ── Plant Recommendations ──
+
+class PlantRecommendationOut(BaseModel):
+    species_id: int
+    dutch_name: str
+    latin_name: str
+    sun_preference: str | None
+    sun_fit: str                     # 'perfect' | 'acceptable'
+    is_native: bool | None
+    pollinator_value: int | None
+    flowering_months: list[int] | None
+    gap_months_covered: list[int]
+    reason: str                      # template text initially
+    caveat: str | None
+
+
+class RecommendationsOut(BaseModel):
+    recommendations: list[PlantRecommendationOut]
+    gap_months: list[int]
+    biodiversity_score: int
+
+
+class GardenSuggestionsOut(BaseModel):
+    suggestions: list[PlantRecommendationOut]
+    gap_months: list[int]
+    biodiversity_score: int

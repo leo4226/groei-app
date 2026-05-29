@@ -2,18 +2,30 @@ import json
 import re
 
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from datetime import date
 
 from database import db_dep
 from auth import get_current_account
-from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate
+from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate, GardenSuggestionsOut, PlantRecommendationOut
 from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 from services.storage import build_storage_from_env
+from services.garden_biodiversity import compute_for_map as compute_biodiversity
+from services.plant_suggestions import recommend_for_garden
 
 router = APIRouter(tags=["maps"])
+
+
+class GardenBiodiversityOut(BaseModel):
+    score: int
+    species_count: int
+    native_count: int
+    invasive_count: int
+    pollinator_coverage_months: list[bool]
+    components: dict
 
 
 @router.get("/maps", response_model=list[MapOut])
@@ -35,6 +47,55 @@ async def get_map(slug: str, account = Depends(get_current_account), db = Depend
         raise HTTPException(404, "Map not found")
     map_data = dict(row[0])
     return map_data
+
+
+@router.get("/maps/{slug}/biodiversity", response_model=GardenBiodiversityOut)
+async def get_map_biodiversity(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
+    """Per-garden biodiversity profile. Outdoor-only — indoor maps return 404
+    since their ornamental tropicals have no NL ecological role."""
+    row = await db.execute_fetchall(
+        "SELECT id, map_type FROM maps WHERE slug = ?", (slug,)
+    )
+    if not row:
+        raise HTTPException(404, "Map not found")
+    if (row[0]["map_type"] or "outdoor") != "outdoor":
+        raise HTTPException(404, "Biodiversity score is only computed for outdoor maps")
+    profile = await compute_biodiversity(db, row[0]["id"])
+    return GardenBiodiversityOut(
+        score=profile.score,
+        species_count=profile.species_count,
+        native_count=profile.native_count,
+        invasive_count=profile.invasive_count,
+        pollinator_coverage_months=profile.pollinator_coverage_months,
+        components=profile.components,
+    )
+
+
+@router.get("/maps/{slug}/plant-suggestions", response_model=GardenSuggestionsOut)
+async def get_plant_suggestions(
+    slug: str,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Garden-level Tier 1 recommendations — what to add to improve biodiversity."""
+    rows = await db.execute_fetchall(
+        "SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+    m = dict(rows[0])
+    if m.get("map_type") == "indoor":
+        raise HTTPException(status_code=400, detail="Plant suggestions only available for outdoor maps")
+
+    recs, gap_months = await recommend_for_garden(db, m["id"])
+    bio = await compute_biodiversity(db, m["id"])
+
+    return GardenSuggestionsOut(
+        suggestions=[PlantRecommendationOut(**vars(r)) for r in recs],
+        gap_months=gap_months,
+        biodiversity_score=bio.score,
+    )
 
 
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
