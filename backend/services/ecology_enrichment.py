@@ -37,6 +37,7 @@ class EcologyProfile:
     flowering_months: list[int] | None
     pollinator_value: int | None        # 0..3
     host_plant_for: list[str] | None
+    sun_preference: str | None          # 'full_sun'|'partial_sun'|'shade'|'any'
     data_source: str                    # 'gbif' / 'llm' / 'mixed' / 'failed'
 
 
@@ -129,12 +130,14 @@ Return ONLY a valid JSON object with this exact schema:
                        it does not reliably flower here],
   "pollinator_value": [integer 0-3 where 0 = no floral resources or wind-
                        pollinated, 1 = minor value, 2 = good for bees and
-                       butterflies, 3 = top-tier pollinator plant]
+                       butterflies, 3 = top-tier pollinator plant],
+  "sun_preference": ["full_sun" | "partial_sun" | "shade" | "any" —
+                     what this species prefers; "any" for truly
+                     adaptable species; use the most specific that applies]
 }}
 
 No markdown, no backticks, no explanation. Use null for any field you are
-unsure about. Use an empty list for unknown flowering months. Use 0 for
-plants without floral resources.
+unsure about. Use an empty list for unknown flowering months.
 """
 
 
@@ -188,6 +191,10 @@ async def _from_llm(latin_name: str) -> dict:
     pv = data.get("pollinator_value")
     if isinstance(pv, int) and 0 <= pv <= 3:
         out["pollinator_value"] = pv
+    _VALID_SUN = {"full_sun", "partial_sun", "shade", "any"}
+    sp = data.get("sun_preference")
+    if isinstance(sp, str) and sp in _VALID_SUN:
+        out["sun_preference"] = sp
     return out
 
 
@@ -232,6 +239,7 @@ async def enrich(latin_name: str, gbif_taxon_key: int | None) -> EcologyProfile:
         flowering_months=merged.get("flowering_months"),
         pollinator_value=merged.get("pollinator_value"),
         host_plant_for=None,
+        sun_preference=merged.get("sun_preference"),
         data_source=data_source,
     )
 
@@ -242,7 +250,7 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
     species doesn't exist."""
     rows = await db.execute_fetchall(
         "SELECT latin_name, gbif_taxon_key, native_to_nl, invasive_nl, "
-        "flowering_months, pollinator_value, host_plant_for, "
+        "flowering_months, pollinator_value, host_plant_for, sun_preference, "
         "ecology_data_source, ecology_enriched_at "
         "FROM plant_species WHERE id = ?",
         (species_id,),
@@ -264,6 +272,7 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
              flowering_months = ?,
              pollinator_value = ?,
              host_plant_for = ?,
+             sun_preference = ?,
              ecology_data_source = ?,
              ecology_enriched_at = ?
            WHERE id = ?""",
@@ -273,6 +282,7 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
             json.dumps(profile.flowering_months) if profile.flowering_months is not None else None,
             profile.pollinator_value,
             json.dumps(profile.host_plant_for) if profile.host_plant_for is not None else None,
+            profile.sun_preference,
             profile.data_source,
             enriched_at,
             species_id,
@@ -286,6 +296,7 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
         "flowering_months": profile.flowering_months,
         "pollinator_value": profile.pollinator_value,
         "host_plant_for": profile.host_plant_for,
+        "sun_preference": profile.sun_preference,
         "data_source": profile.data_source,
         "enriched_at": enriched_at.isoformat(),
         "score": compute_biodiversity_score(
@@ -313,6 +324,7 @@ def _row_to_dict(row: dict) -> dict:
         "flowering_months": flowering,
         "pollinator_value": row.get("pollinator_value"),
         "host_plant_for": host,
+        "sun_preference": row.get("sun_preference"),
         "data_source": row.get("ecology_data_source"),
         "enriched_at": enriched_at,
         "score": compute_biodiversity_score(
