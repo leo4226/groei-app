@@ -922,6 +922,14 @@ export type Translations = {
       componentNative: string     // "Inheems"
       componentDiversity: string  // "Diversiteit"
     }
+    suggestions: {
+      title: string        // "Verbeter je tuin"
+      gapLabel: string     // "Maanden zonder bestuivers: {months}"
+      noData: string       // "Voeg planten toe om aanbevelingen te zien"
+      sunFull: string      // "☀️ Volle zon"
+      sunPartial: string   // "⛅ Halfschaduw"
+      sunShade: string     // "🌿 Schaduw"
+    }
   }
 
   // ── Map legend ──────────────────────────────────────────────────

@@ -908,6 +908,14 @@ export const en: Translations = {
       componentNative: 'Native',
       componentDiversity: 'Diversity',
     },
+    suggestions: {
+      title: 'Improve your garden',
+      gapLabel: 'Months without pollinators: {months}',
+      noData: 'Add plants to see recommendations',
+      sunFull: '☀️ Full sun',
+      sunPartial: '⛅ Partial shade',
+      sunShade: '🌿 Shade',
+    },
   },
 
   // ── Map legend ──────────────────────────────────────────────────

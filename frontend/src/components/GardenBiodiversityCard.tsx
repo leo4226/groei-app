@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut } from '../types'
 
 interface Props {
   slug: string
@@ -69,8 +69,17 @@ function MonthCoverage({ months, locale }: { months: boolean[]; locale: string }
   )
 }
 
-function GardenBiodiversityCardFull({ data }: { data: GardenBiodiversityOut }) {
+const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+
+function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOut; slug: string }) {
   const t = useT()
+  const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
+
+  useEffect(() => {
+    if (!slug) return
+    mapsApi.plantSuggestions(slug).then(setSuggestions).catch(() => {})
+  }, [slug])
+
   return (
     <section className="card p-4">
       <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
@@ -107,6 +116,71 @@ function GardenBiodiversityCardFull({ data }: { data: GardenBiodiversityOut }) {
         <span>🇳🇱 {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/30</span></span>
         <span>🌿 {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/10</span></span>
       </div>
+
+      {/* Plant suggestions section */}
+      {suggestions && (
+        <section className="pt-4 mt-4 border-t border-border/40">
+          <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
+            {t.garden.suggestions.title}
+          </h3>
+
+          {suggestions.gap_months.length > 0 && (
+            <p className="text-xs text-text-muted mb-3">
+              {t.garden.suggestions.gapLabel.replace(
+                '{months}',
+                suggestions.gap_months.map(m => MONTH_SHORT[m - 1]).join(', ')
+              )}
+            </p>
+          )}
+
+          {suggestions.suggestions.length === 0 ? (
+            <p className="text-xs text-text-muted">{t.garden.suggestions.noData}</p>
+          ) : (
+            <div className="space-y-3">
+              {suggestions.suggestions.map((s, i) => {
+                const sunLabel = s.sun_preference === 'full_sun'
+                  ? t.garden.suggestions.sunFull
+                  : s.sun_preference === 'partial_sun'
+                  ? t.garden.suggestions.sunPartial
+                  : s.sun_preference === 'shade'
+                  ? t.garden.suggestions.sunShade
+                  : null
+
+                return (
+                  <div key={i} className="card p-3 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-sm text-text">{s.dutch_name}</span>
+                          {sunLabel && (
+                            <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded-full border border-border/50">
+                              {sunLabel}
+                            </span>
+                          )}
+                          {s.is_native && (
+                            <span className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full">
+                              Inheems 🇳🇱
+                            </span>
+                          )}
+                          {(s.pollinator_value ?? 0) >= 2 && (
+                            <span className="text-[10px] bg-amber-400/10 text-amber-700 px-1.5 py-0.5 rounded-full">
+                              🐝
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
+                      </div>
+                    </div>
+                    {s.reason && (
+                      <p className="text-xs text-text-muted leading-relaxed">{s.reason}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </section>
   )
 }
@@ -169,7 +243,7 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
             aria-label={t.garden.biodiversity.title}
           >
             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
-              <GardenBiodiversityCardFull data={data} />
+              <GardenBiodiversityCardFull data={data} slug={slug} />
             </div>
           </div>
         )}
@@ -205,5 +279,5 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
     )
   }
 
-  return <GardenBiodiversityCardFull data={data} />
+  return <GardenBiodiversityCardFull data={data} slug={slug} />
 }

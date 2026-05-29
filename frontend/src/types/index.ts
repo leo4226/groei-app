@@ -572,6 +572,12 @@ export type RecommendationsOut = {
   biodiversity_score: number
 }
 
+export type GardenSuggestionsOut = {
+  suggestions: PlantRecommendation[]
+  gap_months: number[]
+  biodiversity_score: number
+}
+
 export type EcologyDataSource = 'gbif' | 'llm' | 'mixed' | 'failed'
 
 export type GardenBiodiversityOut = {

@@ -908,6 +908,14 @@ export const nl: Translations = {
       componentNative: 'Inheems',
       componentDiversity: 'Diversiteit',
     },
+    suggestions: {
+      title: 'Verbeter je tuin',
+      gapLabel: 'Maanden zonder bestuivers: {months}',
+      noData: 'Voeg planten toe om aanbevelingen te zien',
+      sunFull: '☀️ Volle zon',
+      sunPartial: '⛅ Halfschaduw',
+      sunShade: '🌿 Schaduw',
+    },
   },
 
   // ── Map legend ──────────────────────────────────────────────────

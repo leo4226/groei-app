@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -206,6 +206,7 @@ export const maps = {
   byId:    (id: number)                                                                                          => api<MapInfo>('GET', `/maps/by-id/${id}`),
   detail:  (slug: string)                                                                                        => api<MapDetail>('GET', `/maps/${slug}`),
   biodiversity: (slug: string)                                                                                   => api<import('../types').GardenBiodiversityOut>('GET', `/maps/${slug}/biodiversity`),
+  plantSuggestions: (slug: string)                                                                               => api<GardenSuggestionsOut>('GET', `/maps/${slug}/plant-suggestions`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
 }
