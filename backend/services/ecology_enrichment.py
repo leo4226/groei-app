@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 GBIF_API = "https://api.gbif.org/v1"
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
+_VALID_SUN = {"full_sun", "partial_sun", "shade", "any"}
 
 
 @dataclass
@@ -142,9 +143,9 @@ unsure about. Use an empty list for unknown flowering months.
 
 
 async def _from_llm(latin_name: str) -> dict:
-    """Ask DeepSeek for native_to_nl, invasive_nl, flowering_months and
-    pollinator_value. Returns a dict with the validated fields, or empty
-    on failure / invalid response."""
+    """Ask DeepSeek for native_to_nl, invasive_nl, flowering_months,
+    pollinator_value, and sun_preference. Returns a dict with the
+    validated fields, or empty on failure / invalid response."""
     if not DEEPSEEK_API_KEY:
         return {}
     prompt = _ECOLOGY_PROMPT.format(latin_name=latin_name)
@@ -191,7 +192,6 @@ async def _from_llm(latin_name: str) -> dict:
     pv = data.get("pollinator_value")
     if isinstance(pv, int) and 0 <= pv <= 3:
         out["pollinator_value"] = pv
-    _VALID_SUN = {"full_sun", "partial_sun", "shade", "any"}
     sp = data.get("sun_preference")
     if isinstance(sp, str) and sp in _VALID_SUN:
         out["sun_preference"] = sp
