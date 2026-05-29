@@ -361,6 +361,14 @@ export const nl: Translations = {
     badgeAcceptable: 'Acceptabel',
     badgeGood: 'Goed',
     hoursPerDay: '{hours}u / dag',
+    dbSuggestions: 'Passende planten',
+    ecologyNative: 'Inheems 🇳🇱',
+    ecologyPollinatorHigh: '🐝 Top bestuiver',
+    ecologyPollinatorGood: '🐝 Goed voor bijen',
+    ecologyFillsGap: 'Vult: {months}',
+    sunFitPerfect: 'Ideaal licht',
+    sunFitAcceptable: 'Geschikt licht',
+    noDbResults: 'Weinig soortdata beschikbaar — zie AI-suggesties hieronder',
   },
 
   // ── Icon picker ─────────────────────────────────────────────────

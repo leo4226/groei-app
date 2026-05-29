@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut } from '../types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -240,6 +240,16 @@ export const garden = {
   logFertilize:    (fertilizedAt?: string, userId?: number)             => api<{ fertilized_at: string; schedules_updated: number }>('POST', '/garden/fertilize-log', { body: { fertilized_at: fertilizedAt ?? null, fertilized_by: userId ?? null } }),
   deleteFertilize: ()                                                    => api<void>('DELETE', '/garden/fertilize-log/latest'),
   growHere:        (sunHours: number, selectedMonth: number, existingPlants: string[]) => api<GrowHereResponse>('POST', '/garden/grow-here', { body: { sun_hours: sunHours, selected_month: selectedMonth, existing_plants: existingPlants } }),
+  recommendations: (mapId: number, sunHours: number, month: number, svf?: number, limit?: number) =>
+    api<RecommendationsOut>('GET', '/garden/recommendations', {
+      params: {
+        map_id: String(mapId),
+        sun_hours: String(sunHours),
+        month: String(month),
+        ...(svf !== undefined ? { svf: String(svf) } : {}),
+        ...(limit !== undefined ? { limit: String(limit) } : {}),
+      },
+    }),
 }
 
 export const alerts = {
@@ -291,6 +301,15 @@ export const adminPanel = {
   species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
+  generateIcons: () => api<IconGenerateResult>('POST', '/admin-panel/generate-icons'),
+}
+
+export interface IconGenerateResult {
+  generated: { id: number; name: string; latin: string; icon_id: string; cat: string }[]
+  count: number
+  skipped: { id: number; name: string; latin: string; error: string }[]
+  skipped_count: number
+  sync_result: { matched: number; matches: { plant_id: number; plant_name: string; icon_key: string }[] }
 }
 
 export interface HouseholdMember {

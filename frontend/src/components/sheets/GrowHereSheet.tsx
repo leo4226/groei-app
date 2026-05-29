@@ -8,6 +8,7 @@ import { garden, type GrowHereResponse, type AISuggestion } from '../../api/clie
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import type { Translations } from '../../i18n/translations'
+import type { PlantRecommendation, RecommendationsOut } from '../../types'
 
 // Module-level cache — survives sheet open/close within the session
 const _aiCache = new Map<string, GrowHereResponse>()
@@ -97,6 +98,63 @@ function AISkeleton() {
   )
 }
 
+const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+
+function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: any }) {
+  const badges: { label: string; cls: string }[] = []
+  if (rec.is_native) badges.push({ label: t.ecologyNative, cls: 'bg-green-500/10 text-green-700 dark:text-green-400' })
+  if ((rec.pollinator_value ?? 0) >= 3) badges.push({ label: t.ecologyPollinatorHigh, cls: 'bg-amber-400/15 text-amber-700' })
+  else if ((rec.pollinator_value ?? 0) === 2) badges.push({ label: t.ecologyPollinatorGood, cls: 'bg-amber-400/10 text-amber-600' })
+  if (rec.sun_fit === 'perfect') badges.push({ label: t.sunFitPerfect, cls: 'bg-primary/10 text-primary' })
+  else badges.push({ label: t.sunFitAcceptable, cls: 'bg-surface text-text-muted border border-border/50' })
+  if (rec.gap_months_covered.length > 0) {
+    const monthStr = rec.gap_months_covered.map(m => MONTH_SHORT[m - 1]).join(', ')
+    badges.push({ label: t.ecologyFillsGap.replace('{months}', monthStr), cls: 'bg-primary/10 text-primary' })
+  }
+  if (badges.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {badges.map(b => (
+        <span key={b.label} className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${b.cls}`}>{b.label}</span>
+      ))}
+    </div>
+  )
+}
+
+function RecommendationCard({
+  rec, onAdd, addingName, t,
+}: {
+  rec: PlantRecommendation
+  onAdd: (name: string, species: string, sunReq?: string) => void
+  addingName: string | null
+  t: any
+}) {
+  return (
+    <div className="card p-3 space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm text-text">{rec.dutch_name}</p>
+          <p className="text-xs text-text-muted italic">{rec.latin_name}</p>
+          <EcologyBadges rec={rec} t={t} />
+        </div>
+        <button
+          onClick={() => onAdd(rec.dutch_name, rec.latin_name, rec.sun_preference ?? undefined)}
+          disabled={!!addingName}
+          className="shrink-0 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-50"
+        >
+          {addingName === rec.dutch_name ? t.addLoading : t.add}
+        </button>
+      </div>
+      {rec.reason && (
+        <p className="text-xs text-text-muted leading-relaxed">{rec.reason}</p>
+      )}
+      {rec.caveat && (
+        <p className="text-xs text-amber-500/80 leading-relaxed">⚠ {rec.caveat}</p>
+      )}
+    </div>
+  )
+}
+
 export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, mapId, onClose }: Props) {
   const navigate = useNavigate()
   const { addPlant } = useFloreren()
@@ -110,6 +168,10 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
   const [aiData, setAiData] = useState<GrowHereResponse | null>(() => _aiCache.get(cacheKey(sunHours, selectedMonth)) ?? null)
   const [aiLoading, setAiLoading] = useState(!_aiCache.has(cacheKey(sunHours, selectedMonth)))
   const [aiError, setAiError] = useState(false)
+
+  // Tier 1: DB-based recommendations — fetched on mount, instant
+  const [dbRecs, setDbRecs] = useState<RecommendationsOut | null>(null)
+  const [dbLoading, setDbLoading] = useState(true)
 
   // Adding state — tracks which plant name is being added
   const [addingName, setAddingName] = useState<string | null>(null)
@@ -160,6 +222,17 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
         setAiLoading(false)
       })
   }, [sunHours, selectedMonth, mapPlants])
+
+  // Fetch DB-based recommendations on mount
+  useEffect(() => {
+    if (mapId == null) {
+      setDbLoading(false)
+      return
+    }
+    garden.recommendations(mapId, sunHours, selectedMonth)
+      .then(data => { setDbRecs(data); setDbLoading(false) })
+      .catch(() => setDbLoading(false))
+  }, [mapId, sunHours, selectedMonth])
 
   async function handleAddToGarden(name: string, species: string, sunReq?: string) {
     if (addingName) return
@@ -242,6 +315,38 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-5">
+
+          {/* Tier 1: DB-matched plants — renders immediately */}
+          {mapId != null && (
+            <section>
+              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
+                {t.growHere.dbSuggestions}
+              </h3>
+              {dbLoading && (
+                <div className="space-y-2">
+                  {[0,1,2].map(i => (
+                    <div key={i} className="card p-3"><div className="skeleton h-4 w-3/5 rounded" /></div>
+                  ))}
+                </div>
+              )}
+              {!dbLoading && dbRecs && dbRecs.recommendations.length === 0 && (
+                <p className="text-xs text-text-muted">{t.growHere.noDbResults}</p>
+              )}
+              {!dbLoading && dbRecs && dbRecs.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  {dbRecs.recommendations.map(rec => (
+                    <RecommendationCard
+                      key={rec.species_id}
+                      rec={rec}
+                      onAdd={handleAddToGarden}
+                      addingName={addingName}
+                      t={t.growHere}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* User's own plants that fit */}
           {userMatches.length > 0 && (

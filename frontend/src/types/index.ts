@@ -550,6 +550,28 @@ export type WeedSightingOut = WeedSightingCreate & {
 
 // ── Species ecology ──
 
+// ── Garden recommendations (DB-based) ──
+
+export type PlantRecommendation = {
+  species_id: number
+  dutch_name: string
+  latin_name: string
+  sun_preference: string | null
+  sun_fit: 'perfect' | 'acceptable'
+  is_native: boolean | null
+  pollinator_value: number | null      // 0..3
+  flowering_months: number[] | null
+  gap_months_covered: number[]
+  reason: string
+  caveat: string | null
+}
+
+export type RecommendationsOut = {
+  recommendations: PlantRecommendation[]
+  gap_months: number[]
+  biodiversity_score: number
+}
+
 export type EcologyDataSource = 'gbif' | 'llm' | 'mixed' | 'failed'
 
 export type GardenBiodiversityOut = {

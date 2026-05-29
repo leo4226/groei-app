@@ -316,6 +316,14 @@ export type Translations = {
     badgeAcceptable: string
     badgeGood: string
     hoursPerDay: string  // "{hours}h / day" / "{hours}u / dag"
+    dbSuggestions: string        // "Passende planten"
+    ecologyNative: string        // "🇳🇱 Inheems"
+    ecologyPollinatorHigh: string // "🐝 Top bestuiver"
+    ecologyPollinatorGood: string // "🐝 Goed voor bijen"
+    ecologyFillsGap: string      // "Vult: {months}"
+    sunFitPerfect: string        // "Ideaal licht"
+    sunFitAcceptable: string     // "Geschikt licht"
+    noDbResults: string          // "Weinig data beschikbaar"
   }
 
   // ── Icon picker ─────────────────────────────────────────────────

@@ -361,6 +361,14 @@ export const en: Translations = {
     badgeAcceptable: 'Acceptable',
     badgeGood: 'Good',
     hoursPerDay: '{hours}h / day',
+    dbSuggestions: 'Matching plants',
+    ecologyNative: 'Native 🇳🇱',
+    ecologyPollinatorHigh: '🐝 Top pollinator',
+    ecologyPollinatorGood: '🐝 Good for bees',
+    ecologyFillsGap: 'Fills: {months}',
+    sunFitPerfect: 'Ideal light',
+    sunFitAcceptable: 'Suitable light',
+    noDbResults: 'Limited species data — see AI suggestions below',
   },
 
   // ── Icon picker ─────────────────────────────────────────────────
