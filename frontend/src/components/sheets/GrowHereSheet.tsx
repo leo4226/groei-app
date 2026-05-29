@@ -100,7 +100,7 @@ function AISkeleton() {
 
 const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
-function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: any }) {
+function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: Translations['growHere'] }) {
   const badges: { label: string; cls: string }[] = []
   if (rec.is_native) badges.push({ label: t.ecologyNative, cls: 'bg-green-500/10 text-green-700 dark:text-green-400' })
   if ((rec.pollinator_value ?? 0) >= 3) badges.push({ label: t.ecologyPollinatorHigh, cls: 'bg-amber-400/15 text-amber-700' })
@@ -111,7 +111,6 @@ function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: any }) {
     const monthStr = rec.gap_months_covered.map(m => MONTH_SHORT[m - 1]).join(', ')
     badges.push({ label: t.ecologyFillsGap.replace('{months}', monthStr), cls: 'bg-primary/10 text-primary' })
   }
-  if (badges.length === 0) return null
   return (
     <div className="flex flex-wrap gap-1 mt-1">
       {badges.map(b => (
@@ -127,7 +126,7 @@ function RecommendationCard({
   rec: PlantRecommendation
   onAdd: (name: string, species: string, sunReq?: string) => void
   addingName: string | null
-  t: any
+  t: Translations['growHere']
 }) {
   return (
     <div className="card p-3 space-y-1.5">
