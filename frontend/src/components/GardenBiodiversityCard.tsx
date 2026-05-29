@@ -137,7 +137,7 @@ function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOu
             <p className="text-xs text-text-muted">{t.garden.suggestions.noData}</p>
           ) : (
             <div className="space-y-3">
-              {suggestions.suggestions.map((s, i) => {
+              {suggestions.suggestions.map((s) => {
                 const sunLabel = s.sun_preference === 'full_sun'
                   ? t.garden.suggestions.sunFull
                   : s.sun_preference === 'partial_sun'
@@ -147,7 +147,7 @@ function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOu
                   : null
 
                 return (
-                  <div key={i} className="card p-3 space-y-1.5">
+                  <div key={s.species_id} className="card p-3 space-y-1.5">
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -159,7 +159,7 @@ function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOu
                           )}
                           {s.is_native && (
                             <span className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full">
-                              Inheems 🇳🇱
+                              {t.garden.suggestions.nativeBadge}
                             </span>
                           )}
                           {(s.pollinator_value ?? 0) >= 2 && (

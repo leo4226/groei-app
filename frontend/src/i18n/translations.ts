@@ -929,6 +929,7 @@ export type Translations = {
       sunFull: string      // "☀️ Volle zon"
       sunPartial: string   // "⛅ Halfschaduw"
       sunShade: string     // "🌿 Schaduw"
+      nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
     }
   }
 

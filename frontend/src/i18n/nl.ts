@@ -915,6 +915,7 @@ export const nl: Translations = {
       sunFull: '☀️ Volle zon',
       sunPartial: '⛅ Halfschaduw',
       sunShade: '🌿 Schaduw',
+      nativeBadge: 'Inheems 🇳🇱',
     },
   },
 

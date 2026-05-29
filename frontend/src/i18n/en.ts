@@ -915,6 +915,7 @@ export const en: Translations = {
       sunFull: '☀️ Full sun',
       sunPartial: '⛅ Partial shade',
       sunShade: '🌿 Shade',
+      nativeBadge: 'Native 🇳🇱',
     },
   },
 

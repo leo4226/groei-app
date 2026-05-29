@@ -572,6 +572,8 @@ export type RecommendationsOut = {
   biodiversity_score: number
 }
 
+// Garden-level suggestions endpoint uses "suggestions" key (vs. spot-level "recommendations").
+// The field name difference is intentional — the backends return structurally identical shapes.
 export type GardenSuggestionsOut = {
   suggestions: PlantRecommendation[]
   gap_months: number[]
