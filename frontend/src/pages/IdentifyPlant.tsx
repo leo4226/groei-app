@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
-import { plants as plantsApi } from '../api/client'
+import { plants as plantsApi, species as speciesApi, maps as mapsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
-import type { PlantIdCandidate, IdentifyConfidence } from '../types'
+import type { PlantIdCandidate, IdentifyConfidence, IdentifyCommitResult, EcologyOut } from '../types'
 
 type ResultsState = {
   candidates: PlantIdCandidate[]
@@ -22,6 +22,7 @@ type Step =
   | ({ kind: 'results' } & ResultsState)
   | { kind: 'enriching' }
   | ({ kind: 'sighting'; weedId: number; weedName: string; from: ResultsState })
+  | { kind: 'ecology_preview'; commitResult: IdentifyCommitResult; ecology: EcologyOut }
   | { kind: 'error'; message: string; thumbnail: string | null }
 
 
@@ -42,6 +43,20 @@ export function IdentifyPlantPage() {
   // on the results screen; the confirm there names the third party explicitly.
   const [step, setStep] = useState<Step>({ kind: 'camera' })
   const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null)
+  const mapSlug = routeState?.mapSlug ?? null
+  const [gapMonths, setGapMonths] = useState<number[]>([])
+
+  useEffect(() => {
+    if (!mapSlug) return
+    mapsApi.biodiversity(mapSlug)
+      .then(bio => {
+        const gaps = bio.pollinator_coverage_months
+          .map((covered, i) => (covered ? null : i + 1))
+          .filter((m): m is number => m !== null)
+        setGapMonths(gaps)
+      })
+      .catch(() => {})
+  }, [mapSlug])
 
   useEffect(() => {
     if (!navigator.onLine) {
@@ -76,8 +91,27 @@ export function IdentifyPlantPage() {
     if (!capturedPhotoDataUrl) return
     setStep({ kind: 'enriching' })
     try {
-      const enriched = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
-      navigate('/plants/add', { state: { prefill: enriched, from: 'identify' } })
+      const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
+
+      // Fetch ecology data — already stored, no LLM cost
+      let ecology: EcologyOut | null = null
+      try {
+        ecology = await speciesApi.ecology(commitResult.species_id)
+      } catch { /* non-critical */ }
+
+      // Show preview only when ecology has something interesting
+      const hasContent = ecology &&
+        ecology.data_source !== 'failed' && (
+          ecology.pollinator_value != null ||
+          ecology.native_to_nl != null ||
+          (ecology.flowering_months && ecology.flowering_months.length > 0)
+        )
+
+      if (hasContent) {
+        setStep({ kind: 'ecology_preview', commitResult, ecology: ecology! })
+      } else {
+        navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
+      }
     } catch (e) {
       const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
       if (isNotFound) {
@@ -182,6 +216,65 @@ export function IdentifyPlantPage() {
         onTryPlantnet={handleTryPlantnet}
         onLogSighting={handleLogSighting}
       />
+    )
+  }
+
+  if (step.kind === 'ecology_preview') {
+    const { commitResult, ecology } = step
+    const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+    const fills = (ecology.flowering_months ?? []).filter(m => gapMonths.includes(m))
+
+    return (
+      <div className="min-h-dvh flex flex-col bg-bg">
+        <div className="px-4 pt-safe-top pt-6 pb-4 border-b border-border">
+          <p className="text-xs text-text-muted italic mb-1">{commitResult.scientific_name}</p>
+          <h1 className="text-xl font-bold text-text">{t.identify.ecologyTitle}</h1>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {ecology.native_to_nl === true && (
+            <div className="card p-3 flex items-center gap-3">
+              <span className="text-2xl">🇳🇱</span>
+              <p className="text-sm text-text">{t.ecology.native}</p>
+            </div>
+          )}
+          {ecology.invasive_nl && (
+            <div className="card p-3 flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <p className="text-sm font-semibold text-red-500">{t.ecology.invasive}</p>
+            </div>
+          )}
+          {(ecology.pollinator_value ?? 0) >= 2 && (
+            <div className="card p-3 flex items-center gap-3">
+              <span className="text-2xl">🐝</span>
+              <p className="text-sm text-text">
+                {ecology.pollinator_value === 3 ? t.ecology.pollinatorTopTier : t.ecology.pollinatorGood}
+              </p>
+            </div>
+          )}
+          {ecology.flowering_months && ecology.flowering_months.length > 0 && (
+            <div className="card p-3">
+              <p className="text-sm text-text mb-1">
+                🌸 {t.ecology.floweringPrefix}: {ecology.flowering_months.map(m => MONTH_SHORT[m - 1]).join(', ')}
+              </p>
+              {fills.length > 0 && (
+                <p className="text-xs text-primary mt-1">
+                  {t.identify.ecologyFillsGap.replace('{months}', fills.map(m => MONTH_SHORT[m - 1]).join(', '))}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 pb-safe-bottom pb-6 pt-3 border-t border-border">
+          <button
+            onClick={() => navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })}
+            className="w-full py-3 rounded-2xl bg-primary text-white font-semibold text-sm"
+          >
+            {t.identify.ecologyContinue}
+          </button>
+        </div>
+      </div>
     )
   }
 

@@ -691,6 +691,9 @@ export type Translations = {
       title: string     // "Photo identification"
       subtitle: string  // "Take a photo to identify a plant"
     }
+    ecologyTitle: string         // "Wat je net vond"
+    ecologyFillsGap: string      // "Vult je tuinkalender in {months}"
+    ecologyContinue: string      // "Doorgaan met toevoegen"
   }
 
   editPlant: {

@@ -722,6 +722,9 @@ export const en: Translations = {
       title: '📷 Photo identification',
       subtitle: 'Take a photo to identify a plant',
     },
+    ecologyTitle: 'What you just found',
+    ecologyFillsGap: 'Fills your garden calendar in {months}',
+    ecologyContinue: 'Continue adding',
   },
 
   editPlant: {

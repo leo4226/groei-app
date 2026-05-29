@@ -722,6 +722,9 @@ export const nl: Translations = {
       title: '📷 Foto-identificatie',
       subtitle: 'Maak een foto om een plant te identificeren',
     },
+    ecologyTitle: 'Wat je net vond',
+    ecologyFillsGap: 'Vult je tuinkalender in {months}',
+    ecologyContinue: 'Doorgaan met toevoegen',
   },
 
   editPlant: {
