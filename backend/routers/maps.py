@@ -54,7 +54,8 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
     """Per-garden biodiversity profile. Outdoor-only — indoor maps return 404
     since their ornamental tropicals have no NL ecological role."""
     row = await db.execute_fetchall(
-        "SELECT id, map_type FROM maps WHERE slug = ?", (slug,)
+        "SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
     )
     if not row:
         raise HTTPException(404, "Map not found")

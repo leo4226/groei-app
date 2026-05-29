@@ -228,7 +228,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
       setDbLoading(false)
       return
     }
-    garden.recommendations(mapId, sunHours, selectedMonth)
+    garden.recommendations(mapId, sunHours, selectedMonth, tappedCell.skyOpenness)
       .then(data => { setDbRecs(data); setDbLoading(false) })
       .catch(() => setDbLoading(false))
   }, [mapId, sunHours, selectedMonth])

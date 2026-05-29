@@ -158,7 +158,7 @@ async def get_recommendations(
     sun_hours: float,
     month: int = Query(..., ge=1, le=12),
     svf: float = 1.0,
-    limit: int = 8,
+    limit: int = Query(8, ge=1, le=50),
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):

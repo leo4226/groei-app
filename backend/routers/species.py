@@ -14,6 +14,7 @@ class EcologyOut(BaseModel):
     flowering_months: list[int] | None
     pollinator_value: int | None
     host_plant_for: list[str] | None
+    sun_preference: str | None
     data_source: str
     enriched_at: str
     score: int | None        # 0..100 biodiversity score; null when no data

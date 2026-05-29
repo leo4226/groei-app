@@ -601,6 +601,7 @@ export type EcologyOut = {
   flowering_months: number[] | null    // 1-12
   pollinator_value: number | null       // 0-3
   host_plant_for: string[] | null
+  sun_preference: string | null
   data_source: EcologyDataSource
   enriched_at: string                   // ISO timestamp
   score: number | null                  // 0-100; null when no data
