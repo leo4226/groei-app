@@ -14,7 +14,7 @@ import os
 from datetime import date
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 
 from database import db_dep
@@ -156,13 +156,21 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
 async def get_recommendations(
     map_id: int,
     sun_hours: float,
-    month: int,
+    month: int = Query(..., ge=1, le=12),
     svf: float = 1.0,
     limit: int = 8,
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
     """Tier 1 spot recommendations — DB-first, no LLM, returns in ~10 ms."""
+    # Verify the map belongs to the caller's household
+    rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+        (map_id, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+
     recs, gap_months = await recommend_for_spot(db, map_id, sun_hours, month, svf, limit)
     bio = await _compute_bio(db, map_id)
     return RecommendationsOut(

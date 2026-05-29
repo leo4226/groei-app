@@ -85,7 +85,7 @@ async def get_plant_suggestions(
     if not rows:
         raise HTTPException(status_code=404, detail="Map not found")
     m = dict(rows[0])
-    if m.get("map_type") == "indoor":
+    if (m.get("map_type") or "outdoor") != "outdoor":
         raise HTTPException(status_code=400, detail="Plant suggestions only available for outdoor maps")
 
     recs, gap_months = await recommend_for_garden(db, m["id"])
