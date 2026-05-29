@@ -9,7 +9,7 @@ No LLM calls. No HTTP. Returns results in ~10 ms.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # Light-bucket thresholds — mirror frontend/src/utils/lightQuality.ts
 _FULL_SUN_HOURS   = 4.0
@@ -102,6 +102,7 @@ def _score_candidate(
     pollinator_value: int | None,
     is_native: bool | None,
     sun_fit: str,
+    flowers_now: bool = False,
 ) -> int:
     """Higher is better. Used for sorting candidates."""
     score = 0
@@ -109,7 +110,21 @@ def _score_candidate(
     score += (pollinator_value or 0) * 5       # pollinator value second
     score += 3 if is_native is True else 0     # native preference
     score += 2 if sun_fit == "perfect" else 0  # perfect light fit
+    score += 1 if flowers_now else 0
     return score
+
+
+async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
+    placeholders = ",".join("?" * len(exclude_ids)) if exclude_ids else "NULL"
+    return await db.execute_fetchall(
+        f"""SELECT id, common_name_nl, latin_name, sun_preference,
+                   native_to_nl, pollinator_value, flowering_months
+            FROM plant_species
+            WHERE ecology_enriched_at IS NOT NULL
+              AND id NOT IN ({placeholders})
+            ORDER BY COALESCE(pollinator_value, -1) DESC""",
+        tuple(exclude_ids) if exclude_ids else (),
+    )
 
 
 def _coerce_months(value) -> list[int]:
@@ -147,6 +162,7 @@ async def recommend_for_spot(
     from services.garden_biodiversity import compute_for_map
     bio = await compute_for_map(db, map_id)
     gap_months = [i + 1 for i, covered in enumerate(bio.pollinator_coverage_months) if not covered]
+    gap_set = set(gap_months)
 
     # Species already in this garden (exclude from suggestions)
     existing = await db.execute_fetchall(
@@ -157,17 +173,7 @@ async def recommend_for_spot(
 
     # Fetch enriched candidates — no light filter in SQL since sun_preference
     # may be NULL for recently-enriched species; we filter in Python.
-    rows = await db.execute_fetchall(
-        """SELECT id, common_name_nl, latin_name, sun_preference,
-                  native_to_nl, pollinator_value, flowering_months
-           FROM plant_species
-           WHERE ecology_enriched_at IS NOT NULL
-             AND id NOT IN ({placeholders})
-           ORDER BY COALESCE(pollinator_value, -1) DESC""".format(
-            placeholders=",".join("?" * len(exclude_ids)) if exclude_ids else "NULL"
-        ),
-        tuple(exclude_ids) if exclude_ids else (),
-    )
+    rows = await _fetch_enriched_candidates(db, exclude_ids)
 
     candidates: list[PlantRecommendation] = []
     for row in rows:
@@ -178,8 +184,9 @@ async def recommend_for_spot(
             continue
 
         flowering = _coerce_months(row["flowering_months"])
-        gap_covered = [m for m in flowering if m in gap_months]
+        gap_covered = [m for m in flowering if m in gap_set]
         fit = sun_fit_label(sp, bucket)
+        flowers_now = month in flowering  # bool: does this plant flower in the current month?
 
         candidates.append(PlantRecommendation(
             species_id=row["id"],
@@ -196,7 +203,10 @@ async def recommend_for_spot(
 
     # Sort by composite score
     candidates.sort(
-        key=lambda r: _score_candidate(r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit),
+        key=lambda r: _score_candidate(
+            r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
+            flowers_now=month in (r.flowering_months or [])
+        ),
         reverse=True,
     )
     return candidates[:limit], gap_months
@@ -214,6 +224,7 @@ async def recommend_for_garden(
     from services.garden_biodiversity import compute_for_map
     bio = await compute_for_map(db, map_id)
     gap_months = [i + 1 for i, covered in enumerate(bio.pollinator_coverage_months) if not covered]
+    gap_set = set(gap_months)
 
     existing = await db.execute_fetchall(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
@@ -221,22 +232,12 @@ async def recommend_for_garden(
     )
     exclude_ids = {r["species_id"] for r in existing}
 
-    rows = await db.execute_fetchall(
-        """SELECT id, common_name_nl, latin_name, sun_preference,
-                  native_to_nl, pollinator_value, flowering_months
-           FROM plant_species
-           WHERE ecology_enriched_at IS NOT NULL
-             AND id NOT IN ({placeholders})
-           ORDER BY COALESCE(pollinator_value, -1) DESC""".format(
-            placeholders=",".join("?" * len(exclude_ids)) if exclude_ids else "NULL"
-        ),
-        tuple(exclude_ids) if exclude_ids else (),
-    )
+    rows = await _fetch_enriched_candidates(db, exclude_ids)
 
     candidates: list[PlantRecommendation] = []
     for row in rows:
         flowering = _coerce_months(row["flowering_months"])
-        gap_covered = [m for m in flowering if m in gap_months]
+        gap_covered = [m for m in flowering if m in gap_set]
 
         candidates.append(PlantRecommendation(
             species_id=row["id"],
