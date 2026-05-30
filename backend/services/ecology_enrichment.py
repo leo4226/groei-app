@@ -16,7 +16,6 @@ See docs/plans/2026-05-27-species-ecology-enrichment-spec.md.
 
 import json
 import logging
-import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone

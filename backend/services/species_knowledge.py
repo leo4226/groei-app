@@ -5,7 +5,7 @@ range, bloom months, height, toxicity, etc. Sourced (in order) from:
   1. plant_care_cache table (30-day TTL)
   2. Trefle API (if TREFLE_TOKEN set)
   3. Curated fallback table (10 species, RHS/Missouri Botanical/Gardenia.net)
-  4. Deepseek AI (if DEEPSEEK_API_KEY set)
+  4. LLM fallback via OpenRouter (if OPENROUTER_API_KEY set)
 
 Public API:
     fetch_species_knowledge(scientific_name) -> dict | None
