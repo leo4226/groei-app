@@ -188,6 +188,10 @@ input:focus, select:focus, textarea:focus {
    or desktops in narrow windows. */
 @media (orientation: landscape) and (max-height: 500px) {
   .landscape-mobile-hide { display: none !important; }
+  .landscape-only { display: block !important; }
+}
+@media (orientation: portrait), (min-height: 501px) {
+  .landscape-only { display: none !important; }
 }
 
 /* Responsive — Plants page */
@@ -333,6 +337,7 @@ input:focus, select:focus, textarea:focus {
     scrollbar-width: none;
     gap: 0 !important;
     padding: 8px 4px 10px !important;
+    justify-content: center !important;
   }
   .weather-forecast::-webkit-scrollbar {
     display: none;

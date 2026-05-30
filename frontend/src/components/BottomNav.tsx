@@ -63,7 +63,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="bg-surface/95 backdrop-blur-md border-t border-border flex justify-around items-end h-16 pb-[env(safe-area-inset-bottom)] shrink-0 z-50">
+    <nav className="bg-surface/95 backdrop-blur-md border-t border-border flex justify-around items-end h-16 pb-[max(env(safe-area-inset-bottom),4px)] shrink-0 z-50">
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}

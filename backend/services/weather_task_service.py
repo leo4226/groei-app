@@ -88,7 +88,7 @@ async def sync_ephemeral_schedules() -> dict:
                     created += 1
                 else:
                     for dup in existing[1:]:
-                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
+                        await db.execute("UPDATE care_schedules SET is_active = FALSE WHERE id = ?", (dup["id"],))
                         deleted += 1
             else:
                 # No bring_inside trigger — delete any stale ephemeral cold task
@@ -100,7 +100,7 @@ async def sync_ephemeral_schedules() -> dict:
                 )
                 for s in stale:
                     await db.execute(
-                        "UPDATE care_schedules SET is_active = 0 WHERE id = ?",
+                        "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
                         (s["id"],),
                     )
                     deleted += 1
@@ -122,7 +122,7 @@ async def sync_ephemeral_schedules() -> dict:
                 )
                 if existing:
                     for dup in existing[1:]:
-                        await db.execute("UPDATE care_schedules SET is_active = 0 WHERE id = ?", (dup["id"],))
+                        await db.execute("UPDATE care_schedules SET is_active = FALSE WHERE id = ?", (dup["id"],))
                         deleted += 1
                 else:
                     await db.execute(
@@ -141,7 +141,7 @@ async def sync_ephemeral_schedules() -> dict:
                 )
                 for s in stale:
                     await db.execute(
-                        "UPDATE care_schedules SET is_active = 0 WHERE id = ?",
+                        "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
                         (s["id"],),
                     )
                     deleted += 1
@@ -156,7 +156,7 @@ async def sync_ephemeral_schedules() -> dict:
         """)
         for s in indoor_ephemeral:
             await db.execute(
-                "UPDATE care_schedules SET is_active = 0 WHERE id = ?",
+                "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
                 (s["id"],),
             )
             deleted += 1

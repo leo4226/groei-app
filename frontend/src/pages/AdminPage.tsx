@@ -4,6 +4,7 @@ import {
   adminPanel, admin,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
   type AdminSpeciesRow, type AdminActivityEvent,
+  type IconGenerateResult,
 } from '../api/client'
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity'
@@ -537,6 +538,9 @@ function ToolsView() {
   const [thresholdsRunning, setThresholdsRunning] = useState(false)
   const [schedulesResult, setSchedulesResult] = useState('')
   const [schedulesRunning, setSchedulesRunning] = useState(false)
+  const [iconsResult, setIconsResult] = useState<IconGenerateResult | null>(null)
+  const [iconsRunning, setIconsRunning] = useState(false)
+  const [iconsError, setIconsError] = useState('')
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
 
@@ -573,6 +577,20 @@ function ToolsView() {
     }
   }
 
+  async function handleGenerateIcons() {
+    setIconsRunning(true)
+    setIconsResult(null)
+    setIconsError('')
+    try {
+      const r = await adminPanel.generateIcons()
+      setIconsResult(r)
+    } catch (e) {
+      setIconsError(e instanceof Error ? e.message : 'Failed to generate icons')
+    } finally {
+      setIconsRunning(false)
+    }
+  }
+
   const tools = [
     {
       title: 'Backfill thresholds',
@@ -586,7 +604,54 @@ function ToolsView() {
       preview: sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…',
       running: schedulesRunning, result: schedulesResult, onRun: handleBackfillSchedules,
     },
+    {
+      title: 'Generate missing icons',
+      desc: 'Auto-generate SVGs for all plant_species with a latin name that lack a manifest icon. Updates manifest + syncs plant icon_keys.',
+      preview: '',
+      running: iconsRunning, result: iconsRunning ? 'Generating…' : (iconsError || ''), onRun: handleGenerateIcons,
+    },
   ]
+
+  const iconCard = iconsResult && (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
+      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 8px' }}>Result</h3>
+      {iconsResult.count > 0 ? (
+        <>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>
+            ✓ {iconsResult.count} icons generated · {iconsResult.skipped_count} skipped · {iconsResult.sync_result.matched} plants matched
+          </p>
+          <div style={{ maxHeight: 300, overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.6 }}>
+            {iconsResult.generated.map(g => (
+              <div key={g.icon_id} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
+                <span style={{ color: 'var(--color-primary)', flexShrink: 0 }}>+</span>
+                <span>{g.name}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>({g.latin})</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>→ {g.icon_id}.svg</span>
+                <span style={{ color: '#aaa', fontStyle: 'italic' }}>{g.cat}</span>
+              </div>
+            ))}
+            {iconsResult.skipped.map(s => (
+              <div key={s.id} style={{ display: 'flex', gap: 8, padding: '2px 0', color: 'var(--color-overdue)' }}>
+                <span>✗</span>
+                <span>{s.name}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>({s.latin})</span>
+                <span>{s.error}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>
+            Synced: {iconsResult.sync_result.matched} plant{iconsResult.sync_result.matched !== 1 ? 's' : ''} got a new icon_key
+          </div>
+        </>
+      ) : (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)' }}>
+          {iconsResult.skipped_count > 0
+            ? `All species with latin names already have icons in the manifest. ${iconsResult.skipped_count} species were skipped.`
+            : 'All species with latin names already have icons in the manifest.'}
+        </p>
+      )}
+    </div>
+  )
 
   return (
     <div>
@@ -607,13 +672,14 @@ function ToolsView() {
               {tool.running ? 'Running…' : 'Run'}
             </button>
             {tool.result && (
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: tool.result.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: tool.result.startsWith('\u2713') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
                 {tool.result}
               </p>
             )}
           </div>
         ))}
       </div>
+      {iconCard}
     </div>
   )
 }

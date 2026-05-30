@@ -468,6 +468,7 @@ export interface BucketPlantOut {
   plant_name: string
   plant_icon_variant: string | null
   environment: string
+  map_name: string | null
   care_type: string | null
   top_warning: CareWarningOut | null
   days_overdue: number | null

@@ -323,6 +323,16 @@ export const nl: Translations = {
     removeConfirm: 'Weet je zeker dat je',
     removeError: 'Fout bij verwijderen',
     removeMember: 'Verwijderen',
+    inviteTitle: 'Nodig iemand uit',
+    inviteDescription: 'Genereer een code waarmee iemand jouw tuin kan joinen. De code is 7 dagen geldig.',
+    generateCode: 'Genereer uitnodigingscode',
+    generatingCode: 'Code genereren...',
+    shareCode: 'Deel deze code met wie je wilt uitnodigen:',
+    newCode: 'Nieuwe code genereren (oude vervalt)',
+    copyCode: 'Kopieer code',
+    assistantTitle: 'Assistent',
+    resetAssistant: '🔄 Stekkie resetten',
+    resetAssistantDone: 'Stekkie is gereset!',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────
@@ -886,7 +896,6 @@ export const nl: Translations = {
     recordWatering: 'Registreer tuin bewatering',
     lastFertilized: (date) => `Laatst bemest: ${date}`,
     recordFertilizing: 'Registreer tuin bemesting',
-    spotInspectorHint: 'Zet de zonkaart aan en tik op een plek in de tuin',
     more: 'Meer',
     options: 'Opties',
     addPot: 'Pot toevoegen',
@@ -1015,7 +1024,7 @@ export const nl: Translations = {
   help: {
     title: 'Hulp? Waarom zou ik helpen',
     close: 'Rot op',
-    dismiss: 'Laat me met rust',
+    dismiss: 'Stekkie verbergen',
     tips: {
       dashboard: 'Kijk je nou naar een leeg scherm? Wat een verrassing.',
       plants: 'Wist je dat je planten kunt toevoegen via de + knop? Of wil je dat ik het voordoe?',
@@ -1025,7 +1034,22 @@ export const nl: Translations = {
       editor: 'Veel slepen, weinig voorstellen. Veel succes.',
       plantDetail: 'Staat ie er nog? Verrassend.',
       addPlant: 'Oh, je wilt nóg een plant laten doodgaan?',
-    }
+    },
+    chat: {
+      inputPlaceholder: 'Stel een vraag over Floreren…',
+      send: 'Verstuur',
+      thinking: 'Stekkie denkt na…',
+      error: 'Er ging iets mis. Probeer het opnieuw.',
+      unavailable: 'Chatbot is offline. Probeer later opnieuw.',
+      empty: 'Stel een vraag over Floreren.',
+      example: 'Bijv: "Hoe voeg ik een plant toe?"',
+      bugReport: '🐛 Bug melden',
+      bugReportHeader: '🐛 Bug melden',
+      submit: 'Naar GitHub sturen',
+      submitting: 'Bezig met versturen…',
+      submitted: '✅ Bug gemeld!',
+      submitError: 'Fout bij verzenden. Probeer het opnieuw.',
+    },
   },
 
   log: {

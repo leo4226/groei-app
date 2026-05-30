@@ -275,6 +275,19 @@ export type Translations = {
       loadGaps: string
       loadingGaps: string
     }
+    removeConfirm: string // "Weet je zeker dat je" / "Are you sure you want to remove"
+    removeError: string   // "Fout bij verwijderen" / "Error removing member"
+    removeMember: string  // "Verwijderen" / "Remove"
+    inviteTitle: string       // "Nodig iemand uit" / "Invite someone"
+    inviteDescription: string // "Genereer een code..." / "Generate a code..."
+    generateCode: string      // "Genereer uitnodigingscode" / "Generate invite code"
+    generatingCode: string    // "Code genereren..." / "Generating code..."
+    shareCode: string         // "Deel deze code..." / "Share this code..."
+    newCode: string           // "Nieuwe code genereren" / "Generate new code"
+    copyCode: string          // "Kopieer code" / "Copy code"
+    assistantTitle: string    // "Assistent" / "Assistant"
+    resetAssistant: string    // "Stekkie resetten" / "Reset Stekkie"
+    resetAssistantDone: string // "Stekkie is gereset!" / "Stekkie has been reset!"
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────
@@ -900,7 +913,6 @@ export type Translations = {
     recordWatering: string                  // "Registreer tuin bewatering"
     lastFertilized: (date: string) => string // "Laatst bemest: {date}"
     recordFertilizing: string               // "Registreer tuin bemesting"
-    spotInspectorHint: string               // "Zet de zonkaart aan en tik op een plek in de tuin"
     addPot: string                          // "Pot toevoegen"
     more: string                             // "Meer" / "More" (mobile overflow menu button)
     options: string                          // "Opties" / "Options" (mobile menu trigger)
@@ -1001,6 +1013,21 @@ export type Translations = {
       editor: string
       plantDetail: string
       addPlant: string
+    }
+    chat: {
+      inputPlaceholder: string
+      send: string
+      thinking: string
+      error: string
+      unavailable: string
+      empty: string
+      example: string
+      bugReport: string
+      bugReportHeader: string
+      submit: string
+      submitting: string
+      submitted: string
+      submitError: string
     }
   }
 

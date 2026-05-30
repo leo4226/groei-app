@@ -50,9 +50,11 @@ export default function MapBottomSheet({ mode, attentionCount, careContent, sunC
         )}
       </button>
 
-      <div className="px-4 pb-4 overflow-y-auto" style={{ maxHeight: 'calc(75vh - 32px)' }}>
-        {mode === 'care' ? careContent : sunContent}
-      </div>
+      {expanded && (
+        <div className="px-4 pb-4 overflow-y-auto" style={{ maxHeight: 'calc(75vh - 32px)' }}>
+          {mode === 'care' ? careContent : sunContent}
+        </div>
+      )}
     </div>
   )
 }

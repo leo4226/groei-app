@@ -1,30 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Radijs"><title>Radijs — Raphanus sativus</title>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
   
-    <g transform="translate(50 38) rotate(-18)">
-      <path d="M 0 0 L 0 -24" stroke="#3D5C3A" stroke-width="1.2"></path>
-      <path d="M 0 -4 Q -6 -8 -8 -14 Q -4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -4 Q 6 -8 8 -14 Q 4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -14 Q -5 -18 -6 -24 Q -2 -24 0 -20 Z" fill="#6DA86F"></path>
-      <path d="M 0 -14 Q 5 -18 6 -24 Q 2 -24 0 -20 Z" fill="#6DA86F"></path>
-    </g>
-  
-    <g transform="translate(50 38) rotate(0)">
-      <path d="M 0 0 L 0 -24" stroke="#3D5C3A" stroke-width="1.2"></path>
-      <path d="M 0 -4 Q -6 -8 -8 -14 Q -4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -4 Q 6 -8 8 -14 Q 4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -14 Q -5 -18 -6 -24 Q -2 -24 0 -20 Z" fill="#6DA86F"></path>
-      <path d="M 0 -14 Q 5 -18 6 -24 Q 2 -24 0 -20 Z" fill="#6DA86F"></path>
-    </g>
-  
-    <g transform="translate(50 38) rotate(18)">
-      <path d="M 0 0 L 0 -24" stroke="#3D5C3A" stroke-width="1.2"></path>
-      <path d="M 0 -4 Q -6 -8 -8 -14 Q -4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -4 Q 6 -8 8 -14 Q 4 -16 0 -10 Z" fill="#4A7C4E"></path>
-      <path d="M 0 -14 Q -5 -18 -6 -24 Q -2 -24 0 -20 Z" fill="#6DA86F"></path>
-      <path d="M 0 -14 Q 5 -18 6 -24 Q 2 -24 0 -20 Z" fill="#6DA86F"></path>
-    </g>
-  
-  <circle cx="50" cy="56" r="18" fill="#D94A3D"></circle>
-  <path d="M 50 74 Q 46 78 48 82 Q 50 84 52 82 Q 54 78 50 74 Z" fill="#FBF7EE"></path>
-  <ellipse cx="44" cy="50" rx="3" ry="6" fill="#FFF" opacity="0.35"></ellipse>
+  <ellipse cx="50" cy="73" rx="6" ry="2.4" fill="#D94A6A"></ellipse>
+  <ellipse cx="50" cy="72.5" rx="4" ry="1.4" fill="#E88AA8" opacity="0.7"></ellipse>
+  <g transform="translate(50 71) rotate(0) scale(1.2)">
+    <path d="M 0 0 Q -2 -6 -5 -10 Q -8 -16 -3 -18 Q 0 -16 0 -10 Q 0 -16 3 -18 Q 8 -16 5 -10 Q 2 -6 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.5"></path>
+  </g>
+  <g transform="translate(44 71) rotate(-25) scale(1)">
+    <path d="M 0 0 Q -2 -6 -5 -10 Q -8 -16 -3 -18 Q 0 -16 0 -10 Q 0 -16 3 -18 Q 8 -16 5 -10 Q 2 -6 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.5"></path>
+  </g>
+  <g transform="translate(56 71) rotate(25) scale(1)">
+    <path d="M 0 0 Q -2 -6 -5 -10 Q -8 -16 -3 -18 Q 0 -16 0 -10 Q 0 -16 3 -18 Q 8 -16 5 -10 Q 2 -6 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.5"></path>
+  </g>
+  <g transform="translate(40 72) rotate(-50) scale(0.9)">
+    <path d="M 0 0 Q -2 -6 -5 -10 Q -8 -16 -3 -18 Q 0 -16 0 -10 Q 0 -16 3 -18 Q 8 -16 5 -10 Q 2 -6 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.5"></path>
+  </g>
+  <g transform="translate(60 72) rotate(50) scale(0.9)">
+    <path d="M 0 0 Q -2 -6 -5 -10 Q -8 -16 -3 -18 Q 0 -16 0 -10 Q 0 -16 3 -18 Q 8 -16 5 -10 Q 2 -6 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 -2 L 0 -16" stroke="#2F5D3A" stroke-width="0.5"></path>
+  </g>
 </svg>

@@ -252,7 +252,7 @@ export default function App() {
       </main>
 
       {!isLoginPage && !isAdminPage && (
-        <div className={isMapPage ? 'landscape-mobile-hide' : ''}>
+        <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}

@@ -31,6 +31,14 @@ export function useSpotInspector(engine?: LightEngine | null) {
 
   const inspect = useCallback(async (x: number, y: number) => {
     setLoading(true)
+
+    // Pre-compute all 12 months' heatmaps so getSunHoursAtPosition has data
+    if (engine) {
+      await Promise.all(
+        Array.from({ length: 12 }, (_, i) => engine.computeHeatmap(i + 1))
+      )
+    }
+
     const sunByMonth = Array.from({ length: 12 }, (_, i) => {
       if (engine) {
         return engine.getSunHoursAtPosition(x, y, i + 1) ?? 0

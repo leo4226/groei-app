@@ -160,7 +160,7 @@ DUTCH_TO_ICON: dict[str, str] = {
     "vijgenboom": "figtree",
     "vijg": "figtree",
     "buxus": "boxwood",
-    "populier": "oak",  # best available tree icon
+    "populier": "poplar",       # now has dedicated icon
     # Herbs
     "lavendel": "lavender",
     "rozemarijn": "rosemary",
@@ -197,7 +197,9 @@ DUTCH_TO_ICON: dict[str, str] = {
     "ijzerhard": "daisy",        # Verbena → closest available
     "stijfijzerhard": "daisy",
     "oleander": "rose",          # no oleander icon → rose is closest shrub flower
-    "camellia": "rose",          # no camellia icon → rose
+    "camellia": "camellia",       # now has dedicated icon
+    "struisvaren": "malefern",   # malefern = "Mannetjesvaren", closest match for Ostrich Fern
+    "schijnaardbei": "strawberry", # Indian mock strawberry → strawberry icon
 }
 
 

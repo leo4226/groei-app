@@ -1,8 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Courgette"><title>Courgette — Cucurbita pepo</title>
-  <path d="M 20 40 Q 12 30 22 22 Q 36 18 42 30 Q 36 42 20 40 Z" fill="#4A7C4E"></path>
-  <path d="M 26 30 L 36 32" stroke="#2F5D3A" stroke-width="0.8"></path>
-  <path d="M 20 74 Q 12 72 10 78 Q 14 86 22 84 Z" fill="#F4C542"></path>
-  <path d="M 20 76 Q 20 66 30 60 Q 50 52 70 44 Q 82 38 84 48 Q 84 56 74 58 Q 54 64 36 74 Q 28 80 20 76 Z" fill="#5C8A4E"></path>
-  <path d="M 30 62 Q 50 56 70 48" stroke="#FFF" stroke-width="1.6" opacity="0.3" fill="none" stroke-linecap="round"></path>
-  <path d="M 82 44 L 86 40" stroke="#3D5C3A" stroke-width="1.4"></path>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  <g transform="translate(36 52) rotate(-20) scale(1)">
+    <path d="M 0 0 Q -10 -2 -14 -10 Q -16 -18 -8 -18 Q -4 -22 0 -18 Q 4 -22 8 -18 Q 16 -18 14 -10 Q 10 -2 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.6"></path>
+    <path d="M -2 -4 L -8 -10 M 2 -4 L 8 -10 M -3 -10 L -7 -16 M 3 -10 L 7 -16" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+    <path d="M -10 -8 L -12 -2 M 10 -8 L 12 -2" stroke="#2F5D3A" stroke-width="0.4" opacity="0.5"></path>
+  </g>
+  <g transform="translate(64 50) rotate(20) scale(1)">
+    <path d="M 0 0 Q -10 -2 -14 -10 Q -16 -18 -8 -18 Q -4 -22 0 -18 Q 4 -22 8 -18 Q 16 -18 14 -10 Q 10 -2 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.6"></path>
+    <path d="M -2 -4 L -8 -10 M 2 -4 L 8 -10 M -3 -10 L -7 -16 M 3 -10 L 7 -16" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+    <path d="M -10 -8 L -12 -2 M 10 -8 L 12 -2" stroke="#2F5D3A" stroke-width="0.4" opacity="0.5"></path>
+  </g>
+  <g transform="translate(50 38) rotate(0) scale(1.05)">
+    <path d="M 0 0 Q -10 -2 -14 -10 Q -16 -18 -8 -18 Q -4 -22 0 -18 Q 4 -22 8 -18 Q 16 -18 14 -10 Q 10 -2 0 0 Z" fill="#4A7C4E"></path>
+    <path d="M 0 0 L 0 -14" stroke="#2F5D3A" stroke-width="0.6"></path>
+    <path d="M -2 -4 L -8 -10 M 2 -4 L 8 -10 M -3 -10 L -7 -16 M 3 -10 L 7 -16" stroke="#2F5D3A" stroke-width="0.4" opacity="0.6"></path>
+    <path d="M -10 -8 L -12 -2 M 10 -8 L 12 -2" stroke="#2F5D3A" stroke-width="0.4" opacity="0.5"></path>
+  </g>
+  
+  <g transform="translate(34 70)">
+    <path d="M 0 0 Q -4 -3 -3 -7 Q -1 -8 0 -5 Q 1 -8 3 -7 Q 4 -3 0 0 Z" fill="#F4C542"></path>
+    <ellipse cx="0" cy="-2" rx="1" ry="1.4" fill="#D9A418"></ellipse>
+  </g>
+  
+  <g transform="translate(62 66) rotate(15)">
+    <path d="M -2 -2 Q -3 0 -2.5 8 Q -1 14 0 14 Q 1 14 2.5 8 Q 3 0 2 -2 Z" fill="#5C8A4E"></path>
+    <ellipse cx="0" cy="13" rx="2" ry="1" fill="#3D6A32"></ellipse>
+    <path d="M -1 12 L 1 12" stroke="#2F5D3A" stroke-width="0.4"></path>
+    <ellipse cx="-1" cy="5" rx="0.7" ry="3.5" fill="#A5C68F" opacity="0.5"></ellipse>
+  </g>
+  
+  <path d="M 50 74 L 50 50" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
 </svg>

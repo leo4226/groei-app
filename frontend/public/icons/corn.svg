@@ -1,7 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Mais"><title>Mais — Zea mays</title>
-  <path d="M 50 14 Q 46 10 42 12 M 50 14 Q 54 10 58 12" stroke="#F4C542" stroke-width="1" fill="none" stroke-linecap="round"></path>
-  <path d="M 34 30 Q 26 44 28 70 Q 34 72 38 60 Q 36 44 40 32 Z" fill="#6DA86F"></path>
-  <path d="M 66 30 Q 74 44 72 70 Q 66 72 62 60 Q 64 44 60 32 Z" fill="#6DA86F"></path>
-  <path d="M 38 18 Q 36 50 42 82 Q 50 86 58 82 Q 64 50 62 18 Q 56 14 50 14 Q 44 14 38 18 Z" fill="#F4C542"></path>
-  <circle cx="44" cy="26" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="26" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="26" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="35" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="35" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="35" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="44" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="44" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="44" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="53" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="53" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="53" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="62" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="62" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="62" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="71" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="71" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="71" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="44" cy="80" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="50" cy="80" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle><circle cx="56" cy="80" r="1.8" fill="#F4C542" stroke="#D9A418" stroke-width="0.5"></circle>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
+  
+  <rect x="49" y="14" width="2.4" height="60" fill="#6DA86F"></rect>
+  <rect x="49.6" y="14" width="0.6" height="60" fill="#A5C68F" opacity="0.6"></rect>
+  
+  <g stroke="#D9A418" stroke-width="0.7" fill="none" stroke-linecap="round">
+    <path d="M 50 14 L 50 6"></path>
+    <path d="M 50 12 Q 48 10 46 6"></path>
+    <path d="M 50 12 Q 52 10 54 6"></path>
+    <path d="M 50 10 Q 47 8 44 4"></path>
+    <path d="M 50 10 Q 53 8 56 4"></path>
+  </g>
+  
+  <g transform="translate(50 30) rotate(-65) scale(1)">
+    <path d="M 0 0 Q -2 -6.6 -4 -13.2 Q -5 -19.8 -3 -22 Q -1 -17.6 0 -11 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -13.2 L -3 -22" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  <g transform="translate(50 30) rotate(65) scale(1)">
+    <path d="M 0 0 Q -2 -6.6 -4 -13.2 Q -5 -19.8 -3 -22 Q -1 -17.6 0 -11 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -13.2 L -3 -22" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  <g transform="translate(50 46) rotate(-70) scale(1)">
+    <path d="M 0 0 Q -2 -7.199999999999999 -4 -14.399999999999999 Q -5 -21.6 -3 -24 Q -1 -19.200000000000003 0 -12 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -14.399999999999999 L -3 -24" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  <g transform="translate(50 46) rotate(70) scale(1)">
+    <path d="M 0 0 Q -2 -7.199999999999999 -4 -14.399999999999999 Q -5 -21.6 -3 -24 Q -1 -19.200000000000003 0 -12 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -14.399999999999999 L -3 -24" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  <g transform="translate(50 62) rotate(-75) scale(1)">
+    <path d="M 0 0 Q -2 -6 -4 -12 Q -5 -18 -3 -20 Q -1 -16 0 -10 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -12 L -3 -20" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  <g transform="translate(50 62) rotate(75) scale(1)">
+    <path d="M 0 0 Q -2 -6 -4 -12 Q -5 -18 -3 -20 Q -1 -16 0 -10 L 1 0 Z" fill="#6DA86F"></path>
+    <path d="M 0 0 L -2 -12 L -3 -20" stroke="#4A7C4E" stroke-width="0.4" fill="none"></path>
+  </g>
+  
+  <g transform="translate(58 52)">
+    <path d="M 0 0 Q -2 -6 0 -12 Q 4 -10 4 -6 Q 4 -2 0 0 Z" fill="#F4C542"></path>
+    <path d="M -1 -2 L 1 -10 M -2 -4 L 0 -8" stroke="#D9A418" stroke-width="0.4" opacity="0.5"></path>
+    <path d="M -1 -12 Q -2 -16 -4 -16" stroke="#C9C0A8" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+    <path d="M 0 -12 Q 0 -17 -1 -18" stroke="#C9C0A8" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+    <path d="M 1 -12 Q 2 -16 4 -16" stroke="#C9C0A8" stroke-width="0.8" fill="none" stroke-linecap="round"></path>
+  </g>
 </svg>

@@ -226,9 +226,6 @@ export default function AddPlant() {
   const [pruningType, setPruningType] = useState('none')
   const [pruningFrequency, setPruningFrequency] = useState('never')
 
-  const tuinMap = maps.find(m => ['garden', 'tuin'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
-  const huisMap = maps.find(m => ['huis', 'house', 'indoor'].some(k => m.name.toLowerCase().includes(k) || (m as any).slug?.toLowerCase().includes(k)))
-  const isOutdoor = area === 'tuin'
 
   function randomMapPos(viewbox: string) {
     const [x0, y0, w, h] = viewbox.split(' ').map(Number)
@@ -376,7 +373,8 @@ export default function AddPlant() {
         .filter(([, s]) => s.enabled && s.days > 0)
         .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
 
-      const placedMap = area === 'tuin' ? tuinMap : area === 'huis' ? huisMap : undefined
+      // Use the actual map the user selected in the ZonePicker, not a fuzzy match on area
+      const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
       const plant = await addPlant({
