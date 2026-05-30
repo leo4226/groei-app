@@ -16,19 +16,51 @@ _FULL_SUN_HOURS   = 4.0
 _PART_SUN_HOURS   = 2.0
 _BRIGHT_SHADE_SVF = 0.5
 
-# Which sun_preference values are compatible per light bucket.
-# "acceptable" = plant can survive; "perfect" = plant thrives.
-_COMPATIBLE: dict[str, list[str]] = {
-    "full":        ["full_sun", "any"],
-    "part":        ["full_sun", "partial_sun", "any"],
-    "bright_shade":["partial_sun", "shade", "any"],
-    "deep_shade":  ["shade", "any"],
+# Unified light model.
+#
+# Each spot bucket and each plant preference live on a 0..3 light ladder, and a
+# plant's fit at a spot is graded by how far the spot sits from where the plant
+# thrives:
+#   perfect    — spot is the plant's ideal light
+#   acceptable — one step off; the plant does well
+#   marginal   — two steps off; survives but underperforms (still shown, ranked low)
+#   tolerated  — plant preference is "any"/unknown; fits anywhere but ranks below
+#                a plant whose *known* preference matches the spot
+#   None       — too far off to ever recommend (scorch / won't flower)
+#
+# Including "marginal" rather than excluding it keeps shady gardens from returning
+# empty lists, while the scoring multiplier (LIGHT_MULT) pushes those picks down.
+_FIT_GRADES: dict[str, dict[str, str | None]] = {
+    "full": {
+        "full_sun":    "perfect",
+        "partial_sun": "acceptable",
+        "shade":       None,          # scorch
+    },
+    "part": {
+        "full_sun":    "acceptable",
+        "partial_sun": "perfect",
+        "shade":       "marginal",
+    },
+    "bright_shade": {
+        "full_sun":    "marginal",
+        "partial_sun": "acceptable",
+        "shade":       "perfect",
+    },
+    "deep_shade": {
+        "full_sun":    None,          # won't flower
+        "partial_sun": "marginal",
+        "shade":       "perfect",
+    },
 }
-_PERFECT: dict[str, list[str]] = {
-    "full":        ["full_sun"],
-    "part":        ["partial_sun"],
-    "bright_shade":["partial_sun", "shade"],
-    "deep_shade":  ["shade"],
+
+# Ranking weight per fit grade. Light scales the ecology subscore so two spots with
+# different light produce different *orderings*, while ecology still drives close calls.
+# Tunable after a season of observation.
+_LIGHT_MULT: dict[str, float] = {
+    "perfect":    1.00,
+    "acceptable": 0.80,
+    "tolerated":  0.65,
+    "marginal":   0.55,
 }
 
 _MONTH_NL_SHORT = [
@@ -43,7 +75,7 @@ class PlantRecommendation:
     dutch_name: str
     latin_name: str
     sun_preference: str | None
-    sun_fit: str                        # 'perfect' | 'acceptable'
+    sun_fit: str                        # 'perfect'|'acceptable'|'marginal'|'tolerated'
     is_native: bool | None
     pollinator_value: int | None
     flowering_months: list[int] | None
@@ -62,16 +94,15 @@ def bucket_for(direct_hours: float, svf: float = 1.0) -> str:
     return "bright_shade" if svf >= _BRIGHT_SHADE_SVF else "deep_shade"
 
 
-def compatible_sun_preferences(bucket: str) -> list[str]:
-    return _COMPATIBLE.get(bucket, ["any"])
+def fit_grade(sun_preference: str | None, bucket: str) -> str | None:
+    """Grade how well a plant's sun preference fits a spot's light bucket.
 
-
-def sun_fit_label(sun_preference: str | None, bucket: str) -> str:
-    if sun_preference is None:
-        return "acceptable"
-    if sun_preference in _PERFECT.get(bucket, []):
-        return "perfect"
-    return "acceptable"
+    Returns 'perfect' | 'acceptable' | 'marginal' | 'tolerated', or None when the
+    pairing is too far off to ever recommend. A NULL/'any' preference is always
+    'tolerated' (fits anywhere, ranks below a known match)."""
+    if sun_preference is None or sun_preference == "any":
+        return "tolerated"
+    return _FIT_GRADES.get(bucket, {}).get(sun_preference, "tolerated")
 
 
 def template_reason(
@@ -103,27 +134,37 @@ def _score_candidate(
     is_native: bool | None,
     sun_fit: str,
     flowers_now: bool = False,
-) -> int:
-    """Higher is better. Used for sorting candidates."""
-    score = 0
-    score += len(gap_months_covered) * 10      # gap coverage is most important
-    score += (pollinator_value or 0) * 5       # pollinator value second
-    score += 3 if is_native is True else 0     # native preference
-    score += 2 if sun_fit == "perfect" else 0  # perfect light fit
-    score += 1 if flowers_now else 0
-    return score
+) -> float:
+    """Higher is better. Used for sorting candidates.
+
+    The ecology subscore (gap coverage, pollinator value, native, flowers-now) is
+    scaled by a light-suitability multiplier so the same plant ranks higher where it
+    thrives — while a strong gap-filler in imperfect light still beats a weak plant in
+    perfect light. A small flat bonus for a perfect fit breaks ecology ties."""
+    ecology = 0
+    ecology += len(gap_months_covered) * 10    # gap coverage is most important
+    ecology += (pollinator_value or 0) * 5     # pollinator value second
+    ecology += 3 if is_native is True else 0   # native preference
+    ecology += 1 if flowers_now else 0         # currently in bloom
+    return ecology * _LIGHT_MULT.get(sun_fit, 0.65) + (2 if sun_fit == "perfect" else 0)
 
 
 async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
-    placeholders = ",".join("?" * len(exclude_ids)) if exclude_ids else "NULL"
+    if exclude_ids:
+        placeholders = ",".join("?" * len(exclude_ids))
+        exclude_clause = f"AND id NOT IN ({placeholders})"
+        params: tuple = tuple(exclude_ids)
+    else:
+        exclude_clause = ""
+        params = ()
     return await db.execute_fetchall(
         f"""SELECT id, common_name_nl, latin_name, sun_preference,
                    native_to_nl, pollinator_value, flowering_months
             FROM plant_species
             WHERE ecology_enriched_at IS NOT NULL
-              AND id NOT IN ({placeholders})
+              {exclude_clause}
             ORDER BY COALESCE(pollinator_value, -1) DESC""",
-        tuple(exclude_ids) if exclude_ids else (),
+        params,
     )
 
 
@@ -156,7 +197,6 @@ async def recommend_for_spot(
     frontend can show context ("fills your March–May gap").
     """
     bucket = bucket_for(sun_hours, svf)
-    compatible = compatible_sun_preferences(bucket)
 
     # Gap months from garden biodiversity
     from services.garden_biodiversity import compute_for_map
@@ -178,14 +218,14 @@ async def recommend_for_spot(
     candidates: list[PlantRecommendation] = []
     for row in rows:
         sp = row["sun_preference"]
-        # Include species with NULL sun_preference as "any" (graceful degradation)
-        effective_pref = sp if sp else "any"
-        if effective_pref not in compatible:
+        # Grade light fit; None means the pairing is too far off to recommend.
+        # NULL sun_preference grades as "tolerated" (graceful degradation).
+        fit = fit_grade(sp, bucket)
+        if fit is None:
             continue
 
         flowering = _coerce_months(row["flowering_months"])
         gap_covered = [m for m in flowering if m in gap_set]
-        fit = sun_fit_label(sp, bucket)
         flowers_now = month in flowering  # bool: does this plant flower in the current month?
 
         candidates.append(PlantRecommendation(

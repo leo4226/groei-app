@@ -14,6 +14,7 @@ Usage:
     python scripts/enrich_species_ecology.py --limit 50       # first 50
     python scripts/enrich_species_ecology.py --dry-run        # log, no writes
     python scripts/enrich_species_ecology.py --only-failed    # retry data_source='failed' rows
+    python scripts/enrich_species_ecology.py --only-missing-sun  # fill only NULL sun_preference
 """
 import argparse
 import asyncio
@@ -35,6 +36,79 @@ logger = logging.getLogger(__name__)
 
 
 _INTER_REQUEST_DELAY_S = 0.25  # ~4 species/s — well within GBIF + DeepSeek limits
+
+
+async def backfill_sun_only(limit: int | None, dry_run: bool) -> None:
+    """Surgically fill `sun_preference` for rows that are missing it.
+
+    Species enriched before the `sun_preference` column existed have a non-null
+    `ecology_enriched_at` and a NULL `sun_preference`, so the normal enrichment
+    pass (which only touches `ecology_enriched_at IS NULL`) skips them. This mode
+    targets exactly those rows and asks the LLM *only* for sun_preference, writing
+    just that one column — every other ecology field is left untouched (no GBIF
+    re-derivation, no risk of overwriting curated data). Idempotent: re-running
+    only revisits rows that are still NULL.
+    """
+    from database import init_pool, close_pool, get_db
+    from services.ecology_enrichment import _from_llm
+
+    await init_pool()
+    try:
+        async with get_db() as db:
+            rows = await db.execute_fetchall(
+                "SELECT id, latin_name FROM plant_species "
+                "WHERE sun_preference IS NULL AND latin_name IS NOT NULL "
+                "ORDER BY id"
+            )
+
+        target = rows[:limit] if limit else rows
+        logger.info("%d species missing sun_preference (limit=%s, dry_run=%s)",
+                    len(target), limit, dry_run)
+
+        stats = {"filled": 0, "no_answer": 0, "errors": 0}
+
+        for i, row in enumerate(target):
+            if (i + 1) % 25 == 0 or i == 0:
+                logger.info("Progress: %d/%d  (filled=%d, no_answer=%d, errors=%d)",
+                            i + 1, len(target),
+                            stats["filled"], stats["no_answer"], stats["errors"])
+
+            if dry_run:
+                logger.info("  [dry-run] would query sun_preference for %s (id=%d)",
+                            row["latin_name"], row["id"])
+                await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+                continue
+
+            try:
+                data = await _from_llm(row["latin_name"])
+            except Exception as exc:
+                logger.warning("  ✗ %s (id=%d): %s", row["latin_name"], row["id"], exc)
+                stats["errors"] += 1
+                await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+                continue
+
+            sun = data.get("sun_preference")
+            if sun is None:
+                stats["no_answer"] += 1
+            else:
+                async with get_db() as db:
+                    await db.execute(
+                        "UPDATE plant_species SET sun_preference = ? WHERE id = ?",
+                        (sun, row["id"]),
+                    )
+                    await db.commit()
+                stats["filled"] += 1
+                if stats["filled"] <= 10 or stats["filled"] % 100 == 0:
+                    logger.info("  ✓ %s → %s", row["latin_name"], sun)
+
+            await asyncio.sleep(_INTER_REQUEST_DELAY_S)
+
+        logger.info("Done. %s", stats)
+        if stats["no_answer"] > 0 or stats["errors"] > 0:
+            logger.info("%d rows still NULL (LLM unsure or errored) — safe to re-run.",
+                        stats["no_answer"] + stats["errors"])
+    finally:
+        await close_pool()
 
 
 async def main(limit: int | None, only_failed: bool, dry_run: bool) -> None:
@@ -123,5 +197,10 @@ if __name__ == "__main__":
                    help="Retry rows where ecology_data_source = 'failed'")
     p.add_argument("--dry-run", action="store_true",
                    help="Log what would be enriched, write nothing")
+    p.add_argument("--only-missing-sun", action="store_true",
+                   help="Fill only NULL sun_preference (writes just that column)")
     args = p.parse_args()
-    asyncio.run(main(limit=args.limit, only_failed=args.only_failed, dry_run=args.dry_run))
+    if args.only_missing_sun:
+        asyncio.run(backfill_sun_only(limit=args.limit, dry_run=args.dry_run))
+    else:
+        asyncio.run(main(limit=args.limit, only_failed=args.only_failed, dry_run=args.dry_run))

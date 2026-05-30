@@ -368,6 +368,8 @@ export const nl: Translations = {
     ecologyFillsGap: 'Vult: {months}',
     sunFitPerfect: 'Ideaal licht',
     sunFitAcceptable: 'Geschikt licht',
+    sunFitMarginal: 'Krap licht',
+    sunFitTolerated: 'Verdraagt dit licht',
     noDbResults: 'Weinig soortdata beschikbaar — zie AI-suggesties hieronder',
   },
 

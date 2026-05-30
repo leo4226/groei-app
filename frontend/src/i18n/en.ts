@@ -368,6 +368,8 @@ export const en: Translations = {
     ecologyFillsGap: 'Fills: {months}',
     sunFitPerfect: 'Ideal light',
     sunFitAcceptable: 'Suitable light',
+    sunFitMarginal: 'Tight light',
+    sunFitTolerated: 'Tolerates this light',
     noDbResults: 'Limited species data — see AI suggestions below',
   },
 

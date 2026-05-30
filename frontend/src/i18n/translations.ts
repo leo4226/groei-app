@@ -323,6 +323,8 @@ export type Translations = {
     ecologyFillsGap: string      // "Vult: {months}"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
+    sunFitMarginal: string       // "Krap licht"
+    sunFitTolerated: string      // "Verdraagt dit licht"
     noDbResults: string          // "Weinig data beschikbaar"
   }
 
