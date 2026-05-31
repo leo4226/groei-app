@@ -266,6 +266,11 @@ cd frontend && npx tsc --noEmit
 - Fails **because of your change** → fix it.
 - Was **already failing** before your change → note it in the PR and continue.
 
+**Before you open a PR, both must pass locally:** `tsc` (frontend) and the backend
+tests. CI (`.github/workflows/ci.yml`) re-runs them on every PR and a **red ❌ blocks
+the merge** — so catch it locally instead of bouncing it off CI. In a fresh worktree
+that means `npm install` first (§5), or the `tsc` check silently can't run.
+
 ---
 
 ## 9. The project in one minute
