@@ -703,6 +703,7 @@ export const nl: Translations = {
       noAccess: 'Geen toegang tot camera',
     },
     identifying: 'Identificeren...',
+    newPhoto: '📷 Nieuwe foto maken',
     enriching: 'Bezig met opzoeken...',
     results: {
       title: 'Mogelijke matches',

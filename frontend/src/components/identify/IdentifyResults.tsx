@@ -53,7 +53,7 @@ export function IdentifyResults({
         )}
         <div className="flex flex-col gap-3">
           <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded">
-            {t.identify.noMatch.retry}
+            {t.identify.newPhoto}
           </button>
           {fromBioclip && (
             <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded flex items-center justify-center gap-2">
@@ -131,10 +131,20 @@ export function IdentifyResults({
         })}
       </div>
       {!fromBioclip && (
-        <div className="text-center text-xs text-gray-400 mt-6">{t.identify.results.poweredBy}</div>
+        <>
+          <div className="text-center mt-6">
+            <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded text-sm">
+              {t.identify.newPhoto}
+            </button>
+          </div>
+          <div className="text-center text-xs text-gray-400 mt-6">{t.identify.results.poweredBy}</div>
+        </>
       )}
       {fromBioclip && (
-        <div className="text-center mt-4">
+        <div className="text-center mt-4 flex flex-col gap-3">
+          <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded text-sm">
+            {t.identify.newPhoto}
+          </button>
           <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded text-sm">
             🔬 Probeer met PlantNet
           </button>

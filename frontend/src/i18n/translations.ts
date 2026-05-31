@@ -675,6 +675,7 @@ export type Translations = {
       noAccess: string  // "No camera access"
     }
     identifying: string  // "Identifying..."
+    newPhoto: string     // "📷 Take new photo"
     enriching: string    // "Looking up..."
     results: {
       title: string       // "Possible matches"
