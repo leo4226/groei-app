@@ -5,7 +5,7 @@ Exposes:
 """
 
 from dataclasses import dataclass
-from database import Database
+from services.db_adapter import DbAdapter
 
 
 @dataclass
@@ -18,7 +18,7 @@ class BiodiversityProfile:
     components: dict
 
 
-async def compute_for_map(db: Database, map_id: int) -> BiodiversityProfile:
+async def compute_for_map(db: DbAdapter, map_id: int) -> BiodiversityProfile:
     """Compute a biodiversity profile for a single outdoor map/garden.
 
     Queries the plants table (enriched via species_knowledge) and calculates
