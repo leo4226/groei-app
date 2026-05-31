@@ -703,6 +703,7 @@ export const en: Translations = {
       noAccess: 'No camera access',
     },
     identifying: 'Identifying...',
+    newPhoto: '📷 Take new photo',
     enriching: 'Looking up...',
     results: {
       title: 'Possible matches',
