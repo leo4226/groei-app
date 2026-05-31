@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import MapView from '../components/map/MapView'
 import MapTopBar from '../components/map/MapTopBar'
 import MapActionCluster from '../components/map/MapActionCluster'
+import GardenCompass from '../components/map/GardenCompass'
 import MapBottomSheet, { type SheetMode } from '../components/map/MapBottomSheet'
 import CareNeedsList from '../components/map/CareNeedsList'
 import GardenBiodiversityCard from '../components/GardenBiodiversityCard'
@@ -12,7 +13,6 @@ import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
 import FixedPlantSheet from '../components/sheets/FixedPlantSheet'
 import type { FixedPlant } from '../constants/fixedPlants'
 import SunControls from '../components/sun/SunControls'
-import GrowHereSheet from '../components/sheets/GrowHereSheet'
 import SpotInspectorSheet from '../components/sheets/SpotInspectorSheet'
 import WaterLogSheet from '../components/sheets/WaterLogSheet'
 import { useSunVisualization } from '../hooks/useSunVisualization'
@@ -22,9 +22,6 @@ import { useMapData } from '../hooks/useMapData'
 import { useGardenWater, useGardenFertilize } from '../hooks/useGardenActions'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useFloreren } from '../store/useFloreren'
-import { CONTAINER_PRESETS } from '../hooks/useEditorState'
-import type { ObjectPreset } from '../hooks/useEditorState'
-import * as clientApis from '../api/client'
 import { useT } from '../context/LanguageContext'
 
 export default function MapPage() {
@@ -42,6 +39,20 @@ export default function MapPage() {
   useEffect(() => {
     refreshMapData()
   }, [location.key])
+  const [landscapeAttentionOpen, setLandscapeAttentionOpen] = useState(false)
+  const landscapeRef = useRef<HTMLDivElement>(null)
+
+  // Click-outside for landscape attention popover
+  useEffect(() => {
+    if (!landscapeAttentionOpen) return
+    function onDown(e: PointerEvent) {
+      if (landscapeRef.current && !landscapeRef.current.contains(e.target as Node))
+        setLandscapeAttentionOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [landscapeAttentionOpen])
+
   const water = useGardenWater()
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
@@ -57,30 +68,6 @@ export default function MapPage() {
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
   const [showLabels, setShowLabels] = useState(true)
-  const [showPotPicker, setShowPotPicker] = useState(false)
-
-  async function handleCreateContainer(preset: ObjectPreset) {
-    if (!map) return
-    setShowPotPicker(false)
-    const parts = map.viewbox.trim().split(/\s+/).map(Number)
-    const cx = parts.length === 4 ? parts[0] + parts[2] / 2 : 200
-    const cy = parts.length === 4 ? parts[1] + parts[3] / 2 : 200
-    await clientApis.objects.create({
-      name: preset.label,
-      object_type: preset.object_type,
-      shape: preset.shape,
-      category: preset.category,
-      material: preset.material,
-      color: preset.color,
-      map_id: map.id,
-      map_x: Math.round(cx),
-      map_y: Math.round(cy),
-      ...(preset.diameter_cm != null ? { diameter_cm: preset.diameter_cm } : {}),
-      ...(preset.width_cm != null ? { width_cm: preset.width_cm } : {}),
-      ...(preset.depth_cm != null ? { depth_cm: preset.depth_cm } : {}),
-    })
-    await refresh()
-  }
 
   const isOutdoor = !map || map.map_type !== 'indoor'
   const mapLat = map?.lat ?? undefined
@@ -173,6 +160,10 @@ export default function MapPage() {
     await refresh()
   }, [refresh])
 
+  const handleAddPlant = useCallback(() => {
+    navigate('/plants/add')
+  }, [navigate])
+
   const handleWaterSave = useCallback(async () => {
     await water.save()
     await refresh()
@@ -220,7 +211,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-[calc(100dvh-5rem)] [@media(orientation:landscape)and(max-height:500px)]:h-dvh overflow-hidden">
+    <div className="relative h-full overflow-hidden">
       {/* Map fills viewport */}
       <div className="absolute inset-0">
         <MapView
@@ -279,27 +270,36 @@ export default function MapPage() {
       </div>
 
       {/* Top-left: garden pill */}
-      <div className="absolute top-3 left-3 z-20 landscape-mobile-hide">
-        <MapTopBar map={map} allMaps={maps} />
+      <div className="absolute top-3 left-3 z-30">
+        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v) => !v)} />
       </div>
 
+      {/* Compass — below MapTopBar, outdoor only */}
+      {isOutdoor && (
+        <div className="absolute top-14 left-3 z-20 landscape-mobile-hide">
+          <GardenCompass bearing={map.bearing ?? 0} />
+        </div>
+      )}
+
       {/* Top-right: action cluster + biodiversity pill stacked */}
-      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 landscape-mobile-hide">
+      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={water.gardenWater?.status ?? 'dry'}
-          showLabels={showLabels}
           sunActive={sun.active}
           sunAvailable={sun.available}
           inspectorMode={sun.inspectorMode}
           onWater={water.togglePicker}
           onFertilize={fertilize.togglePicker}
           onToggleSun={sun.toggle}
-          onToggleLabels={() => setShowLabels((v) => !v)}
-          onToggleInspector={sun.toggleInspectorMode}
-          onIdentify={() => navigate('/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
-          onAddPot={() => setShowPotPicker(true)}
-          onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
+          onToggleInspector={() => {
+            if (!sun.active && sun.available) {
+              sun.toggle()
+              sun.setViewMode('heatmap')
+            }
+            sun.toggleInspectorMode()
+          }}
+          onAddPlant={handleAddPlant}
         />
         {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" />}
       </div>
@@ -325,60 +325,60 @@ export default function MapPage() {
               tappedCell={sun.tappedCell}
               selectedProfile={sun.profile}
               onProfileChange={sun.setProfile}
-              onGrowHere={sun.openGrowHere}
             />
           }
         />
       </div>
 
+      {/* Landscape peek: tiny attention badge → clickable, opens care popover */}
+      {attentionCount > 0 && (
+        <div ref={landscapeRef} className="landscape-only fixed bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+          {landscapeAttentionOpen && (
+            <div className="mb-2 bg-surface/95 border border-border/60 rounded-xl p-3 shadow-lg backdrop-blur-sm min-w-[220px] max-h-[50vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CareNeedsList
+                plants={plants}
+                objects={objects}
+                onPlantTap={(p) => { handlePlantTap(p); setLandscapeAttentionOpen(false) }}
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setLandscapeAttentionOpen((v) => !v)}
+            className="bg-surface/90 border border-border/60 rounded-full px-3 py-1 shadow-sm text-xs font-medium text-text backdrop-blur-sm hover:bg-surface transition-colors whitespace-nowrap"
+          >
+            ● {t.mapPage.sheetAttentionCount(attentionCount)}
+          </button>
+        </div>
+      )}
+
       {/* Water sheet */}
       {water.showPicker && (
         <WaterLogSheet
+          actionType="water"
           pickerDate={water.pickerDate}
           onPickerDateChange={water.setPickerDate}
           busy={water.watering}
-          hasExistingWatering={!!water.gardenWater?.watered_at}
+          hasExistingLog={!!water.gardenWater?.watered_at}
           onSave={handleWaterSave}
           onDelete={handleWaterDelete}
           onClose={water.closePicker}
         />
       )}
 
-      {/* Fertilize inline picker */}
+      {/* Fertilize sheet */}
       {fertilize.showPicker && (
-        <div className="absolute bottom-20 left-3 right-3 z-40 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
-          <span className="text-sm shrink-0">🌿</span>
-          <input
-            type="date"
-            value={fertilize.pickerDate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => fertilize.setPickerDate(e.target.value)}
-            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
-          />
-          <button
-            onClick={handleFertilizeSave}
-            disabled={fertilize.fertilizing || !fertilize.pickerDate}
-            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {fertilize.fertilizing ? '…' : t.mapPage.saveLabel}
-          </button>
-          {fertilize.fertilize?.fertilized_at && (
-            <button
-              onClick={handleFertilizeDelete}
-              disabled={fertilize.fertilizing}
-              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              {t.mapPage.clearLabel}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Spot inspector hint */}
-      {sun.inspectorMode && !sun.inspectorResult && !sun.inspectorLoading && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-black/70 text-white text-xs px-4 py-2 rounded-full pointer-events-none">
-          {t.mapPage.spotInspectorHint}
-        </div>
+        <WaterLogSheet
+          actionType="fertilize"
+          pickerDate={fertilize.pickerDate}
+          onPickerDateChange={fertilize.setPickerDate}
+          busy={fertilize.fertilizing}
+          hasExistingLog={!!fertilize.fertilize?.fertilized_at}
+          onSave={handleFertilizeSave}
+          onDelete={handleFertilizeDelete}
+          onClose={fertilize.togglePicker}
+        />
       )}
 
       {sun.inspectorResult && (
@@ -386,6 +386,9 @@ export default function MapPage() {
           result={sun.inspectorResult}
           loading={sun.inspectorLoading}
           onClose={sun.clearInspector}
+          mapId={map?.id ?? null}
+          month={sun.month}
+          mapPlants={plants}
         />
       )}
 
@@ -416,60 +419,6 @@ export default function MapPage() {
         <FixedPlantSheet
           plant={selectedFixedPlant}
           onClose={() => setSelectedFixedPlant(null)}
-        />
-      )}
-
-      {showPotPicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end"
-          onClick={() => setShowPotPicker(false)}
-        >
-          <div
-            className="w-full bg-bg rounded-t-2xl border-t border-border p-4 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text">{t.mapPage.addPot}</h2>
-              <button
-                onClick={() => setShowPotPicker(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {CONTAINER_PRESETS.map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => handleCreateContainer(preset)}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-surface text-left transition-colors"
-                >
-                  <span
-                    className="w-8 h-8 rounded-full shrink-0"
-                    style={{ backgroundColor: preset.color ?? '#888' }}
-                  />
-                  <div>
-                    <div className="text-sm font-semibold text-text">{preset.label}</div>
-                    <div className="text-xs text-text-muted">
-                      {preset.shape === 'circle'
-                        ? `⌀ ${preset.diameter_cm} cm`
-                        : `${preset.width_cm} × ${preset.depth_cm ?? preset.width_cm} cm`}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sun.showGrowHere && sun.tappedCell && (
-        <GrowHereSheet
-          tappedCell={sun.tappedCell}
-          selectedMonth={sun.month}
-          mapPlants={plants}
-          mapId={map?.id ?? null}
-          onClose={sun.closeGrowHere}
         />
       )}
 

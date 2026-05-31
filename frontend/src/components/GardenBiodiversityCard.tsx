@@ -71,7 +71,7 @@ function MonthCoverage({ months, locale }: { months: boolean[]; locale: string }
 
 const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
-function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOut; slug: string }) {
+function GardenBiodiversityCardFull({ data, slug, onClose }: { data: GardenBiodiversityOut; slug: string; onClose?: () => void }) {
   const t = useT()
   const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
 
@@ -81,10 +81,15 @@ function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOu
   }, [slug])
 
   return (
-    <section className="card p-4">
-      <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
-        {t.garden.biodiversity.title}
-      </h3>
+    <section className="card p-4 max-h-[85vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">
+          {t.garden.biodiversity.title}
+        </h3>
+        {onClose && (
+          <button onClick={onClose} className="text-text-muted hover:text-text transition-colors p-1 -mr-1" aria-label="Sluiten">✕</button>
+        )}
+      </div>
 
       {/* Top row: big score ring + counts column */}
       <div className="flex items-start gap-4 mb-4">
@@ -243,7 +248,7 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
             aria-label={t.garden.biodiversity.title}
           >
             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
-              <GardenBiodiversityCardFull data={data} slug={slug} />
+              <GardenBiodiversityCardFull data={data} slug={slug} onClose={() => setModalOpen(false)} />
             </div>
           </div>
         )}

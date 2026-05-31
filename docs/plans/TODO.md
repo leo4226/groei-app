@@ -4,10 +4,10 @@
 
 ## 🔴 Openstaand
 
--   [#14](https://github.com/leo4226/groei-app/issues/14) ⭐ **Identify → add plant crash** — `name` is `undefined` na 404 uit `commitIdentify`. Fix: fallback + optionele chaining in `AddPlant.tsx`
--   [#15](https://github.com/leo4226/groei-app/issues/15) ⭐⭐⭐ **📱 Editor modus kaart onbruikbaar op mobiel** — draait niet mee, resize knoppen te klein, zoom raar, vult niet volledig scherm
--   [#16](https://github.com/leo4226/groei-app/issues/16) ⭐⭐ **✨ Identify UX: nieuwe foto knop + PlantNet NL + camera zoom fix** — drie verbeteringen in identify flow
--   [#17](https://github.com/leo4226/groei-app/issues/17) ⭐ **🐛 BioCLIP hybrid-duplicaten (x in latin name)** — dedup nodig in `_bioclip_identify`
+-   [#14](https://github.com/leo4226/groei-app/issues/14) ⭐ **Identify → add plant crash** — ✅ **Closed**, deployed in `2c3fbe2`
+-   [#15](https://github.com/leo4226/groei-app/issues/15) ⭐⭐⭐ **Editor map mobiel** — nog geen plan
+-   [#16](https://github.com/leo4226/groei-app/issues/16) ⭐⭐ **Identify UX** — part 3 (zoom) ✅ klaar, part 1 (nieuwe foto knop bij PlantNet ook) & part 2 (NL taal) nog open
+-   [#17](https://github.com/leo4226/groei-app/issues/17) ⭐ **BioCLIP hybrid-duplicaten** — ✅ **Closed**, deployed in `2c3fbe2`
 
 ## ✅ Klaar (deze sessie)
 
