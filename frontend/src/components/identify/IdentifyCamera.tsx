@@ -89,7 +89,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
               muted
               className="max-w-full max-h-full object-contain"
             />
-            <div className="fixed bottom-10 inset-x-0 flex justify-center pointer-events-none">
+            <div className="absolute bottom-6 inset-x-0 flex justify-center pointer-events-none">
               <button
                 onClick={capture}
                 aria-label={t.identify.camera.capture}
