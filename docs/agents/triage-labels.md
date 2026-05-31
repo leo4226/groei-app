@@ -13,3 +13,18 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
 Edit the right-hand column to match whatever vocabulary you actually use.
+
+## Difficulty labels
+
+Independent of the triage role, every issue is ranked by rough effort to fix. This
+mirrors the ⭐ convention in `docs/plans/TODO.md`.
+
+| Label                | Stars | Meaning                                   |
+| -------------------- | ----- | ----------------------------------------- |
+| `difficulty: easy`   | ⭐     | Quick, low-risk fix                       |
+| `difficulty: medium` | ⭐⭐    | Moderate effort                           |
+| `difficulty: hard`   | ⭐⭐⭐   | Substantial or tricky / unknown territory |
+
+Apply one during triage. The **🐛 Bug report** form
+(`.github/ISSUE_TEMPLATE/bug_report.yml`) lets the reporter add a guess in the body;
+confirm it with the real label when the issue is triaged.

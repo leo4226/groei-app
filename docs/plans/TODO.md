@@ -1,23 +1,36 @@
-# TODO — Floreren bugfixes & features
+# TODO — losse ideeën & gedachten
 
-> Bewerkt via Oink/Leon. Data notities worden automatisch bijgewerkt.
+> Vrije denkruimte voor Floreren. **Dit is geen buglijst** — concrete bugs gaan naar
+> GitHub Issues (zie hieronder). Hier komen ruwe ideeën, dingen om verder uit te
+> werken, "zou het kunnen dat…", richtingen om te verkennen. Werk een item uit tot
+> een issue of een plan en veeg het daarna hier weg.
 
-## 🔴 Openstaand
+## Twee systemen
 
--   [#14](https://github.com/leo4226/groei-app/issues/14) ⭐ **Identify → add plant crash** — `name` is `undefined` na 404 uit `commitIdentify`. Fix: fallback + optionele chaining in `AddPlant.tsx`
--   [#15](https://github.com/leo4226/groei-app/issues/15) ⭐⭐⭐ **📱 Editor modus kaart onbruikbaar op mobiel** — draait niet mee, resize knoppen te klein, zoom raar, vult niet volledig scherm
--   [#16](https://github.com/leo4226/groei-app/issues/16) ⭐⭐ **✨ Identify UX: nieuwe foto knop + PlantNet NL + camera zoom fix** — drie verbeteringen in identify flow
--   [#17](https://github.com/leo4226/groei-app/issues/17) ⭐ **🐛 BioCLIP hybrid-duplicaten (x in latin name)** — dedup nodig in `_bioclip_identify`
+| Waar | Waarvoor | Hoe |
+|---|---|---|
+| **Dit bestand (`TODO.md`)** | Losse gedachten & ideeën die nog uitgewerkt moeten worden | regel toevoegen onder *Ideeën* |
+| **GitHub Issues** | Concrete bugs & taken (bijv. iets dat je op je telefoon ziet maar niet meteen kunt fixen) | nieuw issue via het **🐛 Bug report**-formulier, of vanaf je telefoon in de GitHub-app |
 
-## ✅ Klaar (deze sessie)
+## Moeilijkheid (⭐)
 
--   [x] **Map + button touch fix** — `MapActionCluster.tsx`: added `type="button"`, `onPointerDown.stopPropagation()`, `touchAction: manipulation`
--   [x] **Identify → add plant crash** — `AddPlant.tsx`: veilige fallback voor `name`/`species` initializatie, optionele chaining in save handler
--   [x] **#16-3 📱 Camera zoom fix** — capture button nu `absolute` over video, blijft zichtbaar bij pinch-to-zoom
--   [x] **#17 🐛 BioCLIP hybrid-duplicaten** — latin name normalisatie: strip ` x ` / ` × ` voor dedup, houd hoogste confidence
+Zelfde schaal hier én op issues (de `difficulty:`-labels):
+
+- ⭐ **easy** — kleine, veilige fix
+- ⭐⭐ **medium** — gemiddeld werk
+- ⭐⭐⭐ **hard** — flink of lastig / onbekend terrein
+
+## 💡 Ideeën / uit te werken
+
+- _(voorbeeld)_ ⭐⭐ Aanbevelingen ook op vocht/grondsoort baseren, niet alleen licht
+-
+
+## 🌱 In uitwerking
+
+-
 
 ## 📝 Notities
 
--   Nieuwe items: gewoon toevoegen met `- [ ]`
--   Afgerond: `[ ]` → `[x]`
--   Veeg voltooide items weg als de lijst te lang wordt
+- Nieuw idee: regel toevoegen onder **Ideeën**, optioneel met een ⭐-inschatting.
+- Wordt een idee een concrete taak of bug? → maak er een GitHub Issue van en haal het hier weg.
+- Houd de lijst kort; archiveer of verwijder afgeronde gedachten.

@@ -1,0 +1,33 @@
+name: 🐛 Bug report
+description: Log a bug you spotted — quick to fill from your phone. A sentence is enough.
+title: "🐛 "
+labels: ["bug", "needs-triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What's wrong?
+      description: What did you see, and where in the app? One or two sentences is fine.
+      placeholder: e.g. "On the map, tapping a sunny cell shows shade plants."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything that helps (optional)
+      description: Steps, which page/garden, screenshot, phone vs desktop — whatever you have.
+    validations:
+      required: false
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Your difficulty guess (optional)
+      description: Rough effort to fix — leave on "not sure" and it gets set at triage.
+      options:
+        - "not sure"
+        - "easy (⭐)"
+        - "medium (⭐⭐)"
+        - "hard (⭐⭐⭐)"
+      default: 0
+    validations:
+      required: false
