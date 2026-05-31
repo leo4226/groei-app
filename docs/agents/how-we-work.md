@@ -104,6 +104,11 @@ it into an Issue (§6), then work the Issue.
 Other labels you may see: `bug`, `enhancement`, `documentation`, `stekkie` (chatbot).
 Prefer lower difficulty first unless told otherwise.
 
+### c) `in-progress` — a soft lock (because several agents run at once)
+Not a triage state. An agent adds `in-progress` the moment it starts an issue (§7) so
+the others skip it. **Only pick issues that are `ready-for-agent` and NOT
+`in-progress`.** If you abandon an issue, remove the label so it's free again.
+
 ---
 
 ## 4. The full workflow
@@ -186,7 +191,10 @@ own worktree, not the main folder.
 ## 6. Issue commands (`gh` CLI — auto-detects the repo inside the clone)
 
 ```bash
-gh issue list --label "ready-for-agent" --state open     # find your work
+# Find work — list ready-for-agent, then SKIP any row whose labels include
+# "in-progress" (another agent already claimed it). The labels show in the output.
+# (Use --label, not --search: a just-added label takes seconds to become searchable.)
+gh issue list --label "ready-for-agent" --state open
 gh issue view <number> --comments                        # read it fully
 
 # Create an issue (e.g. turning a TODO idea into a real task)
@@ -194,7 +202,9 @@ gh issue create --title "🐛 short description" \
   --label "bug,needs-triage" \
   --body "What is wrong, where in the app, and how to reproduce it."
 
-gh issue comment <number> --body "Working on this; root cause is X."   # progress
+# Comment WHEN: a claim comment at the start (§7), then a note if you find something
+# worth recording (root cause, a blocker, a decision).
+gh issue comment <number> --body "Working on this; root cause is X."
 gh issue edit <number> --add-label "difficulty: medium"                # set difficulty
 ```
 
@@ -205,25 +215,36 @@ To auto-close an issue when a PR merges, put `Closes #<number>` in the PR body.
 ## 7. Making a code change — exact steps
 
 ```bash
-# 1. Own isolated workspace off the latest master (see §5)
+# 0. READ the issue first — understand every sub-task and any triage notes/comments
+gh issue view <n> --comments
+
+# 1. CLAIM it immediately so no other agent grabs the same issue (see §3)
+gh issue edit <n> --add-label "in-progress"
+gh issue comment <n> --body "🤖 Working on this — <your agent name>."
+
+# 2. Own isolated workspace off the latest master (see §5)
 git fetch origin master
 git worktree add ../floreren-<n> -b fix/<n>-short-slug origin/master
 cd ../floreren-<n>
 
-# 2. Edit the code. Match the style already in the file.
+# 3. Edit the code. Match the style already in the file.
 
-# 3. RUN THE TESTS (see §8). Fix anything you broke.
+# 4. RUN THE TESTS (see §8). Fix anything you broke.
 
-# 4. Stage ONLY the files you changed, then commit
+# 5. Stage ONLY the files you changed, then commit
 git add path/to/file1 path/to/file2
 git commit -m "fix(scope): what changed (#<n>)"
 
-# 5. Push and open a pull request
+# 6. Push and open a pull request
 git push -u origin HEAD
 gh pr create --fill --base master        # then add "Closes #<n>" to the body
 
-# 6. Tell Leon it's ready. DO NOT merge it yourself.
+# 7. Tell Leon it's ready. DO NOT merge it yourself.
 ```
+
+If you stop without opening a PR, **free the issue** so another agent can take it:
+`gh issue edit <n> --remove-label "in-progress"`. (Once your PR with `Closes #<n>`
+merges, the issue closes on its own.)
 
 ### Commit message format (conventional commits)
 `type(scope): short summary (#issue)` — `type` ∈ `feat` `fix` `docs` `refactor`
@@ -279,18 +300,27 @@ unless the issue is specifically about them.
 ## 11. Cheat sheet
 
 ```bash
+# find work (skip any row that already shows the "in-progress" label), then read it
 gh issue list --label "ready-for-agent" --state open
 gh issue view <n> --comments
 
+# claim it so no other agent grabs it
+gh issue edit <n> --add-label "in-progress"
+gh issue comment <n> --body "🤖 Working on this — <agent name>."
+
+# isolate, work, test
 git fetch origin master
 git worktree add ../floreren-<n> -b fix/<n>-slug origin/master
 cd ../floreren-<n>
 #   ...edit...
 cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
 cd ../frontend && npx tsc --noEmit
+
+# commit, push, PR
 git add <changed files>
 git commit -m "fix(scope): summary (#<n>)"
 git push -u origin HEAD
 gh pr create --fill --base master         # PR body must contain: Closes #<n>
 # tell Leon — do not merge yourself
+# (abandoning? gh issue edit <n> --remove-label "in-progress")
 ```
