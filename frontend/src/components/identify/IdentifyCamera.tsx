@@ -75,30 +75,30 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
         <span className="text-sm opacity-75">{t.identify.camera.title}</span>
         <span className="w-6" />
       </div>
-      <div className="flex-1 flex items-center justify-center overflow-hidden">
+      <div className="flex-1 flex items-center justify-center overflow-hidden relative">
         {error ? (
           <div className="text-white text-center p-8">
             <p>{error}</p>
           </div>
         ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="max-w-full max-h-full object-contain"
-          />
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="max-w-full max-h-full object-contain"
+            />
+            <div className="absolute bottom-6 inset-x-0 flex justify-center pointer-events-none">
+              <button
+                onClick={capture}
+                aria-label={t.identify.camera.capture}
+                className="w-20 h-20 rounded-full bg-white border-4 border-gray-300 active:scale-95 transition-transform pointer-events-auto"
+              />
+            </div>
+          </>
         )}
       </div>
-      {!error && (
-        <div className="p-6 pb-20 flex justify-center">
-          <button
-            onClick={capture}
-            aria-label={t.identify.camera.capture}
-            className="w-20 h-20 rounded-full bg-white border-4 border-gray-300 active:scale-95 transition-transform"
-          />
-        </div>
-      )}
     </div>
   )
 }

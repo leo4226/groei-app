@@ -146,22 +146,26 @@ export default function AddPlant() {
   const fromMapState = (location.state as any)?.fromMap
   if (fromMapState) sessionStorage.setItem('addPlant_returnPath', fromMapState)
 
-  const [name, setName] = useState(
+  const [name, setName] = useState<string>(
     prefill
       ? isIdentifyPrefill(prefill)
         ? prefill.name_nl_suggested
         : 'latinName' in prefill
           ? prefill.dutchName
-          : prefill.name
+          : String((prefill as Record<string, unknown>).name
+            ?? (prefill as Record<string, unknown>).scientific_name
+            ?? '')
       : ''
   )
-  const [species, setSpecies] = useState(
+  const [species, setSpecies] = useState<string>(
     prefill
       ? isIdentifyPrefill(prefill)
         ? prefill.scientific_name
         : 'latinName' in prefill
           ? prefill.latinName
-          : ''
+          : String((prefill as Record<string, unknown>).scientific_name
+            ?? (prefill as Record<string, unknown>).name
+            ?? '')
       : ''
   )
   const [locationId] = useState<number | undefined>()
@@ -368,7 +372,7 @@ export default function AddPlant() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name?.trim()) return
 
     setSubmitting(true)
     try {
@@ -380,8 +384,8 @@ export default function AddPlant() {
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
       const plant = await addPlant({
-        name: name.trim(),
-        species: species.trim() || undefined,
+        name: (name ?? '').trim(),
+        species: (species ?? '').trim() || undefined,
         location_id: locationId,
         map_id: placedMap?.id,
         map_x: mapPos?.x,

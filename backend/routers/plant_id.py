@@ -365,6 +365,22 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
             source="bioclip",
         ))
 
+    # Dedup: strip hybrid marker " x " / " × " to merge duplicate entries
+    # (e.g. "Rosa × floribunda" = "Rosa floribunda")
+    seen: dict[str, CandidateOut] = {}
+    deduped: list[CandidateOut] = []
+    for cand in out:
+        key = cand.scientific_name.lower().replace(" × ", " ").replace(" x ", " ")
+        if key not in seen:
+            seen[key] = cand
+            deduped.append(cand)
+        elif cand.confidence > seen[key].confidence:
+            # Replace with higher confidence entry
+            deduped.remove(seen[key])
+            seen[key] = cand
+            deduped.append(cand)
+    out = deduped
+
     top1 = matches[0][1]
     top2 = matches[1][1] if len(matches) > 1 else None
     confidence = _classify_confidence(top1, top2)

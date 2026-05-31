@@ -91,7 +91,14 @@ export default function MapActionCluster({
         </button>
 
         {/* Add plant — primary, always visible */}
-        <button onClick={onAddPlant} title={t.mapPage.plant} className={`${iconBtn} bg-primary text-white hover:opacity-90`}>
+        <button
+          type="button"
+          onClick={onAddPlant}
+          onPointerDown={(e) => e.stopPropagation()}
+          title={t.mapPage.plant}
+          className={`${iconBtn} bg-primary text-white hover:opacity-90`}
+          style={{ touchAction: 'manipulation' }}
+        >
           <span className="text-base font-bold leading-none">+</span>
         </button>
 
