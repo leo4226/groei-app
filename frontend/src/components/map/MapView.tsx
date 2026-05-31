@@ -14,7 +14,6 @@ import SunDirectionArrow from './SunDirectionArrow'
 import SunHeatmap from '../sun/SunHeatmap'
 import PlantSuitabilityLayer from '../sun/PlantSuitabilityLayer'
 import FixedPlantsLayer from './FixedPlantsLayer'
-import GardenCompass from './GardenCompass'
 import CanvasZonesLayer from './CanvasZonesLayer'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
@@ -146,7 +145,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
   return (
     <div ref={containerRef} className="relative w-full h-full" style={{ touchAction: 'none' }} onClick={handleMapClick}>
-      {!isHouseMap && <GardenCompass bearing={map.bearing ?? 0} />}
       {cw > 0 && ch > 0 && (
       <div
         style={{

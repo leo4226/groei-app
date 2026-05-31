@@ -16,7 +16,6 @@ See docs/plans/2026-05-27-species-ecology-enrichment-spec.md.
 
 import json
 import logging
-import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -25,9 +24,9 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+
 GBIF_API = "https://api.gbif.org/v1"
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
 _VALID_SUN = {"full_sun", "partial_sun", "shade", "any"}
 
 
@@ -146,19 +145,19 @@ async def _from_llm(latin_name: str) -> dict:
     """Ask DeepSeek for native_to_nl, invasive_nl, flowering_months,
     pollinator_value, and sun_preference. Returns a dict with the
     validated fields, or empty on failure / invalid response."""
-    if not DEEPSEEK_API_KEY:
+    if not LLM_API_KEY:
         return {}
     prompt = _ECOLOGY_PROMPT.format(latin_name=latin_name)
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                DEEPSEEK_URL,
+                LLM_CHAT_URL,
                 headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Authorization": f"Bearer {LLM_API_KEY}",
                     "content-type": "application/json",
                 },
                 json={
-                    "model": "deepseek-chat",
+                    "model": LLM_MODEL,
                     "max_tokens": 200,
                     "messages": [{"role": "user", "content": prompt}],
                 },

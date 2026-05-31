@@ -6,9 +6,11 @@ import type { MapInfo } from '../../types'
 interface Props {
   map: MapInfo
   allMaps: MapInfo[]
+  showLabels: boolean
+  onToggleLabels: () => void
 }
 
-export default function MapTopBar({ map, allMaps }: Props) {
+export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -55,6 +57,17 @@ export default function MapTopBar({ map, allMaps }: Props) {
               <div className="h-px bg-border mx-3 my-1" />
             </>
           )}
+          <button
+            onClick={() => { setOpen(false); onToggleLabels() }}
+            className="flex items-center gap-2 px-3 py-2 text-sm w-full text-left transition-colors hover:bg-bg/60"
+          >
+            <span className="text-sm">📝</span>
+            <span className={showLabels ? '' : 'text-text-muted'}>
+              {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
+            </span>
+            {showLabels && <span className="ml-auto text-primary text-xs">✓</span>}
+          </button>
+          <div className="h-px bg-border mx-3 my-1" />
           <button
             onClick={() => { setOpen(false); navigate(`/maps/${map.id}/settings`) }}
             className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:bg-bg/60 w-full text-left transition-colors"

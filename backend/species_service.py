@@ -1,11 +1,9 @@
 import json
-import os
 import re
 
 import httpx
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 _token_usage = {"input": 0, "output": 0}
 
@@ -66,13 +64,13 @@ async def _generate_species(plant_name: str) -> dict:
     prompt = _SPECIES_PROMPT.format(plant_name=plant_name)
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
-            DEEPSEEK_URL,
+            LLM_CHAT_URL,
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {LLM_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "deepseek-chat",
+                "model": LLM_MODEL,
                 "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}],
             },

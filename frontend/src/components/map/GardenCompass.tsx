@@ -17,18 +17,7 @@ export default function GardenCompass({
   const rotation = isMobile ? 270 - bearing : 360 - bearing
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        zIndex: 20,
-        pointerEvents: 'none',
-        width: 56,
-        height: 56,
-        transform: `rotate(${rotation}deg)`,
-      }}
-    >
+    <div style={{ pointerEvents: 'none', width: 56, height: 56, transform: `rotate(${rotation}deg)` }}>
       <svg width="56" height="56" viewBox="0 0 56 56">
         {/* Background */}
         <circle cx="28" cy="28" r="26" fill="rgba(12,18,28,0.72)" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />

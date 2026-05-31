@@ -1,23 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Aardappel"><title>Aardappel — Solanum tuberosum</title>
-  <ellipse cx="50" cy="54" rx="30" ry="22" fill="#8E6B4E"></ellipse>
+  <path d="M 28 76 L 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 72 76 Z" fill="#B2664A"></path>
+  <rect x="26" y="73" width="48" height="5" rx="1.5" fill="#C77B5D"></rect>
+  <path d="M 32 96 Q 32 98 34 98 L 66 98 Q 68 98 68 96 L 66 94 L 34 94 Z" fill="#8E4A33" opacity="0.5"></path>
+  <ellipse cx="50" cy="75.5" rx="20" ry="1.8" fill="#4A3429"></ellipse>
   
-    <ellipse cx="36" cy="46" rx="2" ry="1.4" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="35.6" cy="45.6" rx="1" ry="0.6" fill="#2F5D3A"></ellipse>
-  
-    <ellipse cx="56" cy="42" rx="1.6" ry="1.1199999999999999" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="55.6" cy="41.6" rx="0.8" ry="0.48" fill="#2F5D3A"></ellipse>
-  
-    <ellipse cx="66" cy="56" rx="2" ry="1.4" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="65.6" cy="55.6" rx="1" ry="0.6" fill="#2F5D3A"></ellipse>
-  
-    <ellipse cx="42" cy="64" rx="1.6" ry="1.1199999999999999" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="41.6" cy="63.6" rx="0.8" ry="0.48" fill="#2F5D3A"></ellipse>
-  
-    <ellipse cx="58" cy="66" rx="2" ry="1.4" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="57.6" cy="65.6" rx="1" ry="0.6" fill="#2F5D3A"></ellipse>
-  
-    <ellipse cx="48" cy="52" rx="1.4" ry="0.9799999999999999" fill="#6B4A35" opacity="0.5"></ellipse>
-    <ellipse cx="47.6" cy="51.6" rx="0.7" ry="0.42" fill="#2F5D3A"></ellipse>
-  
-  <ellipse cx="38" cy="44" rx="6" ry="3" fill="#FFF" opacity="0.3"></ellipse>
+  <path d="M 50 74 Q 50 60 50 44" stroke="#3D5C3A" stroke-width="1.4" fill="none" stroke-linecap="round"></path>
+  <path d="M 50 70 Q 40 64 36 56 M 50 66 Q 60 60 64 52 M 50 60 Q 38 54 34 46 M 50 56 Q 62 52 66 44 M 50 50 Q 44 44 42 36" stroke="#3D5C3A" stroke-width="0.9" fill="none" stroke-linecap="round"></path>
+  <g transform="translate(36 58) rotate(-30) scale(1)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(64 54) rotate(30) scale(1)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(34 48) rotate(-20) scale(1)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(66 46) rotate(20) scale(1)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(42 38) rotate(-10) scale(0.9)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(58 38) rotate(10) scale(0.9)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(50 30) rotate(0) scale(1)">
+    <path d="M 0 0 Q -4 -2 -5 -6 Q -2 -10 0 -8 Q 2 -10 5 -6 Q 4 -2 0 0 Z" fill="#4A7C4E"></path>
+    <ellipse cx="-3" cy="-5" rx="2.4" ry="1.5" transform="rotate(-40 -3 -5)" fill="#4A7C4E"></ellipse>
+    <ellipse cx="3" cy="-5" rx="2.4" ry="1.5" transform="rotate(40 3 -5)" fill="#4A7C4E"></ellipse>
+  </g>
+  <g transform="translate(46 46)">
+    <g fill="#9B88C4">
+      <ellipse cx="0" cy="-2" rx="1.6" ry="2.2"></ellipse>
+      <ellipse cx="-2" cy="0" rx="2.2" ry="1.6" transform="rotate(-30 -2 0)"></ellipse>
+      <ellipse cx="2" cy="0" rx="2.2" ry="1.6" transform="rotate(30 2 0)"></ellipse>
+      <ellipse cx="-1.4" cy="2" rx="1.6" ry="2" transform="rotate(-70 -1.4 2)"></ellipse>
+      <ellipse cx="1.4" cy="2" rx="1.6" ry="2" transform="rotate(70 1.4 2)"></ellipse>
+    </g>
+    <circle r="1" fill="#F4C542"></circle>
+  </g>
+  <g transform="translate(58 42)">
+    <g fill="#9B88C4">
+      <ellipse cx="0" cy="-2" rx="1.6" ry="2.2"></ellipse>
+      <ellipse cx="-2" cy="0" rx="2.2" ry="1.6" transform="rotate(-30 -2 0)"></ellipse>
+      <ellipse cx="2" cy="0" rx="2.2" ry="1.6" transform="rotate(30 2 0)"></ellipse>
+      <ellipse cx="-1.4" cy="2" rx="1.6" ry="2" transform="rotate(-70 -1.4 2)"></ellipse>
+      <ellipse cx="1.4" cy="2" rx="1.6" ry="2" transform="rotate(70 1.4 2)"></ellipse>
+    </g>
+    <circle r="1" fill="#F4C542"></circle>
+  </g>
 </svg>

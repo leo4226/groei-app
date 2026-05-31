@@ -135,7 +135,7 @@ async def archive_object(object_id: int, db = Depends(db_dep)):
         (object_id,),
     )
     await db.execute(
-        "UPDATE objects SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE objects SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (object_id,),
     )
     return {"ok": True}
@@ -144,7 +144,7 @@ async def archive_object(object_id: int, db = Depends(db_dep)):
 @router.patch("/objects/{object_id}/restore")
 async def restore_object(object_id: int, db = Depends(db_dep)):
     await db.execute(
-        "UPDATE objects SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE objects SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (object_id,),
     )
     await db.commit()

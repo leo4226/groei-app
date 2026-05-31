@@ -468,6 +468,7 @@ export interface BucketPlantOut {
   plant_name: string
   plant_icon_variant: string | null
   environment: string
+  map_name: string | null
   care_type: string | null
   top_warning: CareWarningOut | null
   days_overdue: number | null
@@ -557,7 +558,7 @@ export type PlantRecommendation = {
   dutch_name: string
   latin_name: string
   sun_preference: string | null
-  sun_fit: 'perfect' | 'acceptable'
+  sun_fit: 'perfect' | 'acceptable' | 'marginal' | 'tolerated'
   is_native: boolean | null
   pollinator_value: number | null      // 0..3
   flowering_months: number[] | null

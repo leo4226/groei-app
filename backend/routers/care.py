@@ -95,7 +95,7 @@ async def delete_care_schedule(schedule_id: int, db = Depends(db_dep)):
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
     await db.execute(
-        "UPDATE care_schedules SET is_active = 0 WHERE id = ?",
+        "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
         (schedule_id,),
     )
     await db.commit()

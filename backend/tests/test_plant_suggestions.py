@@ -2,8 +2,7 @@
 import pytest
 from services.plant_suggestions import (
     bucket_for,
-    compatible_sun_preferences,
-    sun_fit_label,
+    fit_grade,
     template_reason,
     _score_candidate,
 )
@@ -32,43 +31,58 @@ def test_bucket_for_boundary_part():
     assert bucket_for(2.0, 0.9) == "part"   # exactly 2 → part
 
 
-# ── compatible_sun_preferences ───────────────────────────────────────────────
+# ── fit_grade ─────────────────────────────────────────────────────────────────
+# Grades: perfect > acceptable > tolerated > marginal; None = exclude.
 
-def test_full_spot_accepts_full_sun_and_any():
-    prefs = compatible_sun_preferences("full")
-    assert "full_sun" in prefs
-    assert "any" in prefs
-    assert "shade" not in prefs
+# full spot (level 3)
+def test_full_spot_full_sun_perfect():
+    assert fit_grade("full_sun", "full") == "perfect"
 
-def test_part_spot_accepts_partial_and_full_and_any():
-    prefs = compatible_sun_preferences("part")
-    assert "partial_sun" in prefs
-    assert "full_sun" in prefs   # full-sun plants tolerate part sun
-    assert "shade" not in prefs
+def test_full_spot_partial_sun_acceptable():
+    assert fit_grade("partial_sun", "full") == "acceptable"
 
-def test_bright_shade_accepts_partial_shade_any():
-    prefs = compatible_sun_preferences("bright_shade")
-    assert "partial_sun" in prefs
-    assert "shade" in prefs
-    assert "full_sun" not in prefs
+def test_full_spot_shade_excluded():
+    assert fit_grade("shade", "full") is None        # scorch — never recommend
 
-def test_deep_shade_accepts_shade_any():
-    prefs = compatible_sun_preferences("deep_shade")
-    assert "shade" in prefs
-    assert "any" in prefs
-    assert "partial_sun" not in prefs
+# part spot (level 2)
+def test_part_spot_partial_sun_perfect():
+    assert fit_grade("partial_sun", "part") == "perfect"
 
+def test_part_spot_full_sun_acceptable():
+    assert fit_grade("full_sun", "part") == "acceptable"
 
-# ── sun_fit_label ─────────────────────────────────────────────────────────────
+def test_part_spot_shade_marginal():
+    assert fit_grade("shade", "part") == "marginal"
 
-def test_perfect_fit_partial_in_part():
-    assert sun_fit_label("partial_sun", "part") == "perfect"
+# bright_shade spot (level 1)
+def test_bright_shade_shade_perfect():
+    assert fit_grade("shade", "bright_shade") == "perfect"
 
-def test_acceptable_full_sun_in_part():
-    assert sun_fit_label("full_sun", "part") == "acceptable"
+def test_bright_shade_partial_sun_acceptable():
+    assert fit_grade("partial_sun", "bright_shade") == "acceptable"
 
-def test_perfect_fit_shade_in_deep():
-    assert sun_fit_label("shade", "deep_shade") == "perfect"
+def test_bright_shade_full_sun_marginal():
+    # included (not excluded) so shady gardens never get empty lists — but ranked low
+    assert fit_grade("full_sun", "bright_shade") == "marginal"
+
+# deep_shade spot (level 0)
+def test_deep_shade_shade_perfect():
+    assert fit_grade("shade", "deep_shade") == "perfect"
+
+def test_deep_shade_partial_sun_marginal():
+    assert fit_grade("partial_sun", "deep_shade") == "marginal"
+
+def test_deep_shade_full_sun_excluded():
+    assert fit_grade("full_sun", "deep_shade") is None   # won't flower — never recommend
+
+# 'any' and NULL → tolerated everywhere (graceful degradation lane)
+@pytest.mark.parametrize("bucket", ["full", "part", "bright_shade", "deep_shade"])
+def test_any_is_tolerated_everywhere(bucket):
+    assert fit_grade("any", bucket) == "tolerated"
+
+@pytest.mark.parametrize("bucket", ["full", "part", "bright_shade", "deep_shade"])
+def test_null_preference_is_tolerated_everywhere(bucket):
+    assert fit_grade(None, bucket) == "tolerated"
 
 
 # ── template_reason ──────────────────────────────────────────────────────────
@@ -103,6 +117,34 @@ def test_native_beats_non_native_same_rest():
     assert native > non
 
 def test_perfect_fit_beats_acceptable():
-    perfect = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="perfect")
-    acceptable = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="acceptable")
+    perfect = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="perfect")
+    acceptable = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="acceptable")
     assert perfect > acceptable
+
+def test_acceptable_beats_tolerated():
+    acceptable = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="acceptable")
+    tolerated = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="tolerated")
+    assert acceptable > tolerated
+
+def test_tolerated_beats_marginal():
+    # a known-'any' plant should outrank a plant struggling in the wrong light
+    tolerated = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="tolerated")
+    marginal = _score_candidate(gap_months_covered=[2], pollinator_value=2, is_native=True, sun_fit="marginal")
+    assert tolerated > marginal
+
+def test_light_reorders_same_plant_across_spots():
+    # identical ecology, the spot where it thrives ranks it higher
+    thrives = _score_candidate(gap_months_covered=[3], pollinator_value=3, is_native=True, sun_fit="perfect")
+    struggles = _score_candidate(gap_months_covered=[3], pollinator_value=3, is_native=True, sun_fit="marginal")
+    assert thrives > struggles
+
+def test_strong_gapfiller_in_imperfect_light_beats_weak_perfect_plant():
+    # ecology still drives: a big gap-filler in acceptable light beats a weak plant in perfect light
+    strong = _score_candidate(gap_months_covered=[3, 4], pollinator_value=3, is_native=True, sun_fit="acceptable")
+    weak = _score_candidate(gap_months_covered=[], pollinator_value=1, is_native=False, sun_fit="perfect")
+    assert strong > weak
+
+def test_flowers_now_breaks_tie():
+    now = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="perfect", flowers_now=True)
+    later = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="perfect", flowers_now=False)
+    assert now > later

@@ -21,7 +21,7 @@ export default function Settings() {
   const [gapsLoading, setGapsLoading] = useState(false)
   const [gapsError, setGapsError] = useState<string | null>(null)
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
-  const [trollClicked, setTrollClicked] = useState(false)
+  const [stekkieReset, setStekkieReset] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
@@ -57,20 +57,20 @@ export default function Settings() {
             onClick={generateCode}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform"
           >
-            Genereer uitnodigingscode
+            {t.settings.generateCode}
           </button>
         )}
 
         {inviteLoading && (
           <div className="flex items-center justify-center gap-2 py-2.5">
             <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <span className="text-sm text-text-muted">Code genereren...</span>
+            <span className="text-sm text-text-muted">{t.settings.generatingCode}</span>
           </div>
         )}
 
         {inviteCode && (
           <div className="text-center space-y-3">
-            <p className="text-xs text-text-muted">Deel deze code met wie je wilt uitnodigen:</p>
+            <p className="text-xs text-text-muted">{t.settings.shareCode}</p>
             <div className="flex items-center justify-center gap-3">
               <span className="text-2xl font-bold tracking-[0.3em] text-primary bg-primary/10 px-4 py-2 rounded-xl font-mono select-all">
                 {inviteCode}
@@ -78,7 +78,7 @@ export default function Settings() {
               <button
                 onClick={copyCode}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-surface border border-border text-text active:scale-[0.95] transition-transform"
-                title="Kopieer code"
+                title={t.settings.copyCode}
               >
                 {copied ? (
                   <span className="text-sm text-primary font-bold">✓</span>
@@ -94,7 +94,7 @@ export default function Settings() {
               disabled={inviteLoading}
               className="text-xs text-text-muted underline active:text-text transition-colors"
             >
-              Nieuwe code genereren (oude vervalt)
+              {t.settings.newCode}
             </button>
           </div>
         )}
@@ -167,25 +167,44 @@ export default function Settings() {
         <h2 className="text-base font-bold mb-3">{t.settings.whoIsGardening}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {users.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => setActiveUser(user.id)}
-              className={`card p-4 flex flex-col items-center gap-2 transition-all ${
-                user.id === activeUserId
-                  ? 'ring-2 ring-primary border-primary/20'
-                  : 'hover:border-primary/20'
-              }`}
-            >
-              <span className="text-3xl">{user.avatar}</span>
-              <span className={`font-semibold ${user.id === activeUserId ? 'text-primary' : 'text-text'}`}>
-                {user.name}
-              </span>
-              {user.id === activeUserId && (
-                <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  {t.settings.active}
+            <div key={user.id} className="relative group">
+              <button
+                onClick={() => setActiveUser(user.id)}
+                className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
+                  user.id === activeUserId
+                    ? 'ring-2 ring-primary border-primary/20'
+                    : 'hover:border-primary/20'
+                }`}
+              >
+                <span className="text-3xl">{user.avatar}</span>
+                <span className={`font-semibold ${user.id === activeUserId ? 'text-primary' : 'text-text'}`}>
+                  {user.name}
                 </span>
+                {user.id === activeUserId && (
+                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    {t.settings.active}
+                  </span>
+                )}
+              </button>
+              {user.id !== activeUserId && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (!window.confirm(`${t.settings.removeConfirm} ${user.name}?`)) return
+                    try {
+                      await household.removeMember(user.id)
+                      useFloreren.getState().load()
+                    } catch (e) {
+                      alert(e instanceof Error ? e.message : t.settings.removeError)
+                    }
+                  }}
+                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-0 group-hover:opacity-100"
+                  title={t.settings.removeMember}
+                >
+                  ✕
+                </button>
               )}
-            </button>
+            </div>
           ))}
         </div>
       </section>
@@ -222,10 +241,10 @@ export default function Settings() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">Nodig iemand uit</h2>
+        <h2 className="text-base font-bold mb-3">{t.settings.inviteTitle}</h2>
         <div className="card p-4 space-y-3">
           <p className="text-sm text-text-muted">
-            Genereer een code waarmee iemand jouw tuin kan joinen. De code is 7 dagen geldig.
+            {t.settings.inviteDescription}
           </p>
           <InviteSection />
         </div>
@@ -407,18 +426,22 @@ export default function Settings() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">Assistent</h2>
+        <h2 className="text-base font-bold mb-3">{t.settings.assistantTitle}</h2>
         <div className="card p-4 space-y-3">
           <button
-            onClick={() => setTrollClicked(true)}
-            disabled={trollClicked}
-            className="w-full py-2.5 rounded-xl border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-70"
+            onClick={() => {
+              localStorage.removeItem('floreren_stekkie_pos')
+              localStorage.removeItem('floreren_help_dismissed')
+              setStekkieReset(true)
+              setTimeout(() => setStekkieReset(false), 2500)
+            }}
+            className="w-full py-2.5 rounded-xl border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
           >
-            Knappe assistent uitzetten
+            {t.settings.resetAssistant}
           </button>
-          {trollClicked && (
+          {stekkieReset && (
             <p className="text-center text-sm font-bold text-primary animate-pulse">
-              Dacht het niet 👹
+              {t.settings.resetAssistantDone} 🌱
             </p>
           )}
         </div>

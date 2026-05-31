@@ -34,8 +34,7 @@ from models import RecommendationsOut, PlantRecommendationOut
 
 router = APIRouter()
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
-DEEPSEEK_URL     = "https://api.deepseek.com/v1/chat/completions"
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 _grow_here_cache: dict = {}  # key: (sun_hours_rounded, month) → response dict
 
@@ -78,7 +77,7 @@ class GrowHereRequest(BaseModel):
 
 @router.post("/garden/grow-here")
 async def grow_here(req: GrowHereRequest):
-    if not DEEPSEEK_API_KEY:
+    if not LLM_API_KEY:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
     cache_key = (round(req.sun_hours, 1), req.selected_month)
@@ -122,13 +121,13 @@ Stel geen planten voor die al in de tuin staan. Geef alleen geldige JSON terug."
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            DEEPSEEK_URL,
+            LLM_CHAT_URL,
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {LLM_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "deepseek-chat",
+                "model": LLM_MODEL,
                 "max_tokens": 1500,
                 "messages": [
                     {"role": "system", "content": system},

@@ -1,10 +1,8 @@
 import json
-import os
 
 import httpx
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 _REQUIRED_KEYS = {
     "drought_mm_per_week",
@@ -36,18 +34,18 @@ Geef ALLEEN geldige JSON terug, zonder extra tekst of markdown. Gebruik dit exac
 
 
 async def _call_ai(prompt: str) -> dict | None:
-    if not DEEPSEEK_API_KEY:
+    if not LLM_API_KEY:
         return None
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
-            DEEPSEEK_URL,
+            LLM_CHAT_URL,
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {LLM_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "deepseek-chat",
+                "model": LLM_MODEL,
                 "max_tokens": 400,
                 "messages": [{"role": "user", "content": prompt}],
             },

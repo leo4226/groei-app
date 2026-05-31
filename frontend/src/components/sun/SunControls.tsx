@@ -20,7 +20,6 @@ interface Props {
   tappedCell?: HeatmapCell | null
   selectedProfile?: PlantSunProfile | null
   onProfileChange?: (p: PlantSunProfile | null) => void
-  onGrowHere?: () => void
 }
 
 function formatTime(hour: number): string {
@@ -29,30 +28,16 @@ function formatTime(hour: number): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-function TappedCellInfo({
-  cell, month, onGrowHere,
-}: {
-  cell: HeatmapCell
-  month: number
-  onGrowHere?: () => void
-}) {
+function TappedCellInfo({ cell, month }: { cell: HeatmapCell; month: number }) {
   const t = useT()
   const monthName = t.calendar.monthsShort[month - 1]
 
   return (
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-xs text-text-muted">
-        {t.sun.sunHoursIn
-          .replace('{hours}', cell.sunHours.toFixed(1))
-          .replace('{month}', monthName)}
-      </p>
-      <button
-        onClick={onGrowHere}
-        className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-      >
-        {t.sun.whatCanGrow}
-      </button>
-    </div>
+    <p className="text-xs text-text-muted">
+      {t.sun.sunHoursIn
+        .replace('{hours}', cell.sunHours.toFixed(1))
+        .replace('{month}', monthName)}
+    </p>
   )
 }
 
@@ -60,7 +45,7 @@ export default function SunControls({
   viewMode, onViewModeChange,
   selectedMonth, selectedHour, sunPosition,
   onMonthChange, onHourChange, onNow,
-  isCalculating, tappedCell, selectedProfile, onProfileChange, onGrowHere,
+  isCalculating, tappedCell, selectedProfile, onProfileChange,
 }: Props) {
   const t = useT()
   return (
@@ -96,7 +81,7 @@ export default function SunControls({
               onClick={() => onMonthChange(month)}
               className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
                 isActive
-                  ? 'bg-amber-500/30 text-amber-300'
+                  ? 'bg-amber-500/30 text-amber-800'
                   : 'text-text-muted hover:text-text hover:bg-white/5'
               }`}
             >
@@ -170,11 +155,7 @@ export default function SunControls({
 
           {/* Tapped cell info + grow-here CTA */}
           {tappedCell && (
-            <TappedCellInfo
-              cell={tappedCell}
-              month={selectedMonth}
-              onGrowHere={onGrowHere}
-            />
+            <TappedCellInfo cell={tappedCell} month={selectedMonth} />
           )}
 
           {isCalculating && (

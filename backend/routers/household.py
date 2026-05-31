@@ -155,3 +155,73 @@ async def list_members(
         (current["household_id"],),
     )
     return [dict(r) for r in rows]
+
+
+@router.delete("/members/{user_id}", status_code=204)
+async def remove_member(
+    user_id: int,
+    current=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Remove a member from the current household by user_id.
+
+    Cleans up both users and accounts tables, plus FK references
+    in care_log, care_schedules, garden_water_log, garden_fertilize_log.
+    """
+    household_id = current["household_id"]
+    account_name = current["name"]
+
+    # 1) Look up target user in same household
+    target_rows = await db.execute_fetchall(
+        "SELECT id, name FROM users WHERE id = ? AND household_id = ?",
+        (user_id, household_id),
+    )
+    if not target_rows:
+        raise HTTPException(status_code=404, detail="User not found in your household")
+    target_user = target_rows[0]
+
+    # 2) Find current user for self-check and FK reassignment
+    current_rows = await db.execute_fetchall(
+        "SELECT id FROM users WHERE name = ? AND household_id = ?",
+        (account_name, household_id),
+    )
+    if not current_rows:
+        raise HTTPException(status_code=500, detail="Current user record not found")
+    current_user_id = current_rows[0]["id"]
+
+    if user_id == current_user_id:
+        raise HTTPException(status_code=400, detail="You cannot remove yourself")
+
+    # 3) Find corresponding account by (name, household_id)
+    account_rows = await db.execute_fetchall(
+        "SELECT id FROM accounts WHERE name = ? AND household_id = ?",
+        (target_user["name"], household_id),
+    )
+    account_to_delete = account_rows[0]["id"] if account_rows else None
+
+    # 4) Clean up FK references → reassign NOT NULL columns, NULL others
+    await db.execute(
+        "UPDATE care_log SET done_by = ? WHERE done_by = ?",
+        (current_user_id, user_id),
+    )
+    await db.execute(
+        "UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?",
+        (user_id,),
+    )
+    await db.execute(
+        "UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?",
+        (user_id,),
+    )
+    await db.execute(
+        "UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?",
+        (user_id,),
+    )
+
+    # 5) Delete user
+    await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    # 6) Delete account if it exists
+    if account_to_delete:
+        await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
+
+    await db.commit()

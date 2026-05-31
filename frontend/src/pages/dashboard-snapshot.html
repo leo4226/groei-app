@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floreren Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #F5F0E3;
+    --color-surface: #FBF7EE;
+    --color-paper: #FFFEF9;
+    --color-bg-warm: #EDE5D1;
+    --color-primary: #2F5D3A;
+    --color-primary-dark: #1E3F26;
+    --color-primary-highlight: #8FA882;
+    --color-secondary: #B2664A;
+    --color-text: #1F2A1E;
+    --color-text-soft: #4A5A44;
+    --color-text-muted: #8A9482;
+    --color-overdue: #B2664A;
+    --color-due: #D9A418;
+    --color-good: #2F5D3A;
+    --color-border: #D9CFB8;
+    --color-border-soft: #E5DCC3;
+    --font-heading: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius-pill: 30px;
+    --radius-body: 10px;
+    --spacing-element: 20px;
+    --spacing-section: 24px;
+    --spacing-card-pad: 24px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    margin: 0;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(143, 168, 130, 0.10), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
+  }
+  svg { display: inline-block; vertical-align: middle; }
+  a { color: var(--color-primary); text-decoration: none; }
+  .card {
+    background: var(--color-surface);
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px rgba(31, 42, 30, 0.04);
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-primary-highlight);
+    box-shadow: 0 2px 6px rgba(31, 42, 30, 0.08), 0 16px 40px rgba(31, 42, 30, 0.10);
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite ease-in-out;
+    border-radius: 0.5rem;
+  }
+
+  @media (max-width: 720px) {
+    .status-banner { margin: 0 16px 16px !important; border-radius: 10px; }
+    .status-banner > div { padding: 10px 8px !important; }
+    .status-banner > div > div:last-child { font-size: 22px !important; }
+    .dash-section-hpad { padding: 0 16px !important; }
+    .dash-map-scroll {
+      margin: 0 -16px !important;
+      padding: 4px 16px 16px !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+    .dash-map-card { width: min(280px, 70vw) !important; }
+    .dashboard-lede { max-width: none !important; font-size: 13px !important; margin: 4px 0 10px 0 !important; }
+    .dashboard-header { padding: 24px 16px 16px !important; }
+    .weather-card-header { padding: 10px 12px 4px !important; }
+    .weather-card-header > div:last-child { font-size: 18px !important; }
+    .weather-card-header > div:last-child em { font-size: 22px !important; }
+    .weather-stats { grid-template-columns: 1fr 1fr !important; padding: 4px 0 !important; }
+    .weather-stats > div { padding: 6px 0 !important; }
+    .weather-stats > div:last-child { display: none !important; }
+    .weather-stats span:first-child { font-size: 13px !important; }
+    .weather-stats span:last-child { font-size: 7px !important; }
+    .weather-forecast { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; overflow-x: auto !important; gap: 0 !important; padding: 8px 4px 10px !important; }
+    .weather-forecast > div { flex: 0 0 48px !important; }
+    .weather-card-header > div:last-child br { display: none !important; }
+    .weather-card-header > div:last-child span { display: inline !important; margin-left: 4px !important; }
+    .log-entry { grid-template-columns: 56px 1fr !important; }
+    .log-entry > :nth-child(3) { grid-column: 2; justify-self: start; }
+    .log-desktop-tag { display: none !important; }
+    .log-mobile-tag { display: inline-flex !important; margin-top: 4px !important; }
+    .log-entry > div:nth-child(2) > div:nth-child(2) { white-space: normal !important; line-height: 1.3 !important; }
+    .log-entry > div:nth-child(2) > div:first-child { font-size: 8px !important; }
+    .identify-cards-row { grid-template-columns: 1fr !important; width: 100% !important; margin-left: 0 !important; padding: 0 !important; }
+  }
+  @media (min-width: 721px) {
+    .identify-cards-row { grid-template-columns: 1fr 1fr; width: 100%; margin-left: 0; padding: 0; }
+  }
+  @media (min-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
+    .dashboard-sidebar { padding: 0 !important; }
+    .identify-cards-row { grid-template-columns: 1fr; width: 100%; margin-left: 0; padding: 0; }
+    .identify-cards-row > a { margin-bottom: 18px; }
+    .identify-card { padding: 18px 18px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="root" style="position:relative; padding-bottom:80px;">
+
+  <!-- PageDecor dots -->
+  <div style="position:absolute; top:0; left:0; width:100%; overflow:hidden; pointer-events:none; z-index:0;">
+    <svg width="300" height="300" viewBox="0 0 300 300" fill="none" style="position:absolute; top:-40px; right:-60px; opacity:0.06;">
+      <circle cx="20" cy="20" r="2" fill="#2F5D3A"/><circle cx="60" cy="20" r="2" fill="#2F5D3A"/>
+      <circle cx="100" cy="20" r="2" fill="#2F5D3A"/><circle cx="140" cy="20" r="2" fill="#2F5D3A"/>
+      <circle cx="20" cy="60" r="2" fill="#2F5D3A"/><circle cx="60" cy="60" r="2" fill="#2F5D3A"/>
+      <circle cx="100" cy="60" r="2" fill="#2F5D3A"/><circle cx="140" cy="60" r="2" fill="#2F5D3A"/>
+      <circle cx="20" cy="100" r="2" fill="#2F5D3A"/><circle cx="60" cy="100" r="2" fill="#2F5D3A"/>
+      <circle cx="100" cy="100" r="2" fill="#2F5D3A"/><circle cx="140" cy="100" r="2" fill="#2F5D3A"/>
+      <circle cx="20" cy="140" r="2" fill="#2F5D3A"/><circle cx="60" cy="140" r="2" fill="#2F5D3A"/>
+      <circle cx="100" cy="140" r="2" fill="#2F5D3A"/><circle cx="140" cy="140" r="2" fill="#2F5D3A"/>
+    </svg>
+  </div>
+
+  <div style="position:relative; z-index:1;">
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="dashboard-header" style="padding:40px 24px 20px; border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+      <div style="flex:1; min-width:240;">
+        <p style="font-family:var(--font-mono); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--color-text-muted); margin:0 0 8px 0; border-bottom:1px solid var(--color-border); padding-bottom:8px;">
+          Goedemiddag · zaterdag 30 mei 2026
+        </p>
+        <h1 style="font-family:var(--font-heading); font-weight:500; font-size:clamp(36px,5vw,56px); line-height:0.95; letter-spacing:-0.02em; color:var(--color-text); margin:0;">
+          Goedemiddag, <em style="font-style:italic; color:var(--color-primary); font-weight:400;">Leon</em>.
+        </h1>
+        <p class="dashboard-lede" style="font-family:var(--font-heading); font-style:italic; font-size:15px; line-height:1.5; color:var(--color-text-soft); max-width:440px; margin:8px 0 16px 0;">
+          20 planten wachten op verzorging.
+        </p>
+
+        <!-- 2×2 grid -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--color-border); border-radius:10px; overflow:hidden; max-width:440px;">
+          <!-- Sunrise -->
+          <div style="padding:10px 14px; border-right:1px solid var(--color-border); border-bottom:1px solid var(--color-border); background:var(--color-surface);">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px;">Zonsopgang</div>
+            <div style="font-family:var(--font-heading); font-size:14px; color:var(--color-text); font-weight:500;">05:27</div>
+          </div>
+          <!-- Sunset -->
+          <div style="padding:10px 14px; border-right:none; border-bottom:1px solid var(--color-border); background:var(--color-surface);">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px;">Zonsondergang</div>
+            <div style="font-family:var(--font-heading); font-size:14px; color:var(--color-text); font-weight:500;">21:53</div>
+          </div>
+          <!-- Buiten/temp -->
+          <div style="padding:10px 14px; border-right:1px solid var(--color-border); border-bottom:none; background:var(--color-surface);">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px;">Buiten</div>
+            <div style="font-family:var(--font-heading); font-size:14px; color:var(--color-overdue); font-weight:500;">18°C</div>
+          </div>
+          <!-- Next Care → Luchtvochtigheid -->
+          <div style="padding:10px 14px; border-right:none; border-bottom:none; background:var(--color-surface);">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px;">Volgende verzorging</div>
+            <div style="font-family:var(--font-heading); font-size:14px; color:var(--color-text); font-weight:500;">Monstera · Vandaag</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:16px; padding-top:4px;">
+        <!-- UserSwitcher -->
+        <div style="display:flex; align-items:center; gap:8px; padding:4px 12px 4px 4px; border:1px solid var(--color-border); border-radius:99px; background:var(--color-surface);">
+          <div style="width:26px; height:26px; border-radius:50%; background:linear-gradient(145deg,#FDFAF1,#EDE5D1); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; font-size:12px;">👤</div>
+          <span style="font-family:var(--font-heading); font-size:12px; color:var(--color-text);">Leon</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══ STATUS BANNER ═══ -->
+    <div class="status-banner" style="display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--color-border); border-left:none; border-right:none; background:var(--color-surface); margin:0 0 20px;">
+      <div style="padding:12px 16px 18px; text-align:center; border-right:1px solid var(--color-border-soft);">
+        <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:5px;">Collectie</div>
+        <div style="font-family:var(--font-heading); font-size:28px; font-weight:500; line-height:1; color:var(--color-text);">37</div>
+      </div>
+      <div style="padding:12px 16px 18px; text-align:center; border-right:1px solid var(--color-border-soft);">
+        <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:5px;">Op schema</div>
+        <div style="font-family:var(--font-heading); font-size:28px; font-weight:500; line-height:1; color:var(--color-primary);">17</div>
+      </div>
+      <div style="padding:12px 16px 18px; text-align:center; border-right:1px solid var(--color-border-soft);">
+        <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:5px;">Dorst</div>
+        <div style="font-family:var(--font-heading); font-size:28px; font-weight:500; line-height:1; color:var(--color-due);">8</div>
+      </div>
+      <div style="padding:12px 16px 18px; text-align:center;">
+        <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:5px;">Droog</div>
+        <div style="font-family:var(--font-heading); font-size:28px; font-weight:500; line-height:1; color:var(--color-overdue);">12</div>
+      </div>
+    </div>
+
+    <!-- WelcomeChecklist (hidden — data loaded) -->
+
+    <!-- ═══ GRID: MAIN + SIDEBAR ═══ -->
+    <div class="dashboard-grid" style="display:grid; grid-template-columns:1fr; gap:0;">
+
+      <!-- ─── MAIN COLUMN ─── -->
+      <div>
+
+        <!-- ── Mijn Tuinen ── -->
+        <section class="dash-section-hpad" style="padding:0 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 18px; border-bottom:1px solid var(--color-border); margin-bottom:18px; gap:12px;">
+            <p style="margin:0; font-family:var(--font-heading); font-style:italic; font-size:15px; color:var(--color-text-soft); flex:1; min-width:0;">Bekijken (2)</p>
+            <span style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.2em; color:var(--color-text-muted);">Mijn tuinen</span>
+          </div>
+          <div class="no-scrollbar dash-map-scroll" style="display:flex; overflow-x:auto; gap:14px; margin:0 -24px; padding:4px 24px 16px;">
+            <!-- Map card 1 -->
+            <div class="card dash-map-card" style="flex-shrink:0; width:300px; border-radius:14px; overflow:hidden; position:relative; display:flex; flex-direction:column;">
+              <a href="#" style="display:block; text-decoration:none; color:inherit; position:relative;">
+                <div style="aspect-ratio:4/3; background:linear-gradient(145deg,#FDFAF1 0%,#F4EEDB 100%); display:flex; align-items:center; justify-content:center; padding:6%; position:relative;">
+                  <svg viewBox="0 0 400 300" width="100%" height="100%" style="object-fit:contain;">
+                    <rect x="50" y="80" width="100" height="70" rx="3" fill="#C5D4ED" stroke="#8FA882" stroke-width="1.5"/>
+                    <rect x="50" y="80" width="100" height="70" rx="3" fill="#C5D4ED" stroke="#8FA882" stroke-width="1.5"/>
+                    <rect x="90" y="100" width="20" height="20" rx="4" fill="#8FA882"/>
+                    <rect x="80" y="90" width="20" height="20" rx="4" fill="#2F5D3A"/>
+                    <rect x="110" y="110" width="15" height="15" rx="4" fill="#2F5D3A"/>
+                    <text x="60" y="140" font-size="8" fill="#4A5A44">woonkamer</text>
+                    <circle cx="260" cy="130" r="50" fill="#BEDB9A" stroke="#8FA882" stroke-width="1"/>
+                    <circle cx="310" cy="100" r="15" fill="#2F5D3A"/>
+                    <circle cx="270" cy="120" r="10" fill="#2F5D3A"/>
+                    <circle cx="250" cy="150" r="8" fill="#D9A418"/>
+                    <text x="280" y="170" font-size="8" fill="#4A5A44">tuin</text>
+                  </svg>
+                </div>
+                <span style="position:absolute; top:8px; left:8px; font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.1em; color:var(--color-text-muted); background:rgba(251,247,238,0.92); padding:2px 7px; border-radius:5px; border:1px solid var(--color-border-soft);">Binnen</span>
+              </a>
+              <div style="padding:12px 14px 10px; border-top:1px solid var(--color-border-soft);">
+                <h3 style="margin:0; font-family:var(--font-heading); font-weight:500; font-size:16px; line-height:1.15; color:var(--color-text); letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Binnen</h3>
+                <p style="margin:2px 0 0; font-family:var(--font-heading); font-style:italic; font-size:12px; color:var(--color-text-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Binnen · 8 m × 5 m</p>
+              </div>
+              <div style="display:flex; border-top:1px solid var(--color-border-soft); margin-top:auto;">
+                <a href="#" style="flex:1; text-align:center; padding:9px 0; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-primary); text-decoration:none; border-right:1px solid var(--color-border-soft);">Bekijk</a>
+                <a href="#" style="flex:1; text-align:center; padding:9px 0; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-text-soft); text-decoration:none; border-right:1px solid var(--color-border-soft);">Bewerk</a>
+                <a href="#" title="Instellingen" style="padding:9px 14px; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-text-soft); text-decoration:none;">⚙</a>
+              </div>
+            </div>
+            <!-- Map card 2 -->
+            <div class="card dash-map-card" style="flex-shrink:0; width:300px; border-radius:14px; overflow:hidden; position:relative; display:flex; flex-direction:column;">
+              <a href="#" style="display:block; text-decoration:none; color:inherit; position:relative;">
+                <div style="aspect-ratio:4/3; background:linear-gradient(145deg,#FDFAF1 0%,#F4EEDB 100%); display:flex; align-items:center; justify-content:center; padding:6%; position:relative;">
+                  <svg viewBox="0 0 400 300" width="100%" height="100%" style="object-fit:contain;">
+                    <rect x="40" y="40" width="320" height="220" rx="5" fill="#BEDB9A" stroke="#8FA882" stroke-width="1.5"/>
+                    <circle cx="100" cy="120" r="25" fill="#2F5D3A"/>
+                    <circle cx="150" cy="180" r="18" fill="#2F5D3A"/>
+                    <circle cx="200" cy="100" r="15" fill="#D9A418"/>
+                    <circle cx="280" cy="150" r="20" fill="#2F5D3A"/>
+                    <circle cx="320" cy="180" r="12" fill="#2F5D3A"/>
+                    <rect x="60" y="60" width="30" height="30" rx="3" fill="#D3B88D" stroke="#B2664A" stroke-width="1"/>
+                    <text x="80" y="270" font-size="8" fill="#4A5A44">tuin</text>
+                  </svg>
+                </div>
+                <span style="position:absolute; top:8px; left:8px; font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.1em; color:var(--color-text-muted); background:rgba(251,247,238,0.92); padding:2px 7px; border-radius:5px; border:1px solid var(--color-border-soft);">Buiten</span>
+              </a>
+              <div style="padding:12px 14px 10px; border-top:1px solid var(--color-border-soft);">
+                <h3 style="margin:0; font-family:var(--font-heading); font-weight:500; font-size:16px; line-height:1.15; color:var(--color-text); letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Tuin</h3>
+                <p style="margin:2px 0 0; font-family:var(--font-heading); font-style:italic; font-size:12px; color:var(--color-text-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Buiten · 12 m × 8 m</p>
+              </div>
+              <div style="display:flex; border-top:1px solid var(--color-border-soft); margin-top:auto;">
+                <a href="#" style="flex:1; text-align:center; padding:9px 0; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-primary); text-decoration:none; border-right:1px solid var(--color-border-soft);">Bekijk</a>
+                <a href="#" style="flex:1; text-align:center; padding:9px 0; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-text-soft); text-decoration:none; border-right:1px solid var(--color-border-soft);">Bewerk</a>
+                <a href="#" title="Instellingen" style="padding:9px 14px; font-family:var(--font-heading); font-size:12px; font-weight:500; color:var(--color-text-soft); text-decoration:none;">⚙</a>
+              </div>
+            </div>
+            <!-- New Map Card -->
+            <button style="flex-shrink:0; width:300px; border-radius:14px; border:1px dashed var(--color-border); background:var(--color-surface); display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--color-text-muted); cursor:pointer; aspect-ratio:4/3;">
+              <span style="font-family:var(--font-heading); font-size:28px; color:var(--color-primary);">+</span>
+              <span style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.2em; margin-top:6px;">Nieuwe tuin</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ── ZORGSIGNALEN ── -->
+        <section style="padding:0 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 18px; border-bottom:1px solid var(--color-border); margin-bottom:18px; gap:12px;">
+            <p style="margin:0; font-family:var(--font-heading); font-style:italic; font-size:15px; color:var(--color-text-soft); flex:1; min-width:0;">20 signalen</p>
+            <span style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.2em; color:var(--color-text-muted);">Zorgsignalen</span>
+          </div>
+
+          <!-- KPI pills -->
+          <div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:14px;">
+            <span style="display:inline-flex; align-items:center; gap:3px; padding:4px 9px; border-radius:20px; border:1px solid rgba(47,93,58,.12); font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em;">
+              <span>💧</span><span>Water</span><span style="font-weight:600; margin-left:2px;">12</span><span style="color:var(--color-overdue); margin-left:1px;">!5</span>
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:3px; padding:4px 9px; border-radius:20px; border:1px solid rgba(47,93,58,.12); font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em;">
+              <span>🌿</span><span>Bemesten</span><span style="font-weight:600; margin-left:2px;">4</span><span style="color:var(--color-overdue); margin-left:1px;">!1</span>
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:3px; padding:4px 9px; border-radius:20px; border:1px solid rgba(200,60,60,.2); background:rgba(200,60,60,.08); font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em;">
+              <span>🔫</span><span>Misten</span><span style="font-weight:600; margin-left:2px;">4</span><span style="color:var(--color-overdue); margin-left:1px;">!2</span>
+            </span>
+          </div>
+
+          <!-- Bucket 🔴 -->
+          <div style="margin-bottom:10px; margin-top:10px;">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:6px;">🔴 Nu · 5 planten</div>
+            <div style="border:1px solid var(--color-border-soft); border-radius:10px; overflow:hidden;">
+              <!-- item 1 -->
+              <div style="display:flex; align-items:center; gap:8px; padding:10px 12px;">
+                <a href="#" style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; text-decoration:none; color:inherit;">
+                  <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(145deg,#FDFAF1,#F4EEDB); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; font-size:22px;">🌿</div>
+                  <div style="min-width:0;">
+                    <div style="font-family:var(--font-heading); font-weight:500; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Monstera Deliciosa</div>
+                    <div style="display:flex; gap:4px; margin-top:3px; flex-wrap:wrap;">
+                      <span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:99px; font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em; background:rgba(200,60,60,.08); border:1px solid rgba(200,60,60,.2); color:var(--color-overdue);">
+                        💧 Water +3
+                      </span>
+                    </div>
+                  </div>
+                </a>
+                <div style="display:flex; gap:5px; flex-shrink:0;">
+                  <button style="padding:5px 11px; border-radius:99px; background:var(--color-primary); color:#fff; border:none; font-family:var(--font-heading); font-weight:600; font-size:11px; cursor:pointer; white-space:nowrap;">Gedaan</button>
+                  <button style="padding:5px 11px; border-radius:99px; background:transparent; color:var(--color-text-muted); border:1px solid var(--color-border); font-family:var(--font-heading); font-size:11px; cursor:pointer; white-space:nowrap;">Overslaan</button>
+                </div>
+              </div>
+              <!-- item 2 -->
+              <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; border-top:1px solid var(--color-border-soft);">
+                <a href="#" style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; text-decoration:none; color:inherit;">
+                  <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(145deg,#FDFAF1,#F4EEDB); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; font-size:22px;">🌵</div>
+                  <div style="min-width:0;">
+                    <div style="font-family:var(--font-heading); font-weight:500; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Echeveria</div>
+                    <div style="display:flex; gap:4px; margin-top:3px; flex-wrap:wrap;">
+                      <span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:99px; font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em; background:rgba(200,60,60,.08); border:1px solid rgba(200,60,60,.2); color:var(--color-overdue);">
+                        💧 Water +2
+                      </span>
+                    </div>
+                  </div>
+                </a>
+                <div style="display:flex; gap:5px; flex-shrink:0;">
+                  <button style="padding:5px 11px; border-radius:99px; background:var(--color-primary); color:#fff; border:none; font-family:var(--font-heading); font-weight:600; font-size:11px; cursor:pointer; white-space:nowrap;">Gedaan</button>
+                  <button style="padding:5px 11px; border-radius:99px; background:transparent; color:var(--color-text-muted); border:1px solid var(--color-border); font-family:var(--font-heading); font-size:11px; cursor:pointer; white-space:nowrap;">Overslaan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bucket 🟡 -->
+          <div style="margin-bottom:10px; margin-top:10px;">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:6px;">🟡 Vandaag · 8 planten</div>
+            <div style="border:1px solid var(--color-border-soft); border-radius:10px; overflow:hidden;">
+              <div style="display:flex; align-items:center; gap:8px; padding:10px 12px;">
+                <a href="#" style="display:flex; align-items:center; gap:10px; flex:1; min-width:0; text-decoration:none; color:inherit;">
+                  <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(145deg,#FDFAF1,#F4EEDB); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; font-size:22px;">🌱</div>
+                  <div style="min-width:0;">
+                    <div style="font-family:var(--font-heading); font-weight:500; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ficus Lyrata</div>
+                    <div style="display:flex; gap:4px; margin-top:3px; flex-wrap:wrap;">
+                      <span style="display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:99px; font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.08em; background:rgba(47,93,58,.06); border:1px solid rgba(47,93,58,.12); color:var(--color-primary);">💧 Water</span>
+                    </div>
+                  </div>
+                </a>
+                <div style="display:flex; gap:5px; flex-shrink:0;">
+                  <button style="padding:5px 11px; border-radius:99px; background:var(--color-primary); color:#fff; border:none; font-family:var(--font-heading); font-weight:600; font-size:11px; cursor:pointer; white-space:nowrap;">Gedaan</button>
+                  <button style="padding:5px 11px; border-radius:99px; background:transparent; color:var(--color-text-muted); border:1px solid var(--color-border); font-family:var(--font-heading); font-size:11px; cursor:pointer; white-space:nowrap;">Overslaan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bucket 🟢 -->
+          <div style="margin-top:10px;">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:6px;">🟢 Deze week · 7 planten</div>
+            <div style="border:1px solid var(--color-border-soft); border-radius:10px; overflow:hidden;">
+              <div style="display:flex; align-items:center; gap:8px; padding:10px 12px;">
+                <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                  <span style="font-family:var(--font-heading); font-weight:500; font-size:13px;">💧 Water</span>
+                  <span style="color:var(--color-text-muted); font-weight:400;"> · 3 planten</span>
+                  <span style="color:var(--color-due); margin-left:4px; font-size:11px;">+1d</span>
+                </div>
+                <div style="display:flex; gap:5px; flex-shrink:0;">
+                  <button style="padding:5px 11px; border-radius:99px; background:var(--color-primary); color:#fff; border:none; font-family:var(--font-heading); font-weight:600; font-size:11px; cursor:pointer; white-space:nowrap;">Gedaan</button>
+                  <button style="padding:5px 11px; border-radius:99px; background:transparent; color:var(--color-text-muted); border:1px solid var(--color-border); font-family:var(--font-heading); font-size:11px; cursor:pointer; white-space:nowrap;">Overslaan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── LOGBOEK ── -->
+        <section class="dash-section-hpad" style="padding:0 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; padding:20px 0 18px; border-bottom:1px solid var(--color-border); margin-bottom:18px; gap:12px;">
+            <p style="margin:0; font-family:var(--font-heading); font-style:italic; font-size:15px; color:var(--color-text-soft); flex:1; min-width:0;"></p>
+            <span style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.2em; color:var(--color-text-muted);">Logboek</span>
+          </div>
+
+          <div class="card" style="border-radius:14px; overflow:hidden; margin-bottom:24px;">
+            <!-- entry 1 -->
+            <div class="log-entry" style="display:grid; grid-template-columns:56px 1fr auto; gap:14px; padding:16px 18px; align-items:flex-start; overflow:hidden;">
+              <div style="width:56px; height:56px; border-radius:8px; background:linear-gradient(145deg,#FDFAF1,#EDE5D1); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:30px;">🌿</div>
+              <div style="min-width:0; overflow:hidden;">
+                <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">30 mei 2026 · 09:15</div>
+                <div style="font-family:var(--font-heading); font-size:15px; color:var(--color-text); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  Water · <em style="color:var(--color-primary);">Monstera Deliciosa</em>
+                </div>
+              </div>
+              <span class="log-desktop-tag" style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-primary); background:rgba(47,93,58,.08); padding:3px 8px; border-radius:99px; border:1px solid rgba(47,93,58,.2); white-space:nowrap; flex-shrink:0;">Water</span>
+            </div>
+            <!-- entry 2 -->
+            <div class="log-entry" style="display:grid; grid-template-columns:56px 1fr auto; gap:14px; padding:16px 18px; align-items:flex-start; overflow:hidden; border-top:1px solid var(--color-border-soft);">
+              <div style="width:56px; height:56px; border-radius:8px; background:linear-gradient(145deg,#FDFAF1,#EDE5D1); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:30px;">🌵</div>
+              <div style="min-width:0; overflow:hidden;">
+                <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.18em; color:var(--color-text-muted); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">29 mei 2026 · 18:42</div>
+                <div style="font-family:var(--font-heading); font-size:15px; color:var(--color-text); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  Misten · <em style="color:var(--color-primary);">Echeveria</em>
+                </div>
+              </div>
+              <span class="log-desktop-tag" style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-primary); background:rgba(47,93,58,.08); padding:3px 8px; border-radius:99px; border:1px solid rgba(47,93,58,.2); white-space:nowrap; flex-shrink:0;">Misten</span>
+            </div>
+            <div style="border-top:1px solid var(--color-border-soft); padding:12px 18px; display:flex; justify-content:flex-end;">
+              <a href="#" style="font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-primary); text-decoration:none;">Volledig logboek</a>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ─── SIDEBAR ─── -->
+      <div class="dash-section-hpad dashboard-sidebar" style="padding:0 24px;">
+
+        <!-- Weather Card -->
+        <div class="card weather-card" style="border-radius:14px; overflow:hidden; margin-bottom:18px;">
+          <div class="weather-card-header" style="padding:16px 18px 6px;">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.22em; color:var(--color-primary); margin-bottom:4px;">Weer</div>
+            <div style="font-family:var(--font-heading); font-weight:500; font-size:22px; color:var(--color-text); letter-spacing:-0.01em;">
+              <span class="condition-text"><em style="color:var(--color-overdue); font-style:italic; font-weight:400;">18°</em> — Gedeeltelijk bewolkt.</span><br>
+              <span style="font-family:var(--font-heading); font-style:italic; font-size:14px; color:var(--color-text-soft); font-weight:400;">Vanavond: 11°</span>
+            </div>
+          </div>
+          <div class="weather-stats" style="display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid var(--color-border-soft); border-bottom:1px solid var(--color-border-soft); min-width:0; overflow:hidden;">
+            <div class="weather-stats-cell" style="padding:10px 4px; text-align:center; min-width:0; overflow:hidden; border-right:1px solid var(--color-border-soft);">
+              <span class="weather-stats-value" style="font-family:var(--font-heading); font-size:16px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:var(--color-text);">67%</span>
+              <span class="weather-stats-label" style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-text-muted);">Luchtvochtigheid</span>
+            </div>
+            <div class="weather-stats-cell" style="padding:10px 4px; text-align:center; min-width:0; overflow:hidden; border-right:1px solid var(--color-border-soft);">
+              <span class="weather-stats-value" style="font-family:var(--font-heading); font-size:16px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:var(--color-primary);">2.4 / ~2.6 mm</span>
+              <span class="weather-stats-label" style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-text-muted);">Regen</span>
+            </div>
+            <div class="weather-stats-cell" style="padding:10px 4px; text-align:center; min-width:0; overflow:hidden;">
+              <span class="weather-stats-value" style="font-family:var(--font-heading); font-size:16px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; color:var(--color-text);">18 km/u</span>
+              <span class="weather-stats-label" style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-text-muted);">Wind</span>
+            </div>
+          </div>
+          <div class="weather-forecast" style="display:grid; grid-template-columns:repeat(7,1fr); padding:12px 8px 14px; min-width:0; overflow:hidden;">
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-overdue); margin-bottom:4px;">za</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9A418" stroke-width="1.6"><circle cx="9" cy="10" r="3" fill="#F4C542" stroke="#D9A418"/><path d="M8 16a4 4 0 1 1 1-7.9A5 5 0 0 1 19 9a4 4 0 0 1 0 8H8z" fill="#E8E0CC" stroke="#8A9482"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-overdue); font-weight:500; line-height:1.1;">18°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">11°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">zo</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B8FCA" stroke-width="1.6"><path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 7a4 4 0 0 1 0 8H6z" fill="#C5D4ED" stroke="#6B8FCA"/><path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">16°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">10°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">ma</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B8FCA" stroke-width="1.6"><path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 7a4 4 0 0 1 0 8H6z" fill="#C5D4ED" stroke="#6B8FCA"/><path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">15°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">9°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">di</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9A418" stroke-width="1.6"><circle cx="12" cy="12" r="4" fill="#F4C542" stroke="none"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">22°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">14°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">wo</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9A418" stroke-width="1.6"><circle cx="12" cy="12" r="4" fill="#F4C542" stroke="none"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">24°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">16°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">do</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9A418" stroke-width="1.6"><circle cx="12" cy="12" r="4" fill="#F4C542" stroke="none"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">25°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">17°</div></div>
+            <div style="text-align:center;"><div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.12em; color:var(--color-text-muted); margin-bottom:4px;">vr</div><div style="display:flex; justify-content:center; margin-bottom:3px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9A418" stroke-width="1.6"><circle cx="12" cy="12" r="4" fill="#F4C542" stroke="none"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg></div><div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text); line-height:1.1;">23°</div><div style="font-family:var(--font-heading); font-size:10px; color:var(--color-text-muted); line-height:1.1;">15°</div></div>
+          </div>
+        </div>
+
+        <!-- Care Tip Card -->
+        <div class="card" style="border-radius:14px; overflow:hidden; margin-bottom:18px;">
+          <div style="padding:16px 18px 6px;">
+            <div style="font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.22em; color:var(--color-primary); margin-bottom:4px;">Wist je dat?</div>
+            <div style="font-family:var(--font-heading); font-weight:500; font-size:22px; color:var(--color-text); letter-spacing:-0.01em;">
+              <em style="font-style:italic; font-weight:400; color:var(--color-primary);">Monstera Deliciosa</em>.
+            </div>
+          </div>
+          <div style="padding:10px 18px 18px; border-top:1px solid var(--color-border-soft); margin-top:8px;">
+            <p style="font-family:var(--font-heading); font-style:italic; font-size:14px; line-height:1.5; color:var(--color-text-soft); margin:0 0 14px; position:relative;">
+              <span style="color:var(--color-overdue); font-size:32px; line-height:0; position:relative; top:10px; margin-right:3px; font-style:normal;">"</span>
+              De gaten in de bladeren (fenestraties) helpen de plant om wind te weerstaan in de tropische regenwouden van Midden-Amerika.
+            </p>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(145deg,#FDFAF1,#EDE5D1); border:1px solid var(--color-border-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:22px;">🌿</div>
+              <div>
+                <div style="font-family:var(--font-heading); font-size:12px; color:var(--color-text);">Monstera Deliciosa</div>
+                <div style="font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.15em; color:var(--color-text-muted);">Monstera deliciosa</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Identify Card -->
+        <div class="identify-cards-row" style="display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:18px; width:calc(100% + 48px); margin-left:-24px; padding:0 24px; box-sizing:border-box; min-width:0; overflow:hidden;">
+          <a href="#" style="text-decoration:none; display:block;">
+            <div class="identify-card" style="height:100%; border-radius:14px; overflow:hidden; border:1px solid var(--color-border); background:var(--color-surface); padding:14px 14px; cursor:pointer; transition:border-color 0.15s; box-sizing:border-box;">
+              <div style="font-family:var(--font-heading); font-weight:500; font-size:16px; color:var(--color-text); margin-bottom:4px;">Foto identificatie</div>
+              <p style="margin:0; font-family:var(--font-heading); font-style:italic; font-size:12px; color:var(--color-text-muted); line-height:1.4;">Maak een foto om een plant te herkennen</p>
+            </div>
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- annotation label -->
+<div style="position:fixed; bottom:16px; right:16px; background:var(--color-surface); border:1px solid var(--color-overdue); border-radius:8px; padding:8px 14px; font-family:var(--font-mono); font-size:10px; color:var(--color-text); box-shadow:0 2px 8px rgba(0,0,0,0.08); z-index:999;">
+  ⚠️ Dit is de <strong>huidige</strong> dashboard — klaar voor redesign feedback
+</div>
+
+</body>
+</html>

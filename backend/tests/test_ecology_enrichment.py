@@ -18,6 +18,7 @@ def test_from_llm_parses_sun_preference(monkeypatch):
                 }}]}
         return R()
 
+    monkeypatch.setattr("services.ecology_enrichment.LLM_API_KEY", "test-key")
     monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
     result = asyncio.run(_from_llm("Ajuga reptans"))
     assert result.get("sun_preference") == "partial_sun"
@@ -38,6 +39,7 @@ def test_from_llm_rejects_invalid_sun_preference(monkeypatch):
                 }}]}
         return R()
 
+    monkeypatch.setattr("services.ecology_enrichment.LLM_API_KEY", "test-key")
     monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
     result = asyncio.run(_from_llm("Ajuga reptans"))
     assert "sun_preference" not in result

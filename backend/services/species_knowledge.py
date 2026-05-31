@@ -5,7 +5,7 @@ range, bloom months, height, toxicity, etc. Sourced (in order) from:
   1. plant_care_cache table (30-day TTL)
   2. Trefle API (if TREFLE_TOKEN set)
   3. Curated fallback table (10 species, RHS/Missouri Botanical/Gardenia.net)
-  4. Deepseek AI (if DEEPSEEK_API_KEY set)
+  4. LLM fallback via OpenRouter (if OPENROUTER_API_KEY set)
 
 Public API:
     fetch_species_knowledge(scientific_name) -> dict | None
@@ -24,8 +24,7 @@ import httpx
 
 TREFLE_TOKEN     = os.getenv("TREFLE_TOKEN") or ""
 TREFLE_BASE      = "https://trefle.io/api/v1"
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
-DEEPSEEK_URL     = "https://api.deepseek.com/v1/chat/completions"
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 # ── curated fallback data ────────────────────────────────────────────────────
 # Growth fields sourced from RHS, Missouri Botanical Garden, Gardenia.net.
@@ -262,7 +261,7 @@ async def _fetch_trefle(scientific_name: str) -> dict | None:
 
 async def _fetch_ai_species(scientific_name: str) -> dict | None:
     """Ask Deepseek for care data when Trefle has no results."""
-    if not DEEPSEEK_API_KEY:
+    if not LLM_API_KEY:
         return None
 
     prompt = f"""Geef verzorgingsdata voor de plantensoort: {scientific_name}
@@ -287,13 +286,13 @@ Geef alleen geldige JSON terug met dit formaat:
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
-            DEEPSEEK_URL,
+            LLM_CHAT_URL,
             headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Authorization": f"Bearer {LLM_API_KEY}",
                 "content-type": "application/json",
             },
             json={
-                "model": "deepseek-chat",
+                "model": LLM_MODEL,
                 "max_tokens": 600,
                 "messages": [{"role": "user", "content": prompt}],
             },

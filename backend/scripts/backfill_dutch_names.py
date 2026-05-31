@@ -15,7 +15,6 @@ Usage:
 import argparse
 import asyncio
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -32,9 +31,8 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or ""
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
-_REQUEST_DELAY_S = 0.3  # courteous pacing; Deepseek tolerates this fine
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+_REQUEST_DELAY_S = 0.3  # courteous pacing; the provider tolerates this fine
 
 _PROMPT = """Wat is de gangbare Nederlandse naam voor de plantsoort "{latin_name}"?
 
@@ -70,13 +68,13 @@ async def get_dutch_name(client: httpx.AsyncClient, latin_name: str, max_retries
     for attempt in range(1, max_retries + 1):
         try:
             resp = await client.post(
-                DEEPSEEK_URL,
+                LLM_CHAT_URL,
                 headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Authorization": f"Bearer {LLM_API_KEY}",
                     "content-type": "application/json",
                 },
                 json={
-                    "model": "deepseek-chat",
+                    "model": LLM_MODEL,
                     "max_tokens": 50,
                     "messages": [{"role": "user", "content": _PROMPT.format(latin_name=latin_name)}],
                 },
@@ -113,8 +111,8 @@ async def get_dutch_name(client: httpx.AsyncClient, latin_name: str, max_retries
 
 
 async def main(limit: int | None, dry_run: bool):
-    if not DEEPSEEK_API_KEY:
-        logger.error("DEEPSEEK_API_KEY not set")
+    if not LLM_API_KEY:
+        logger.error("OPENROUTER_API_KEY not set")
         sys.exit(1)
 
     from database import init_pool, close_pool, get_db

@@ -2,7 +2,8 @@ import { useMemo, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import type { MapPlant } from '../../types'
-import { PLANT_SUN_PROFILES, getSunFit } from '../../utils/plantSunRequirements'
+import { getSunFit } from '../../utils/plantSunRequirements'
+import { bucketFor, bucketLabel, bucketColor, type LightBucket } from '../../utils/lightQuality'
 import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
 import { garden, type GrowHereResponse, type AISuggestion } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
@@ -25,16 +26,14 @@ interface Props {
   onClose: () => void
 }
 
-function sunCategoryLabel(hours: number, tSun: Translations['sun']): { label: string; emoji: string } {
-  if (hours >= 6) return { label: tSun.sunCategoryFull, emoji: '☀️' }
-  if (hours >= 3) return { label: tSun.sunCategoryPartial, emoji: '⛅' }
-  return { label: tSun.sunCategoryShade, emoji: '🌿' }
+// Emoji + plant-requirement mapping per light bucket. Bucketing itself comes from
+// lightQuality.ts (4h/2h/SVF) — the single source of truth shared with the backend
+// recommender — so the header label always agrees with what gets recommended.
+const BUCKET_EMOJI: Record<LightBucket, string> = {
+  full: '☀️', part: '⛅', bright_shade: '🌤️', deep_shade: '🌿',
 }
-
-function sunReqId(hours: number): string {
-  if (hours >= 6) return 'full_sun'
-  if (hours >= 3) return 'partial_sun'
-  return 'shade'
+const BUCKET_TO_PREF: Record<LightBucket, string> = {
+  full: 'full_sun', part: 'partial_sun', bright_shade: 'shade', deep_shade: 'shade',
 }
 
 const BADGE_CLASS: Record<string, string> = {
@@ -105,8 +104,13 @@ function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: Translations['
   if (rec.is_native) badges.push({ label: t.ecologyNative, cls: 'bg-green-500/10 text-green-700 dark:text-green-400' })
   if ((rec.pollinator_value ?? 0) >= 3) badges.push({ label: t.ecologyPollinatorHigh, cls: 'bg-amber-400/15 text-amber-700' })
   else if ((rec.pollinator_value ?? 0) === 2) badges.push({ label: t.ecologyPollinatorGood, cls: 'bg-amber-400/10 text-amber-600' })
-  if (rec.sun_fit === 'perfect') badges.push({ label: t.sunFitPerfect, cls: 'bg-primary/10 text-primary' })
-  else badges.push({ label: t.sunFitAcceptable, cls: 'bg-surface text-text-muted border border-border/50' })
+  const fitBadge: Record<string, { label: string; cls: string }> = {
+    perfect:    { label: t.sunFitPerfect,    cls: 'bg-primary/10 text-primary' },
+    acceptable: { label: t.sunFitAcceptable, cls: 'bg-good/10 text-good' },
+    marginal:   { label: t.sunFitMarginal,   cls: 'bg-due/10 text-due' },
+    tolerated:  { label: t.sunFitTolerated,  cls: 'bg-surface text-text-muted border border-border/50' },
+  }
+  badges.push(fitBadge[rec.sun_fit] ?? fitBadge.tolerated)
   if (rec.gap_months_covered.length > 0) {
     const monthStr = rec.gap_months_covered.map(m => MONTH_SHORT[m - 1]).join(', ')
     badges.push({ label: t.ecologyFillsGap.replace('{months}', monthStr), cls: 'bg-primary/10 text-primary' })
@@ -159,9 +163,11 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
   const { addPlant } = useFloreren()
   const t = useT()
   const { sunHours } = tappedCell
-  const { label: catLabel, emoji: catEmoji } = sunCategoryLabel(sunHours, t.sun)
-  const spotReqId = sunReqId(sunHours)
-  const profile = PLANT_SUN_PROFILES.find(p => p.id === spotReqId)
+  const bucket = bucketFor(sunHours, tappedCell.skyOpenness)
+  const catLabel = bucketLabel(bucket, t)
+  const catEmoji = BUCKET_EMOJI[bucket]
+  const spotReqId = BUCKET_TO_PREF[bucket]
+  const barColor = bucketColor(bucket)
 
   // AI state
   const [aiData, setAiData] = useState<GrowHereResponse | null>(() => _aiCache.get(cacheKey(sunHours, selectedMonth)) ?? null)
@@ -231,7 +237,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
     garden.recommendations(mapId, sunHours, selectedMonth, tappedCell.skyOpenness)
       .then(data => { setDbRecs(data); setDbLoading(false) })
       .catch(() => setDbLoading(false))
-  }, [mapId, sunHours, selectedMonth])
+  }, [mapId, sunHours, selectedMonth, tappedCell.skyOpenness])
 
   async function handleAddToGarden(name: string, species: string, sunReq?: string) {
     if (addingName) return
@@ -304,7 +310,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, (sunHours / 10) * 100)}%`,
-                  backgroundColor: profile?.color ?? '#f0a020',
+                  backgroundColor: barColor,
                 }}
               />
             </div>

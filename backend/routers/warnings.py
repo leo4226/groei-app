@@ -68,6 +68,7 @@ class BucketPlantOut(BaseModel):
     plant_name: str
     plant_icon_variant: str | None
     environment: str
+    map_name: str | None
     care_type: str | None
     top_warning: CareWarningOut | None
     days_overdue: int | None
@@ -269,6 +270,7 @@ async def _compute_warning_summary(
                 plant_name=plant.get("name", ""),
                 plant_icon_variant=plant.get("icon_variant"),
                 environment=state.environment,
+                map_name=plant.get("map_name"),
                 care_type=state.top_warning.care_type,
                 top_warning=CareWarningOut(**state.top_warning.__dict__),
                 days_overdue=state.top_warning.days_overdue,
@@ -294,6 +296,7 @@ async def _compute_warning_summary(
                         plant_name=plant.get("name", ""),
                         plant_icon_variant=plant.get("icon_variant"),
                         environment=state.environment,
+                        map_name=plant.get("map_name"),
                         care_type=ct_name,
                         top_warning=None,
                         days_overdue=None,
