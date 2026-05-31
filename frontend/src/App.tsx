@@ -82,6 +82,8 @@ export default function App() {
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
   const isAdminPage = location.pathname.startsWith('/admin')
+  // Hide Stekkie during the identify flow — it overlaps the full-screen camera.
+  const isIdentifyPage = location.pathname.startsWith('/identify')
   // On map pages, BottomNav hides in landscape-mobile so the map can fill the viewport.
   // Outside map pages we always show it (otherwise users couldn't navigate after rotating).
   const isMapPage = location.pathname.startsWith('/map')
@@ -257,7 +259,7 @@ export default function App() {
         </div>
       )}
 
-      {!isLoginPage && !isAdminPage && <HelpAssistant />}
+      {!isLoginPage && !isAdminPage && !isIdentifyPage && <HelpAssistant />}
 
       {showPlantPicker && (
         <PlantPickerSheet

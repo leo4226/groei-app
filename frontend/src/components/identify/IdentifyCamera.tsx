@@ -173,11 +173,14 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
                 </span>
               </div>
             )}
-            <div className="fixed bottom-10 inset-x-0 flex justify-center pointer-events-none">
+            <div
+              className="fixed inset-x-0 flex justify-center pointer-events-none"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom) + 5.5rem)' }}
+            >
               <button
                 onClick={capture}
                 aria-label={t.identify.camera.capture}
-                className="w-20 h-20 rounded-full bg-white border-4 border-gray-300 active:scale-95 transition-transform pointer-events-auto"
+                className="w-16 h-16 rounded-full bg-white border-4 border-gray-300 active:scale-95 transition-transform pointer-events-auto"
               />
             </div>
           </>
