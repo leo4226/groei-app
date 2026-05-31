@@ -107,6 +107,8 @@ JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Househ
 
 ## Deployment
 
+**Stack:** frontend → **Vercel** (`floreren.app`), backend → **Fly.io** (`api.floreren.app`). Cloudflare is **DNS + the bioclip tunnel only** — there is **no Cloudflare Workers/Pages** build for this repo. (If a "Workers Builds" check ever reappears on a PR, a Cloudflare Git integration got reconnected by accident — disconnect it in Cloudflare → Workers & Pages, don't add a wrangler config.)
+
 ### Backend — Fly.io
 
 App: `floreren-api`, region `ams`, `shared-cpu-1x` / 256 MB. Neon Postgres (connection string in Fly secrets). Release command runs `alembic upgrade head` on every deploy.
