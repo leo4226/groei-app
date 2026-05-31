@@ -119,6 +119,23 @@ git worktree add ../floreren-13 -b fix/13-map-sun-cells origin/master
 git worktree remove ../floreren-13          # when finished
 ```
 
+### First run in a fresh worktree (do this once per worktree)
+
+A worktree shares git history but **not installed dependencies** — `frontend/node_modules`
+and `backend/.venv` are per-folder and git-ignored, so a brand-new worktree starts
+without them. Before running the app or backend tests there, set up once:
+
+```bash
+# Frontend deps — needed for `npx tsc --noEmit` and `npm run dev`
+cd frontend && npm install && cd ..
+
+# Backend venv + deps — needed to run the server or any test that hits the DB
+cd backend && python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt && cd ..
+```
+
+Then `npm run dev` (from the worktree root) starts frontend + backend together.
+If a command fails with "module/package not found", you skipped one of these.
+
 `master` is the **integration branch** where everyone's parallel work lands via PRs.
 
 ---
