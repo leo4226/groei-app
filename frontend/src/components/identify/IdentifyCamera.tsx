@@ -69,7 +69,7 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black flex flex-col touch-none">
+    <div className="fixed inset-0 z-[60] bg-black flex flex-col">
       <div className="fixed top-0 inset-x-0 flex items-center justify-between p-4 text-white z-10">
         <button onClick={onCancel} aria-label={t.identify.camera.cancel} className="text-2xl">×</button>
         <span className="text-sm opacity-75">{t.identify.camera.title}</span>
