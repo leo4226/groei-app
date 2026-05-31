@@ -3,34 +3,41 @@
 Read this whole file before doing anything. It explains how this project is
 organised and the exact steps to do work in it.
 
-**If a step is unclear, or a command fails, or you are unsure: STOP and ask the
-human (Leon). A wrong guess is worse than a question.**
+**If a step is unclear, a command fails, or you are unsure: STOP and ask Leon. A
+wrong guess is worse than a question.**
 
 ---
 
-## 0. Who you are
+## 0. The team — who does what
 
-You are a coding assistant for **Floreren**, a plant-care web app. Your job:
-1. Pick up a task from **GitHub Issues**.
-2. Fix it in the code on a **branch**.
-3. Open a **pull request** for Leon to review and merge.
+Several agents work on this project at the same time, plus Leon (the human owner).
 
-You do **not** invent work. You work from Issues. You do **not** merge your own
-work or deploy — Leon does that.
+| Who | Role |
+|---|---|
+| **Leon (human)** | Logs ideas & bugs, triages issues, reviews and **merges** all work, deploys. |
+| **Claude (planner)** | Writes plans/specs when the goal is fuzzy; takes the hard or ambiguous coding where there's no clear target yet. Picks up `ready-for-human` issues. |
+| **DeepSeek agents (executors, several at once)** | Implement well-specified issues in parallel. This is most of the coding volume. Pick up `ready-for-agent` issues. |
+
+If you are a DeepSeek/executor agent, your lane is **`ready-for-agent`** issues. If
+you are Claude, your lane is planning + **`ready-for-human`** issues. Either way the
+mechanics below are the same.
 
 ---
 
 ## 1. Golden rules (never break these)
 
-1. **Never commit directly to `master`.** `master` is the live code real users get.
-   Always work on a new branch.
+1. **Work in your own git worktree + branch — never edit `master`'s working folder
+   directly.** Other agents may be running at the same moment; sharing one folder
+   corrupts everyone's edits and test runs. (See §5 for worktrees. Exception: Leon
+   may commit a tiny fix straight to `master` when no agents are running.)
 2. **Never commit secrets.** API keys live in `.env` files, which are git-ignored.
    Never add a `.env` file or a key to git.
-3. **Always run the tests before committing.** If tests fail because of your change,
-   fix them. Do not commit broken code.
-4. **One issue → one branch → one pull request.** Keep each change small and focused.
-5. **Do not rewrite git history, delete branches, or delete tags.**
-6. **Match the existing code style** in the file you are editing.
+3. **Always run the tests before committing.** If your change breaks a test, fix it.
+   Do not commit broken code.
+4. **One issue → one branch → one pull request.** Keep each change focused.
+5. **Do not merge your own PR, deploy, rewrite git history, or delete branches/tags.**
+   Leon merges and deploys.
+6. **Match the existing code style** in the file you're editing.
 7. **When unsure, stop and ask.**
 
 ---
@@ -40,26 +47,24 @@ work or deploy — Leon does that.
 | System | Where | What goes here | Example |
 |---|---|---|---|
 | **Ideas log** | the file `docs/plans/TODO.md` | Half-formed thoughts, "maybe we should…", things to explore later. **Not bugs.** | "Maybe base plant suggestions on soil moisture too" |
-| **Issue tracker** | **GitHub Issues** (repo `leo4226/groei-app`) | Concrete bugs and tasks that need doing | "Tapping a sunny map cell shows shade plants" |
+| **Issue tracker** | **GitHub Issues** (repo `leo4226/groei-app`) | Concrete bugs and tasks that need doing | "Map view: south-facing cells show as shaded" |
 
-**You work from GitHub Issues, not from `TODO.md`.** `TODO.md` is Leon's private
+You work from **GitHub Issues**, not from `TODO.md`. `TODO.md` is Leon's private
 scratchpad. If Leon points you at a TODO idea and says "make this real", first turn
-it into an Issue (see §5), then work the Issue.
+it into an Issue (§6), then work the Issue.
 
 ---
 
-## 3. Labels (how issues are sorted)
+## 3. Labels
 
-Every issue has labels. Two kinds matter to you.
-
-### a) Triage state — where the issue is in its life
-| Label | Meaning | Can you work on it? |
+### a) Triage state — where the issue is, and **who** works it
+| Label | Meaning | Who picks it up |
 |---|---|---|
-| `needs-triage` | New, not yet reviewed by Leon | ❌ No |
-| `needs-info` | Waiting on more info from Leon | ❌ No |
-| `ready-for-agent` | Fully specified, ready to implement | ✅ **Yes — this is your work** |
-| `ready-for-human` | Needs a human | ❌ No |
-| `wontfix` | Decided against | ❌ Ignore |
+| `needs-triage` | New, not yet reviewed | nobody yet — wait for triage |
+| `needs-info` | Waiting on info from Leon | nobody — blocked |
+| `ready-for-agent` | Clear, fully specified | **DeepSeek / executor agents** |
+| `ready-for-human` | Needs a plan or judgment, no obvious solution | **Claude / Leon** |
+| `wontfix` | Decided against | nobody — ignore |
 
 ### b) Difficulty — how hard it is
 | Label | Stars | Meaning |
@@ -69,156 +74,163 @@ Every issue has labels. Two kinds matter to you.
 | `difficulty: hard` | ⭐⭐⭐ | Big or tricky |
 
 Other labels you may see: `bug`, `enhancement`, `documentation`, `stekkie` (chatbot).
-
-**Which issue to pick:** an issue labelled `ready-for-agent`. Prefer lower difficulty
-first, unless Leon says otherwise. Leon does the triage (moving issues to
-`ready-for-agent`); you don't.
+Prefer lower difficulty first unless told otherwise.
 
 ---
 
 ## 4. The full workflow
 
 ```
-Leon's idea ──► TODO.md            (just a thought)
-Leon's bug  ──► GitHub Issue       (needs-triage)
+Leon's idea ──► TODO.md                 (just a thought)
+Leon's bug  ──► GitHub Issue            (needs-triage)
                      │
-                Leon triages it  ──► ready-for-agent + a difficulty label
-                     │
+            Leon/Claude triages  ──► difficulty label + route:
+                     │                    ├─ clear & contained ► ready-for-agent  (DeepSeek)
+                     │                    └─ needs a plan       ► ready-for-human  (Claude/Leon)
                      ▼
-   YOU:  pick it ► branch ► fix ► test ► open PR ► (Leon reviews & merges) ► deployed
+   pick it ► worktree+branch ► fix ► test ► open PR ► (Leon reviews & merges) ► deployed
 ```
+
+See **`docs/agents/triage-cheatsheet.md`** for the triage step-by-step.
 
 ---
 
-## 5. Issue commands (use the `gh` CLI)
+## 5. Isolation: one worktree per agent (important with parallel agents)
 
-`gh` auto-detects the repo when you run it inside the project folder.
+Two agents must never share one working folder. A **git worktree** is a separate
+folder that shares the same repo history but checks out its own branch — so each
+agent works alone and merges to `master` when done.
+
+Use the helper (PowerShell, from the repo root):
+
+```powershell
+./scripts/agent-worktree.ps1 new 13 map-sun-cells
+#  → creates  ../floreren-13   on branch  fix/13-map-sun-cells  off the latest master
+./scripts/agent-worktree.ps1 list
+./scripts/agent-worktree.ps1 remove 13      # removes the folder; branch is kept
+```
+
+Or the raw git commands (any shell):
 
 ```bash
-# See what you can pick up
-gh issue list --label "ready-for-agent" --state open
+git fetch origin master
+git worktree add ../floreren-13 -b fix/13-map-sun-cells origin/master
+#  ...do all your work inside ../floreren-13 ...
+git worktree remove ../floreren-13          # when finished
+```
 
-# Read one issue fully, including comments
-gh issue view <number> --comments
+`master` is the **integration branch** where everyone's parallel work lands via PRs.
+
+---
+
+## 6. Issue commands (`gh` CLI — auto-detects the repo inside the clone)
+
+```bash
+gh issue list --label "ready-for-agent" --state open     # find your work
+gh issue view <number> --comments                        # read it fully
 
 # Create an issue (e.g. turning a TODO idea into a real task)
 gh issue create --title "🐛 short description" \
   --label "bug,needs-triage" \
   --body "What is wrong, where in the app, and how to reproduce it."
 
-# Leave a progress comment
-gh issue comment <number> --body "Working on this; root cause is X."
-
-# Add a difficulty label
-gh issue edit <number> --add-label "difficulty: medium"
+gh issue comment <number> --body "Working on this; root cause is X."   # progress
+gh issue edit <number> --add-label "difficulty: medium"                # set difficulty
 ```
 
-To make a pull request close an issue automatically, write `Closes #<number>` in the
-PR description.
+To auto-close an issue when a PR merges, put `Closes #<number>` in the PR body.
 
 ---
 
-## 6. Making a code change — exact steps
+## 7. Making a code change — exact steps
 
 ```bash
-# 1. Start from the latest master
-git checkout master
-git pull
+# 1. Own isolated workspace off the latest master (see §5)
+git fetch origin master
+git worktree add ../floreren-<n> -b fix/<n>-short-slug origin/master
+cd ../floreren-<n>
 
-# 2. Make a branch named after the issue
-git checkout -b fix/<issue-number>-short-slug      # e.g. fix/13-sun-per-month
+# 2. Edit the code. Match the style already in the file.
 
-# 3. Edit the code. Match the style already in the file.
+# 3. RUN THE TESTS (see §8). Fix anything you broke.
 
-# 4. RUN THE TESTS (see §7). Fix anything you broke.
-
-# 5. Stage ONLY the files you changed, then commit
+# 4. Stage ONLY the files you changed, then commit
 git add path/to/file1 path/to/file2
-git commit -m "fix(scope): what changed (#<issue-number>)"
+git commit -m "fix(scope): what changed (#<n>)"
 
-# 6. Push and open a pull request
+# 5. Push and open a pull request
 git push -u origin HEAD
-gh pr create --fill --base master      # then add "Closes #<issue-number>" to the body
+gh pr create --fill --base master        # then add "Closes #<n>" to the body
 
-# 7. Tell Leon it's ready. DO NOT merge it yourself.
+# 6. Tell Leon it's ready. DO NOT merge it yourself.
 ```
 
 ### Commit message format (conventional commits)
-`type(scope): short summary (#issue)`
-- `type` is one of: `feat` (new feature), `fix` (bug), `docs`, `refactor`, `chore`, `test`.
-- Example: `fix(map): sunny cells no longer suggest shade plants (#13)`
+`type(scope): short summary (#issue)` — `type` ∈ `feat` `fix` `docs` `refactor`
+`chore` `test`.
+Example: `fix(map): correct sun heatmap orientation on south cells (#13)`
 
 ---
 
-## 7. Testing — always before committing
+## 8. Testing — always before committing
 
 ```bash
 # Backend (Python). The water_amount test is broken for unrelated reasons — skip it.
-cd backend
-python -m pytest -q --ignore=tests/test_water_amount.py
+cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
 
 # Frontend (TypeScript) — must print nothing and exit 0
-cd ../frontend
-npx tsc --noEmit
+cd frontend && npx tsc --noEmit
 ```
 
-- If a test fails **because of your change** → fix it.
-- If a test was **already failing before** your change → say so in the PR and continue.
+- Fails **because of your change** → fix it.
+- Was **already failing** before your change → note it in the PR and continue.
 
 ---
 
-## 8. The project in one minute
+## 9. The project in one minute
 
 - **Frontend:** React + TypeScript + Vite + Tailwind, in `frontend/`. Deploys to
   **Vercel** (`floreren.app`).
 - **Backend:** FastAPI + Python, in `backend/`. Deploys to **Fly.io** (app
   `floreren-api`, served at `api.floreren.app`).
 - **Database:** PostgreSQL (Neon) in production, SQLite locally.
-- **AI features** (plant ecology, care tips, plant suggestions, chatbot) call a language
-  model through **OpenRouter**. ALL of that config lives in ONE file:
-  `backend/llm_config.py` (model `deepseek/deepseek-chat`, key from the env var
-  `OPENROUTER_API_KEY`). If you touch AI code, read that file first. Never hardcode an
-  API URL or key anywhere else.
-- **Run locally:** `npm run dev` (starts frontend + backend together).
-- Deep infra / deployment details are in `CLAUDE.md` at the repo root.
+- **AI features** (ecology, care tips, suggestions, chatbot) call a language model
+  through **OpenRouter**. ALL of that config is in ONE file: `backend/llm_config.py`
+  (model `deepseek/deepseek-chat`, key from env `OPENROUTER_API_KEY`). If you touch
+  AI code, read that file first. Never hardcode an API URL or key anywhere else.
+- **Run locally:** `npm run dev` (frontend + backend together).
+- Deep infra / deployment details: `CLAUDE.md` at the repo root.
 
 ---
 
-## 9. Do / Don't
+## 10. Do / Don't
 
-**Do**
-- Work from `ready-for-agent` issues.
-- Branch → test → PR, and let Leon merge.
-- Keep changes small and focused on one issue.
-- Ask when unsure.
+**Do** — work your lane (`ready-for-agent` for executors, `ready-for-human` for
+Claude); use a worktree; test; open a PR; let Leon merge; keep changes small; ask
+when unsure.
 
-**Don't**
-- Commit to `master` directly.
-- Commit a `.env` file or any secret/API key.
-- Merge your own pull request, or deploy.
-- Start work on `needs-triage`, `needs-info`, or `ready-for-human` issues.
-- Rewrite git history, or delete branches/tags.
-- Change `CLAUDE.md`, deploy configs, or `backend/llm_config.py` unless the issue is
-  specifically about them.
+**Don't** — edit `master`'s folder while others work; commit `.env`/secrets; merge
+your own PR or deploy; start `needs-triage` / `needs-info` issues; rewrite history or
+delete branches/tags; change `CLAUDE.md`, deploy configs, or `backend/llm_config.py`
+unless the issue is specifically about them.
 
 ---
 
-## 10. Cheat sheet
+## 11. Cheat sheet
 
 ```bash
-# find work
 gh issue list --label "ready-for-agent" --state open
 gh issue view <n> --comments
 
-# do the work
-git checkout master && git pull
-git checkout -b fix/<n>-slug
-#   ...edit files...
+git fetch origin master
+git worktree add ../floreren-<n> -b fix/<n>-slug origin/master
+cd ../floreren-<n>
+#   ...edit...
 cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
 cd ../frontend && npx tsc --noEmit
 git add <changed files>
 git commit -m "fix(scope): summary (#<n>)"
 git push -u origin HEAD
-gh pr create --fill --base master        # PR body must contain: Closes #<n>
-# then tell Leon — do not merge yourself
+gh pr create --fill --base master         # PR body must contain: Closes #<n>
+# tell Leon — do not merge yourself
 ```
