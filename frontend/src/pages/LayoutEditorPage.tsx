@@ -14,7 +14,7 @@ import { useT } from '../context/LanguageContext'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
 import { useEditorTour, hasTourBeenSeen } from '../hooks/useEditorTour'
 import EditorTour from '../components/editor/EditorTour'
-import { useIsMobile } from '../hooks/useIsMobile'
+import { useIsTouch } from '../hooks/useIsTouch'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -34,7 +34,7 @@ export default function LayoutEditorPage() {
   const [shadowMode, setShadowMode] = useState(false)
 
   const editor = useEditorState()
-  const isMobile = useIsMobile()
+  const isTouch = useIsTouch()
   const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
   const gardenBounds = useMemo(
     () => deriveGardenBounds(editor.zones),
@@ -227,7 +227,7 @@ export default function LayoutEditorPage() {
   return (
     <div className="flex flex-col h-dvh relative">{/* full viewport — app chrome hidden on the editor route */}
       {/* Header — desktop only; mobile uses floating chrome (below) */}
-      <div className={`flex items-center gap-3 px-4 py-2 bg-surface border-b border-border ${isMobile ? 'hidden' : ''}`}>
+      <div className={`flex items-center gap-3 px-4 py-2 bg-surface border-b border-border ${isTouch ? 'hidden' : ''}`}>
         <button onClick={() => handleExit('/dashboard')} className="text-text-muted text-sm shrink-0">
           {t.editor.toolbar.back}
         </button>
@@ -349,7 +349,7 @@ export default function LayoutEditorPage() {
       </div>
 
       {/* Desktop toolbar — in-flow, hidden in preview mode. Mobile gets a floating dock below. */}
-      {!previewMode && !isMobile && (
+      {!previewMode && !isTouch && (
         <EditorToolbar
           activeTool={editor.activeTool}
           selectedZoneId={editor.selectedZoneId}
@@ -362,7 +362,7 @@ export default function LayoutEditorPage() {
       )}
 
       {/* ── Mobile floating chrome over the full-screen canvas ───────────── */}
-      {isMobile && (
+      {isTouch && (
         <>
           {/* Back — top-left */}
           <button

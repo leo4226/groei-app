@@ -12,6 +12,7 @@ import EditorDefs from './EditorDefs'
 import ObjectShape from '../map/ObjectShape'
 import DimensionArrows from './DimensionArrows'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useIsTouch } from '../../hooks/useIsTouch'
 import EditorZoneShape from './EditorZoneShape'
 import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
@@ -302,6 +303,7 @@ export default function EditorCanvas({
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
   const isMobile = useIsMobile()
+  const isTouch = useIsTouch()
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [panning, setPanning] = useState<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -1012,7 +1014,7 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1">
+      <div className={`absolute right-3 flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'bottom-24' : 'bottom-3'}`}>{/* lifted above the floating tool dock on touch */}
         <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
