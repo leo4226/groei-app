@@ -420,9 +420,9 @@ export default function LayoutEditorPage() {
             </div>
           </div>
 
-          {/* Tool dock — bottom-centre (thumb zone) */}
+          {/* Tool dock — bottom-centre (thumb zone): tools + the mode/zone picker */}
           {!previewMode && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40">
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
               <EditorToolbar
                 floating
                 activeTool={editor.activeTool}
@@ -433,6 +433,20 @@ export default function LayoutEditorPage() {
                 onSetTool={editor.setTool}
                 onDelete={handleDelete}
               />
+              {/* Mode + zone-type picker (opens the legend panel) */}
+              <button
+                onClick={() => setSidebarOpen((o) => !o)}
+                aria-label={t.editor.legend}
+                className={`w-11 h-11 rounded-2xl backdrop-blur-md border shadow-lg flex items-center justify-center ${
+                  sidebarOpen ? 'bg-primary text-white border-primary' : 'bg-surface/90 text-text-muted border-border'
+                }`}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                  <polyline points="2 17 12 22 22 17" />
+                  <polyline points="2 12 12 17 22 12" />
+                </svg>
+              </button>
             </div>
           )}
         </>
@@ -500,10 +514,10 @@ export default function LayoutEditorPage() {
 
         {!previewMode && (
           <>
-            {/* Toggle button — mobile only */}
+            {/* Toggle button — narrow desktop only; touch uses the picker in the bottom dock */}
             <button
               onClick={() => setSidebarOpen((o) => !o)}
-              className="lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted"
+              className={`lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted ${isTouch ? 'hidden' : ''}`}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {sidebarOpen ? (
