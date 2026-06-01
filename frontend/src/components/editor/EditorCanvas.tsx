@@ -309,12 +309,19 @@ export default function EditorCanvas({
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
 
-  // SPIKE (#15): two-finger pinch-zoom anchored on the pinch midpoint. Native
-  // non-passive listeners (via target: svgRef) so we can preventDefault the
-  // browser's own page-zoom. The single-pointer handlers below are untouched —
-  // usePinch only fires on 2+ pointers.
+  // Two-finger pinch-zoom (#15), anchored on the pinch midpoint. Native non-passive
+  // listeners (target: svgRef) so we can preventDefault the browser's page-zoom.
+  // While a pinch is active, isPinching suppresses the single-finger handlers so the
+  // two don't fight — that fight was the cause of the zoom flicker.
+  const isPinching = useRef(false)
   usePinch(
-    ({ origin: [ox, oy], offset: [scale], memo, first }) => {
+    ({ origin: [ox, oy], offset: [scale], memo, first, last }) => {
+      if (first) {
+        isPinching.current = true
+        setDrawing(null); setDragging(null); setResizing(null)
+        setWallElementDragging(null); setShadowCasterDragging(null); setPanning(null)
+        setSnapLines([])
+      }
       const rect = svgRef.current?.getBoundingClientRect()
       if (!rect) return memo
       const m =
@@ -327,6 +334,7 @@ export default function EditorCanvas({
         x: m.cx - (m.cx - m.startPan.x) * k,
         y: m.cy - (m.cy - m.startPan.y) * k,
       })
+      if (last) isPinching.current = false
       return m
     },
     {
@@ -359,6 +367,7 @@ export default function EditorCanvas({
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
 
   function handlePointerDown(e: React.PointerEvent) {
+    if (isPinching.current) return
     const pt = getSvgPoint(e)
     if (!pt) return
 
@@ -463,6 +472,7 @@ export default function EditorCanvas({
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    if (isPinching.current) return
     const pt = getSvgPoint(e)
     if (!pt) return
 
