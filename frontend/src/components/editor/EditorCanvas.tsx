@@ -322,17 +322,22 @@ export default function EditorCanvas({
         setWallElementDragging(null); setShadowCasterDragging(null); setPanning(null)
         setSnapLines([])
       }
-      const rect = svgRef.current?.getBoundingClientRect()
-      if (!rect) return memo
+      const svg = svgRef.current
+      if (!svg) return memo
+      // Anchor in SVG viewBox space (same space as `pan` / the transform group),
+      // NOT client pixels — mixing the two made the view jump back and forth.
       const m =
         first || !memo
-          ? { startZoom: zoom, startPan: { ...pan }, cx: ox - rect.left, cy: oy - rect.top }
+          ? (() => {
+              const mid = screenToSVG(svg, ox, oy)
+              return { startZoom: zoom, startPan: { ...pan }, mx: mid?.x ?? 0, my: mid?.y ?? 0 }
+            })()
           : memo
       const k = scale / m.startZoom
       setZoom(+scale.toFixed(3))
       setPan({
-        x: m.cx - (m.cx - m.startPan.x) * k,
-        y: m.cy - (m.cy - m.startPan.y) * k,
+        x: m.mx - (m.mx - m.startPan.x) * k,
+        y: m.my - (m.my - m.startPan.y) * k,
       })
       if (last) isPinching.current = false
       return m
