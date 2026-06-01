@@ -14,6 +14,7 @@ import { useT } from '../context/LanguageContext'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
 import { useEditorTour, hasTourBeenSeen } from '../hooks/useEditorTour'
 import EditorTour from '../components/editor/EditorTour'
+import { useIsTouch } from '../hooks/useIsTouch'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -33,6 +34,7 @@ export default function LayoutEditorPage() {
   const [shadowMode, setShadowMode] = useState(false)
 
   const editor = useEditorState()
+  const isTouch = useIsTouch()
   const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
   const gardenBounds = useMemo(
     () => deriveGardenBounds(editor.zones),
@@ -223,9 +225,9 @@ export default function LayoutEditorPage() {
   if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)]">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-border">
+    <div className="flex flex-col h-dvh relative">{/* full viewport — app chrome hidden on the editor route */}
+      {/* Header — desktop only; mobile uses floating chrome (below) */}
+      <div className={`flex items-center gap-3 px-4 py-2 bg-surface border-b border-border ${isTouch ? 'hidden' : ''}`}>
         <button onClick={() => handleExit('/dashboard')} className="text-text-muted text-sm shrink-0">
           {t.editor.toolbar.back}
         </button>
@@ -346,8 +348,8 @@ export default function LayoutEditorPage() {
         </span>
       </div>
 
-      {/* Toolbar — hidden in preview mode */}
-      {!previewMode && (
+      {/* Desktop toolbar — in-flow, hidden in preview mode. Mobile gets a floating dock below. */}
+      {!previewMode && !isTouch && (
         <EditorToolbar
           activeTool={editor.activeTool}
           selectedZoneId={editor.selectedZoneId}
@@ -357,6 +359,97 @@ export default function LayoutEditorPage() {
           onSetTool={editor.setTool}
           onDelete={handleDelete}
         />
+      )}
+
+      {/* ── Mobile floating chrome over the full-screen canvas ───────────── */}
+      {isTouch && (
+        <>
+          {/* Back — top-left */}
+          <button
+            onClick={() => handleExit('/dashboard')}
+            aria-label={t.editor.toolbar.back}
+            className="absolute top-3 left-3 z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg"
+          >
+            ←
+          </button>
+
+          {/* Cluster — top-right: save status + preview toggle + more menu */}
+          <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
+            <span className={`px-2 py-1 rounded-full text-[10px] font-medium bg-surface/85 backdrop-blur-md border border-border shadow ${
+              saveStatus === 'saved' ? 'text-primary' : saveStatus === 'saving' ? 'text-text-muted' : 'text-pumpkin-swirl'
+            }`}>
+              {saveStatus === 'saved' ? t.editor.save.saved : saveStatus === 'saving' ? t.editor.save.saving : t.editor.save.unsaved}
+            </span>
+            <button
+              onClick={() => setPreviewMode((p) => !p)}
+              aria-label={previewMode ? t.editor.toolbar.edit : t.editor.toolbar.preview}
+              className={`w-10 h-10 rounded-full backdrop-blur-md border shadow-lg flex items-center justify-center text-base ${
+                previewMode ? 'bg-primary text-white border-primary' : 'bg-surface/85 text-text-muted border-border'
+              }`}
+            >
+              {previewMode ? '✏️' : '👁'}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreActions(v => !v)}
+                aria-label="Meer"
+                className="w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg leading-none"
+              >
+                ⋮
+              </button>
+              {showMoreActions && (
+                <>
+                  <div onClick={() => setShowMoreActions(false)} className="fixed inset-0 z-30" />
+                  <div className="absolute right-0 top-full mt-1 z-40 bg-surface border border-border rounded-xl shadow-lg py-1 min-w-[180px] overflow-hidden">
+                    <button onClick={() => { setShowMoreActions(false); handleExit(`/map/${map.slug}`) }}
+                      className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-text hover:bg-bg/60 w-full text-left">Bekijken →</button>
+                    <button onClick={() => { setShowMoreActions(false); editor.undo() }} disabled={!editor.canUndo}
+                      className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-text hover:bg-bg/60 w-full text-left disabled:opacity-30">↩ {t.editor.toolbar.undo}</button>
+                    <button onClick={() => { setShowMoreActions(false); tour.start() }}
+                      className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-text hover:bg-bg/60 w-full text-left">? Rondleiding</button>
+                    {editor.mapType === 'outdoor' && (
+                      <>
+                        <div className="mx-2 my-1 h-px bg-border" />
+                        <button onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
+                          className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left">☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}</button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Tool dock — bottom-centre (thumb zone): tools + the mode/zone picker */}
+          {!previewMode && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+              <EditorToolbar
+                floating
+                activeTool={editor.activeTool}
+                selectedZoneId={editor.selectedZoneId}
+                selectedWallElementId={editor.selectedWallElementId}
+                selectedShadowCasterId={editor.selectedShadowCasterId}
+                selectedObjectId={selectedObjectId}
+                onSetTool={editor.setTool}
+                onDelete={handleDelete}
+              />
+              {/* Mode + zone-type picker (opens the legend panel) */}
+              <button
+                onClick={() => setSidebarOpen((o) => !o)}
+                aria-label={t.editor.legend}
+                className={`w-11 h-11 rounded-2xl backdrop-blur-md border shadow-lg flex items-center justify-center ${
+                  sidebarOpen ? 'bg-primary text-white border-primary' : 'bg-surface/90 text-text-muted border-border'
+                }`}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                  <polyline points="2 17 12 22 22 17" />
+                  <polyline points="2 12 12 17 22 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Canvas + sidebar */}
@@ -421,10 +514,10 @@ export default function LayoutEditorPage() {
 
         {!previewMode && (
           <>
-            {/* Toggle button — mobile only */}
+            {/* Toggle button — narrow desktop only; touch uses the picker in the bottom dock */}
             <button
               onClick={() => setSidebarOpen((o) => !o)}
-              className="lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted"
+              className={`lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted ${isTouch ? 'hidden' : ''}`}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {sidebarOpen ? (

@@ -9,6 +9,8 @@ interface Props {
   selectedObjectId: number | null
   onSetTool: (tool: EditorTool) => void
   onDelete: () => void
+  /** Render as a floating rounded dock (mobile) instead of a full-width top bar. */
+  floating?: boolean
 }
 
 export default function EditorToolbar({
@@ -19,12 +21,17 @@ export default function EditorToolbar({
   selectedObjectId,
   onSetTool,
   onDelete,
+  floating = false,
 }: Props) {
   const t = useT()
   const hasSelection = !!(selectedZoneId || selectedWallElementId || selectedShadowCasterId || selectedObjectId !== null)
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-surface/95 backdrop-blur-md border-b border-border overflow-x-auto">
+    <div className={
+      floating
+        ? 'flex items-center gap-2 px-3 py-2 bg-surface/90 backdrop-blur-md rounded-2xl border border-border shadow-lg'
+        : 'flex items-center gap-2 px-3 py-2 bg-surface/95 backdrop-blur-md border-b border-border overflow-x-auto'
+    }>
       {/* Tool buttons */}
       <button
         onClick={() => onSetTool('select')}

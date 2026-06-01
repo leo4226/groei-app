@@ -1,4 +1,5 @@
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
+import { usePinch } from '@use-gesture/react'
 import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
@@ -11,6 +12,7 @@ import EditorDefs from './EditorDefs'
 import ObjectShape from '../map/ObjectShape'
 import DimensionArrows from './DimensionArrows'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useIsTouch } from '../../hooks/useIsTouch'
 import EditorZoneShape from './EditorZoneShape'
 import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
@@ -301,12 +303,55 @@ export default function EditorCanvas({
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
   const isMobile = useIsMobile()
+  const isTouch = useIsTouch()
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [panning, setPanning] = useState<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [vbScale, setVbScale] = useState(1)   // viewBox→screen scale (for constant-size handles)
   const MIN_ZOOM = 0.25
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
+
+  // Two-finger pinch-zoom (#15), anchored on the pinch midpoint. Native non-passive
+  // listeners (target: svgRef) so we can preventDefault the browser's page-zoom.
+  // While a pinch is active, isPinching suppresses the single-finger handlers so the
+  // two don't fight — that fight was the cause of the zoom flicker.
+  const isPinching = useRef(false)
+  usePinch(
+    ({ origin: [ox, oy], offset: [scale], memo, first, last }) => {
+      if (first) {
+        isPinching.current = true
+        setDrawing(null); setDragging(null); setResizing(null)
+        setWallElementDragging(null); setShadowCasterDragging(null); setPanning(null)
+        setSnapLines([])
+      }
+      const svg = svgRef.current
+      if (!svg) return memo
+      // Anchor in SVG viewBox space (same space as `pan` / the transform group),
+      // NOT client pixels — mixing the two made the view jump back and forth.
+      const m =
+        first || !memo
+          ? (() => {
+              const mid = screenToSVG(svg, ox, oy)
+              return { startZoom: zoom, startPan: { ...pan }, mx: mid?.x ?? 0, my: mid?.y ?? 0 }
+            })()
+          : memo
+      const k = scale / m.startZoom
+      setZoom(+scale.toFixed(3))
+      setPan({
+        x: m.mx - (m.mx - m.startPan.x) * k,
+        y: m.my - (m.my - m.startPan.y) * k,
+      })
+      if (last) isPinching.current = false
+      return m
+    },
+    {
+      target: svgRef,
+      eventOptions: { passive: false },
+      scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
+      from: () => [zoom, 0],
+    },
+  )
 
   const zoneBbox = useMemo(() => {
     if (zones.length === 0) return null
@@ -322,14 +367,61 @@ export default function EditorCanvas({
     }
     return { zoneMinX: minX, zoneMinY: minY, zoneMaxX: maxX, zoneMaxY: maxY }
   }, [zones])
+
+  // Fit the garden's bounding box into the canvas so it opens at a useful size
+  // (instead of a tiny shape in the middle of the 680×680 canvas).
+  const fitToContent = useCallback(() => {
+    if (!zoneBbox) return
+    const bw = zoneBbox.zoneMaxX - zoneBbox.zoneMinX
+    const bh = zoneBbox.zoneMaxY - zoneBbox.zoneMinY
+    if (bw <= 0 || bh <= 0) return
+    const z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(CANVAS_W / bw, CANVAS_H / bh) * 0.9))
+    const bcx = (zoneBbox.zoneMinX + zoneBbox.zoneMaxX) / 2
+    const bcy = (zoneBbox.zoneMinY + zoneBbox.zoneMaxY) / 2
+    setZoom(+z.toFixed(3))
+    setPan({ x: CANVAS_W / 2 - z * bcx, y: CANVAS_H / 2 - z * bcy })
+  }, [zoneBbox])
+
+  // Auto-fit once on open, as soon as zones are available.
+  const didFit = useRef(false)
+  useEffect(() => {
+    if (didFit.current || !zoneBbox) return
+    fitToContent()
+    didFit.current = true
+  }, [zoneBbox, fitToContent])
+
+  // Track the viewBox→screen scale so resize handles can be a constant on-screen size.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const measure = () => {
+      const ctm = svg.getScreenCTM()
+      if (ctm && ctm.a > 0) setVbScale(ctm.a)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(svg)
+    return () => ro.disconnect()
+  }, [])
+
   const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
-    return screenToSVG(svgRef.current, e.clientX, e.clientY)
-  }, [])
+    const p = screenToSVG(svgRef.current, e.clientX, e.clientY)
+    if (!p) return null
+    // screenToSVG gives outer viewBox coords; convert to inner content space so points
+    // land under the finger regardless of pan/zoom (auto-fit makes these non-identity).
+    return { x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom }
+  }, [pan, zoom])
+  // Outer (viewBox) point — pan-independent. Use for panning deltas (pan lives in this
+  // space); getSvgPoint above is for absolute placement inside the transform group.
+  const getOuterPoint = useCallback((e: React.PointerEvent) =>
+    svgRef.current ? screenToSVG(svgRef.current, e.clientX, e.clientY) : null
+  , [])
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
 
   function handlePointerDown(e: React.PointerEvent) {
+    if (isPinching.current) return
     const pt = getSvgPoint(e)
     if (!pt) return
 
@@ -345,7 +437,8 @@ export default function EditorCanvas({
       onSelectZone(null)
       onSelectShadowCaster(null)
     } else if (activeTool === 'select') {
-      setPanning({ startX: pt.x, startY: pt.y, origPanX: pan.x, origPanY: pan.y })
+      const o = getOuterPoint(e)
+      if (o) setPanning({ startX: o.x, startY: o.y, origPanX: pan.x, origPanY: pan.y })
       onSelectZone(null)
       onSelectWallElement(null)
       onSelectShadowCaster(null)
@@ -368,6 +461,14 @@ export default function EditorCanvas({
     const pt = getSvgPoint(e)
     if (!pt) return
     if (activeTool === 'select') {
+      // On touch, a drag only MOVES a zone that's already selected; otherwise it pans the
+      // canvas (so you don't accidentally drag zones while navigating). A tap still selects.
+      if (isTouch && selectedZoneId !== zoneId) {
+        onSelectZone(zoneId)
+        const o = getOuterPoint(e)
+        if (o) setPanning({ startX: o.x, startY: o.y, origPanX: pan.x, origPanY: pan.y })
+        return
+      }
       onSelectZone(zoneId)
       const zone = zones.find((z) => z.id === zoneId)
       if (zone) {
@@ -434,6 +535,7 @@ export default function EditorCanvas({
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    if (isPinching.current) return
     const pt = getSvgPoint(e)
     if (!pt) return
 
@@ -598,11 +700,10 @@ export default function EditorCanvas({
     }
 
     if (panning) {
-      const dx = pt.x - panning.startX
-      const dy = pt.y - panning.startY
-      setPan({
-        x: panning.origPanX + dx,
-        y: panning.origPanY + dy,
+      const o = getOuterPoint(e)
+      if (o) setPan({
+        x: panning.origPanX + (o.x - panning.startX),
+        y: panning.origPanY + (o.y - panning.startY),
       })
       return
     }
@@ -746,8 +847,8 @@ export default function EditorCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        className="max-w-full max-h-full border border-border rounded-lg bg-[#f5f3ee]"
-        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' || activeTool === 'place_object' ? 'crosshair' : 'default' }}
+        className="w-full h-full border border-border rounded-lg bg-[#f5f3ee]"
+        style={{ touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' || activeTool === 'place_object' ? 'crosshair' : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -884,6 +985,7 @@ export default function EditorCanvas({
           {!previewMode && selectedZone && activeTool === 'select' && (
             <EditorResizeOverlay
               zone={selectedZone}
+              pxPerUnit={vbScale * zoom}
               onHandlePointerDown={handleResizeHandlePointerDown}
             />
           )}
@@ -968,15 +1070,15 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1">
+      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-3 left-16' : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
         <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
         <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">+</button>
-        <button onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1) }}
+        <button onClick={fitToContent}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5"
-          title="Reset">⟲</button>
+          title="Fit to garden">⟲</button>
       </div>
     </div>
   )
