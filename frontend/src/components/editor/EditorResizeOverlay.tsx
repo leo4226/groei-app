@@ -4,27 +4,33 @@ export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
 interface Props {
   zone: EditorZone
+  /** Screen pixels per inner content unit (viewBox scale × zoom). Keeps the handles a
+   *  constant on-screen size — big enough for a finger — at any zoom or screen size. */
+  pxPerUnit: number
   onHandlePointerDown: (e: React.PointerEvent, handle: ResizeHandle) => void
 }
 
-const HANDLE_R = 5
+const VISUAL_PX = 7   // visible dot radius (~14px dot)
+const HIT_PX = 22     // invisible touch-target radius (~44px target)
 const PAD = 2
 
-export default function EditorResizeOverlay({ zone, onHandlePointerDown }: Props) {
+export default function EditorResizeOverlay({ zone, pxPerUnit, onHandlePointerDown }: Props) {
   const { x, y, width: w, height: h } = zone
   const cx = x + w / 2
   const cy = y + h / 2
-  const r = HANDLE_R
+  const scale = pxPerUnit > 0 ? pxPerUnit : 1
+  const rVis = VISUAL_PX / scale
+  const rHit = HIT_PX / scale
 
   const handles: { id: ResizeHandle; hx: number; hy: number }[] = [
-    { id: 'nw', hx: x - PAD,       hy: y - PAD },
-    { id: 'n',  hx: cx,             hy: y - PAD },
-    { id: 'ne', hx: x + w + PAD,   hy: y - PAD },
-    { id: 'e',  hx: x + w + PAD,   hy: cy },
-    { id: 'se', hx: x + w + PAD,   hy: y + h + PAD },
-    { id: 's',  hx: cx,             hy: y + h + PAD },
-    { id: 'sw', hx: x - PAD,       hy: y + h + PAD },
-    { id: 'w',  hx: x - PAD,       hy: cy },
+    { id: 'nw', hx: x - PAD,     hy: y - PAD },
+    { id: 'n',  hx: cx,          hy: y - PAD },
+    { id: 'ne', hx: x + w + PAD, hy: y - PAD },
+    { id: 'e',  hx: x + w + PAD, hy: cy },
+    { id: 'se', hx: x + w + PAD, hy: y + h + PAD },
+    { id: 's',  hx: cx,          hy: y + h + PAD },
+    { id: 'sw', hx: x - PAD,     hy: y + h + PAD },
+    { id: 'w',  hx: x - PAD,     hy: cy },
   ]
 
   const cursorMap: Record<ResizeHandle, string> = {
@@ -36,20 +42,19 @@ export default function EditorResizeOverlay({ zone, onHandlePointerDown }: Props
   return (
     <g pointerEvents="all">
       {handles.map(({ id, hx, hy }) => (
-        <circle
+        <g
           key={id}
-          cx={hx}
-          cy={hy}
-          r={r}
-          fill="white"
-          stroke="#4A90D9"
-          strokeWidth={1.5}
           style={{ cursor: cursorMap[id] }}
           onPointerDown={(e) => {
             e.stopPropagation()
             onHandlePointerDown(e, id)
           }}
-        />
+        >
+          {/* Invisible finger-sized hit target */}
+          <circle cx={hx} cy={hy} r={rHit} fill="transparent" />
+          {/* Visible dot */}
+          <circle cx={hx} cy={hy} r={rVis} fill="white" stroke="#4A90D9" strokeWidth={1.5 / scale} pointerEvents="none" />
+        </g>
       ))}
     </g>
   )

@@ -307,6 +307,7 @@ export default function EditorCanvas({
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [panning, setPanning] = useState<{ startX: number; startY: number; origPanX: number; origPanY: number } | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [vbScale, setVbScale] = useState(1)   // viewBox→screen scale (for constant-size handles)
   const MIN_ZOOM = 0.25
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
@@ -388,6 +389,20 @@ export default function EditorCanvas({
     fitToContent()
     didFit.current = true
   }, [zoneBbox, fitToContent])
+
+  // Track the viewBox→screen scale so resize handles can be a constant on-screen size.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const measure = () => {
+      const ctm = svg.getScreenCTM()
+      if (ctm && ctm.a > 0) setVbScale(ctm.a)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(svg)
+    return () => ro.disconnect()
+  }, [])
 
   const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
@@ -970,6 +985,7 @@ export default function EditorCanvas({
           {!previewMode && selectedZone && activeTool === 'select' && (
             <EditorResizeOverlay
               zone={selectedZone}
+              pxPerUnit={vbScale * zoom}
               onHandlePointerDown={handleResizeHandlePointerDown}
             />
           )}
