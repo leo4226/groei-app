@@ -223,7 +223,7 @@ export default function LayoutEditorPage() {
   if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)]">
+    <div className="flex flex-col h-dvh">{/* full viewport — app chrome is hidden on the editor route */}
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-border">
         <button onClick={() => handleExit('/dashboard')} className="text-text-muted text-sm shrink-0">

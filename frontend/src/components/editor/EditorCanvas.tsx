@@ -790,8 +790,8 @@ export default function EditorCanvas({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        className="max-w-full max-h-full border border-border rounded-lg bg-[#f5f3ee]"
-        style={{ aspectRatio: '1', touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' || activeTool === 'place_object' ? 'crosshair' : 'default' }}
+        className="w-full h-full border border-border rounded-lg bg-[#f5f3ee]"
+        style={{ touchAction: 'none', cursor: isPlacingWallElement ? 'crosshair' : activeTool === 'shadow_caster' || activeTool === 'place_object' ? 'crosshair' : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

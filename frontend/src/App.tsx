@@ -84,6 +84,8 @@ export default function App() {
   const isAdminPage = location.pathname.startsWith('/admin')
   // Hide Stekkie during the identify flow — it overlaps the full-screen camera.
   const isIdentifyPage = location.pathname.startsWith('/identify')
+  // The layout editor is a focused full-screen tool (its own back button) — hide app chrome.
+  const isEditorPage = location.pathname.includes('/edit-layout')
   // On map pages, BottomNav hides in landscape-mobile so the map can fill the viewport.
   // Outside map pages we always show it (otherwise users couldn't navigate after rotating).
   const isMapPage = location.pathname.startsWith('/map')
@@ -253,13 +255,13 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
-      {!isLoginPage && !isAdminPage && (
+      {!isLoginPage && !isAdminPage && !isEditorPage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isLoginPage && !isAdminPage && !isIdentifyPage && <HelpAssistant />}
+      {!isLoginPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
 
       {showPlantPicker && (
         <PlantPickerSheet
