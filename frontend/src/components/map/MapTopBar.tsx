@@ -31,8 +31,8 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/92 rounded-full border border-border/60 shadow-sm text-sm font-semibold text-text hover:bg-surface transition-colors"
-        style={{ backdropFilter: 'blur(6px)' }}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/85 rounded-full border border-border/60 shadow-lg text-sm font-semibold text-text hover:bg-surface transition-colors"
+        style={{ backdropFilter: 'blur(10px)' }}
       >
         <span className={`text-text-muted text-xs transition-transform inline-block ${open ? 'rotate-180' : ''}`}>⌄</span>
         <span className="truncate max-w-[180px]">{map.name}</span>
