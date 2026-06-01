@@ -221,8 +221,8 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
       <>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1 bg-surface/92 rounded-full border border-border/60 shadow-sm hover:bg-surface transition-colors"
-          style={{ backdropFilter: 'blur(6px)' }}
+          className="flex items-center gap-2 px-3 py-1 bg-surface/85 rounded-full border border-border/60 shadow-lg hover:bg-surface transition-colors"
+          style={{ backdropFilter: 'blur(10px)' }}
           aria-label={t.garden.biodiversity.title}
         >
           <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">

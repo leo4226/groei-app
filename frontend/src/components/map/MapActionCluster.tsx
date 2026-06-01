@@ -26,7 +26,7 @@ export default function MapActionCluster({
   const iconBtn = "w-8 h-8 flex items-center justify-center rounded-full transition-colors"
 
   return (
-    <div className="flex items-center gap-0.5 bg-surface/92 rounded-full border border-border/60 shadow-sm p-1" style={{ backdropFilter: 'blur(6px)' }}>
+    <div className="flex items-center gap-0.5 bg-surface/85 rounded-full border border-border/60 shadow-lg p-1" style={{ backdropFilter: 'blur(10px)' }}>
       <button onClick={onWater} title={t.mapPage.water} className={`${iconBtn} text-blue-600 hover:bg-blue-500/15`}>
         <WaterStatusIcon status={waterStatus} size={14} />
       </button>
