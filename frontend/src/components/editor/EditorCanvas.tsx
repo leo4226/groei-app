@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { usePinch } from '@use-gesture/react'
 import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
@@ -366,6 +366,29 @@ export default function EditorCanvas({
     }
     return { zoneMinX: minX, zoneMinY: minY, zoneMaxX: maxX, zoneMaxY: maxY }
   }, [zones])
+
+  // Fit the garden's bounding box into the canvas so it opens at a useful size
+  // (instead of a tiny shape in the middle of the 680×680 canvas).
+  const fitToContent = useCallback(() => {
+    if (!zoneBbox) return
+    const bw = zoneBbox.zoneMaxX - zoneBbox.zoneMinX
+    const bh = zoneBbox.zoneMaxY - zoneBbox.zoneMinY
+    if (bw <= 0 || bh <= 0) return
+    const z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(CANVAS_W / bw, CANVAS_H / bh) * 0.9))
+    const bcx = (zoneBbox.zoneMinX + zoneBbox.zoneMaxX) / 2
+    const bcy = (zoneBbox.zoneMinY + zoneBbox.zoneMaxY) / 2
+    setZoom(+z.toFixed(3))
+    setPan({ x: CANVAS_W / 2 - z * bcx, y: CANVAS_H / 2 - z * bcy })
+  }, [zoneBbox])
+
+  // Auto-fit once on open, as soon as zones are available.
+  const didFit = useRef(false)
+  useEffect(() => {
+    if (didFit.current || !zoneBbox) return
+    fitToContent()
+    didFit.current = true
+  }, [zoneBbox, fitToContent])
+
   const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
     return screenToSVG(svgRef.current, e.clientX, e.clientY)
@@ -1014,15 +1037,15 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className={`absolute right-3 flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'bottom-24' : 'bottom-3'}`}>{/* lifted above the floating tool dock on touch */}
+      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-16 left-3' : 'bottom-3 right-3'}`}>{/* touch: top-left under the back pill, clear of the bottom dock */}
         <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
         <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">+</button>
-        <button onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1) }}
+        <button onClick={fitToContent}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5"
-          title="Reset">⟲</button>
+          title="Fit to garden">⟲</button>
       </div>
     </div>
   )
