@@ -397,6 +397,11 @@ export default function EditorCanvas({
     // land under the finger regardless of pan/zoom (auto-fit makes these non-identity).
     return { x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom }
   }, [pan, zoom])
+  // Outer (viewBox) point — pan-independent. Use for panning deltas (pan lives in this
+  // space); getSvgPoint above is for absolute placement inside the transform group.
+  const getOuterPoint = useCallback((e: React.PointerEvent) =>
+    svgRef.current ? screenToSVG(svgRef.current, e.clientX, e.clientY) : null
+  , [])
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
 
@@ -417,7 +422,8 @@ export default function EditorCanvas({
       onSelectZone(null)
       onSelectShadowCaster(null)
     } else if (activeTool === 'select') {
-      setPanning({ startX: pt.x, startY: pt.y, origPanX: pan.x, origPanY: pan.y })
+      const o = getOuterPoint(e)
+      if (o) setPanning({ startX: o.x, startY: o.y, origPanX: pan.x, origPanY: pan.y })
       onSelectZone(null)
       onSelectWallElement(null)
       onSelectShadowCaster(null)
@@ -440,6 +446,14 @@ export default function EditorCanvas({
     const pt = getSvgPoint(e)
     if (!pt) return
     if (activeTool === 'select') {
+      // On touch, a drag only MOVES a zone that's already selected; otherwise it pans the
+      // canvas (so you don't accidentally drag zones while navigating). A tap still selects.
+      if (isTouch && selectedZoneId !== zoneId) {
+        onSelectZone(zoneId)
+        const o = getOuterPoint(e)
+        if (o) setPanning({ startX: o.x, startY: o.y, origPanX: pan.x, origPanY: pan.y })
+        return
+      }
       onSelectZone(zoneId)
       const zone = zones.find((z) => z.id === zoneId)
       if (zone) {
@@ -671,11 +685,10 @@ export default function EditorCanvas({
     }
 
     if (panning) {
-      const dx = pt.x - panning.startX
-      const dy = pt.y - panning.startY
-      setPan({
-        x: panning.origPanX + dx,
-        y: panning.origPanY + dy,
+      const o = getOuterPoint(e)
+      if (o) setPan({
+        x: panning.origPanX + (o.x - panning.startX),
+        y: panning.origPanY + (o.y - panning.startY),
       })
       return
     }
@@ -1041,7 +1054,7 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-16 left-3' : 'bottom-3 right-3'}`}>{/* touch: top-left under the back pill, clear of the bottom dock */}
+      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-3 left-16' : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
         <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
