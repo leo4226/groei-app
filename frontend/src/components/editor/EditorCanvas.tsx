@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useMemo } from 'react'
+import { usePinch } from '@use-gesture/react'
 import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
@@ -307,6 +308,34 @@ export default function EditorCanvas({
   const MIN_ZOOM = 0.25
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
+
+  // SPIKE (#15): two-finger pinch-zoom anchored on the pinch midpoint. Native
+  // non-passive listeners (via target: svgRef) so we can preventDefault the
+  // browser's own page-zoom. The single-pointer handlers below are untouched —
+  // usePinch only fires on 2+ pointers.
+  usePinch(
+    ({ origin: [ox, oy], offset: [scale], memo, first }) => {
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (!rect) return memo
+      const m =
+        first || !memo
+          ? { startZoom: zoom, startPan: { ...pan }, cx: ox - rect.left, cy: oy - rect.top }
+          : memo
+      const k = scale / m.startZoom
+      setZoom(+scale.toFixed(3))
+      setPan({
+        x: m.cx - (m.cx - m.startPan.x) * k,
+        y: m.cy - (m.cy - m.startPan.y) * k,
+      })
+      return m
+    },
+    {
+      target: svgRef,
+      eventOptions: { passive: false },
+      scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
+      from: () => [zoom, 0],
+    },
+  )
 
   const zoneBbox = useMemo(() => {
     if (zones.length === 0) return null
