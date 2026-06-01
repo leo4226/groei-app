@@ -391,8 +391,12 @@ export default function EditorCanvas({
 
   const getSvgPoint = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return null
-    return screenToSVG(svgRef.current, e.clientX, e.clientY)
-  }, [])
+    const p = screenToSVG(svgRef.current, e.clientX, e.clientY)
+    if (!p) return null
+    // screenToSVG gives outer viewBox coords; convert to inner content space so points
+    // land under the finger regardless of pan/zoom (auto-fit makes these non-identity).
+    return { x: (p.x - pan.x) / zoom, y: (p.y - pan.y) / zoom }
+  }, [pan, zoom])
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
 
