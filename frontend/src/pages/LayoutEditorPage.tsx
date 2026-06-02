@@ -182,7 +182,7 @@ export default function LayoutEditorPage() {
   function fenceTheGarden() {
     if (!gardenBounds) return
     if (editor.zones.some((z) => z.type === 'fence') &&
-        !window.confirm('Er staan al hekken. Toch een omheining rondom de tuin toevoegen?')) return
+        !window.confirm(t.editor.fenceConfirm)) return
     const { minX, minY, maxX, maxY } = gardenBounds
     const OFFSET = 3   // gap between the garden edge and the fence
     const THIN = 10    // fence footprint thickness (px)
@@ -254,12 +254,12 @@ export default function LayoutEditorPage() {
         <h1 className="text-sm font-semibold text-text flex-1 truncate">{map.name}</h1>
 
         {/* Desktop: "Bekijken →" button */}
-        <button
-          onClick={() => handleExit(`/map/${map.slug}`)}
-          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
-        >
-          Bekijken →
-        </button>
+                <button
+                  onClick={() => handleExit(`/map/${map.slug}`)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
+                >
+                  {t.editor.view}
+                </button>
 
         {/* Desktop: Undo button */}
         <button
@@ -274,8 +274,8 @@ export default function LayoutEditorPage() {
         {/* Desktop: Tour replay button */}
         <button
           onClick={tour.start}
-          title="Rondleiding"
-          className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
+          title={t.editor.tourBtn}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted shrink-0 hover:bg-bg forced-hidden-mobile"
         >
           ?
         </button>
@@ -301,9 +301,9 @@ export default function LayoutEditorPage() {
                 ? 'bg-amber-500 text-amber-950 border-amber-500'
                 : 'text-text-muted border-border'
             }`}
-            title="Toon zon-perimeter"
-          >
-            ☀ {showSunPreview ? 'Aan' : 'Uit'}
+            title={t.editor.sunToggleTitle}
+                      >
+                        ☀ {showSunPreview ? t.editor.sunOn : t.editor.sunOff}
           </button>
         )}
 
@@ -314,7 +314,7 @@ export default function LayoutEditorPage() {
             className="flex items-center gap-1 px-2.5 py-1.5 bg-surface text-text-muted rounded-full text-xs font-medium hover:bg-surface/80 transition-colors border border-border"
           >
             <span className="text-sm leading-none">⋮</span>
-            <span className="map-more-label">Meer</span>
+            <span className="map-more-label">{t.editor.moreBtn}</span>
           </button>
           {showMoreActions && (
             <>
@@ -325,9 +325,9 @@ export default function LayoutEditorPage() {
                   onClick={() => { setShowMoreActions(false); handleExit(`/map/${map.slug}`) }}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text hover:bg-bg/60 w-full text-left transition-colors"
                 >
-                  Bekijken →
-                </button>
-                {/* Undo */}
+                  {t.editor.view}
+                                  </button>
+                                  {/* Undo */}
                 <button
                   onClick={() => { setShowMoreActions(false); editor.undo() }}
                   disabled={!editor.canUndo}
@@ -340,9 +340,9 @@ export default function LayoutEditorPage() {
                   onClick={() => { setShowMoreActions(false); tour.start() }}
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-text hover:bg-bg/60 w-full text-left transition-colors"
                 >
-                  ? Rondleiding
-                </button>
-                {/* Sun preview — outdoor only */}
+                  ? {t.editor.tourBtn}
+                                  </button>
+                                  {/* Sun preview — outdoor only */}
                 {editor.mapType === 'outdoor' && (
                   <>
                     <div className="mx-2 my-1 h-px bg-border" />
@@ -350,8 +350,8 @@ export default function LayoutEditorPage() {
                       onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left transition-colors"
                     >
-                      ☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}
-                    </button>
+                      ☀ {showSunPreview ? t.editor.sunDisable : t.editor.sunEnable}
+                                          </button>
                   </>
                 )}
               </div>
@@ -412,7 +412,7 @@ export default function LayoutEditorPage() {
             <div className="relative">
               <button
                 onClick={() => setShowMoreActions(v => !v)}
-                aria-label="Meer"
+                aria-label={t.editor.moreBtn}
                 className="w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg leading-none"
               >
                 ⋮
@@ -431,7 +431,7 @@ export default function LayoutEditorPage() {
                       <>
                         <div className="mx-2 my-1 h-px bg-border" />
                         <button onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
-                          className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left">☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}</button>
+                          className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left">☀ {showSunPreview ? t.editor.sunDisable : t.editor.sunEnable}</button>
                       </>
                     )}
                   </div>
@@ -624,7 +624,7 @@ export default function LayoutEditorPage() {
             {editor.shadowCasters.length > 0 && (
               <div className="p-3 border-b border-border">
                 <p className="text-xs font-bold text-text-muted uppercase tracking-wide mb-2">
-                  Schaduw objecten ({editor.shadowCasters.length})
+                  {t.editor.shadowObjectsHeader} ({editor.shadowCasters.length})
                 </p>
                 <div className="flex flex-col gap-0.5">
                   {editor.shadowCasters.map((sc) => {
@@ -652,11 +652,11 @@ export default function LayoutEditorPage() {
                         </span>
                         {/* Name */}
                         <span className={`flex-1 truncate ${isSelected ? 'font-semibold text-text' : 'text-text-muted'}`}>
-                          {sc.label || (isRect ? 'Gebouw' : 'Boom')}
+                          {sc.label || (isRect ? t.editor.shadowCasterBuilding : t.editor.shadowCasterTree)}
                         </span>
                         {/* Off-canvas indicator */}
                         {!onCanvas && (
-                          <span className="shrink-0 text-[9px] text-pumpkin-swirl" title="Buiten canvas">
+                          <span className="shrink-0 text-[9px] text-pumpkin-swirl" title={t.editor.offCanvas}>
                             ◈
                           </span>
                         )}

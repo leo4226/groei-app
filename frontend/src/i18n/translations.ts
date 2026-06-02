@@ -209,7 +209,30 @@ export type Translations = {
     legendObjects: string // "Objects" / "Objecten"
     legendShadows: string // "Shadows" / "Schaduwen"
     legendPlace: string   // "Place" / "Plaats"
+    legendZonesDraw: string // "Draw zones" / "Zones tekenen"
     shadowObject: string  // "Shadow" / "Schaduw"  // { container: "Pot / Tray" / "Pot / Bak", hardscape: "Garden object" / "Tuinobject", utility: "Utility" / "Nutsvoorziening" }
+    shadowObjectTool: string // "Shadow object" / "Schaduw object" — EditorToolbar tooltip
+    // Auto-fence
+    fenceGarden: string   // "Fence the garden" / "Omhein de tuin"
+    autoFenceDesc: string // "Place fences around your garden automatically" / "Zet automatisch hekken rondom je tuin"
+    fenceNeedsZone: string // "Draw a zone first" / "Teken eerst een zone"
+    fenceConfirm: string   // "Fences already exist. Add a perimeter fence anyway?" / "Er staan al hekken. Toch een omheining rondom de tuin toevoegen?"
+    // Shadow caster presets
+    shadowCasterRectDesc: string  // "Draw a rectangle — wall/shed/neighbour" / "Teken een rechthoek — muur/schuur/burenpand"
+    shadowCasterCircleLabel: string  // "Tree / Plant" / "Boom / Plant"
+    shadowCasterCircleDesc: string   // "Draw a circle — tree, tall hedge" / "Teken een cirkel — boom, hoge haag"
+    // Layout editor header
+    view: string          // "View →" / "Bekijken →"
+    tourBtn: string       // "Tour" / "Rondleiding"
+    moreBtn: string       // "More" / "Meer"
+    // Sun perimeter
+    sunToggleTitle: string  // "Show sun perimeter" / "Toon zon-perimeter"
+    sunOn: string           // "On" / "Aan"
+    sunOff: string          // "Off" / "Uit"
+    sunDisable: string      // "Disable sun perimeter" / "Zon-perimeter uit"
+    sunEnable: string       // "Show sun perimeter" / "Toon zon-perimeter"
+    shadowObjectsHeader: string // "Shadow objects" / "Schaduw objecten"
+    offCanvas: string       // "Off canvas" / "Buiten canvas"
     // Shadow caster properties panel
     shadowCasterBuilding: string   // "Gebouw" / "Building"
     shadowCasterTree: string       // "Boom" / "Tree"

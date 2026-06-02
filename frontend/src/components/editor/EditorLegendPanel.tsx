@@ -66,10 +66,10 @@ export default function EditorLegendPanel({
     <div className="p-3 border-b border-border flex flex-col gap-3">
 
       {/* ── Modus (always open) ── */}
-      <div>
-        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-          Modus
-        </p>
+            <div>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
+                {t.editor.mode}
+              </p>
         <div className="flex gap-1">
           <button
             onClick={() => onSetMapType('outdoor')}
@@ -96,7 +96,7 @@ export default function EditorLegendPanel({
 
       {/* ── Zones tekenen ── */}
       <div>
-        <SectionHeader label="Zones tekenen" open={open.zones} onToggle={() => toggle('zones')} />
+        <SectionHeader label={t.editor.legendZonesDraw} open={open.zones} onToggle={() => toggle('zones')} />
         {open.zones && (
           <div className="flex flex-col gap-1 mt-2">
             {zoneTypes.map((type) => {
@@ -146,9 +146,9 @@ export default function EditorLegendPanel({
           >
             <span className="text-base shrink-0">🧱</span>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-text leading-tight">Omhein de tuin</div>
+              <div className="text-xs font-semibold text-text leading-tight">{t.editor.fenceGarden}</div>
               <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                {canFenceGarden ? 'Zet automatisch hekken rondom je tuin' : 'Teken eerst een zone'}
+                {canFenceGarden ? t.editor.autoFenceDesc : t.editor.fenceNeedsZone}
               </div>
             </div>
           </button>
@@ -158,7 +158,7 @@ export default function EditorLegendPanel({
       {/* ── Objecten plaatsen (outdoor mode only) ── */}
       {mapType === 'outdoor' && (
         <div>
-          <SectionHeader label="Objecten" open={open.objects} onToggle={() => toggle('objects')} />
+          <SectionHeader label={t.editor.legendObjects} open={open.objects} onToggle={() => toggle('objects')} />
           {open.objects && (
             <div className="flex flex-col gap-1 mt-2">
               {HARDSCAPE_PRESETS.map((p) => {
@@ -229,10 +229,10 @@ export default function EditorLegendPanel({
                 <span className="w-3 h-3 rounded-sm shrink-0 mt-0.5" style={{ backgroundColor: '#6b7280' }} />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    Gebouw
+                    {t.editor.shadowCasterBuilding}
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                    Teken een rechthoek — muur/schuur/burenpand
+                    {t.editor.shadowCasterRectDesc}
                   </div>
                 </div>
               </button>
@@ -249,10 +249,10 @@ export default function EditorLegendPanel({
                 <span className="w-3 h-3 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: '#4ade80' }} />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    Boom / Plant
+                    {t.editor.shadowCasterCircleLabel}
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                    Teken een cirkel — boom, hoge haag
+                    {t.editor.shadowCasterCircleDesc}
                   </div>
                 </div>
               </button>
