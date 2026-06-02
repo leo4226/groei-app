@@ -178,6 +178,26 @@ export default function LayoutEditorPage() {
     }
   }
 
+  // Auto-fence: add 4 fence segments fully enclosing the garden's bounding box (#21).
+  function fenceTheGarden() {
+    if (!gardenBounds) return
+    if (editor.zones.some((z) => z.type === 'fence') &&
+        !window.confirm('Er staan al hekken. Toch een omheining rondom de tuin toevoegen?')) return
+    const { minX, minY, maxX, maxY } = gardenBounds
+    const OFFSET = 3   // gap between the garden edge and the fence
+    const THIN = 10    // fence footprint thickness (px)
+    const W = maxX - minX
+    const top = minY - OFFSET - THIN
+    const left = minX - OFFSET - THIN
+    const right = maxX + OFFSET
+    const outerH = (maxY - minY) + 2 * (OFFSET + THIN)   // verticals span past the corners
+    editor.addZone(minX, top, W, THIN, 'fence')          // top
+    editor.addZone(minX, maxY + OFFSET, W, THIN, 'fence') // bottom
+    editor.addZone(left, top, THIN, outerH, 'fence')     // left
+    editor.addZone(right, top, THIN, outerH, 'fence')    // right
+    editor.setTool('select')
+  }
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName
@@ -564,6 +584,8 @@ export default function LayoutEditorPage() {
               onSetShadowCasterPreset={editor.setShadowCasterPreset}
               shadowMode={shadowMode}
               onSetShadowMode={setShadowMode}
+              canFenceGarden={!!gardenBounds}
+              onFenceGarden={fenceTheGarden}
             />
             {selectedZone && !selectedWallElement && (
               <ZonePropertiesPanel
