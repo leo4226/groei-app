@@ -1,7 +1,6 @@
 import type { SpotInspectorResult, SpeciesSuggestion } from '../../hooks/useSpotInspector'
 import { useT } from '../../context/LanguageContext'
 
-const MONTH_LABELS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 const MONTH_NAMES_NL = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
 
 interface Props {
@@ -47,9 +46,9 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
                     <div
                       className={`w-full rounded-sm ${isNow ? 'bg-amber-400' : 'bg-amber-200'}`}
                       style={{ height: `${Math.max(height, 2)}%` }}
-                      title={`${MONTH_LABELS[i]}: ${sun.toFixed(1)}u`}
+                      title={`${MONTH_NAMES_NL[i]}: ${sun.toFixed(1)}u`}
                     />
-                    <span className="text-[8px] text-text-muted">{MONTH_LABELS[i]}</span>
+                    <span className={`text-[7px] leading-none ${isNow ? 'text-text font-semibold' : 'text-text-muted'}`}>{MONTH_NAMES_NL[i]}</span>
                   </div>
                 )
               })}
