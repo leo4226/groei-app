@@ -58,7 +58,7 @@ export default function EditorLegendPanel({
       {/* ── Modus (always open) ── */}
       <div>
         <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-          Modus
+          {t.editor.mode}
         </p>
         <div className="flex gap-1">
           <button
@@ -86,7 +86,7 @@ export default function EditorLegendPanel({
 
       {/* ── Zones tekenen ── */}
       <div>
-        <SectionHeader label="Zones tekenen" open={open.zones} onToggle={() => toggle('zones')} />
+        <SectionHeader label={t.editor.drawZones} open={open.zones} onToggle={() => toggle('zones')} />
         {open.zones && (
           <div className="flex flex-col gap-1 mt-2">
             {zoneTypes.map((type) => {
@@ -129,7 +129,7 @@ export default function EditorLegendPanel({
       {/* ── Objecten plaatsen (outdoor mode only) ── */}
       {mapType === 'outdoor' && (
         <div>
-          <SectionHeader label="Objecten" open={open.objects} onToggle={() => toggle('objects')} />
+          <SectionHeader label={t.editor.legendObjects} open={open.objects} onToggle={() => toggle('objects')} />
           {open.objects && (
             <div className="flex flex-col gap-1 mt-2">
               {HARDSCAPE_PRESETS.map((p) => {
@@ -153,7 +153,7 @@ export default function EditorLegendPanel({
                         {p.label}
                       </div>
                       <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                        {p.category === 'container' ? 'Pot / Bak' : p.category === 'hardscape' ? 'Tuinobject' : 'Nutsvoorziening'}
+                        {p.category === 'container' ? t.editor.legendLabels.container : p.category === 'hardscape' ? t.editor.legendLabels.hardscape : t.editor.legendLabels.utility}
                       </div>
                     </div>
                   </button>

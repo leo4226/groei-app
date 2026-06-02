@@ -55,7 +55,7 @@ export default function EditorToolbar({
         className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'shadow_caster' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
-        title="Schaduw object"
+        title={t.editor.toolbar.shadowCaster}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="10" width="12" height="10" rx="1" />
