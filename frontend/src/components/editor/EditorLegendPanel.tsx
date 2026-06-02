@@ -18,6 +18,8 @@ interface Props {
   onSetShadowCasterPreset: (preset: 'building' | 'tree') => void
   shadowMode: boolean
   onSetShadowMode: (on: boolean) => void
+  canFenceGarden: boolean
+  onFenceGarden: () => void
 }
 
 function SectionHeader({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
@@ -51,6 +53,8 @@ export default function EditorLegendPanel({
   onSetObjectPreset,
   shadowMode,
   onSetShadowMode,
+  canFenceGarden,
+  onFenceGarden,
 }: Props) {
   const t = useT()
   const zoneTypes = mapType === 'indoor' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
@@ -131,6 +135,25 @@ export default function EditorLegendPanel({
           </div>
         )}
       </div>
+
+      {/* ── Omhein de tuin automatisch (outdoor only) ── */}
+      {mapType === 'outdoor' && (
+        <div className="p-3 border-b border-border">
+          <button
+            onClick={onFenceGarden}
+            disabled={!canFenceGarden}
+            className="flex items-center gap-2 px-2 py-2 w-full rounded-lg text-left transition-colors bg-bg hover:bg-primary/10 border border-border disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="text-base shrink-0">🧱</span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-text leading-tight">Omhein de tuin</div>
+              <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                {canFenceGarden ? 'Zet automatisch hekken rondom je tuin' : 'Teken eerst een zone'}
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* ── Objecten plaatsen (outdoor mode only) ── */}
       {mapType === 'outdoor' && (
