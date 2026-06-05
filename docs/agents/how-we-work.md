@@ -70,16 +70,26 @@ same in both.
 
 ---
 
-## 2. The two places work lives (do not mix them up)
+## 2. Where work lives (do not mix these up)
 
 | System | Where | What goes here | Example |
 |---|---|---|---|
 | **Ideas log** | the file `docs/plans/TODO.md` | Half-formed thoughts, "maybe we should…", things to explore later. **Not bugs.** | "Maybe base plant suggestions on soil moisture too" |
 | **Issue tracker** | **GitHub Issues** (repo `leo4226/groei-app`) | Concrete bugs and tasks that need doing | "Map view: south-facing cells show as shaded" |
+| **Full plans** | a file in `.hermes/plans/` **+** one umbrella tracking Issue | A multi-task implementation plan for a larger piece of work, too big for a single throwaway issue | `.hermes/plans/2026-06-05-addplant-robustness.md` ↔ its epic Issue |
 
 You work from **GitHub Issues**, not from `TODO.md`. `TODO.md` is Leon's private
 scratchpad. If Leon points you at a TODO idea and says "make this real", first turn
 it into an Issue (§6), then work the Issue.
+
+**Full plans** keep their detail in a markdown file under `.hermes/plans/` (the rich,
+phase-by-phase document) and get **one umbrella tracking Issue** that links to that
+file and carries a task checklist mirroring its phases. The plan file is the source of
+truth; the Issue is how the work is claimed, sequenced, and merged. When a plan's
+phases touch the same files or must run in order, **one agent works the whole epic as a
+unit** (claim it with `in-progress`, §3) rather than fanning the tasks out to parallel
+agents. Split a plan into separate Issues only when its slices are genuinely
+independent (different files, no ordering).
 
 ---
 
@@ -256,8 +266,8 @@ Example: `fix(map): correct sun heatmap orientation on south cells (#13)`
 ## 8. Testing — always before committing
 
 ```bash
-# Backend (Python). The water_amount test is broken for unrelated reasons — skip it.
-cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
+# Backend (Python)
+cd backend && python -m pytest -q
 
 # Frontend (TypeScript) — must print nothing and exit 0
 cd frontend && npx tsc --noEmit
