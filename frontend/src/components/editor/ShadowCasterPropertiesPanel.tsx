@@ -204,11 +204,11 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
           <p className="text-xs text-text-muted block mb-1">{t.editor.shadowCasterPosSize}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <label className="block">
-              <span className="text-[10px] text-text-muted block">X (m)</span>
+              <span className="text-[10px] text-text-muted block">{t.editor.props.xM}</span>
               <NumInput value={Math.round(circleDisplay.xM * 10) / 10} onChange={(v) => handleCircleChange('xM', v)} opts={{ step: 0.5 }} />
             </label>
             <label className="block">
-              <span className="text-[10px] text-text-muted block">Y (m)</span>
+              <span className="text-[10px] text-text-muted block">{t.editor.props.yM}</span>
               <NumInput value={Math.round(circleDisplay.yM * 10) / 10} onChange={(v) => handleCircleChange('yM', v)} opts={{ step: 0.5 }} />
             </label>
             <label className="block">
