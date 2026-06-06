@@ -203,10 +203,10 @@ export const nl: Translations = {
       delete: 'Verwijderen',
       preview: 'Voorbeeld',
       edit: 'Bewerken',
+      shadowCaster: 'Schaduw object',
       back: '← Terug',
     },
     save: {
-      shadowCaster: 'Schaduw object',
       saved: 'Opgeslagen',
       saving: 'Opslaan...',
       unsaved: 'Niet opgeslagen',

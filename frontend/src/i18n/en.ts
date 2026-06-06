@@ -203,10 +203,10 @@ export const en: Translations = {
       delete: 'Delete',
       preview: 'Preview',
       edit: 'Edit',
+      shadowCaster: 'Shadow object',
       back: '← Back',
     },
     save: {
-      shadowCaster: 'Shadow object',
       saved: 'Saved',
       saving: 'Saving...',
       unsaved: 'Unsaved changes',
