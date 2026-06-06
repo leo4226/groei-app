@@ -90,6 +90,13 @@ SCHEMA = """
         avatar TEXT,
         household_id INTEGER
     );
+    CREATE TABLE garden_water_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        watered_at DATE NOT NULL,
+        watered_by INTEGER,
+        water_amount DOUBLE PRECISION,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 """
 
 
