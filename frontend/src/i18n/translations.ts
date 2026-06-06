@@ -928,6 +928,8 @@ export type Translations = {
     mapSettingsLabel: string               // "Instellingen…" / "Settings…"
     sheetAttentionCount: (n: number) => string  // "3 planten hebben aandacht"
     sheetAllGood: string                         // "Alles op schema"
+    unplacedTitle: string                        // "Nog te plaatsen" — unplaced tray header
+    unplacedCount: (n: number) => string         // "{n} niet geplaatst"
   }
 
   garden: {

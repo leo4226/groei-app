@@ -911,6 +911,8 @@ export const en: Translations = {
     mapSettingsLabel: 'Settings…',
     sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`,
     sheetAllGood: 'All on schedule',
+    unplacedTitle: 'To place',
+    unplacedCount: (n) => `${n} unplaced`,
   },
 
   garden: {
