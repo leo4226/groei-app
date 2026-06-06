@@ -283,8 +283,8 @@ export default function MapPage() {
         <MapTopBar map={map} allMaps={maps} />
       </div>
 
-      {/* Top-right: action cluster + biodiversity pill stacked */}
-      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 landscape-mobile-hide">
+      {/* Action cluster: top-right in portrait, bottom-center in landscape */}
+      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 landscape-action-bottom">
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={water.gardenWater?.status ?? 'dry'}
@@ -301,7 +301,9 @@ export default function MapPage() {
           onAddPot={() => setShowPotPicker(true)}
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
         />
-        {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" />}
+        <div className="landscape-mobile-hide">
+          {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" />}
+        </div>
       </div>
 
       {/* Bottom sheet — care needs OR sun controls */}

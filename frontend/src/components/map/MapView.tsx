@@ -5,6 +5,7 @@ import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { screenToSVG } from '../../utils/svgCoords'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
 import { useMapInteraction } from '../../hooks/useMapInteraction'
 import ObjectsLayer from './ObjectsLayer'
 import PlantsLayer from './PlantsLayer'
@@ -53,6 +54,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   const svgRef = useRef<SVGSVGElement>(null)
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
+  const isLandscapeMobile = useLandscapeMobile()
 
   // Parse canvas_data for live zone rendering
   const canvasData = useMemo<CanvasData | null>(() => {
@@ -178,7 +180,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       <svg
         ref={svgRef}
         viewBox={computeZoomViewBox(isHouseMap ? map.viewbox : gardenViewBox || map.viewbox || '0 0 680 680', zoom)}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio={isLandscapeMobile ? "xMidYMax slice" : "xMidYMid meet"}
         className="absolute"
         style={{
           pointerEvents: 'none',
