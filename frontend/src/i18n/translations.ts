@@ -162,6 +162,7 @@ export type Translations = {
       delete: string
       preview: string
       edit: string
+      shadowCaster: string
       back: string
     }
     save: {
@@ -199,6 +200,8 @@ export type Translations = {
       lightTree: string   // "Light tree" / "Lichte boom"
       rotation: string    // "Rotation" / "Rotatie"
       reset: string       // "Reset" / "Resetten"
+      xM: string   // "X (m)"
+      yM: string   // "Y (m)"
     }
     loading: string
     notFound: string
@@ -207,6 +210,7 @@ export type Translations = {
     mode: string          // "Mode" / "Modus"
     legendZones: string   // "Zones" / "Zones"
     legendObjects: string // "Objects" / "Objecten"
+    drawZones: string   // "Draw zones" / "Zones tekenen"
     legendShadows: string // "Shadows" / "Schaduwen"
     legendPlace: string   // "Place" / "Plaats"
     shadowObject: string  // "Shadow" / "Schaduw"  // { container: "Pot / Tray" / "Pot / Bak", hardscape: "Garden object" / "Tuinobject", utility: "Utility" / "Nutsvoorziening" }
