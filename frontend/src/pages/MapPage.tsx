@@ -221,8 +221,8 @@ export default function MapPage() {
 
   return (
     <div className="relative h-[calc(100dvh-5rem)] [@media(orientation:landscape)and(max-height:500px)]:h-dvh overflow-hidden">
-      {/* Map fills viewport */}
-      <div className="absolute inset-0">
+      {/* Map fills safe area between top pills and bottom sheet */}
+      <div className="absolute top-12 bottom-14 left-0 right-0">
         <MapView
           map={map}
           plants={plants}
