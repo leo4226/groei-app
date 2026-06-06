@@ -237,12 +237,12 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
         {modalOpen && (
           <div
             onClick={() => setModalOpen(false)}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center px-4 pt-4 pb-[calc(1rem+5rem)]"
             role="dialog"
             aria-modal="true"
             aria-label={t.garden.biodiversity.title}
           >
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl">
               <GardenBiodiversityCardFull data={data} slug={slug} />
             </div>
           </div>
