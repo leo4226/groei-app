@@ -158,9 +158,13 @@ export function useSunVisualization(options: {
   }, [])
 
   const toggleInspectorMode = useCallback(() => {
+    if (!sunModeActive) {
+      toggleSunMode()
+    }
+    setViewModeRaw('heatmap')
     setInspectorMode(m => !m)
     clearInspector()
-  }, [clearInspector])
+  }, [clearInspector, sunModeActive, toggleSunMode])
 
   const handleCellTap = useCallback((cell: HeatmapCell) => {
     if (inspectorMode) {
