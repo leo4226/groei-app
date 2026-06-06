@@ -10,9 +10,10 @@ interface Props {
   sunContent: ReactNode              // SunControls instance
   /** When true (sun-mode activates), force open on next render. */
   autoExpand: boolean
+  hidden?: boolean
 }
 
-export default function MapBottomSheet({ mode, attentionCount, careContent, sunContent, autoExpand }: Props) {
+export default function MapBottomSheet({ mode, attentionCount, careContent, sunContent, autoExpand, hidden }: Props) {
   const t = useT()
   const [expanded, setExpanded] = useState(autoExpand)
 
@@ -23,6 +24,8 @@ export default function MapBottomSheet({ mode, attentionCount, careContent, sunC
     setExpanded(autoExpand)
     setPrevAutoExpand(autoExpand)
   }
+
+  if (hidden) return null
 
   if (mode === 'closed') return null
 
