@@ -57,6 +57,7 @@ export default function MapPage() {
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
   const [showLabels, setShowLabels] = useState(true)
+  const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
 
   async function handleCreateContainer(preset: ObjectPreset) {
@@ -302,7 +303,7 @@ export default function MapPage() {
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
         />
         <div className="landscape-mobile-hide">
-          {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" />}
+          {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" onModalOpenChange={setBiodiversityModalOpen} />}
         </div>
       </div>
 
@@ -312,6 +313,7 @@ export default function MapPage() {
           mode={sheetMode}
           attentionCount={attentionCount}
           autoExpand={sun.active}
+          hidden={biodiversityModalOpen}
           careContent={<CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />}
           sunContent={
             <SunControls

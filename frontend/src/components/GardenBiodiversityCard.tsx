@@ -6,6 +6,7 @@ import type { GardenBiodiversityOut, GardenSuggestionsOut } from '../types'
 interface Props {
   slug: string
   mode?: 'pill' | 'card'  // default: 'card'
+  onModalOpenChange?: (open: boolean) => void
 }
 
 const RING_BG = 'var(--color-border-soft)'
@@ -185,7 +186,7 @@ function GardenBiodiversityCardFull({ data, slug }: { data: GardenBiodiversityOu
   )
 }
 
-export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
+export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpenChange }: Props) {
   const t = useT()
   const [data, setData] = useState<GardenBiodiversityOut | null>(null)
   const [loading, setLoading] = useState(true)
@@ -209,6 +210,10 @@ export default function GardenBiodiversityCard({ slug, mode = 'card' }: Props) {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [modalOpen])
+
+  useEffect(() => {
+    onModalOpenChange?.(modalOpen)
+  }, [modalOpen, onModalOpenChange])
 
   if (mode === 'pill') {
     if (loading || error || !data || data.species_count === 0) return null
