@@ -1,3 +1,4 @@
+import { useState, useRef, useCallback } from 'react'
 import { useT } from '../../context/LanguageContext'
 import { WaterStatusIcon } from '../PlantStatusIcon'
 import type { GardenWaterStatus } from '../../api/client'
@@ -22,6 +23,22 @@ export default function MapActionCluster({
   onAddPlant,
 }: Props) {
   const t = useT()
+  const [showGpsHint, setShowGpsHint] = useState(false)
+  const gpsHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showGpsHintTemporarily = useCallback(() => {
+    setShowGpsHint(true)
+    if (gpsHintTimer.current) clearTimeout(gpsHintTimer.current)
+    gpsHintTimer.current = setTimeout(() => setShowGpsHint(false), 3000)
+  }, [])
+
+  const handleSunClick = useCallback(() => {
+    if (sunAvailable) {
+      onToggleSun()
+    } else {
+      showGpsHintTemporarily()
+    }
+  }, [sunAvailable, onToggleSun, showGpsHintTemporarily])
 
   const iconBtn = "w-8 h-8 flex items-center justify-center rounded-full transition-colors"
 
@@ -36,23 +53,31 @@ export default function MapActionCluster({
 
       {/* Sun — indoor maps skip */}
       {isOutdoor && (
-        <button
-          onClick={sunAvailable ? onToggleSun : undefined}
-          title={t.mapPage.sun}
-          className={`${iconBtn} ${
-            sunActive ? 'bg-amber-400/30 text-amber-700'
-            : sunAvailable ? 'text-amber-600 hover:bg-amber-400/15'
-            : 'text-amber-600/40 cursor-not-allowed'
-          }`}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="5" />
-            <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-            <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-          </svg>
-        </button>
+        <div className="relative">
+          <button
+            onClick={handleSunClick}
+            title={t.mapPage.sun}
+            className={`${iconBtn} ${
+              sunActive ? 'bg-amber-400/30 text-amber-700'
+              : sunAvailable ? 'text-amber-600 hover:bg-amber-400/15'
+              : 'text-amber-600/40 cursor-not-allowed'
+            }`}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.72" y2="19.72" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          </button>
+          {showGpsHint && (
+            <div className="absolute top-full right-0 mt-2 z-50 bg-black/85 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+              Stel eerst de locatie van je tuin in om de zon te gebruiken
+              <div className="absolute bottom-full right-4 w-2 h-2 bg-black/85 rotate-45" />
+            </div>
+          )}
+        </div>
       )}
 
       {/* Inspect */}
