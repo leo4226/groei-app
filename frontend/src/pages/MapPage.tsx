@@ -26,6 +26,8 @@ import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
 import * as clientApis from '../api/client'
 import { useT } from '../context/LanguageContext'
+import UnplacedPlantsTray from '../components/map/UnplacedPlantsTray'
+import { selectUnplacedPlants, viewboxCenter } from '../components/map/unplacedPlants'
 
 export default function MapPage() {
   const t = useT()
@@ -34,6 +36,11 @@ export default function MapPage() {
   const location = useLocation()
   const maps = useFloreren((s) => s.maps)
   const loadMaps = useFloreren((s) => s.loadMaps)
+  const allPlants = useFloreren((s) => s.plants)
+  const loadPlantsStore = useFloreren((s) => s.loadPlants)
+  useEffect(() => {
+    if (allPlants.length === 0) loadPlantsStore()
+  }, [loadPlantsStore])
 
   const mapData = useMapData(slug)
   const { refresh: refreshMapData } = mapData
@@ -52,6 +59,24 @@ export default function MapPage() {
   }, [loadMaps])
 
   const { map, plants, objects, groundZones, loading } = mapData
+
+  const unplacedPlants = useMemo(() => selectUnplacedPlants(allPlants), [allPlants])
+
+  const handlePlaceUnplaced = useCallback(async (plantId: number) => {
+    if (!map) return
+    const pos = viewboxCenter(map.viewbox)
+    try {
+      await clientApis.plants.setPosition(plantId, {
+        map_id: map.id,
+        map_x: pos.x,
+        map_y: pos.y,
+        ground_zone_id: null,
+      })
+      await Promise.all([refreshMapData(), loadPlantsStore()])
+    } catch (e) {
+      console.error('Failed to place plant on map', e)
+    }
+  }, [map, refreshMapData, loadPlantsStore])
 
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
@@ -282,6 +307,11 @@ export default function MapPage() {
       {/* Top-left: garden pill */}
       <div className="absolute top-3 left-3 z-20 landscape-mobile-hide">
         <MapTopBar map={map} allMaps={maps} />
+      </div>
+
+      {/* Left, below the garden pill: unplaced-plants tray */}
+      <div className="absolute top-16 left-3 z-20 landscape-mobile-hide">
+        <UnplacedPlantsTray plants={unplacedPlants} onPlace={handlePlaceUnplaced} />
       </div>
 
       {/* Action cluster: top-right in portrait, bottom-center in landscape */}
