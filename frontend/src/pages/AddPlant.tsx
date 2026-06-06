@@ -636,8 +636,7 @@ export default function AddPlant() {
           </FormRow>
         </Card>
 
-        {/* ——— § II · Placement Card ——— */}
-        {showDetails && (
+        {/* ——— § II · Placement Card (zone always visible; rest under Details) ——— */}
         <Card
           eyebrow={t.addPlant.secPlacement}
           title={t.addPlant.secPlacementTitle}
@@ -665,6 +664,7 @@ export default function AddPlant() {
             />
           </FormRow>
 
+          {showDetails && (<>
           {/* Light measurement */}
           <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
@@ -739,8 +739,8 @@ export default function AddPlant() {
               onChange={setSubstrate}
             />
           </FormRow>
+          </>)}
         </Card>
-        )}
 
         {/* ——— § III · Care Card ——— */}
         {!showDetails ? (
