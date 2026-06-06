@@ -334,10 +334,11 @@ export default function MapPage() {
       {/* Water sheet */}
       {water.showPicker && (
         <WaterLogSheet
+          actionType="water"
           pickerDate={water.pickerDate}
           onPickerDateChange={water.setPickerDate}
           busy={water.watering}
-          hasExistingWatering={!!water.gardenWater?.watered_at}
+          hasExistingLog={!!water.gardenWater?.watered_at}
           onSave={handleWaterSave}
           onDelete={handleWaterDelete}
           onClose={water.closePicker}
