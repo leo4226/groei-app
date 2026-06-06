@@ -3,22 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import type { LocalPlant } from '../data/plants-dataset'
 import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
-
-const DUTCH_TYPE_TO_SYSTEM: Record<string, string> = {
-  vaste_plant: 'herb',
-  heester: 'shrub',
-  klimmer: 'climber',
-  gras: 'grass',
-  bol: 'bulb',
-  eenjarig: 'flower',
-  boom: 'tree',
-}
 import { useFloreren } from '../store/useFloreren'
-import { CARE_TYPE_INFO } from '../types'
 import type { CareType, CareScheduleInput } from '../types'
 import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
-import { icons } from '../api/client'
+import { icons, species as speciesApi } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 import EntryBanner from '../components/add/EntryBanner'
 import { displayToIso } from '../utils/dateFormat'
@@ -31,93 +20,21 @@ import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
 import CalendarPreview from '../components/add/CalendarPreview'
 import SpeciesReference from '../components/add/SpeciesReference'
+import {
+  isIdentifyPrefill,
+  findMatchingIcon,
+  buildSchedules,
+  normalizePrefill,
+  buildCreatePayload,
+  sunPreferenceToTile,
+  SUN_DB_TO_TILE,
+  TYPE_TO_FORM,
+} from './addPlant/prefill'
 
 type AddPlantLocState = {
   from?: 'identify' | 'manual' | 'pick'
   prefill?: LocalPlant | { name: string } | IdentifyCommitResult
 } | null
-
-function isIdentifyPrefill(p: unknown): p is IdentifyCommitResult {
-  return !!p && typeof p === 'object' && 'name_nl_suggested' in (p as Record<string, unknown>)
-}
-
-/** Try to find the best-matching icon for a LocalPlant in the icon catalog. */
-function findMatchingIcon(plant: LocalPlant, catalog: PlantIcon[]): string | null {
-  // 1. Check if iconKey from dataset exists in catalog
-  if (plant.iconKey) {
-    const direct = catalog.find(i => i.id === plant.iconKey)
-    if (direct) return direct.variant_of || direct.id
-  }
-  // 2. Match by exact Latin name
-  if (plant.latinName) {
-    const latin = plant.latinName.toLowerCase()
-    const exact = catalog.find(i => i.sci?.toLowerCase() === latin)
-    if (exact) return exact.variant_of || exact.id
-  }
-  // 3. Match by exact Dutch name
-  if (plant.dutchName) {
-    const name = plant.dutchName.toLowerCase()
-    const byName = catalog.find(i => i.name?.toLowerCase() === name)
-    if (byName) return byName.variant_of || byName.id
-  }
-  // 4. Match by genus (first word of Latin name)
-  if (plant.latinName) {
-    const genus = plant.latinName.split(' × ')[0].split(' ')[0].toLowerCase()
-    const byGenus = catalog.find(i => i.sci?.toLowerCase().startsWith(genus) || i.id === genus)
-    if (byGenus) return byGenus.variant_of || byGenus.id
-  }
-  return null
-}
-
-/** Map LocalPlant waterNeeds to a water interval in days. */
-const WATER_NEEDS_TO_DAYS: Record<string, number> = {
-  laag: 14,
-  gemiddeld: 7,
-  hoog: 3,
-}
-
-/** Map database sunRequirement values to TileGrid IDs. */
-const SUN_DB_TO_TILE: Record<string, string> = {
-  shade: 'shade',
-  partial_sun: 'indirect',
-  full_sun: 'full-sun',
-}
-
-/** Reverse: map TileGrid sunRequirement IDs back to database values. */
-const SUN_TILE_TO_DB: Record<string, string> = {
-  shade: 'shade',
-  indirect: 'partial_sun',
-  'full-sun': 'full_sun',
-}
-
-/** Map database plant type to form type. */
-const TYPE_TO_FORM: Record<string, string> = {
-  boom: 'tree',
-  heester: 'tree',
-  gras: 'pot',
-  bol: 'pot',
-  vaste_plant: 'pot',
-  eenjarig: 'pot',
-  klimmer: 'pot',
-}
-
-/** Build an initial schedules map, optionally prefilled from a LocalPlant. */
-function buildInitialSchedules(prefill: unknown): Record<CareType, { enabled: boolean; days: number }> {
-  const initial: Record<string, { enabled: boolean; days: number }> = {}
-  for (const [type, info] of Object.entries(CARE_TYPE_INFO)) {
-    let days = info.defaultIndoor
-    if (
-      type === 'water' &&
-      prefill &&
-      !isIdentifyPrefill(prefill) &&
-      'waterNeeds' in (prefill as Record<string, unknown>)
-    ) {
-      days = WATER_NEEDS_TO_DAYS[(prefill as LocalPlant).waterNeeds] ?? days
-    }
-    initial[type] = { enabled: type === 'repot_check' ? false : days > 0, days }
-  }
-  return initial as Record<CareType, { enabled: boolean; days: number }>
-}
 
 export default function AddPlant() {
   const t = useT()
@@ -125,6 +42,8 @@ export default function AddPlant() {
   const location = useLocation()
   const locState = (location.state ?? null) as AddPlantLocState
   const prefill = locState?.prefill
+  // Single consolidated view of the prefill across all three entry paths.
+  const norm = useMemo(() => normalizePrefill(prefill), [prefill])
   const remountKey = useMemo(() => Date.now(), [prefill])
   const isFromDatabase = !!(prefill && 'latinName' in (prefill as Record<string, unknown>))
   const isFromIdentify = isIdentifyPrefill(prefill)
@@ -241,7 +160,7 @@ export default function AddPlant() {
   }
 
   const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
-    () => buildInitialSchedules(prefill)
+    () => buildSchedules(prefill, norm.careThresholds)
   )
 
   // Derive plant_type from selected icon's cat field
@@ -259,6 +178,24 @@ export default function AddPlant() {
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => {})
   }, [])
+
+  // Photo-ID path: lazily fetch the species ecology profile and fill the sun
+  // requirement from it. Non-blocking and fire-and-forget (mirrors the catalog
+  // load). `sun_preference` is null until the /ecology endpoint runs lazy
+  // enrichment, so this is the call that triggers and then consumes it. Never
+  // clobber a sun value the user has already picked.
+  useEffect(() => {
+    if (norm.kind !== 'identify' || norm.speciesId == null) return
+    let cancelled = false
+    speciesApi.ecology(norm.speciesId)
+      .then(eco => {
+        if (cancelled) return
+        const tile = sunPreferenceToTile(eco.sun_preference)
+        if (tile) setSunRequirement(prev => prev ?? tile)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [norm.kind, norm.speciesId])
 
   // Sync form fields when prefill changes from a later navigation (e.g. pick from list)
   useEffect(() => {
@@ -321,7 +258,7 @@ export default function AddPlant() {
         baseIconRef.current = 'pending'
         setIconKey(p.iconKey ?? null)
       }
-      setSchedules(buildInitialSchedules(prefill))
+      setSchedules(buildSchedules(prefill, norm.careThresholds))
       return
     }
     if ('name' in prefill) {
@@ -381,25 +318,25 @@ export default function AddPlant() {
       const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
-      const plant = await addPlant({
-        name: (name ?? '').trim(),
-        species: (species ?? '').trim() || undefined,
-        location_id: locationId,
-        map_id: placedMap?.id,
-        map_x: mapPos?.x,
-        map_y: mapPos?.y,
-        pot_size_cm: potSize ? parseInt(potSize) : undefined,
-        acquired_date: acquiredDateInput.trim() || displayToIso(acquiredDateInput) || undefined,
-        notes: notes.trim() || undefined,
-        icon_key: iconKey ?? undefined,
-        plant_type: isFromDatabase
-          ? (DUTCH_TYPE_TO_SYSTEM[(prefill as LocalPlant).type] ?? (prefill as LocalPlant).type)
-          : derivedPlantType,
-        sun_requirement: sunRequirement ? (SUN_TILE_TO_DB[sunRequirement] ?? sunRequirement) : undefined,
+      const plant = await addPlant(buildCreatePayload({
+        name,
+        species,
+        locationId,
+        mapId: placedMap?.id,
+        mapX: mapPos?.x,
+        mapY: mapPos?.y,
+        potSizeCm: potSize ? parseInt(potSize) : undefined,
+        acquiredDate: acquiredDateInput.trim() || displayToIso(acquiredDateInput) || undefined,
+        notes,
+        iconKey: iconKey ?? undefined,
+        kind: norm.kind,
+        databaseType: norm.kind === 'database' ? (prefill as LocalPlant).type : undefined,
+        derivedPlantType,
+        sunRequirement,
         phase: phase as any,
-        sown_date: displayToIso(sownDateInput) || undefined,
-        care_schedules: careSchedules,
-      })
+        sownDate: displayToIso(sownDateInput) || undefined,
+        careSchedules,
+      }))
 
       if (photoFile) {
         await uploadPhoto(plant.id, photoFile)

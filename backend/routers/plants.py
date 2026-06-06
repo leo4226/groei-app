@@ -34,8 +34,10 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
             (plant_id,),
         )
         if not existing:
+            # Use ? placeholders (qm_to_pg translates these); the $1/$2 form is
+            # not translated and breaks under dev SQLite.
             await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES ($1, 'water', $2, CURRENT_DATE)",
+                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, CURRENT_DATE)",
                 (plant_id, int(water_interval)),
             )
 
@@ -189,6 +191,10 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
                 (cached, plant_id),
             )
             await db.commit()
+            # _seed_care_schedules is idempotent on care_type 'water'/'fertilize'.
+            # The form's CARE_TYPE_INFO uses the same keys, so a form-sent
+            # 'water'/'fertilize' suppresses the seed (no duplicate rows). Keep
+            # both vocabularies in sync or this dedup silently breaks.
             await _seed_care_schedules(db, plant_id, cached)
         else:
             thresholds = await generate_thresholds(data.name, data.species)
@@ -208,6 +214,21 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             await _seed_care_schedules(db, plant_id, thresholds_json)
     except Exception as exc:
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
+
+    # Guarantee every plant is at least waterable: if threshold generation
+    # failed (e.g. Claude down) and the form sent no schedules, the plant could
+    # otherwise end up with zero schedules. Seed a default water schedule when
+    # none exists.
+    existing_water = await db.execute_fetchall(
+        "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'water' AND is_active = 1",
+        (plant_id,),
+    )
+    if not existing_water:
+        await db.execute(
+            "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, ?)",
+            (plant_id, 7, _date.today()),
+        )
+        await db.commit()
 
     # Return the created plant
     return await get_plant(plant_id, db=db)

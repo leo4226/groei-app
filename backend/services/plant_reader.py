@@ -35,6 +35,10 @@ def _compute_care_status(schedules, today):
     for s in schedules:
         s = dict(s)
         next_due = s["next_due"]
+        # Dev SQLite returns date columns as ISO strings; prod (asyncpg) returns
+        # date objects. Coerce so the comparison below never mixes str and date.
+        if isinstance(next_due, str):
+            next_due = date.fromisoformat(next_due)
         if next_due < today_date:
             care_status = "overdue"
             days = (today_date - next_due).days
