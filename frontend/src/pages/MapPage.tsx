@@ -304,8 +304,9 @@ export default function MapPage() {
         />
       </div>
 
-      {/* Top-left: garden pill */}
-      <div className="absolute top-3 left-3 z-20 landscape-mobile-hide">
+      {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
+          unplaced-plants tray (z-20) stacked directly below it */}
+      <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
         <MapTopBar map={map} allMaps={maps} />
       </div>
 
