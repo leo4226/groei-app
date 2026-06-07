@@ -47,10 +47,10 @@ MONTH_NAMES_NL = [
 # ── Species care info ────────────────────────────────────────────────────────
 
 @router.get("/plants/{plant_id}/care-info")
-async def get_plant_care_info(plant_id: int, db = Depends(db_dep)):
+async def get_plant_care_info(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     row = await db.execute_fetchall(
-        "SELECT species, notes FROM plants WHERE id = ?", (plant_id,)
-    )
+        "SELECT species, notes FROM plants WHERE id = ? AND household_id = ?",
+        (plant_id, account["household_id"]))
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
 
