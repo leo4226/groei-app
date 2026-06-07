@@ -668,7 +668,7 @@ export const nl: Translations = {
     pruneS: 'Seizoens',
     pruneSSub: '2-4× p/j',
     secAlbum: '§ IV · Album',
-    secAlbumTitle: 'Foto's.',
+    secAlbumTitle: "Foto's.",
     secAlbumSubtitle: 'Notities, data en herinneringen.',
     labelIcon: 'Icoon',
     labelIconDesc: 'Kies een emoji',
