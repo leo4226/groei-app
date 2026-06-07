@@ -807,7 +807,6 @@ export default function AddPlant() {
               />
             </FormRow>
 
-          </Card>
             <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
               <TileGrid
                 options={[
