@@ -1,6 +1,6 @@
 {
-  "count": 214,
-  "iconCount": 214,
+  "count": 220,
+  "iconCount": 220,
   "categories": [
     {
       "id": "all",
@@ -2085,6 +2085,12 @@
       "form": "state",
       "family": "Temperatuur · OK",
       "file": "state_comfortable.svg"
-    }
+    },
+    { "id": "error-plant", "name": "Error Plant", "sci": "", "cat": "state", "form": "potted", "family": "", "file": "error-plant.svg" },
+    { "id": "leon", "name": "Leon", "sci": "", "cat": "state", "form": "portrait", "family": "", "file": "leon.svg" },
+    { "id": "seed", "name": "Seed", "sci": "", "cat": "growth", "form": "potted", "family": "", "file": "seed.svg" },
+    { "id": "seed_bare", "name": "Seed", "sci": "", "cat": "growth", "form": "bare", "variant_of": "seed", "family": "", "file": "seed_bare.svg" },
+    { "id": "brownbean_nopot", "name": "Brown Bean", "sci": "Phaseolus vulgaris", "cat": "edible", "form": "bare", "variant_of": "brownbean", "family": "", "file": "brownbean_nopot.svg" },
+    { "id": "cortaderia_bare", "name": "Pampasgras", "sci": "Cortaderia selloana", "cat": "grass", "form": "bare", "variant_of": "cortaderia", "family": "", "file": "cortaderia_bare.svg" }
   ]
 }
