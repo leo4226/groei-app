@@ -237,11 +237,12 @@ async def _increment_quota(db, account_id: int) -> None:
 _BIOCLIP_WORKER_URL = os.environ.get("BIOCLIP_WORKER_URL", "")
 
 
-async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
+async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> IdentifyResponse | None:
     """Identify a plant image using BioCLIP worker (remote or local).
 
     When BIOCLIP_WORKER_URL is set, POSTs the image to the worker over HTTP.
     Otherwise falls back to local BioCLIP (requires open_clip_torch + GPU).
+    `lang` controls which common name bucket to populate (NL or EN).
     """
     import httpx
 
@@ -339,12 +340,16 @@ async def _bioclip_identify(image_bytes: bytes, db) -> IdentifyResponse | None:
             except Exception:
                 pass  # Enrichment is best-effort; don't fail the identify request
 
-        # Treat common_name_nl == latin_name as "no real Dutch name" — GBIF import
-        # left the Latin name as a placeholder for ~86% of species. Surface as empty
-        # so the frontend falls back to common_names_en or scientific_name.
-        nl = row.get("common_name_nl") or ""
-        nl_names = [nl] if nl and nl.lower() != latin_name.lower() else []
-        en_names = [row["common_name_en"]] if row.get("common_name_en") else []
+        # Populate only the requested language's common name bucket,
+        # mirroring how _split_common_names works for PlantNet results.
+        if lang == "nl":
+            nl = row.get("common_name_nl") or ""
+            nl_names = [nl] if nl and nl.lower() != latin_name.lower() else []
+            en_names = []
+        else:
+            en = row.get("common_name_en") or ""
+            en_names = [en] if en and en.lower() != latin_name.lower() else []
+            nl_names = []
 
         # Find any image for thumbnail
         img_rows = await db.execute_fetchall(
@@ -414,7 +419,7 @@ async def identify_endpoint(
     # 2. Try BioCLIP first (self-hosted, no quota) — unless user explicitly chose PlantNet
     if engine != "plantnet":
         try:
-            result = await _bioclip_identify(image_bytes, db)
+            result = await _bioclip_identify(image_bytes, db, lang)
             if result is not None:
                 return result
         except Exception as exc:
