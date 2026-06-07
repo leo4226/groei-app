@@ -48,16 +48,16 @@ export default function AddPlant() {
   const initialRoute: 'database' | 'photo' = locState?.from === 'identify' ? 'photo' : 'database'
   const [activeRoute, setActiveRoute] = useState<'database' | 'photo'>(initialRoute)
   const [showDetails, setShowDetails] = useState(false)
-  const { maps, addPlant, uploadPhoto } = useFloreren()
+  const { maps, plants, addPlant, uploadPhoto } = useFloreren()
 
   // Build zone list from the user's actual maps (not hardcoded defaults)
   const zoneList = useMemo(() => maps.map(m => ({
     id: String(m.id),
-    name: m.label,
-    description: m.slug ? `/${m.slug}` : undefined,
-    plantCount: 0, // TODO: count plants per map once backend supports it
+    name: m.name,
+    description: m.map_type === 'indoor' ? 'Binnen' : 'Buiten',
+    plantCount: plants.filter(p => p.map_id === m.id).length,
     isIndoor: m.map_type === 'indoor',
-  })), [maps])
+  })), [maps, plants])
 
   // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
   const fromMapState = (location.state as any)?.fromMap
@@ -661,8 +661,6 @@ export default function AddPlant() {
             <ZonePicker
               zones={zoneList}
               translations={{
-                newRoom: t.addPlant.newRoom,
-                newRoomDesc: t.addPlant.newRoomDesc,
                 plantsLabel: t.addPlant.zonePlants,
               }}
               value={selectedZoneId}

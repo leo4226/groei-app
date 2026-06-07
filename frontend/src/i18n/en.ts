@@ -689,8 +689,6 @@ export const en: Translations = {
     phaseSeedling: 'Seedling',
     phaseYoung: 'Young',
     phaseEstablished: 'Established',
-    newRoom: 'New room',
-    newRoomDesc: 'Your own spot',
     zonePlants: (n: number) => `${n} plants`,
     zoneAdvice: (species: string) => `Tip: ${species} prefers a bright spot without direct sunlight.`,
     substrateOptions: ['Orchid bark', 'All-purpose', 'Coir', 'Perlite', 'Sphagnum', 'Akadama', 'Calcareous', 'Sandy', '+ Other'],

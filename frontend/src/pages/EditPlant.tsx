@@ -45,7 +45,7 @@ export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const t = useT()
-  const { maps, updatePlant, uploadPhoto } = useFloreren()
+  const { maps, plants, updatePlant, uploadPhoto } = useFloreren()
   const plantId = Number(id)
 
   const [plant, setPlant] = useState<Plant | null>(null)
@@ -55,11 +55,11 @@ export default function EditPlant() {
   // Build zone list from the user's actual maps
   const zoneList = useMemo(() => maps.map(m => ({
     id: String(m.id),
-    name: m.label,
-    description: m.slug ? `/${m.slug}` : undefined,
-    plantCount: 0,
+    name: m.name,
+    description: m.map_type === 'indoor' ? 'Binnen' : 'Buiten',
+    plantCount: plants.filter(p => p.map_id === m.id).length,
     isIndoor: m.map_type === 'indoor',
-  })), [maps])
+  })), [maps, plants])
 
   // Basic fields
   const [name, setName] = useState('')
@@ -402,8 +402,6 @@ export default function EditPlant() {
                   <ZonePicker
                     zones={zoneList}
                     translations={{
-                      newRoom: t.addPlant.newRoom,
-                      newRoomDesc: t.addPlant.newRoomDesc,
                       plantsLabel: t.addPlant.zonePlants,
                     }}
                     value={selectedZoneId}

@@ -689,8 +689,6 @@ export const nl: Translations = {
     phaseSeedling: 'Zaailing',
     phaseYoung: 'Jong',
     phaseEstablished: 'Volwassen',
-    newRoom: 'Nieuwe ruimte',
-    newRoomDesc: 'Eigen plek',
     zonePlants: (n: number) => `${n} planten`,
     zoneAdvice: (species: string) => `Tip: ${species} staat het liefst op een lichte plek zonder direct zonlicht.`,
     substrateOptions: ['Orchideeënbast', 'Universeel', 'Kokosvezel', 'Perliet', 'Sphagnum', 'Akadama', 'Kalkrijk', 'Zandig', '+ Anders'],

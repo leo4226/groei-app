@@ -22,7 +22,6 @@ export default function IconPicker({ value, onChange }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
 
   const selected = iconList.find((i) => i.id === value) ?? null
-
   useEffect(() => {
     if (iconList.length > 0) return
     setLoading(true)
@@ -77,17 +76,23 @@ export default function IconPicker({ value, onChange }: Props) {
         onClick={() => setOpen(true)}
         className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-surface border border-border text-left transition-all hover:border-primary/40"
       >
-        {selected ? (
+        {value ? (
           <>
             <img
-              src={resolveIconUrl(selected.id)!}
-              alt={selected.name}
+              src={resolveIconUrl(value)!}
+              alt={selected?.name ?? 'Icon'}
               className="w-9 h-9 flex-shrink-0"
             />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text truncate">{selected.name}</p>
-              <p className="text-xs text-text-muted truncate">{selected.sci}</p>
-            </div>
+            {selected ? (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text truncate">{selected.name}</p>
+                <p className="text-xs text-text-muted truncate">{selected.sci}</p>
+              </div>
+            ) : (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-text-soft italic">{t.common.loading}</p>
+              </div>
+            )}
             <span
               className="text-text-muted text-lg leading-none flex-shrink-0"
               onClick={(e) => {
