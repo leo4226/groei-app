@@ -9,7 +9,7 @@ from datetime import date, datetime
 
 _SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 _MANUAL_WATER_DAYS = 3
-_INDOOR_SKIP = {"drought", "waterlog", "bring_inside"}
+_INDOOR_SKIP = {"drought", "waterlog", "bring_inside", "cold"}
 _GROUND_SKIP = {"bring_inside", "cold"}
 
 _CARE_ICON = {
