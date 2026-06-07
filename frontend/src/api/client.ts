@@ -20,7 +20,7 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   throw new Error(msg)
 }
 
-async function apiRequest<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
+export async function apiRequest<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
   const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
   const token = localStorage.getItem('floreren-token')
   const headers: Record<string, string> = {}

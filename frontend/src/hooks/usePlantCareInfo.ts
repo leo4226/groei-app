@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiRequest } from '../api/client'
 
 export interface BoomkeuringItem {
   aspect: string
@@ -61,19 +62,15 @@ export function usePlantCareInfo(plantId: number | null) {
     let cancelled = false
     setState({ data: null, loading: true, error: false })
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
-    fetch(`${apiBase}/plants/${plantId}/care-info`)
-      .then(r => {
-        if (!r.ok) throw new Error('fetch failed')
-        return r.json() as Promise<CareInfo>
-      })
+    apiRequest<CareInfo>('GET', `/plants/${plantId}/care-info`)
       .then(data => {
         if (cancelled) return
         _cache.set(plantId, data)
         setState({ data, loading: false, error: false })
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
+        console.error(`[usePlantCareInfo] Failed to fetch care info for plant ${plantId}:`, err)
         setState({ data: null, loading: false, error: true })
       })
 
