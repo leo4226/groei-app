@@ -10,10 +10,8 @@ interface CalendarEvent {
 
 interface CalendarPreviewProps {
   waterDays: number
-  waterVolume?: string
-  feedingSchedule?: string
-  pruningFrequency?: string
-  className?: string
+  feedingSchedule: string
+  pruningFrequency: string
 }
 
 const DAY_HEADERS = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO']
@@ -53,10 +51,8 @@ function pruningInterval(frequency?: string): number {
 
 export default function CalendarPreview({
   waterDays,
-  waterVolume,
   feedingSchedule,
   pruningFrequency,
-  className = '',
 }: CalendarPreviewProps) {
   const today = useMemo(() => new Date(), [])
   // Normalize today to start of day for consistent comparisons
@@ -75,7 +71,6 @@ export default function CalendarPreview({
             label: 'Water',
             emoji: '💧',
             color: 'water',
-            amount: waterVolume ? `${waterVolume}ml` : undefined,
           })
         }
       }
@@ -87,7 +82,6 @@ export default function CalendarPreview({
           label: 'Water',
           emoji: '💧',
           color: 'water',
-          amount: waterVolume ? `${waterVolume}ml` : undefined,
         })
       }
     }
@@ -117,7 +111,7 @@ export default function CalendarPreview({
     }
 
     return list
-  }, [todayStart, waterDays, waterVolume, feedingSchedule, pruningFrequency])
+  }, [todayStart, waterDays, feedingSchedule, pruningFrequency])
 
   // Build a 14-day date array starting from today
   const days = useMemo(() => {

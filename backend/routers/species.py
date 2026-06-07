@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
+import json
 from database import db_dep
 from models import PlantSpeciesOut, SpeciesSearchResponse, PlantSpeciesSearchResult, SpeciesImageOut
 from species_service import get_species_by_id, search_species
@@ -73,3 +74,19 @@ async def get_species_ecology(species_id: int, db=Depends(db_dep)):
     if profile is None:
         raise HTTPException(status_code=404, detail="Species not found")
     return profile
+
+
+@router.get("/by-latin/{latin_name}")
+async def get_species_by_latin(latin_name: str, db=Depends(db_dep)):
+    """Look up a species by latin name, return care_thresholds if available."""
+    row = await db.execute_fetchall(
+        "SELECT id, care_thresholds FROM plant_species WHERE LOWER(latin_name) = LOWER(?)",
+        (latin_name,),
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+    thresholds = row[0]["care_thresholds"]
+    return {
+        "id": row[0]["id"],
+        "care_thresholds": json.loads(thresholds) if isinstance(thresholds, str) else thresholds,
+    }

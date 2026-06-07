@@ -196,6 +196,7 @@ export const dashboard = {
 
 export const species = {
   ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),
+  lookupLatin: (latin: string) => api<{ id: number; care_thresholds: Record<string, unknown> | null }>('GET', `/species/by-latin/${encodeURIComponent(latin)}`),
 }
 
 export const maps = {
