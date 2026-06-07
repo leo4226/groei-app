@@ -333,8 +333,63 @@ Geef alleen geldige JSON terug met dit formaat:
 
 # ── public cascade ────────────────────────────────────────────────────────────
 
-async def fetch_species_knowledge(scientific_name: str) -> dict | None:
-    """Run the Trefle → curated → AI cascade. No caching."""
+async def _from_plant_species(scientific_name: str, db) -> dict | None:
+    """Derive care-info fields from the local plant_species registry."""
+    rows = await db.execute_fetchall(
+        "SELECT phenology_json FROM plant_species WHERE latin_name ILIKE ?",
+        (scientific_name,),
+    )
+    if not rows or not rows[0]["phenology_json"]:
+        return None
+    try:
+        pheno = json.loads(rows[0]["phenology_json"])
+    except (json.JSONDecodeError, TypeError):
+        return None
+    months = pheno.get("months", [])
+
+    growing = [m for m in months if m.get("phase") not in ("dormant", "dying_back")]
+    sun_hours = [m["sun_hours_needed"] for m in growing if m.get("sun_hours_needed")]
+    avg_sun = sum(sun_hours) / len(sun_hours) if sun_hours else None
+
+    if avg_sun is None:
+        light_raw = None
+        light_label = None
+    elif avg_sun < 3:
+        light_raw = round(avg_sun / 1.2, 1)
+        light_label = "shade"
+    elif avg_sun < 6:
+        light_raw = round(avg_sun / 1.2, 1)
+        light_label = "partial"
+    else:
+        light_raw = min(round(avg_sun / 1.2, 1), 10)
+        light_label = "full_sun"
+
+    bloom_months = [
+        ["january","february","march","april","may","june",
+         "july","august","september","october","november","december"][m["month"] - 1]
+        for m in months if m.get("phase") == "flowering"
+    ]
+
+    leaf_retention = any(m.get("phase") == "evergreen" for m in months) or None
+    max_h = pheno.get("max_height_cm")
+
+    return {
+        "trefle_slug": None, "common_name": None, "family": None,
+        "duration": "perennial",
+        "leaf_retention": leaf_retention,
+        "light_raw": light_raw, "light_label": light_label,
+        "humidity_raw": None,
+        "precip_min_mm": None, "precip_max_mm": None,
+        "bloom_months": bloom_months, "flower_colors": [],
+        "avg_height_cm": max_h, "max_height_cm": max_h,
+        "toxicity": None, "edible": None,
+        "image_url": None,
+        "source": "local_registry",
+    }
+
+
+async def fetch_species_knowledge(scientific_name: str, db=None) -> dict | None:
+    """Run the Trefle → curated → plant_species → AI cascade. No caching."""
     if TREFLE_TOKEN:
         data = await _fetch_trefle(scientific_name)
         if data:
@@ -342,6 +397,10 @@ async def fetch_species_knowledge(scientific_name: str) -> dict | None:
     curated = _curated_as_species_dict(scientific_name)
     if curated:
         return curated
+    if db is not None:
+        local = await _from_plant_species(scientific_name, db)
+        if local:
+            return local
     return await _fetch_ai_species(scientific_name)
 
 
@@ -389,7 +448,7 @@ async def get_species_knowledge(scientific_name: str, db) -> dict | None:
     if cached:
         return _cache_row_to_dict(cached[0])
 
-    data = await fetch_species_knowledge(scientific_name)
+    data = await fetch_species_knowledge(scientific_name, db)
     if not data:
         return None
 
@@ -440,6 +499,6 @@ async def get_species_knowledge(scientific_name: str, db) -> dict | None:
         "toxicity":        data["toxicity"],
         "edible":          data["edible"],
         "image_url":       data["image_url"],
-        "source":          "trefle",
+        "source":          data.get("source", "trefle"),
         "cached_at":       fetched_at,
     }
