@@ -574,17 +574,27 @@ export default function Plants() {
                 borderTopLeftRadius: 24, borderTopRightRadius: 24,
                 borderTop: '2px solid var(--color-primary)',
                 boxShadow: '0 -8px 30px rgba(0,0,0,0.15)',
-                paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem + 16px)',
                 maxHeight: '70vh', overflowY: 'auto',
                 animation: 'slide-up 0.25s ease-out',
               }}
             >
               {/* Drag handle */}
-              <div style={{
-                width: 40, height: 4,
-                background: 'var(--color-border)',
-                borderRadius: 999, margin: '12px auto 8px',
-              }} />
+              <button
+                onClick={() => setShowFilterSheet(false)}
+                aria-label="Sluiten"
+                style={{
+                  display: 'block', margin: '12px auto 8px',
+                  padding: '8px 24px', background: 'none', border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  width: 40, height: 4,
+                  background: 'var(--color-border)',
+                  borderRadius: 999,
+                }} />
+              </button>
               <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {/* Location */}
                 <div>
