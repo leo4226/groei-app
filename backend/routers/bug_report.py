@@ -18,9 +18,15 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class DeviceInfo(BaseModel):
+    user_agent: str = ""
+    screen_size: str = ""
+
+
 class BugReportRequest(BaseModel):
     conversation: list[ChatMessage]
     page: str = ""
+    device: DeviceInfo = DeviceInfo()
 
 
 class BugReportResponse(BaseModel):
@@ -46,34 +52,45 @@ async def submit_bug_report(
     )
     account_name = rows[0]["name"] if rows else "Unknown"
 
-    # Extract user answers (all user messages are the bug report answers)
+    # Extract user answers — filter out assistant messages and the bug report header
     user_answers = [
         m.content for m in req.conversation
         if m.role == "user"
     ]
 
-    # Build structured GitHub issue body per design spec
+    # Build structured GitHub issue body
     from datetime import datetime, timezone
     date_str = datetime.now(timezone.utc).isoformat()[:10]
+
+    device_lines = []
+    if req.device.user_agent:
+        device_lines.append(f"**Device:** {req.device.user_agent[:200]}")
+    if req.device.screen_size:
+        device_lines.append(f"**Screen:** {req.device.screen_size}")
 
     body_parts = [
         "## Bug Report (via Stekkie)",
         "",
-        f"**What went wrong:** {user_answers[0] if len(user_answers) > 0 else 'N/A'}",
+        f"**What were you doing?** {user_answers[0] if len(user_answers) > 0 else 'N/A'}",
         "",
-        f"**Expected behavior:** {user_answers[1] if len(user_answers) > 1 else 'N/A'}",
+        f"**What happened?** {user_answers[1] if len(user_answers) > 1 else 'N/A'}",
         "",
-        f"**Steps to reproduce:** {user_answers[2] if len(user_answers) > 2 else 'N/A'}",
+        f"**Last step before the bug:** {user_answers[2] if len(user_answers) > 2 else 'N/A'}",
         "",
         "---",
-        f"*Reported by: {account_name} (account #{account['account_id']}) | "
-        f"Page: {req.page or 'N/A'} | "
-        f"Date: {date_str}*",
-    ]
+        f"*Reported by: {account_name} (account #{account['account_id']})*",
+        f"*Page: {req.page or 'N/A'}*",
+        f"*Date: {date_str}*",
+        "",
+    ] + device_lines
 
-    title = user_answers[0][:60] if user_answers else "Bug report (no details)"
-    if len(title) > 256:
-        title = title[:253] + "..."
+    # Generate title: combine context (Q1) + symptom (Q2), capped at 120 chars
+    title = "Bug report (no details)"
+    if len(user_answers) >= 2:
+        combined = f"{user_answers[0][:60]} — {user_answers[1][:60]}"
+        title = combined[:120]
+    elif user_answers:
+        title = user_answers[0][:120]
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -82,7 +99,7 @@ async def submit_bug_report(
                 json={
                     "title": title,
                     "body": "\n".join(body_parts),
-                    "labels": ["bug", "stekkie"],
+                    "labels": ["bug", "stekkie", "user-reported", "needs-triage"],
                 },
                 headers={
                     "Authorization": f"Bearer {GITHUB_TOKEN}",

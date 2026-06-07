@@ -32,9 +32,15 @@ export interface BugReportResponse {
   error: string | null
 }
 
+export interface BugReportDeviceInfo {
+  user_agent: string
+  screen_size: string
+}
+
 export async function submitBugReport(
   conversation: ChatMessage[],
   page: string,
+  device?: BugReportDeviceInfo,
 ): Promise<BugReportResponse> {
   const token = getToken()
   const resp = await fetch(`${BASE}/bug-report`, {
@@ -43,7 +49,11 @@ export async function submitBugReport(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ conversation, page }),
+    body: JSON.stringify({
+      conversation,
+      page,
+      device: device ?? { user_agent: navigator.userAgent, screen_size: `${window.innerWidth}x${window.innerHeight}` },
+    }),
   })
   if (!resp.ok) {
     const errBody = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }))

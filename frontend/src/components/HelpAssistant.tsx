@@ -165,16 +165,31 @@ export default function HelpAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ---------- Bug report intro: hardcoded first question, no chatbot call ----------
+  // ---------- Bug report: client-side 3-question flow ----------
+  const BUG_QUESTIONS = [
+    'Je gaat nu een bug melden. Ik help je er een duidelijke melding van te maken.\n\n**Op welke pagina was je en wat probeerde je te doen?**',
+    '**Wat gebeurde er?** Kreeg je een foutmelding, gebeurde er niks, werd de pagina wit, of zag je iets anders dan verwacht?',
+    '**Wat was de laatste stap voordat het misging?** (Bijv. "ik tikte op het water-icoontje" of "ik opende de plantenlijst")',
+  ]
+
   useEffect(() => {
     if (bugReportMode && !hasTriggeredRef.current) {
       hasTriggeredRef.current = true
-      setMessages([{
-        role: 'assistant',
-        content: 'Je gaat nu een bug melden. Ik help je er een duidelijke melding van te maken.\n\n**Wat ging er mis?** Beschrijf het probleem zo duidelijk mogelijk.',
-      }])
+      setMessages([{ role: 'assistant', content: BUG_QUESTIONS[0] }])
     }
   }, [bugReportMode])
+
+  // When user answers in bug mode, append next question or wait for submit
+  useEffect(() => {
+    if (bugReportMode && bugTurnCount > 0 && bugTurnCount < BUG_QUESTIONS.length) {
+      const nextQuestion = BUG_QUESTIONS[bugTurnCount]
+      // Small delay so the user answer renders first
+      const timer = setTimeout(() => {
+        setMessages(prev => [...prev, { role: 'assistant', content: nextQuestion }])
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  }, [bugTurnCount, bugReportMode])
 
   if (!pageKey) return null
   if (dismissed) return null
@@ -188,9 +203,11 @@ export default function HelpAssistant() {
     setMessages(updated)
     setLoading(true)
 
-    // In bug report mode, count user turns
+    // In bug report mode, count user turns — no chatbot call
     if (bugReportMode) {
       setBugTurnCount(prev => prev + 1)
+      setLoading(false)
+      return
     }
 
     try {
