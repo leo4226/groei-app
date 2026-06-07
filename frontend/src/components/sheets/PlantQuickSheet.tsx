@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant, MapInfo } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
-import { plants as plantsApi, maps as mapsApi } from '../../api/client'
+import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
@@ -37,14 +37,24 @@ export default function PlantQuickSheet({
   const [doneTypes, setDoneTypes] = useState<Set<string>>(new Set())
   const [savingType, setSavingType] = useState<string | null>(null)
   const [showMoveSheet, setShowMoveSheet] = useState(false)
+  const [moveError, setMoveError] = useState(false)
 
   const handleMovePlant = async (targetMap: MapInfo) => {
+    setMoveError(false)
+    // The plant's old map_x/map_y are meaningless on a different map (different
+    // viewbox), so drop it at a fresh spot inside the target map — mirrors how
+    // EditPlant/AddPlant place a plant when assigning it to a map.
+    const [x0, y0, w, h] = targetMap.viewbox.split(' ').map(Number)
+    const pad = Math.min(w, h) * 0.12
+    const map_x = Math.round((x0 + pad + Math.random() * (w - pad * 2)) * 10) / 10
+    const map_y = Math.round((y0 + pad + Math.random() * (h - pad * 2)) * 10) / 10
     try {
-      await plantsApi.update(plant.id, { map_id: targetMap.id })
+      await plantsApi.update(plant.id, { map_id: targetMap.id, map_x, map_y })
       setShowMoveSheet(false)
       onAction()
     } catch {
-      // Move failed — sheet stays open, user can retry
+      // Move failed — keep the sheet open and surface an error so the user knows
+      setMoveError(true)
     }
   }
 
@@ -306,7 +316,7 @@ export default function PlantQuickSheet({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--color-border-soft)' }}>
             {/* Move plant */}
             <button
-              onClick={() => setShowMoveSheet(true)}
+              onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
               title="Verplaats"
               style={iconBtnStyle}
             >
@@ -373,6 +383,7 @@ export default function PlantQuickSheet({
         <MovePlantSheet
           currentMapId={mapId}
           currentMapName={mapName}
+          error={moveError}
           onSelect={handleMovePlant}
           onClose={() => setShowMoveSheet(false)}
         />

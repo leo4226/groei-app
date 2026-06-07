@@ -5,11 +5,12 @@ import type { MapInfo } from '../../types'
 interface Props {
   currentMapId: number
   currentMapName: string
+  error?: boolean
   onSelect: (map: MapInfo) => void
   onClose: () => void
 }
 
-export default function MovePlantSheet({ currentMapId, currentMapName, onSelect, onClose }: Props) {
+export default function MovePlantSheet({ currentMapId, currentMapName, error = false, onSelect, onClose }: Props) {
   const [allMaps, setAllMaps] = useState<MapInfo[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -50,6 +51,12 @@ export default function MovePlantSheet({ currentMapId, currentMapName, onSelect,
             Huidige kaart: <span className="font-medium text-text">{currentMapName}</span>
           </p>
         </div>
+
+        {error && (
+          <div className="mx-5 mt-3 px-3 py-2 rounded-lg bg-overdue/10 text-overdue text-sm">
+            Verplaatsen mislukt. Probeer het opnieuw.
+          </div>
+        )}
 
         {/* Map list */}
         <div className="overflow-y-auto flex-1 px-5 py-3 space-y-1" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
