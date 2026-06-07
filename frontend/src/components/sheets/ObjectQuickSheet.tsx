@@ -125,7 +125,13 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up max-h-[80vh] overflow-y-auto">
-        <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 mb-4" />
+        <button
+        onClick={onClose}
+        aria-label="Sluiten"
+        className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
+      >
+        <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
+      </button>
 
         <div className="px-5 pb-5">
           {!editing ? (
