@@ -132,6 +132,7 @@ Key Fly secrets:
 | `DATABASE_URL` | Neon Postgres connection string |
 | `JWT_SECRET` | JWT signing key |
 | `BIOCLIP_WORKER_URL` | `https://bioclip.floreren.app` — remote GPU worker |
+| `BIOCLIP_WORKER_TOKEN` | Shared secret sent as `X-Worker-Token`; the worker rejects `/identify` + `/embed-image` without it. Must match the Windows worker's env var of the same name. |
 | `ANTHROPIC_API_KEY` | Care threshold generation (Claude Haiku) |
 | `RESEND_API_KEY` | Transactional email |
 | `PLANTNET_API_KEY` | PlantNet fallback identification |
@@ -162,9 +163,21 @@ npx vercel alias <deploy-url> floreren.app  # point domain to new deploy
 
 ### BioCLIP Worker
 
-Runs on **Windows** (Leon's desktop, AMD Ryzen 7 5800X, RTX 2070, 16 GB) on port `8001`. WSL accesses it at `localhost:8001`. Health: `GET /health` → `{"status":"ok","model_loaded":true,"embeddings_loaded":true,"device":"cuda"}`.
+Runs **natively on Windows** (Leon's desktop, AMD Ryzen 7 5800X, RTX 2070, 16 GB), bound to **`127.0.0.1:8001`** (loopback only — cloudflared reaches it via localhost) — no WSL. Health: `GET /health` → `{"status":"ok","model_loaded":true,"embeddings_loaded":true,"device":"cuda"}` (health is unauthenticated).
+
+**Auth:** `/identify` and `/embed-image` require the `X-Worker-Token` header to match the worker's `BIOCLIP_WORKER_TOKEN` env var (set as a persistent user env var via `setx`, inherited by the scheduled task; mirrors the Fly secret of the same name). If `BIOCLIP_WORKER_TOKEN` is unset on the worker, auth is disabled (dev fallback). GPU inference is serialized behind an async lock and runs in a threadpool so health checks stay responsive.
 
 The Fly backend offloads plant identification to this worker via `BIOCLIP_WORKER_URL`. When the env var is set (production), `main.py` skips local BioCLIP preloading — the backend image does not include torch/open_clip.
+
+**Runtime / startup** (migrated WSL → Windows-native 2026-06-07):
+
+| Item | Detail |
+|---|---|
+| Python env | uv-managed venv `backend\.venv` on **Python 3.12** (Win Python 3.14 has no torch wheels) |
+| Key deps | `torch 2.6.0+cu124` + torchvision, `open-clip-torch`, fastapi, uvicorn, **`python-multipart`** (required by the `UploadFile` endpoints) |
+| Launcher | `C:\Users\leon_\Scripts\start-floreren-workers.ps1` — `Start-Process` on the venv python, hidden, port 8001 |
+| Autostart | scheduled task **"Floreren Workers"** (AtLogon + AtStartup); (re)register via `C:\Users\leon_\Scripts\register-task.ps1` **elevated** (AtStartup needs admin) |
+| Worker log | `C:\Users\leon_\Scripts\bioclip-worker.log` (+ `.err`) |
 
 ### Cloudflare Tunnel (bioclip.floreren.app)
 

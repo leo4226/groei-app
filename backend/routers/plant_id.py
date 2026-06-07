@@ -235,6 +235,12 @@ async def _increment_quota(db, account_id: int) -> None:
 
 
 _BIOCLIP_WORKER_URL = os.environ.get("BIOCLIP_WORKER_URL", "")
+_BIOCLIP_WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
+
+
+def _worker_headers() -> dict:
+    """Shared-secret header for the BioCLIP worker. Empty dict if no token set."""
+    return {"X-Worker-Token": _BIOCLIP_WORKER_TOKEN} if _BIOCLIP_WORKER_TOKEN else {}
 
 
 async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> IdentifyResponse | None:
@@ -256,6 +262,7 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
                 resp = await client.post(
                     f"{worker_url.rstrip('/')}/identify",
                     files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+                    headers=_worker_headers(),
                 )
                 if resp.status_code == 200:
                     data = resp.json()
@@ -597,6 +604,7 @@ async def identify_commit(
                 emb_resp = await client.post(
                     f"{_BIOCLIP_WORKER_URL.rstrip('/')}/embed-image",
                     files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+                    headers=_worker_headers(),
                 )
             if emb_resp.status_code == 200 and len(emb_resp.content) == 2048:
                 await db.execute(

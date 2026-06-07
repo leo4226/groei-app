@@ -5,15 +5,18 @@ Exposes a single POST /identify endpoint that accepts an image and returns
 BioCLIP matches as a JSON array. Designed to run behind a Cloudflare Tunnel
 so the production backend (Fly.io, no GPU) can offload ML inference here.
 """
+import asyncio
 import base64
 import io
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import anyio
 import numpy as np
 import torch
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image
 import uvicorn
@@ -27,6 +30,14 @@ _SPECIES_IDS_PATH = _EMBEDDINGS_DIR / "species_ids.npy"
 _MODEL_NAME = "hf-hub:imageomics/bioclip"
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+# Shared secret. When set, /identify and /embed-image require a matching
+# X-Worker-Token header. Empty => auth disabled (local dev / not yet rolled out).
+_WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
+
+# Serializes GPU inference — the model is not thread-safe and we run on one GPU.
+# Held only around the threaded compute, so /health stays responsive meanwhile.
+_infer_lock = asyncio.Lock()
 
 # --- BioCLIP model (lazy-loaded on first request) ---
 _model = None
@@ -58,8 +69,15 @@ def _load_embeddings():
     if not _EMBEDDINGS_PATH.exists() or not _SPECIES_IDS_PATH.exists():
         logger.error("Embeddings not found at %s", _EMBEDDINGS_PATH)
         return False
-    _text_embeddings = np.load(_EMBEDDINGS_PATH)
+    embeddings = np.load(_EMBEDDINGS_PATH)
     ids_and_names = np.load(_SPECIES_IDS_PATH, allow_pickle=True)
+    if len(ids_and_names) != embeddings.shape[0]:
+        logger.error(
+            "Embedding/id misalignment: %d ids vs %d embedding rows — refusing to load",
+            len(ids_and_names), embeddings.shape[0],
+        )
+        return False
+    _text_embeddings = embeddings
     _species_ids = [int(x[0]) for x in ids_and_names]
     logger.info(
         "Loaded %d species embeddings (shape: %s)",
@@ -108,21 +126,28 @@ def _identify_image(image: Image.Image, top_k: int = 5) -> tuple[list[dict], np.
 
 # --- FastAPI app ---
 
-app = FastAPI(title="BioCLIP Worker")
-
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("BioCLIP worker starting — preloading model + embeddings...")
     try:
         _load_model()
-        ok = _load_embeddings()
-        if not ok:
+        if not _load_embeddings():
             logger.error("Failed to load embeddings — worker will return 503")
     except Exception as e:
         logger.error("Startup error: %s", e)
+    yield
 
 
-@app.post("/identify")
+app = FastAPI(title="BioCLIP Worker", lifespan=lifespan)
+
+
+async def _require_token(x_worker_token: str | None = Header(default=None)):
+    """Enforce the shared secret when one is configured. No-op if _WORKER_TOKEN is empty."""
+    if _WORKER_TOKEN and x_worker_token != _WORKER_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing worker token")
+
+
+@app.post("/identify", dependencies=[Depends(_require_token)])
 async def identify(image: UploadFile = File(...)):
     """Accept an image file, return BioCLIP top-5 matches + the query embedding."""
     if _model is None:
@@ -133,7 +158,8 @@ async def identify(image: UploadFile = File(...)):
     pil_image = await _read_upload_to_pil(image)
 
     try:
-        matches, image_emb = _identify_image(pil_image)
+        async with _infer_lock:
+            matches, image_emb = await anyio.to_thread.run_sync(_identify_image, pil_image)
     except Exception as e:
         logger.error("Inference error: %s", e)
         raise HTTPException(status_code=500, detail="Inference failed")
@@ -145,7 +171,7 @@ async def identify(image: UploadFile = File(...)):
     }
 
 
-@app.post("/embed-image")
+@app.post("/embed-image", dependencies=[Depends(_require_token)])
 async def embed_image(image: UploadFile = File(...)):
     """Encode an image into BioCLIP's 512-dim embedding space. Returns
     the raw 2048 bytes (512 × float32) as application/octet-stream.
@@ -157,7 +183,8 @@ async def embed_image(image: UploadFile = File(...)):
         raise HTTPException(status_code=503, detail="BioCLIP model not loaded")
 
     pil_image = await _read_upload_to_pil(image)
-    image_emb = _embed_pil_to_float32(pil_image)
+    async with _infer_lock:
+        image_emb = await anyio.to_thread.run_sync(_embed_pil_to_float32, pil_image)
     return Response(content=image_emb.tobytes(), media_type="application/octet-stream")
 
 
@@ -173,4 +200,6 @@ async def health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("BIOCLIP_PORT", "8001"))
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    # Loopback only: cloudflared connects via localhost, so there is no reason
+    # to expose the worker to the LAN.
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
