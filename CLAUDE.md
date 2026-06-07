@@ -133,7 +133,7 @@ Key Fly secrets:
 | `JWT_SECRET` | JWT signing key |
 | `BIOCLIP_WORKER_URL` | `https://bioclip.floreren.app` — remote GPU worker |
 | `BIOCLIP_WORKER_TOKEN` | Shared secret sent as `X-Worker-Token`; the worker rejects `/identify` + `/embed-image` without it. Must match the Windows worker's env var of the same name. |
-| `ANTHROPIC_API_KEY` | Care threshold generation (Claude Haiku) |
+| `NOUS_API_KEY` | LLM calls (care thresholds, species, icon generation) via Nous Portal — DeepSeek V4 Flash |
 | `RESEND_API_KEY` | Transactional email |
 | `PLANTNET_API_KEY` | PlantNet fallback identification |
 | `R2_*` | Cloudflare R2 for image uploads |
