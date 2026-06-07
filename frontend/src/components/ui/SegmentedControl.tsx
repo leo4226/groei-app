@@ -17,7 +17,7 @@ export default function SegmentedControl({
   className = '',
 }: SegmentedControlProps) {
   return (
-    <div className={`inline-flex rounded-lg border border-border bg-bg p-0.5 ${className}`}>
+    <div className={`flex w-full rounded-lg border border-border bg-bg p-0.5 ${className}`}>
       {options.map((opt, i) => {
         const on = value === opt.id
         return (
@@ -26,7 +26,7 @@ export default function SegmentedControl({
             type="button"
             onClick={() => onChange(opt.id)}
             className={`
-              font-heading text-sm px-3.5 py-1.5 rounded-md
+              font-heading text-sm px-3.5 py-1.5 rounded-md flex-1 min-w-0
               transition-all duration-150
               ${on
                 ? 'bg-paper text-text shadow-sm font-medium'

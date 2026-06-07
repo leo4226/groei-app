@@ -659,8 +659,6 @@ export type Translations = {
     phaseYoung: string
     phaseEstablished: string
     // ── Zone picker ──
-    newRoom: string
-    newRoomDesc: string
     zonePlants: (n: number) => string
     zoneAdvice: (species: string) => string
     // ── Substrate options ──

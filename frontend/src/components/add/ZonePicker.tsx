@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 interface Zone {
   id: string
   name: string
@@ -9,8 +7,6 @@ interface Zone {
 }
 
 interface ZonePickerTranslations {
-  newRoom: string
-  newRoomDesc: string
   plantsLabel: (n: number) => string
 }
 
@@ -38,7 +34,7 @@ export default function ZonePicker({
   translations,
   className = '',
 }: ZonePickerProps) {
-  const t = translations ?? { newRoom: 'Nieuwe ruimte', newRoomDesc: 'Eigen plek', plantsLabel: (n: number) => `${n} planten` }
+  const t = translations ?? { plantsLabel: (n: number) => `${n} planten` }
   const selectedZone = zones.find(z => z.id === value)
 
   // Sort: indoor first if a zone is selected and it's indoor, or no selection → indoor first
@@ -119,28 +115,6 @@ export default function ZonePicker({
             </button>
           )
         })}
-
-        {/* "Nieuwe ruimte" card */}
-        <button
-          type="button"
-          onClick={() => onChange('')}
-          className="
-            grid grid-cols-[44px_1fr] gap-3 items-center
-            rounded-lg border-2 border-dashed border-border p-3
-            bg-transparent hover:border-text-muted cursor-pointer
-            transition-all duration-150
-          "
-        >
-          <div className="w-[44px] h-[36px] rounded-md border border-border-soft flex items-center justify-center text-text-muted shrink-0">
-            <span className="text-lg leading-none">+</span>
-          </div>
-          <div>
-            <div className="font-heading text-sm text-text-soft">{t.newRoom}</div>
-            <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-text-muted mt-0.5">
-              {t.newRoomDesc}
-            </div>
-          </div>
-        </button>
       </div>
 
       {advice && (
