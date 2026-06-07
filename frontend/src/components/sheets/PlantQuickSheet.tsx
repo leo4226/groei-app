@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject, GroundZone, Plant } from '../../types'
+import type { MapPlant, MapObject, GroundZone, Plant, MapInfo } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
 import { plants as plantsApi } from '../../api/client'
@@ -8,12 +8,15 @@ import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
+import MovePlantSheet from './MovePlantSheet'
 
 interface Props {
   plant: MapPlant
   objects: MapObject[]
   soilGroundZones?: GroundZone[]
   heatmapCells?: HeatmapCell[]
+  mapId: number
+  mapName: string
   onClose: () => void
   onCareAction: () => void
   onAction: () => void
@@ -23,6 +26,7 @@ interface Props {
 
 export default function PlantQuickSheet({
   plant, objects, soilGroundZones = [], heatmapCells,
+  mapId, mapName,
   onClose, onCareAction, onAction, onDuplicate, onRemove,
 }: Props) {
   const t = useT()
@@ -32,6 +36,27 @@ export default function PlantQuickSheet({
   const [detail, setDetail] = useState<Plant | null>(null)
   const [doneTypes, setDoneTypes] = useState<Set<string>>(new Set())
   const [savingType, setSavingType] = useState<string | null>(null)
+  const [showMoveSheet, setShowMoveSheet] = useState(false)
+  const [moveError, setMoveError] = useState(false)
+
+  const handleMovePlant = async (targetMap: MapInfo) => {
+    setMoveError(false)
+    // The plant's old map_x/map_y are meaningless on a different map (different
+    // viewbox), so drop it at a fresh spot inside the target map — mirrors how
+    // EditPlant/AddPlant place a plant when assigning it to a map.
+    const [x0, y0, w, h] = targetMap.viewbox.split(' ').map(Number)
+    const pad = Math.min(w, h) * 0.12
+    const map_x = Math.round((x0 + pad + Math.random() * (w - pad * 2)) * 10) / 10
+    const map_y = Math.round((y0 + pad + Math.random() * (h - pad * 2)) * 10) / 10
+    try {
+      await plantsApi.update(plant.id, { map_id: targetMap.id, map_x, map_y })
+      setShowMoveSheet(false)
+      onAction()
+    } catch {
+      // Move failed — keep the sheet open and surface an error so the user knows
+      setMoveError(true)
+    }
+  }
 
   useEffect(() => {
     setDetail(null)
@@ -289,6 +314,16 @@ export default function PlantQuickSheet({
 
           {/* ── Secondary actions ── */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--color-border-soft)' }}>
+            {/* Move plant */}
+            <button
+              onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
+              title="Verplaats"
+              style={iconBtnStyle}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M4 2L2 4l2 2M11 2l2 2-2 2M2 7.5h11M4 11l-2 2 2 2M11 11l2 2-2 2M7.5 2v11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
             {/* Icon-only utility buttons */}
             {onDuplicate && (
               <button
@@ -343,6 +378,16 @@ export default function PlantQuickSheet({
 
         </div>
       </div>
+
+      {showMoveSheet && (
+        <MovePlantSheet
+          currentMapId={mapId}
+          currentMapName={mapName}
+          error={moveError}
+          onSelect={handleMovePlant}
+          onClose={() => setShowMoveSheet(false)}
+        />
+      )}
     </>
   )
 }
