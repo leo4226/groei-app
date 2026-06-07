@@ -425,12 +425,14 @@ export default function MapPage() {
         />
       )}
 
-      {selectedPlant && (
+      {selectedPlant && map && (
         <PlantQuickSheet
           plant={selectedPlant}
           objects={objects}
           soilGroundZones={soilGroundZones}
           heatmapCells={sun.cells}
+          mapId={map.id}
+          mapName={map.name}
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
           onAction={handleCareAction}
