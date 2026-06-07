@@ -29,7 +29,7 @@ export interface CareInfo {
   toxicity: string | null
   edible: boolean | null
   image_url: string | null
-  source: 'trefle' | 'cache' | 'not_found'
+  source: 'trefle' | 'cache' | 'local_registry' | 'not_found'
   cached_at: string | null
   plant_notes: string | null
 }
