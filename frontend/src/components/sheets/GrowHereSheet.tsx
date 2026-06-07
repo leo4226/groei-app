@@ -273,9 +273,13 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
       {/* Sheet */}
       <div className="relative pointer-events-auto bg-bg rounded-t-2xl border-t border-border max-h-[82vh] flex flex-col">
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-border" />
-        </div>
+        <button
+          onClick={onClose}
+          aria-label="Sluiten"
+          className="flex justify-center pt-3 pb-1 shrink-0 w-full group"
+        >
+          <div className="w-10 h-1 rounded-full bg-border group-active:bg-text-muted transition-colors" />
+        </button>
 
         {/* Header */}
         <div className="px-4 pb-3 border-b border-border shrink-0">

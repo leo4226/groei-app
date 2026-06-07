@@ -103,7 +103,13 @@ export default function AddObjectSheet({ mapId, onClose, onCreated }: Props) {
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-[60] animate-slide-up max-h-[85vh] overflow-hidden flex flex-col">
-        <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 mb-4 shrink-0" />
+        <button
+        onClick={onClose}
+        aria-label="Sluiten"
+        className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group shrink-0"
+      >
+        <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors shrink-0" />
+      </button>
 
         <div className="px-5 overflow-y-auto flex-1">
           <h3 className="text-lg font-semibold text-text mb-4">{t.addObject.title}</h3>

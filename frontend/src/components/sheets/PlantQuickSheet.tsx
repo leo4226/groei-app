@@ -123,9 +123,13 @@ export default function PlantQuickSheet({
         style={{ maxHeight: '85dvh' }}
       >
         {/* Drag handle */}
-        <div className="shrink-0 pt-3 pb-1 flex justify-center">
-          <div className="w-10 h-1 bg-border rounded-full" />
-        </div>
+        <button
+          onClick={onClose}
+          aria-label="Sluiten"
+          className="shrink-0 pt-3 pb-1 flex justify-center w-full group"
+        >
+          <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
+        </button>
 
         {/* Scrollable body */}
         <div
