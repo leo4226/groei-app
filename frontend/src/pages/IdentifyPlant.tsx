@@ -70,7 +70,7 @@ export function IdentifyPlantPage() {
     setCapturedPhotoDataUrl(dataUrl)
     setStep({ kind: 'identifying', thumbnail: dataUrl })
     try {
-      const resp = await plantsApi.identify(blob)
+      const resp = await plantsApi.identify(blob, activeLang)
       setStep({
         kind: 'results',
         candidates: resp.candidates,
@@ -212,6 +212,7 @@ export function IdentifyPlantPage() {
         confidence={step.confidence}
         capturedThumbnailUrl={step.thumbnail}
         source={step.source}
+        lang={activeLang}
         onChoose={handleChoose}
         onRetry={retry}
         onManualFallback={manualFallback}

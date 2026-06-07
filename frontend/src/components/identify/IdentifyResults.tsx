@@ -9,6 +9,7 @@ type Props = {
   confidence: IdentifyConfidence
   capturedThumbnailUrl: string | null
   source: string                     // "bioclip" or "plantnet"
+  lang: 'nl' | 'en'                 // active user language
   onChoose: (candidate: PlantIdCandidate) => void
   onRetry: () => void
   onManualFallback: () => void
@@ -17,7 +18,7 @@ type Props = {
 }
 
 export function IdentifyResults({
-  candidates, confidence, capturedThumbnailUrl, source,
+  candidates, confidence, capturedThumbnailUrl, source, lang,
   onChoose, onRetry, onManualFallback, onTryPlantnet, onLogSighting,
 }: Props) {
   const t = useT()
@@ -79,7 +80,9 @@ export function IdentifyResults({
       <div className="flex flex-col gap-3">
         {candidates.map((c, idx) => {
           const pct = Math.round(c.confidence * 100)
-          const commonName = c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
+          const commonName = lang === 'nl'
+            ? c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
+            : c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name
           const isTop = idx === 0
           const weed = matchWeed(c.scientific_name)
           return (
