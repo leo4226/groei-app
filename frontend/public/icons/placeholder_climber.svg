@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Climber">
+  <title>Climber — </title>
+
+  <path d="M 31.0 78 L 35.0 98 Q 35.0 100 37.0 100 L 63.0 100 Q 65.0 100 65.0 98 L 69.0 78 Z" fill="#B2664A"/>
+  <rect x="29.0" y="75" width="42" height="5" rx="1.5" fill="#C77B5D"/>
+  <path d="M 35.0 98 Q 35.0 100 37.0 100 L 63.0 100 Q 65.0 100 65.0 98 L 63.0 96 L 37.0 96 Z" fill="#8E4A33" opacity="0.5"/>
+  <ellipse cx="50" cy="77.5" rx="19.0" ry="1.8" fill="#4A3429"/>
+
+  <g transform="translate(44 73) rotate(-10)">
+    <path d="M 0 0 Q -2 -15 0 -50" stroke="#3D5C3A" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+    <ellipse cx="2" cy="-45" rx="5" ry="3" fill="#4A7C4E" transform="rotate(30 2 -45)"/>
+    <ellipse cx="-3" cy="-48" rx="4" ry="2.5" fill="#5C8A4E" transform="rotate(-20 -3 -48)"/>
+  </g>
+  <g transform="translate(56 73) rotate(10)">
+    <path d="M 0 0 Q 3 -18 0 -45" stroke="#3D5C3A" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+    <ellipse cx="2" cy="-40" rx="5" ry="3" fill="#4A7C4E" transform="rotate(40 2 -40)"/>
+    <ellipse cx="-3" cy="-43" rx="4" ry="2.5" fill="#5C8A4E" transform="rotate(-25 -3 -43)"/>
+  </g>
+  <g transform="translate(38 73) rotate(-20)">
+    <path d="M 0 0 Q -2 -21 0 -40" stroke="#3D5C3A" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+    <ellipse cx="2" cy="-35" rx="5" ry="3" fill="#4A7C4E" transform="rotate(50 2 -35)"/>
+    <ellipse cx="-3" cy="-38" rx="4" ry="2.5" fill="#5C8A4E" transform="rotate(-30 -3 -38)"/>
+  </g>
+  <g transform="translate(62 73) rotate(20)">
+    <path d="M 0 0 Q 3 -24 0 -35" stroke="#3D5C3A" stroke-width="1.0" fill="none" stroke-linecap="round"/>
+    <ellipse cx="2" cy="-30" rx="5" ry="3" fill="#4A7C4E" transform="rotate(60 2 -30)"/>
+    <ellipse cx="-3" cy="-33" rx="4" ry="2.5" fill="#5C8A4E" transform="rotate(-35 -3 -33)"/>
+  </g>
+
+</svg>

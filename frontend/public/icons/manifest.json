@@ -1,6 +1,6 @@
 {
-  "count": 220,
-  "iconCount": 220,
+  "count": 233,
+  "iconCount": 233,
   "categories": [
     {
       "id": "all",
@@ -2086,11 +2086,179 @@
       "family": "Temperatuur · OK",
       "file": "state_comfortable.svg"
     },
-    { "id": "error-plant", "name": "Error Plant", "sci": "", "cat": "state", "form": "potted", "family": "", "file": "error-plant.svg" },
-    { "id": "leon", "name": "Leon", "sci": "", "cat": "state", "form": "portrait", "family": "", "file": "leon.svg" },
-    { "id": "seed", "name": "Seed", "sci": "", "cat": "growth", "form": "potted", "family": "", "file": "seed.svg" },
-    { "id": "seed_bare", "name": "Seed", "sci": "", "cat": "growth", "form": "bare", "variant_of": "seed", "family": "", "file": "seed_bare.svg" },
-    { "id": "brownbean_nopot", "name": "Brown Bean", "sci": "Phaseolus vulgaris", "cat": "edible", "form": "bare", "variant_of": "brownbean", "family": "", "file": "brownbean_nopot.svg" },
-    { "id": "cortaderia_bare", "name": "Pampasgras", "sci": "Cortaderia selloana", "cat": "grass", "form": "bare", "variant_of": "cortaderia", "family": "", "file": "cortaderia_bare.svg" }
+    {
+      "id": "error-plant",
+      "name": "Error Plant",
+      "sci": "",
+      "cat": "state",
+      "form": "potted",
+      "family": "",
+      "file": "error-plant.svg"
+    },
+    {
+      "id": "leon",
+      "name": "Leon",
+      "sci": "",
+      "cat": "state",
+      "form": "portrait",
+      "family": "",
+      "file": "leon.svg"
+    },
+    {
+      "id": "seed",
+      "name": "Seed",
+      "sci": "",
+      "cat": "growth",
+      "form": "potted",
+      "family": "",
+      "file": "seed.svg"
+    },
+    {
+      "id": "seed_bare",
+      "name": "Seed",
+      "sci": "",
+      "cat": "growth",
+      "form": "bare",
+      "variant_of": "seed",
+      "family": "",
+      "file": "seed_bare.svg"
+    },
+    {
+      "id": "brownbean_nopot",
+      "name": "Brown Bean",
+      "sci": "Phaseolus vulgaris",
+      "cat": "edible",
+      "form": "bare",
+      "variant_of": "brownbean",
+      "family": "",
+      "file": "brownbean_nopot.svg"
+    },
+    {
+      "id": "cortaderia_bare",
+      "name": "Pampasgras",
+      "sci": "Cortaderia selloana",
+      "cat": "grass",
+      "form": "bare",
+      "variant_of": "cortaderia",
+      "family": "",
+      "file": "cortaderia_bare.svg"
+    },
+    {
+      "id": "placeholder_houseplant",
+      "name": "Houseplant (placeholder)",
+      "sci": "",
+      "cat": "houseplant",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_houseplant.svg"
+    },
+    {
+      "id": "placeholder_flower",
+      "name": "Flower (placeholder)",
+      "sci": "",
+      "cat": "flower",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_flower.svg"
+    },
+    {
+      "id": "placeholder_succulent",
+      "name": "Succulent (placeholder)",
+      "sci": "",
+      "cat": "succulent",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_succulent.svg"
+    },
+    {
+      "id": "placeholder_herb",
+      "name": "Herb (placeholder)",
+      "sci": "",
+      "cat": "herb",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_herb.svg"
+    },
+    {
+      "id": "placeholder_edible",
+      "name": "Edible (placeholder)",
+      "sci": "",
+      "cat": "edible",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_edible.svg"
+    },
+    {
+      "id": "placeholder_tree",
+      "name": "Tree (placeholder)",
+      "sci": "",
+      "cat": "tree",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_tree.svg"
+    },
+    {
+      "id": "placeholder_shrub",
+      "name": "Shrub (placeholder)",
+      "sci": "",
+      "cat": "shrub",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_shrub.svg"
+    },
+    {
+      "id": "placeholder_grass",
+      "name": "Grass (placeholder)",
+      "sci": "",
+      "cat": "grass",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_grass.svg"
+    },
+    {
+      "id": "placeholder_fern",
+      "name": "Fern (placeholder)",
+      "sci": "",
+      "cat": "fern",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_fern.svg"
+    },
+    {
+      "id": "placeholder_bulb",
+      "name": "Bulb (placeholder)",
+      "sci": "",
+      "cat": "bulb",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_bulb.svg"
+    },
+    {
+      "id": "placeholder_climber",
+      "name": "Climber (placeholder)",
+      "sci": "",
+      "cat": "climber",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_climber.svg"
+    },
+    {
+      "id": "placeholder_cactus",
+      "name": "Cactus (placeholder)",
+      "sci": "",
+      "cat": "cactus",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_cactus.svg"
+    },
+    {
+      "id": "placeholder_unknown",
+      "name": "Unknown (placeholder)",
+      "sci": "",
+      "cat": "unknown",
+      "form": "potted",
+      "family": "",
+      "file": "placeholder_unknown.svg"
+    }
   ]
 }
