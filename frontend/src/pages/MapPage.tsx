@@ -380,34 +380,18 @@ export default function MapPage() {
         />
       )}
 
-      {/* Fertilize inline picker */}
+      {/* Fertilize sheet */}
       {fertilize.showPicker && (
-        <div className="absolute bottom-20 left-3 right-3 z-40 p-3 bg-surface rounded-xl border border-border flex items-center gap-2">
-          <span className="text-sm shrink-0">🌿</span>
-          <input
-            type="date"
-            value={fertilize.pickerDate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={e => fertilize.setPickerDate(e.target.value)}
-            className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 text-text"
-          />
-          <button
-            onClick={handleFertilizeSave}
-            disabled={fertilize.fertilizing || !fertilize.pickerDate}
-            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-semibold disabled:opacity-50"
-          >
-            {fertilize.fertilizing ? '…' : t.mapPage.saveLabel}
-          </button>
-          {fertilize.fertilize?.fertilized_at && (
-            <button
-              onClick={handleFertilizeDelete}
-              disabled={fertilize.fertilizing}
-              className="px-3 py-1.5 bg-overdue/10 text-overdue rounded-lg text-sm font-semibold disabled:opacity-50"
-            >
-              {t.mapPage.clearLabel}
-            </button>
-          )}
-        </div>
+        <WaterLogSheet
+          actionType="fertilize"
+          pickerDate={fertilize.pickerDate}
+          onPickerDateChange={fertilize.setPickerDate}
+          busy={fertilize.fertilizing}
+          hasExistingLog={!!fertilize.fertilize?.fertilized_at}
+          onSave={handleFertilizeSave}
+          onDelete={handleFertilizeDelete}
+          onClose={fertilize.closePicker}
+        />
       )}
 
       {/* Spot inspector hint */}

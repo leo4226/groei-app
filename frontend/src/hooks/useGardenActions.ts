@@ -67,7 +67,7 @@ export function useGardenWater() {
 }
 
 export function useGardenFertilize() {
-  const { status: fertilize, operating: fertilizing, closePicker: _closePicker, ...rest } = useGardenAction<GardenFertilizeStatus>({
+  const { status: fertilize, operating: fertilizing, ...rest } = useGardenAction<GardenFertilizeStatus>({
     fetchStatus: garden.fertilizeStatus,
     log: garden.logFertilize,
     deleteLast: garden.deleteFertilize,
