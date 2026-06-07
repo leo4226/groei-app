@@ -18,8 +18,6 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
-import CalendarPreview from '../components/add/CalendarPreview'
-import SpeciesReference from '../components/add/SpeciesReference'
 import {
   isIdentifyPrefill,
   findMatchingIcon,
@@ -951,34 +949,6 @@ export default function AddPlant() {
       </form>
           </div>
 
-          {/* RIGHT: Calendar preview + Species reference */}
-          <div className="space-y-5 lg:sticky lg:top-6">
-            {/* Calendar Preview */}
-            {schedules.water?.days > 0 && (
-              <CalendarPreview
-                waterDays={schedules.water.days}
-                waterVolume={waterVolume}
-                feedingSchedule={feedingSchedule}
-                pruningFrequency={pruningFrequency}
-              />
-            )}
-
-            {/* Species Reference */}
-            {species && (
-              <SpeciesReference
-                species={name || species}
-                scientificName={species}
-                description={
-                  prefill && !isIdentifyPrefill(prefill) && 'amsterdamNotes' in prefill
-                    ? (prefill as LocalPlant).amsterdamNotes ?? undefined
-                    : undefined
-                }
-                waterDays={schedules.water?.days}
-                lightLevel={sunRequirement ?? undefined}
-                nutriment={feedingSchedule}
-              />
-            )}
-          </div>
         </div>
       </div>
     </div>

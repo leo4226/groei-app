@@ -13,8 +13,6 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
-import CalendarPreview from '../components/add/CalendarPreview'
-import SpeciesReference from '../components/add/SpeciesReference'
 
 /** Map database sunRequirement values to TileGrid IDs. */
 const SUN_DB_TO_TILE: Record<string, string> = {
@@ -697,31 +695,6 @@ export default function EditPlant() {
                 </button>
               </div>
             </form>
-          </div>
-
-          {/* RIGHT: Calendar preview + Species reference */}
-          <div className="space-y-5 lg:sticky lg:top-6">
-            {/* Calendar Preview */}
-            {schedules.water?.days > 0 && (
-              <CalendarPreview
-                waterDays={schedules.water.days}
-                waterVolume={waterVolume}
-                feedingSchedule={feedingSchedule}
-                pruningFrequency={pruningFrequency}
-              />
-            )}
-
-            {/* Species Reference */}
-            {species && (
-              <SpeciesReference
-                species={name || species}
-                scientificName={species}
-                description={plant.notes ?? undefined}
-                waterDays={schedules.water?.days}
-                lightLevel={sunRequirement ?? undefined}
-                nutriment={feedingSchedule}
-              />
-            )}
           </div>
         </div>
       </div>
