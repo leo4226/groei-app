@@ -142,7 +142,6 @@ export default function AddPlant() {
   const [hasDrainage, setHasDrainage] = useState(false)
   const [substrate, setSubstrate] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
-  const [waterVolume, setWaterVolume] = useState('')
   const [feedingSchedule, setFeedingSchedule] = useState('monthly')
   const [pruningType, setPruningType] = useState('none')
   const [pruningFrequency, setPruningFrequency] = useState('never')
@@ -176,6 +175,23 @@ export default function AddPlant() {
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => {})
   }, [])
+
+  // Database path: fetch care thresholds for the selected plant
+  useEffect(() => {
+    if (norm.kind !== 'database' || !norm.species) return
+    let cancelled = false
+    const latin = norm.species
+    speciesApi.lookupLatin(latin)
+      .then(resp => {
+        if (cancelled || !resp.care_thresholds) return
+        setSchedules(prev => buildSchedules(
+          prefill,
+          resp.care_thresholds,
+        ))
+      })
+      .catch(() => {}) // latin name may not match — silently skip
+    return () => { cancelled = true }
+  }, [norm.kind, norm.species])
 
   // Photo-ID path: lazily fetch the species ecology profile and fill the sun
   // requirement from it. Non-blocking and fire-and-forget (mirrors the catalog
@@ -766,19 +782,6 @@ export default function AddPlant() {
               />
             </FormRow>
 
-            {/* Water volume */}
-            <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
-              <div className="flex items-center gap-3 mt-1">
-                <input
-                  type="number"
-                  value={waterVolume || ''}
-                  onChange={(e) => setWaterVolume(e.target.value)}
-                  placeholder="250"
-                  className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-                <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
-              </div>
-            </FormRow>
           </Card>
         ) : (
           <Card
@@ -806,21 +809,7 @@ export default function AddPlant() {
               />
             </FormRow>
 
-            {/* Water volume */}
-            <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
-              <div className="flex items-center gap-3 mt-1">
-                <input
-                  type="number"
-                  value={waterVolume || ''}
-                  onChange={(e) => setWaterVolume(e.target.value)}
-                  placeholder="250"
-                  className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-                <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
-              </div>
-            </FormRow>
-
-            {/* Feeding schedule */}
+          </Card>
             <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
               <TileGrid
                 options={[

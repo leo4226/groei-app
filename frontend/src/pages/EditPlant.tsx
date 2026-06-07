@@ -86,7 +86,6 @@ export default function EditPlant() {
   const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
     {} as Record<CareType, { enabled: boolean; days: number }>
   )
-  const [waterVolume, setWaterVolume] = useState('')
   const [feedingSchedule, setFeedingSchedule] = useState('monthly')
   const [pruningType, setPruningType] = useState('none')
   const [pruningFrequency, setPruningFrequency] = useState('never')
@@ -528,20 +527,6 @@ export default function EditPlant() {
                       ]}
                     />
                   </FormRow>
-
-                  {/* Water volume */}
-                  <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
-                    <div className="flex items-center gap-3 mt-1">
-                      <input
-                        type="number"
-                        value={waterVolume || ''}
-                        onChange={(e) => setWaterVolume(e.target.value)}
-                        placeholder="250"
-                        className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                      />
-                      <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
-                    </div>
-                  </FormRow>
                 </Card>
               ) : (
                 <Card
@@ -567,23 +552,9 @@ export default function EditPlant() {
                         { label: t.addPlant.presetDaily, value: 1 },
                       ]}
                     />
-                  </FormRow>
+                    </FormRow>
 
-                  {/* Water volume */}
-                  <FormRow label={t.addPlant.labelVolume} description={t.addPlant.labelVolumeDesc}>
-                    <div className="flex items-center gap-3 mt-1">
-                      <input
-                        type="number"
-                        value={waterVolume || ''}
-                        onChange={(e) => setWaterVolume(e.target.value)}
-                        placeholder="250"
-                        className="w-24 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                      />
-                      <span className="text-sm text-text-soft">{t.addPlant.volumeUnit}</span>
-                    </div>
-                  </FormRow>
-
-                  {/* Feeding schedule */}
+                    {/* Feeding schedule */}
                   <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
                     <TileGrid
                       options={[
@@ -696,6 +667,7 @@ export default function EditPlant() {
               </div>
             </form>
           </div>
+
         </div>
       </div>
     </div>
