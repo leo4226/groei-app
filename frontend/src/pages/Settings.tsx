@@ -289,36 +289,16 @@ export default function Settings() {
           )}
 
           {syncResult && (
-            <div className="text-sm space-y-2">
-              <p className="font-medium text-text">{t.settings.icons.result}</p>
-              <p className="text-text-muted">
-                {t.settings.icons.totalIcons(syncResult.total_icons)}
-                {syncResult.new_icons > 0 && (
-                  <> — <span className="text-primary font-medium">{t.settings.icons.newIcons(syncResult.new_icons)}</span>{' '}
-                  <span className="text-xs">({syncResult.new_icon_ids.join(', ')})</span></>
-                )}
-              </p>
-              {syncResult.matched_plants > 0 && (
-                <p className="text-text-muted">
-                  {t.settings.icons.linked} {syncResult.matches.map((m) => (
-                    <span key={m.plant_id} className="inline-block mr-1">
-                      <span className="font-medium text-text">{m.plant_name}</span>
-                      <span className="text-xs"> → {m.icon_key}</span>
-                    </span>
-                  ))}
-                </p>
+            <div className="text-sm space-y-1">
+              {syncResult.matched_plants > 0 ? (
+                <p>{t.settings.icons.linked} {syncResult.matches.map((m) => m.plant_name).join(', ')}</p>
+              ) : (
+                <p>{t.settings.icons.noChanges}</p>
               )}
               {syncResult.unmatched_plants > 0 && (
-                <p className="text-text-muted">
-                  {t.settings.icons.noIconFor}{' '}
-                  <span className="font-medium text-text">
-                    {syncResult.unmatched.map((u) => u.plant_name).join(', ')}
-                  </span>
-                  <span className="block text-xs mt-0.5">{t.settings.icons.setManually}</span>
+                <p className="text-fiery-red">
+                  {t.settings.icons.stillMissing}: {syncResult.unmatched.map((u) => u.plant_name).join(', ')}
                 </p>
-              )}
-              {syncResult.new_icons === 0 && syncResult.matched_plants === 0 && syncResult.unmatched_plants === 0 && (
-                <p className="text-text-muted italic">{t.settings.icons.upToDate}</p>
               )}
             </div>
           )}
