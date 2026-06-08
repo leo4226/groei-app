@@ -1,4 +1,5 @@
 import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import { indexIconUrls } from '../utils/icons'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -270,11 +271,9 @@ export const calendar = {
 
 export const icons = {
   catalog: async (): Promise<PlantIcon[]> => {
-    const res = await fetch('/icons/manifest.json')
-    if (!res.ok) throw new Error(`Failed to fetch icon manifest: ${res.status}`)
-    const data = await res.json()
-    const entries: PlantIcon[] = data.plants ?? data
-    return entries.sort((a: PlantIcon, b: PlantIcon) => a.name.localeCompare(b.name))
+    const entries = await api<PlantIcon[]>('GET', '/icon-catalog')
+    indexIconUrls(entries)
+    return entries.slice().sort((a, b) => a.name.localeCompare(b.name))
   },
   sync:    () => api<IconSyncResult>('POST', '/icon-catalog/sync'),
   gaps:    () => api<IconGapReport>('GET', '/icon-catalog/gaps'),

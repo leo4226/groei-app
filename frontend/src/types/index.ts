@@ -380,9 +380,6 @@ export interface PlantIcon {
 }
 
 export interface IconSyncResult {
-  total_icons: number
-  new_icons: number
-  new_icon_ids: string[]
   matched_plants: number
   matches: { plant_id: number; plant_name: string; icon_key: string }[]
   unmatched_plants: number

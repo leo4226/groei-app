@@ -7,6 +7,7 @@ import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
+import { icons } from './api/client'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
@@ -97,6 +98,9 @@ export default function App() {
       load()
     }
   }, [load, isLoginPage, maps.length, isLoading])
+
+  // Prime the icon URL index once so generated (R2) icons resolve app-wide.
+  useEffect(() => { icons.catalog().catch(() => {}) }, [])
 
   const handleSelectPlant = (plant: LocalPlant) => {
     setShowPlantPicker(false)
