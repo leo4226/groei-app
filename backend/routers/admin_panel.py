@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
 from auth import get_current_account
-from services.svg_validator import validate_icon_svg, SvgValidationError
+from services.svg_validator import validate_icon_svg
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
