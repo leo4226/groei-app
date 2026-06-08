@@ -258,7 +258,10 @@ async def ensure_ecology(db, species_id: int) -> dict | None:
         return None
     row = dict(rows[0])
 
-    if row.get("ecology_enriched_at") is not None:
+    # Serve from cache once enriched — but a previous "failed" run (e.g. the LLM
+    # was down) cached all-null fields; let those retry instead of being stuck
+    # blank forever.
+    if row.get("ecology_enriched_at") is not None and row.get("ecology_data_source") != "failed":
         return _row_to_dict(row)
 
     profile = await enrich(row["latin_name"], row.get("gbif_taxon_key"))

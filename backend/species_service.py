@@ -87,14 +87,44 @@ async def _generate_species(plant_name: str) -> dict:
     return json.loads(raw)
 
 
+async def ensure_phenology(db, species_id: int, name_hint: str) -> None:
+    """Generate + persist phenology_json for a species that lacks it.
+
+    Reuses the same one LLM call as species creation, so phenology is filled
+    exactly once per species and then served from cache — GBIF-imported species
+    (names + taxonomy but no phenology) get healed the first time a plant links
+    to them. Best-effort: never raises, never overwrites existing phenology."""
+    try:
+        data = await _generate_species(name_hint)
+    except Exception:
+        return
+    phen = data.get("phenology")
+    if not phen:
+        return
+    await db.execute(
+        "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP "
+        "WHERE id = ? AND (phenology_json IS NULL OR phenology_json = '')",
+        (json.dumps(phen, ensure_ascii=False), species_id),
+    )
+    await db.commit()
+
+
 async def get_or_create_species(db, plant_name: str) -> int:
-    """Return species_id for plant_name, generating via Claude if not cached."""
+    """Return species_id for plant_name, generating via the LLM if not cached.
+
+    If an existing species row is found but has no phenology yet (e.g. it came
+    from the GBIF import), fill the phenology before returning so the plant gets
+    its month-by-month data."""
     row = await db.execute_fetchall(
-        "SELECT id FROM plant_species WHERE LOWER(common_name_nl) = LOWER(?)",
+        "SELECT id, latin_name, phenology_json FROM plant_species WHERE LOWER(common_name_nl) = LOWER(?)",
         (plant_name,),
     )
     if row:
-        return row[0]["id"]
+        rec = dict(row[0])
+        species_id = rec["id"]
+        if not rec.get("phenology_json"):
+            await ensure_phenology(db, species_id, rec.get("latin_name") or plant_name)
+        return species_id
 
     data = await _generate_species(plant_name)
 

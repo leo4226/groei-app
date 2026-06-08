@@ -517,13 +517,14 @@ async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
     enriches existing rows, and only creates a new species as last resort."""
     # 1. Already exists with common_name_nl?
     row = await db.execute_fetchall(
-        "SELECT id, common_name_nl FROM plant_species WHERE latin_name = ? LIMIT 1",
+        "SELECT id, common_name_nl, phenology_json FROM plant_species WHERE latin_name = ? LIMIT 1",
         (scientific_name,),
     )
     if row and row[0].get("common_name_nl"):
         return row[0]["id"]
 
-    # 2. Exists but missing NL name — enrich via DeepSeek
+    # 2. Exists but missing NL name — enrich via the LLM. Persist BOTH the names
+    #    and the phenology from the single call (don't pay for phenology and bin it).
     if row:
         species_id = row[0]["id"]
         from species_service import _generate_species
@@ -531,11 +532,19 @@ async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
             data = await _generate_species(scientific_name)
             nl_name = data.get("common_name_nl") or ""
             en_name = data.get("common_name_en") or ""
+            phen = data.get("phenology")
+            sets, params = [], []
             if nl_name:
+                sets += ["common_name_nl = ?", "common_name_en = ?"]
+                params += [nl_name, en_name]
+            if phen and not row[0].get("phenology_json"):
+                sets.append("phenology_json = ?")
+                params.append(json.dumps(phen, ensure_ascii=False))
+            if sets:
+                sets.append("updated_at = CURRENT_TIMESTAMP")
+                params.append(species_id)
                 await db.execute(
-                    "UPDATE plant_species SET common_name_nl = ?, common_name_en = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (nl_name, en_name, species_id),
-                )
+                    f"UPDATE plant_species SET {', '.join(sets)} WHERE id = ?", params)
                 await db.commit()
         except Exception:
             pass  # best-effort
