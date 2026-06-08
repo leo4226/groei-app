@@ -52,21 +52,21 @@ def _normalize(text: str) -> str:
 _FORM_SUFFIXES = re.compile(r"_(bare|potted|nopot|fruit|portrait)$")
 
 
-def find_variant(icon_key: str | None, target_form: str) -> str | None:
-    """Return the icon_id for the given form variant of icon_key.
-    Falls back to the original icon_key if no matching variant exists."""
+async def find_variant(db, icon_key: str | None, target_form: str) -> str | None:
+    """Return the icon_id for the given form variant of icon_key, across the
+    unified catalog (curated + generated). Falls back to icon_key."""
     if not icon_key:
         return icon_key
     base = _FORM_SUFFIXES.sub("", icon_key)
-    manifest = load_manifest()
-    for entry in manifest:
+    catalog = await load_catalog(db)
+    for entry in catalog:
         entry_base = _FORM_SUFFIXES.sub("", entry["id"])
         if entry_base == base and entry.get("form") == target_form:
             return entry["id"]
     return icon_key
 
 
-def resolve_placement_icon(icon_key: str | None, *, container_id: int | None) -> str | None:
+async def resolve_placement_icon(db, icon_key: str | None, *, container_id: int | None) -> str | None:
     """Pick the right icon variant for a Plant's placement context.
 
     Form rule (CONTEXT.md): a Plant inside a Container uses `potted`, otherwise
@@ -74,7 +74,7 @@ def resolve_placement_icon(icon_key: str | None, *, container_id: int | None) ->
     they belong here as additional kwargs.
     """
     target_form = "potted" if container_id is not None else "bare"
-    return find_variant(icon_key, target_form)
+    return await find_variant(db, icon_key, target_form)
 
 
 # Dutch common name → icon_id  (covers the most-used Dutch plant names)

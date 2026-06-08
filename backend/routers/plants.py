@@ -265,7 +265,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = resolve_placement_icon(row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
     try:
         await db.execute(
             """UPDATE plants
@@ -294,7 +294,7 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = resolve_placement_icon(row["icon_key"], container_id=data.container_id)
+    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=data.container_id)
     await db.execute(
         """UPDATE plants
            SET container_id = ?, ground_zone_id = NULL,
@@ -312,7 +312,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = resolve_placement_icon(row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
     try:
         await db.execute(
             """UPDATE plants
