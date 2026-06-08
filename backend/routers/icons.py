@@ -361,9 +361,9 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
     # Base icons only (exclude form variants like _bare, _potted, etc.)
     base_icons = [e for e in manifest if not _FORM_SUFFIXES.search(e["id"]) and not e.get("variant_of")]
 
-    # 1. requested — plants with icon_requested=1 and no icon assigned
+    # 1. requested — plants with icon_requested=1 (placeholder or truly missing icon)
     requested_rows = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE AND (icon_key IS NULL OR icon_key = '')"
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE"
     )
     requested = [{"id": r["id"], "name": r["name"], "species": r["species"]} for r in requested_rows]
 

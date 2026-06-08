@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
 from database import db_dep
+from auth import get_current_account
 
 
 FAKE_MANIFEST = [
@@ -56,8 +57,10 @@ def db_override():
         yield cache["db"]
 
     app.dependency_overrides[db_dep] = _get_db
+    app.dependency_overrides[get_current_account] = lambda: {"account_id": 1, "household_id": 1}
     yield cache
     app.dependency_overrides.pop(db_dep, None)
+    app.dependency_overrides.pop(get_current_account, None)
 
 
 @pytest.fixture
@@ -84,8 +87,9 @@ def test_gaps_returns_requested_plants(db_override, fake_manifest):
     assert data["requested"][0]["name"] == "Monstera"
 
 
-def test_gaps_requested_excludes_plants_with_icon(db_override, fake_manifest):
-    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key) VALUES ('Tomato', 1, 'tomato')")
+def test_gaps_requested_excludes_unflagged_plants(db_override, fake_manifest):
+    # A plant with icon_requested=0 must NOT appear in requested, even if it has no icon_key.
+    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key) VALUES ('Tomato', 0, 'tomato')")
     resp = TestClient(app).get("/api/icon-catalog/gaps")
     assert resp.status_code == 200
     assert len(resp.json()["requested"]) == 0
@@ -145,3 +149,19 @@ def test_request_icon_sets_flag(db_override, fake_manifest):
 def test_request_icon_404_for_missing_plant(db_override, fake_manifest):
     resp = TestClient(app).patch("/api/icon-catalog/request/9999")
     assert resp.status_code == 404
+
+
+# ── New test: placeholdered plant (icon_requested=1, icon_key='placeholder_*') ──
+
+@pytest.mark.asyncio
+async def test_placeholdered_plant_shows_as_requested(client, seeded_db, auth_header):
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, latin_name TEXT)")
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Basterdkool','placeholder_unknown',1,1,1)")
+    await seeded_db.commit()
+    resp = await client.get("/api/icon-catalog/gaps", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    names = [r["name"] for r in resp.json()["requested"]]
+    assert "Basterdkool" in names

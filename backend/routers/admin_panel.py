@@ -49,7 +49,7 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
     ))[0]["n"]
     total_maps = (await db.execute_fetchall("SELECT COUNT(*) as n FROM maps"))[0]["n"]
     missing_icons = (await db.execute_fetchall(
-        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
+        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1 AND icon_requested = TRUE"
     ))[0]["n"]
 
     recent_accounts = await db.execute_fetchall("""
