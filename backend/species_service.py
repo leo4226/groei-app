@@ -250,3 +250,110 @@ async def insert_species_image(db, species_id: int, img: dict) -> None:
             img.get("is_primary", False),
         ),
     )
+
+_FACT_PROMPT = """\
+Je bent een botanische expert die tuiniers in Nederland helpt.
+
+Geef 1-2 interessante feiten over de volgende plant:
+
+Plant: {plant_name}
+
+De feiten moeten:
+- Relevant zijn voor Nederlandse tuiniers (denk aan Nederlands klimaat, tuincultuur)
+- Verrassend of nuttig zijn
+- In het Nederlands
+- Maximaal 2-3 zinnen
+
+Geef ALLEEN de feiten terug, geen uitleg, geen aanhef, geen markdown.
+"""
+
+
+async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> str:
+    """Generate an interesting fact for a plant species using the LLM."""
+    name = plant_name
+    if latin_name:
+        name = f"{plant_name} ({latin_name})"
+    prompt = _FACT_PROMPT.format(plant_name=name)
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            LLM_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {LLM_API_KEY}",
+                "content-type": "application/json",
+            },
+            json={
+                "model": LLM_MODEL,
+                "max_tokens": 300,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        raw = body["choices"][0]["message"]["content"].strip()
+    raw = re.sub(r'^["\']|["\']$', "", raw)
+    return raw
+
+
+async def backfill_missing_facts(db, limit: int = 50) -> dict:
+    """Find species without interesting_facts_nl and generate them via LLM.
+
+    Returns a summary dict with counts of processed/updated/skipped.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species "
+        "WHERE phenology_json IS NULL "
+        "   OR phenology_json = '' "
+        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' "
+        "LIMIT ?",
+        (limit,),
+    )
+
+    if not rows:
+        return {"processed": 0, "updated": 0, "skipped": 0, "message": "All species already have facts."}
+
+    updated = 0
+    skipped = 0
+    errors = []
+
+    for row in rows:
+        species_id = row["id"]
+        plant_name = row["common_name_nl"]
+        latin_name = row.get("latin_name")
+        phenology_str = row.get("phenology_json")
+
+        try:
+            fact = await generate_fact_for_species(plant_name, latin_name)
+            if not fact:
+                skipped += 1
+                continue
+
+            # Parse existing phenology or create new container
+            if phenology_str:
+                try:
+                    phenology = json.loads(phenology_str)
+                except json.JSONDecodeError:
+                    phenology = {}
+            else:
+                phenology = {}
+
+            phenology["interesting_facts_nl"] = fact
+            new_phenology_str = json.dumps(phenology, ensure_ascii=False)
+
+            await db.execute(
+                "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (new_phenology_str, species_id),
+            )
+            updated += 1
+        except Exception as e:
+            errors.append({"species_id": species_id, "name": plant_name, "error": str(e)})
+            skipped += 1
+
+    if updated:
+        await db.commit()
+
+    return {
+        "processed": len(rows),
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+    }

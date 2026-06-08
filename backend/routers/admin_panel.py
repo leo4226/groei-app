@@ -345,3 +345,15 @@ async def _sync_from_admin(db):
     if matched:
         await db.commit()
     return {"matched": len(matched), "matches": matched}
+
+
+@router.post("/admin-panel/backfill-facts")
+async def backfill_plant_facts(
+    limit: int = 50,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Generate interesting_facts_nl for plant_species entries that lack one."""
+    from services.species_service import backfill_missing_facts
+    result = await backfill_missing_facts(db, limit=limit)
+    return result
