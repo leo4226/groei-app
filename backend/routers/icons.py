@@ -27,24 +27,6 @@ def load_manifest() -> list[dict]:
     return data["plants"] if isinstance(data, dict) else data
 
 
-def save_manifest(entries: list[dict]) -> None:
-    if not os.path.exists(MANIFEST_PATH):
-        os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
-        data = {"plants": [], "count": 0, "iconCount": 0}
-    else:
-        with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    if isinstance(data, dict):
-        data["plants"] = entries
-        data["count"] = len(entries)
-        data["iconCount"] = len(entries)
-    else:
-        data = entries
-    with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-
-
 def _normalize(text: str) -> str:
     """Lowercase, strip non-alphanumeric chars."""
     return re.sub(r"[^a-z0-9]", "", text.lower())
@@ -236,110 +218,28 @@ async def get_catalog(db=Depends(db_dep)):
 
 @router.post("/sync")
 async def sync_icons(db = Depends(db_dep)):
-    """
-    1. Scan the icons folder for new SVGs and add them to manifest.json.
-    2. Auto-match plants that have no icon_key by comparing plant name/species
-       against icon ids and names.
-    Returns a summary of what changed.
-    """
-    # --- Step 1: discover new SVGs ---
-    manifest = load_manifest()
-    manifest_ids = {entry["id"] for entry in manifest}
+    """Re-match flagged/placeholdered plants against the unified catalog.
 
-    svg_ids = sorted(
-        f[:-4]  # strip .svg
-        for f in os.listdir(ICONS_DIR)
-        if f.lower().endswith(".svg")
-    )
-
-    new_entries: list[dict] = []
-    for icon_id in svg_ids:
-        if icon_id not in manifest_ids:
-            pretty_name = icon_id.replace("_", " ").title()
-            entry = {
-                "id": icon_id,
-                "name": pretty_name,
-                "sci": "",
-                "cat": "unknown",
-                "family": "",
-                "file": f"{icon_id}.svg",
-            }
-            manifest.append(entry)
-            new_entries.append(entry)
-
-    if new_entries:
-        save_manifest(manifest)
-
-    # --- Step 2: build lookup table (normalized text → icon_id) ---
-    lookup: dict[str, str] = {}
-    for entry in manifest:
-        for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
-            if text:
-                lookup[_normalize(text)] = entry["id"]
-    # Also add Dutch common names
-    for dutch_norm, icon_id in DUTCH_TO_ICON.items():
-        lookup[_normalize(dutch_norm)] = icon_id
-
-    # --- Step 3: match unassigned plants ---
+    Does NOT touch the filesystem. Curated icons arrive via git/deploy; generated
+    icons via the admin generate-icons pipeline. Idempotent."""
     matched: list[dict] = []
     plants = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
+        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE"
     )
-
     for row in plants:
         plant = dict(row)
-        found_key: str | None = None
-
-        for text in [plant["name"], plant.get("species") or ""]:
-            if not text:
-                continue
-            norm = _normalize(text)
-
-            # 1. Exact match
-            if norm in lookup:
-                found_key = lookup[norm]
-                break
-
-            # 2. Prefix match (plant name starts with icon key or vice versa)
-            for icon_norm, icon_id in lookup.items():
-                if icon_norm and (
-                    norm.startswith(icon_norm) or icon_norm.startswith(norm)
-                ):
-                    found_key = icon_id
-                    break
-
-            if found_key:
-                break
-
-        if found_key:
+        found = await match_icon_key(db, plant["name"], plant.get("species"))
+        if found and not found.startswith("placeholder_"):
             await db.execute(
-                "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (found_key, plant["id"]),
-            )
-            matched.append({
-                "plant_id": plant["id"],
-                "plant_name": plant["name"],
-                "icon_key": found_key,
-            })
-
-    unmatched = [
-        {"plant_id": dict(row)["id"], "plant_name": dict(row)["name"]}
-        for row in plants
-        if not any(m["plant_id"] == dict(row)["id"] for m in matched)
-    ]
-
+                "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (found, plant["id"]))
+            matched.append({"plant_id": plant["id"], "plant_name": plant["name"], "icon_key": found})
     if matched:
         await db.commit()
-
-    return {
-        "total_icons": len(manifest),
-        "new_icons": len(new_entries),
-        "new_icon_ids": [e["id"] for e in new_entries],
-        "matched_plants": len(matched),
-        "matches": matched,
-        "unmatched_plants": len(unmatched),
-        "unmatched": unmatched,
-    }
+    unmatched = [{"plant_id": dict(r)["id"], "plant_name": dict(r)["name"]}
+                 for r in plants if not any(m["plant_id"] == dict(r)["id"] for m in matched)]
+    return {"matched_plants": len(matched), "matches": matched,
+            "unmatched_plants": len(unmatched), "unmatched": unmatched}
 
 
 @router.get("/gaps")
