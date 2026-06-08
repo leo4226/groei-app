@@ -37,7 +37,7 @@ async def _call_ai(prompt: str) -> dict | None:
     if not LLM_API_KEY:
         return None
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
             LLM_CHAT_URL,
             headers={
@@ -46,7 +46,10 @@ async def _call_ai(prompt: str) -> dict | None:
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 400,
+                # DeepSeek V4 Flash (Nous) reasons before answering, and reasoning
+                # tokens count against max_tokens — 400 was almost always eaten by
+                # reasoning, leaving content null/truncated.
+                "max_tokens": 2000,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
@@ -54,7 +57,10 @@ async def _call_ai(prompt: str) -> dict | None:
     if resp.status_code != 200:
         return None
 
-    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    content = resp.json()["choices"][0]["message"].get("content")
+    if not content:
+        return None
+    raw = content.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
 

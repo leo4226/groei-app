@@ -158,15 +158,21 @@ async def _from_llm(latin_name: str) -> dict:
                 },
                 json={
                     "model": LLM_MODEL,
-                    "max_tokens": 200,
+                    # Reasoning model: 200 tokens was consumed by reasoning before
+                    # any JSON was emitted, so content came back null/empty.
+                    "max_tokens": 1500,
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )
             resp.raise_for_status()
-            raw = resp.json()["choices"][0]["message"]["content"].strip()
+            content = resp.json()["choices"][0]["message"].get("content")
     except Exception as exc:
         logger.warning("LLM ecology call failed for %s: %s", latin_name, exc)
         return {}
+    if not content:
+        logger.warning("LLM ecology returned empty content for %s", latin_name)
+        return {}
+    raw = content.strip()
 
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)

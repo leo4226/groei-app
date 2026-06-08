@@ -26,3 +26,15 @@ async def test_parses_potted_and_bare_from_llm_json():
     assert out["cat"] == "flower"
     assert out["potted_svg"].startswith("<svg")
     assert out["bare_svg"].startswith("<svg")
+
+
+@pytest.mark.asyncio
+async def test_null_content_raises_not_attributeerror():
+    # Reasoning model can return content=null when the budget is exhausted; this
+    # must raise a clear error (caught upstream -> procedural fallback), not an
+    # AttributeError on None.strip().
+    with patch("services.icon_ai.httpx.AsyncClient") as cli:
+        inst = cli.return_value.__aenter__.return_value
+        inst.post = AsyncMock(return_value=_Resp(None))
+        with pytest.raises(ValueError):
+            await generate_icon_variants(name="Roos", sci="Rosa")

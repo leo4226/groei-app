@@ -38,11 +38,18 @@ async def generate_icon_variants(*, name: str, sci: str = "") -> dict:
         resp = await client.post(
             LLM_CHAT_URL,
             headers={"Authorization": f"Bearer {LLM_API_KEY}", "content-type": "application/json"},
-            json={"model": LLM_MODEL, "max_tokens": 4000,
+            # DeepSeek V4 Flash (Nous) is a reasoning model and this asks for TWO
+            # full SVGs — a tight cap gets eaten by reasoning, returning null or
+            # truncated content (then everything falls back to identical
+            # procedural icons). Give it ample room.
+            json={"model": LLM_MODEL, "max_tokens": 12000,
                   "messages": [{"role": "user", "content": prompt}]},
         )
         resp.raise_for_status()
-        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        content = resp.json()["choices"][0]["message"].get("content")
+    if not content:
+        raise ValueError("LLM returned empty content (reasoning likely consumed the token budget)")
+    raw = content.strip()
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     data = json.loads(raw)
