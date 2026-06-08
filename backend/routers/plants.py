@@ -8,7 +8,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from database import db_dep
 from auth import get_current_account
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput
-from routers.icons import resolve_placement_icon
+from routers.icons import resolve_placement_icon, match_icon_key
+from routers.icon_generator import guess_category
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from services.storage import build_storage_from_env
@@ -161,6 +162,23 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         )
 
     await db.commit()
+
+    # Ensure every plant gets an icon. If the client did not pick one, try a
+    # server-side match; otherwise assign a category placeholder and flag the
+    # plant so the admin can generate a distinctive icon later. Never fatal.
+    if not data.icon_key:
+        try:
+            matched = await match_icon_key(db, data.name, data.species)
+            if matched:
+                await db.execute("UPDATE plants SET icon_key = ? WHERE id = ?", (matched, plant_id))
+            else:
+                cat = guess_category(data.species or "") or guess_category(data.name) or "unknown"
+                await db.execute(
+                    "UPDATE plants SET icon_key = ?, icon_requested = TRUE WHERE id = ?",
+                    (f"placeholder_{cat}", plant_id))
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            print(f"Warning: icon assignment failed for {data.name}: {exc}")
 
     # Link or create species (non-fatal if Claude is unavailable)
     species_id = None

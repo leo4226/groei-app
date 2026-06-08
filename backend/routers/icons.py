@@ -77,6 +77,28 @@ async def resolve_placement_icon(db, icon_key: str | None, *, container_id: int 
     return await find_variant(db, icon_key, target_form)
 
 
+async def match_icon_key(db, name: str, species: str | None) -> str | None:
+    """Best-effort icon_key for a plant by name/species. None if no match."""
+    catalog = await load_catalog(db)
+    lookup: dict[str, str] = {}
+    for entry in catalog:
+        for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
+            if text:
+                lookup[_normalize(text)] = entry["id"]
+    for dutch_norm, icon_id in DUTCH_TO_ICON.items():
+        lookup[_normalize(dutch_norm)] = icon_id
+    for text in [name, species or ""]:
+        if not text:
+            continue
+        norm = _normalize(text)
+        if norm in lookup:
+            return lookup[norm]
+        for icon_norm, icon_id in lookup.items():
+            if icon_norm and (norm.startswith(icon_norm) or icon_norm.startswith(norm)):
+                return icon_id
+    return None
+
+
 # Dutch common name → icon_id  (covers the most-used Dutch plant names)
 DUTCH_TO_ICON: dict[str, str] = {
     # Houseplants
