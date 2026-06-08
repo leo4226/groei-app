@@ -46,3 +46,52 @@ async def test_falls_back_to_procedural_on_bad_svg(client, admin_db, auth_header
     assert resp.status_code == 200, resp.text
     rows = await admin_db.execute_fetchall("SELECT source FROM generated_icons")
     assert rows and all(r["source"] == "procedural" for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_preview_counts_all_uncovered_species(client, admin_db, auth_header):
+    resp = await client.get("/api/admin-panel/generate-icons/preview", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["scope"] == "all"
+    assert body["count"] == 1  # the single seeded species (Rosa canina), uncovered
+
+
+@pytest.mark.asyncio
+async def test_preview_in_use_scope_and_map_only(client, admin_db, auth_header):
+    # A species exists but no plant references it yet -> in_use count is 0.
+    r0 = await client.get("/api/admin-panel/generate-icons/preview?scope=in_use", headers=auth_header)
+    assert r0.json()["count"] == 0
+    # Add a plant that needs an icon, linked to the species, NOT placed on a map.
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species_id,icon_requested,is_active,household_id) "
+        "VALUES (1,'Mijn roos',1,1,1,1)")
+    await admin_db.commit()
+    r1 = await client.get("/api/admin-panel/generate-icons/preview?scope=in_use", headers=auth_header)
+    assert r1.json()["count"] == 1
+    # map_only excludes it (no map_id).
+    r2 = await client.get("/api/admin-panel/generate-icons/preview?scope=in_use&map_only=true", headers=auth_header)
+    assert r2.json()["count"] == 0
+    # Place it on a map -> map_only now counts it.
+    await admin_db.execute("UPDATE plants SET map_id = 5 WHERE id = 1")
+    await admin_db.commit()
+    r3 = await client.get("/api/admin-panel/generate-icons/preview?scope=in_use&map_only=true", headers=auth_header)
+    assert r3.json()["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_respects_limit_and_reports_remaining(client, admin_db, auth_header):
+    # Second uncovered species -> two candidates under scope=all.
+    await admin_db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, latin_name) VALUES (2,'Basterdkool','Bunias orientalis')")
+    await admin_db.commit()
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"potted_svg": GOOD, "bare_svg": GOOD, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        resp = await client.post("/api/admin-panel/generate-icons?limit=1", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["count"] == 1
+    assert body["remaining"] == 1

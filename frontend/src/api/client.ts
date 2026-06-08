@@ -302,7 +302,21 @@ export const adminPanel = {
   species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
-  generateIcons: () => api<IconGenerateResult>('POST', '/admin-panel/generate-icons'),
+  generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.scope) q.set('scope', opts.scope)
+    if (opts.mapOnly) q.set('map_only', 'true')
+    if (opts.limit != null) q.set('limit', String(opts.limit))
+    const qs = q.toString()
+    return api<IconGenerateResult>('POST', `/admin-panel/generate-icons${qs ? `?${qs}` : ''}`)
+  },
+  generateIconsPreview: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.scope) q.set('scope', opts.scope)
+    if (opts.mapOnly) q.set('map_only', 'true')
+    const qs = q.toString()
+    return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
+  },
 }
 
 export interface IconGenerateResult {
@@ -311,6 +325,9 @@ export interface IconGenerateResult {
   skipped: { id: number; name: string; latin: string; error: string }[]
   skipped_count: number
   sync_result: { matched: number; matches: { plant_id: number; plant_name: string; icon_key: string }[] }
+  scope?: string
+  map_only?: boolean
+  remaining?: number
 }
 
 export interface HouseholdMember {

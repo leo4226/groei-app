@@ -564,8 +564,13 @@ function ToolsView() {
   const [schedulesResult, setSchedulesResult] = useState('')
   const [schedulesRunning, setSchedulesRunning] = useState(false)
   const [iconsResult, setIconsResult] = useState<IconGenerateResult | null>(null)
-  const [iconsRunning, setIconsRunning] = useState(false)
+  const [iconScope, setIconScope] = useState<'all' | 'in_use' | null>(null)
   const [iconsError, setIconsError] = useState('')
+  const [mapOnly, setMapOnly] = useState(false)
+  const [iconLimit, setIconLimit] = useState(25)
+  const [ipAll, setIpAll] = useState<number | null>(null)
+  const [ipInUse, setIpInUse] = useState<number | null>(null)
+  const [iconRefresh, setIconRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
 
@@ -573,6 +578,11 @@ function ToolsView() {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    adminPanel.generateIconsPreview({ scope: 'all' }).then(r => setIpAll(r.count)).catch(() => {})
+    adminPanel.generateIconsPreview({ scope: 'in_use', mapOnly }).then(r => setIpInUse(r.count)).catch(() => {})
+  }, [mapOnly, iconRefresh])
 
   async function handleBackfillThresholds() {
     setThresholdsRunning(true)
@@ -602,17 +612,18 @@ function ToolsView() {
     }
   }
 
-  async function handleGenerateIcons() {
-    setIconsRunning(true)
+  async function handleGenerateIcons(scope: 'all' | 'in_use') {
+    setIconScope(scope)
     setIconsResult(null)
     setIconsError('')
     try {
-      const r = await adminPanel.generateIcons()
+      const r = await adminPanel.generateIcons({ scope, mapOnly: scope === 'in_use' ? mapOnly : false, limit: iconLimit })
       setIconsResult(r)
+      setIconRefresh(n => n + 1)
     } catch (e) {
       setIconsError(e instanceof Error ? e.message : 'Failed to generate icons')
     } finally {
-      setIconsRunning(false)
+      setIconScope(null)
     }
   }
 
@@ -629,12 +640,6 @@ function ToolsView() {
       preview: sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…',
       running: schedulesRunning, result: schedulesResult, onRun: handleBackfillSchedules,
     },
-    {
-      title: 'Generate missing icons',
-      desc: 'Auto-generate SVGs for all plant_species with a latin name that lack a manifest icon. Updates manifest + syncs plant icon_keys.',
-      preview: '',
-      running: iconsRunning, result: iconsRunning ? 'Generating…' : (iconsError || ''), onRun: handleGenerateIcons,
-    },
   ]
 
   const iconCard = iconsResult && (
@@ -643,7 +648,7 @@ function ToolsView() {
       {iconsResult.count > 0 ? (
         <>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>
-            ✓ {iconsResult.count} icons generated · {iconsResult.skipped_count} skipped · {iconsResult.sync_result.matched} plants matched
+            ✓ {iconsResult.count} icons generated · {iconsResult.skipped_count} skipped · {iconsResult.sync_result.matched} plants matched · {iconsResult.remaining ?? 0} still to do
           </p>
           <div style={{ maxHeight: 300, overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.6 }}>
             {iconsResult.generated.map(g => (
@@ -678,6 +683,54 @@ function ToolsView() {
     </div>
   )
 
+  const iconBtn = (busy: boolean) => ({
+    background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8,
+    padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11,
+    cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .6 : 1,
+  } as const)
+
+  const iconTool = (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
+      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Generate icons</h3>
+      <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        AI-generate distinctive SVGs (validated; procedural fallback) → R2 + DB, then re-match plants. Each icon is one LLM call, so start with your real plants.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={mapOnly} onChange={e => setMapOnly(e.target.checked)} />
+          Map-placed plants only
+        </label>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Batch limit
+          <input type="number" min={1} max={500} value={iconLimit}
+                 onChange={e => setIconLimit(Math.max(1, Number(e.target.value) || 1))}
+                 style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+        </label>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
+            My plants{mapOnly ? ' on a map' : ''} needing an icon: {ipInUse ?? '…'}
+          </div>
+          <button onClick={() => handleGenerateIcons('in_use')} disabled={iconScope !== null} style={iconBtn(iconScope !== null)}>
+            {iconScope === 'in_use' ? 'Generating…' : `Generate for my plants${ipInUse != null ? ` (${Math.min(ipInUse, iconLimit)})` : ''}`}
+          </button>
+        </div>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Whole species catalog uncovered: {ipAll ?? '…'}
+          </div>
+          <button onClick={() => handleGenerateIcons('all')} disabled={iconScope !== null} style={iconBtn(iconScope !== null)}>
+            {iconScope === 'all' ? 'Generating…' : `Generate all catalog${ipAll != null ? ` (${Math.min(ipAll, iconLimit)})` : ''}`}
+          </button>
+        </div>
+      </div>
+      {iconsError && (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 12, color: 'var(--color-overdue)' }}>{iconsError}</p>
+      )}
+    </div>
+  )
+
   return (
     <div>
       <PageHeader title="Tools" sub="One-off maintenance operations" />
@@ -703,6 +756,7 @@ function ToolsView() {
             )}
           </div>
         ))}
+        {iconTool}
       </div>
       {iconCard}
     </div>

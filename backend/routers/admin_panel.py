@@ -196,24 +196,70 @@ async def admin_activity(admin=Depends(require_admin), db=Depends(db_dep)):
     return all_events[:50]
 
 
-@router.post("/admin-panel/generate-icons")
-async def generate_plant_icons(admin=Depends(require_admin), db=Depends(db_dep)):
-    """For every plant_species with a latin_name and no matching icon, generate a
-    distinctive icon (AI, validated; procedural fallback), store SVGs in R2 and
-    metadata in generated_icons, then re-match plants."""
-    storage = build_storage_from_env()
-    covered = await _existing_sci(db)
+async def _target_species(db, *, scope: str, map_only: bool) -> list[dict]:
+    """The plant_species rows that need an icon generated, deduped by latin name
+    and excluding species already covered by a curated/generated icon.
 
-    species_rows = await db.execute_fetchall(
-        "SELECT id, common_name_nl, latin_name FROM plant_species "
-        "WHERE latin_name IS NOT NULL AND latin_name != '' ORDER BY common_name_nl"
-    )
+    scope="all"     → the whole species catalog (every species with a latin name).
+    scope="in_use"  → only species linked to active plants that still lack a real
+                      icon (icon_requested / null / placeholder). map_only=True
+                      further restricts to plants actually placed on a map.
+    """
+    covered = await _existing_sci(db)
+    if scope == "in_use":
+        sql = (
+            "SELECT DISTINCT ps.id, ps.common_name_nl, ps.latin_name "
+            "FROM plants p JOIN plant_species ps ON p.species_id = ps.id "
+            "WHERE p.is_active = 1 "
+            "AND (p.icon_requested = TRUE OR p.icon_key IS NULL OR p.icon_key = '' "
+            "     OR p.icon_key LIKE 'placeholder%') "
+            "AND ps.latin_name IS NOT NULL AND ps.latin_name != '' "
+        )
+        if map_only:
+            sql += "AND p.map_id IS NOT NULL "
+        sql += "ORDER BY ps.common_name_nl"
+    else:
+        sql = (
+            "SELECT id, common_name_nl, latin_name FROM plant_species "
+            "WHERE latin_name IS NOT NULL AND latin_name != '' ORDER BY common_name_nl"
+        )
+    rows = await db.execute_fetchall(sql)
+    targets: list[dict] = []
+    seen = set(covered)
+    for row in rows:
+        latin = (row["latin_name"] or "").strip()
+        norm = icons_router._normalize(latin)
+        if not latin or norm in seen:
+            continue
+        seen.add(norm)
+        targets.append({"id": row["id"], "common_name_nl": row["common_name_nl"], "latin_name": latin})
+    return targets
+
+
+@router.get("/admin-panel/generate-icons/preview")
+async def generate_icons_preview(scope: str = "all", map_only: bool = False,
+                                 admin=Depends(require_admin), db=Depends(db_dep)):
+    """How many icons a generate-icons run would create — generates nothing."""
+    targets = await _target_species(db, scope=scope, map_only=map_only)
+    return {"scope": scope, "map_only": map_only, "count": len(targets)}
+
+
+@router.post("/admin-panel/generate-icons")
+async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit: int = 25,
+                               admin=Depends(require_admin), db=Depends(db_dep)):
+    """Generate distinctive icons (AI, validated; procedural fallback) for the
+    target species, store SVGs in R2 + metadata in generated_icons, then re-match
+    plants. `scope`/`map_only` pick the target set (see _target_species); `limit`
+    caps how many are processed per run (0 = no cap)."""
+    storage = build_storage_from_env()
+    targets = await _target_species(db, scope=scope, map_only=map_only)
+    total_targets = len(targets)
+    if limit and limit > 0:
+        targets = targets[:limit]
 
     generated, skipped = [], []
-    for row in species_rows:
-        latin = (row["latin_name"] or "").strip()
-        if not latin or icons_router._normalize(latin) in covered:
-            continue
+    for row in targets:
+        latin = row["latin_name"]
         name_nl = row["common_name_nl"] or derive_common_name(latin)
         base_id = f"gen_{_slug(name_nl)}"
 
@@ -250,12 +296,13 @@ async def generate_plant_icons(admin=Depends(require_admin), db=Depends(db_dep))
                 (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
             )
         await db.commit()
-        covered.add(icons_router._normalize(latin))
         generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
 
     sync_result = await _sync_from_admin(db)
     return {"generated": generated, "count": len(generated),
-            "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result}
+            "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
+            "scope": scope, "map_only": map_only,
+            "remaining": max(0, total_targets - len(generated))}
 
 
 async def _sync_from_admin(db):
