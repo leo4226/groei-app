@@ -1,8 +1,9 @@
-import { useRef, useMemo, useState, type ReactNode } from 'react'
+import { useRef, useMemo, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { screenToSVG } from '../../utils/svgCoords'
+import { usePinch } from '@use-gesture/react'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
@@ -65,6 +66,102 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   const [zoom, setZoom] = useState(1)
   const MIN_ZOOM = 0.25
   const MAX_ZOOM = 4
+  // --- Pan + Pinch-zoom state ---
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const isPinching = useRef(false)
+
+  const baseViewBox = useMemo(() => {
+    return isHouseMap ? map.viewbox : gardenViewBox || map.viewbox || '0 0 680 680'
+  }, [isHouseMap, map.viewbox, gardenViewBox])
+
+  const baseCenter = useMemo(() => {
+    const parts = baseViewBox.trim().split(/\s+/).map(Number)
+    if (parts.length !== 4) return { cx: 340, cy: 340, vw: 680, vh: 680 }
+    return {
+      cx: parts[0] + parts[2] / 2,
+      cy: parts[1] + parts[3] / 2,
+      vw: parts[2],
+      vh: parts[3],
+    }
+  }, [baseViewBox])
+
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  const panRef = useRef(pan)
+  panRef.current = pan
+
+  usePinch(
+    ({ origin: [ox, oy], offset: [scale], memo, first, last }) => {
+      if (first) isPinching.current = true
+      const svg = svgRef.current
+      if (!svg) return memo
+      const m = first || !memo
+        ? (() => {
+            const mid = screenToSVG(svg, ox, oy)
+            return { startZoom: zoom, startPan: { ...pan }, mx: mid?.x ?? baseCenter.cx, my: mid?.y ?? baseCenter.cy }
+          })()
+        : memo
+      const k = scale / m.startZoom
+      setZoom(+scale.toFixed(3))
+      setPan({
+        x: (baseCenter.cx - m.mx) * (1 - m.startZoom / scale) + m.startPan.x * (m.startZoom / scale),
+        y: (baseCenter.cy - m.my) * (1 - m.startZoom / scale) + m.startPan.y * (m.startZoom / scale),
+      })
+      if (last) isPinching.current = false
+      return m
+    },
+    {
+      target: svgRef,
+      eventOptions: { passive: false },
+      scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
+      from: () => [zoom, 0],
+    },
+  )
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      if (isPinching.current) return
+      e.preventDefault()
+      const cz = zoomRef.current
+      if (cz <= MIN_ZOOM && e.deltaY > 0) return
+      if (cz >= MAX_ZOOM && e.deltaY < 0) return
+      const delta = e.deltaY > 0 ? 1 / 1.15 : 1.15
+      const newZ = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(cz * delta).toFixed(3)))
+      if (newZ === cz) return
+      const svg = svgRef.current
+      if (svg) {
+        const mid = screenToSVG(svg, e.clientX, e.clientY)
+        if (mid) {
+          const k = newZ / cz
+          const cp = panRef.current
+          setPan({
+            x: (baseCenter.cx - mid.x) * (1 - 1/k) + cp.x / k,
+            y: (baseCenter.cy - mid.y) * (1 - 1/k) + cp.y / k,
+          })
+        }
+      }
+      setZoom(newZ)
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [containerRef.current, baseCenter])
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(z => Math.min(MAX_ZOOM, +(z * 1.25).toFixed(2)))
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(z => Math.max(MIN_ZOOM, +(z / 1.25).toFixed(2)))
+  }, [])
+
+  // --- End zoom/pan state ---
 
   // Derive plantable ground zones from canvas_data soil zones
   const soilGroundZones = useMemo((): GroundZone[] => {
@@ -133,8 +230,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     ? PLANT_SUN_PROFILES.find(p => p.id === draggingPlant.sun_requirement) ?? null
     : null
 
-  function computeZoomViewBox(baseViewBox: string, z: number): string {
-    if (z === 1) return baseViewBox
+  function computeZoomViewBox(baseViewBox: string, z: number, px: number, py: number): string {
+    if (z === 1 && px === 0 && py === 0) return baseViewBox
     const parts = baseViewBox.trim().split(/\s+/).map(Number)
     if (parts.length !== 4) return baseViewBox
     const [vx, vy, vw, vh] = parts
@@ -142,7 +239,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     const cy = vy + vh / 2
     const nw = vw / z
     const nh = vh / z
-    return `${(cx - nw / 2).toFixed(2)} ${(cy - nh / 2).toFixed(2)} ${nw.toFixed(2)} ${nh.toFixed(2)}`
+    const ocx = cx - px
+    const ocy = cy - py
+    return `${(ocx - nw / 2).toFixed(2)} ${(ocy - nh / 2).toFixed(2)} ${nw.toFixed(2)} ${nh.toFixed(2)}`
   }
 
   return (
@@ -179,7 +278,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       <svg
         ref={svgRef}
-        viewBox={computeZoomViewBox(isHouseMap ? map.viewbox : gardenViewBox || map.viewbox || '0 0 680 680', zoom)}
+        viewBox={computeZoomViewBox(baseViewBox, zoom, pan.x, pan.y)}
         preserveAspectRatio={isLandscapeMobile ? "xMidYMax slice" : "xMidYMid meet"}
         className="absolute"
         style={{
@@ -313,23 +412,22 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       </svg>
 
-      {/* Zoom controls — hidden at default zoom */}
-      {zoom !== 1 && (
+      {/* Zoom controls --- always visible */}
       <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
-          onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z * 1.25).toFixed(2)))}
+          onClick={handleZoomIn}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
           title="Zoom in">+</button>
         <button
-          onClick={() => setZoom(1)}
+          onClick={handleZoomReset}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-y border-border/50"
           title="Reset zoom">{Math.round(zoom * 100)}%</button>
         <button
-          onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z / 1.25).toFixed(2)))}
+          onClick={handleZoomOut}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
           title="Zoom uit">−</button>
       </div>
-      )}
+
       </div>
       )}
     </div>
