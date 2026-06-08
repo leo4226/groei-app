@@ -376,6 +376,7 @@ export interface PlantIcon {
   variant_of?: string
   family: string
   file: string
+  url?: string
 }
 
 export interface IconSyncResult {
