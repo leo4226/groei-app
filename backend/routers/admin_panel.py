@@ -263,14 +263,24 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
         name_nl = row["common_name_nl"] or derive_common_name(latin)
         base_id = f"gen_{_slug(name_nl)}"
 
-        # 1. AI attempt; any failure (validation or otherwise) falls back to procedural.
+        # 1. AI attempt — retry a few times before giving up, because the reasoning
+        #    model is non-deterministic (occasional timeout / empty content). Only
+        #    fall back to the (category-generic) procedural icon if every try fails.
         source = "ai"
-        try:
-            ai = await generate_icon_variants(name=name_nl, sci=latin)
-            cat = ai.get("cat") or guess_category(latin) or "unknown"
-            potted = validate_icon_svg(ai["potted_svg"])
-            bare = validate_icon_svg(ai["bare_svg"])
-        except Exception:  # noqa: BLE001 — any failure → procedural fallback
+        ai_svgs = None
+        for _attempt in range(3):
+            try:
+                ai = await generate_icon_variants(name=name_nl, sci=latin)
+                potted = validate_icon_svg(ai["potted_svg"])
+                bare = validate_icon_svg(ai["bare_svg"])
+                cat = ai.get("cat") or guess_category(latin) or "unknown"
+                ai_svgs = (potted, bare, cat)
+                break
+            except Exception:  # noqa: BLE001 — timeout / empty / invalid → retry
+                continue
+        if ai_svgs is not None:
+            potted, bare, cat = ai_svgs
+        else:
             source = "procedural"
             cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
             potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)

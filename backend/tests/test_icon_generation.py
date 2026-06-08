@@ -49,6 +49,26 @@ async def test_falls_back_to_procedural_on_bad_svg(client, admin_db, auth_header
 
 
 @pytest.mark.asyncio
+async def test_ai_retries_before_procedural_fallback(client, admin_db, auth_header):
+    # The reasoning model is flaky (timeout / empty content); two failures then a
+    # success must still yield an AI icon, not the generic procedural fallback.
+    flaky = AsyncMock(side_effect=[
+        Exception("read timeout"),
+        ValueError("empty content"),
+        {"potted_svg": GOOD, "bare_svg": GOOD, "cat": "flower"},
+    ])
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants", new=flaky), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    rows = await admin_db.execute_fetchall("SELECT source FROM generated_icons")
+    assert rows and all(r["source"] == "ai" for r in rows)
+    assert flaky.call_count == 3
+
+
+@pytest.mark.asyncio
 async def test_preview_counts_all_uncovered_species(client, admin_db, auth_header):
     resp = await client.get("/api/admin-panel/generate-icons/preview", headers=auth_header)
     assert resp.status_code == 200, resp.text

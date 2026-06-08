@@ -34,7 +34,7 @@ def _build_prompt(name: str, sci: str) -> str:
 
 async def generate_icon_variants(*, name: str, sci: str = "") -> dict:
     prompt = _build_prompt(name, sci)
-    async with httpx.AsyncClient(timeout=90) as client:
+    async with httpx.AsyncClient(timeout=180) as client:
         resp = await client.post(
             LLM_CHAT_URL,
             headers={"Authorization": f"Bearer {LLM_API_KEY}", "content-type": "application/json"},
