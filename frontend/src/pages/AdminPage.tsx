@@ -158,7 +158,7 @@ function SectionCard({ title, action, children }: { title: string; action?: { la
 }
 
 function AdminTable({ heads, children, scrollable }: { heads: string[]; children: React.ReactNode; scrollable?: boolean }) {
-  return (
+  const table = (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
@@ -170,6 +170,7 @@ function AdminTable({ heads, children, scrollable }: { heads: string[]; children
       <tbody>{children}</tbody>
     </table>
   )
+  return scrollable ? <div data-admin-table-wrap style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>{table}</div> : table
 }
 
 function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
@@ -249,7 +250,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
     <div>
       <PageHeader title="Overview" sub={`Platform health at a glance — ${new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
+      <div data-admin-stat-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {statCards.map(c => (
           <div key={c.label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 18px' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>{c.label}</div>
@@ -258,7 +259,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
+      <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
         <SectionCard title="Recent accounts" action={{ label: 'View all →', onClick: () => onNavigate('users') }}>
           <AdminTable heads={['Name', 'Household', 'Plants', 'Status']}>
             {data.recent_accounts.map(a => (
