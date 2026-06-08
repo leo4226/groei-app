@@ -1,22 +1,19 @@
-import json
-import os
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
 from auth import get_current_account
-from routers.icon_generator import generate_icon_svg, guess_category, derive_common_name, update_manifest
+from services.svg_validator import validate_icon_svg, SvgValidationError
+from services.storage import build_storage_from_env
+from services.icon_ai import generate_icon_variants
+from services.icon_catalog import load_catalog
+from routers.icon_generator import generate_icon_svg, guess_category, derive_common_name
+import routers.icons as icons_router
 
 router = APIRouter(tags=["admin-panel"])
 
 ADMIN_EMAIL = "leon_korbee@hotmail.com"
-
-# Use same ICONS_DIR resolution as icons.py
-ICONS_DIR = os.environ.get(
-    "ICONS_DIR",
-    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons")),
-)
 
 
 async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)):
@@ -26,6 +23,17 @@ async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)
     if not rows or rows[0]["email"] != ADMIN_EMAIL:
         raise HTTPException(403, "Forbidden")
     return {**account, "email": rows[0]["email"]}
+
+
+def _slug(text: str) -> str:
+    s = re.sub(r"[^a-z0-9_]", "", text.lower().replace(" ", "_").replace("-", "_"))
+    return s or "plant"
+
+
+async def _existing_sci(db) -> set[str]:
+    """Latin names already covered by curated OR generated icons (normalised)."""
+    catalog = await load_catalog(db)
+    return {icons_router._normalize(e.get("sci", "")) for e in catalog if e.get("sci")}
 
 
 @router.get("/admin-panel/me")
@@ -190,107 +198,81 @@ async def admin_activity(admin=Depends(require_admin), db=Depends(db_dep)):
 
 @router.post("/admin-panel/generate-icons")
 async def generate_plant_icons(admin=Depends(require_admin), db=Depends(db_dep)):
-    """Generate SVGs + update manifest for all species_without_icon that have a latin_name."""
-    manifest_path = os.path.join(ICONS_DIR, "manifest.json")
-    if not os.path.exists(manifest_path):
-        raise HTTPException(500, f"Manifest not found at {manifest_path}")
+    """For every plant_species with a latin_name and no matching icon, generate a
+    distinctive icon (AI, validated; procedural fallback), store SVGs in R2 and
+    metadata in generated_icons, then re-match plants."""
+    storage = build_storage_from_env()
+    covered = await _existing_sci(db)
 
-    # 1. Load existing manifest + build sci→icon_id lookup
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    manifest = data.get("plants", data if isinstance(data, list) else [])
-
-    existing_sci = set()
-    for entry in manifest:
-        sci = entry.get("sci", "")
-        if sci:
-            existing_sci.add(sci.strip().lower())
-
-    # 2. Find species with latin_name that have no matching manifest entry
     species_rows = await db.execute_fetchall(
-        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE latin_name IS NOT NULL AND latin_name != '' ORDER BY common_name_nl"
+        "SELECT id, common_name_nl, latin_name FROM plant_species "
+        "WHERE latin_name IS NOT NULL AND latin_name != '' ORDER BY common_name_nl"
     )
 
-    generated: list[dict] = []
-    skipped: list[dict] = []
-
+    generated, skipped = [], []
     for row in species_rows:
-        latin = row["latin_name"].strip()
-        if latin.lower() in existing_sci:
+        latin = (row["latin_name"] or "").strip()
+        if not latin or icons_router._normalize(latin) in covered:
             continue
-
         name_nl = row["common_name_nl"] or derive_common_name(latin)
+        base_id = f"gen_{_slug(name_nl)}"
 
-        # Auto-detect category from latin name
-        cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
-
-        icon_id = name_nl.lower().replace(" ", "_").replace("-", "_")
-        icon_id = re.sub(r"[^a-z0-9_]", "", icon_id)
-
-        # Generate SVG
+        # 1. AI attempt; any failure (validation or otherwise) falls back to procedural.
+        source = "ai"
         try:
-            svg = generate_icon_svg(
-                name=name_nl,
-                sci=latin,
-                cat=cat,
-                form="potted",
-                plant_height=50,
-                icon_id=icon_id,
-            )
-        except Exception as e:
-            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": str(e)})
+            ai = await generate_icon_variants(name=name_nl, sci=latin)
+            cat = ai.get("cat") or guess_category(latin) or "unknown"
+            potted = validate_icon_svg(ai["potted_svg"])
+            bare = validate_icon_svg(ai["bare_svg"])
+        except Exception:  # noqa: BLE001 — any failure → procedural fallback
+            source = "procedural"
+            cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+            potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
+            bare = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+
+        # 2. Upload both variants to R2
+        try:
+            potted_url = storage.put(f"icons/generated/{base_id}.svg", potted.encode("utf-8"), "image/svg+xml")
+            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare.encode("utf-8"), "image/svg+xml")
+        except Exception as exc:  # noqa: BLE001
+            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": f"r2: {exc}"})
             continue
 
-        # Write SVG
-        svg_path = os.path.join(ICONS_DIR, f"{icon_id}.svg")
-        os.makedirs(ICONS_DIR, exist_ok=True)
-        with open(svg_path, "w", encoding="utf-8") as f:
-            f.write(svg)
+        # 3. Upsert two rows (base potted + bare variant)
+        for icon_id, form, variant_of, url in [
+            (base_id, "potted", None, potted_url),
+            (f"{base_id}_bare", "bare", base_id, bare_url),
+        ]:
+            await db.execute("DELETE FROM generated_icons WHERE id = ?", (icon_id,))
+            await db.execute(
+                "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
+            )
+        await db.commit()
+        covered.add(icons_router._normalize(latin))
+        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
 
-        # Update manifest
-        update_manifest(ICONS_DIR, icon_id, name_nl, latin, cat, "potted")
-
-        existing_sci.add(latin.lower())
-        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": icon_id, "cat": cat})
-
-    # 3. Trigger sync to update plant icon_keys in the DB
     sync_result = await _sync_from_admin(db)
-
-    return {
-        "generated": generated,
-        "count": len(generated),
-        "skipped": skipped,
-        "skipped_count": len(skipped),
-        "sync_result": sync_result,
-    }
+    return {"generated": generated, "count": len(generated),
+            "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result}
 
 
 async def _sync_from_admin(db):
-    """Simplified sync — matches plants without icon_key using manifest entries."""
-    import routers.icons as icons_router
-
-    manifest_path = os.path.join(ICONS_DIR, "manifest.json")
-    if not os.path.exists(manifest_path):
-        return {"matched": 0, "note": "manifest not found"}
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    manifest = data.get("plants", data if isinstance(data, list) else [])
-
-    # Build lookup the same way icons_router does
+    """Match flagged plants (icon_requested) against the unified catalog."""
+    catalog = await load_catalog(db)
     lookup = {}
-    for entry in manifest:
+    for entry in catalog:
         for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
             if text:
-                norm = icons_router._normalize(text)
-                lookup[norm] = entry["id"]
+                lookup[icons_router._normalize(text)] = entry["id"]
     for dutch_norm, icon_id in getattr(icons_router, "DUTCH_TO_ICON", {}).items():
         lookup[icons_router._normalize(dutch_norm)] = icon_id
 
     plants = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND (icon_key IS NULL OR icon_key = '')"
+        "SELECT id, name, species FROM plants "
+        "WHERE is_active = 1 AND icon_requested = TRUE"
     )
-
     matched = []
     for row in plants:
         plant = dict(row)
@@ -310,12 +292,9 @@ async def _sync_from_admin(db):
                 break
         if found:
             await db.execute(
-                "UPDATE plants SET icon_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (found, plant["id"]),
-            )
+                "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (found, plant["id"]))
             matched.append({"plant_id": plant["id"], "plant_name": plant["name"], "icon_key": found})
-
     if matched:
         await db.commit()
-
     return {"matched": len(matched), "matches": matched}
