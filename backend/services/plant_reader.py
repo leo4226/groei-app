@@ -106,7 +106,7 @@ async def enrich_plant(db, plant_row, today, temp_data=None):
     plant["care_status"], plant["most_urgent"] = _compute_care_status(schedules, today)
 
     care_thresholds = plant.pop("care_thresholds", None)
-    if temp_data is not None and map_type != "indoor":
+    if temp_data is not None:
         plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
     else:
         plant["temp_status"] = "comfortable"
@@ -147,7 +147,7 @@ async def enrich_plant_full(db, plant_row, today, temp_data=None):
 
     # Compute temp_status
     care_thresholds = plant.pop("care_thresholds", None)
-    if temp_data is not None and map_type != "indoor":
+    if temp_data is not None:
         plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
     else:
         plant["temp_status"] = "comfortable"
