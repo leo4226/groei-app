@@ -1,7 +1,10 @@
 """Ask the configured LLM (Nous Portal) for a distinctive plant icon.
 
-Returns dict {potted_svg, bare_svg, cat}. Pure I/O — validation, fallback,
-storage and DB writes are the caller's job (admin_panel.generate-icons).
+Returns dict {plant_svg, cat} — only the PLANT foliage, no pot. The caller
+(admin_panel.generate-icons) composites it onto the standard terracotta pot
+(make_pot) for the potted variant and a ground shadow for the bare variant, so
+every icon shares the exact same pot as the curated icons. Pure I/O —
+validation, fallback, storage and DB writes are the caller's job.
 """
 from __future__ import annotations
 
@@ -12,19 +15,25 @@ import httpx
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
-_PROMPT = """You design tiny flat-vector plant icons for a gardening app.
+_PROMPT = """You design tiny flat-vector plant FOLIAGE for a gardening-app icon.
+The terracotta pot is drawn separately and your foliage is placed on top of it,
+so draw ONLY the plant — no pot, no soil, no background, no <svg> wrapper.
 
-Style guide — follow EXACTLY:
-- Output a single SVG per variant, root <svg> with viewBox="0 0 100 100" width="100" height="100".
-- Only use these tags: g, path, ellipse, rect, circle, line, polyline, polygon, defs, linearGradient, stop, title.
-- NO <script>, NO <image>, NO external href/url, NO event handlers.
-- Terracotta pot palette: #B2664A pot, #C77B5D rim, #8E4A33 inner, #4A3429 soil.
-- Foliage greens: #2F5D3A dark, #4A7C4E mid, #5C8A4E light, #3D5C3A stems.
-- The plant should be recognisably "{name}"{sci_clause}. Keep it simple and centred.
-- "potted" sits in a terracotta pot bottom ~y=75-100. "bare" has no pot, just a soft ground shadow.
+Follow EXACTLY:
+- Output SVG drawing elements only: a single <g> wrapping any of path, ellipse,
+  circle, line, polyline, polygon (optional nested g, defs, linearGradient, stop).
+- NO <svg>, NO <rect>, NO pot/soil/ground, NO <script>, NO <image>, NO external
+  href/url, NO event handlers.
+- The plant is rooted at the soil line y≈75, centred at x=50, and grows UPWARD to
+  about y≈15. Keep every coordinate within the 0..100 box.
+- Greens only: #2F5D3A dark, #4A7C4E mid, #5C8A4E light, #3D5C3A stems. A small
+  accent colour is allowed for flowers/fruit if characteristic of the species.
+- Style: a few layered simple leaves with thin vein strokes. Reference (Monstera leaf):
+  <g transform="translate(50 50) rotate(10)"><path d="M 0 2 Q -24 -6 -28 -26 Q -22 -36 -12 -30 Q -4 -22 0 -14 Q 4 -22 12 -30 Q 22 -36 28 -26 Q 24 -6 0 2 Z" fill="#4A7C4E"/><path d="M -18 -20 L -8 -14 M 18 -20 L 8 -14" stroke="#2F5D3A" stroke-width="2.4" stroke-linecap="round"/></g>
+- Make it recognisably "{name}"{sci_clause}. Keep it simple and centred.
 
 Return ONLY minified JSON, no prose:
-{{"potted_svg": "<svg.../>", "bare_svg": "<svg.../>", "cat": "<one of: houseplant,flower,succulent,herb,edible,tree,shrub,grass,fern,bulb,climber,cactus>"}}"""
+{{"plant_svg": "<g>...</g>", "cat": "<one of: houseplant,flower,succulent,herb,edible,tree,shrub,grass,fern,bulb,climber,cactus>"}}"""
 
 
 def _build_prompt(name: str, sci: str) -> str:
@@ -53,5 +62,4 @@ async def generate_icon_variants(*, name: str, sci: str = "") -> dict:
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     data = json.loads(raw)
-    return {"potted_svg": data["potted_svg"], "bare_svg": data["bare_svg"],
-            "cat": data.get("cat", "unknown")}
+    return {"plant_svg": data["plant_svg"], "cat": data.get("cat", "unknown")}

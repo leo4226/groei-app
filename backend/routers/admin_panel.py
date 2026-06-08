@@ -8,7 +8,10 @@ from services.svg_validator import validate_icon_svg
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
-from routers.icon_generator import generate_icon_svg, guess_category, derive_common_name
+from routers.icon_generator import (
+    generate_icon_svg, guess_category, derive_common_name,
+    make_pot, make_ground_shadow, CANVAS,
+)
 import routers.icons as icons_router
 
 router = APIRouter(tags=["admin-panel"])
@@ -28,6 +31,17 @@ async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)
 def _slug(text: str) -> str:
     s = re.sub(r"[^a-z0-9_]", "", text.lower().replace(" ", "_").replace("-", "_"))
     return s or "plant"
+
+
+def _compose_icon(plant_svg: str, *, potted: bool) -> str:
+    """Wrap an AI-generated plant fragment in the canonical 100x100 <svg>, on top
+    of the standard curated pot (potted) or a ground shadow (bare). This keeps the
+    pot pixel-identical to the curated icons — the AI only ever draws the plant."""
+    base = make_pot(50, 46) if potted else make_ground_shadow(50)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS} {CANVAS}" '
+        f'width="{CANVAS}" height="{CANVAS}">\n{base}\n{plant_svg}\n</svg>'
+    )
 
 
 async def _existing_sci(db) -> set[str]:
@@ -271,8 +285,11 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
         for _attempt in range(3):
             try:
                 ai = await generate_icon_variants(name=name_nl, sci=latin)
-                potted = validate_icon_svg(ai["potted_svg"])
-                bare = validate_icon_svg(ai["bare_svg"])
+                plant = ai["plant_svg"]
+                # Composite the plant onto the standard pot / ground shadow, then
+                # validate the finished icon (same pot as every curated icon).
+                potted = validate_icon_svg(_compose_icon(plant, potted=True))
+                bare = validate_icon_svg(_compose_icon(plant, potted=False))
                 cat = ai.get("cat") or guess_category(latin) or "unknown"
                 ai_svgs = (potted, bare, cat)
                 break

@@ -13,10 +13,9 @@ class _Resp:
 
 
 @pytest.mark.asyncio
-async def test_parses_potted_and_bare_from_llm_json():
+async def test_parses_plant_fragment_from_llm_json():
     payload = json.dumps({
-        "potted_svg": '<svg viewBox="0 0 100 100"></svg>',
-        "bare_svg": '<svg viewBox="0 0 100 100"></svg>',
+        "plant_svg": '<g><ellipse cx="50" cy="50" rx="9" ry="9" fill="#4A7C4E"/></g>',
         "cat": "flower",
     })
     with patch("services.icon_ai.httpx.AsyncClient") as cli:
@@ -24,8 +23,7 @@ async def test_parses_potted_and_bare_from_llm_json():
         inst.post = AsyncMock(return_value=_Resp("```json\n" + payload + "\n```"))
         out = await generate_icon_variants(name="Roos", sci="Rosa")
     assert out["cat"] == "flower"
-    assert out["potted_svg"].startswith("<svg")
-    assert out["bare_svg"].startswith("<svg")
+    assert out["plant_svg"].startswith("<g>")
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,11 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-GOOD = '<svg viewBox="0 0 100 100" width="100" height="100"><ellipse cx="50" cy="50" rx="9" ry="9" fill="#4A7C4E"/></svg>'
+# The AI now returns only the plant fragment; the backend composites it onto the
+# standard pot and validates the finished icon.
+PLANT = '<g><ellipse cx="50" cy="50" rx="9" ry="9" fill="#4A7C4E"/></g>'
+# A fragment that makes the composed icon invalid (disallowed tag) -> procedural.
+BAD_PLANT = '<foreignObject/>'
 
 
 @pytest.fixture
@@ -23,7 +27,7 @@ async def test_generate_ai_path_writes_r2_and_db(client, admin_db, auth_header):
     fake_storage = MagicMock()
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants",
-               new=AsyncMock(return_value={"potted_svg": GOOD, "bare_svg": GOOD, "cat": "flower"})), \
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
         resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
     assert resp.status_code == 200, resp.text
@@ -40,7 +44,7 @@ async def test_falls_back_to_procedural_on_bad_svg(client, admin_db, auth_header
     fake_storage = MagicMock()
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants",
-               new=AsyncMock(return_value={"potted_svg": "garbage", "bare_svg": "garbage", "cat": "flower"})), \
+               new=AsyncMock(return_value={"plant_svg": BAD_PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
         resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
     assert resp.status_code == 200, resp.text
@@ -55,7 +59,7 @@ async def test_ai_retries_before_procedural_fallback(client, admin_db, auth_head
     flaky = AsyncMock(side_effect=[
         Exception("read timeout"),
         ValueError("empty content"),
-        {"potted_svg": GOOD, "bare_svg": GOOD, "cat": "flower"},
+        {"plant_svg": PLANT, "cat": "flower"},
     ])
     fake_storage = MagicMock()
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
@@ -108,7 +112,7 @@ async def test_generate_respects_limit_and_reports_remaining(client, admin_db, a
     fake_storage = MagicMock()
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants",
-               new=AsyncMock(return_value={"potted_svg": GOOD, "bare_svg": GOOD, "cat": "flower"})), \
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
         resp = await client.post("/api/admin-panel/generate-icons?limit=1", headers=auth_header)
     assert resp.status_code == 200, resp.text
@@ -133,7 +137,7 @@ async def test_dangling_icon_key_surfaces_and_is_reassigned(client, admin_db, au
     fake_storage = MagicMock()
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants",
-               new=AsyncMock(return_value={"potted_svg": GOOD, "bare_svg": GOOD, "cat": "edible"})), \
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "edible"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
         resp = await client.post("/api/admin-panel/generate-icons?scope=in_use", headers=auth_header)
     assert resp.status_code == 200, resp.text
