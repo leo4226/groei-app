@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
 from auth import get_current_account
+from services.icon_catalog import load_catalog
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
@@ -204,9 +205,9 @@ DUTCH_TO_ICON: dict[str, str] = {
 
 
 @router.get("")
-async def get_catalog():
-    """Return all icons from the manifest, sorted by name."""
-    entries = load_manifest()
+async def get_catalog(db=Depends(db_dep)):
+    """Return all icons (curated + generated), each with a url, sorted by name."""
+    entries = await load_catalog(db)
     return sorted(entries, key=lambda e: e.get("name", e["id"]).lower())
 
 
