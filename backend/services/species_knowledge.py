@@ -440,7 +440,9 @@ Geef alleen geldige JSON terug met dit formaat:
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 600,
+                # DeepSeek V4 Flash (Nous) is a reasoning model — reasoning tokens
+                # count against max_tokens, so a tight cap leaves `content` empty.
+                "max_tokens": 2500,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
@@ -448,7 +450,13 @@ Geef alleen geldige JSON terug met dit formaat:
     if resp.status_code != 200:
         return None
 
-    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    try:
+        content = resp.json()["choices"][0]["message"].get("content")
+    except (KeyError, IndexError, ValueError):
+        return None
+    if not content:  # null/empty (e.g. reasoning consumed the whole budget)
+        return None
+    raw = content.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
 
