@@ -71,7 +71,9 @@ async def _generate_species(plant_name: str) -> dict:
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 4000,
+                # 12 months of phenology + windows + facts can exceed 4k tokens for
+                # verbose species (the JSON truncates mid-string and fails to parse).
+                "max_tokens": 8000,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
