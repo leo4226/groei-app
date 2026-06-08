@@ -4,7 +4,7 @@ import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import { icons, admin, type AdminAccount, household } from '../api/client'
 import { clearToken } from '../api/auth'
-import type { IconSyncResult, IconGapReport } from '../types'
+import type { IconSyncResult } from '../types'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 
@@ -17,9 +17,6 @@ export default function Settings() {
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const [gapReport, setGapReport] = useState<IconGapReport | null>(null)
-  const [gapsLoading, setGapsLoading] = useState(false)
-  const [gapsError, setGapsError] = useState<string | null>(null)
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
   const [stekkieReset, setStekkieReset] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
@@ -123,19 +120,6 @@ export default function Settings() {
       setSyncError(e instanceof Error ? e.message : t.common.error)
     } finally {
       setSyncing(false)
-    }
-  }
-
-  async function handleLoadGaps() {
-    setGapsLoading(true)
-    setGapsError(null)
-    try {
-      const report = await icons.gaps()
-      setGapReport(report)
-    } catch (e) {
-      setGapsError(e instanceof Error ? e.message : t.common.error)
-    } finally {
-      setGapsLoading(false)
     }
   }
 
@@ -300,93 +284,6 @@ export default function Settings() {
                   {t.settings.icons.stillMissing}: {syncResult.unmatched.map((u) => u.plant_name).join(', ')}
                 </p>
               )}
-            </div>
-          )}
-        </div>
-      </section>
-      )}
-
-      {adminAccounts !== null && (
-      <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.icons.gapsTitle}</h2>
-        <div className="card p-4 space-y-3">
-          <p className="text-sm text-text-muted">
-            {t.settings.icons.gapsDescription}
-          </p>
-          <button
-            onClick={handleLoadGaps}
-            disabled={gapsLoading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-surface border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
-          >
-            {gapsLoading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-text/20 border-t-text rounded-full animate-spin" />
-                {t.settings.icons.loadingGaps}
-              </>
-            ) : (
-              t.settings.icons.loadGaps
-            )}
-          </button>
-
-          {gapsError && (
-            <p className="text-sm text-fiery-red">{gapsError}</p>
-          )}
-
-          {gapReport && (
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="font-medium text-text mb-1">
-                  Aangevraagde iconen ({gapReport.requested.length})
-                </p>
-                {gapReport.requested.length === 0 ? (
-                  <p className="text-text-muted italic text-xs">Geen aanvragen</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {gapReport.requested.map((p) => (
-                      <li key={p.id} className="text-text-muted">
-                        <span className="font-medium text-text">{p.name}</span>
-                        {p.species && <span className="text-xs ml-1">— {p.species}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <p className="font-medium text-text mb-1">
-                  Soorten zonder icoon ({gapReport.species_without_icon.length})
-                </p>
-                {gapReport.species_without_icon.length === 0 ? (
-                  <p className="text-text-muted italic text-xs">Alle soorten hebben een icoon</p>
-                ) : (
-                  <ul className="space-y-1 max-h-40 overflow-y-auto">
-                    {gapReport.species_without_icon.map((s) => (
-                      <li key={s.id} className="text-text-muted">
-                        <span className="font-medium text-text">{s.name}</span>
-                        {s.latin && <span className="text-xs ml-1 italic">— {s.latin}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <p className="font-medium text-text mb-1">
-                  Iconen zonder soort ({gapReport.icons_without_species.length})
-                </p>
-                {gapReport.icons_without_species.length === 0 ? (
-                  <p className="text-text-muted italic text-xs">Alle iconen hebben een soort</p>
-                ) : (
-                  <ul className="space-y-1 max-h-40 overflow-y-auto">
-                    {gapReport.icons_without_species.map((e) => (
-                      <li key={e.name} className="text-text-muted font-mono text-xs">
-                        {e.name}
-                        {e.sci && <span className="font-sans italic ml-1">— {e.sci}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
             </div>
           )}
         </div>
