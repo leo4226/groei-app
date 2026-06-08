@@ -214,7 +214,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
 
         care_thresholds = plant.pop("care_thresholds", None)
         in_ground = map_type == "outdoor" and plant.get("container_id") is None
-        if temp_data is not None:
+        if temp_data is not None and map_type != "indoor":
             plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data, in_ground)
         else:
             plant["temp_status"] = "comfortable"
