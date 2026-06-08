@@ -298,6 +298,6 @@ async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(get_cu
     row = await db.execute_fetchall("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    await db.execute("UPDATE plants SET icon_requested = 1 WHERE id = ?", (plant_id,))
+    await db.execute("UPDATE plants SET icon_requested = TRUE WHERE id = ?", (plant_id,))
     await db.commit()
     return {"status": "requested", "plant_id": plant_id}
