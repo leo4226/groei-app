@@ -35,6 +35,15 @@ def _normalize(text: str) -> str:
 _FORM_SUFFIXES = re.compile(r"_(bare|potted|nopot|fruit|portrait)$")
 
 
+def _needs_real_icon(icon_key, valid_ids) -> bool:
+    """True if a plant lacks a usable icon: no key at all, a category placeholder,
+    or a key that no longer resolves to any catalog entry — i.e. a dangling/stale
+    key (e.g. a slugified name left over from the old ephemeral-disk generation)."""
+    if not icon_key or str(icon_key).startswith("placeholder"):
+        return True
+    return icon_key not in valid_ids
+
+
 async def find_variant(db, icon_key: str | None, target_form: str) -> str | None:
     """Return the icon_id for the given form variant of icon_key, across the
     unified catalog (curated + generated). Falls back to icon_key."""
@@ -65,6 +74,11 @@ async def match_icon_key(db, name: str, species: str | None) -> str | None:
     catalog = await load_catalog(db)
     lookup: dict[str, str] = {}
     for entry in catalog:
+        # Only match the base icon — form variants (_bare/_potted, variant_of)
+        # share a plant's name/sci and would otherwise shadow the base. A plant's
+        # icon_key is always the base; placement derives the bare/potted form.
+        if entry.get("variant_of") or _FORM_SUFFIXES.search(entry["id"]):
+            continue
         for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
             if text:
                 lookup[_normalize(text)] = entry["id"]
@@ -218,26 +232,30 @@ async def get_catalog(db=Depends(db_dep)):
 
 @router.post("/sync")
 async def sync_icons(db = Depends(db_dep)):
-    """Re-match flagged/placeholdered plants against the unified catalog.
+    """Re-match plants that lack a usable icon against the unified catalog.
 
-    Does NOT touch the filesystem. Curated icons arrive via git/deploy; generated
-    icons via the admin generate-icons pipeline. Idempotent."""
-    matched: list[dict] = []
+    Targets plants that are flagged, placeholdered, icon-less, OR carry a dangling
+    icon_key that no longer resolves to a real icon (stale keys from the old
+    ephemeral-disk era) — and reassigns them to a real curated/generated icon when
+    one exists. Does NOT touch the filesystem. Idempotent."""
+    valid_ids = {e["id"] for e in await load_catalog(db)}
     plants = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE"
+        "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
     )
-    for row in plants:
-        plant = dict(row)
+    candidates = [dict(r) for r in plants
+                  if r["icon_requested"] or _needs_real_icon(r["icon_key"], valid_ids)]
+    matched: list[dict] = []
+    for plant in candidates:
         found = await match_icon_key(db, plant["name"], plant.get("species"))
-        if found and not found.startswith("placeholder_"):
+        if found and found in valid_ids and not found.startswith("placeholder"):
             await db.execute(
                 "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (found, plant["id"]))
             matched.append({"plant_id": plant["id"], "plant_name": plant["name"], "icon_key": found})
     if matched:
         await db.commit()
-    unmatched = [{"plant_id": dict(r)["id"], "plant_name": dict(r)["name"]}
-                 for r in plants if not any(m["plant_id"] == dict(r)["id"] for m in matched)]
+    unmatched = [{"plant_id": p["id"], "plant_name": p["name"]}
+                 for p in candidates if not any(m["plant_id"] == p["id"] for m in matched)]
     return {"matched_plants": len(matched), "matches": matched,
             "unmatched_plants": len(unmatched), "unmatched": unmatched}
 
@@ -261,11 +279,15 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
     # Base icons only (exclude form variants like _bare, _potted, etc.)
     base_icons = [e for e in manifest if not _FORM_SUFFIXES.search(e["id"]) and not e.get("variant_of")]
 
-    # 1. requested — plants with icon_requested=1 (placeholder or truly missing icon)
+    # 1. requested — plants that lack a usable icon: flagged, placeholdered, missing,
+    #    or carrying a dangling icon_key that no longer resolves to a real icon.
+    valid_ids = {e["id"] for e in await load_catalog(db)}
     requested_rows = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants WHERE is_active = 1 AND icon_requested = TRUE"
+        "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
     )
-    requested = [{"id": r["id"], "name": r["name"], "species": r["species"]} for r in requested_rows]
+    requested = [{"id": r["id"], "name": r["name"], "species": r["species"]}
+                 for r in requested_rows
+                 if r["icon_requested"] or _needs_real_icon(r["icon_key"], valid_ids)]
 
     # 2. species_without_icon — plant_species entries with no matching manifest icon
     species_rows = await db.execute_fetchall(

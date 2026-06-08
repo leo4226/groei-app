@@ -202,28 +202,28 @@ async def _target_species(db, *, scope: str, map_only: bool) -> list[dict]:
 
     scope="all"     → the whole species catalog (every species with a latin name).
     scope="in_use"  → only species linked to active plants that still lack a real
-                      icon (icon_requested / null / placeholder). map_only=True
-                      further restricts to plants actually placed on a map.
+                      icon — flagged, placeholdered, icon-less, OR carrying a
+                      dangling icon_key that no longer resolves to a real icon.
+                      map_only=True further restricts to plants placed on a map.
     """
     covered = await _existing_sci(db)
     if scope == "in_use":
+        valid_ids = {e["id"] for e in await load_catalog(db)}
         sql = (
-            "SELECT DISTINCT ps.id, ps.common_name_nl, ps.latin_name "
+            "SELECT ps.id, ps.common_name_nl, ps.latin_name, p.icon_key, p.icon_requested "
             "FROM plants p JOIN plant_species ps ON p.species_id = ps.id "
-            "WHERE p.is_active = 1 "
-            "AND (p.icon_requested = TRUE OR p.icon_key IS NULL OR p.icon_key = '' "
-            "     OR p.icon_key LIKE 'placeholder%') "
-            "AND ps.latin_name IS NOT NULL AND ps.latin_name != '' "
+            "WHERE p.is_active = 1 AND ps.latin_name IS NOT NULL AND ps.latin_name != '' "
         )
         if map_only:
             sql += "AND p.map_id IS NOT NULL "
-        sql += "ORDER BY ps.common_name_nl"
+        rows = await db.execute_fetchall(sql)
+        rows = [r for r in rows
+                if r["icon_requested"] or icons_router._needs_real_icon(r["icon_key"], valid_ids)]
     else:
-        sql = (
+        rows = await db.execute_fetchall(
             "SELECT id, common_name_nl, latin_name FROM plant_species "
             "WHERE latin_name IS NOT NULL AND latin_name != '' ORDER BY common_name_nl"
         )
-    rows = await db.execute_fetchall(sql)
     targets: list[dict] = []
     seen = set(covered)
     for row in rows:
@@ -306,38 +306,20 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
 
 
 async def _sync_from_admin(db):
-    """Match flagged plants (icon_requested) against the unified catalog."""
-    catalog = await load_catalog(db)
-    lookup = {}
-    for entry in catalog:
-        for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
-            if text:
-                lookup[icons_router._normalize(text)] = entry["id"]
-    for dutch_norm, icon_id in getattr(icons_router, "DUTCH_TO_ICON", {}).items():
-        lookup[icons_router._normalize(dutch_norm)] = icon_id
-
+    """Re-match every plant that lacks a usable icon (flagged, placeholdered,
+    icon-less, or carrying a dangling key) against the unified catalog, assigning
+    a real curated/generated icon when one exists."""
+    valid_ids = {e["id"] for e in await load_catalog(db)}
     plants = await db.execute_fetchall(
-        "SELECT id, name, species FROM plants "
-        "WHERE is_active = 1 AND icon_requested = TRUE"
+        "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
     )
     matched = []
     for row in plants:
         plant = dict(row)
-        found = None
-        for text in [plant["name"], plant.get("species") or ""]:
-            if not text:
-                continue
-            norm = icons_router._normalize(text)
-            if norm in lookup:
-                found = lookup[norm]
-                break
-            for icon_norm, icon_id in lookup.items():
-                if icon_norm and (norm.startswith(icon_norm) or icon_norm.startswith(norm)):
-                    found = icon_id
-                    break
-            if found:
-                break
-        if found:
+        if not (plant["icon_requested"] or icons_router._needs_real_icon(plant["icon_key"], valid_ids)):
+            continue
+        found = await icons_router.match_icon_key(db, plant["name"], plant.get("species"))
+        if found and found in valid_ids and not found.startswith("placeholder"):
             await db.execute(
                 "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (found, plant["id"]))
