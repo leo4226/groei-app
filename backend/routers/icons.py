@@ -10,10 +10,11 @@ from services.icon_catalog import load_catalog
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
 
-# Allow override via env var; fallback works both locally (dev) and in Docker (prod)
+# Allow override via env var; fallback works both locally (dev) and in Docker (prod).
+# backend/routers/ is two levels under the repo root, hence two ".." to reach it.
 ICONS_DIR = os.environ.get(
     "ICONS_DIR",
-    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons")),
+    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "icons")),
 )
 MANIFEST_PATH = os.path.join(ICONS_DIR, "manifest.json")
 

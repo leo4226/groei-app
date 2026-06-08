@@ -12,14 +12,6 @@ async def db_ready(seeded_db):
     await seeded_db.executescript(EXTRA)
     await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, care_thresholds TEXT, phenology_json TEXT)")
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
-    # Seed a minimal generated_icons catalog so match_icon_key can find "monstera"
-    # without relying on the curated manifest.json being present in the test env.
-    await seeded_db.execute(
-        "CREATE TABLE generated_icons (id TEXT PRIMARY KEY, name TEXT, sci TEXT, cat TEXT, form TEXT, variant_of TEXT, family TEXT, url TEXT, source TEXT)"
-    )
-    await seeded_db.execute(
-        "INSERT INTO generated_icons (id, name, sci, cat, form, url, source) VALUES ('monstera', 'Monstera', 'Monstera deliciosa', 'houseplant', 'potted', '/icons/monstera.svg', 'generated')"
-    )
     await seeded_db.commit()
     return seeded_db
 

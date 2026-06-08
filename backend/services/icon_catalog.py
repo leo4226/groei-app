@@ -10,10 +10,12 @@ from __future__ import annotations
 import json
 import os
 
-# Same resolution as the routers (env override, else repo path).
+# Same resolution as the routers (env override, else repo path). In prod the
+# ICONS_DIR env var is set (fly.toml -> /app/icons); the fallback is dev-only.
+# backend/services/ is two levels under the repo root, hence two "..".
 ICONS_DIR = os.environ.get(
     "ICONS_DIR",
-    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "public", "icons")),
+    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "icons")),
 )
 
 
