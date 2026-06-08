@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   adminPanel, admin,
@@ -18,9 +18,33 @@ const NAV: { id: Section; icon: string; label: string }[] = [
   { id: 'activity', icon: '📋', label: 'Activity' },
 ]
 
+const RESPONSIVE_STYLES = `@media (max-width: 767px) {
+  [data-admin-sidebar] { position: fixed !important; top: 48px; left: 0; bottom: 0;
+    z-index: 50; width: 240px !important; transform: translateX(-100%);
+    transition: transform .2s ease; box-shadow: 4px 0 20px rgba(0,0,0,.15); }
+  [data-admin-sidebar].open { transform: translateX(0) !important; }
+  [data-admin-hamburger] { display: flex !important; }
+  [data-admin-overlay] { display: block !important; }
+  [data-admin-main] { padding: 16px !important; }
+  [data-admin-stat-cards] { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  [data-admin-tools-grid] { grid-template-columns: 1fr !important; }
+  [data-admin-overview-cards] { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 768px) {
+  [data-admin-hamburger] { display: none !important; }
+  [data-admin-overlay] { display: none !important; }
+}
+@media (max-width: 480px) {
+  [data-admin-stat-cards] { grid-template-columns: 1fr !important; }
+  [data-admin-table-wrap] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+}
+`
 export default function AdminPage() {
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+  const handleNav = useCallback((s: Section) => { setSection(s); setSidebarOpen(false) }, [])
   const [email, setEmail] = useState('')
   const [section, setSection] = useState<Section>('overview')
 
@@ -39,7 +63,7 @@ export default function AdminPage() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--color-bg)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--color-bg)' }}><style>{RESPONSIVE_STYLES}</style><div data-admin-overlay onClick={closeSidebar} style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.3)', zIndex: 45 }} />
       <div style={{ background: 'var(--color-primary)', color: '#fff', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
@@ -52,22 +76,22 @@ export default function AdminPage() {
           🌿 Floreren
           <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.18em', textTransform: 'uppercase' }}>Admin</span>
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: .7 }}>{email}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><button data-admin-hamburger onClick={() => setSidebarOpen(prev => !prev)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'none', alignItems: 'center' }}>{sidebarOpen ? String.fromCharCode(10005) : String.fromCharCode(9776)}</button><span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: .7 }}>{email}</span></div>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <aside style={{ width: 200, background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', padding: '16px 0', flexShrink: 0, overflowY: 'auto' }}>
+        <aside data-admin-sidebar className={sidebarOpen ? "open" : ""} style={{ width: 200, background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', padding: '16px 0', flexShrink: 0, overflowY: 'auto' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.2em', color: 'var(--color-text-muted)', padding: '0 16px 8px' }}>Platform</div>
           {NAV.slice(0, 4).map(item => (
-            <NavItem key={item.id} item={item} active={section === item.id} onClick={() => setSection(item.id)} />
+            <NavItem key={item.id} item={item} active={section === item.id} onClick={() => handleNav(item.id)} />
           ))}
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.2em', color: 'var(--color-text-muted)', padding: '16px 16px 8px' }}>System</div>
           {NAV.slice(4).map(item => (
-            <NavItem key={item.id} item={item} active={section === item.id} onClick={() => setSection(item.id)} />
+            <NavItem key={item.id} item={item} active={section === item.id} onClick={() => handleNav(item.id)} />
           ))}
         </aside>
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+        <main data-admin-main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
           {section === 'overview'  && <OverviewView onNavigate={setSection} />}
           {section === 'users'     && <UsersView />}
           {section === 'plants'    && <PlantsView />}
@@ -133,8 +157,8 @@ function SectionCard({ title, action, children }: { title: string; action?: { la
   )
 }
 
-function AdminTable({ heads, children }: { heads: string[]; children: React.ReactNode }) {
-  return (
+function AdminTable({ heads, children, scrollable }: { heads: string[]; children: React.ReactNode; scrollable?: boolean }) {
+  const table = (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
@@ -146,6 +170,7 @@ function AdminTable({ heads, children }: { heads: string[]; children: React.Reac
       <tbody>{children}</tbody>
     </table>
   )
+  return scrollable ? <div data-admin-table-wrap style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>{table}</div> : table
 }
 
 function Td({ children, mono }: { children: React.ReactNode; mono?: boolean }) {
@@ -225,7 +250,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
     <div>
       <PageHeader title="Overview" sub={`Platform health at a glance — ${new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
+      <div data-admin-stat-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {statCards.map(c => (
           <div key={c.label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 18px' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>{c.label}</div>
@@ -234,7 +259,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
+      <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
         <SectionCard title="Recent accounts" action={{ label: 'View all →', onClick: () => onNavigate('users') }}>
           <AdminTable heads={['Name', 'Household', 'Plants', 'Status']}>
             {data.recent_accounts.map(a => (
@@ -333,17 +358,17 @@ function UsersView() {
     <div>
       <PageHeader title="Users" sub={`${users?.length ?? '…'} accounts across all households`} />
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name or email…"
-          style={{ flex: 1, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
+          style={{ flex: 1, minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
         />
 
         {selectedIds.size > 0 && (
           bulkConfirm ? (
-            <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-overdue)' }}>
                 Delete {selectedIds.size} account{selectedIds.size > 1 ? 's' : ''} and all data?
               </span>
@@ -370,7 +395,7 @@ function UsersView() {
 
       {users && (
         <SectionCard title={`${filtered.length} accounts`}>
-          <AdminTable heads={['', 'Name', 'Email', 'Household', 'Plants', 'Maps', 'Joined', 'Actions']}>
+          <AdminTable heads={['', 'Name', 'Email', 'Household', 'Plants', 'Maps', 'Joined', 'Actions']} scrollable>
             <tr style={{ background: 'var(--color-bg-warm)' }}>
               <th style={{ padding: '8px 18px', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
@@ -465,7 +490,7 @@ function PlantsView() {
 
       {plants && (
         <SectionCard title={`${filtered.length} plants`}>
-          <AdminTable heads={['Name', 'Species', 'Household', 'Phase', 'Icon', 'Thresholds']}>
+          <AdminTable heads={['Name', 'Species', 'Household', 'Phase', 'Icon', 'Thresholds']} scrollable>
             {filtered.map(p => (
               <tr key={p.id}>
                 <Td><strong>{p.name}</strong></Td>
@@ -517,7 +542,7 @@ function SpeciesView() {
 
       {species && (
         <SectionCard title={`${filtered.length} species`}>
-          <AdminTable heads={['Common name', 'Latin name', 'Plants', 'Thresholds']}>
+          <AdminTable heads={['Common name', 'Latin name', 'Plants', 'Thresholds']} scrollable>
             {filtered.map(s => (
               <tr key={s.id}>
                 <Td><strong>{s.common_name_nl}</strong></Td>
@@ -656,7 +681,7 @@ function ToolsView() {
   return (
     <div>
       <PageHeader title="Tools" sub="One-off maintenance operations" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div data-admin-tools-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {tools.map(tool => (
           <div key={tool.title} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px' }}>
             <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>{tool.title}</h3>
