@@ -279,18 +279,17 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
 async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    cursor = await db.execute("SELECT id, icon_key, container_id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
     try:
         await db.execute(
             """UPDATE plants
                SET map_id = ?, map_x = ?, map_y = ?, ground_zone_id = ?,
-                   container_id = NULL, icon_key = ?, updated_at = CURRENT_TIMESTAMP
+                   updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
-            (data.map_id, data.map_x, data.map_y, data.ground_zone_id, new_icon, plant_id),
+            (data.map_id, data.map_x, data.map_y, data.ground_zone_id, plant_id),
         )
         await db.commit()
     except Exception:
@@ -298,9 +297,9 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
         await db.execute(
             """UPDATE plants
                SET map_id = ?, map_x = ?, map_y = ?,
-                   container_id = NULL, icon_key = ?, updated_at = CURRENT_TIMESTAMP
+                   updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
-            (data.map_id, data.map_x, data.map_y, new_icon, plant_id),
+            (data.map_id, data.map_x, data.map_y, plant_id),
         )
         await db.commit()
     return await get_plant(plant_id, db=db)
