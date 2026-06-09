@@ -12,7 +12,7 @@ See docs/plans/2026-05-27-public-gardens-and-biodiversity.md
 Components (max 100):
     - Pollinator coverage:  60   — 5 points per month where ≥1 species
                                    with pollinator_value ≥ 2 is flowering.
-    - Native ratio:         30   — fraction of species native to NL.
+    - Native count:         30   — 6 points per native species, capped (5 = max).
     - Diversity bonus:      10   — log-scaled species count; max at 20.
 
 Invasive count is reported alongside the score but *not* deducted —
@@ -81,8 +81,10 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             components={"pollinator": 0, "native": 0, "diversity": 0},
         )
 
-    native_count = sum(1 for s in species if s.get("native_to_nl") is True)
-    invasive_count = sum(1 for s in species if s.get("invasive_nl") is True)
+    # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
+    # (e.g. sqlite in tests) return 1/0 — both should count. None stays falsy.
+    native_count = sum(1 for s in species if s.get("native_to_nl"))
+    invasive_count = sum(1 for s in species if s.get("invasive_nl"))
 
     # ── Pollinator coverage per month ──
     # Month is "covered" if any species with pollinator_value ≥ 2 is
@@ -97,9 +99,11 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     covered_months = sum(coverage)
     pollinator_score = covered_months * 5      # 0..60
 
-    # ── Native ratio ──
-    native_ratio = native_count / species_count
-    native_score = round(native_ratio * 30)    # 0..30
+    # ── Native count ──
+    # Count-based (not a ratio): every native species adds points up to a cap, so
+    # adding plants never lowers the score and a garden with more natives ranks
+    # higher. 6 points each → 5 natives reaches the 30-point cap.
+    native_score = min(30, native_count * 6)    # 0..30
 
     # ── Diversity bonus ──
     # log scale capped at 20 distinct species → 10 points. Below that
