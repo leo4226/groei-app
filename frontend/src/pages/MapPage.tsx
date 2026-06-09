@@ -246,7 +246,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-full [@media(orientation:landscape)and(max-height:500px)]:h-dvh overflow-hidden">
+    <div className="relative h-full [@media(orientation:landscape) and (max-height:500px)]:h-dvh overflow-hidden">
       {/* Map fills safe area between top pills and bottom sheet */}
       <div className="absolute top-12 bottom-14 left-0 right-0">
         <MapView
