@@ -140,7 +140,6 @@ export default function Dashboard() {
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
-            </div>
           </div>
         </div>
 
