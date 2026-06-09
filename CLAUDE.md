@@ -12,6 +12,8 @@ npm run dev:frontend
 npm run dev:backend
 ```
 
+**Frontend verification** must run `npm run build` (Vite/rolldown), not just `tsc` — tsc is lenient about JSX nesting that the bundler rejects.
+
 Verify features in a desktop browser. Mobile testing not required during development.
 
 ## Stack
