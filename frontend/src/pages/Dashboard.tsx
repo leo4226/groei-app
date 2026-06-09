@@ -115,14 +115,15 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* ── Care Warnings — collapsed by default ── */}
-        {warningSummary && (
-          <CareWarningsSection summary={warningSummary} plants={plants} t={t} />
-        )}
-
-        {/* ── Responsive grid: main + sidebar ── */}
+        {/* ── Responsive grid: signals + log + sidebar ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }} className="dashboard-grid">
-          {/* MAIN column */}
+          {/* SIGNALS column */}
+          {warningSummary && (
+            <div className="dash-signals-col">
+              <CareWarningsSection summary={warningSummary} plants={plants} t={t} />
+            </div>
+          )}
+          {/* LOG column */}
           <div>
             {/* Logboek */}
             {dashboardV2 && dashboardV2.recent_log.length > 0 && (
@@ -139,22 +140,6 @@ export default function Dashboard() {
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}
-            <div className="identify-cards-row">
-              <Link to="/identify" style={{ textDecoration: 'none', display: 'block' }}>
-                <div className="identify-card" style={{
-                  height: '100%', borderRadius: 14, overflow: 'hidden',
-                  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-                  padding: '14px 14px', cursor: 'pointer', transition: 'border-color 0.15s', boxSizing: 'border-box',
-                }}>
-                  <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, color: 'var(--color-text)', marginBottom: 4 }}>
-                    {t.identify.card.title}
-                  </div>
-                  <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {t.identify.card.subtitle}
-                  </p>
-                </div>
-              </Link>
-            </div>
           </div>
         </div>
 
@@ -163,26 +148,13 @@ export default function Dashboard() {
       <style>{`
         /* ── Generic card shrink guard ── */
         .weather-card, .weather-card .card,
-        .log-card, .identify-cards-row { min-width: 0; }
+        .log-card { min-width: 0; }
 
-        /* ── Identify cards row ── */
-        .identify-cards-row {
-          display: grid; grid-template-columns: 1fr; gap: 10px;
-          margin-bottom: 18px; width: calc(100% + 48px);
-          margin-left: -24px; padding: 0 24px; box-sizing: border-box;
-          min-width: 0; overflow: hidden;
-        }
-        .identify-card { overflow-wrap: break-word; word-break: break-word; }
         .dashboard-grid > div { min-width: 0; }
-        @media (min-width: 721px) {
-          .identify-cards-row { grid-template-columns: 1fr 1fr; width: 100%; margin-left: 0; padding: 0; }
-        }
         @media (min-width: 900px) {
-          .identify-cards-row > a { margin-bottom: 18px; }
-          .identify-card { padding: 18px 18px !important; }
-          .identify-cards-row { grid-template-columns: 1fr; width: 100%; margin-left: 0; padding: 0; }
-          .dashboard-grid { grid-template-columns: 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
+          .dashboard-grid { grid-template-columns: 1fr 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
           .dashboard-sidebar { padding: 0 !important; }
+          .dash-signals-col > section { padding-left: 0 !important; padding-right: 0 !important; }
         }
 
         /* ── Sidebar shrink guard ── */
