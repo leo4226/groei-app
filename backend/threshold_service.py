@@ -12,6 +12,7 @@ _REQUIRED_KEYS = {
     "bring_inside_below_c",
     "fertilise_months",
     "fertilise_tip",
+    "fertilise_tip_en",
     "water_interval_days",
 }
 
@@ -29,8 +30,11 @@ Geef ALLEEN geldige JSON terug, zonder extra tekst of markdown. Gebruik dit exac
   "bring_inside_below_c": <float of null, null voor volledig winterharde buitenplanten>,
   "fertilise_months": [<int 1-12>, ...],
   "fertilise_tip": "<string max 80 tekens, Nederlandse bemestingstip>",
+  "fertilise_tip_en": "<string max 80 chars, English fertilising tip>",
   "water_interval_days": <int, gemiddeld aantal dagen tussen handmatig water geven, bijv. 7 voor wekelijks>
-}}"""
+}}
+
+Vul ZOWEL fertilise_tip (NL) als fertilise_tip_en (EN) in."""
 
 
 async def _call_ai(prompt: str) -> dict | None:
@@ -46,9 +50,6 @@ async def _call_ai(prompt: str) -> dict | None:
             },
             json={
                 "model": LLM_MODEL,
-                # DeepSeek V4 Flash (Nous) reasons before answering, and reasoning
-                # tokens count against max_tokens — 400 was almost always eaten by
-                # reasoning, leaving content null/truncated.
                 "max_tokens": 2000,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -76,7 +77,6 @@ async def _call_ai(prompt: str) -> dict | None:
 
 
 async def generate_thresholds(plant_name: str, species: str | None) -> dict:
-    """Generate care thresholds for a plant via Deepseek. Retries once on failure."""
     prompt = _build_prompt(plant_name, species)
 
     result = await _call_ai(prompt)
