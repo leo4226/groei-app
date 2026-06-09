@@ -81,6 +81,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
+        headers={"Access-Control-Allow-Origin": "*"},
     )
 
 # Health check for Fly.io — pings DB to catch silent connection-pool issues.

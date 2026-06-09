@@ -200,7 +200,7 @@ class WaterLogCreate(BaseModel):
 
 
 @router.post("/garden/water-log")
-async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep)):
+async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     watered_at = (body.watered_at or date.today()).isoformat()
     updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount)
     await db.commit()
