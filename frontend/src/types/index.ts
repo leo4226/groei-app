@@ -238,9 +238,12 @@ export interface MonthPhenology {
   month: number
   phase: string
   phase_label_nl: string
+  phase_label_en?: string
   sun_hours_needed: number
   description_nl: string
+  description_en?: string
   actions_nl: string[]
+  actions_en?: string[]
 }
 
 export interface Phenology {
@@ -253,6 +256,7 @@ export interface Phenology {
   max_height_cm: number | null
   max_spread_cm: number | null
   interesting_facts_nl: string
+  interesting_facts_en?: string
   climate_zone: string
 }
 
@@ -355,6 +359,7 @@ export interface PlantAlert {
   type: string
   severity: 'info' | 'warning' | 'urgent'
   message_nl: string
+  message_en?: string
   icon: string
 }
 

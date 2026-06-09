@@ -11,13 +11,13 @@ def get_token_usage() -> dict:
     return dict(_token_usage)
 
 _SPECIES_PROMPT = """\
-Je bent een botanische expert die tuiniers in Nederland helpt.
+Je bent een botanische expert die zowel Nederlandse als Engelse tuiniers helpt.
 
 Genereer een JSON-object met fenologische data voor de volgende plant:
 Plant: {plant_name}
 
 Geef ALLEEN een geldig JSON-object terug, geen uitleg, geen markdown, geen backticks.
-Het object moet dit exacte schema volgen:
+Het object moet dit exacte schema volgen — vul ALLE _nl EN _en velden in:
 
 {{
   "slug": "lowercase-latijnse-naam-of-nederlandse-naam",
@@ -31,9 +31,12 @@ Het object moet dit exacte schema volgen:
         "month": 1,
         "phase": "dormant",
         "phase_label_nl": "Rustperiode",
+        "phase_label_en": "Dormant period",
         "sun_hours_needed": 0,
-        "description_nl": "Korte beschrijving wat de plant doet",
-        "actions_nl": []
+        "description_nl": "Korte beschrijving wat de plant doet in het Nederlands",
+        "description_en": "Brief description of what the plant is doing in English",
+        "actions_nl": ["Nederlandse actie"],
+        "actions_en": ["English action"]
       }}
     ],
     "sow_window": [],
@@ -43,12 +46,14 @@ Het object moet dit exacte schema volgen:
     "min_temp_c": 10,
     "max_height_cm": 60,
     "max_spread_cm": 40,
-    "interesting_facts_nl": "Interessant feit over de plant.",
+    "interesting_facts_nl": "Interessant feit over de plant in het Nederlands.",
+    "interesting_facts_en": "Interesting fact about the plant in English.",
     "climate_zone": "temperate"
   }}
 }}
 
-Vul alle 12 maanden in. Gebruik alleen deze phase-waarden:
+Vul alle 12 maanden in. Vul zowel _nl als _en velden in voor phase_label, description, actions, en interesting_facts.
+De _en velden moeten correct Engels zijn. Gebruik alleen deze phase-waarden:
 dormant, establishing, growing, flowering, fruiting, harvest, dying_back, evergreen
 
 Let op:
@@ -57,6 +62,7 @@ Let op:
 - Voor vaste planten en bomen: gebruik dormant in winter, evergreen als van toepassing
 - sow_window, transplant_window, harvest_window zijn lijsten van maandnummers (1-12)
 - interesting_facts_nl: schrijf 1-2 interessante zinnen specifiek voor Nederlandse tuiniers
+- interesting_facts_en: write 1-2 interesting sentences specifically for Dutch gardeners
 """
 
 
@@ -71,9 +77,7 @@ async def _generate_species(plant_name: str) -> dict:
             },
             json={
                 "model": LLM_MODEL,
-                # 12 months of phenology + windows + facts can exceed 4k tokens for
-                # verbose species (the JSON truncates mid-string and fails to parse).
-                "max_tokens": 8000,
+                "max_tokens": 10000,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
@@ -86,22 +90,25 @@ async def _generate_species(plant_name: str) -> dict:
 
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
+    # If response is an object with phenology or just the phenology directly
+    try:
+        parsed = json.loads(raw)
+        # Could be {"phenology": {...}} or just {...} directly
+        if "phenology" in parsed or "months" in parsed:
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
     return json.loads(raw)
 
 
 async def ensure_phenology(db, species_id: int, name_hint: str) -> None:
-    """Generate + persist phenology_json for a species that lacks it.
-
-    Reuses the same one LLM call as species creation, so phenology is filled
-    exactly once per species and then served from cache — GBIF-imported species
-    (names + taxonomy but no phenology) get healed the first time a plant links
-    to them. Best-effort: never raises, never overwrites existing phenology."""
     try:
         data = await _generate_species(name_hint)
     except Exception:
         return
-    phen = data.get("phenology")
-    if not phen:
+    phen = data.get("phenology") or data
+    if not phen or not phen.get("months"):
         return
     await db.execute(
         "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP "
@@ -112,11 +119,6 @@ async def ensure_phenology(db, species_id: int, name_hint: str) -> None:
 
 
 async def get_or_create_species(db, plant_name: str) -> int:
-    """Return species_id for plant_name, generating via the LLM if not cached.
-
-    If an existing species row is found but has no phenology yet (e.g. it came
-    from the GBIF import), fill the phenology before returning so the plant gets
-    its month-by-month data."""
     row = await db.execute_fetchall(
         "SELECT id, latin_name, phenology_json FROM plant_species WHERE LOWER(common_name_nl) = LOWER(?)",
         (plant_name,),
@@ -129,18 +131,15 @@ async def get_or_create_species(db, plant_name: str) -> int:
         return species_id
 
     data = await _generate_species(plant_name)
-
     slug = data.get("slug") or plant_name.lower().replace(" ", "-")
     phenology_json = json.dumps(data.get("phenology", {}), ensure_ascii=False)
 
     cursor = await db.execute(
-        """
-        INSERT INTO plant_species (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(slug) DO UPDATE SET
-          phenology_json = excluded.phenology_json,
-          updated_at     = CURRENT_TIMESTAMP
-        """,
+        """INSERT INTO plant_species (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(slug) DO UPDATE SET
+             phenology_json = excluded.phenology_json,
+             updated_at     = CURRENT_TIMESTAMP""",
         (
             slug,
             data.get("common_name_nl", plant_name),
@@ -166,7 +165,6 @@ async def get_species_by_id(db, species_id: int) -> dict | None:
     else:
         result.pop("phenology_json", None)
 
-    # Load images
     img_rows = await db.execute_fetchall(
         "SELECT id, url, thumbnail_url, source, license, is_primary "
         "FROM species_images WHERE species_id = ? ORDER BY is_primary DESC",
@@ -176,69 +174,42 @@ async def get_species_by_id(db, species_id: int) -> dict | None:
     return result
 
 
-async def search_species(
-    db, query: str, page: int = 1, per_page: int = 20
-) -> tuple[list[dict], int]:
-    """Full-text search on NL/EN/Latin names. Returns (results, total_count)."""
+async def search_species(db, query: str, page: int = 1, per_page: int = 20) -> tuple[list[dict], int]:
     offset = (page - 1) * per_page
     like = f"%{query}%"
-
-    # Count
     count_rows = await db.execute_fetchall(
         """SELECT COUNT(*) AS total FROM plant_species
-           WHERE common_name_nl ILIKE ?
-              OR common_name_en ILIKE ?
-              OR latin_name ILIKE ?""",
+           WHERE common_name_nl ILIKE ? OR common_name_en ILIKE ? OR latin_name ILIKE ?""",
         (like, like, like),
     )
     total = count_rows[0]["total"] if count_rows else 0
-
-    # Results
     rows = await db.execute_fetchall(
-        """SELECT id, slug, common_name_nl, common_name_en,
-                  latin_name, family, genus, images_count
+        """SELECT id, slug, common_name_nl, common_name_en, latin_name, family, genus, images_count
            FROM plant_species
-           WHERE common_name_nl ILIKE ?
-              OR common_name_en ILIKE ?
-              OR latin_name ILIKE ?
-           ORDER BY
-             CASE WHEN common_name_nl ILIKE ? THEN 0
-                  WHEN common_name_en ILIKE ? THEN 1
-                  WHEN latin_name ILIKE ?      THEN 2
-                  ELSE 3
-             END,
-             common_name_nl
+           WHERE common_name_nl ILIKE ? OR common_name_en ILIKE ? OR latin_name ILIKE ?
+           ORDER BY CASE WHEN common_name_nl ILIKE ? THEN 0 WHEN common_name_en ILIKE ? THEN 1 WHEN latin_name ILIKE ? THEN 2 ELSE 3 END, common_name_nl
            LIMIT ? OFFSET ?""",
         (like, like, like, query, query, query, per_page, offset),
     )
     results = [dict(r) for r in rows]
-
-    # Attach primary image to each result
     if results:
         ids = tuple(r["id"] for r in results)
         placeholders = ",".join("?" * len(ids))
         img_rows = await db.execute_fetchall(
-            f"""SELECT DISTINCT ON (species_id) species_id, id, url, thumbnail_url,
-                       source, license, is_primary
-               FROM species_images
-               WHERE species_id IN ({placeholders})
-               ORDER BY species_id, is_primary DESC""",
+            f"""SELECT DISTINCT ON (species_id) species_id, id, url, thumbnail_url, source, license, is_primary
+                FROM species_images WHERE species_id IN ({placeholders}) ORDER BY species_id, is_primary DESC""",
             ids,
         )
         img_map = {r["species_id"]: dict(r) for r in img_rows} if img_rows else {}
         for r in results:
             r["primary_image"] = img_map.get(r["id"])
-
     return results, total
 
 
 async def upsert_species_from_gbif(db, data: dict) -> int | None:
-    """Insert or update a species row from GBIF data. Returns species_id."""
     await db.execute(
         """INSERT INTO plant_species
-             (slug, common_name_nl, common_name_en, latin_name,
-              family, genus, growth_form, gbif_taxon_key,
-              images_count, climate_zone)
+             (slug, common_name_nl, common_name_en, latin_name, family, genus, growth_form, gbif_taxon_key, images_count, climate_zone)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (slug) DO UPDATE SET
              common_name_en  = COALESCE(excluded.common_name_en, plant_species.common_name_en),
@@ -250,15 +221,9 @@ async def upsert_species_from_gbif(db, data: dict) -> int | None:
              updated_at      = CURRENT_TIMESTAMP
            RETURNING id""",
         (
-            data.get("slug", ""),
-            data.get("common_name_nl", ""),
-            data.get("common_name_en"),
-            data.get("latin_name"),
-            data.get("family"),
-            data.get("genus"),
-            data.get("growth_form"),
-            data.get("gbif_taxon_key"),
-            data.get("images_count", 0),
+            data.get("slug", ""), data.get("common_name_nl", ""), data.get("common_name_en"),
+            data.get("latin_name"), data.get("family"), data.get("genus"),
+            data.get("growth_form"), data.get("gbif_taxon_key"), data.get("images_count", 0),
             data.get("climate_zone", "temperate"),
         ),
     )
@@ -266,42 +231,34 @@ async def upsert_species_from_gbif(db, data: dict) -> int | None:
 
 
 async def insert_species_image(db, species_id: int, img: dict) -> None:
-    """Insert a species image record."""
     await db.execute(
-        """INSERT INTO species_images
-             (species_id, url, thumbnail_url, source, license, width, height, is_primary)
+        """INSERT INTO species_images (species_id, url, thumbnail_url, source, license, width, height, is_primary)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            species_id,
-            img["url"],
-            img.get("thumbnail_url"),
-            img.get("source", "gbif"),
-            img.get("license"),
-            img.get("width"),
-            img.get("height"),
-            img.get("is_primary", False),
-        ),
+        (species_id, img["url"], img.get("thumbnail_url"), img.get("source", "gbif"),
+         img.get("license"), img.get("width"), img.get("height"), img.get("is_primary", False)),
     )
 
 _FACT_PROMPT = """\
-Je bent een botanische expert die tuiniers in Nederland helpt.
+Je bent een botanische expert die zowel Nederlandse als Engelse tuiniers helpt.
 
-Geef 1-2 interessante feiten over de volgende plant:
+Geef 1-2 interessante feiten over de volgende plant, in BEIDE talen:
 
 Plant: {plant_name}
 
 De feiten moeten:
 - Relevant zijn voor Nederlandse tuiniers (denk aan Nederlands klimaat, tuincultuur)
 - Verrassend of nuttig zijn
-- In het Nederlands
-- Maximaal 2-3 zinnen
+- In het Nederlands voor fact_nl, en in het Engels voor fact_en
 
-Geef ALLEEN de feiten terug, geen uitleg, geen aanhef, geen markdown.
+Geef ALLEEN dit JSON-formaat terug, geen uitleg, geen markdown:
+{{
+  "fact_nl": "Nederlands feit",
+  "fact_en": "English fact"
+}}
 """
 
 
 async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> str:
-    """Generate an interesting fact for a plant species using the LLM."""
     name = plant_name
     if latin_name:
         name = f"{plant_name} ({latin_name})"
@@ -315,7 +272,7 @@ async def generate_fact_for_species(plant_name: str, latin_name: str | None = No
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 300,
+                "max_tokens": 500,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
@@ -323,43 +280,36 @@ async def generate_fact_for_species(plant_name: str, latin_name: str | None = No
         body = resp.json()
         raw = body["choices"][0]["message"]["content"].strip()
     raw = re.sub(r'^["\']|["\']$', "", raw)
+    try:
+        data = json.loads(raw)
+        return data.get("fact_nl", raw)
+    except (json.JSONDecodeError, TypeError):
+        pass
     return raw
 
 
 async def backfill_missing_facts(db, limit: int = 50) -> dict:
-    """Find species without interesting_facts_nl and generate them via LLM.
-
-    Returns a summary dict with counts of processed/updated/skipped.
-    """
     rows = await db.execute_fetchall(
         "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species "
-        "WHERE phenology_json IS NULL "
-        "   OR phenology_json = '' "
-        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' "
-        "LIMIT ?",
+        "WHERE phenology_json IS NULL OR phenology_json = '' "
+        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' LIMIT ?",
         (limit,),
     )
-
     if not rows:
         return {"processed": 0, "updated": 0, "skipped": 0, "message": "All species already have facts."}
-
     updated = 0
     skipped = 0
     errors = []
-
     for row in rows:
         species_id = row["id"]
         plant_name = row["common_name_nl"]
         latin_name = row.get("latin_name")
         phenology_str = row.get("phenology_json")
-
         try:
             fact = await generate_fact_for_species(plant_name, latin_name)
             if not fact:
                 skipped += 1
                 continue
-
-            # Parse existing phenology or create new container
             if phenology_str:
                 try:
                     phenology = json.loads(phenology_str)
@@ -367,10 +317,8 @@ async def backfill_missing_facts(db, limit: int = 50) -> dict:
                     phenology = {}
             else:
                 phenology = {}
-
             phenology["interesting_facts_nl"] = fact
             new_phenology_str = json.dumps(phenology, ensure_ascii=False)
-
             await db.execute(
                 "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (new_phenology_str, species_id),
@@ -379,13 +327,6 @@ async def backfill_missing_facts(db, limit: int = 50) -> dict:
         except Exception as e:
             errors.append({"species_id": species_id, "name": plant_name, "error": str(e)})
             skipped += 1
-
     if updated:
         await db.commit()
-
-    return {
-        "processed": len(rows),
-        "updated": updated,
-        "skipped": skipped,
-        "errors": errors,
-    }
+    return {"processed": len(rows), "updated": updated, "skipped": skipped, "errors": errors}

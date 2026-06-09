@@ -2,34 +2,58 @@ import { useMemo, useState } from 'react'
 import { usePlantCareInfo } from '../hooks/usePlantCareInfo'
 import { useRainContext } from '../hooks/useRainContext'
 import { useTemperatureContext } from '../hooks/useTemperatureContext'
+import { useT } from '../context/LanguageContext'
 
 interface Props { plantId: number }
 
-const LIGHT_LABEL: Record<string, string> = {
+const LIGHT_LABEL_NL: Record<string, string> = {
   shade: 'Schaduw',
   partial: 'Halfschaduw',
   full_sun: 'Volle zon',
 }
+const LIGHT_LABEL_EN: Record<string, string> = {
+  shade: 'Shade',
+  partial: 'Partial shade',
+  full_sun: 'Full sun',
+}
 
-const TEMP_BADGE: Record<string, { label: string; className: string }> = {
+const TEMP_BADGE_NL: Record<string, { label: string; className: string }> = {
   hot:  { label: 'Heet',  className: 'bg-overdue/15 text-overdue' },
   warm: { label: 'Warm',  className: 'bg-secondary/15 text-secondary' },
   mild: { label: 'Zacht', className: 'bg-good/15 text-good' },
   cool: { label: 'Fris',  className: 'bg-due/15 text-due' },
   cold: { label: 'Koud',  className: 'bg-aqua-glow/15 text-midnight-ink' },
 }
+const TEMP_BADGE_EN: Record<string, { label: string; className: string }> = {
+  hot:  { label: 'Hot',   className: 'bg-overdue/15 text-overdue' },
+  warm: { label: 'Warm',  className: 'bg-secondary/15 text-secondary' },
+  mild: { label: 'Mild',  className: 'bg-good/15 text-good' },
+  cool: { label: 'Cool',  className: 'bg-due/15 text-due' },
+  cold: { label: 'Cold',  className: 'bg-aqua-glow/15 text-midnight-ink' },
+}
 
-const RAIN_BADGE: Record<string, { label: string; className: string }> = {
+const RAIN_BADGE_NL: Record<string, { label: string; className: string }> = {
   well_watered: { label: 'Goed bewaterd', className: 'bg-good/15 text-good' },
   moderate:     { label: 'Matig',         className: 'bg-due/15 text-due' },
   dry:          { label: 'Droog',         className: 'bg-secondary/15 text-secondary' },
   very_dry:     { label: 'Erg droog',     className: 'bg-overdue/15 text-overdue' },
 }
+const RAIN_BADGE_EN: Record<string, { label: string; className: string }> = {
+  well_watered: { label: 'Well watered',  className: 'bg-good/15 text-good' },
+  moderate:     { label: 'Moderate',      className: 'bg-due/15 text-due' },
+  dry:          { label: 'Dry',           className: 'bg-secondary/15 text-secondary' },
+  very_dry:     { label: 'Very dry',      className: 'bg-overdue/15 text-overdue' },
+}
 
-const MONTH_ABBR: Record<string, string> = {
+const MONTH_ABBR_NL: Record<string, string> = {
   january: 'Jan', february: 'Feb', march: 'Mrt', april: 'Apr',
   may: 'Mei', june: 'Jun', july: 'Jul', august: 'Aug',
   september: 'Sep', october: 'Okt', november: 'Nov', december: 'Dec',
+}
+const MONTH_ABBR_EN: Record<string, string> = {
+  january: 'Jan', february: 'Feb', march: 'Mar', april: 'Apr',
+  may: 'May', june: 'Jun', july: 'Jul', august: 'Aug',
+  september: 'Sep', october: 'Oct', november: 'Nov', december: 'Dec',
 }
 
 function SkeletonRow() {
@@ -37,10 +61,17 @@ function SkeletonRow() {
 }
 
 export default function PlantCareInfo({ plantId }: Props) {
+  const t = useT()
+  const isEN = t.locale?.startsWith('en')
   const [expanded, setExpanded] = useState(false)
   const care = usePlantCareInfo(plantId)
   const rain = useRainContext()
   const temp = useTemperatureContext()
+
+  const lightLabel = isEN ? LIGHT_LABEL_EN : LIGHT_LABEL_NL
+  const tempBadge = isEN ? TEMP_BADGE_EN : TEMP_BADGE_NL
+  const rainBadge = isEN ? RAIN_BADGE_EN : RAIN_BADGE_NL
+  const monthAbbr = isEN ? MONTH_ABBR_EN : MONTH_ABBR_NL
 
   const tempScale = useMemo(() => {
     if (!temp.data) return { min: 0, max: 30, range: 30 }
@@ -59,13 +90,17 @@ export default function PlantCareInfo({ plantId }: Props) {
     <div className="mt-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">Verzorgingsinfo</p>
+        <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">
+          {isEN ? 'Care info' : 'Verzorgingsinfo'}
+        </p>
         {!isLoading && !noData && care.data && (
           <button
             onClick={() => setExpanded(e => !e)}
             className="text-xs text-primary font-medium"
           >
-            {expanded ? 'Minder ←' : 'Meer info →'}
+            {expanded
+              ? (isEN ? 'Less ←' : 'Minder ←')
+              : (isEN ? 'More info →' : 'Meer info →')}
           </button>
         )}
       </div>
@@ -74,9 +109,9 @@ export default function PlantCareInfo({ plantId }: Props) {
         {isLoading ? (
           <><SkeletonRow /><SkeletonRow /><SkeletonRow /></>
         ) : care.error ? (
-          <p className="text-xs text-text-muted">Kon verzorgingsinfo niet laden</p>
+          <p className="text-xs text-text-muted">{isEN ? 'Could not load care info' : 'Kon verzorgingsinfo niet laden'}</p>
         ) : noData ? (
-          <p className="text-xs text-text-muted">Geen verzorgingsinfo beschikbaar voor deze soort</p>
+          <p className="text-xs text-text-muted">{isEN ? 'No care info available for this species' : 'Geen verzorgingsinfo beschikbaar voor deze soort'}</p>
         ) : care.data ? (
           <>
             {/* Light bar */}
@@ -90,7 +125,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                   />
                 </div>
                 <span className="text-xs text-text-muted shrink-0 w-20 text-right">
-                  {LIGHT_LABEL[care.data.light_label ?? ''] ?? care.data.light_label}
+                  {lightLabel[care.data.light_label ?? ''] ?? care.data.light_label}
                 </span>
               </div>
             )}
@@ -100,7 +135,7 @@ export default function PlantCareInfo({ plantId }: Props) {
               <div className="flex items-start gap-2 text-sm">
                 <span className="shrink-0">💧</span>
                 <span className="text-text-muted">
-                  {care.data.precip_min_mm}–{care.data.precip_max_mm} mm/jaar
+                  {care.data.precip_min_mm}–{care.data.precip_max_mm} {isEN ? 'mm/year' : 'mm/jaar'}
                 </span>
               </div>
             )}
@@ -111,7 +146,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                 <div className="flex items-start gap-2 text-sm">
                   <span className="shrink-0">🌸</span>
                   <span className="text-text-muted">
-                    {care.data.bloom_months.map(m => MONTH_ABBR[m] ?? m).join(' · ')}
+                    {care.data.bloom_months.map(m => monthAbbr[m] ?? m).join(' · ')}
                   </span>
                 </div>
               )}
@@ -122,8 +157,12 @@ export default function PlantCareInfo({ plantId }: Props) {
                   <span className="text-text-muted capitalize">
                     {[
                       care.data.duration,
-                      care.data.leaf_retention === true  ? 'Groenblijvend'   : null,
-                      care.data.leaf_retention === false ? 'Bladverliezend'  : null,
+                      care.data.leaf_retention === true
+                        ? (isEN ? 'Evergreen' : 'Groenblijvend')
+                        : null,
+                      care.data.leaf_retention === false
+                        ? (isEN ? 'Deciduous' : 'Bladverliezend')
+                        : null,
                     ].filter(Boolean).join(' · ')}
                   </span>
                 </div>
@@ -133,7 +172,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                 <div className="flex items-start gap-2 text-sm">
                   <span className="shrink-0">🎨</span>
                   <span className="text-text-muted capitalize">
-                    Bloemen: {care.data.flower_colors.join(', ')}
+                    {isEN ? 'Flowers: ' : 'Bloemen: '}{care.data.flower_colors.join(', ')}
                   </span>
                 </div>
               )}
@@ -145,9 +184,11 @@ export default function PlantCareInfo({ plantId }: Props) {
         {expanded && rain.data && (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">🌧 Neerslag — 7 dagen</span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${RAIN_BADGE[rain.data.assessment]?.className ?? ''}`}>
-                {RAIN_BADGE[rain.data.assessment]?.label ?? rain.data.assessment}
+              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">
+                {isEN ? '🌧 Rainfall — 7 days' : '🌧 Neerslag — 7 dagen'}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${rainBadge[rain.data.assessment]?.className ?? ''}`}>
+                {rainBadge[rain.data.assessment]?.label ?? rain.data.assessment}
               </span>
             </div>
             <div className="flex items-end gap-1 h-14 mb-1">
@@ -167,12 +208,12 @@ export default function PlantCareInfo({ plantId }: Props) {
             <div className="flex mb-2">
               {rain.data.days.map(day => (
                 <span key={day.date} className="flex-1 text-center text-[9px] text-text-muted">
-                  {new Date(day.date).toLocaleDateString('nl-NL', { weekday: 'narrow' })}
+                  {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
                 </span>
               ))}
             </div>
             <p className="text-xs text-text-muted text-right">
-              Totaal: <span className="text-text font-medium">{rain.data.total_7day_mm} mm</span>
+              {isEN ? 'Total: ' : 'Totaal: '}<span className="text-text font-medium">{rain.data.total_7day_mm} mm</span>
             </p>
           </div>
         )}
@@ -187,9 +228,11 @@ export default function PlantCareInfo({ plantId }: Props) {
         {expanded && temp.data && (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">🌡 Temperatuur — 7 dagen</span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TEMP_BADGE[temp.data.assessment]?.className ?? ''}`}>
-                {TEMP_BADGE[temp.data.assessment]?.label ?? temp.data.assessment}
+              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">
+                {isEN ? '🌡 Temperature — 7 days' : '🌡 Temperatuur — 7 dagen'}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tempBadge[temp.data.assessment]?.className ?? ''}`}>
+                {tempBadge[temp.data.assessment]?.label ?? temp.data.assessment}
               </span>
             </div>
             <div className="flex gap-1 mb-1">
@@ -209,7 +252,7 @@ export default function PlantCareInfo({ plantId }: Props) {
                     </div>
                     <span className="text-[8px] text-text-muted/70 font-medium leading-none">{day.min}°</span>
                     <span className="text-[9px] text-text-muted">
-                      {new Date(day.date).toLocaleDateString('nl-NL', { weekday: 'narrow' })}
+                      {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
                     </span>
                   </div>
                 )
@@ -221,7 +264,7 @@ export default function PlantCareInfo({ plantId }: Props) {
               ))}
             </div>
             <p className="text-xs text-text-muted text-right">
-              Gem. max: <span className="text-text font-medium">{temp.data.avg_max_7day}°C</span>
+              {isEN ? 'Avg max: ' : 'Gem. max: '}<span className="text-text font-medium">{temp.data.avg_max_7day}°C</span>
             </p>
           </div>
         )}

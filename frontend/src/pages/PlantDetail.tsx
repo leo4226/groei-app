@@ -45,7 +45,10 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
   if (alerts.length === 0) return null
 
   const currentMonth = new Date().getMonth() + 1
-  const monthActions = phenology?.months?.find(m => m.month === currentMonth)?.actions_nl ?? []
+  const monthData = phenology?.months?.find(m => m.month === currentMonth)
+  const monthActions = t.locale?.startsWith('en') && monthData?.actions_en
+    ? monthData.actions_en
+    : (monthData?.actions_nl ?? [])
 
   return (
     <Section title={t.plantDetail.weatherAlerts}>
@@ -56,7 +59,12 @@ function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Pheno
             className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-4 ${ALERT_BORDER[alert.severity]} ${ALERT_BG[alert.severity]}`}
           >
             <span className="text-lg shrink-0 mt-0.5">{alert.icon}</span>
-            <p className="text-sm text-text leading-snug">{alert.message_nl}</p>
+            {/* Use message_en if available for EN locale */}
+            <p className="text-sm text-text leading-snug">
+              {(t.locale?.startsWith('en') && (alert as any).message_en)
+                ? (alert as any).message_en
+                : (alert as any).message_nl}
+            </p>
           </div>
         ))}
       </div>
@@ -173,6 +181,13 @@ export default function PlantDetail() {
     const profile = PLANT_SUN_PROFILES.find(p => p.id === plant.sun_requirement)
     return fit && profile ? { fit, sunHours, profile } : null
   })()
+
+  // Locale-aware current month label
+  const locale = t.locale || 'nl-NL'
+  const fmtMonth = (m: number) =>
+    new Intl.DateTimeFormat(locale, { month: 'short' })
+      .format(new Date(2026, m - 1, 1))
+      .replace('.', '')
 
   return (
     <div className="pb-10">
