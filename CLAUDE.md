@@ -14,6 +14,8 @@ npm run dev:backend
 
 Verify features in a desktop browser. Mobile testing not required during development.
 
+**Frontend verification must run `npm run build` (Vite/rolldown), not just `tsc`.** `tsc` is lenient about JSX nesting (e.g. an unbalanced `</div>`) that Vite's rolldown parser rejects, so `tsc` can pass while the production build — and the Vercel deploy — fails. CI runs the build as the `Frontend · tsc + build` check; reproduce locally with `cd frontend && npm run build`.
+
 ## Stack
 
 | Layer | Tech |

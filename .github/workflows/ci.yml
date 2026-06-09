@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend · tsc
+    name: Frontend · tsc + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,6 +28,12 @@ jobs:
       - run: npm ci
       - name: Type-check (tsc)
         run: npx tsc --noEmit
+      - name: Build (vite)
+        # tsc is lenient about JSX nesting that Vite's rolldown parser rejects, so
+        # tsc can pass while the production build fails (see PR #91 / issue #102).
+        # Run the real build here so that class of error is caught as a PR check,
+        # not only as an opaque Vercel deploy failure.
+        run: npm run build
 
   backend:
     name: Backend · safe tests
