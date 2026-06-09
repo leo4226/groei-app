@@ -43,7 +43,8 @@ class ErrorBoundaryImpl extends Component<ImplProps, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null })
+    // Hard reload: fetch fresh index.html with correct chunk hashes
+    window.location.reload()
   }
 
   render() {

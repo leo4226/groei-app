@@ -22,6 +22,21 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 // Recover from stale dynamic-import references after a redeploy: when an
 // already-loaded chunk tries to lazy-load a sibling chunk whose hash no longer
 // exists, reload to pick up the current index.html and fresh chunk graph.
+// Also catch React.lazy() import() failures that vite:preloadError doesn't cover.
+// After a redeploy, old index.html references stale chunk hashes -> 404 -> module-script error.
+// Reload once to pick up the fresh index.html with correct chunk references.
+window.addEventListener('error', (event) => {
+  const msg = event.message ?? ''
+  if (
+    (msg.includes('Importing a module script failed') ||
+     msg.includes('Failed to fetch dynamically imported module')) &&
+    !sessionStorage.getItem('lazyImportReloaded')
+  ) {
+    sessionStorage.setItem('lazyImportReloaded', '1')
+    window.location.reload()
+  }
+})
+
 window.addEventListener('vite:preloadError', () => {
   if (!sessionStorage.getItem('preloadErrorReloaded')) {
     sessionStorage.setItem('preloadErrorReloaded', '1')
