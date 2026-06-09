@@ -24,15 +24,19 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
   const t = useT()
   const [query, setQuery] = useState('')
 
+  // Only offer plants that have an icon — a uniform icon grid looks far cleaner
+  // than mixing in blank coloured squares for the (curated) entries without one.
+  const withIcon = useMemo(() => LOCAL_PLANTS.filter((p) => p.iconKey), [])
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return LOCAL_PLANTS
+    if (!query.trim()) return withIcon
     const q = query.toLowerCase()
-    return LOCAL_PLANTS.filter(
+    return withIcon.filter(
       (p) =>
         p.dutchName.toLowerCase().includes(q) ||
         p.latinName.toLowerCase().includes(q)
     )
-  }, [query])
+  }, [query, withIcon])
 
   const handleCustom = () => {
     onCustomName(query.trim() || undefined)
