@@ -182,7 +182,7 @@ export default function Settings() {
                       alert(e instanceof Error ? e.message : t.settings.removeError)
                     }
                   }}
-                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-0 group-hover:opacity-100"
+                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   title={t.settings.removeMember}
                 >
                   ✕
