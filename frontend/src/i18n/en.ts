@@ -337,6 +337,8 @@ export const en: Translations = {
     assistantTitle: 'Assistant',
     resetAssistant: '🔄 Reset Stekkie',
     resetAssistantDone: 'Stekkie has been reset!',
+    about: 'About',
+    logout: 'Log out',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────
