@@ -6,6 +6,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
+from database import db_dep
+
 SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
 ALGORITHM = "HS256"
 EXPIRE_DAYS = 30
@@ -45,3 +47,19 @@ async def get_current_account(
         return decode_token(credentials.credentials)
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "leon_korbee@hotmail.com")
+
+
+async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)) -> dict:
+    """FastAPI dependency — 403 unless the caller is the admin account.
+
+    Injects {"account_id", "household_id", "email"}.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT email FROM accounts WHERE id = ?", (account["account_id"],)
+    )
+    if not rows or rows[0]["email"] != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return {**account, "email": rows[0]["email"]}
