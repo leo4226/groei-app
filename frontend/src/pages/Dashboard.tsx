@@ -152,7 +152,7 @@ export default function Dashboard() {
 
         .dashboard-grid > div { min-width: 0; }
         @media (min-width: 900px) {
-          .dashboard-grid { grid-template-columns: 1fr 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
+          .dashboard-grid { grid-template-columns: 1fr 1fr 340px !important; align-items: stretch; padding: 0 24px; gap: 28px; }
           .dashboard-sidebar { padding: 0 !important; }
           .dash-signals-col > section { padding-left: 0 !important; padding-right: 0 !important; }
         }
@@ -592,7 +592,7 @@ function WarningBucket({ label, icon, items, plantsLookup, t, saving, onDone, on
 
 function SectionHeader({ leftLede, rightMarker, rightAction }: { leftLede?: string; rightMarker: string; rightAction?: { to: string; label: string } }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 18px', borderBottom: '1px solid var(--color-border)', marginBottom: 18, gap: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '20px 0 18px', minHeight: 56, borderBottom: '1px solid var(--color-border)', marginBottom: 18, gap: 12 }}>
       {leftLede && <p style={{ margin: 0, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 15, color: 'var(--color-text-soft)', flex: 1, minWidth: 0 }}>{leftLede}</p>}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexShrink: 0, marginLeft: 'auto' }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'var(--color-text-muted)' }}>{rightMarker}</span>
