@@ -112,6 +112,24 @@ async def backfill_care_schedules_preview(db = Depends(db_dep)):
     }
 
 
+
+
+@router.get("/admin/backfill-plant-types/preview")
+async def backfill_plant_types_preview(db = Depends(db_dep)):
+    """Preview: count plants that backfill-plant-types would process."""
+    rows = await db.execute_fetchall(
+        "SELECT id FROM plants "
+        "WHERE plant_type IS NULL AND icon_key IS NOT NULL"
+    )
+    total = await db.execute_fetchall(
+        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1"
+    )
+    return {
+        "total_active_plants": total[0]["n"],
+        "missing_plant_type": len(rows),
+    }
+
+
 @router.post("/admin/backfill-plant-types")
 async def backfill_plant_types(db = Depends(db_dep)):
     """Backfill NULL plant_type from icon manifest cat field."""

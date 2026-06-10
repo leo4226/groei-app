@@ -573,10 +573,19 @@ function ToolsView() {
   const [iconRefresh, setIconRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
+  const [fp, setFp] = useState<{ total_species: number; missing_facts: number } | null>(null)
+  const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
+  const [factsResult, setFactsResult] = useState('')
+  const [factsRunning, setFactsRunning] = useState(false)
+  const [factsLimit, setFactsLimit] = useState(25)
+  const [plantTypesResult, setPlantTypesResult] = useState('')
+  const [plantTypesRunning, setPlantTypesRunning] = useState(false)
 
   useEffect(() => {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
+    adminPanel.backfillFactsPreview().then(setFp).catch(() => {})
+    admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -627,6 +636,34 @@ function ToolsView() {
     }
   }
 
+  async function handleBackfillFacts() {
+    setFactsRunning(true)
+    setFactsResult('')
+    try {
+      const r = await adminPanel.backfillFacts(factsLimit)
+      setFactsResult('✓ ' + r.updated + ' updated · ' + r.skipped + ' skipped out of ' + r.processed)
+      adminPanel.backfillFactsPreview().then(setFp).catch(() => {})
+    } catch (e) {
+      setFactsResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
+    } finally {
+      setFactsRunning(false)
+    }
+  }
+
+  async function handleBackfillPlantTypes() {
+    setPlantTypesRunning(true)
+    setPlantTypesResult('')
+    try {
+      const r = await admin.backfillPlantTypes()
+      setPlantTypesResult('✓ ' + r.updated + ' updated · ' + r.skipped + ' skipped out of ' + r.found)
+      admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
+    } catch (e) {
+      setPlantTypesResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
+    } finally {
+      setPlantTypesRunning(false)
+    }
+  }
+
   const tools = [
     {
       title: 'Backfill thresholds',
@@ -639,6 +676,12 @@ function ToolsView() {
       desc: 'Seed water & fertilize schedules for plants that have thresholds but no active schedule.',
       preview: sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…',
       running: schedulesRunning, result: schedulesResult, onRun: handleBackfillSchedules,
+    },
+    {
+      title: 'Backfill plant types',
+      desc: 'Set plant_type from icon manifest cat field for plants where it is NULL.',
+      preview: pp ? pp.missing_plant_type + ' of ' + pp.total_active_plants + ' active plants need a type' : 'Loading...',
+      running: plantTypesRunning, result: plantTypesResult, onRun: handleBackfillPlantTypes,
     },
   ]
 
@@ -688,6 +731,38 @@ function ToolsView() {
     padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11,
     cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .6 : 1,
   } as const)
+
+  const factsTool = (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
+      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Backfill interesting facts</h3>
+      <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        Generate interesting_facts_nl via LLM for species that lack one. Each fact is one LLM call, so limit accordingly.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Batch limit
+          <input type="number" min={1} max={500} value={factsLimit}
+                 onChange={e => setFactsLimit(Math.max(1, Number(e.target.value) || 1))}
+                 style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+        </label>
+        <span style={{ color: 'var(--color-primary)' }}>
+          {fp ? fp.missing_facts + ' of ' + fp.total_species + ' species need facts' : 'Loading preview...'}
+        </span>
+      </div>
+      <button
+        onClick={handleBackfillFacts}
+        disabled={factsRunning}
+        style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: factsRunning ? 'not-allowed' : 'pointer', opacity: factsRunning ? .6 : 1 }}
+      >
+        {factsRunning ? 'Generating...' : 'Run for up to ' + factsLimit + ' species'}
+      </button>
+      {factsResult && (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: factsResult.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
+          {factsResult}
+        </p>
+      )}
+    </div>
+  )
 
   const iconTool = (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
@@ -756,6 +831,7 @@ function ToolsView() {
             )}
           </div>
         ))}
+        {factsTool}
         {iconTool}
       </div>
       {iconCard}
