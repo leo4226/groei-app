@@ -315,7 +315,7 @@ export default function Settings() {
         <h2 className="text-base font-bold mb-3">{t.settings.about}</h2>
         <div className="card p-4">
           <p className="text-sm text-text-muted">
-            <span className="font-bold text-primary text-base">Floreren</span> v1.0
+            <span className="font-bold text-primary text-base">Floreren</span> v{__APP_VERSION__} · {__BUILD_HASH__}
           </p>
           <p className="text-xs text-text-muted mt-1">
             Plant care for {activeUser?.name ?? 'your'}'s garden 🌱
