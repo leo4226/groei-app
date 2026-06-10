@@ -290,18 +290,6 @@ export default function Settings() {
       </section>
       )}
 
-      <section>
-        <h2 className="text-base font-bold mb-3">About</h2>
-        <div className="card p-4">
-          <p className="text-sm text-text-muted">
-            <span className="font-bold text-primary text-base">Floreren</span> v1.0
-          </p>
-          <p className="text-xs text-text-muted mt-1">
-            Plant care for {activeUser?.name ?? 'your'}'s garden 🌱
-          </p>
-        </div>
-      </section>
-
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.assistantTitle}</h2>
         <div className="card p-4 space-y-3">
@@ -323,13 +311,24 @@ export default function Settings() {
           )}
         </div>
       </section>
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">{t.settings.about}</h2>
+        <div className="card p-4">
+          <p className="text-sm text-text-muted">
+            <span className="font-bold text-primary text-base">Floreren</span> v1.0
+          </p>
+          <p className="text-xs text-text-muted mt-1">
+            Plant care for {activeUser?.name ?? 'your'}'s garden 🌱
+          </p>
+        </div>
+      </section>
 
       <section className="mt-8 mb-4">
         <button
           onClick={() => { clearToken(); navigate('/login') }}
           className="w-full py-3 rounded-xl border border-red-400/30 text-red-400 font-semibold text-sm active:scale-[0.98] transition-transform"
         >
-          Log uit
+          {t.settings.logout}
         </button>
       </section>
 

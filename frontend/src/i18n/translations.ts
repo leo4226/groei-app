@@ -292,6 +292,8 @@ export type Translations = {
     assistantTitle: string    // "Assistent" / "Assistant"
     resetAssistant: string    // "Stekkie resetten" / "Reset Stekkie"
     resetAssistantDone: string // "Stekkie is gereset!" / "Stekkie has been reset!"
+    about: string
+    logout: string
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────
