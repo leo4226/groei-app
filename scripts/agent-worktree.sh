@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create / list / remove isolated git worktrees so multiple agents can work in
 # parallel without sharing one working folder. Bash sibling of agent-worktree.ps1
-# for WSL/Linux agents. See docs/agents/how-we-work.md (§5).
+# for Git Bash (Windows). See docs/agents/how-we-work.md (§5).
 #
 # Usage:
 #   bash scripts/agent-worktree.sh new <issue> <slug>   # e.g. new 13 map-sun-cells

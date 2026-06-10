@@ -24,31 +24,14 @@ mechanics below are the same.
 
 ---
 
-## 0.5 Your environment (WSL vs Windows)
+## 0.5 Your environment (Windows only)
 
-Executor agents (Hermes) run in **WSL2 (bash)**; Leon and Claude may be on **Windows
-(PowerShell)**. Almost every command is identical. The differences:
+Everyone (Leon, all agents) works in **Windows (Git Bash)** — no WSL. All commands
+(`git`, `npm`, `npx`, `python -m pytest`, forward-slash paths) work the same way.
 
-**One-time WSL setup** — `gh` (and `flyctl`) live on the Windows side only, so expose
-them to bash once. This reuses the existing Windows GitHub/Fly logins — no re-auth:
-
-```bash
-sudo ln -s "/mnt/c/Program Files/GitHub CLI/gh.exe" /usr/local/bin/gh
-sudo ln -s "/mnt/c/Users/leon_/.fly/bin/flyctl.exe" /usr/local/bin/flyctl   # only if you deploy
-```
-
-`flyctl` is only needed if you deploy — and **agents don't deploy** (Leon does), so
-executor agents can skip the second line.
-
-**Path differences** (WSL ↔ Windows), used below:
-
-| Thing | WSL (bash) | Windows (PowerShell) |
-|---|---|---|
-| Python venv binary | `.venv/bin/python` | `.venv\Scripts\python` |
-| Worktree helper | `scripts/agent-worktree.sh` | `scripts/agent-worktree.ps1` |
-
-Everything else (`git`, `npm`, `npx`, `python -m pytest`, forward-slash paths) is the
-same in both.
+Note: Python venv binaries are at `.venv\Scripts\python` (Windows). Use the worktree
+helper at `scripts/agent-worktree.ps1` (PowerShell) or `scripts/agent-worktree.sh`
+(bash/Git Bash).
 
 ---
 
@@ -144,10 +127,10 @@ Two agents must never share one working folder. A **git worktree** is a separate
 folder that shares the same repo history but checks out its own branch — so each
 agent works alone and merges to `master` when done.
 
-Use the helper from the repo root — bash (WSL agents) or PowerShell (Windows):
+Use the helper from the repo root — bash (Git Bash) or PowerShell (Windows):
 
 ```bash
-# WSL / bash
+# Git Bash / bash
 bash scripts/agent-worktree.sh new 13 map-sun-cells
 #  → creates  ../floreren-13   on branch  fix/13-map-sun-cells  off the latest master
 bash scripts/agent-worktree.sh list
@@ -181,18 +164,15 @@ without them. Before running the app or backend tests there, set up once:
 cd frontend && npm install && cd ..
 
 # Backend venv + deps — needed to run the server or any test that hits the DB
-cd backend && python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt          # WSL / Linux
-#   .venv\Scripts\python -m pip install -r requirements.txt  # Windows PowerShell
+cd backend && python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
 cd ..
 ```
 
 Then `npm run dev` (from the worktree root) starts frontend + backend together.
 If a command fails with "module/package not found", you skipped one of these.
 
-Because each worktree has its **own** `backend/.venv`, a WSL agent's Linux venv never
-clobbers Leon's Windows venv in the main repo — another reason agents work in their
-own worktree, not the main folder.
+Because each worktree has its **own** `backend/.venv`, venvs from different worktrees never clash. Likewise, each worktree has its own `frontend/node_modules`.
 
 `master` is the **integration branch** where everyone's parallel work lands via PRs.
 
