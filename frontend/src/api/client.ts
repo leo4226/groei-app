@@ -293,6 +293,8 @@ export const admin = {
   backfillCareSchedules:()           => api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules'),
   thresholdsPreview:     ()           => api<{ active_total: number; missing_thresholds: number; has_thresholds: number }>('GET', '/admin/backfill-thresholds/preview'),
   schedulesPreview:      ()           => api<{ total_with_thresholds: number; missing_schedules: number; has_schedules: number }>('GET', '/admin/backfill-care-schedules/preview'),
+  backfillPlantTypes:    ()           => api<{ status: string; found: number; updated: number; skipped: number }>('POST', '/admin/backfill-plant-types'),
+  backfillPlantTypesPreview: ()     => api<{ total_active_plants: number; missing_plant_type: number }>('GET', '/admin/backfill-plant-types/preview'),
 }
 
 export const adminPanel = {
@@ -302,6 +304,8 @@ export const adminPanel = {
   species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
+  backfillFacts: (limit: number = 50) => api<{ processed: number; updated: number; skipped: number; errors: Array<{species_id: number; name: string; error: string}> }>('POST', `/admin-panel/backfill-facts?limit=${limit}`),
+  backfillFactsPreview: () => api<{ total_species: number; missing_facts: number }>('GET', '/admin-panel/backfill-facts/preview'),
   generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
     const q = new URLSearchParams()
     if (opts.scope) q.set('scope', opts.scope)

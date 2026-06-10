@@ -345,6 +345,25 @@ async def _sync_from_admin(db):
     return {"matched": len(matched), "matches": matched}
 
 
+
+@router.get("/admin-panel/backfill-facts/preview")
+async def backfill_facts_preview(
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Preview: count species that backfill-facts would process."""
+    rows = await db.execute_fetchall(
+        "SELECT id FROM plant_species "
+        "WHERE phenology_json IS NULL OR phenology_json = '' "
+        "   OR phenology_json NOT LIKE '%interesting_facts_nl%'"
+    )
+    total = await db.execute_fetchall("SELECT COUNT(*) as n FROM plant_species")
+    return {
+        "total_species": total[0]["n"],
+        "missing_facts": len(rows),
+    }
+
+
 @router.post("/admin-panel/backfill-facts")
 async def backfill_plant_facts(
     limit: int = 50,
