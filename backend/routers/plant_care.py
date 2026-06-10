@@ -201,7 +201,7 @@ class WaterLogCreate(BaseModel):
 
 @router.post("/garden/water-log")
 async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
-    watered_at = (body.watered_at or date.today()).isoformat()
+    watered_at = body.watered_at or date.today()
     updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount)
     await db.commit()
     return {"watered_at": watered_at, "schedules_updated": updated, "water_amount": body.water_amount}
@@ -252,7 +252,7 @@ class FertilizeLogCreate(BaseModel):
 
 @router.post("/garden/fertilize-log")
 async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep)):
-    fertilized_at = (body.fertilized_at or date.today()).isoformat()
+    fertilized_at = body.fertilized_at or date.today()
     updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by)
     await db.commit()
     return {"fertilized_at": fertilized_at, "schedules_updated": updated}

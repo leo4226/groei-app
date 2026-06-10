@@ -50,7 +50,7 @@ async def get_last_garden_fertilized() -> date | None:
 
 # ── event logging (mutates DB) ───────────────────────────────────────────────
 
-async def log_garden_water(db, watered_at_iso: str, watered_by: int | None, water_amount: float | None) -> int:
+async def log_garden_water(db, watered_at: date, watered_by: int | None, water_amount: float | None) -> int:
     """Insert a new garden water log entry and mark all active water schedules as done.
 
     Returns the number of schedules updated. Caller is responsible for commit.
@@ -60,7 +60,7 @@ async def log_garden_water(db, watered_at_iso: str, watered_by: int | None, wate
     await db.execute("DELETE FROM garden_water_log")
     await db.execute(
         "INSERT INTO garden_water_log (watered_at, watered_by, water_amount) VALUES (?, ?, ?)",
-        (watered_at_iso, watered_by, water_amount),
+        (watered_at, watered_by, water_amount),
     )
 
     schedules = await db.execute_fetchall(
@@ -81,7 +81,7 @@ async def log_garden_water(db, watered_at_iso: str, watered_by: int | None, wate
     return updated
 
 
-async def log_garden_fertilize(db, fertilized_at_iso: str, fertilized_by: int | None) -> int:
+async def log_garden_fertilize(db, fertilized_at: date, fertilized_by: int | None) -> int:
     """Insert a new garden fertilize log entry and mark all active fertilize schedules as done.
 
     Returns the number of schedules updated. Caller is responsible for commit.
@@ -91,7 +91,7 @@ async def log_garden_fertilize(db, fertilized_at_iso: str, fertilized_by: int | 
     await db.execute("DELETE FROM garden_fertilize_log")
     await db.execute(
         "INSERT INTO garden_fertilize_log (fertilized_at, fertilized_by) VALUES (?, ?)",
-        (fertilized_at_iso, fertilized_by),
+        (fertilized_at, fertilized_by),
     )
 
     schedules = await db.execute_fetchall(
