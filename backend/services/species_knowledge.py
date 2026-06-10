@@ -510,13 +510,13 @@ async def _from_plant_species(scientific_name: str, db) -> dict | None:
         light_raw = None
         light_label = None
     elif avg_sun < 3:
-        light_raw = round(avg_sun / 1.2, 1)
+        light_raw = int(round(avg_sun / 1.2))
         light_label = "shade"
     elif avg_sun < 6:
-        light_raw = round(avg_sun / 1.2, 1)
+        light_raw = int(round(avg_sun / 1.2))
         light_label = "partial"
     else:
-        light_raw = min(round(avg_sun / 1.2, 1), 10)
+        light_raw = min(int(round(avg_sun / 1.2)), 10)
         light_label = "full_sun"
 
     bloom_months = [
@@ -595,7 +595,7 @@ async def get_species_knowledge(scientific_name: str, db) -> dict | None:
     Returns a dict including `source` ("cache" or "trefle") and `cached_at`,
     or None if nothing could be fetched.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
     cached = await db.execute_fetchall(
         "SELECT * FROM plant_care_cache WHERE scientific_name = ? AND fetched_at > ?",
         (scientific_name, cutoff),
@@ -607,7 +607,7 @@ async def get_species_knowledge(scientific_name: str, db) -> dict | None:
     if not data:
         return None
 
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    fetched_at = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.execute(
         """INSERT INTO plant_care_cache
            (scientific_name, trefle_slug, common_name, family, duration,
