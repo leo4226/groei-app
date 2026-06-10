@@ -5,12 +5,13 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_admin
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
 from routers.icons import load_manifest
 
-router = APIRouter(tags=["admin"])
+# Every /admin/* route requires the admin account — never add an unprotected route here.
+router = APIRouter(tags=["admin"], dependencies=[Depends(require_admin)])
 
 
 class BulkDeleteRequest(BaseModel):
@@ -136,7 +137,7 @@ async def backfill_plant_types(db = Depends(db_dep)):
         cat = icon_to_cat.get(icon_key)
         if cat:
             await db.execute(
-                "UPDATE plants SET plant_type = $1 WHERE id = $2",
+                "UPDATE plants SET plant_type = ? WHERE id = ?",
                 (cat, row["id"]),
             )
             updated += 1
@@ -160,17 +161,8 @@ async def backfill_plant_types(db = Depends(db_dep)):
     }
 
 
-ADMIN_EMAIL = "leon_korbee@hotmail.com"
-
-
 @router.get("/admin/accounts")
-async def list_accounts(account = Depends(get_current_account), db = Depends(db_dep)):
-    rows = await db.execute_fetchall(
-        "SELECT id, email, name FROM accounts WHERE id = ?", (account["account_id"],)
-    )
-    if not rows or rows[0]["email"] != ADMIN_EMAIL:
-        raise HTTPException(403, "Forbidden")
-
+async def list_accounts(db = Depends(db_dep)):
     accounts = await db.execute_fetchall("""
         SELECT a.id, a.email, a.name, a.created_at, h.name as household_name
         FROM accounts a
@@ -180,52 +172,21 @@ async def list_accounts(account = Depends(get_current_account), db = Depends(db_
     return [dict(r) for r in accounts]
 
 
-@router.delete("/admin/accounts/{account_id}")
-async def delete_account(account_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
-    rows = await db.execute_fetchall(
-        "SELECT id, email, name FROM accounts WHERE id = ?", (account["account_id"],)
-    )
-    if not rows or rows[0]["email"] != ADMIN_EMAIL:
-        raise HTTPException(403, "Forbidden")
-
-    target = await db.execute_fetchall(
-        "SELECT id, household_id, name FROM accounts WHERE id = ?", (account_id,)
-    )
-    if not target:
-        raise HTTPException(404, "Account not found")
-    if target[0]["id"] == account["account_id"]:
-        raise HTTPException(400, "Cannot delete your own account")
-
-    household_id = target[0]["household_id"]
-    await _cascade_delete_household(db, household_id)
-    await _cascade_delete_account_links(db, account_id, household_id)
-    await db.execute("DELETE FROM accounts WHERE id = $1", (account_id,))
-    await db.execute("DELETE FROM households WHERE id = $1", (household_id,))
-    await db.commit()
-
-    return {"status": "deleted", "account_id": account_id, "name": target[0]["name"]}
-
-
+# NB: /admin/accounts/bulk MUST be defined before /admin/accounts/{account_id},
+# or the param route matches "bulk" and 422s (same trap as plants/bulk-archive).
 @router.delete("/admin/accounts/bulk")
 async def bulk_delete_accounts(
     body: BulkDeleteRequest,
     account=Depends(get_current_account),
     db=Depends(db_dep),
 ):
-    rows = await db.execute_fetchall(
-        "SELECT id, email, name FROM accounts WHERE id = ?", (account["account_id"],)
-    )
-    if not rows or rows[0]["email"] != ADMIN_EMAIL:
-        raise HTTPException(403, "Forbidden")
-
     ids = body.account_ids
     if not ids:
         raise HTTPException(400, "No account_ids provided")
     if account["account_id"] in ids:
         raise HTTPException(400, "Cannot delete your own account")
 
-    # Fetch all targets
-    placeholders = ", ".join(f"${i+1}" for i in range(len(ids)))
+    placeholders = ", ".join("?" for _ in ids)
     targets = await db.execute_fetchall(
         f"SELECT id, household_id, name FROM accounts WHERE id IN ({placeholders})",
         tuple(ids),
@@ -235,31 +196,80 @@ async def bulk_delete_accounts(
         missing = [i for i in ids if i not in found]
         raise HTTPException(404, f"Accounts not found: {missing}")
 
-    # Deduplicate households — only cascade once per household
-    seen_households: set[int] = set()
     for t in targets:
-        hid = t["household_id"]
-        if hid not in seen_households:
-            await _cascade_delete_household(db, hid)
-            seen_households.add(hid)
+        await _delete_account(db, dict(t))
 
-    # Delete all specified accounts
-    for t in targets:
-        await _cascade_delete_account_links(db, t["id"], t["household_id"])
-        await db.execute("DELETE FROM accounts WHERE id = $1", (t["id"],))
-
-    # Delete households that now have zero accounts
-    for hid in seen_households:
-        remaining = await db.execute_fetchall(
-            "SELECT COUNT(*) as cnt FROM accounts WHERE household_id = $1", (hid,)
-        )
-        if remaining[0]["cnt"] == 0:
-            await db.execute("DELETE FROM households WHERE id = $1", (hid,))
+    # Households only disappear once their last account is gone.
+    households_cleared = 0
+    for hid in {t["household_id"] for t in targets}:
+        if await _delete_household_if_empty(db, hid):
+            households_cleared += 1
 
     await db.commit()
 
     names = [t["name"] for t in targets]
-    return {"status": "deleted", "account_ids": ids, "names": names, "households_cleared": len(seen_households)}
+    return {"status": "deleted", "account_ids": ids, "names": names, "households_cleared": households_cleared}
+
+
+@router.delete("/admin/accounts/{account_id}")
+async def delete_account(account_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
+    target = await db.execute_fetchall(
+        "SELECT id, household_id, name FROM accounts WHERE id = ?", (account_id,)
+    )
+    if not target:
+        raise HTTPException(404, "Account not found")
+    if target[0]["id"] == account["account_id"]:
+        raise HTTPException(400, "Cannot delete your own account")
+
+    target_row = dict(target[0])
+    household_id = target_row["household_id"]
+    await _delete_account(db, target_row)
+    household_deleted = await _delete_household_if_empty(db, household_id)
+    await db.commit()
+
+    return {
+        "status": "deleted",
+        "account_id": account_id,
+        "name": target_row["name"],
+        "household_deleted": household_deleted,
+    }
+
+
+async def _delete_account(db, target: dict):
+    """Delete one account and everything owned by it personally — but NOT the
+    household's shared data. target: {id, household_id, name}."""
+    await _cascade_delete_account_links(db, target["id"], target["household_id"])
+    await _delete_users_for_account(db, target["name"], target["household_id"])
+    await db.execute("DELETE FROM accounts WHERE id = ?", (target["id"],))
+
+
+async def _delete_users_for_account(db, account_name: str, household_id: int):
+    """Delete the users row matching this account (mapped by name + household,
+    the same convention household.remove_member uses) after NULL-ing FK refs."""
+    rows = await db.execute_fetchall(
+        "SELECT id FROM users WHERE name = ? AND household_id = ?",
+        (account_name, household_id),
+    )
+    for row in rows:
+        user_id = row["id"]
+        await db.execute("UPDATE care_log SET done_by = NULL WHERE done_by = ?", (user_id,))
+        await db.execute("UPDATE care_schedules SET last_done_by = NULL WHERE last_done_by = ?", (user_id,))
+        await db.execute("UPDATE garden_water_log SET watered_by = NULL WHERE watered_by = ?", (user_id,))
+        await db.execute("UPDATE garden_fertilize_log SET fertilized_by = NULL WHERE fertilized_by = ?", (user_id,))
+        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+async def _delete_household_if_empty(db, household_id: int) -> bool:
+    """Cascade-delete the household's data and row, but only when no accounts
+    remain in it. Returns True if the household was deleted."""
+    remaining = await db.execute_fetchall(
+        "SELECT COUNT(*) as cnt FROM accounts WHERE household_id = ?", (household_id,)
+    )
+    if remaining[0]["cnt"] > 0:
+        return False
+    await _cascade_delete_household(db, household_id)
+    await db.execute("DELETE FROM households WHERE id = ?", (household_id,))
+    return True
 
 
 async def _cascade_delete_household(db, household_id: int):
@@ -267,61 +277,60 @@ async def _cascade_delete_household(db, household_id: int):
     # 1. NULL out user references
     await db.execute(
         "UPDATE care_schedules SET last_done_by = NULL "
-        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = $1)",
+        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "UPDATE care_log SET done_by = NULL "
-        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = $1)",
+        "WHERE plant_id IN (SELECT id FROM plants WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "UPDATE garden_water_log SET watered_by = NULL "
-        "WHERE watered_by IN (SELECT id FROM users WHERE household_id = $1)",
+        "WHERE watered_by IN (SELECT id FROM users WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "UPDATE garden_fertilize_log SET fertilized_by = NULL "
-        "WHERE fertilized_by IN (SELECT id FROM users WHERE household_id = $1)",
+        "WHERE fertilized_by IN (SELECT id FROM users WHERE household_id = ?)",
         (household_id,),
     )
 
     # 2. Delete plants (cascades care_schedules + care_log)
-    await db.execute("DELETE FROM plants WHERE household_id = $1", (household_id,))
+    await db.execute("DELETE FROM plants WHERE household_id = ?", (household_id,))
 
     # 3. Delete map children
     await db.execute(
         "DELETE FROM weed_sightings WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = $1)",
+        "(SELECT id FROM maps WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "DELETE FROM zones WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = $1)",
+        "(SELECT id FROM maps WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "DELETE FROM ground_zones WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = $1)",
+        "(SELECT id FROM maps WHERE household_id = ?)",
         (household_id,),
     )
     await db.execute(
         "DELETE FROM objects WHERE map_id IN "
-        "(SELECT id FROM maps WHERE household_id = $1)",
+        "(SELECT id FROM maps WHERE household_id = ?)",
         (household_id,),
     )
 
     # 4. Delete household-scoped tables
-    await db.execute("DELETE FROM users WHERE household_id = $1", (household_id,))
-    await db.execute("DELETE FROM locations WHERE household_id = $1", (household_id,))
-    await db.execute("DELETE FROM maps WHERE household_id = $1", (household_id,))
+    await db.execute("DELETE FROM household_invites WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM users WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM locations WHERE household_id = ?", (household_id,))
+    await db.execute("DELETE FROM maps WHERE household_id = ?", (household_id,))
 
 
 async def _cascade_delete_account_links(db, account_id: int, household_id: int):
-    """Delete records linked directly to an account (FK → accounts)."""
-    await db.execute("DELETE FROM password_reset_tokens WHERE account_id = $1", (account_id,))
-    await db.execute("DELETE FROM plantnet_quota WHERE account_id = $1", (account_id,))
-    await db.execute(
-        "DELETE FROM household_invites WHERE household_id = $1 OR created_by = $2",
-        (household_id, account_id),
-    )
+    """Delete records linked directly to an account (FK → accounts). Touches only
+    this account's rows — shared household data is handled by the household cascade."""
+    await db.execute("DELETE FROM password_reset_tokens WHERE account_id = ?", (account_id,))
+    await db.execute("DELETE FROM plantnet_quota WHERE account_id = ?", (account_id,))
+    await db.execute("DELETE FROM household_invites WHERE created_by = ?", (account_id,))

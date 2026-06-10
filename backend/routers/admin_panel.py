@@ -1,9 +1,9 @@
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from database import db_dep
-from auth import get_current_account
+from auth import require_admin
 from services.svg_validator import validate_icon_svg
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
@@ -15,17 +15,6 @@ from routers.icon_generator import (
 import routers.icons as icons_router
 
 router = APIRouter(tags=["admin-panel"])
-
-ADMIN_EMAIL = "leon_korbee@hotmail.com"
-
-
-async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)):
-    rows = await db.execute_fetchall(
-        "SELECT email FROM accounts WHERE id = ?", (account["account_id"],)
-    )
-    if not rows or rows[0]["email"] != ADMIN_EMAIL:
-        raise HTTPException(403, "Forbidden")
-    return {**account, "email": rows[0]["email"]}
 
 
 def _slug(text: str) -> str:
