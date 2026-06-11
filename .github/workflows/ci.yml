@@ -49,8 +49,9 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
-      - name: Run DB-independent tests
-        # --noconftest skips conftest.py, which imports the whole app and needs a
-        # live Postgres. These two suites are pure functions (no fixtures). Expand
-        # this list once CI provisions a Postgres service.
-        run: python -m pytest --noconftest tests/test_plant_suggestions.py tests/test_ecology_enrichment.py tests/test_digest_pure.py -q
+      - name: Run tests
+        # The suite runs against the in-memory aiosqlite seam (conftest.py) —
+        # no live Postgres needed. The handful of tests that DO need one
+        # (test_db_adapter's adapter-vs-asyncpg tests) skip themselves when
+        # DATABASE_URL is unreachable.
+        run: python -m pytest -q

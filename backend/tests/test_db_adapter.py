@@ -1,4 +1,5 @@
 # groei/backend/tests/test_db_adapter.py
+import asyncio
 import os
 import pytest
 import asyncpg
@@ -22,7 +23,10 @@ def test_qm_to_pg_preserves_literal_question_marks_in_strings():
 @pytest.fixture
 async def conn():
     dsn = os.environ["DATABASE_URL"]
-    c = await asyncpg.connect(dsn)
+    try:
+        c = await asyncpg.connect(dsn, timeout=5)
+    except (OSError, asyncio.TimeoutError, asyncpg.PostgresError) as e:
+        pytest.skip(f"no Postgres reachable at DATABASE_URL: {e.__class__.__name__}")
     await c.execute("CREATE TEMP TABLE t (id SERIAL PRIMARY KEY, name TEXT)")
     yield c
     await c.close()

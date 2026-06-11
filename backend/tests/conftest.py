@@ -74,6 +74,7 @@ SCHEMA = """
         ground_zone_id TEXT,
         display_radius_cm INTEGER,
         care_thresholds TEXT,
+        care_profile TEXT,
         phase TEXT DEFAULT 'established',
         sown_date TEXT,
         household_id INTEGER
@@ -96,7 +97,8 @@ SCHEMA = """
         id INTEGER PRIMARY KEY,
         name TEXT,
         avatar TEXT,
-        household_id INTEGER
+        household_id INTEGER,
+        language TEXT
     );
     CREATE TABLE garden_water_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,14 +114,39 @@ SCHEMA = """
         quiet_hours TEXT,
         last_digest_sent_on DATE
     );
+    CREATE TABLE locations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        icon TEXT,
+        sort_order INTEGER DEFAULT 0,
+        household_id INTEGER
+    );
+    CREATE TABLE maps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        map_type TEXT,
+        household_id INTEGER
+    );
+    CREATE TABLE plantnet_quota (
+        account_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (account_id, date)
+    );
 """
+
+
+def _dict_row(cursor, row):
+    """Row factory matching DbAdapter's contract: plain dicts (so router code
+    may use row.get(...), exactly as against asyncpg in production)."""
+    return {d[0]: row[i] for i, d in enumerate(cursor.description)}
 
 
 @pytest_asyncio.fixture
 async def seeded_db():
     """In-memory SQLite seeded with one household + account, db_dep overridden."""
     db = await aiosqlite.connect(":memory:")
-    db.row_factory = aiosqlite.Row
+    db.row_factory = _dict_row
     await db.executescript(SCHEMA)
     await db.execute(
         "INSERT INTO households (id, name) VALUES (1, 'Test Household')"

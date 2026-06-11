@@ -32,9 +32,9 @@ def _db_cache():
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, next_due TEXT, is_active INTEGER DEFAULT 1,
                 last_done_by INTEGER, last_done TEXT, notes TEXT,
-                season_adjust TEXT, created_at TEXT
+                season_adjust TEXT, created_at TEXT, is_ephemeral INTEGER DEFAULT 0
             );
-            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER);
+            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER, language TEXT);
             CREATE TABLE households (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -86,11 +86,16 @@ def _db_cache():
         @staticmethod
         async def get():
             if _Cache._db is None:
-                import asyncio
                 _Cache._db = await _init()
             return _Cache._db
 
-    return _Cache
+    yield _Cache
+
+    # Close the connection or its (non-daemon) aiosqlite worker thread keeps
+    # the pytest process alive after the run finishes.
+    if _Cache._db is not None:
+        import asyncio
+        asyncio.run(_Cache._db.close())
 
 
 @pytest.fixture(autouse=True)

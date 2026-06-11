@@ -10,13 +10,6 @@ import pytest
 import pytest_asyncio
 
 EXTRA_SCHEMA = """
-    CREATE TABLE maps (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, household_id INTEGER
-    );
-    CREATE TABLE locations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, icon TEXT,
-        sort_order INTEGER DEFAULT 0, household_id INTEGER
-    );
     CREATE TABLE care_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, plant_id INTEGER,
         care_type TEXT, done_at TEXT, done_by INTEGER, notes TEXT
@@ -35,9 +28,6 @@ EXTRA_SCHEMA = """
     CREATE TABLE password_reset_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER,
         token TEXT, expires_at TEXT, used_at TEXT
-    );
-    CREATE TABLE plantnet_quota (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER
     );
 """
 

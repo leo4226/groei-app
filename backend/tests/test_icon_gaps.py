@@ -61,6 +61,9 @@ def db_override():
     yield cache
     app.dependency_overrides.pop(db_dep, None)
     app.dependency_overrides.pop(get_current_account, None)
+    # Close the connection or its (non-daemon) aiosqlite worker thread keeps
+    # the pytest process alive after the run finishes.
+    asyncio.run(cache["db"].close())
 
 
 @pytest.fixture
