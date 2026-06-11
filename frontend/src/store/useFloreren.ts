@@ -28,7 +28,7 @@ interface FlorerStore {
   archivePlant: (id: number) => Promise<void>
   bulkArchivePlants: (ids: number[]) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
-  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<void>
+  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<number | undefined>
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
@@ -162,7 +162,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   markCareDone: async (plantId, careType, notes, water_amount) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
-    await careApi.done(plantId, careType, userId, notes, water_amount)
+    const result = await careApi.done(plantId, careType, userId, notes, water_amount)
     // Surgical update: adjust the plant's care_status and remove task from dashboard
     set((s) => ({
       plants: s.plants.map((p) =>
@@ -174,6 +174,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     // Refetch to get correct status_counts and warning summary
     get().loadDashboardV2()
     get().loadWarningSummary()
+    return result.care_log_id  // lets callers offer a photo attach
   },
 
   skipCare: async (plantId, careType) => {

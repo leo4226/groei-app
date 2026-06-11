@@ -3,18 +3,31 @@ import { photos as photosApi } from '../../api/client'
 import type { PlantPhoto } from '../../types'
 import { compressImage } from '../../utils/compressImage'
 import { useT } from '../../context/LanguageContext'
+import { useFloreren } from '../../store/useFloreren'
 
-export default function PhotoJournal({ plantId }: { plantId: number }) {
+const REMINDER_PRESETS = [14, 30, 90]
+
+interface Props {
+  plantId: number
+  /** bump to re-fetch the list (e.g. after a care-photo upload elsewhere) */
+  refreshKey?: number
+  /** initial reminder state, derived from the plant's care_schedules */
+  reminder?: { enabled: boolean; intervalDays: number }
+}
+
+export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Props) {
   const t = useT()
   const [photos, setPhotos] = useState<PlantPhoto[]>([])
   const [uploading, setUploading] = useState(false)
   const [viewer, setViewer] = useState<number | null>(null)  // index into photos
   const [compare, setCompare] = useState(false)               // before/after split view
+  const [reminderOn, setReminderOn] = useState(reminder?.enabled ?? false)
+  const [reminderDays, setReminderDays] = useState(reminder?.intervalDays ?? 30)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     photosApi.list(plantId).then(setPhotos).catch(() => setPhotos([]))
-  }, [plantId])
+  }, [plantId, refreshKey])
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -37,6 +50,19 @@ export default function PhotoJournal({ plantId }: { plantId: number }) {
     setViewer(null)
   }
 
+  async function setReminder(enabled: boolean, days: number) {
+    setReminderOn(enabled)
+    setReminderDays(days)
+    try {
+      await photosApi.photoReminder(plantId, enabled, days)
+      // Refresh the store so plant.care_schedules (and any other view
+      // deriving reminder state from it) doesn't go stale.
+      useFloreren.getState().loadPlants()
+    } catch {
+      setReminderOn(!enabled)  // revert on failure
+    }
+  }
+
   return (
     <div>
       <input ref={fileRef} type="file" accept="image/*" capture="environment"
@@ -49,6 +75,32 @@ export default function PhotoJournal({ plantId }: { plantId: number }) {
         📷 {uploading ? t.photoJournal.uploading : t.photoJournal.addPhoto}
       </button>
 
+      <div className="card p-3 mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-sm">{t.photoJournal.reminderLabel}</div>
+          <div className="text-xs text-text-muted mt-0.5">{t.photoJournal.reminderHint}</div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {reminderOn && (
+            <select
+              value={reminderDays}
+              onChange={e => setReminder(true, Number(e.target.value))}
+              className="bg-surface border border-border rounded-lg px-2 py-1 text-xs font-semibold"
+            >
+              {REMINDER_PRESETS.map(d => (
+                <option key={d} value={d}>{d} {t.photoJournal.daysSuffix}</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => setReminder(!reminderOn, reminderDays)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${reminderOn ? 'bg-primary' : 'bg-border'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${reminderOn ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      </div>
+
       {photos.length === 0 ? (
         <p className="text-sm text-text-muted">{t.photoJournal.empty}</p>
       ) : (
@@ -58,6 +110,10 @@ export default function PhotoJournal({ plantId }: { plantId: number }) {
                     onClick={() => setViewer(i)}>
               <img src={p.url} loading="lazy" alt={p.note ?? ''}
                    className="h-full w-full object-cover" />
+              {p.care_log_id != null && (
+                <span title={t.photoJournal.careBadgeHint}
+                      className="absolute top-1 right-1 text-[10px] bg-primary/90 text-white rounded px-1">💧</span>
+              )}
               <span className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] px-1">
                 {new Date(p.taken_at).toLocaleDateString()}
               </span>

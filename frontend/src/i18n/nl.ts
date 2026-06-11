@@ -306,6 +306,11 @@ export const nl: Translations = {
     newer: 'nieuwer',
     compare: 'Vergelijk met eerste',
     compareOff: 'Sluit vergelijking',
+    reminderLabel: 'Foto-herinnering',
+    reminderHint: 'Krijg een taak op het dashboard als het tijd is voor een nieuwe groeifoto.',
+    daysSuffix: 'dagen',
+    addCarePhoto: 'Foto toevoegen?',
+    careBadgeHint: 'Gemaakt bij een zorgmoment',
   },
 
   settings: {

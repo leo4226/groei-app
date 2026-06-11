@@ -306,6 +306,11 @@ export const en: Translations = {
     newer: 'newer',
     compare: 'Compare with first',
     compareOff: 'Close comparison',
+    reminderLabel: 'Photo reminder',
+    reminderHint: 'Get a dashboard task when it’s time for a new progress photo.',
+    daysSuffix: 'days',
+    addCarePhoto: 'Add a photo?',
+    careBadgeHint: 'Taken while logging care',
   },
 
   settings: {
