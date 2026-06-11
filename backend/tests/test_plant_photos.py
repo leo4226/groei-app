@@ -126,3 +126,60 @@ async def test_list_returns_newest_first(client, photo_db, auth_header):
 async def test_list_rejects_foreign_plant(client, photo_db, auth_header):
     res = await client.get("/api/plants/2/photos", headers=auth_header)
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_patch_note(client, photo_db, auth_header):
+    photo = (await _upload(client, 1, headers=auth_header, note="old")).json()
+    res = await client.patch(
+        f"/api/photos/{photo['id']}", json={"note": "new"}, headers=auth_header
+    )
+    assert res.status_code == 200
+    assert res.json()["note"] == "new"
+
+
+@pytest.mark.asyncio
+async def test_delete_removes_r2_object_and_repoints_thumbnail(client, photo_db, auth_header):
+    db, fake = photo_db
+    first = (await _upload(client, 1, headers=auth_header,
+                           taken_at="2026-01-01T10:00:00")).json()
+    second = (await _upload(client, 1, headers=auth_header,
+                            taken_at="2026-03-01T10:00:00")).json()
+
+    res = await client.delete(f"/api/photos/{second['id']}", headers=auth_header)
+    assert res.status_code == 200
+
+    # R2 object of the deleted photo was removed
+    assert len(fake.deletes) == 1
+    assert fake.deletes[0].startswith("photos/1/1/")
+
+    # thumbnail re-points at the remaining (older) photo
+    rows = await db.execute_fetchall("SELECT photo_path FROM plants WHERE id = 1")
+    assert rows[0]["photo_path"] == first["url"]
+
+
+@pytest.mark.asyncio
+async def test_delete_last_photo_clears_thumbnail(client, photo_db, auth_header):
+    db, _ = photo_db
+    photo = (await _upload(client, 1, headers=auth_header)).json()
+    await client.delete(f"/api/photos/{photo['id']}", headers=auth_header)
+    rows = await db.execute_fetchall("SELECT photo_path FROM plants WHERE id = 1")
+    assert rows[0]["photo_path"] is None
+
+
+@pytest.mark.asyncio
+async def test_patch_and_delete_reject_foreign_photo(client, photo_db, auth_header):
+    db, _ = photo_db
+    await db.execute(
+        """INSERT INTO plant_photos (plant_id, household_id, r2_key, url)
+           VALUES (2, 2, 'photos/2/2/x.jpg', 'https://cdn.test/photos/2/2/x.jpg')"""
+    )
+    await db.commit()
+    rows = await db.execute_fetchall(
+        "SELECT id FROM plant_photos WHERE household_id = 2"
+    )
+    foreign_id = rows[0]["id"]
+    assert (await client.patch(f"/api/photos/{foreign_id}", json={"note": "x"},
+                               headers=auth_header)).status_code == 404
+    assert (await client.delete(f"/api/photos/{foreign_id}",
+                                headers=auth_header)).status_code == 404

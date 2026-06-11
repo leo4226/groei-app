@@ -123,3 +123,44 @@ async def list_plant_photos(plant_id: int, db=Depends(db_dep), account=Depends(g
         (plant_id,),
     )
     return [_row_to_out(r) for r in rows]
+
+
+async def _owned_photo(db, photo_id: int, household_id: int) -> dict:
+    rows = await db.execute_fetchall(
+        "SELECT * FROM plant_photos WHERE id = ? AND household_id = ?",
+        (photo_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(404, "Photo not found")
+    return dict(rows[0])
+
+
+@router.patch("/photos/{photo_id}", response_model=PhotoOut)
+async def update_photo(photo_id: int, patch: PhotoPatch,
+                       db=Depends(db_dep), account=Depends(get_current_account)):
+    photo = await _owned_photo(db, photo_id, account["household_id"])
+    note = patch.note if patch.note is not None else photo["note"]
+    taken_at = patch.taken_at if patch.taken_at is not None else photo["taken_at"]
+    await db.execute(
+        "UPDATE plant_photos SET note = ?, taken_at = ? WHERE id = ?",
+        (note, taken_at, photo_id),
+    )
+    await _sync_thumbnail(db, photo["plant_id"])  # taken_at edit may change "newest"
+    await db.commit()
+    rows = await db.execute_fetchall("SELECT * FROM plant_photos WHERE id = ?", (photo_id,))
+    return _row_to_out(rows[0])
+
+
+@router.delete("/photos/{photo_id}")
+async def delete_photo(photo_id: int,
+                       db=Depends(db_dep), account=Depends(get_current_account)):
+    photo = await _owned_photo(db, photo_id, account["household_id"])
+    storage = build_storage_from_env()
+    try:
+        storage.delete(photo["r2_key"])
+    except Exception:
+        pass  # R2 orphan is acceptable; the DB row must go regardless
+    await db.execute("DELETE FROM plant_photos WHERE id = ?", (photo_id,))
+    await _sync_thumbnail(db, photo["plant_id"])
+    await db.commit()
+    return {"ok": True}
