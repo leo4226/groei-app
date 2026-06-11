@@ -261,6 +261,11 @@ export type Translations = {
     newer: string
     compare: string
     compareOff: string
+    reminderLabel: string
+    reminderHint: string
+    daysSuffix: string
+    addCarePhoto: string
+    careBadgeHint: string
   }
 
   settings: {

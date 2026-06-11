@@ -4,13 +4,14 @@ plants.photo_path is derived state — always the newest journal photo's URL —
 so plant cards, the map view, and the dashboard keep working unchanged.
 """
 import time
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from database import db_dep
 from auth import get_current_account
+from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
 
 router = APIRouter(tags=["plant-photos"])
@@ -119,6 +120,7 @@ async def upload_plant_photo(
         )
         photo_id = cursor.lastrowid
         await _sync_thumbnail(db, plant_id)
+        await _complete_photo_schedule(db, plant_id)
         await db.commit()
     except HTTPException:
         raise
@@ -132,6 +134,58 @@ async def upload_plant_photo(
 
     rows = await db.execute_fetchall("SELECT * FROM plant_photos WHERE id = ?", (photo_id,))
     return _row_to_out(rows[0])
+
+
+class PhotoReminderToggle(BaseModel):
+    enabled: bool
+    interval_days: int = 30
+
+
+@router.put("/plants/{plant_id}/photo-reminder")
+async def toggle_photo_reminder(plant_id: int, body: PhotoReminderToggle,
+                                db=Depends(db_dep), account=Depends(get_current_account)):
+    """Opt-in progress-photo reminder — rides care_schedules as care_type='photo'."""
+    await _owned_plant(db, plant_id, account["household_id"])
+    rows = await db.execute_fetchall(
+        "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'photo'",
+        (plant_id,),
+    )
+    if body.enabled:
+        # date OBJECT, not isoformat — asyncpg rejects strings for DATE (#142)
+        next_due = date.today() + timedelta(days=body.interval_days)
+        if rows:
+            await db.execute(
+                "UPDATE care_schedules SET is_active = 1, interval_days = ?, next_due = ? WHERE id = ?",
+                (body.interval_days, next_due, rows[0]["id"]),
+            )
+        else:
+            await db.execute(
+                """INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
+                   VALUES (?, 'photo', ?, ?, 1)""",
+                (plant_id, body.interval_days, next_due),
+            )
+    elif rows:
+        await db.execute(
+            "UPDATE care_schedules SET is_active = 0 WHERE id = ?", (rows[0]["id"],)
+        )
+    await db.commit()
+    return {"ok": True}
+
+
+async def _complete_photo_schedule(db, plant_id: int) -> None:
+    """Any uploaded photo counts as the progress photo — push next_due forward."""
+    rows = await db.execute_fetchall(
+        """SELECT id, interval_days, season_adjust FROM care_schedules
+           WHERE plant_id = ? AND care_type = 'photo' AND is_active = 1""",
+        (plant_id,),
+    )
+    if not rows:
+        return
+    next_due = calculate_next_due(date.today(), rows[0]["interval_days"], rows[0]["season_adjust"])
+    await db.execute(
+        "UPDATE care_schedules SET last_done = CURRENT_TIMESTAMP, next_due = ? WHERE id = ?",
+        (next_due, rows[0]["id"]),
+    )
 
 
 @router.get("/plants/{plant_id}/photos", response_model=list[PhotoOut])

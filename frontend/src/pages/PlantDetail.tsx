@@ -1,5 +1,5 @@
 import { useT } from '../context/LanguageContext'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
@@ -9,6 +9,8 @@ import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
 import PlantCareInfo from '../components/PlantCareInfo'
 import PhotoJournal from '../components/plant/PhotoJournal'
+import { photos as photosApi } from '../api/client'
+import { compressImage } from '../utils/compressImage'
 import EcologyCard from '../components/EcologyCard'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
@@ -98,6 +100,10 @@ export default function PlantDetail() {
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [duplicating, setDuplicating] = useState(false)
+  const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
+  const [carePhotoBusy, setCarePhotoBusy] = useState(false)
+  const [journalRefresh, setJournalRefresh] = useState(0)
+  const carePhotoRef = useRef<HTMLInputElement>(null)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -133,7 +139,23 @@ export default function PlantDetail() {
   }, [plants, plantId])
 
   async function handleQuickAction(careType: string) {
-    await markCareDone(plantId, careType)
+    const careLogId = await markCareDone(plantId, careType)
+    if (careLogId != null) setPendingCareLogId(careLogId)
+  }
+
+  async function handleCarePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || pendingCareLogId == null) return
+    setCarePhotoBusy(true)
+    try {
+      const blob = await compressImage(file)
+      await photosApi.upload(plantId, blob, { careLogId: pendingCareLogId })
+      setJournalRefresh(k => k + 1)
+      setPendingCareLogId(null)
+    } finally {
+      setCarePhotoBusy(false)
+    }
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
@@ -357,8 +379,34 @@ export default function PlantDetail() {
 
         {/* Photo journal (Groeidagboek) */}
         <Section title={t.plantDetail.photoJournal}>
-          <PhotoJournal plantId={plant.id} />
+          <PhotoJournal
+            plantId={plant.id}
+            refreshKey={journalRefresh}
+            reminder={(() => {
+              const s = plant.care_schedules.find(cs => cs.care_type === 'photo' && cs.is_active)
+              return s ? { enabled: true, intervalDays: s.interval_days } : undefined
+            })()}
+          />
         </Section>
+
+        {/* Non-blocking "add a photo?" affordance after logging care */}
+        <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
+               className="hidden" onChange={handleCarePhotoPick} />
+        {pendingCareLogId != null && (
+          <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
+            <button
+              className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+              disabled={carePhotoBusy}
+              onClick={() => carePhotoRef.current?.click()}
+            >
+              📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
+            </button>
+            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
+                    onClick={() => setPendingCareLogId(null)}>
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Care history */}
         {careLog.data && careLog.data.length > 0 && (

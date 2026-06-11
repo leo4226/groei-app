@@ -214,6 +214,9 @@ export const photos = {
   },
   updateNote: (photoId: number, note: string) => api<import('../types').PlantPhoto>('PATCH', `/photos/${photoId}`, { body: { note } }),
   remove: (photoId: number) => api<{ ok: boolean }>('DELETE', `/photos/${photoId}`),
+  photoReminder: (plantId: number, enabled: boolean, intervalDays = 30) =>
+    api<{ ok: boolean }>('PUT', `/plants/${plantId}/photo-reminder`,
+      { body: { enabled, interval_days: intervalDays } }),
 }
 
 export const dashboard = {
@@ -252,7 +255,7 @@ export const groundZones = {
 }
 
 export const care = {
-  done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number) => api<void>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount } }),
+  done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number) => api<{ ok: boolean; next_due: string; care_log_id: number }>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount } }),
   skip:           (plantId: number, careType: string, userId: number)                  => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } }),
   deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),
   log:            (plantId: number)                                                     => api<CareLogEntry[]>('GET', `/care/log/${plantId}`),
