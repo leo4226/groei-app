@@ -311,6 +311,7 @@ export const en: Translations = {
     daysSuffix: 'days',
     addCarePhoto: 'Add a photo?',
     careBadgeHint: 'Taken while logging care',
+    mismatchHint: "This doesn't look like this plant's species",
   },
 
   settings: {

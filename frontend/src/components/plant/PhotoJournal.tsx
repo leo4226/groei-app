@@ -114,6 +114,10 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
                 <span title={t.photoJournal.careBadgeHint}
                       className="absolute top-1 right-1 text-[10px] bg-primary/90 text-white rounded px-1">💧</span>
               )}
+              {p.species_mismatch && (
+                <span title={t.photoJournal.mismatchHint}
+                      className="absolute top-1 left-1 text-xs bg-amber-500/90 text-white rounded px-1">?</span>
+              )}
               <span className="absolute bottom-0 inset-x-0 bg-black/40 text-white text-[10px] px-1">
                 {new Date(p.taken_at).toLocaleDateString()}
               </span>
@@ -138,6 +142,9 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
           <div className="p-4 text-white text-sm" onClick={e => e.stopPropagation()}>
             <p>{new Date(photos[viewer].taken_at).toLocaleDateString()}</p>
             {photos[viewer].note && <p className="text-white/80">{photos[viewer].note}</p>}
+            {photos[viewer].species_mismatch && (
+              <p className="text-amber-400 text-xs mt-1">⚠ {t.photoJournal.mismatchHint}</p>
+            )}
             <div className="flex gap-4 mt-2">
               <button disabled={viewer >= photos.length - 1} className="disabled:opacity-40"
                       onClick={() => setViewer(v => (v ?? 0) + 1)}>‹ {t.photoJournal.older}</button>

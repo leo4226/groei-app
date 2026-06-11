@@ -9,8 +9,9 @@ from datetime import date, datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from database import db_dep
+from database import db_dep, get_db as _get_db
 from auth import get_current_account
+from services.photo_check import check_photo
 from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
 
@@ -132,8 +133,27 @@ async def upload_plant_photo(
             pass
         raise
 
+    background.add_task(_run_photo_check, photo_id, data, plant.get("species_id"))
+
     rows = await db.execute_fetchall("SELECT * FROM plant_photos WHERE id = ?", (photo_id,))
     return _row_to_out(rows[0])
+
+
+async def _run_photo_check(photo_id: int, image_bytes: bytes, plant_species_id: int | None) -> None:
+    """BioCLIP sanity-check, after the response. Opens its OWN connection:
+    the request's pooled connection is already back in the pool by the time
+    background tasks run (FastAPI tears down yielded dependencies first)."""
+    result = await check_photo(image_bytes, plant_species_id)
+    if result is None:
+        return
+    async with _get_db() as task_db:
+        await task_db.execute(
+            """UPDATE plant_photos SET bioclip_species_id = ?, bioclip_confidence = ?,
+               species_mismatch = ?, embedding = ? WHERE id = ?""",
+            (result["bioclip_species_id"], result["bioclip_confidence"],
+             result["species_mismatch"], result["embedding"], photo_id),
+        )
+        await task_db.commit()
 
 
 class PhotoReminderToggle(BaseModel):

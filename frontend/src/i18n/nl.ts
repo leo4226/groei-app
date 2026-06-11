@@ -311,6 +311,7 @@ export const nl: Translations = {
     daysSuffix: 'dagen',
     addCarePhoto: 'Foto toevoegen?',
     careBadgeHint: 'Gemaakt bij een zorgmoment',
+    mismatchHint: 'Dit lijkt niet op deze plantensoort',
   },
 
   settings: {
