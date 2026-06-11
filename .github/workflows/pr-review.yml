@@ -66,10 +66,13 @@ jobs:
           git diff "origin/${{ github.base_ref }}"...HEAD | head -c 100000 > /tmp/diff.txt
           if [ ! -s /tmp/diff.txt ]; then echo "empty diff — skipping"; exit 0; fi
 
+          # max_tokens must cover the model's REASONING as well as the answer —
+          # v4-flash is a reasoning model and returns empty content with
+          # finish_reason=length if the budget is too tight (seen at 1200).
           jq -n --rawfile diff /tmp/diff.txt --arg title "$PR_TITLE" '{
             model: "deepseek/deepseek-v4-flash",
             temperature: 0.2,
-            max_tokens: 1200,
+            max_tokens: 6000,
             messages: [{role: "user", content: ("You are an adversarial code reviewer for the Floreren plant-care app (FastAPI backend, React+TS frontend). You did NOT write this code; your job is to find problems, not to praise. Review the diff for: real bugs, broken edge cases, security issues (auth, secrets, SQL), weakened or missing tests, and deviations from the surrounding code style. Cite file and hunk for every finding. If you find nothing significant, say exactly that in one line — do not invent findings. End with one line: VERDICT: LGTM | NEEDS CHANGES.\n\nPR title: " + $title + "\n\nDiff:\n" + $diff)}]
           }' > /tmp/req.json
 
@@ -77,7 +80,11 @@ jobs:
             -H "Authorization: Bearer $NOUS_API_KEY" -H "Content-Type: application/json" \
             -d @/tmp/req.json) || { echo "LLM call failed — skipping (advisory only)"; exit 0; }
           review=$(echo "$resp" | jq -r '.choices[0].message.content // empty')
-          if [ -z "$review" ]; then echo "empty review — skipping"; exit 0; fi
+          if [ -z "$review" ]; then
+            echo "empty review — skipping. finish_reason=$(echo "$resp" | jq -r '.choices[0].finish_reason // "?"'), response head:"
+            echo "$resp" | head -c 400
+            exit 0
+          fi
 
           marker="<!-- deepseek-review -->"
           body=$(printf '%s\n## 🤖 DeepSeek adversarial review (advisory)\n\n%s\n\n_Re-runs on every push. Not a merge gate — Leon decides._' "$marker" "$review")
