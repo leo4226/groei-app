@@ -116,6 +116,7 @@ export interface AccountMe {
   name: string
   avatar: string | null
   is_admin: boolean
+  household_name: string
 }
 
 export interface AdminUserRow {
@@ -381,6 +382,7 @@ export const household = {
   join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
+  rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
 }
 
 export interface NotificationPrefs {

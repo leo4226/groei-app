@@ -206,7 +206,10 @@ async def change_password(body: ChangePasswordInput, current=Depends(get_current
 @router.get("/me", response_model=AccountOut)
 async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, household_id, email, name, avatar FROM accounts WHERE id = ?",
+        """SELECT a.id, a.household_id, a.email, a.name, a.avatar, h.name AS household_name
+           FROM accounts a
+           JOIN households h ON h.id = a.household_id
+           WHERE a.id = ?""",
         (current["account_id"],),
     )
     if not rows:
