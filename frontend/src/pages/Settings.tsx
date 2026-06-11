@@ -5,6 +5,7 @@ import { useT } from '../context/LanguageContext'
 import { apiRequest, icons, auth, type AccountMe, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
+import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
@@ -48,6 +49,11 @@ export default function Settings() {
   const [passwordChanged, setPasswordChanged] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null)
+  const [householdName, setHouseholdName] = useState('')
+  const [householdSaving, setHouseholdSaving] = useState(false)
+  const [householdSaved, setHouseholdSaved] = useState(false)
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([])
+  const [householdLoadError, setHouseholdLoadError] = useState<string | null>(null)
 
   function InviteSection() {
     async function generateCode() {
@@ -179,8 +185,14 @@ export default function Settings() {
         setProfileName(me.name)
         setProfileAvatar(me.avatar ?? '')
         setProfileEmail(me.email)
+        setHouseholdName(me.household_name)
       })
       .catch(() => setProfileLoadError('Failed to load profile'))
+  }, [])
+  useEffect(() => {
+    household.members()
+      .then(setHouseholdMembers)
+      .catch(() => setHouseholdLoadError('Failed to load members'))
   }, [])
 
   useEffect(() => {
@@ -493,49 +505,154 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.whoIsGardening}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {users.map((user) => (
-            <div key={user.id} className="relative group">
+            <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">{t.settings.householdTitle}</h2>
+        <div className="card p-4 space-y-4">
+          {/* Editable household name */}
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">{t.settings.householdName}</label>
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+                value={householdName}
+                onChange={(e) => setHouseholdName(e.target.value)}
+                placeholder={t.settings.householdNamePlaceholder}
+              />
               <button
-                onClick={() => setActiveUser(user.id)}
-                className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
-                  user.id === activeUserId
-                    ? 'ring-2 ring-primary border-primary/20'
-                    : 'hover:border-primary/20'
-                }`}
+                onClick={async () => {
+                  if (!householdName.trim()) return
+                  setHouseholdSaving(true)
+                  setHouseholdSaved(false)
+                  try {
+                    await household.rename(householdName.trim())
+                    setHouseholdSaved(true)
+                    setTimeout(() => setHouseholdSaved(false), 2000)
+                  } catch (e) {
+                    console.error('Failed to rename household', e)
+                  } finally {
+                    setHouseholdSaving(false)
+                  }
+                }}
+                disabled={householdSaving || !householdName.trim()}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform disabled:opacity-40"
               >
-                <span className="text-3xl">{user.avatar}</span>
-                <span className={`font-semibold ${user.id === activeUserId ? 'text-primary' : 'text-text'}`}>
-                  {user.name}
-                </span>
-                {user.id === activeUserId && (
-                  <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {t.settings.active}
-                  </span>
+                {householdSaving ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : householdSaved ? (
+                  <span className="text-xs">{String.fromCharCode(10003)}</span>
+                ) : (
+                  <span className="text-sm">{t.settings.save}</span>
                 )}
               </button>
-              {user.id !== activeUserId && (
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation()
-                    if (!window.confirm(`${t.settings.removeConfirm} ${user.name}?`)) return
-                    try {
-                      await household.removeMember(user.id)
-                      useFloreren.getState().load()
-                    } catch (e) {
-                      alert(e instanceof Error ? e.message : t.settings.removeError)
-                    }
-                  }}
-                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                  title={t.settings.removeMember}
-                >
-                  ✕
-                </button>
-              )}
             </div>
-          ))}
+          </div>
+
+          {/* Member cards with email + join date */}
+          <div className="pt-2 border-t border-border">
+            <label className="block text-sm font-semibold mb-2">{t.settings.whoIsGardening}</label>
+            {householdLoadError && (
+              <p className="text-sm text-fiery-red mb-2">{householdLoadError}</p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {householdMembers.length > 0
+                ? householdMembers.map((member) => {
+                    const localUser = users.find((u) => u.name === member.name)
+                    const userId = localUser?.id
+                    return (
+                      <div key={member.id} className="relative group">
+                        <button
+                          onClick={() => userId && setActiveUser(userId)}
+                          className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
+                            userId === activeUserId
+                              ? 'ring-2 ring-primary border-primary/20'
+                              : 'hover:border-primary/20'
+                          }`}
+                        >
+                          <span className="text-3xl">{member.avatar || users.find(u => u.name === member.name)?.avatar}</span>
+                          <span className={`font-semibold ${userId === activeUserId ? "text-primary" : "text-text"}`}>
+                            {member.name}
+                          </span>
+                          <span className="text-[11px] text-text-muted">{member.email}</span>
+                          <span className="text-[10px] text-text-muted">
+                            {t.settings.memberJoined} {new Date(member.created_at).toLocaleDateString()}
+                          </span>
+                          {userId === activeUserId && (
+                            <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                              {t.settings.active}
+                            </span>
+                          )}
+                        </button>
+                        {userId && userId !== activeUserId && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              if (!window.confirm(t.settings.removeConfirm + ' ' + member.name + '?')) return
+                              try {
+                                await household.removeMember(userId)
+                                useFloreren.getState().load()
+                                setHouseholdMembers(prev => prev.filter(m => m.id !== member.id))
+                              } catch (e) {
+                                alert(e instanceof Error ? e.message : t.settings.removeError)
+                              }
+                            }}
+                            className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                            title={t.settings.removeMember}
+                          >
+                            {String.fromCharCode(10005)}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })
+                : users.map((user) => (
+                    <div key={user.id} className="relative group">
+                      <button
+                        onClick={() => setActiveUser(user.id)}
+                        className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
+                          user.id === activeUserId
+                            ? 'ring-2 ring-primary border-primary/20'
+                            : 'hover:border-primary/20'
+                        }`}
+                      >
+                        <span className="text-3xl">{user.avatar}</span>
+                        <span className={`font-semibold ${user.id === activeUserId ? "text-primary" : "text-text"}`}>
+                          {user.name}
+                        </span>
+                        {user.id === activeUserId && (
+                          <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            {t.settings.active}
+                          </span>
+                        )}
+                      </button>
+                      {user.id !== activeUserId && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!window.confirm(t.settings.removeConfirm + ' ' + user.name + '?')) return
+                            try {
+                              await household.removeMember(user.id)
+                              useFloreren.getState().load()
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : t.settings.removeError)
+                            }
+                          }}
+                          className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          title={t.settings.removeMember}
+                        >
+                          {String.fromCharCode(10005)}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+            </div>
+          </div>
+
+          {/* Invite section */}
+          <div className="pt-2 border-t border-border">
+            <label className="block text-sm font-semibold mb-1.5">{t.settings.inviteTitle}</label>
+            <p className="text-xs text-text-muted mb-3">{t.settings.inviteDescription}</p>
+            <InviteSection />
+          </div>
         </div>
       </section>
 
@@ -570,15 +687,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.inviteTitle}</h2>
-        <div className="card p-4 space-y-3">
-          <p className="text-sm text-text-muted">
-            {t.settings.inviteDescription}
-          </p>
-          <InviteSection />
-        </div>
-      </section>
+      
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.locations}</h2>

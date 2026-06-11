@@ -379,7 +379,7 @@ export const household = {
   join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
-  rename:      (name: string)                  => api<{ name: string }>(PATCH, /household, { body: { name } }),
+  rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
 }
 
 export interface NotificationPrefs {
