@@ -7,7 +7,7 @@ Mobile-first PWA for Leon & Lisbeth (Amsterdam) to track plants, log care, and v
 All commands run from the repo root:
 
 ```
-npm run dev          # starts both frontend (port 5173) and backend (port 8000)
+npm run dev          # starts both frontend (port 5173) and backend (port 1415)
 npm run dev:frontend
 npm run dev:backend
 ```
@@ -22,8 +22,15 @@ Verify features in a desktop browser. Mobile testing not required during develop
 |---|---|
 | Frontend | React 19 + TypeScript + Vite + Tailwind CSS |
 | State | Zustand — `useFloreren` (FlorerStore) |
-| Backend | FastAPI + Python + asyncpg (prod: PostgreSQL, dev: SQLite) |
+| Backend | FastAPI + Python + asyncpg (Neon PostgreSQL) |
 | PWA | vite-plugin-pwa |
+
+### Database
+
+- **Postgres only** — SQLite was dropped; the backend requires `DATABASE_URL` (asyncpg) even for local dev. Set in `backend/.env`. Leftover `backend/*.db` SQLite files are unused.
+- **Neon branches**: prod (Fly `DATABASE_URL` secret) uses the `production` branch (`ep-weathered-lake-al5q450z`); local dev uses the `dev` branch (`ep-crimson-darkness-alvzvh16`, created 2026-06-10 as a copy of production). Refresh dev data via "Reset from parent" in the Neon console. Alembic migrations run on prod automatically at deploy, but must be applied to the dev branch manually (`alembic upgrade head` from `backend/`). Never point `backend/.env` at the production branch.
+- Routers use the legacy aiosqlite-style call surface via `services/db_adapter.py` (`DbAdapter`), which converts `?` placeholders to `$N`. **asyncpg is strict about parameter types**: pass `datetime`/`date` objects (naive UTC for `TIMESTAMP` columns), never `.isoformat()` strings, and `int` for INTEGER columns — strings/floats raise `DataError` at runtime (see #142).
+- Schema migrations: Alembic (`backend/alembic/`); prod runs `alembic upgrade head` on every Fly deploy.
 
 ## Project structure
 
@@ -41,9 +48,11 @@ Floreren/
     hooks/
   backend/
     routers/        # FastAPI route modules
+    services/       # business logic (species_knowledge, garden_log, db_adapter, …)
+    database/       # asyncpg pool + db_dep FastAPI dependency
+    alembic/        # schema migrations
     models.py       # Pydantic response models
     main.py
-    groei.db        # local SQLite (dev only)
 ```
 
 ## Routes
