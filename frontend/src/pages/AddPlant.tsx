@@ -160,6 +160,17 @@ export default function AddPlant() {
     () => buildSchedules(prefill, norm.careThresholds)
   )
 
+  // Extract fertilise_tip from care thresholds (identify path uses norm.careThresholds
+  // at mount; database path updates it via the lookupLatin useEffect below)
+  const [fertiliseTip, setFertiliseTip] = useState<string | null>(() => {
+    const ct = norm.careThresholds
+    if (ct && typeof ct === 'object') {
+      const tip = (ct as Record<string, unknown>)['fertilise_tip']
+      return typeof tip === 'string' && tip.trim() ? tip.trim() : null
+    }
+    return null
+  })
+
   // Derive plant_type from selected icon's cat field
   const derivedPlantType = useMemo(() => {
     if (!iconKey || iconCatalog.length === 0) return undefined
@@ -188,6 +199,11 @@ export default function AddPlant() {
           prefill,
           resp.care_thresholds,
         ))
+        // Also extract the fertilise_tip from the fetched thresholds
+        const tip = (resp.care_thresholds as Record<string, unknown>)['fertilise_tip']
+        setFertiliseTip(
+          typeof tip === 'string' && tip.trim() ? tip.trim() : null,
+        )
       })
       .catch(() => {}) // latin name may not match — silently skip
     return () => { cancelled = true }
@@ -819,6 +835,9 @@ export default function AddPlant() {
                 onChange={setFeedingSchedule}
               />
             </FormRow>
+            {fertiliseTip && (
+              <p className="text-xs text-text-muted italic mt-1 text-center">{fertiliseTip}</p>
+            )}
 
             {/* Pruning type */}
             <FormRow label={t.addPlant.labelPruneType} description={t.addPlant.labelPruneTypeDesc}>
