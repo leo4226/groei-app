@@ -82,6 +82,10 @@ export function useMapInteraction({
   const ptrMoveRef = useRef<((e: PointerEvent) => void) | null>(null)
   const ptrUpRef = useRef<((e: PointerEvent) => void) | null>(null)
 
+    // Reference to the DOM element being dragged, so we can imperatively
+  // set transform during drag and avoid React re-renders on every frame.
+  const dragElementRef = useRef<SVGGElement | null>(null)
+
   const [removeTarget, setRemoveTarget] = useState<{ type: 'plant'; id: number; x: number; y: number } | null>(null)
   const [plantResizeRadius, setPlantResizeRadius] = useState<number | null>(null)
   const plantResizeRadiusRef = useRef<number | null>(null)
@@ -156,6 +160,8 @@ export function useMapInteraction({
     if (selection.mode === 'resizing') return
     if (plant.is_locked) return
     e.stopPropagation()
+    // Register the SVG <g> element for imperative DOM transform during drag
+    dragElementRef.current = e.currentTarget as SVGGElement | null
     // Document-level listeners instead of setPointerCapture (unreliable on SVG <g>
     // elements with CSS transforms on mobile browsers).
     document.addEventListener('pointermove', onDocMove, { passive: false })
@@ -172,6 +178,8 @@ export function useMapInteraction({
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
     e.stopPropagation()
+    // Register the SVG element for imperative DOM transform during drag
+    dragElementRef.current = e.currentTarget as SVGGElement | null
     // Document-level listeners instead of setPointerCapture
     document.addEventListener('pointermove', onDocMove, { passive: false })
     document.addEventListener('pointerup', onDocUp)
@@ -228,7 +236,9 @@ export function useMapInteraction({
       const maxW = canvasData ? canvasData.canvas_w : 680
       const maxH = canvasData ? canvasData.canvas_h : 680
       dragPositionsRef.current = { ...dragPositionsRef.current, [key]: { x: Math.max(0, Math.min(maxW, rawX)), y: Math.max(0, Math.min(maxH, rawY)) } }
-      if (!rafThrottleRef.current) {
+      if (dragElementRef.current) {
+        dragElementRef.current.setAttribute('transform', `translate(${Math.max(0, Math.min(maxW, rawX))}, ${Math.max(0, Math.min(maxH, rawY))})`)
+      } else if (!rafThrottleRef.current) {
         rafThrottleRef.current = requestAnimationFrame(() => {
           rafThrottleRef.current = null
           setDragPositions((prev) => ({ ...prev, [key]: { x: Math.max(0, Math.min(maxW, rawX)), y: Math.max(0, Math.min(maxH, rawY)) } }))
@@ -254,8 +264,12 @@ export function useMapInteraction({
     // Update ref immediately (zero-latency, no re-render)
     dragPositionsRef.current = { ...dragPositionsRef.current, [key]: { x: clampedX, y: clampedY } }
 
-    // Throttle React state updates to at most once per frame
-    if (!rafThrottleRef.current) {
+    // Imperatively move the dragged element via DOM transform — no React state
+    // update, avoiding a full re-render of all PlantMarkers on every frame.
+    if (dragElementRef.current) {
+      dragElementRef.current.setAttribute('transform', `translate(${clampedX}, ${clampedY})`)
+    } else if (!rafThrottleRef.current) {
+      // Fallback: throttle React state updates to at most once per frame
       rafThrottleRef.current = requestAnimationFrame(() => {
         rafThrottleRef.current = null
         setDragPositions((prev) => ({ ...prev, [key]: { x: clampedX, y: clampedY } }))
@@ -292,6 +306,9 @@ export function useMapInteraction({
       return
     }
 
+    // Clear imperative DOM ref
+    dragElementRef.current = null
+
     // End drag (plants and containers)
     if (!dragging) return
     const key = `${dragging.type}-${dragging.id}`
@@ -313,18 +330,22 @@ export function useMapInteraction({
           const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
           await objectsApi.setPosition(dragging.id, rounded)
         }
-        onPositionUpdate?.()
+        // Optimistic update: keep dragPositions entry so the plant stays
+        // at the dropped position without a full data reload. Skip the full
+        // refresh — the API call already persisted the change.
+        setDragPositions((prev) => ({ ...prev, [key]: pos }))
       } catch (err) {
         console.error('Failed to update position:', err)
+        // On error: clean up dragPositions so the plant snaps back to its
+        // original position on next render.
+        setDragPositions((prev) => {
+          if (!(key in prev)) return prev
+          const { [key]: _, ...rest } = prev
+          return rest
+        })
       }
     }
-    if (dragging.type === 'container') {
-      setDragPositions((prev) => {
-        const { [key]: _, ...rest } = prev
-        return rest
-      })
-    }
-    // Cleanup: remove from ref too and sync state with latest ref values
+    // Always clean up the ref (imperative DOM transform no longer needed)
     const { [key]: _, ...restRef } = dragPositionsRef.current
     dragPositionsRef.current = restRef
     setDragging(null)

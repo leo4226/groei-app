@@ -44,6 +44,9 @@ export function isInsideBounds(
   return x >= 0 && x <= w && y >= 0 && y <= h
 }
 
+/** Cache parsed zone polygons so we don't JSON.parse on every pointer move. */
+const parsedZonePolygons = new WeakMap<GroundZone, [number, number][]>()
+
 /** Ray-casting algorithm for point-in-polygon test. */
 export function pointInPolygon(x: number, y: number, polygon: [number, number][]): boolean {
   let inside = false
@@ -59,7 +62,11 @@ export function pointInPolygon(x: number, y: number, polygon: [number, number][]
 
 export function isInsideZone(x: number, y: number, zones: GroundZone[]): GroundZone | null {
   for (const zone of zones) {
-    const polygon: [number, number][] = JSON.parse(zone.polygon)
+    let polygon = parsedZonePolygons.get(zone)
+    if (!polygon) {
+      polygon = JSON.parse(zone.polygon) as [number, number][]
+      parsedZonePolygons.set(zone, polygon)
+    }
     if (pointInPolygon(x, y, polygon)) return zone
   }
   return null
