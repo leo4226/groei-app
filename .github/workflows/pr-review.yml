@@ -37,8 +37,10 @@ jobs:
         run: |
           base="origin/${{ github.base_ref }}"
           git fetch origin ${{ github.base_ref }} --depth=1
+          # NB: git's default pathspec fnmatch lets * cross '/', so these
+          # match nested files too (verified empirically — no :(glob) needed).
           diff=$(git diff "$base"...HEAD -- 'backend/tests/**' 'frontend/**/*.test.*')
-          removed_tests=$(echo "$diff" | grep -cE '^-\s*(async )?def test_' || true)
+          removed_tests=$(echo "$diff" | grep -cE '^-\s*((async )?def test_|(it|test|describe)\s*\()' || true)
           added_skips=$(echo "$diff" | grep -cE '^\+.*(pytest\.mark\.skip|pytest\.mark\.xfail|\.skip\(|it\.skip|describe\.skip)' || true)
           echo "removed test functions: $removed_tests; added skip markers: $added_skips"
           if [ "$removed_tests" -gt 0 ] || [ "$added_skips" -gt 0 ]; then
