@@ -100,6 +100,45 @@ def test_load_care_profile_invalid_json_does_not_raise():
     assert profile["frost_protect"]["thresholds"]["min_temp_c"] is None
 
 
+def test_load_care_profile_env_override_for_stale_json():
+    """Stored care_profile JSON with indoor-only types active should be
+    overridden for outdoor plants (e.g. mist, rotate, dust on outdoor)."""
+    # Simulate a stale care_profile that has mist/rotate/dust active for an outdoor plant.
+    stale = '''{
+        "water": {"active": True, "interval_days": 7},
+        "fertilize": {"active": True, "interval_days": 30},
+        "mist": {"active": True, "interval_days": 3},
+        "rotate": {"active": True, "interval_days": 7},
+        "dust": {"active": True, "interval_days": 30},
+        "frost_protect": {"active": True},
+        "heat_protect": {"active": True},
+        "prune": {"active": True, "interval_days": 180},
+        "repot": {"active": True, "interval_days": 540},
+        "pest_check": {"active": True, "interval_days": 30},
+    }'''
+
+    # Outdoor ground — mist, rotate, dust should be forced inactive
+    profile = _load_care_profile(stale, None, environment="outdoor_ground")
+    assert profile["water"]["active"] is True
+    assert profile["mist"]["active"] is False, "mist should be inactive outdoor"
+    assert profile["rotate"]["active"] is False, "rotate should be inactive outdoor"
+    assert profile["dust"]["active"] is False, "dust should be inactive outdoor"
+    # repot is also inactive for outdoor_ground (default_intervals: None)
+    assert profile["repot"]["active"] is False, "repot should be inactive outdoor_ground"
+    # Weather-triggered types remain active outdoor
+    assert profile["frost_protect"]["active"] is True
+    assert profile["heat_protect"]["active"] is True
+
+    # Same stale data but with indoor environment — everything stays as-is
+    profile_indoor = _load_care_profile(stale, None, environment="indoor")
+    assert profile_indoor["mist"]["active"] is True, "mist should stay active indoor"
+    assert profile_indoor["rotate"]["active"] is True, "rotate should stay active indoor"
+    assert profile_indoor["dust"]["active"] is True, "dust should stay active indoor"
+    # Weather-triggered types are inactive indoor
+    assert profile_indoor["frost_protect"]["active"] is False
+    assert profile_indoor["heat_protect"]["active"] is False
+
+
 def test_schedule_overdue_3_days_is_urgent():
     """Water 3+ days overdue → urgent."""
     today = date(2026, 5, 16)
