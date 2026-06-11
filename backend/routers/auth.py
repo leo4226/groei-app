@@ -17,7 +17,7 @@ from models import (
     ForgotPasswordInput,
     ResetPasswordInput,
 )
-from auth import hash_password, verify_password, create_token, get_current_account
+from auth import ADMIN_EMAIL, hash_password, verify_password, create_token, get_current_account
 from services.email import send_password_reset
 import asyncpg
 
@@ -173,6 +173,8 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     return {"message": "Password updated"}
 
 
+
+
 @router.get("/me", response_model=AccountOut)
 async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     rows = await db.execute_fetchall(
@@ -181,4 +183,6 @@ async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Account not found")
-    return dict(rows[0])
+    account = dict(rows[0])
+    is_admin = account["email"] == ADMIN_EMAIL
+    return {**account, "is_admin": is_admin}

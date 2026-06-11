@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { apiRequest, icons, admin, type AdminAccount, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
+import { apiRequest, icons, auth, type AccountMe, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult } from '../types'
@@ -18,7 +18,7 @@ export default function Settings() {
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
-  const [adminAccounts, setAdminAccounts] = useState<AdminAccount[] | null>(null)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const [stekkieReset, setStekkieReset] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [inviteLoading, setInviteLoading] = useState(false)
@@ -114,11 +114,10 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    admin.accounts()
-      .then(setAdminAccounts)
-      .catch(() => setAdminAccounts(null))
+    auth.me()
+      .then((me) => setIsAdmin(me.is_admin))
+      .catch(() => setIsAdmin(false))
   }, [])
-
   useEffect(() => {
     notifications.getPrefs()
       .then(setDigestPrefs)
@@ -505,7 +504,7 @@ export default function Settings() {
         )}
       </section>
 
-      {adminAccounts !== null && (
+      {isAdmin && (
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.icons.title}</h2>
         <div className="card p-4 space-y-3">
@@ -591,7 +590,7 @@ export default function Settings() {
         </button>
       </section>
 
-      {adminAccounts !== null && (
+      {isAdmin && (
         <div className="mt-4 mb-8 text-center">
           <a
             href="/admin"
