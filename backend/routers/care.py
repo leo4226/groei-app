@@ -23,12 +23,13 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     now = datetime.now()
     today = date.today()
 
-    # Insert care log
-    await db.execute(
+    # Insert care log (id returned so the client can attach a photo to it)
+    cursor = await db.execute(
         """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
            VALUES (?, ?, ?, ?, ?, FALSE)""",
         (action.plant_id, action.care_type, action.user_id, now, action.notes),
     )
+    care_log_id = cursor.lastrowid
 
     # Update schedule
     if schedule["is_ephemeral"]:
@@ -45,7 +46,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
     )
 
     await db.commit()
-    return {"ok": True, "next_due": str(next_due)}
+    return {"ok": True, "next_due": str(next_due), "care_log_id": care_log_id}
 
 
 @router.post("/care/skip")
