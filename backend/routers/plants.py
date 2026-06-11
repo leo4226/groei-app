@@ -450,5 +450,8 @@ async def upload_photo(plant_id: int, background: BackgroundTasks, file: UploadF
     """Legacy single-photo endpoint — now creates a photo-journal entry
     (which also gains the household ownership check and thumbnail sync)."""
     from routers.plant_photos import upload_plant_photo
-    await upload_plant_photo(plant_id, background, file=file, db=db, account=account)
+    # Direct call bypasses FastAPI's dependency resolution, so the Form(None)
+    # defaults must be passed explicitly or Form objects leak into SQL params.
+    await upload_plant_photo(plant_id, background, file=file, note=None,
+                             taken_at=None, care_log_id=None, db=db, account=account)
     return await get_plant(plant_id, db=db)
