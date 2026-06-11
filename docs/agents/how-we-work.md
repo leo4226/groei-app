@@ -269,10 +269,11 @@ that means `npm install` first (§5), or the `tsc` check silently can't run.
   **Vercel** (`floreren.app`).
 - **Backend:** FastAPI + Python, in `backend/`. Deploys to **Fly.io** (app
   `floreren-api`, served at `api.floreren.app`).
-- **Database:** PostgreSQL (Neon) in production, SQLite locally.
+- **Database:** PostgreSQL (Neon) — production AND local dev (`DATABASE_URL`
+  required; SQLite remains only as the in-memory seam the tests use).
 - **AI features** (ecology, care tips, suggestions, chatbot) call a language model
-  through **OpenRouter**. ALL of that config is in ONE file: `backend/llm_config.py`
-  (model `deepseek/deepseek-chat`, key from env `OPENROUTER_API_KEY`). If you touch
+  through **Nous Portal**. ALL of that config is in ONE file: `backend/llm_config.py`
+  (model `deepseek/deepseek-v4-flash`, key from env `NOUS_API_KEY`). If you touch
   AI code, read that file first. Never hardcode an API URL or key anywhere else.
 - **Run locally:** `npm run dev` (frontend + backend together).
 - Deep infra / deployment details: `CLAUDE.md` at the repo root.
@@ -292,7 +293,31 @@ unless the issue is specifically about them.
 
 ---
 
-## 11. Cheat sheet
+## 11. The automated loop (how issues appear and PRs get checked)
+
+Two workflows close the loop around §4 — you don't run them, but you will
+see their output:
+
+- **Bug detector** (`.github/workflows/bug-detector.yml`, 5×/day): collects
+  real failure signals — `/health` down, `ERROR` lines in Fly logs, failed
+  workflow runs on master — and files issues labeled
+  `bug, needs-triage, auto-detected`. It never speculates: no signal, no
+  issue. Recurring errors dedupe against the open issue via a
+  `<!-- detector-sig: ... -->` marker in the body — don't delete that
+  comment. Parsing/dedup logic lives in `backend/scripts/bug_detector.py`
+  and is unit-tested (`tests/test_bug_detector.py`).
+- **PR review** (`.github/workflows/pr-review.yml`, every PR): a
+  **blocking** grep-based guard fails the check if a diff deletes tests or
+  adds skip/xfail markers (agents may add tests, never weaken them), plus
+  an **advisory** adversarial DeepSeek review posted as a PR comment. The
+  review is input for Leon — it is not a merge gate and it can be wrong.
+
+The human chain is unchanged: detector files → Leon/Claude triage (set
+difficulty + route) → executor agent fixes → CI + review → **Leon merges**.
+
+---
+
+## 12. Cheat sheet
 
 ```bash
 # find work (skip any row that already shows the "in-progress" label), then read it
