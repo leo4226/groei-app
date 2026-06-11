@@ -296,6 +296,18 @@ export const nl: Translations = {
     },
   },
 
+  photoJournal: {
+    addPhoto: 'Foto toevoegen',
+    uploading: 'Uploaden…',
+    empty: 'Nog geen foto’s — voeg de eerste toe om de groei te volgen.',
+    deleteConfirm: 'Deze foto verwijderen?',
+    delete: 'Verwijderen',
+    older: 'ouder',
+    newer: 'nieuwer',
+    compare: 'Vergelijk met eerste',
+    compareOff: 'Sluit vergelijking',
+  },
+
   settings: {
     title: 'Instellingen',
     profile: 'Profiel',
@@ -513,6 +525,7 @@ export const nl: Translations = {
     xDays: 'Elke {n} dagen',
     byPerson: 'Door {name}',
     deleteSchedule: 'Verwijder schema',
+    photoJournal: 'Groeidagboek',
     careHistory: 'Zorggeschiedenis',
     skipped: 'sloeg over:',
     did: 'deed:',

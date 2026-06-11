@@ -251,6 +251,18 @@ export type Translations = {
     }
   }
 
+  photoJournal: {
+    addPhoto: string
+    uploading: string
+    empty: string
+    deleteConfirm: string
+    delete: string
+    older: string
+    newer: string
+    compare: string
+    compareOff: string
+  }
+
   settings: {
     title: string
     display: string
@@ -460,6 +472,7 @@ export type Translations = {
     xDays: string  // "Every {n} days"
     byPerson: string  // "by {name}"
     deleteSchedule: string
+    photoJournal: string
     careHistory: string
     skipped: string  // "skipped:"
     did: string  // "did:"

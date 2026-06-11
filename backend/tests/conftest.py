@@ -18,10 +18,12 @@ import os
 import sqlite3
 import pytest
 
-# asyncpg (prod) wants real date objects for DATE columns; give sqlite an
-# explicit adapter so the same code path works in tests (the implicit
-# adapters are deprecated since Python 3.12).
+# asyncpg (prod) wants real date/datetime objects for DATE/TIMESTAMP columns;
+# give sqlite explicit adapters so the same code path works in tests (the
+# implicit adapters are deprecated since Python 3.12). datetime is stored
+# T-separated so text ordering matches chronological ordering.
 sqlite3.register_adapter(datetime.date, lambda d: d.isoformat())
+sqlite3.register_adapter(datetime.datetime, lambda dt: dt.isoformat(timespec="seconds"))
 
 # Ensure tests use a real Postgres connection.
 os.environ.setdefault("DATABASE_URL", "postgresql://floreren:dev@localhost:5432/floreren")

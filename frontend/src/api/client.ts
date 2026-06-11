@@ -202,6 +202,20 @@ export const plants = {
   commitIdentify:    (scientificName: string, photoBase64: string) => api<import('../types').IdentifyCommitResult>('POST', '/plants/identify/commit', { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
 }
 
+export const photos = {
+  list: (plantId: number) => api<import('../types').PlantPhoto[]>('GET', `/plants/${plantId}/photos`),
+  upload: (plantId: number, image: Blob, opts: { note?: string; takenAt?: string; careLogId?: number } = {}) => {
+    const f = new FormData()
+    f.append('file', image, 'photo.jpg')
+    if (opts.note) f.append('note', opts.note)
+    if (opts.takenAt) f.append('taken_at', opts.takenAt)
+    if (opts.careLogId != null) f.append('care_log_id', String(opts.careLogId))
+    return api<import('../types').PlantPhoto>('POST', `/plants/${plantId}/photos`, { form: f })
+  },
+  updateNote: (photoId: number, note: string) => api<import('../types').PlantPhoto>('PATCH', `/photos/${photoId}`, { body: { note } }),
+  remove: (photoId: number) => api<{ ok: boolean }>('DELETE', `/photos/${photoId}`),
+}
+
 export const dashboard = {
   v2: () => api<DashboardV2Data>('GET', '/dashboard/v2'),
 }

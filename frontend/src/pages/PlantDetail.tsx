@@ -8,6 +8,7 @@ import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
 import PlantCareInfo from '../components/PlantCareInfo'
+import PhotoJournal from '../components/plant/PhotoJournal'
 import EcologyCard from '../components/EcologyCard'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
@@ -353,6 +354,11 @@ export default function PlantDetail() {
         <div className="mb-6">
           <PlantCareInfo plantId={plantId} />
         </div>
+
+        {/* Photo journal (Groeidagboek) */}
+        <Section title={t.plantDetail.photoJournal}>
+          <PhotoJournal plantId={plant.id} />
+        </Section>
 
         {/* Care history */}
         {careLog.data && careLog.data.length > 0 && (

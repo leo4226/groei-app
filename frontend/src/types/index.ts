@@ -610,3 +610,13 @@ export type EcologyOut = {
   enriched_at: string                   // ISO timestamp
   score: number | null                  // 0-100; null when no data
 }
+
+export interface PlantPhoto {
+  id: number
+  plant_id: number
+  url: string
+  note: string | null
+  taken_at: string
+  care_log_id: number | null
+  species_mismatch: boolean
+}
