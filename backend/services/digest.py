@@ -282,7 +282,10 @@ _STAMP_COLUMNS = {"last_digest_sent_on", "last_push_sent_on"}
 
 
 async def _stamp(db, account_id: int, today: date, column: str = "last_digest_sent_on") -> None:
-    assert column in _STAMP_COLUMNS  # never interpolate unvetted SQL
+    # Runtime guard, not assert: asserts vanish under `python -O`, and this
+    # name is interpolated into SQL.
+    if column not in _STAMP_COLUMNS:
+        raise ValueError(f"invalid stamp column: {column!r}")
     await db.execute(
         f"UPDATE notification_preferences SET {column} = ? WHERE account_id = ?",
         (today, account_id),

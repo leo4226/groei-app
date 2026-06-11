@@ -116,6 +116,26 @@ async def test_unsubscribe_deletes_own_row(client, seeded_db, auth_header):
     assert rows == []
 
 
+async def test_unsubscribe_cannot_delete_foreign_subscription(client, seeded_db, auth_header):
+    # Subscription belongs to account 2; account 1 (auth_header) must not remove it.
+    await seeded_db.executescript("""
+        INSERT INTO households (id, name) VALUES (2, 'Other');
+        INSERT INTO accounts (id, household_id, email, name, password_hash)
+        VALUES (2, 2, 'other@example.com', 'Other', 'x');
+        INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
+        VALUES (2, 'https://push.example/foreign', 'k', 'a');
+    """)
+    await seeded_db.commit()
+
+    res = await client.request(
+        "DELETE", "/api/push/subscription",
+        json={"endpoint": "https://push.example/foreign"}, headers=auth_header,
+    )
+    assert res.status_code == 200  # idempotent response shape
+    rows = await seeded_db.execute_fetchall("SELECT account_id FROM push_subscriptions")
+    assert len(rows) == 1 and rows[0]["account_id"] == 2  # row survived
+
+
 async def test_vapid_public_key_endpoint(client, seeded_db, monkeypatch):
     monkeypatch.setenv("VAPID_PUBLIC_KEY", "test-public-key")
     res = await client.get("/api/push/vapid-public-key")
