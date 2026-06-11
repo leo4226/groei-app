@@ -57,10 +57,29 @@ async def _sync_thumbnail(db, plant_id: int) -> None:
     )
 
 
+def _parse_taken_at(value: str) -> datetime:
+    """Accept ISO timestamps (T or space separated); 422 on garbage.
+
+    Returns a datetime OBJECT — asyncpg requires that for TIMESTAMP columns
+    (strings raise DataError at runtime, see CLAUDE.md / #142).
+    """
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(422, "taken_at must be an ISO timestamp (YYYY-MM-DDTHH:MM:SS)")
+
+
+def _iso_t(value) -> str:
+    """Serialise a timestamp with the T separator — Safari's Date() rejects spaces."""
+    if isinstance(value, datetime):
+        return value.isoformat(timespec="seconds")
+    return str(value).replace(" ", "T")
+
+
 def _row_to_out(row) -> PhotoOut:
     return PhotoOut(
         id=row["id"], plant_id=row["plant_id"], url=row["url"], note=row["note"],
-        taken_at=str(row["taken_at"]), care_log_id=row["care_log_id"],
+        taken_at=_iso_t(row["taken_at"]), care_log_id=row["care_log_id"],
         species_mismatch=bool(row["species_mismatch"]),
     )
 
@@ -91,7 +110,7 @@ async def upload_plant_photo(
     except Exception as exc:
         raise HTTPException(502, f"Photo storage failed: {exc}")
 
-    ts = taken_at or datetime.now().isoformat(sep=" ", timespec="seconds")
+    ts = _parse_taken_at(taken_at) if taken_at else datetime.now().replace(microsecond=0)
     try:
         cursor = await db.execute(
             """INSERT INTO plant_photos (plant_id, household_id, r2_key, url, note, taken_at, care_log_id)
@@ -140,7 +159,7 @@ async def update_photo(photo_id: int, patch: PhotoPatch,
                        db=Depends(db_dep), account=Depends(get_current_account)):
     photo = await _owned_photo(db, photo_id, account["household_id"])
     note = patch.note if patch.note is not None else photo["note"]
-    taken_at = patch.taken_at if patch.taken_at is not None else photo["taken_at"]
+    taken_at = _parse_taken_at(patch.taken_at) if patch.taken_at is not None else photo["taken_at"]
     await db.execute(
         "UPDATE plant_photos SET note = ?, taken_at = ? WHERE id = ?",
         (note, taken_at, photo_id),

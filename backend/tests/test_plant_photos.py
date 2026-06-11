@@ -202,6 +202,30 @@ async def test_legacy_endpoint_creates_journal_entry(client, photo_db, auth_head
 
 
 @pytest.mark.asyncio
+async def test_upload_rejects_invalid_taken_at(client, photo_db, auth_header):
+    res = await _upload(client, 1, headers=auth_header, taken_at="not-a-date")
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_rejects_invalid_taken_at(client, photo_db, auth_header):
+    photo = (await _upload(client, 1, headers=auth_header)).json()
+    res = await client.patch(
+        f"/api/photos/{photo['id']}", json={"taken_at": "garbage"}, headers=auth_header
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_taken_at_serialises_with_t_separator(client, photo_db, auth_header):
+    """Safari's Date() rejects space-separated timestamps — API must emit ISO-T."""
+    res = await _upload(client, 1, headers=auth_header)
+    assert "T" in res.json()["taken_at"]
+    listed = (await client.get("/api/plants/1/photos", headers=auth_header)).json()
+    assert "T" in listed[0]["taken_at"]
+
+
+@pytest.mark.asyncio
 async def test_legacy_endpoint_rejects_foreign_plant(client, photo_db, auth_header):
     res = await client.post(
         "/api/plants/2/photo",

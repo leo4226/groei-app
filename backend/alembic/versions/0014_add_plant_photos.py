@@ -24,7 +24,7 @@ def upgrade() -> None:
         CREATE TABLE plant_photos (
             id                  SERIAL PRIMARY KEY,
             plant_id            INTEGER NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
-            household_id        INTEGER NOT NULL,
+            household_id        INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
             r2_key              TEXT NOT NULL,
             url                 TEXT NOT NULL,
             note                TEXT,
