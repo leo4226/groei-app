@@ -53,4 +53,4 @@ jobs:
         # --noconftest skips conftest.py, which imports the whole app and needs a
         # live Postgres. These two suites are pure functions (no fixtures). Expand
         # this list once CI provisions a Postgres service.
-        run: python -m pytest --noconftest tests/test_plant_suggestions.py tests/test_ecology_enrichment.py -q
+        run: python -m pytest --noconftest tests/test_plant_suggestions.py tests/test_ecology_enrichment.py tests/test_digest_pure.py -q
