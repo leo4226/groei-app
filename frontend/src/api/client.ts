@@ -163,6 +163,8 @@ export interface AdminSpeciesRow {
 export const users = {
   list:        ()                                          => api<User[]>('GET', '/users'),
   locations:   ()                                          => api<Location[]>('GET', '/locations'),
+  updateLocation: (id: number, data: Partial<Location>)         => api<Location>('PATCH', `/locations/${id}`, { body: data }),
+  deleteLocation: (id: number)                                  => api<{ok: boolean}>('DELETE', `/locations/${id}`),
   setLanguage: (userId: number, language: 'nl' | 'en')   => api<User>('PATCH', `/users/${userId}/language`, { body: { language } }),
 }
 

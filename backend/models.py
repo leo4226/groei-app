@@ -29,6 +29,12 @@ class LocationCreate(BaseModel):
     name: str
     icon: str | None = None
 
+class LocationUpdate(BaseModel):
+    name: str | None = None
+    icon: str | None = None
+    sort_order: int | None = None
+
+
 
 # --- Plants ---
 

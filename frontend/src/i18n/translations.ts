@@ -259,6 +259,17 @@ export type Translations = {
     whoIsGardening: string
     active: string
     locations: string
+    addLocation: string
+    locationNamePlaceholder: string
+    editLocation: string
+    deleteLocation: string
+    save: string
+    cancel: string
+    confirmDeleteLocation: string
+    locationHasPlants: string
+    moveUp: string
+    moveDown: string
+    rename: string
     language: string
     languageNl: string
     languageEn: string

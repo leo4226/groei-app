@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { icons, admin, type AdminAccount, household } from '../api/client'
+import { apiRequest, icons, admin, type AdminAccount, household, users as usersApi } from '../api/client'
+import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult } from '../types'
 
@@ -23,6 +24,13 @@ export default function Settings() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [editingLocationId, setEditingLocationId] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editIcon, setEditIcon] = useState('')
+  const [showAddLocation, setShowAddLocation] = useState(false)
+  const [newLocationName, setNewLocationName] = useState('')
+  const [newLocationIcon, setNewLocationIcon] = useState('')
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   function InviteSection() {
     async function generateCode() {
@@ -121,6 +129,101 @@ export default function Settings() {
     } finally {
       setSyncing(false)
     }
+  }
+
+  function startEditing(loc: Location) {
+    setEditingLocationId(loc.id)
+    setEditName(loc.name)
+    setEditIcon(loc.icon ?? '')
+    setLocationError(null)
+  }
+
+  async function handleUpdateLocation(id: number) {
+    if (!editName.trim()) return
+    setLocationError(null)
+    try {
+      const body: Record<string, string> = { name: editName.trim() }
+      if (editIcon.trim()) body.icon = editIcon.trim()
+      await usersApi.updateLocation(id, body)
+      setEditingLocationId(null)
+      useFloreren.getState().load()
+    } catch (e) {
+      setLocationError(e instanceof Error ? e.message : t.common.error)
+    }
+  }
+
+  async function handleAddLocation() {
+    if (!newLocationName.trim()) return
+    setLocationError(null)
+    try {
+      const body: Record<string, string> = { name: newLocationName.trim() }
+      if (newLocationIcon.trim()) body.icon = newLocationIcon.trim()
+      setShowAddLocation(false)
+      setNewLocationName('')
+      setNewLocationIcon('')
+      await apiRequest('POST', '/locations', { body })
+      useFloreren.getState().load()
+    } catch (e) {
+      setLocationError(e instanceof Error ? e.message : t.common.error)
+    }
+  }
+
+  async function handleDeleteClick(loc: Location) {
+    if (!window.confirm(t.settings.confirmDeleteLocation)) return
+    setLocationError(null)
+    try {
+      await usersApi.deleteLocation(loc.id)
+      useFloreren.getState().load()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t.common.error
+      if (msg.includes('planten')) {
+        setLocationError(t.settings.locationHasPlants)
+      } else {
+        setLocationError(msg)
+      }
+    }
+  }
+
+  async function handleReorder(loc: Location, direction: 'up' | 'down') {
+    const sorted = [...locations].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((l) => l.id === loc.id)
+    if (idx === -1) return
+    if (direction === 'up' && idx === 0) return
+    if (direction === 'down' && idx >= sorted.length - 1) return
+    const newOrder = direction === 'up' ? sorted[idx].sort_order - 1 : sorted[idx].sort_order + 1
+    try {
+      await usersApi.updateLocation(loc.id, { sort_order: newOrder })
+      useFloreren.getState().load()
+    } catch (e) {
+      setLocationError(e instanceof Error ? e.message : t.common.error)
+    }
+  }
+
+  function LocationOrderButtons({ loc, locations, onReorder }: { loc: Location; locations: Location[]; onReorder: (loc: Location, dir: 'up' | 'down') => void }) {
+    const sorted = [...locations].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((l) => l.id === loc.id)
+    const isFirst = idx === 0
+    const isLast = idx === sorted.length - 1
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <button
+          onClick={() => onReorder(loc, 'up')}
+          disabled={isFirst}
+          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed text-[10px] leading-none"
+          title={t.settings.moveUp}
+        >
+          &#9650;
+        </button>
+        <button
+          onClick={() => onReorder(loc, 'down')}
+          disabled={isLast}
+          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed text-[10px] leading-none"
+          title={t.settings.moveDown}
+        >
+          &#9660;
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -237,13 +340,109 @@ export default function Settings() {
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.locations}</h2>
         <div className="card divide-y divide-border/50">
-          {locations.map((loc) => (
-            <div key={loc.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-xl">{loc.icon}</span>
-              <span className="font-medium text-sm">{loc.name}</span>
+          {locations.map((loc) => {
+            const isEditing = editingLocationId === loc.id
+            return (
+              <div key={loc.id} className="flex items-center gap-2 px-4 py-2.5">
+                {isEditing ? (
+                  <>
+                    <input
+                      className="flex-1 min-w-0 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium outline-none focus:border-primary/50"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder={t.settings.locationNamePlaceholder}
+                    />
+                    <input
+                      className="w-10 h-10 rounded-lg border border-border bg-surface text-center text-xl outline-none focus:border-primary/50"
+                      value={editIcon}
+                      onChange={(e) => setEditIcon(e.target.value)}
+                      maxLength={2}
+                    />
+                    <button
+                      onClick={() => handleUpdateLocation(loc.id)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform"
+                      title={t.settings.save}
+                    >
+                      &#10003;
+                    </button>
+                    <button
+                      onClick={() => setEditingLocationId(null)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text text-sm active:scale-90 transition-transform"
+                      title={t.settings.cancel}
+                    >
+                      &#10005;
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-shrink-0 w-8 text-center text-xl">{loc.icon}</span>
+                    <span className="flex-1 min-w-0 font-medium text-sm truncate">{loc.name}</span>
+                    <button
+                      onClick={() => startEditing(loc)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface active:scale-90 transition-all text-xs"
+                      title={t.settings.rename}
+                    >
+                      &#9998;
+                    </button>
+                    <LocationOrderButtons loc={loc} locations={locations} onReorder={handleReorder} />
+                    <button
+                      onClick={() => handleDeleteClick(loc)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50 active:scale-90 transition-all text-xs"
+                      title={t.settings.deleteLocation}
+                    >
+                      &#128465;
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          })}
+          {showAddLocation && (
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <input
+                className="flex-1 min-w-0 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium outline-none focus:border-primary/50"
+                value={newLocationName}
+                onChange={(e) => setNewLocationName(e.target.value)}
+                placeholder={t.settings.locationNamePlaceholder}
+                autoFocus
+              />
+              <input
+                className="w-10 h-10 rounded-lg border border-border bg-surface text-center text-xl outline-none focus:border-primary/50"
+                value={newLocationIcon}
+                onChange={(e) => setNewLocationIcon(e.target.value)}
+                maxLength={2}
+                placeholder="&#127793;"
+              />
+              <button
+                onClick={handleAddLocation}
+                disabled={!newLocationName.trim()}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform disabled:opacity-40"
+                title={t.settings.save}
+              >
+                &#10003;
+              </button>
+              <button
+                onClick={() => setShowAddLocation(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text text-sm active:scale-90 transition-transform"
+                title={t.settings.cancel}
+              >
+                &#10005;
+              </button>
             </div>
-          ))}
+          )}
+          {!showAddLocation && (
+            <button
+              onClick={() => setShowAddLocation(true)}
+              className="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-primary active:bg-surface/50 transition-colors"
+            >
+              <span className="text-lg">+</span>
+              {t.settings.addLocation}
+            </button>
+          )}
         </div>
+        {locationError && (
+          <p className="mt-2 text-sm text-fiery-red">{locationError}</p>
+        )}
       </section>
 
       {adminAccounts !== null && (
