@@ -268,9 +268,9 @@ export default function EditPlant() {
 
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8">
+        <div className="flex flex-col gap-6 lg:gap-8">
           {/* LEFT: form content */}
-          <div className="space-y-6 min-w-0">
+          <div className="space-y-6 max-w-2xl mx-auto w-full">
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Photo */}
               <label className="card p-4 flex items-center gap-4 cursor-pointer">
