@@ -296,6 +296,18 @@ export const en: Translations = {
     },
   },
 
+  photoJournal: {
+    addPhoto: 'Add photo',
+    uploading: 'Uploading…',
+    empty: 'No photos yet — add the first one to track growth.',
+    deleteConfirm: 'Delete this photo?',
+    delete: 'Delete',
+    older: 'older',
+    newer: 'newer',
+    compare: 'Compare with first',
+    compareOff: 'Close comparison',
+  },
+
   settings: {
     title: 'Settings',
     display: 'Display',
@@ -502,6 +514,7 @@ export const en: Translations = {
     xDays: 'Every {n} days',
     byPerson: 'by {name}',
     deleteSchedule: 'Delete schedule',
+    photoJournal: 'Growth journal',
     careHistory: 'Care history',
     skipped: 'skipped:',
     did: 'did:',
