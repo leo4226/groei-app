@@ -611,6 +611,7 @@ class AccountOut(BaseModel):
     email: str
     name: str
     avatar: str | None = None
+    is_admin: bool = False
 
 
 class CalendarEventOut(BaseModel):

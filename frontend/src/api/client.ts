@@ -109,6 +109,15 @@ export interface AdminAccount {
   household_name: string
 }
 
+export interface AccountMe {
+  id: number
+  household_id: number
+  email: string
+  name: string
+  avatar: string | null
+  is_admin: boolean
+}
+
 export interface AdminUserRow {
   id: number
   name: string
@@ -285,6 +294,10 @@ export const icons = {
 export const weeds = {
   catalog:        ()                                            => api<import('../types').WeedSpeciesListItem[]>('GET', '/weed-catalog'),
   createSighting: (body: import('../types').WeedSightingCreate) => api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body }),
+}
+
+export const auth = {
+  me: () => api<AccountMe>("GET", "/auth/me"),
 }
 
 export const admin = {
