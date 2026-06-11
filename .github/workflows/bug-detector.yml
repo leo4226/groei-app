@@ -1,0 +1,38 @@
+name: Bug detector
+
+# DISCOVER stage of the agent loop (docs/agents/how-we-work.md §12).
+# Collects real failure signals — /health, ERROR lines in Fly logs, failed
+# workflow runs on master — and files deduplicated GitHub issues labeled
+# `bug, needs-triage, auto-detected`. It never hunts speculatively: no
+# signal, no issue. Triage routes findings to DeepSeek or Claude.
+on:
+  schedule:
+    - cron: "17 5,9,13,17,21 * * *"   # 5x daily (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Capture recent Fly logs
+        # `fly logs --no-tail` returns the recent buffer and exits.
+        run: flyctl logs -a floreren-api --no-tail > /tmp/fly-logs.txt || echo "" > /tmp/fly-logs.txt
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Run detector
+        working-directory: backend
+        run: python scripts/bug_detector.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FLY_LOGS_PATH: /tmp/fly-logs.txt
+          NOUS_API_KEY: ${{ secrets.NOUS_API_KEY }}
