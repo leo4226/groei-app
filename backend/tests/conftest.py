@@ -114,7 +114,17 @@ SCHEMA = """
         digest_enabled INTEGER NOT NULL DEFAULT 0,
         digest_time TEXT NOT NULL DEFAULT '08:00',
         quiet_hours TEXT,
-        last_digest_sent_on DATE
+        last_digest_sent_on DATE,
+        push_enabled INTEGER NOT NULL DEFAULT 0,
+        last_push_sent_on DATE
+    );
+    CREATE TABLE push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE locations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

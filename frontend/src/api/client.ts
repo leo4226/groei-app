@@ -387,10 +387,16 @@ export const household = {
 
 export interface NotificationPrefs {
   digest_enabled: boolean
-  digest_time: string  // "HH:MM" — the digest is sent on the matching hour (Europe/Amsterdam)
+  digest_time: string  // "HH:MM" — the send hour for digest AND push (Europe/Amsterdam)
+  push_enabled: boolean
 }
 
 export const notifications = {
   getPrefs:    ()                       => api<NotificationPrefs>('GET', '/settings/notifications'),
   updatePrefs: (prefs: NotificationPrefs) => api<NotificationPrefs>('PUT', '/settings/notifications', { body: prefs }),
+  vapidKey:    ()                       => api<{ key: string }>('GET', '/push/vapid-public-key'),
+  pushSubscribe: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    api<{ ok: boolean }>('POST', '/push/subscription', { body: sub }),
+  pushUnsubscribe: (endpoint: string) =>
+    api<{ ok: boolean }>('DELETE', '/push/subscription', { body: { endpoint } }),
 }

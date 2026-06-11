@@ -19,6 +19,7 @@ from care_types import CARE_TYPES
 from models import CareTask
 from services.care_task_service import fetch_household_schedule_rows, classify_care_tasks
 from services.email import send_email
+from services.push import send_push
 
 AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 
@@ -67,11 +68,12 @@ def _as_date(value) -> date | None:
     return date.fromisoformat(str(value)[:10])
 
 
-def account_is_due(pref_row, now: datetime) -> bool:
-    """digest hour matches the current Amsterdam hour and not already sent today."""
+def account_is_due(pref_row, now: datetime, last_field: str = "last_digest_sent_on") -> bool:
+    """digest hour matches the current Amsterdam hour and the channel's
+    last-sent stamp (email or push, per `last_field`) isn't today's."""
     if _digest_hour(pref_row["digest_time"]) != now.hour:
         return False
-    last = _as_date(pref_row["last_digest_sent_on"])
+    last = _as_date(pref_row[last_field])
     return last is None or last < now.date()
 
 
@@ -174,30 +176,51 @@ def build_digest_email(
     return s["subject"], html
 
 
+# ── push payload ─────────────────────────────────────────────────────────
+
+def build_push_payload(overdue: list[CareTask], due_today: list[CareTask]) -> dict:
+    total = len(overdue) + len(due_today)
+    if overdue:
+        body = f"{total} taken vandaag, waarvan {len(overdue)} te laat"
+    else:
+        body = f"{total} taken vandaag" if total != 1 else "1 taak vandaag"
+    return {
+        "title": "Floreren 🌿",
+        "body": body,
+        "url": f"{APP_URL}/dashboard",
+    }
+
+
 # ── orchestration ────────────────────────────────────────────────────────
 
 async def send_due_digests(db) -> dict:
-    """Send digests to every opted-in account whose hour matches now.
+    """Email + push to every opted-in account whose hour matches now.
 
-    Returns counts only — never account data (the response of
-    /internal/send-digests is exposed to the cron caller).
+    The two channels share the selection and task data but stamp
+    independently (last_digest_sent_on / last_push_sent_on), so one
+    channel failing never blocks the other. Returns counts only — never
+    account data (the response is exposed to the cron caller).
     """
     now = _now()
     today = now.date()
 
     prefs = await db.execute_fetchall(
         """
-        SELECT np.account_id, np.digest_time, np.last_digest_sent_on,
+        SELECT np.account_id, np.digest_time, np.digest_enabled,
+               np.last_digest_sent_on, np.push_enabled, np.last_push_sent_on,
                a.email, a.name, a.household_id
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
-        WHERE np.digest_enabled
+        WHERE np.digest_enabled OR np.push_enabled
         """
     )
 
     checked = sent = skipped_no_tasks = failed = 0
+    push_sent = push_failed = push_pruned = 0
     for pref in prefs:
-        if not account_is_due(pref, now):
+        email_due = pref["digest_enabled"] and account_is_due(pref, now)
+        push_due = pref["push_enabled"] and account_is_due(pref, now, "last_push_sent_on")
+        if not email_due and not push_due:
             continue
         checked += 1
 
@@ -205,27 +228,63 @@ async def send_due_digests(db) -> dict:
         overdue, due_today, _ = classify_care_tasks(rows, today=today)
 
         if not overdue and not due_today:
-            # Task-free day: no email, but stamp so later calls skip the work.
-            await _stamp(db, pref["account_id"], today)
+            # Task-free day: nothing to send, but stamp so later calls skip the work.
+            if email_due:
+                await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
+            if push_due:
+                await _stamp(db, pref["account_id"], today, "last_push_sent_on")
             skipped_no_tasks += 1
             continue
 
-        token = make_unsubscribe_token(pref["account_id"])
-        unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
-        subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
+        if email_due:
+            token = make_unsubscribe_token(pref["account_id"])
+            unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
+            subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
+            if send_email(pref["email"], subject, html):
+                await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
+                sent += 1
+            else:
+                failed += 1  # no stamp — eligible again on the next matching hour/day
 
-        if send_email(pref["email"], subject, html):
-            await _stamp(db, pref["account_id"], today)
-            sent += 1
-        else:
-            failed += 1  # no stamp — eligible again on the next matching hour/day
+        if push_due:
+            subs = await db.execute_fetchall(
+                "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
+                (pref["account_id"],),
+            )
+            if subs:
+                payload = build_push_payload(overdue, due_today)
+                delivered = False
+                for sub in subs:
+                    outcome = send_push(dict(sub), payload)
+                    if outcome == "ok":
+                        delivered = True
+                    elif outcome == "gone":
+                        # Dead endpoint (404/410) — prune at send time.
+                        await db.execute(
+                            "DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],)
+                        )
+                        await db.commit()
+                        push_pruned += 1
+                if delivered:
+                    await _stamp(db, pref["account_id"], today, "last_push_sent_on")
+                    push_sent += 1
+                else:
+                    push_failed += 1
 
-    return {"checked": checked, "sent": sent, "skipped_no_tasks": skipped_no_tasks, "failed": failed}
+    return {
+        "checked": checked, "sent": sent,
+        "skipped_no_tasks": skipped_no_tasks, "failed": failed,
+        "push_sent": push_sent, "push_failed": push_failed, "push_pruned": push_pruned,
+    }
 
 
-async def _stamp(db, account_id: int, today: date) -> None:
+_STAMP_COLUMNS = {"last_digest_sent_on", "last_push_sent_on"}
+
+
+async def _stamp(db, account_id: int, today: date, column: str = "last_digest_sent_on") -> None:
+    assert column in _STAMP_COLUMNS  # never interpolate unvetted SQL
     await db.execute(
-        "UPDATE notification_preferences SET last_digest_sent_on = ? WHERE account_id = ?",
+        f"UPDATE notification_preferences SET {column} = ? WHERE account_id = ?",
         (today, account_id),
     )
     await db.commit()

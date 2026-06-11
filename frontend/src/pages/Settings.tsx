@@ -7,6 +7,7 @@ import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
+import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 
@@ -34,6 +35,7 @@ export default function Settings() {
   const [locationError, setLocationError] = useState<string | null>(null)
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
+  const [pushBusy, setPushBusy] = useState(false)
 
   // Profile state
   const [profileName, setProfileName] = useState('')
@@ -212,6 +214,29 @@ export default function Settings() {
     } catch {
       setDigestPrefs(prev)
       setDigestError(t.settings.digestSaveError)
+    }
+  }
+
+  async function handlePushToggle() {
+    if (!digestPrefs || pushBusy) return
+    setPushBusy(true)
+    setDigestError(null)
+    try {
+      if (digestPrefs.push_enabled) {
+        await disablePush()
+        await saveDigestPrefs({ ...digestPrefs, push_enabled: false })
+      } else {
+        await enablePush()
+        await saveDigestPrefs({ ...digestPrefs, push_enabled: true })
+      }
+    } catch (e) {
+      setDigestError(
+        e instanceof Error && e.message === 'permission-denied'
+          ? t.settings.pushDenied
+          : t.settings.digestSaveError,
+      )
+    } finally {
+      setPushBusy(false)
     }
   }
 
@@ -483,7 +508,24 @@ export default function Settings() {
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.digest_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-          {digestPrefs?.digest_enabled && (
+          <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+            <div>
+              <div className="font-semibold text-sm">{t.settings.pushToggle}</div>
+              <div className="text-xs text-text-muted mt-0.5">
+                {iosNeedsInstall() ? t.settings.pushIosHint
+                  : !pushSupported() ? t.settings.pushUnsupported
+                  : t.settings.pushToggleDesc}
+              </div>
+            </div>
+            <button
+              onClick={handlePushToggle}
+              disabled={!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${digestPrefs?.push_enabled ? 'bg-primary' : 'bg-border'} ${(!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()) ? 'opacity-50' : ''}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.push_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {digestPrefs && (digestPrefs.digest_enabled || digestPrefs.push_enabled) && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
               <div>
                 <div className="font-semibold text-sm">{t.settings.digestTimeLabel}</div>
