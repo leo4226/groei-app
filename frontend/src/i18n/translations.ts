@@ -275,6 +275,12 @@ export type Translations = {
     digestTimeDesc: string
     digestLoadError: string
     digestSaveError: string
+    householdTitle: string
+    householdName: string
+    householdNamePlaceholder: string
+    householdSaved: string
+    memberEmail: string
+    memberJoined: string
     whoIsGardening: string
     active: string
     locations: string
