@@ -2,8 +2,8 @@
 
 Uses the async `client` / `seeded_db` / `auth_header` fixtures from conftest.
 `get_or_create_species` and `generate_thresholds` are patched so tests never
-hit Claude/network. The in-memory schema is augmented with the `locations` and
-`plant_species` tables that `get_plant` (returned at the end of create) joins.
+hit Claude/network. The in-memory schema is augmented with the `plant_species`
+table that `get_plant` (returned at the end of create) joins.
 """
 import json
 from datetime import date
@@ -13,7 +13,6 @@ import pytest_asyncio
 
 # Tables create_plant -> get_plant joins against, beyond conftest's base schema.
 EXTRA_SCHEMA = """
-CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT);
 CREATE TABLE plant_species (id INTEGER PRIMARY KEY, care_thresholds TEXT, phenology_json TEXT);
 """
 

@@ -134,7 +134,7 @@ async def test_identify_endpoint_attaches_species_id_if_known(client, seeded_db,
 @pytest.mark.asyncio
 async def test_commit_returns_prefill_for_known_species(client, seeded_db, auth_header, tmp_path, monkeypatch):
     """When species is in catalog, commit returns enriched payload from cache (no external lookup)."""
-    monkeypatch.setattr("routers.plant_id._PHOTOS_DIR", str(tmp_path))
+    monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
 
     await seeded_db.execute(
         "CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, latin_name TEXT, common_name_nl TEXT, common_name_en TEXT, care_thresholds TEXT)"
@@ -157,15 +157,15 @@ async def test_commit_returns_prefill_for_known_species(client, seeded_db, auth_
     assert body["name_nl_suggested"] == "Gatenplant"
     assert body["scientific_name"] == "Monstera deliciosa"
     assert body["care_thresholds"] == {"min_temp_c": 10}
-    assert body["photo_path"].startswith("/api/photos/identify_")
-    saved_filename = body["photo_path"].rsplit("/", 1)[-1]
-    assert (tmp_path / saved_filename).exists()
+    # Photo storage is patched out (it goes to R2 in production); the endpoint
+    # returns whatever path the storage layer produced.
+    assert body["photo_path"] == "photos/test.jpg"
 
 
 @pytest.mark.asyncio
 async def test_commit_triggers_enrichment_for_unknown_species(client, seeded_db, auth_header, tmp_path, monkeypatch):
     """When species is not in catalog, commit triggers the species pipeline."""
-    monkeypatch.setattr("routers.plant_id._PHOTOS_DIR", str(tmp_path))
+    monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
     await seeded_db.execute(
         "CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, latin_name TEXT, common_name_nl TEXT, common_name_en TEXT, care_thresholds TEXT)"
     )
@@ -197,7 +197,7 @@ async def test_commit_triggers_enrichment_for_unknown_species(client, seeded_db,
 @pytest.mark.asyncio
 async def test_commit_rejects_unknown_species_on_enrichment_failure(client, seeded_db, auth_header, tmp_path, monkeypatch):
     """If species pipeline returns None, return 404."""
-    monkeypatch.setattr("routers.plant_id._PHOTOS_DIR", str(tmp_path))
+    monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
     await seeded_db.execute(
         "CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, latin_name TEXT, common_name_nl TEXT, common_name_en TEXT, care_thresholds TEXT)"
     )

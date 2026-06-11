@@ -140,8 +140,12 @@ async def test_parity_for_representative_plants(seeded_db):
     today_iso = today.isoformat()
 
     # Weather: cold week — frost-triggering for the outdoor container plant.
+    # The new pipeline's forecast-aware timing requires a "date" per day.
     weather = {
-        "temp": {"days": [{"min": -2, "max": 8}, {"min": -1, "max": 9}]},
+        "temp": {"days": [
+            {"date": "2026-05-16", "min": -2, "max": 8},
+            {"date": "2026-05-17", "min": -1, "max": 9},
+        ]},
         "rain": {"total_7day_mm": 12.0, "total_14day_mm": 24.0},
     }
 

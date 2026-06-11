@@ -2,14 +2,8 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-EXTRA = """
-CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT);
-"""
-
-
 @pytest.fixture
 async def db_ready(seeded_db):
-    await seeded_db.executescript(EXTRA)
     await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, care_thresholds TEXT, phenology_json TEXT)")
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
     await seeded_db.commit()
