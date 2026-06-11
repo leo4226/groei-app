@@ -298,6 +298,17 @@ export const nl: Translations = {
 
   settings: {
     title: 'Instellingen',
+    profile: 'Profiel',
+    profileName: 'Naam',
+    profileAvatar: 'Avatar',
+    profileEmail: 'E-mail',
+    changePassword: 'Wachtwoord wijzigen',
+    currentPassword: 'Huidig wachtwoord',
+    newPassword: 'Nieuw wachtwoord',
+    passwordMinLength: 'Minimaal 8 tekens',
+    passwordChanged: '✅ Wachtwoord gewijzigd!',
+    passwordError: 'Huidig wachtwoord is onjuist',
+    profileSaved: '✅ Profiel opgeslagen!',
     display: 'Weergave',
     groupOutdoorWarnings: 'Groepeer buiten zorgsignalen',
     groupOutdoorWarningsDesc: 'Toon één rij per zorgtype voor alle tuinplanten',

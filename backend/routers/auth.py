@@ -16,6 +16,7 @@ from models import (
     AccountOut,
     ForgotPasswordInput,
     ResetPasswordInput,
+    ChangePasswordInput,
 )
 from auth import ADMIN_EMAIL, hash_password, verify_password, create_token, get_current_account
 from services.email import send_password_reset
@@ -173,6 +174,33 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     return {"message": "Password updated"}
 
 
+
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordInput, current=Depends(get_current_account), db=Depends(db_dep)):
+    """Change the current account's password. Requires current password verification."""
+    rows = await db.execute_fetchall(
+        "SELECT id, password_hash FROM accounts WHERE id = ?",
+        (current["account_id"],)
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    account = dict(rows[0])
+    if not verify_password(body.current_password, account["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    pw_hash = hash_password(body.new_password)
+    await db.execute(
+        "UPDATE accounts SET password_hash = ? WHERE id = ?",
+        (pw_hash, current["account_id"])
+    )
+    await db.commit()
+    return {"message": "Password updated"}
 
 
 @router.get("/me", response_model=AccountOut)

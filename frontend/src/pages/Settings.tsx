@@ -34,6 +34,21 @@ export default function Settings() {
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
 
+  // Profile state
+  const [profileName, setProfileName] = useState('')
+  const [profileAvatar, setProfileAvatar] = useState('')
+  const [profileEmail, setProfileEmail] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPasswordVal, setNewPasswordVal] = useState('')
+  const [passwordChanging, setPasswordChanging] = useState(false)
+  const [passwordChanged, setPasswordChanged] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null)
+
   function InviteSection() {
     async function generateCode() {
       setInviteLoading(true)
@@ -57,7 +72,47 @@ export default function Settings() {
       }
     }
 
-    return (
+  
+  const PROFILE_EMOJIS = ['🌱', '🌿', '🌻', '🌺', '🌸', '🌷', '🌹', '🍀', '🌵', '🌲', '🍃', '🌾', '🌼', '🪴', '🌴', '🍄', '🐝', '🦋', '🐞', '🧑‍🌾', '👩‍🌾', '👨‍🌾', '🌳', '🌰']
+
+  async function handleSaveProfile() {
+    if (!activeUserId || !profileName.trim()) return
+    setProfileSaving(true)
+    setProfileSaved(false)
+    try {
+      await usersApi.updateUser(activeUserId, { name: profileName.trim(), avatar: profileAvatar || undefined })
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 2500)
+      useFloreren.getState().load()
+    } catch (e) {
+      console.error('Failed to save profile', e)
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null)
+    setPasswordChanged(false)
+    if (newPasswordVal.length < 8) {
+      setPasswordError(t.settings.passwordMinLength)
+      return
+    }
+    setPasswordChanging(true)
+    try {
+      await auth.changePassword({ current_password: currentPassword, new_password: newPasswordVal })
+      setPasswordChanged(true)
+      setCurrentPassword('')
+      setNewPasswordVal('')
+      setTimeout(() => setPasswordChanged(false), 2500)
+    } catch (e) {
+      setPasswordError(t.settings.passwordError)
+    } finally {
+      setPasswordChanging(false)
+    }
+  }
+
+  return (
       <div className="space-y-3">
         {!inviteCode && !inviteLoading && (
           <button
@@ -118,6 +173,16 @@ export default function Settings() {
       .then((me) => setIsAdmin(me.is_admin))
       .catch(() => setIsAdmin(false))
   }, [])
+  useEffect(() => {
+    auth.me()
+      .then((me) => {
+        setProfileName(me.name)
+        setProfileAvatar(me.avatar ?? '')
+        setProfileEmail(me.email)
+      })
+      .catch(() => setProfileLoadError('Failed to load profile'))
+  }, [])
+
   useEffect(() => {
     notifications.getPrefs()
       .then(setDigestPrefs)
@@ -250,6 +315,125 @@ export default function Settings() {
   return (
     <div className="px-4 pt-6">
       <h1 className="text-2xl font-extrabold mb-6">{t.settings.title}</h1>
+
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">{t.settings.profile}</h2>
+        <div className="card p-4 space-y-4">
+          {profileLoadError && (
+            <p className="text-sm text-fiery-red">{profileLoadError}</p>
+          )}
+
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">{t.settings.profileName}</label>
+            <input
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder={t.settings.profileName}
+            />
+          </div>
+
+          {/* Avatar emoji picker */}
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">{t.settings.profileAvatar}</label>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-2xl border border-primary/20 active:scale-90 transition-transform"
+              >
+                {profileAvatar || '🌱'}
+              </button>
+              <span className="text-sm text-text-muted">
+                {profileAvatar ? profileAvatar : '🌱'}
+              </span>
+            </div>
+            {showEmojiPicker && (
+              <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2">
+                {PROFILE_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => { setProfileAvatar(emoji); setShowEmojiPicker(false) }}
+                    className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all active:scale-90 ${
+                      profileAvatar === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-primary/10'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Email (display-only) */}
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">{t.settings.profileEmail}</label>
+            <div className="w-full rounded-lg border border-border bg-surface/50 px-3 py-2 text-sm font-medium text-text-muted">
+              {profileEmail}
+            </div>
+          </div>
+
+          {/* Save profile button */}
+          <button
+            onClick={handleSaveProfile}
+            disabled={profileSaving || !profileName.trim()}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+          >
+            {profileSaving ? (
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t.common.saving}</>
+            ) : profileSaved ? (
+              <>{t.settings.profileSaved}</>
+            ) : (
+              <>{t.settings.save}</>
+            )}
+          </button>
+
+          {/* Change password */}
+          <div className="pt-3 border-t border-border">
+            <button
+              onClick={() => setShowChangePassword(!showChangePassword)}
+              className="w-full py-2.5 rounded-xl border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
+            >
+              {t.settings.changePassword}
+            </button>
+            {showChangePassword && (
+              <div className="mt-3 space-y-3">
+                <input
+                  type="password"
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder={t.settings.currentPassword}
+                />
+                <input
+                  type="password"
+                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+                  value={newPasswordVal}
+                  onChange={(e) => setNewPasswordVal(e.target.value)}
+                  placeholder={t.settings.newPassword}
+                />
+                <p className="text-[11px] text-text-muted">{t.settings.passwordMinLength}</p>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={passwordChanging || !currentPassword || !newPasswordVal}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+                >
+                  {passwordChanging ? (
+                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t.common.saving}</>
+                  ) : passwordChanged ? (
+                    <>{t.settings.passwordChanged}</>
+                  ) : (
+                    <>{t.settings.changePassword}</>
+                  )}
+                </button>
+                {passwordError && (
+                  <p className="text-sm text-fiery-red">{passwordError}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.display}</h2>
