@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import db_dep
-from models import InviteInput, InviteOutput, JoinInput, AuthResponse
+from models import InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate
 from auth import hash_password, create_token, get_current_account
 import asyncpg
 
@@ -225,3 +225,20 @@ async def remove_member(
         await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
 
     await db.commit()
+
+@router.patch("", status_code=200)
+async def rename_household(
+    body: HouseholdUpdate,
+    current=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Rename the current user's household."""
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Household name cannot be empty")
+    await db.execute(
+        "UPDATE households SET name = ? WHERE id = ?",
+        (name, current["household_id"]),
+    )
+    await db.commit()
+    return {"name": name}

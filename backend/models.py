@@ -622,6 +622,26 @@ class AccountOut(BaseModel):
     name: str
     avatar: str | None = None
     is_admin: bool = False
+    household_name: str = ''
+
+
+class HouseholdUpdate(BaseModel):
+    """Rename the household."""
+    name: str
+
+
+class HouseholdUpdate(BaseModel):
+    """Rename the household."""
+    name: str
+
+
+
+    id: int
+    household_id: int
+    email: str
+    name: str
+    avatar: str | None = None
+    is_admin: bool = False
 
 
 class CalendarEventOut(BaseModel):
