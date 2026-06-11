@@ -233,3 +233,61 @@ async def test_legacy_endpoint_rejects_foreign_plant(client, photo_db, auth_head
         headers=auth_header,
     )
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_upload_schedules_bioclip_check(client, photo_db, auth_header, monkeypatch):
+    """The background task runs the check on its OWN connection (the request's
+    pooled connection is already released when background tasks run in prod)."""
+    from contextlib import asynccontextmanager
+
+    db, _ = photo_db
+    calls = []
+
+    async def fake_check(image_bytes, plant_species_id):
+        calls.append(plant_species_id)
+        return {"bioclip_species_id": 3, "bioclip_confidence": 0.8,
+                "species_mismatch": True, "embedding": b"emb"}
+
+    @asynccontextmanager
+    async def fake_get_db():
+        yield db
+
+    monkeypatch.setattr(pp, "check_photo", fake_check)
+    monkeypatch.setattr(pp, "_get_db", fake_get_db)
+
+    res = await _upload(client, 1, headers=auth_header)
+    assert res.status_code == 200
+    # Background tasks complete before ASGITransport returns the response.
+    assert calls == [None]  # plant 1 has no species_id in the fixture
+
+    rows = await db.execute_fetchall(
+        "SELECT species_mismatch, bioclip_confidence FROM plant_photos WHERE id = ?",
+        (res.json()["id"],),
+    )
+    assert rows[0]["species_mismatch"] in (1, True)
+    assert rows[0]["bioclip_confidence"] == 0.8
+
+
+@pytest.mark.asyncio
+async def test_upload_succeeds_when_check_returns_none(client, photo_db, auth_header, monkeypatch):
+    from contextlib import asynccontextmanager
+
+    db, _ = photo_db
+
+    async def fake_check(image_bytes, plant_species_id):
+        return None  # worker offline
+
+    @asynccontextmanager
+    async def fake_get_db():
+        yield db
+
+    monkeypatch.setattr(pp, "check_photo", fake_check)
+    monkeypatch.setattr(pp, "_get_db", fake_get_db)
+
+    res = await _upload(client, 1, headers=auth_header)
+    assert res.status_code == 200
+    rows = await db.execute_fetchall(
+        "SELECT species_mismatch FROM plant_photos WHERE id = ?", (res.json()["id"],)
+    )
+    assert not rows[0]["species_mismatch"]

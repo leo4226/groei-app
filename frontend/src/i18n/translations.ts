@@ -266,6 +266,7 @@ export type Translations = {
     daysSuffix: string
     addCarePhoto: string
     careBadgeHint: string
+    mismatchHint: string
   }
 
   settings: {
