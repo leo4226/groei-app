@@ -1,9 +1,8 @@
 import json
 import os
-import time
 from datetime import date as _date, timedelta as _timedelta
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException, Depends
 
 from database import db_dep
 from auth import get_current_account
@@ -12,7 +11,6 @@ from routers.icons import resolve_placement_icon, match_icon_key
 from routers.icon_generator import guess_category
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
-from services.storage import build_storage_from_env
 from species_service import get_or_create_species
 from threshold_service import generate_thresholds
 
@@ -447,23 +445,10 @@ async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(g
 
 
 @router.post("/plants/{plant_id}/photo", response_model=PlantOut)
-async def upload_photo(plant_id: int, file: UploadFile = File(...), db = Depends(db_dep), account = Depends(get_current_account)):
-    # Verify plant exists
-    cursor = await db.execute("SELECT id FROM plants WHERE id = ?", (plant_id,))
-    if not await cursor.fetchone():
-        raise HTTPException(status_code=404, detail="Plant not found")
-
-    # Upload to R2
-    file_bytes = await file.read()
-    ext = (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
-    key = f"photos/{plant_id}_{int(time.time())}.{ext}"
-    storage = build_storage_from_env()
-    public_url = storage.put(key, file_bytes, content_type=file.content_type or "image/jpeg")
-
-    await db.execute(
-        "UPDATE plants SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (public_url, plant_id),
-    )
-    await db.commit()
-
+async def upload_photo(plant_id: int, background: BackgroundTasks, file: UploadFile = File(...),
+                       db = Depends(db_dep), account = Depends(get_current_account)):
+    """Legacy single-photo endpoint — now creates a photo-journal entry
+    (which also gains the household ownership check and thumbnail sync)."""
+    from routers.plant_photos import upload_plant_photo
+    await upload_plant_photo(plant_id, background, file=file, db=db, account=account)
     return await get_plant(plant_id, db=db)

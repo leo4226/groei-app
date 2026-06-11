@@ -26,6 +26,7 @@ EXTRA_SCHEMA = """
         care_type TEXT, done_by INTEGER, done_at TEXT, notes TEXT,
         skipped BOOLEAN DEFAULT FALSE
     );
+    CREATE TABLE plant_species (id INTEGER PRIMARY KEY, phenology_json TEXT);
 """
 
 
@@ -183,3 +184,28 @@ async def test_patch_and_delete_reject_foreign_photo(client, photo_db, auth_head
                                headers=auth_header)).status_code == 404
     assert (await client.delete(f"/api/photos/{foreign_id}",
                                 headers=auth_header)).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_legacy_endpoint_creates_journal_entry(client, photo_db, auth_header):
+    db, _ = photo_db
+    res = await client.post(
+        "/api/plants/1/photo",
+        files={"file": ("p.jpg", JPEG, "image/jpeg")},
+        headers=auth_header,
+    )
+    assert res.status_code == 200
+    rows = await db.execute_fetchall(
+        "SELECT COUNT(*) n FROM plant_photos WHERE plant_id = 1"
+    )
+    assert rows[0]["n"] == 1
+
+
+@pytest.mark.asyncio
+async def test_legacy_endpoint_rejects_foreign_plant(client, photo_db, auth_header):
+    res = await client.post(
+        "/api/plants/2/photo",
+        files={"file": ("p.jpg", JPEG, "image/jpeg")},
+        headers=auth_header,
+    )
+    assert res.status_code == 404
