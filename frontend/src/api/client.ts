@@ -298,6 +298,8 @@ export const weeds = {
 
 export const auth = {
   me: () => api<AccountMe>("GET", "/auth/me"),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api<{ message: string }>("POST", "/auth/change-password", { body: data }),
 }
 
 export const admin = {

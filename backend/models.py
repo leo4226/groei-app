@@ -16,6 +16,11 @@ class UserLanguageUpdate(BaseModel):
     language: Literal['nl', 'en']
 
 
+class UserUpdate(BaseModel):
+    name: str | None = None
+    avatar: str | None = None
+
+
 # --- Locations ---
 
 class LocationOut(BaseModel):
@@ -586,6 +591,11 @@ class ForgotPasswordInput(BaseModel):
 
 class ResetPasswordInput(BaseModel):
     token: str
+    new_password: str
+
+
+class ChangePasswordInput(BaseModel):
+    current_password: str
     new_password: str
 
 

@@ -298,6 +298,17 @@ export const en: Translations = {
 
   settings: {
     title: 'Settings',
+    profile: 'Profile',
+    profileName: 'Name',
+    profileAvatar: 'Avatar',
+    profileEmail: 'Email',
+    changePassword: 'Change password',
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    passwordMinLength: 'Minimum 8 characters',
+    passwordChanged: '✅ Password changed!',
+    passwordError: 'Current password is incorrect',
+    profileSaved: '✅ Profile saved!',
     display: 'Display',
     groupOutdoorWarnings: 'Group outdoor care warnings',
     groupOutdoorWarningsDesc: 'Show one row per care type for all garden plants',
