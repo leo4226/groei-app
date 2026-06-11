@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { apiRequest, icons, admin, type AdminAccount, household, users as usersApi } from '../api/client'
+import { apiRequest, icons, admin, type AdminAccount, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { IconSyncResult } from '../types'
@@ -31,6 +31,8 @@ export default function Settings() {
   const [newLocationName, setNewLocationName] = useState('')
   const [newLocationIcon, setNewLocationIcon] = useState('')
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
+  const [digestError, setDigestError] = useState<string | null>(null)
 
   function InviteSection() {
     async function generateCode() {
@@ -116,6 +118,26 @@ export default function Settings() {
       .then(setAdminAccounts)
       .catch(() => setAdminAccounts(null))
   }, [])
+
+  useEffect(() => {
+    notifications.getPrefs()
+      .then(setDigestPrefs)
+      .catch(() => setDigestError(t.settings.digestLoadError))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function saveDigestPrefs(next: NotificationPrefs) {
+    const prev = digestPrefs
+    setDigestPrefs(next)  // optimistic
+    setDigestError(null)
+    try {
+      const saved = await notifications.updatePrefs(next)
+      setDigestPrefs(saved)
+    } catch {
+      setDigestPrefs(prev)
+      setDigestError(t.settings.digestSaveError)
+    }
+  }
 
   async function handleSyncIcons() {
     setSyncing(true)
@@ -247,6 +269,44 @@ export default function Settings() {
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${groupOutdoor ? 'translate-x-5' : 'translate-x-0'}`} />
           </button>
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">{t.settings.digestTitle}</h2>
+        <div className="card p-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-semibold text-sm">{t.settings.digestToggle}</div>
+              <div className="text-xs text-text-muted mt-0.5">{t.settings.digestToggleDesc}</div>
+            </div>
+            <button
+              onClick={() => digestPrefs && saveDigestPrefs({ ...digestPrefs, digest_enabled: !digestPrefs.digest_enabled })}
+              disabled={!digestPrefs}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${digestPrefs?.digest_enabled ? 'bg-primary' : 'bg-border'} ${!digestPrefs ? 'opacity-50' : ''}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.digest_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {digestPrefs?.digest_enabled && (
+            <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+              <div>
+                <div className="font-semibold text-sm">{t.settings.digestTimeLabel}</div>
+                <div className="text-xs text-text-muted mt-0.5">{t.settings.digestTimeDesc}</div>
+              </div>
+              <select
+                value={`${digestPrefs.digest_time.slice(0, 2)}:00`}
+                onChange={(e) => saveDigestPrefs({ ...digestPrefs, digest_time: e.target.value })}
+                className="flex-shrink-0 bg-surface border border-border rounded-xl px-3 py-2 text-sm font-semibold text-text"
+              >
+                {Array.from({ length: 24 }, (_, h) => {
+                  const value = `${String(h).padStart(2, '0')}:00`
+                  return <option key={value} value={value}>{value}</option>
+                })}
+              </select>
+            </div>
+          )}
+          {digestError && <p className="text-sm text-fiery-red">{digestError}</p>}
         </div>
       </section>
 

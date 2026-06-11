@@ -256,6 +256,13 @@ export type Translations = {
     display: string
     groupOutdoorWarnings: string
     groupOutdoorWarningsDesc: string
+    digestTitle: string
+    digestToggle: string
+    digestToggleDesc: string
+    digestTimeLabel: string
+    digestTimeDesc: string
+    digestLoadError: string
+    digestSaveError: string
     whoIsGardening: string
     active: string
     locations: string
