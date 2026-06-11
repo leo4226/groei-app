@@ -7,7 +7,7 @@ import time
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from database import db_dep
 from auth import get_current_account
@@ -138,7 +138,7 @@ async def upload_plant_photo(
 
 class PhotoReminderToggle(BaseModel):
     enabled: bool
-    interval_days: int = 30
+    interval_days: int = Field(default=30, ge=1, le=365)
 
 
 @router.put("/plants/{plant_id}/photo-reminder")

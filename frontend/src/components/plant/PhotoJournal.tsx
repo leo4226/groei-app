@@ -3,6 +3,7 @@ import { photos as photosApi } from '../../api/client'
 import type { PlantPhoto } from '../../types'
 import { compressImage } from '../../utils/compressImage'
 import { useT } from '../../context/LanguageContext'
+import { useFloreren } from '../../store/useFloreren'
 
 const REMINDER_PRESETS = [14, 30, 90]
 
@@ -54,6 +55,9 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
     setReminderDays(days)
     try {
       await photosApi.photoReminder(plantId, enabled, days)
+      // Refresh the store so plant.care_schedules (and any other view
+      // deriving reminder state from it) doesn't go stale.
+      useFloreren.getState().loadPlants()
     } catch {
       setReminderOn(!enabled)  // revert on failure
     }

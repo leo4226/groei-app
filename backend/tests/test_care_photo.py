@@ -99,6 +99,56 @@ async def test_care_done_returns_care_log_id(client, care_db, auth_header):
 
 
 @pytest.mark.asyncio
+async def test_care_done_and_skip_require_auth(client, care_db):
+    for path in ("/api/care/done", "/api/care/skip"):
+        res = await client.post(
+            path, json={"plant_id": 1, "care_type": "water", "user_id": 1}
+        )
+        assert res.status_code in (401, 403), path
+
+
+@pytest.mark.asyncio
+async def test_care_done_rejects_foreign_plant(client, care_db, auth_header):
+    await care_db.executescript("""
+        INSERT INTO households (id, name) VALUES (2, 'Other');
+        INSERT INTO plants (id, name, household_id) VALUES (9, 'Foreign', 2);
+        INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
+        VALUES (9, 'water', 7, '2026-06-10', 1);
+    """)
+    await care_db.commit()
+    res = await client.post(
+        "/api/care/done",
+        json={"plant_id": 9, "care_type": "water", "user_id": 1},
+        headers=auth_header,
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_upload_with_care_log_id_links_photo(client, photo_db, auth_header):
+    db, _ = photo_db
+    await db.execute(
+        "INSERT INTO care_log (plant_id, care_type, done_by) VALUES (1, 'water', 1)"
+    )
+    await db.commit()
+    log_id = (await db.execute_fetchall("SELECT id FROM care_log"))[0]["id"]
+
+    res = await _upload(client, 1, headers=auth_header, care_log_id=str(log_id))
+    assert res.status_code == 200
+    assert res.json()["care_log_id"] == log_id
+
+
+@pytest.mark.asyncio
+async def test_photo_reminder_rejects_nonpositive_interval(client, photo_db, auth_header):
+    res = await client.put(
+        "/api/plants/1/photo-reminder",
+        json={"enabled": True, "interval_days": 0},
+        headers=auth_header,
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_photo_reminder_toggle_creates_and_deactivates_schedule(client, photo_db, auth_header):
     db, _ = photo_db
     res = await client.put(

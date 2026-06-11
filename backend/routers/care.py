@@ -9,12 +9,15 @@ router = APIRouter(tags=["care"])
 
 
 @router.post("/care/done")
-async def mark_care_done(action: CareAction, db = Depends(db_dep)):
-    # Find the matching schedule
+async def mark_care_done(action: CareAction, db = Depends(db_dep),
+                         account = Depends(get_current_account)):
+    # Find the matching schedule — scoped to the caller's household
     cursor = await db.execute(
-        """SELECT id, interval_days, season_adjust, is_ephemeral FROM care_schedules
-           WHERE plant_id = ? AND care_type = ? AND is_active = 1""",
-        (action.plant_id, action.care_type),
+        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral
+           FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+             AND p.household_id = ?""",
+        (action.plant_id, action.care_type, account["household_id"]),
     )
     schedule = await cursor.fetchone()
     if not schedule:
@@ -50,11 +53,14 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep)):
 
 
 @router.post("/care/skip")
-async def skip_care(action: CareAction, db = Depends(db_dep)):
+async def skip_care(action: CareAction, db = Depends(db_dep),
+                    account = Depends(get_current_account)):
     cursor = await db.execute(
-        """SELECT id, interval_days, season_adjust, is_ephemeral FROM care_schedules
-           WHERE plant_id = ? AND care_type = ? AND is_active = 1""",
-        (action.plant_id, action.care_type),
+        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral
+           FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+             AND p.household_id = ?""",
+        (action.plant_id, action.care_type, account["household_id"]),
     )
     schedule = await cursor.fetchone()
     if not schedule:
