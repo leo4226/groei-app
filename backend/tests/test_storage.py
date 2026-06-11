@@ -24,3 +24,16 @@ def test_public_url_combines_base_and_key():
 def test_public_url_strips_trailing_slash_from_base():
     s = Storage(client=None, bucket="b", public_base_url="https://cdn.example.com/")
     assert s.public_url("photos/1.png") == "https://cdn.example.com/photos/1.png"
+
+
+def test_delete_calls_delete_object():
+    class FakeClient:
+        def __init__(self):
+            self.deleted = []
+        def delete_object(self, Bucket, Key):
+            self.deleted.append((Bucket, Key))
+
+    client = FakeClient()
+    storage = Storage(client=client, bucket="b", public_base_url="https://cdn.x")
+    storage.delete("photos/1/2/3.jpg")
+    assert client.deleted == [("b", "photos/1/2/3.jpg")]

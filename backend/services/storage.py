@@ -23,6 +23,9 @@ class Storage:
         )
         return self.public_url(key)
 
+    def delete(self, key: str) -> None:
+        self._client.delete_object(Bucket=self.bucket, Key=key.lstrip("/"))
+
 
 def build_storage_from_env() -> Storage:
     account_id = os.environ["R2_ACCOUNT_ID"]
