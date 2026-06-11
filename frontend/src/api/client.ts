@@ -350,3 +350,13 @@ export const household = {
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
 }
+
+export interface NotificationPrefs {
+  digest_enabled: boolean
+  digest_time: string  // "HH:MM" — the digest is sent on the matching hour (Europe/Amsterdam)
+}
+
+export const notifications = {
+  getPrefs:    ()                       => api<NotificationPrefs>('GET', '/settings/notifications'),
+  updatePrefs: (prefs: NotificationPrefs) => api<NotificationPrefs>('PUT', '/settings/notifications', { body: prefs }),
+}
