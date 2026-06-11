@@ -13,8 +13,15 @@ override). This conftest exposes the same seam in async form so new tests
 can `await client.get(...)`.
 """
 import asyncio
+import datetime
 import os
+import sqlite3
 import pytest
+
+# asyncpg (prod) wants real date objects for DATE columns; give sqlite an
+# explicit adapter so the same code path works in tests (the implicit
+# adapters are deprecated since Python 3.12).
+sqlite3.register_adapter(datetime.date, lambda d: d.isoformat())
 
 # Ensure tests use a real Postgres connection.
 os.environ.setdefault("DATABASE_URL", "postgresql://floreren:dev@localhost:5432/floreren")
@@ -82,7 +89,8 @@ SCHEMA = """
         last_done TEXT,
         notes TEXT,
         season_adjust TEXT,
-        created_at TEXT
+        created_at TEXT,
+        is_ephemeral INTEGER DEFAULT 0
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,
@@ -96,6 +104,13 @@ SCHEMA = """
         watered_by INTEGER,
         water_amount DOUBLE PRECISION,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE notification_preferences (
+        account_id INTEGER PRIMARY KEY,
+        digest_enabled INTEGER NOT NULL DEFAULT 0,
+        digest_time TEXT NOT NULL DEFAULT '08:00',
+        quiet_hours TEXT,
+        last_digest_sent_on DATE
     );
 """
 

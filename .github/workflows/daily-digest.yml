@@ -1,0 +1,19 @@
+name: Daily care digest
+
+# Hourly trigger for the digest endpoint (#137). The endpoint itself decides
+# which accounts are due (digest hour in Europe/Amsterdam + idempotence
+# stamp), so calling it every hour is safe and never double-sends.
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send-digests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger digest endpoint
+        run: |
+          curl -fsS -X POST \
+            -H "X-Digest-Secret: ${{ secrets.DIGEST_CRON_SECRET }}" \
+            https://floreren-api.fly.dev/api/internal/send-digests

@@ -22,6 +22,34 @@ def _get_resend() -> object | None:
     return __import__("resend", fromlist=["Emails"])
 
 
+def send_email(to_email: str, subject: str, html: str) -> bool:
+    """Send a transactional email via Resend. Returns True on success.
+
+    If RESEND_API_KEY is not set, logs the email to stdout (dev fallback).
+    """
+    key = os.environ.get("RESEND_API_KEY")
+    if not key:
+        logger.info("[DEV] Email to %s: %s", to_email, subject)
+        print(f"[DEV EMAIL] To: {to_email}")
+        print(f"[DEV EMAIL] Subject: {subject}")
+        return True
+
+    try:
+        import resend  # type: ignore[import-untyped]
+        resend.api_key = key
+        r = resend.Emails.send({
+            "from": "noreply@floreren.app",
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        })
+        logger.info("Email sent to %s: %s", to_email, r)
+        return True
+    except Exception as e:
+        logger.error("Failed to send email to %s: %s", to_email, e)
+        return False
+
+
 def send_password_reset(
     to_email: str,
     reset_link: str,
