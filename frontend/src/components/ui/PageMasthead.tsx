@@ -70,8 +70,8 @@ export default function PageMasthead({ eyebrow, title, accent, lede, stats, acti
       </div>
       {(stats?.length || actions) && (
         <div className="flex items-end gap-7">
-          {stats?.map((s) => (
-            <div key={s.label} className="text-right">
+          {stats?.map((s, i) => (
+            <div key={`${i}-${s.label}`} className="text-right">
               <span className="block font-heading text-[34px] font-medium leading-none text-primary">
                 {s.value}
               </span>
