@@ -8,6 +8,7 @@ import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
 import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
+import PageMasthead from '../components/ui/PageMasthead'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 
@@ -380,11 +381,17 @@ export default function Settings() {
   }
 
   return (
-    <div className="px-4 pt-6">
-      <h1 className="text-2xl font-extrabold mb-6">{t.settings.title}</h1>
+    <div>
+      <PageMasthead
+        eyebrow={t.settings.mastheadEyebrow}
+        title={t.settings.mastheadTitle}
+        accent={t.settings.mastheadAccent}
+        lede={t.settings.mastheadLede}
+      />
+      <div className="px-4 pt-6 min-[721px]:max-w-[760px] min-[721px]:px-6">
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.profile}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.profile}</h2>
         <div className="card p-4 space-y-4">
           {profileLoadError && (
             <p className="text-sm text-fiery-red">{profileLoadError}</p>
@@ -503,7 +510,7 @@ export default function Settings() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.display}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.display}</h2>
         <div className="card p-4 space-y-4">
           {/* Theme toggle */}
           <div>
@@ -549,7 +556,7 @@ export default function Settings() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.digestTitle}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.digestTitle}</h2>
         <div className="card p-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -604,7 +611,7 @@ export default function Settings() {
       </section>
 
             <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.householdTitle}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.householdTitle}</h2>
         <div className="card p-4 space-y-4">
           {/* Editable household name */}
           <div>
@@ -755,7 +762,7 @@ export default function Settings() {
       </section>
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.language}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.language}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(['nl', 'en'] as const).map((lang) => {
             const activeUser = users.find((u) => u.id === activeUserId)
@@ -788,7 +795,7 @@ export default function Settings() {
       
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.locations}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.locations}</h2>
         <div className="card divide-y divide-border/50">
           {locations.map((loc) => {
             const isEditing = editingLocationId === loc.id
@@ -897,7 +904,7 @@ export default function Settings() {
 
       {isAdmin && (
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.icons.title}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.icons.title}</h2>
         <div className="card p-4 space-y-3">
           <p className="text-sm text-text-muted">
             {t.settings.icons.description}
@@ -940,7 +947,7 @@ export default function Settings() {
       )}
 
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.assistantTitle}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.assistantTitle}</h2>
         <div className="card p-4 space-y-3">
           <button
             onClick={() => {
@@ -961,7 +968,7 @@ export default function Settings() {
         </div>
       </section>
       <section className="mb-8">
-        <h2 className="text-base font-bold mb-3">{t.settings.about}</h2>
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.about}</h2>
         <div className="card p-4">
           <p className="text-sm text-text-muted">
             <span className="font-bold text-primary text-base">Floreren</span> v{__APP_VERSION__} · {__BUILD_HASH__}
@@ -991,6 +998,7 @@ export default function Settings() {
           </a>
         </div>
       )}
+      </div>
     </div>
   )
 }
