@@ -15,6 +15,8 @@ import EcologyCard from '../components/EcologyCard'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
 import { resolveIconUrl } from '../utils/icons'
+import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -115,6 +117,8 @@ export default function PlantDetail() {
   )
   const currentMonth = new Date().getMonth() + 1
   const { sunHours } = useSunAt(sunCoord, currentMonth, mapInfo)
+  // 720px editorial-layout boundary (same split as Plants.tsx / PageMasthead)
+  const isMobile = useIsMobile(720)
 
   useEffect(() => {
     // Use cached plant from store if available, else fetch directly
@@ -212,19 +216,269 @@ export default function PlantDetail() {
       .format(new Date(2026, m - 1, 1))
       .replace('.', '')
 
+  // ── Shared content blocks (identical markup in both layouts) ──
+
+  const heroMedia = (frame: string) =>
+    plant.photo_path ? (
+      <img src={plant.photo_path} alt={plant.name} className={`${frame} object-cover`} />
+    ) : plant.icon_key ? (
+      <div className={`${frame} flex items-center justify-center`} style={{ background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)' }}>
+        <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name} className="h-40 w-40 object-contain" />
+      </div>
+    ) : (
+      <div className={`${frame} bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-7xl`}>🌿</div>
+    )
+
+  const potAcquiredLine = (plant.pot_size_cm || plant.acquired_date) && [
+    plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
+    plant.acquired_date
+      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}`
+      : null,
+  ].filter(Boolean).join(' · ')
+
+  const sunFitBlock = sunFitInfo && (
+    <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
+      <span className="text-lg">☀️</span>
+      <span className="text-sm text-text-muted flex-1">
+        {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u/dag</span>
+        {' · '}{sunFitInfo.profile.labelNl}
+      </span>
+      <span
+        className="text-xs font-semibold px-2.5 py-1 rounded-full"
+        style={{ background: SUN_FIT_COLORS[sunFitInfo.fit] + '20', color: SUN_FIT_COLORS[sunFitInfo.fit] }}
+      >
+        {sunFitInfo.fit === 'good' ? t.plantDetail.fitGood : sunFitInfo.fit === 'partial' ? t.plantDetail.fitPartial : t.plantDetail.fitInsufficient}
+      </span>
+    </div>
+  )
+
+  const calendarBlock = plant.phenology && (
+    <Section title={t.plantDetail.yearCalendar}>
+      <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
+    </Section>
+  )
+
+  const ecologyBlock = plant.species_id != null && <EcologyCard speciesId={plant.species_id} />
+
+  const alertsBlock = <PlantAlerts plantId={plantId} phenology={plant.phenology ?? null} />
+
+  const careBlock = plant.care_schedules.length > 0 && (
+    <Section title={t.plantDetail.care}>
+      {/* Quick action buttons */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
+        {plant.care_schedules.map((sched) => {
+          const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
+          return (
+            <button
+              key={sched.id}
+              onClick={() => handleQuickAction(sched.care_type)}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
+            >
+              {info?.icon ?? '🌿'} {info?.label ?? sched.care_type}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Schedule rows */}
+      <div className="space-y-2">
+        {plant.care_schedules.map((sched) => {
+          const info      = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
+          const isOverdue = sched.next_due < today
+          const isDueToday = sched.next_due === today
+          return (
+            <div key={sched.id} className="card p-3.5 flex items-center gap-3">
+              <span className="text-xl shrink-0">{info?.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">{info?.label ?? sched.care_type}</p>
+                <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className={`text-sm font-semibold ${isOverdue ? 'text-overdue' : isDueToday ? 'text-due' : 'text-good'}`}>
+                  {isOverdue ? t.plantDetail.overdue : isDueToday ? t.plantDetail.today : sched.next_due}
+                </p>
+                {sched.last_done_by_name && (
+                  <p className="text-[11px] text-text-muted">{t.plantDetail.byPerson.replace('{name}', sched.last_done_by_name)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => handleDeleteSchedule(sched.id)}
+                className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
+                title={t.plantDetail.deleteSchedule}
+              >
+                ✕
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </Section>
+  )
+
+  const trefleBlock = (
+    <div className="mb-6">
+      <PlantCareInfo plantId={plantId} />
+    </div>
+  )
+
+  const journalBlock = (
+    <Section title={t.plantDetail.photoJournal}>
+      <PhotoJournal
+        plantId={plant.id}
+        refreshKey={journalRefresh}
+        reminder={(() => {
+          const s = plant.care_schedules.find(cs => cs.care_type === 'photo' && cs.is_active)
+          return s ? { enabled: true, intervalDays: s.interval_days } : undefined
+        })()}
+      />
+    </Section>
+  )
+
+  // Non-blocking "add a photo?" affordance after logging care
+  const carePhotoUi = (
+    <>
+      <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
+             className="hidden" onChange={handleCarePhotoPick} />
+      {pendingCareLogId != null && (
+        <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
+          <button
+            className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+            disabled={carePhotoBusy}
+            onClick={() => carePhotoRef.current?.click()}
+          >
+            📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
+                  onClick={() => setPendingCareLogId(null)}>
+            ✕
+          </button>
+        </div>
+      )}
+    </>
+  )
+
+  const historyBlock = careLog.data && careLog.data.length > 0 && (
+    <Section title={t.plantDetail.careHistory}>
+      <div className="card divide-y divide-border/50">
+        {careLog.data.map((entry) => {
+          const info = CARE_TYPE_INFO[entry.care_type as keyof typeof CARE_TYPE_INFO]
+          return (
+            <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="text-lg shrink-0">{info?.icon ?? '🌿'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm">
+                  <span className="font-semibold">{entry.done_by_name}</span>
+                  <span className="text-text-muted">
+                    {entry.skipped ? ` ${t.plantDetail.skipped} ` : ` ${t.plantDetail.did} `}
+                    {info?.label ?? entry.care_type}
+                  </span>
+                </p>
+                {entry.notes && <p className="text-xs text-text-muted truncate">{entry.notes}</p>}
+              </div>
+              <span className="text-xs text-text-muted shrink-0">
+                {new Date(entry.done_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </Section>
+  )
+
+  const archiveButton = (
+    <button
+      onClick={handleArchive}
+      className="w-full py-2.5 text-sm text-overdue/70 border border-overdue/20 rounded-xl hover:bg-overdue/5 transition-colors mt-2"
+    >
+      {t.plantDetail.archivePlant}
+    </button>
+  )
+
+  // ── Desktop (≥721px): editorial masthead + two-column layout ──
+  if (!isMobile) {
+    const eyebrow = [
+      t.plantDetail.mastheadEyebrow,
+      plant.location_icon && plant.location_name
+        ? `${plant.location_icon} ${plant.location_name}`
+        : plant.location_name,
+      plant.plant_type,
+    ].filter(Boolean).join(' · ')
+
+    const stats: MastheadStat[] = []
+    if (plant.care_schedules.length > 0) {
+      stats.push({ value: plant.care_schedules.length, label: t.plantDetail.statSchedules })
+    }
+    if (sunHours !== null) {
+      stats.push({ value: sunHours.toFixed(1), label: t.plantDetail.statSunHours })
+    }
+
+    return (
+      <div className="pb-16">
+        <div className="mx-auto max-w-5xl">
+          <PageMasthead
+            eyebrow={eyebrow}
+            title={plant.name}
+            accent={plant.species ?? undefined}
+            lede={plant.notes ? `"${plant.notes}"` : undefined}
+            stats={stats}
+            actions={
+              <>
+                <button
+                  onClick={() => navigate(-1)}
+                  title={t.common.back}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={handleDuplicate}
+                  disabled={duplicating}
+                  className="cursor-pointer rounded-full border border-border bg-transparent px-4 py-2 text-[13px] font-medium text-text-soft transition-all hover:border-primary hover:text-primary disabled:opacity-50"
+                >
+                  {duplicating ? '…' : t.plantDetail.copyPlant}
+                </button>
+                <Link
+                  to={`/plants/${plantId}/edit`}
+                  className="rounded-full border border-primary px-4 py-2 text-[13px] font-medium text-primary no-underline transition-all hover:bg-primary hover:text-white"
+                >
+                  {t.plantDetail.edit}
+                </Link>
+              </>
+            }
+          />
+          <div className="grid grid-cols-[1fr_380px] items-start gap-8 px-6 pt-6">
+            <div className="min-w-0">
+              {alertsBlock}
+              {sunFitBlock}
+              {careBlock}
+              {calendarBlock}
+              {historyBlock}
+              {archiveButton}
+            </div>
+            <div className="min-w-0">
+              <div className="mb-3 overflow-hidden rounded-2xl border border-border">
+                {heroMedia('w-full h-64')}
+              </div>
+              {potAcquiredLine && (
+                <p className="mb-5 font-mono text-[10px] text-text-muted">{potAcquiredLine}</p>
+              )}
+              {journalBlock}
+              {ecologyBlock}
+              {trefleBlock}
+            </div>
+          </div>
+        </div>
+        {carePhotoUi}
+      </div>
+    )
+  }
+
+  // ── Mobile (<721px): unchanged layout ──
   return (
     <div className="pb-10">
       {/* Hero */}
       <div className="relative">
-        {plant.photo_path ? (
-          <img src={plant.photo_path} alt={plant.name} className="w-full h-52 object-cover" />
-        ) : plant.icon_key ? (
-          <div className="w-full h-52 flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #fef9ee 0%, #f2ebe6 100%)' }}>
-            <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name} className="h-40 w-40 object-contain" />
-          </div>
-        ) : (
-          <div className="w-full h-52 bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-7xl">🌿</div>
-        )}
+        {heroMedia('w-full h-52')}
 
         <button
           onClick={() => navigate(-1)}
@@ -270,15 +524,8 @@ export default function PlantDetail() {
               {plant.species && (
                 <p className="font-heading italic text-sm text-text-muted mt-0.5">{plant.species}</p>
               )}
-              {(plant.pot_size_cm || plant.acquired_date) && (
-                <p className="font-mono text-[10px] text-text-muted mt-1.5">
-                  {[
-                    plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
-                    plant.acquired_date
-                      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}`
-                      : null,
-                  ].filter(Boolean).join(' · ')}
-                </p>
+              {potAcquiredLine && (
+                <p className="font-mono text-[10px] text-text-muted mt-1.5">{potAcquiredLine}</p>
               )}
             </div>
           </div>
@@ -289,161 +536,33 @@ export default function PlantDetail() {
         </div>
 
         {/* Sun fit (if placed on map) */}
-        {sunFitInfo && (
-          <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
-            <span className="text-lg">☀️</span>
-            <span className="text-sm text-text-muted flex-1">
-              {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u/dag</span>
-              {' · '}{sunFitInfo.profile.labelNl}
-            </span>
-            <span
-              className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: SUN_FIT_COLORS[sunFitInfo.fit] + '20', color: SUN_FIT_COLORS[sunFitInfo.fit] }}
-            >
-              {sunFitInfo.fit === 'good' ? t.plantDetail.fitGood : sunFitInfo.fit === 'partial' ? t.plantDetail.fitPartial : t.plantDetail.fitInsufficient}
-            </span>
-          </div>
-        )}
+        {sunFitBlock}
 
         {/* Jaarkalender */}
-        {plant.phenology && (
-          <Section title={t.plantDetail.yearCalendar}>
-            <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
-          </Section>
-        )}
+        {calendarBlock}
 
         {/* Ecology */}
-        {plant.species_id != null && <EcologyCard speciesId={plant.species_id} />}
+        {ecologyBlock}
 
         {/* Weather alerts */}
-        <PlantAlerts plantId={plantId} phenology={plant.phenology ?? null} />
+        {alertsBlock}
 
         {/* Care schedules */}
-        {plant.care_schedules.length > 0 && (
-          <Section title={t.plantDetail.care}>
-            {/* Quick action buttons */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
-              {plant.care_schedules.map((sched) => {
-                const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
-                return (
-                  <button
-                    key={sched.id}
-                    onClick={() => handleQuickAction(sched.care_type)}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
-                  >
-                    {info?.icon ?? '🌿'} {info?.label ?? sched.care_type}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Schedule rows */}
-            <div className="space-y-2">
-              {plant.care_schedules.map((sched) => {
-                const info      = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
-                const isOverdue = sched.next_due < today
-                const isDueToday = sched.next_due === today
-                return (
-                  <div key={sched.id} className="card p-3.5 flex items-center gap-3">
-                    <span className="text-xl shrink-0">{info?.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{info?.label ?? sched.care_type}</p>
-                      <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className={`text-sm font-semibold ${isOverdue ? 'text-overdue' : isDueToday ? 'text-due' : 'text-good'}`}>
-                        {isOverdue ? t.plantDetail.overdue : isDueToday ? t.plantDetail.today : sched.next_due}
-                      </p>
-                      {sched.last_done_by_name && (
-                        <p className="text-[11px] text-text-muted">{t.plantDetail.byPerson.replace('{name}', sched.last_done_by_name)}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteSchedule(sched.id)}
-                      className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
-                      title={t.plantDetail.deleteSchedule}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </Section>
-        )}
+        {careBlock}
 
         {/* Trefle care info */}
-        <div className="mb-6">
-          <PlantCareInfo plantId={plantId} />
-        </div>
+        {trefleBlock}
 
         {/* Photo journal (Groeidagboek) */}
-        <Section title={t.plantDetail.photoJournal}>
-          <PhotoJournal
-            plantId={plant.id}
-            refreshKey={journalRefresh}
-            reminder={(() => {
-              const s = plant.care_schedules.find(cs => cs.care_type === 'photo' && cs.is_active)
-              return s ? { enabled: true, intervalDays: s.interval_days } : undefined
-            })()}
-          />
-        </Section>
+        {journalBlock}
 
-        {/* Non-blocking "add a photo?" affordance after logging care */}
-        <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
-               className="hidden" onChange={handleCarePhotoPick} />
-        {pendingCareLogId != null && (
-          <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
-            <button
-              className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
-              disabled={carePhotoBusy}
-              onClick={() => carePhotoRef.current?.click()}
-            >
-              📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
-                    onClick={() => setPendingCareLogId(null)}>
-              ✕
-            </button>
-          </div>
-        )}
+        {carePhotoUi}
 
         {/* Care history */}
-        {careLog.data && careLog.data.length > 0 && (
-          <Section title={t.plantDetail.careHistory}>
-            <div className="card divide-y divide-border/50">
-              {careLog.data.map((entry) => {
-                const info = CARE_TYPE_INFO[entry.care_type as keyof typeof CARE_TYPE_INFO]
-                return (
-                  <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-lg shrink-0">{info?.icon ?? '🌿'}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">
-                        <span className="font-semibold">{entry.done_by_name}</span>
-                        <span className="text-text-muted">
-                          {entry.skipped ? ` ${t.plantDetail.skipped} ` : ` ${t.plantDetail.did} `}
-                          {info?.label ?? entry.care_type}
-                        </span>
-                      </p>
-                      {entry.notes && <p className="text-xs text-text-muted truncate">{entry.notes}</p>}
-                    </div>
-                    <span className="text-xs text-text-muted shrink-0">
-                      {new Date(entry.done_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </Section>
-        )}
+        {historyBlock}
 
         {/* Archive */}
-        <button
-          onClick={handleArchive}
-          className="w-full py-2.5 text-sm text-overdue/70 border border-overdue/20 rounded-xl hover:bg-overdue/5 transition-colors mt-2"
-        >
-          {t.plantDetail.archivePlant}
-        </button>
+        {archiveButton}
       </div>
     </div>
   )

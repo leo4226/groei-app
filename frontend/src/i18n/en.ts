@@ -541,6 +541,9 @@ export const en: Translations = {
 
   // ── Plant Detail page ────────────────────────────────────
   plantDetail: {
+    mastheadEyebrow: 'Plant passport',
+    statSchedules: 'Care schedules',
+    statSunHours: 'Sun hrs / day',
     weatherAlerts: 'Weather alerts',
     copyPlant: 'Copy plant',
     yearCalendar: 'Year calendar',

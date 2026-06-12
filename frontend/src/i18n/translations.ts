@@ -488,6 +488,9 @@ export type Translations = {
 
   // ── Plant Detail page ──────────────────────────────────────────
   plantDetail: {
+    mastheadEyebrow: string   // desktop masthead eyebrow, e.g. "Plant passport"
+    statSchedules: string     // masthead stat label: nr of care schedules
+    statSunHours: string      // masthead stat label: sun hours per day
     weatherAlerts: string
     copyPlant: string
     yearCalendar: string
