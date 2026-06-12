@@ -77,7 +77,6 @@ export type Translations = {
       loading: string
     }
     comingSoon: string
-    columnType: string     // "Type" / "Type"
     warnings: {
       allOnSchedule: string
       signalCount: (n: number) => string
@@ -313,14 +312,25 @@ export type Translations = {
     language: string
     languageNl: string
     languageEn: string
+    profile: string
+    profileName: string
+    profileAvatar: string
+    profileEmail: string
+    profileSaved: string
+    changePassword: string
+    currentPassword: string
+    newPassword: string
+    passwordMinLength: string
+    passwordError: string
+    passwordChanged: string
     icons: {
       title: string
+      noChanges: string
+      stillMissing: string
       description: string
       syncButton: string
       syncing: string
       result: string
-      totalIcons: (n: number) => string
-      newIcons: (n: number) => string
       linked: string
       noIconFor: string
       setManually: string

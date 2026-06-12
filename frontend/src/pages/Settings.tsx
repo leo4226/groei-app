@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { apiRequest, icons, auth, type AccountMe, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
+import { apiRequest, icons, auth, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
@@ -66,30 +66,6 @@ export default function Settings() {
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([])
   const [householdLoadError, setHouseholdLoadError] = useState<string | null>(null)
 
-  function InviteSection() {
-    async function generateCode() {
-      setInviteLoading(true)
-      setInviteError(null)
-      setInviteCode(null)
-      try {
-        const result = await household.invite()
-        setInviteCode(result.code)
-      } catch (e) {
-        setInviteError(e instanceof Error ? e.message : 'Fout bij genereren code')
-      } finally {
-        setInviteLoading(false)
-      }
-    }
-
-    async function copyCode() {
-      if (inviteCode) {
-        await navigator.clipboard.writeText(inviteCode)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      }
-    }
-
-  
   const PROFILE_EMOJIS = ['🌱', '🌿', '🌻', '🌺', '🌸', '🌷', '🌹', '🍀', '🌵', '🌲', '🍃', '🌾', '🌼', '🪴', '🌴', '🍄', '🐝', '🦋', '🐞', '🧑‍🌾', '👩‍🌾', '👨‍🌾', '🌳', '🌰']
 
   async function handleSaveProfile() {
@@ -129,7 +105,30 @@ export default function Settings() {
     }
   }
 
-  return (
+  function InviteSection() {
+    async function generateCode() {
+      setInviteLoading(true)
+      setInviteError(null)
+      setInviteCode(null)
+      try {
+        const result = await household.invite()
+        setInviteCode(result.code)
+      } catch (e) {
+        setInviteError(e instanceof Error ? e.message : 'Fout bij genereren code')
+      } finally {
+        setInviteLoading(false)
+      }
+    }
+
+    async function copyCode() {
+      if (inviteCode) {
+        await navigator.clipboard.writeText(inviteCode)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    }
+
+    return (
       <div className="space-y-3">
         {!inviteCode && !inviteLoading && (
           <button
