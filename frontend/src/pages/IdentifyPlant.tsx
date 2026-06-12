@@ -150,7 +150,7 @@ export function IdentifyPlantPage() {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
         <img src={step.thumbnail} alt="" className="w-40 h-40 object-cover rounded mx-auto mb-6" />
-        <p className="text-gray-700">{t.identify.identifying}</p>
+        <p className="text-text-soft">{t.identify.identifying}</p>
       </div>
     )
   }
@@ -158,7 +158,7 @@ export function IdentifyPlantPage() {
   if (step.kind === 'enriching') {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
-        <p className="text-gray-700">{t.identify.enriching}</p>
+        <p className="text-text-soft">{t.identify.enriching}</p>
       </div>
     )
   }
@@ -197,7 +197,7 @@ export function IdentifyPlantPage() {
   return (
     <div className="p-6 max-w-md mx-auto text-center">
       <h2 className="text-xl font-semibold mb-2">⚠️</h2>
-      <p className="text-gray-600 mb-6">{step.message}</p>
+      <p className="text-text-soft mb-6">{step.message}</p>
       {step.thumbnail && (
         <img src={step.thumbnail} alt="" className="w-32 h-32 object-cover rounded mx-auto mb-6 opacity-50" />
       )}
@@ -205,7 +205,7 @@ export function IdentifyPlantPage() {
         <button onClick={retry} className="bg-green-700 text-white px-4 py-3 rounded">
           {t.identify.noMatch.retry}
         </button>
-        <button onClick={manualFallback} className="text-gray-700 px-4 py-3 rounded border">
+        <button onClick={manualFallback} className="text-text-soft px-4 py-3 rounded border">
           {t.identify.noMatch.manualFallback}
         </button>
       </div>

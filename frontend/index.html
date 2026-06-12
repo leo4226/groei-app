@@ -13,6 +13,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>Floreren</title>
+    <script>
+    (function() {
+      var theme = localStorage.getItem('floreren-theme');
+      if (!theme || theme === 'system') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#1A1D1A');
+      }
+    })();
+  </script>
   </head>
   <body>
     <div id="root"></div>
