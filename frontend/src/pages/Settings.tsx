@@ -11,6 +11,9 @@ import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../util
 import PageMasthead from '../components/ui/PageMasthead'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
+// Must match the boot script in index.html, which applies the theme before
+// React loads to avoid a flash of the wrong theme.
+const THEME_KEY = 'floreren-theme'
 
 export default function Settings() {
   const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
