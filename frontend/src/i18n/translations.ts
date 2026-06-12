@@ -281,6 +281,11 @@ export type Translations = {
     digestTimeDesc: string
     digestLoadError: string
     digestSaveError: string
+    pushToggle: string
+    pushToggleDesc: string
+    pushDenied: string
+    pushUnsupported: string
+    pushIosHint: string
     householdTitle: string
     householdName: string
     householdNamePlaceholder: string

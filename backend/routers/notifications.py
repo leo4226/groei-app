@@ -20,18 +20,21 @@ router = APIRouter(tags=["notifications"])
 
 class NotificationPrefs(BaseModel):
     digest_enabled: bool
-    digest_time: str  # "HH:MM"
+    digest_time: str  # "HH:MM" — also the push hour
+    push_enabled: bool = False
 
 
 class NotificationPrefsUpdate(BaseModel):
     digest_enabled: bool
     digest_time: str = Field(default="08:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    push_enabled: bool = False
 
 
 def _to_prefs(row) -> NotificationPrefs:
     return NotificationPrefs(
         digest_enabled=bool(row["digest_enabled"]),
         digest_time=str(row["digest_time"])[:5],
+        push_enabled=bool(row["push_enabled"]),
     )
 
 
@@ -46,7 +49,7 @@ async def _get_or_create_prefs(db, account_id: int) -> dict:
     await cur.fetchall()  # drain so sqlite can commit
     await db.commit()
     rows = await db.execute_fetchall(
-        "SELECT digest_enabled, digest_time FROM notification_preferences WHERE account_id = ?",
+        "SELECT digest_enabled, digest_time, push_enabled FROM notification_preferences WHERE account_id = ?",
         (account_id,),
     )
     return rows[0]
@@ -66,18 +69,82 @@ async def update_notification_prefs(
 ):
     cur = await db.execute(
         """
-        INSERT INTO notification_preferences (account_id, digest_enabled, digest_time)
-        VALUES (?, ?, ?)
+        INSERT INTO notification_preferences (account_id, digest_enabled, digest_time, push_enabled)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT (account_id) DO UPDATE SET
             digest_enabled = excluded.digest_enabled,
-            digest_time = excluded.digest_time
+            digest_time = excluded.digest_time,
+            push_enabled = excluded.push_enabled
         RETURNING account_id
         """,
-        (account["account_id"], body.digest_enabled, body.digest_time),
+        (account["account_id"], body.digest_enabled, body.digest_time, body.push_enabled),
     )
     await cur.fetchall()
     await db.commit()
-    return NotificationPrefs(digest_enabled=body.digest_enabled, digest_time=body.digest_time)
+    return NotificationPrefs(
+        digest_enabled=body.digest_enabled,
+        digest_time=body.digest_time,
+        push_enabled=body.push_enabled,
+    )
+
+
+class PushKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str
+    keys: PushKeys
+
+
+class PushUnsubscribeIn(BaseModel):
+    endpoint: str
+
+
+@router.get("/push/vapid-public-key")
+async def vapid_public_key():
+    """Public by definition — the browser needs it to create a subscription."""
+    key = os.environ.get("VAPID_PUBLIC_KEY", "")
+    if not key:
+        raise HTTPException(status_code=503, detail="Push not configured")
+    return {"key": key}
+
+
+@router.post("/push/subscription")
+async def save_push_subscription(
+    body: PushSubscriptionIn,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    """Upsert by endpoint — a browser re-subscribing must not create dupes."""
+    await db.execute(
+        """
+        INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (endpoint) DO UPDATE SET
+            account_id = excluded.account_id,
+            p256dh = excluded.p256dh,
+            auth = excluded.auth
+        """,
+        (account["account_id"], body.endpoint, body.keys.p256dh, body.keys.auth),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/push/subscription")
+async def delete_push_subscription(
+    body: PushUnsubscribeIn,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    await db.execute(
+        "DELETE FROM push_subscriptions WHERE endpoint = ? AND account_id = ?",
+        (body.endpoint, account["account_id"]),
+    )
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/internal/send-digests")
