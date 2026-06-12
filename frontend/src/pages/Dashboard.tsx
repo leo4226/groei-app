@@ -158,7 +158,7 @@ export default function Dashboard() {
         }
 
         /* ── Sidebar shrink guard ── */
-        .dashboard-sidebar { min-width: 0; overflow: hidden; }
+        .dashboard-sidebar { min-width: 0; overflow-x: hidden; }
 
         /* ── Weather card ── */
         .weather-card { min-width: 0; }
