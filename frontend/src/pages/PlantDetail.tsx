@@ -424,6 +424,13 @@ export default function PlantDetail() {
             actions={
               <>
                 <button
+                  onClick={() => navigate(-1)}
+                  title={t.common.back}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
+                >
+                  ←
+                </button>
+                <button
                   onClick={handleDuplicate}
                   disabled={duplicating}
                   className="cursor-pointer rounded-full border border-border bg-transparent px-4 py-2 text-[13px] font-medium text-text-soft transition-all hover:border-primary hover:text-primary disabled:opacity-50"
