@@ -316,6 +316,10 @@ export const en: Translations = {
 
   settings: {
     title: 'Settings',
+    mastheadEyebrow: 'Preferences & account',
+    mastheadTitle: 'Your',
+    mastheadAccent: 'settings',
+    mastheadLede: 'Profile, notifications, household and display — all in one place.',
     profile: 'Profile',
     profileName: 'Name',
     profileAvatar: 'Avatar',

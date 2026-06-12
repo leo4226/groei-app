@@ -271,6 +271,10 @@ export type Translations = {
 
   settings: {
     title: string
+    mastheadEyebrow: string
+    mastheadTitle: string
+    mastheadAccent: string
+    mastheadLede: string
     display: string
     groupOutdoorWarnings: string
     groupOutdoorWarningsDesc: string

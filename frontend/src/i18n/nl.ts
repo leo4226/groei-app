@@ -316,6 +316,10 @@ export const nl: Translations = {
 
   settings: {
     title: 'Instellingen',
+    mastheadEyebrow: 'Voorkeuren & account',
+    mastheadTitle: 'Jouw',
+    mastheadAccent: 'instellingen',
+    mastheadLede: 'Profiel, meldingen, huishouden en weergave — alles op één plek.',
     profile: 'Profiel',
     profileName: 'Naam',
     profileAvatar: 'Avatar',
