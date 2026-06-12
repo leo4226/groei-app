@@ -391,6 +391,10 @@ export const nl: Translations = {
     resetAssistant: '🔄 Stekkie resetten',
     resetAssistantDone: 'Stekkie is gereset!',
     about: 'Over',
+    themeLabel: 'Thema',
+    themeLight: '☀️ Licht',
+    themeDark: '🌙 Donker',
+    themeSystem: '💻 Systeem',
     logout: 'Log uit',
   },
 

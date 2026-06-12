@@ -47,6 +47,11 @@
   --spacing-element: 20px;
   --spacing-section: 24px;
   --spacing-card-pad: 24px;
+
+  /* BG gradient — overridden in dark theme */
+  --bg-gradient:
+    radial-gradient(circle at 10% 0%, rgba(143, 168, 130, 0.10), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
 }
 
 body {
@@ -58,9 +63,7 @@ body {
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image:
-    radial-gradient(circle at 10% 0%, rgba(143, 168, 130, 0.10), transparent 40%),
-    radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
+  background-image: var(--bg-gradient);
 }
 
 h1, h2, h3, h4 {
@@ -374,4 +377,39 @@ input:focus, select:focus, textarea:focus {
   .forced-hidden-desktop {
     display: none !important;
   }
+}
+
+/* ── Dark theme ───────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg: #1A1D1A;
+  --color-surface: #242724;
+  --color-paper: #2A2D2A;
+  --color-bg-warm: #1E211E;
+  --color-primary: #7BAF68;
+  --color-primary-dark: #5F9A4C;
+  --color-primary-highlight: #6A9E58;
+  --color-secondary: #D4896A;
+  --color-text: #E5E5DD;
+  --color-text-soft: #B5BAAE;
+  --color-text-muted: #7A8175;
+  --color-overdue: #E88B6A;
+  --color-due: #E8C44A;
+  --color-good: #7BAF68;
+  --color-border: #3A3F37;
+  --color-border-soft: #32372F;
+  --bg-gradient:
+    radial-gradient(circle at 10% 0%, rgba(123, 175, 104, 0.08), transparent 40%),
+    radial-gradient(circle at 90% 100%, rgba(212, 137, 106, 0.05), transparent 40%);
+}
+
+[data-theme="dark"] .card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
 }

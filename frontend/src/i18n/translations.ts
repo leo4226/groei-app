@@ -335,6 +335,10 @@ export type Translations = {
     resetAssistant: string    // "Stekkie resetten" / "Reset Stekkie"
     resetAssistantDone: string // "Stekkie is gereset!" / "Stekkie has been reset!"
     about: string
+    themeLabel: string
+    themeLight: string
+    themeDark: string
+    themeSystem: string
     logout: string
   }
 

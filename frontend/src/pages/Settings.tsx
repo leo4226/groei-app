@@ -13,6 +13,11 @@ const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 export default function Settings() {
   const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
   const [groupOutdoor, setGroupOutdoor] = useState(() => localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
+  const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>(() => {
+    const stored = localStorage.getItem(THEME_KEY)
+    return (stored as 'light' | 'dark' | 'system' | null) ?? 'system'
+  })
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
   const activeUser = users.find((u) => u.id === activeUserId)
   const t = useT()
   const navigate = useNavigate()
@@ -189,6 +194,31 @@ export default function Settings() {
       })
       .catch(() => setProfileLoadError('Failed to load profile'))
   }, [])
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  function applyTheme(t: 'light' | 'dark' | 'system') {
+    const resolved = t === 'system' ? (systemDark ? 'dark' : 'light') : t
+    document.documentElement.setAttribute('data-theme', resolved)
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) {
+      meta.setAttribute('content', resolved === 'dark' ? '#1A1D1A' : '#2D6A4F')
+    }
+  }
+
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme, systemDark])
+
+  function setTheme(next: 'light' | 'dark' | 'system') {
+    setThemeState(next)
+    localStorage.setItem(THEME_KEY, next)
+  }
+
   useEffect(() => {
     household.members()
       .then(setHouseholdMembers)
@@ -449,21 +479,47 @@ export default function Settings() {
 
       <section className="mb-8">
         <h2 className="text-base font-bold mb-3">{t.settings.display}</h2>
-        <div className="card p-4 flex items-center justify-between gap-4">
+        <div className="card p-4 space-y-4">
+          {/* Theme toggle */}
           <div>
-            <div className="font-semibold text-sm">{t.settings.groupOutdoorWarnings}</div>
-            <div className="text-xs text-text-muted mt-0.5">{t.settings.groupOutdoorWarningsDesc}</div>
+            <div className="font-semibold text-sm mb-2">{t.settings.themeLabel}</div>
+            <div className="grid grid-cols-3 gap-2">
+              {([['light', t.settings.themeLight], ['dark', t.settings.themeDark], ['system', t.settings.themeSystem]] as const).map(([value, label]) => {
+                const isActive = theme === value
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setTheme(value)}
+                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+                      isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-surface border border-border text-text hover:border-primary/30'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-          <button
-            onClick={() => {
-              const next = !groupOutdoor
-              setGroupOutdoor(next)
-              localStorage.setItem(GROUP_OUTDOOR_KEY, String(next))
-            }}
-            className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${groupOutdoor ? 'bg-primary' : 'bg-border'}`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${groupOutdoor ? 'translate-x-5' : 'translate-x-0'}`} />
-          </button>
+
+          {/* Group warnings toggle */}
+          <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+            <div>
+              <div className="font-semibold text-sm">{t.settings.groupOutdoorWarnings}</div>
+              <div className="text-xs text-text-muted mt-0.5">{t.settings.groupOutdoorWarningsDesc}</div>
+            </div>
+            <button
+              onClick={() => {
+                const next = !groupOutdoor
+                setGroupOutdoor(next)
+                localStorage.setItem(GROUP_OUTDOOR_KEY, String(next))
+              }}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${groupOutdoor ? 'bg-primary' : 'bg-border'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${groupOutdoor ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
         </div>
       </section>
 
