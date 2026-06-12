@@ -541,6 +541,9 @@ export const nl: Translations = {
 
   // ── Plant Detail page ────────────────────────────────────
   plantDetail: {
+    mastheadEyebrow: 'Plantenpaspoort',
+    statSchedules: 'Verzorgingstaken',
+    statSunHours: 'Zonuren / dag',
     weatherAlerts: 'Weeralerts',
     copyPlant: 'Kopieer plant',
     yearCalendar: 'Jaarkalender',
