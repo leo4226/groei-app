@@ -47,7 +47,12 @@ function WeatherIcon({ icon, size = 22 }: { icon: WeatherIconType; size?: number
   )
 }
 
-export default function WeatherCard({ weather, t }: { weather: WeatherData | null; t: Translations }) {
+export default function WeatherCard({ weather, loading, error, t }: {
+  weather: WeatherData | null
+  loading: boolean
+  error: string | null
+  t: Translations
+}) {
   return (
     <div className="card weather-card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
       <div className="weather-card-header">
@@ -58,7 +63,7 @@ export default function WeatherCard({ weather, t }: { weather: WeatherData | nul
             <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14, color: 'var(--color-text-soft)', fontWeight: 400 }}>
               {t.dashboard.weather.tonight}: {weather.tonightMin}°
             </span></>
-          ) : t.dashboard.weather.loading}
+          ) : loading ? t.dashboard.weather.loading : (error ?? t.dashboard.weather.unavailable)}
         </div>
       </div>
       {weather && (

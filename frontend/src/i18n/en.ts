@@ -71,6 +71,7 @@ export const en: Translations = {
       rain: 'Rain',
       tonight: 'Tonight',
       loading: 'Loading weather…',
+      unavailable: 'Weather unavailable',
     },
     comingSoon: 'Coming soon',
     warnings: {

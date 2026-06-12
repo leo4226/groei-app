@@ -43,7 +43,7 @@ export default function Dashboard() {
   })()
 
   const outdoorMap = maps.find((m) => m.map_type === 'outdoor')
-  const { weather } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
+  const { weather, loading: weatherLoading, error: weatherError } = useWeather(outdoorMap?.lat ?? null, outdoorMap?.lon ?? null)
 
   useEffect(() => {
     if (getToken()) { loadDashboardV2(); loadPlants(); loadWarningSummary() }
@@ -136,7 +136,7 @@ export default function Dashboard() {
 
           {/* SIDEBAR column */}
           <div className="dash-section-hpad dashboard-sidebar" style={{ padding: '0 24px' }}>
-            <WeatherCard t={t} weather={weather} />
+            <WeatherCard t={t} weather={weather} loading={weatherLoading} error={weatherError} />
             {dashboardV2?.plant_fact && (
               <CareTipCard t={t} fact={dashboardV2.plant_fact} />
             )}

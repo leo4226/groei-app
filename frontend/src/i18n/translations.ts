@@ -75,6 +75,7 @@ export type Translations = {
       rain: string
       tonight: string
       loading: string
+      unavailable: string
     }
     comingSoon: string
     warnings: {
