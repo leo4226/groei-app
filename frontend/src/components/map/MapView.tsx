@@ -154,31 +154,14 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   // background. A 5px threshold keeps taps (select/deselect) working.
   const panSession = useRef<{ startX: number; startY: number; startPan: { x: number; y: number }; unitsPerPx: number } | null>(null)
   const didPan = useRef(false)
+  const baseCenterRef = useRef(baseCenter)
+  baseCenterRef.current = baseCenter
 
-  const handlePanPointerDown = useCallback((e: React.PointerEvent) => {
-    if (!e.isPrimary) return
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    if (isPinching.current) return
-    const svg = svgRef.current
-    if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const visW = baseCenter.vw / zoomRef.current
-    const visH = baseCenter.vh / zoomRef.current
-    // px → viewBox-units factor; matches preserveAspectRatio "meet" (min) vs
-    // landscape-mobile "slice" (max).
-    const pick = isLandscapeMobile ? Math.max : Math.min
-    const scale = pick(rect.width / visW, rect.height / visH)
-    if (!scale || !isFinite(scale)) return
-    panSession.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startPan: { ...panRef.current },
-      unitsPerPx: 1 / scale,
-    }
-    didPan.current = false
-  }, [baseCenter, isLandscapeMobile, svgRef])
-
-  const handlePanPointerMove = useCallback((e: React.PointerEvent) => {
+  // Document-level move/up listeners (attached for the duration of a pan) so
+  // the pan survives the pointer leaving the container — same pattern as the
+  // plant-drag code, which avoids setPointerCapture because capture would
+  // retarget pointerup/click away from children (heatmap cell taps, markers).
+  const onPanDocMove = useCallback((e: PointerEvent) => {
     const s = panSession.current
     if (!s) return
     if (isPinching.current) {
@@ -192,17 +175,53 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     didPan.current = true
     // Clamp so the view center stays within the map bounds — the map can
     // never be flung fully off-screen.
-    const maxPanX = baseCenter.vw / 2
-    const maxPanY = baseCenter.vh / 2
+    const maxPanX = baseCenterRef.current.vw / 2
+    const maxPanY = baseCenterRef.current.vh / 2
     setPan({
       x: Math.max(-maxPanX, Math.min(maxPanX, s.startPan.x + dxPx * s.unitsPerPx)),
       y: Math.max(-maxPanY, Math.min(maxPanY, s.startPan.y + dyPx * s.unitsPerPx)),
     })
-  }, [baseCenter])
-
-  const handlePanPointerEnd = useCallback(() => {
-    panSession.current = null
   }, [])
+
+  const onPanDocEnd = useCallback(() => {
+    panSession.current = null
+    document.removeEventListener('pointermove', onPanDocMove)
+    document.removeEventListener('pointerup', onPanDocEnd)
+    document.removeEventListener('pointercancel', onPanDocEnd)
+  }, [onPanDocMove])
+
+  const handlePanPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!e.isPrimary) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    if (isPinching.current) return
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const visW = baseCenter.vw / zoomRef.current
+    const visH = baseCenter.vh / zoomRef.current
+    // px → viewBox-units factor; mirrors the preserveAspectRatio prop on the
+    // <svg> below: "meet" (min) normally, landscape-mobile "slice" (max).
+    const pick = isLandscapeMobile ? Math.max : Math.min
+    const scale = pick(rect.width / visW, rect.height / visH)
+    if (!scale || !isFinite(scale)) return
+    panSession.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPan: { ...panRef.current },
+      unitsPerPx: 1 / scale,
+    }
+    didPan.current = false
+    document.addEventListener('pointermove', onPanDocMove, { passive: true })
+    document.addEventListener('pointerup', onPanDocEnd)
+    document.addEventListener('pointercancel', onPanDocEnd)
+  }, [baseCenter, isLandscapeMobile, svgRef, onPanDocMove, onPanDocEnd])
+
+  // Unmount safety: drop listeners if the component dies mid-pan
+  useEffect(() => () => {
+    document.removeEventListener('pointermove', onPanDocMove)
+    document.removeEventListener('pointerup', onPanDocEnd)
+    document.removeEventListener('pointercancel', onPanDocEnd)
+  }, [onPanDocMove, onPanDocEnd])
   // --- End drag-to-pan ---
 
   const handleZoomIn = useCallback(() => {
@@ -318,10 +337,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       style={{ touchAction: 'none' }}
       onClick={handleContainerClick}
       onPointerDown={handlePanPointerDown}
-      onPointerMove={handlePanPointerMove}
-      onPointerUp={handlePanPointerEnd}
-      onPointerLeave={handlePanPointerEnd}
-      onPointerCancel={handlePanPointerEnd}
     >
       {cw > 0 && ch > 0 && (
       <div
