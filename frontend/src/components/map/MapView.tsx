@@ -148,6 +148,82 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     return () => el.removeEventListener('wheel', handler)
   }, [containerRef.current, baseCenter])
 
+  // --- One-finger / mouse drag-to-pan on the background (#184) ---
+  // Plant/object drags never reach these handlers: their pointer-down handlers
+  // call stopPropagation() (useMapInteraction), so a pan only starts on the
+  // background. A 5px threshold keeps taps (select/deselect) working.
+  const panSession = useRef<{ startX: number; startY: number; startPan: { x: number; y: number }; unitsPerPx: number } | null>(null)
+  const didPan = useRef(false)
+  const baseCenterRef = useRef(baseCenter)
+  baseCenterRef.current = baseCenter
+
+  // Document-level move/up listeners (attached for the duration of a pan) so
+  // the pan survives the pointer leaving the container — same pattern as the
+  // plant-drag code, which avoids setPointerCapture because capture would
+  // retarget pointerup/click away from children (heatmap cell taps, markers).
+  const onPanDocMove = useCallback((e: PointerEvent) => {
+    const s = panSession.current
+    if (!s) return
+    if (isPinching.current) {
+      // Second finger landed — the pinch handler owns pan from here.
+      panSession.current = null
+      return
+    }
+    const dxPx = e.clientX - s.startX
+    const dyPx = e.clientY - s.startY
+    if (!didPan.current && Math.hypot(dxPx, dyPx) < 5) return
+    didPan.current = true
+    // Clamp so the view center stays within the map bounds — the map can
+    // never be flung fully off-screen.
+    const maxPanX = baseCenterRef.current.vw / 2
+    const maxPanY = baseCenterRef.current.vh / 2
+    setPan({
+      x: Math.max(-maxPanX, Math.min(maxPanX, s.startPan.x + dxPx * s.unitsPerPx)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, s.startPan.y + dyPx * s.unitsPerPx)),
+    })
+  }, [])
+
+  const onPanDocEnd = useCallback(() => {
+    panSession.current = null
+    document.removeEventListener('pointermove', onPanDocMove)
+    document.removeEventListener('pointerup', onPanDocEnd)
+    document.removeEventListener('pointercancel', onPanDocEnd)
+  }, [onPanDocMove])
+
+  const handlePanPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!e.isPrimary) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    if (isPinching.current) return
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const visW = baseCenter.vw / zoomRef.current
+    const visH = baseCenter.vh / zoomRef.current
+    // px → viewBox-units factor; mirrors the preserveAspectRatio prop on the
+    // <svg> below: "meet" (min) normally, landscape-mobile "slice" (max).
+    const pick = isLandscapeMobile ? Math.max : Math.min
+    const scale = pick(rect.width / visW, rect.height / visH)
+    if (!scale || !isFinite(scale)) return
+    panSession.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPan: { ...panRef.current },
+      unitsPerPx: 1 / scale,
+    }
+    didPan.current = false
+    document.addEventListener('pointermove', onPanDocMove, { passive: true })
+    document.addEventListener('pointerup', onPanDocEnd)
+    document.addEventListener('pointercancel', onPanDocEnd)
+  }, [baseCenter, isLandscapeMobile, svgRef, onPanDocMove, onPanDocEnd])
+
+  // Unmount safety: drop listeners if the component dies mid-pan
+  useEffect(() => () => {
+    document.removeEventListener('pointermove', onPanDocMove)
+    document.removeEventListener('pointerup', onPanDocEnd)
+    document.removeEventListener('pointercancel', onPanDocEnd)
+  }, [onPanDocMove, onPanDocEnd])
+  // --- End drag-to-pan ---
+
   const handleZoomIn = useCallback(() => {
     setZoom(z => Math.min(MAX_ZOOM, +(z * 1.25).toFixed(2)))
   }, [])
@@ -222,6 +298,16 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     onMapTap,
   })
 
+  // A drag-to-pan must not count as a map tap (mouse fires click after a drag;
+  // touch usually doesn't, but guard both).
+  const handleContainerClick = useCallback(() => {
+    if (didPan.current) {
+      didPan.current = false
+      return
+    }
+    handleMapClick()
+  }, [handleMapClick])
+
   // Derive the profile of the plant being dragged (for the suitability overlay)
   const draggingPlant = dragging?.type === 'plant'
     ? plants.find(p => p.id === dragging.id) ?? null
@@ -245,7 +331,13 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-full" style={{ touchAction: 'none' }} onClick={handleMapClick}>
+    <div
+      ref={containerRef}
+      className="relative w-full h-full"
+      style={{ touchAction: 'none' }}
+      onClick={handleContainerClick}
+      onPointerDown={handlePanPointerDown}
+    >
       {cw > 0 && ch > 0 && (
       <div
         style={{
