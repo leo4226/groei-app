@@ -1,0 +1,19 @@
+name: Watchdog dead-man check
+
+# Calls the check endpoint twice an hour. The endpoint owns all logic
+# (staleness, awake window, once-per-outage), so frequent calls are safe.
+# GitHub cron is best-effort and can lag minutes — fine at this cadence.
+on:
+  schedule:
+    - cron: "10,40 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger watchdog check endpoint
+        run: |
+          curl -fsS -X POST \
+            -H "X-Watchdog-Secret: ${{ secrets.WATCHDOG_SECRET }}" \
+            https://floreren-api.fly.dev/api/internal/watchdog/check
