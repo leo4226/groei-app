@@ -66,7 +66,7 @@ export function IdentifyPlantPage() {
         confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
         thumbnail: dataUrl,
         capturedBlob: blob,
-        source: 'bioclip',
+        source: resp.source ?? 'bioclip',
       })
     } catch (e) {
       const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
@@ -129,7 +129,7 @@ export function IdentifyPlantPage() {
         confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
         thumbnail: step.thumbnail,
         capturedBlob: step.capturedBlob,
-        source: 'plantnet',
+        source: resp.source ?? 'plantnet',
       })
     } catch (e) {
       const message = e instanceof Error && e.message

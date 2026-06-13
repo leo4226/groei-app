@@ -494,6 +494,8 @@ export interface WarningSummaryOut {
 
 // ── Plant identification (Pl@ntNet) ──
 
+export type IdentifySource = 'bioclip' | 'plantnet'
+
 export type PlantIdCandidate = {
   scientific_name: string
   common_names_nl: string[]
@@ -501,6 +503,7 @@ export type PlantIdCandidate = {
   confidence: number
   species_id: number | null
   thumbnail_url: string | null
+  source?: IdentifySource
 }
 
 export type IdentifyConfidence = 'high' | 'medium' | 'low' | 'no_match'
@@ -512,6 +515,7 @@ export type IdentifyResponse = {
   // broader than the old "top1 in [0.10, 0.30)" definition — medium-confidence
   // results now flag as low_confidence too. Read `confidence` directly instead.
   low_confidence: boolean
+  source?: IdentifySource
 }
 
 export type IdentifyCommitResult = {
