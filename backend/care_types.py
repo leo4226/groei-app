@@ -59,7 +59,7 @@ CARE_TYPES: dict[str, CareTypeDef] = {
     },
     "mist": {
         "icon": "💨", "label_nl": "Bevochtigen", "label_en": "Mist",
-        "default_intervals": {"outdoor_ground": None, "outdoor_container": None, "indoor": 3},
+        "default_intervals": {"outdoor_ground": None, "outdoor_container": None, "indoor": None},
         "halo_visible_for_ground": False,
         "is_weather_triggered": False,
     },
