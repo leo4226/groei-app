@@ -15,7 +15,8 @@ class CareTypeDef(TypedDict, total=False):
     icon: str
     label_nl: str
     label_en: str
-    default_intervals: dict[Environment, int | None]   # None = not active in this env
+    default_intervals: dict[Environment, int | None]   # None = not active by default in this env
+    valid_environments: tuple[Environment, ...]   # optional: valid even without a default interval
     halo_visible_for_ground: bool   # if False, in-ground outdoor halos suppress this type
     is_weather_triggered: bool
 
@@ -59,7 +60,8 @@ CARE_TYPES: dict[str, CareTypeDef] = {
     },
     "mist": {
         "icon": "💨", "label_nl": "Bevochtigen", "label_en": "Mist",
-        "default_intervals": {"outdoor_ground": None, "outdoor_container": None, "indoor": 3},
+        "default_intervals": {"outdoor_ground": None, "outdoor_container": None, "indoor": None},
+        "valid_environments": ("indoor",),
         "halo_visible_for_ground": False,
         "is_weather_triggered": False,
     },

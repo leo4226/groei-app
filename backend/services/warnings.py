@@ -93,15 +93,19 @@ def _load_care_profile(
                     if care_type not in profile:
                         profile[care_type] = {"active": False}
 
-                # Environment override: force inactive for care types whose
-                # default_interval is None in this environment and that are not
-                # weather-triggered. This prevents stale care_profile JSON
-                # from showing warnings for env-inappropriate care types
-                # (e.g. mist/rotate on outdoor plants).
+                # Environment override: force inactive only for care types
+                # that are not valid in this environment. A care type can be
+                # valid-but-not-default (e.g. indoor mist): existing/custom
+                # profiles should keep that explicit opt-in.
                 for care_type, ct_def in CARE_TYPES.items():
                     default_interval = ct_def["default_intervals"].get(environment)
                     is_weather = ct_def.get("is_weather_triggered", False)
-                    is_valid = default_interval is not None or (is_weather and environment != "indoor")
+                    valid_environments = ct_def.get("valid_environments")
+                    is_valid = (
+                        environment in valid_environments
+                        if valid_environments is not None
+                        else default_interval is not None or (is_weather and environment != "indoor")
+                    )
                     if not is_valid:
                         profile[care_type] = {"active": False}
 

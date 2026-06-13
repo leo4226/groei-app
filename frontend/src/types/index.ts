@@ -416,7 +416,7 @@ export interface PlantFactOut {
 export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; defaultIndoor: number; defaultOutdoor: number }> = {
   water:       { label: 'Water',       icon: '💧', defaultIndoor: 7,   defaultOutdoor: 3 },
   fertilize:   { label: 'Fertilize',   icon: '🧪', defaultIndoor: 21,  defaultOutdoor: 14 },
-  mist:        { label: 'Mist',        icon: '🌫️', defaultIndoor: 3,   defaultOutdoor: 0 },
+  mist:        { label: 'Mist',        icon: '🌫️', defaultIndoor: 0,   defaultOutdoor: 0 },
   rotate:      { label: 'Rotate',      icon: '🔄', defaultIndoor: 14,  defaultOutdoor: 0 },
   repot_check: { label: 'Repot check', icon: '🪴', defaultIndoor: 180, defaultOutdoor: 365 },
   prune:        { label: 'Prune',        icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
