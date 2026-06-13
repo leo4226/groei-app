@@ -1,5 +1,6 @@
 """Unit tests for the unified care warning pipeline."""
 from datetime import date
+import json
 from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
 from services.warnings import _schedule_warning_for_type
@@ -104,7 +105,7 @@ def test_load_care_profile_env_override_for_stale_json():
     """Stored care_profile JSON with indoor-only types active should be
     overridden for outdoor plants (e.g. mist, rotate, dust on outdoor)."""
     # Simulate a stale care_profile that has mist/rotate/dust active for an outdoor plant.
-    stale = '''{
+    stale = json.dumps({
         "water": {"active": True, "interval_days": 7},
         "fertilize": {"active": True, "interval_days": 30},
         "mist": {"active": True, "interval_days": 3},
@@ -115,7 +116,7 @@ def test_load_care_profile_env_override_for_stale_json():
         "prune": {"active": True, "interval_days": 180},
         "repot": {"active": True, "interval_days": 540},
         "pest_check": {"active": True, "interval_days": 30},
-    }'''
+    })
 
     # Outdoor ground — mist, rotate, dust should be forced inactive
     profile = _load_care_profile(stale, None, environment="outdoor_ground")
@@ -129,9 +130,9 @@ def test_load_care_profile_env_override_for_stale_json():
     assert profile["frost_protect"]["active"] is True
     assert profile["heat_protect"]["active"] is True
 
-    # Same stale data but with indoor environment — mist now force-inactive (no longer a recommended type)
+    # Same stored data but with indoor environment — explicit user opt-in is preserved.
     profile_indoor = _load_care_profile(stale, None, environment="indoor")
-    assert profile_indoor["mist"]["active"] is False, "mist should be inactive indoor (no longer default)"
+    assert profile_indoor["mist"]["active"] is True, "existing/custom indoor mist should stay active"
     assert profile_indoor["rotate"]["active"] is True, "rotate should stay active indoor"
     assert profile_indoor["dust"]["active"] is True, "dust should stay active indoor"
     # Weather-triggered types are inactive indoor
