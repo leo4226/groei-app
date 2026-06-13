@@ -97,6 +97,18 @@ export const en: Translations = {
     heat_protect: 'Heat protect',
   },
 
+  careTypes: {
+    water: 'Water',
+    fertilize: 'Fertilize',
+    mist: 'Mist',
+    rotate: 'Rotate',
+    repot_check: 'Repot check',
+    prune: 'Prune',
+    protect_cold: 'Cold protection',
+    protect_heat: 'Heat protection',
+    photo: 'Progress photo',
+  },
+
   plants: {
     categories: {
       houseplant: '🪴 Houseplant',
@@ -563,6 +575,7 @@ export const en: Translations = {
     edit: 'Edit',
     whatCanYouDo: 'What can you do now?',
     sunHoursLabel: 'Sun hours:',
+    sunHoursUnit: 'h/day',
     fitGood: '✓ Good fit',
     fitPartial: '~ Partial',
     fitInsufficient: '⚠ Insufficient',

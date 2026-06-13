@@ -97,6 +97,18 @@ export const nl: Translations = {
     heat_protect: 'Hitte-bescherming',
   },
 
+  careTypes: {
+    water: 'Water geven',
+    fertilize: 'Bemesten',
+    mist: 'Besproeien',
+    rotate: 'Draaien',
+    repot_check: 'Verpotten',
+    prune: 'Snoeien',
+    protect_cold: 'Beschermen tegen kou',
+    protect_heat: 'Beschermen tegen hitte',
+    photo: 'Voortgangsfoto',
+  },
+
   plants: {
     categories: {
       houseplant: '🪴 Kamerplant',
@@ -563,6 +575,7 @@ export const nl: Translations = {
     edit: 'Bewerk',
     whatCanYouDo: 'Wat kun je nu doen?',
     sunHoursLabel: 'Zonuren:',
+    sunHoursUnit: 'u/dag',
     fitGood: '✓ Geschikt',
     fitPartial: '~ Deels',
     fitInsufficient: '⚠ Te weinig',

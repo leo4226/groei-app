@@ -101,6 +101,18 @@ export type Translations = {
     heat_protect: string      // "Heat protect" / "Hitte-bescherming"
   }
 
+  careTypes: {
+    water: string
+    fertilize: string
+    mist: string
+    rotate: string
+    repot_check: string
+    prune: string
+    protect_cold: string
+    protect_heat: string
+    photo: string
+  }
+
   plants: {
     categories: Record<string, string>
     types: Record<string, string>
@@ -520,6 +532,7 @@ export type Translations = {
     edit: string  // "Edit"
     whatCanYouDo: string  // "What can you do now?"
     sunHoursLabel: string  // "Sun hours:"
+    sunHoursUnit: string  // "h/day" / "u/dag"
     fitGood: string  // "✓ Good fit"
     fitPartial: string  // "~ Partial"
     fitInsufficient: string  // "⚠ Insufficient"

@@ -209,12 +209,7 @@ export default function PlantDetail() {
     return fit && profile ? { fit, sunHours, profile } : null
   })()
 
-  // Locale-aware current month label
   const locale = t.locale || 'nl-NL'
-  const fmtMonth = (m: number) =>
-    new Intl.DateTimeFormat(locale, { month: 'short' })
-      .format(new Date(2026, m - 1, 1))
-      .replace('.', '')
 
   // ── Shared content blocks (identical markup in both layouts) ──
 
@@ -232,7 +227,7 @@ export default function PlantDetail() {
   const potAcquiredLine = (plant.pot_size_cm || plant.acquired_date) && [
     plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
     plant.acquired_date
-      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}`
+      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}`
       : null,
   ].filter(Boolean).join(' · ')
 
@@ -240,7 +235,7 @@ export default function PlantDetail() {
     <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
       <span className="text-lg">☀️</span>
       <span className="text-sm text-text-muted flex-1">
-        {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}u/dag</span>
+        {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
         {' · '}{sunFitInfo.profile.labelNl}
       </span>
       <span
@@ -274,7 +269,7 @@ export default function PlantDetail() {
               onClick={() => handleQuickAction(sched.care_type)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
             >
-              {info?.icon ?? '🌿'} {info?.label ?? sched.care_type}
+              {info?.icon ?? '🌿'} {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
             </button>
           )
         })}
@@ -290,7 +285,7 @@ export default function PlantDetail() {
             <div key={sched.id} className="card p-3.5 flex items-center gap-3">
               <span className="text-xl shrink-0">{info?.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm">{info?.label ?? sched.care_type}</p>
+                <p className="font-semibold text-sm">{t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}</p>
                 <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
               </div>
               <div className="text-right shrink-0">
@@ -370,13 +365,13 @@ export default function PlantDetail() {
                   <span className="font-semibold">{entry.done_by_name}</span>
                   <span className="text-text-muted">
                     {entry.skipped ? ` ${t.plantDetail.skipped} ` : ` ${t.plantDetail.did} `}
-                    {info?.label ?? entry.care_type}
+                    {t.careTypes[entry.care_type as keyof typeof t.careTypes] ?? entry.care_type}
                   </span>
                 </p>
                 {entry.notes && <p className="text-xs text-text-muted truncate">{entry.notes}</p>}
               </div>
               <span className="text-xs text-text-muted shrink-0">
-                {new Date(entry.done_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                {new Date(entry.done_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
               </span>
             </div>
           )
