@@ -1,4 +1,3 @@
-import { useT } from '../../context/LanguageContext'
 
 interface Props {
   /** 'water' or 'fertilize' — controls header icon and button labels */
@@ -60,7 +59,6 @@ export default function GardenActionSheet({
   onDelete,
   onClose,
 }: Props) {
-  const t = useT()
   const cfg = CONFIG[actionType]
   const todayStr = new Date().toISOString().slice(0, 10)
 

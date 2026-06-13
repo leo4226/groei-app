@@ -6,7 +6,7 @@ import { plants as plantsApi, maps as mapsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
-import type { PlantIdCandidate, IdentifyConfidence, IdentifyCommitResult } from '../types'
+import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
 type ResultsState = {
   candidates: PlantIdCandidate[]
@@ -43,7 +43,6 @@ export function IdentifyPlantPage() {
   const [step, setStep] = useState<Step>({ kind: 'camera' })
   const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null)
   const mapSlug = routeState?.mapSlug ?? null
-  const [resultsState, setResultsState] = useState<ResultsState | null>(null)
   useEffect(() => {
     if (!mapSlug) return
     mapsApi.biodiversity(mapSlug)

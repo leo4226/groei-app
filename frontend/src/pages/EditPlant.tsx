@@ -91,13 +91,9 @@ export default function EditPlant() {
   const [lastRepottedInput, setLastRepottedInput] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
+  const origWaterSchedule = useRef<{id: number; days: number} | null>(null)
 
   // Derived area from the selected zone
-  const currentArea = useMemo(() => {
-    if (!selectedZoneId) return null
-    const zone = zoneList.find(z => z.id === selectedZoneId)
-    return zone?.isIndoor ? 'huis' : 'tuin'
-  }, [selectedZoneId, zoneList])
 
   // Load plant data
   useEffect(() => {
@@ -138,13 +134,9 @@ export default function EditPlant() {
     }
   }
 
-  function toggleSchedule(type: CareType) {
-    setSchedules(prev => ({ ...prev, [type]: { ...prev[type], enabled: !prev[type].enabled } }))
-  }
 
-  function setScheduleDays(type: CareType, days: number) {
-    setSchedules(prev => ({ ...prev, [type]: { ...prev[type], days } }))
-  }
+
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -212,7 +204,7 @@ export default function EditPlant() {
     )
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+
 
   return (
     <div>
@@ -230,7 +222,7 @@ export default function EditPlant() {
           </div>
           <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
             <span className="text-primary">§</span>
-            <span>{t.editPlant.subtitle || plant.name}</span>
+            <span>{plant.name}</span>
             <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
           </div>
           <h1 className="font-heading font-bold text-2xl sm:text-3xl mt-1">

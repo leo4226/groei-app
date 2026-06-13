@@ -7,7 +7,6 @@ import { sendChatMessage, submitBugReport, type ChatMessage } from '../api/chat'
 
 type PageKey = 'dashboard' | 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
 
-const ALLOWED_PAGES = new Set<PageKey>(['dashboard', 'calendar', 'settings', 'editor', 'map', 'plants', 'identify'])
 
 const STORAGE_KEY_POS = 'floreren_stekkie_pos'
 const DISMISS_KEY = 'floreren_help_dismissed'
@@ -199,7 +198,7 @@ export default function HelpAssistant() {
     if (!input.trim() || loading) return
     const userMsg = input.trim()
     setInput('')
-    const updated = [...messages, { role: 'user', content: userMsg }]
+    const updated = [...messages, { role: 'user' as const, content: userMsg }]
     setMessages(updated)
     setLoading(true)
 

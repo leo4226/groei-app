@@ -43,7 +43,7 @@ export function computeSuitability(
       badgeLabel: '?',
       detailLabel: 'Geen soortdata beschikbaar',
       sunNeeded: 0,
-      sunActual: sunHoursAtSpot,
+      sunActual: sunHoursAtSpot ?? 0,
       phaseLabel: '',
       actions: [],
     }
@@ -56,7 +56,7 @@ export function computeSuitability(
       badgeLabel: '?',
       detailLabel: 'Geen maanddata',
       sunNeeded: 0,
-      sunActual: sunHoursAtSpot,
+      sunActual: sunHoursAtSpot ?? 0,
       phaseLabel: '',
       actions: [],
     }
@@ -70,7 +70,7 @@ export function computeSuitability(
       badgeLabel: phase_label_nl,
       detailLabel: description_nl,
       sunNeeded: 0,
-      sunActual: sunHoursAtSpot,
+      sunActual: sunHoursAtSpot ?? 0,
       phaseLabel: phase_label_nl,
       actions: actions_nl,
     }

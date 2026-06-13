@@ -118,7 +118,7 @@ export function deriveGardenBounds(zones: EditorZone[]): { minX: number; minY: n
 
 // ── Shadow casters ───────────────────────────────────────────────────────────
 
-export function deriveFenceCasters(zones: EditorZone[], scalePxPerM: number): ShadowCaster[] {
+export function deriveFenceCasters(zones: EditorZone[]): ShadowCaster[] {
   return zones
     .filter(z => z.type === 'fence')
     .map((z): ShadowCaster => {
@@ -179,7 +179,7 @@ export function deriveRaisedBedCasters(zones: EditorZone[], _scalePxPerM: number
 
 export function deriveAllShadowCasters(canvasData: CanvasData): ShadowCaster[] {
   return [
-    ...deriveFenceCasters(canvasData.zones, canvasData.scale_px_per_m),
+    ...deriveFenceCasters(canvasData.zones),
     ...deriveStructureCasters(canvasData.zones, canvasData.scale_px_per_m),
     ...deriveRaisedBedCasters(canvasData.zones, canvasData.scale_px_per_m),
     ...(canvasData.shadowCasters ?? []),

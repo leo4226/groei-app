@@ -41,7 +41,9 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
 
   function handleSvgClick(e: React.MouseEvent<SVGSVGElement>) {
     if (!svgRef.current) return
-    const { x, y } = screenToSVG(svgRef.current, e.clientX, e.clientY)
+    const coords = screenToSVG(svgRef.current, e.clientX, e.clientY)
+    if (!coords) return
+    const { x, y } = coords
     setPin({ x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })
   }
 

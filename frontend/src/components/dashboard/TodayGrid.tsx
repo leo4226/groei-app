@@ -4,7 +4,6 @@ import { useFloreren } from '../../store/useFloreren'
 import { CARE_TYPE_INFO } from '../../types'
 import type { CareTask } from '../../types'
 import { HALO_COLORS } from '../../hooks/usePlantStatus'
-import { useT } from '../../context/LanguageContext'
 import type { Translations } from '../../i18n/translations'
 import { resolveIconUrl } from '../../utils/icons'
 
@@ -219,7 +218,7 @@ function GroupedTaskRow({ tasks, t }: { tasks: CareTask[]; t: Translations }) {
 }
 
 function LocationGroup({
-  label, icon, tasks, tone, t,
+  label, icon, tasks, t,
 }: {
   label: string; icon: string; tasks: CareTask[]; tone: 'overdue' | 'due' | 'upcoming'; t: Translations
 }) {

@@ -12,9 +12,9 @@ export default function CalendarMoonMini({ year, month1, todayDay }: Props) {
     : `linear-gradient(90deg, #F0E4C8 ${pct}%, #2A2A2A ${pct}%)`
 
   return (
-    <div className="moon-mini" aria-label={t.calendar[MOON_PHASE_KEY[phase]]}>
+    <div className="moon-mini" aria-label={t.calendar[MOON_PHASE_KEY[phase]] as string}>
       <div className="moon-mini-dot" style={{ background: grad }} />
-      <span className="moon-mini-label">{t.calendar[MOON_PHASE_KEY[phase]]}</span>
+      <span className="moon-mini-label">{t.calendar[MOON_PHASE_KEY[phase]] as string}</span>
     </div>
   )
 }

@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - name: Type-check (tsc)
-        run: npx tsc --noEmit
+        run: npx tsc -b --force
       - name: Build (vite)
         # tsc is lenient about JSX nesting that Vite's rolldown parser rejects, so
         # tsc can pass while the production build fails (see PR #91 / issue #102).

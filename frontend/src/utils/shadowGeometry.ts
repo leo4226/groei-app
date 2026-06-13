@@ -81,9 +81,6 @@ function pointsToPath(pts: [number, number][]): string {
   return `M${pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`
 }
 
-function circlePath(cx: number, cy: number, r: number): string {
-  return `M${cx - r},${cy}A${r},${r},0,1,0,${cx + r},${cy}A${r},${r},0,1,0,${cx - r},${cy}Z`
-}
 
 function computeRectShadow(caster: Extract<ShadowCaster, { type: 'rect' }>, dx: number, dy: number): ShadowPolygon {
   const { x, y, width, height } = caster

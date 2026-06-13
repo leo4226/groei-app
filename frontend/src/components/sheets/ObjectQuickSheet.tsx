@@ -329,7 +329,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                   <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{t.addObject.material}</span>
                   <select
                     value={material}
-                    onChange={(e) => setMaterial(e.target.value)}
+                    onChange={(e) => setMaterial(e.target.value as "wood" | "terracotta" | "plastic" | "corten" | "stone")}
                     className="mt-1 w-full bg-bg text-text rounded-xl px-4 py-2.5 text-sm border border-border focus:border-primary focus:outline-none"
                   >
                     {MATERIALS.map((m) => (

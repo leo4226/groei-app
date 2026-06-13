@@ -74,7 +74,7 @@ function generateDecor(count: number): DecorIcon[] {
 
   for (const c of candidates) {
     const radiusPct = (c.size / 2) / 12
-    let left: number, top: number
+    let left = 0, top = 0
     let placed_ok = false
 
     for (let attempt = 0; attempt < 30; attempt++) {

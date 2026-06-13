@@ -11,7 +11,7 @@ interface UseUndoableRemoveReturn {
 export function useUndoableRemove(): UseUndoableRemoveReturn {
   const [toast, setToast] = useState<{ label: string; canUndo: boolean } | null>(null)
   const restoreRef = useRef<(() => Promise<void>) | null>(null)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const dismiss = () => {
     setToast(null)

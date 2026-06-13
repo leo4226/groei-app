@@ -65,7 +65,6 @@ export function useMapInteraction({
   onObjectTap,
   onOpenDetails,
   onPositionUpdate,
-  onRemoveItem,
   onMapTap,
 }: UseMapInteractionConfig): MapInteraction {
   const { selection, dispatch } = useMapSelection()
@@ -79,8 +78,8 @@ export function useMapInteraction({
   const rafThrottleRef = useRef<number | null>(null)
   const dragPositionsRef = useRef<Record<string, { x: number; y: number }>>({})
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
-  const ptrMoveRef = useRef<((e: PointerEvent) => void) | null>(null)
-  const ptrUpRef = useRef<((e: PointerEvent) => void) | null>(null)
+  const ptrMoveRef = useRef<((e: React.PointerEvent) => void) | null>(null)
+  const ptrUpRef = useRef<((e: React.PointerEvent) => void) | null>(null)
 
     // Reference to the DOM element being dragged, so we can imperatively
   // set transform during drag and avoid React re-renders on every frame.

@@ -53,6 +53,8 @@ export default function EditorLegendPanel({
   onSetObjectPreset,
   shadowMode,
   onSetShadowMode,
+  shadowCasterPreset,
+  onSetShadowCasterPreset,
   canFenceGarden,
   onFenceGarden,
 }: Props) {

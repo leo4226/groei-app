@@ -68,7 +68,7 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
       const cx = caster.x + caster.width / 2
       const cy = caster.y + caster.height / 2
       const radius = Math.max(10, Math.min(caster.width, caster.height) / 2)
-      onUpdate({ type: 'circle', cx, cy, radius, x: undefined as never, y: undefined as never, width: undefined as never, height: undefined as never })
+      onUpdate({ type: 'circle', cx, cy, radius })
     } else if (type === 'rect' && caster.type === 'circle') {
       onUpdate({
         type: 'rect',
@@ -76,9 +76,6 @@ export default function ShadowCasterPropertiesPanel({ caster, scalePxPerM, garde
         y: Math.round(caster.cy - caster.radius),
         width: caster.radius * 2,
         height: caster.radius * 2,
-        cx: undefined as never,
-        cy: undefined as never,
-        radius: undefined as never,
       })
     }
   }

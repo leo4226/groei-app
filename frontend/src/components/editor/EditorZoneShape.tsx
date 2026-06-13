@@ -74,7 +74,7 @@ function ZoneDecorations({ zone, isSelected }: { zone: EditorZone; isSelected: b
   )
 }
 
-export default function EditorZoneShape({ zone, zones, isSelected, scalePxPerM, wallElements, selectedWallElementId, onPointerDown, onSelectWallElement, onWallElementPointerDown }: Props) {
+export default function EditorZoneShape({ zone, isSelected, scalePxPerM, wallElements, selectedWallElementId, onPointerDown, onSelectWallElement, onWallElementPointerDown }: Props) {
   // ── Structure: rendered like a room but with no interior fill ──
   if (zone.type === 'structure') {
     const wallPx = Math.max(6, Math.round((WALL_THICKNESS_EXTERIOR_CM * scalePxPerM) / 100))

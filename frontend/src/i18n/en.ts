@@ -997,6 +997,7 @@ export const en: Translations = {
     sheetAllGood: 'All on schedule',
     unplacedTitle: 'To place',
     unplacedCount: (n) => `${n} unplaced`,
+    spotInspectorHint: 'Tap a spot to inspect it',
   },
 
   garden: {

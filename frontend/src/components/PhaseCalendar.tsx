@@ -38,14 +38,6 @@ export default function PhaseCalendar({
     if (!data) return ''
     return isEN && data.phase_label_en ? data.phase_label_en : data.phase_label_nl
   }
-  const description = (data: { description_nl: string; description_en?: string } | undefined) => {
-    if (!data) return ''
-    return isEN && data.description_en ? data.description_en : data.description_nl
-  }
-  const actions = (data: { actions_nl: string[]; actions_en?: string[] } | undefined): string[] => {
-    if (!data) return []
-    return isEN && data.actions_en ? data.actions_en : data.actions_nl
-  }
   const fact = phenology.interesting_facts_en && isEN
     ? phenology.interesting_facts_en
     : phenology.interesting_facts_nl

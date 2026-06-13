@@ -997,6 +997,7 @@ export const nl: Translations = {
     sheetAllGood: 'Alles op schema',
     unplacedTitle: 'Nog te plaatsen',
     unplacedCount: (n) => `${n} niet geplaatst`,
+    spotInspectorHint: 'Tik op een plek om te inspecteren',
   },
 
   garden: {

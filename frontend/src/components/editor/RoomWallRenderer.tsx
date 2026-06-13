@@ -84,7 +84,7 @@ function isEdgeFlushWithRoom(
   edge: RoomEdge,
   allZones: EditorZone[],
 ): boolean {
-  const isVert = edge === 'left' || edge === 'right'
+
   let edgeCoord: number, perpMin: number, perpMax: number
   switch (edge) {
     case 'left':   edgeCoord = zone.x;               perpMin = zone.y; perpMax = zone.y + zone.height; break
@@ -131,7 +131,8 @@ function isEdgeFlushWithStructure(
   allZones: EditorZone[],
   scalePxPerM: number,
 ): boolean {
-  const isVert = edge === 'left' || edge === 'right'
+  const isVert = edge === 'left' || edge === 'right';
+
   let edgeCoord: number, perpMin: number, perpMax: number
   switch (edge) {
     case 'left':   edgeCoord = zone.x;               perpMin = zone.y; perpMax = zone.y + zone.height; break
@@ -179,8 +180,9 @@ function getInheritedGaps(
   allWallElements: WallElement[],
   scalePxPerM: number,
 ): { start: number; end: number; element: WallElement }[] {
+  const isVert = edge === 'left' || edge === 'right';
   const t = getWallThicknessPx(struct, scalePxPerM)
-  const isVert = edge === 'left' || edge === 'right'
+
 
   // Where the structure's inner wall face sits on this edge
   let innerFace: number
@@ -265,7 +267,7 @@ function getInheritedStructureGaps(
   allWallElements: WallElement[],
   scalePxPerM: number,
 ): { start: number; end: number; element: WallElement }[] {
-  const isVert = edge === 'left' || edge === 'right'
+
 
   // Room's edge coordinate and perpendicular range
   let roomEdgeCoord: number

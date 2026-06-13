@@ -285,11 +285,11 @@ interface ShadowCasterDragState {
 export default function EditorCanvas({
   zones, wallElements, shadowCasters, objects,
   selectedZoneId, selectedWallElementId, selectedShadowCasterId,
-  activeTool, activeZoneType, objectPreset, scalePxPerM, previewMode, mapType, mapId,
-  showSunPreview, perimeterPolygon,
+  activeTool, activeZoneType, objectPreset, scalePxPerM, previewMode,
+  perimeterPolygon,
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
-  selectedObjectId, onMoveObject, onRotateObject, onSelectObject, onObjectCreated,
+  
   onPlaceObject,
   shadowCasterPreset,
   shadowMode = false,
@@ -975,8 +975,8 @@ export default function EditorCanvas({
             <ObjectShape
               key={obj.id}
               object={obj}
-              x={obj.map_x}
-              y={obj.map_y}
+              x={obj.map_x ?? 0}
+              y={obj.map_y ?? 0}
               showLabel={true}
             />
           ))}

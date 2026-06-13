@@ -1013,6 +1013,7 @@ export type Translations = {
     sheetAllGood: string                         // "Alles op schema"
     unplacedTitle: string                        // "Nog te plaatsen" — unplaced tray header
     unplacedCount: (n: number) => string         // "{n} niet geplaatst"
+    spotInspectorHint: string
   }
 
   garden: {

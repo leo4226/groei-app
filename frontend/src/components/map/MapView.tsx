@@ -52,7 +52,7 @@ interface Props {
 }
 
 export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
   const isLandscapeMobile = useLandscapeMobile()
@@ -101,7 +101,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             return { startZoom: zoom, startPan: { ...pan }, mx: mid?.x ?? baseCenter.cx, my: mid?.y ?? baseCenter.cy }
           })()
         : memo
-      const k = scale / m.startZoom
       setZoom(+scale.toFixed(3))
       setPan({
         x: (baseCenter.cx - m.mx) * (1 - m.startZoom / scale) + m.startPan.x * (m.startZoom / scale),
@@ -391,7 +390,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
               const [,, w, h] = map.viewbox.split(' ').map(Number)
               return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
             })()}
-            <CanvasZonesLayer canvasData={canvasData} showBackground={isHouseMap} />
+            <CanvasZonesLayer canvasData={canvasData} /* showBackground removed */ />
           </>
         ) : (
           (() => {
@@ -413,15 +412,15 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             />
           )}
           {sunModeActive && sunPosition && sunPosition.isUp && (
-            <SunDirectionArrow sunPosition={sunPosition} clipRect={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} bearing={map.bearing ?? 0} />
+            <SunDirectionArrow sunPosition={sunPosition} clipRect={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : { x: 0, y: 0, width: 0, height: 0 }} bearing={map.bearing ?? 0} />
           )}
 
           {/* Heatmap overlay (behind everything interactive) */}
           {heatmapCells && heatmapCells.length > 0 && (
-            <SunHeatmap cells={heatmapCells} isCalculating={!!heatmapCalculating} layer={heatmapLayer} onCellTap={onHeatmapCellTap} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} />
+            <SunHeatmap cells={heatmapCells} isCalculating={!!heatmapCalculating} layer={heatmapLayer} onCellTap={onHeatmapCellTap} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : { x: 0, y: 0, width: 0, height: 0 }} />
           )}
           {heatmapCalculating && !heatmapCells?.length && (
-            <SunHeatmap cells={[]} isCalculating={true} layer={heatmapLayer} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : undefined} />
+            <SunHeatmap cells={[]} isCalculating={true} layer={heatmapLayer} maskPolygon={gardenPerimeter} bounds={gardenBounds ? { x: gardenBounds.minX, y: gardenBounds.minY, width: gardenBounds.maxX - gardenBounds.minX, height: gardenBounds.maxY - gardenBounds.minY } : { x: 0, y: 0, width: 0, height: 0 }} />
           )}
           {heatmapCells && heatmapProfile && (
             <PlantSuitabilityLayer cells={heatmapCells} profile={heatmapProfile} />

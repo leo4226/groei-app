@@ -307,7 +307,7 @@ export default function MapPage() {
       {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
           unplaced-plants tray (z-20) stacked directly below it */}
       <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
-        <MapTopBar map={map} allMaps={maps} />
+        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => !v)} />
       </div>
 
       {/* Left, below the garden pill: unplaced-plants tray */}
@@ -320,17 +320,13 @@ export default function MapPage() {
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={water.gardenWater?.status ?? 'dry'}
-          showLabels={showLabels}
           sunActive={sun.active}
           sunAvailable={sun.available}
           inspectorMode={sun.inspectorMode}
           onWater={water.togglePicker}
           onFertilize={fertilize.togglePicker}
           onToggleSun={sun.toggle}
-          onToggleLabels={() => setShowLabels((v) => !v)}
           onToggleInspector={sun.toggleInspectorMode}
-          onIdentify={() => navigate('/identify', { state: { mapId: map.id, mapSlug: map.slug } })}
-          onAddPot={() => setShowPotPicker(true)}
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
         />
         <div className="landscape-mobile-hide">
@@ -360,7 +356,6 @@ export default function MapPage() {
               tappedCell={sun.tappedCell}
               selectedProfile={sun.profile}
               onProfileChange={sun.setProfile}
-              onGrowHere={sun.openGrowHere}
             />
           }
         />
