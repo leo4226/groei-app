@@ -27,8 +27,8 @@
   font-size: 14px;
   line-height: 1.5;
   background-image:
-    radial-gradient(circle at 8% 6%, color-mix(in srgb, var(--color-secondary) .05, transparent), transparent 40%),
-    radial-gradient(circle at 92% 92%, color-mix(in srgb, var(--color-primary) .05, transparent), transparent 45%);
+    radial-gradient(circle at 8% 6%, color-mix(in srgb, var(--color-secondary) 5%, transparent), transparent 40%),
+    radial-gradient(circle at 92% 92%, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent 45%);
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
 }
@@ -207,7 +207,7 @@
 }
 .cal-page .legend-chip .dot {
   width: 10px; height: 10px; border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--color-text) .08, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 .cal-page .legend-chip .ct {
   font-family: 'JetBrains Mono', monospace;
@@ -300,22 +300,22 @@
   transition: background .15s;
 }
 .cal-page .day:nth-child(8n) { border-right: 0; }
-.cal-page .day:hover { background: color-mix(in srgb, var(--color-primary) .025, transparent); }
+.cal-page .day:hover { background: color-mix(in srgb, var(--color-primary) 2.5%, transparent); }
 .cal-page .day.other-month {
-  background: color-mix(in srgb, var(--color-border) .18, transparent);
+  background: color-mix(in srgb, var(--color-border) 18%, transparent);
   color: var(--cal-ink-faint);
 }
 .cal-page .day.other-month .day-num { color: var(--cal-ink-faint); opacity: 0.6; }
-.cal-page .day.weekend { background: color-mix(in srgb, var(--color-secondary) .018, transparent); }
-.cal-page .day.weekend.other-month { background: color-mix(in srgb, var(--color-border) .18, transparent); }
+.cal-page .day.weekend { background: color-mix(in srgb, var(--color-secondary) 1.8%, transparent); }
+.cal-page .day.weekend.other-month { background: color-mix(in srgb, var(--color-border) 18%, transparent); }
 .cal-page .day.today {
-  background: color-mix(in srgb, var(--color-primary) .06, transparent);
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
   box-shadow: inset 0 0 0 2px var(--cal-accent);
   z-index: 2;
 }
 .cal-page .day.selected:not(.today) {
   box-shadow: inset 0 0 0 1px var(--cal-terra);
-  background: color-mix(in srgb, var(--color-secondary) .05, transparent);
+  background: color-mix(in srgb, var(--color-secondary) 5%, transparent);
   z-index: 1;
 }
 .cal-page .day-head {
@@ -376,7 +376,7 @@
   line-height: 1.2;
   color: var(--cal-ink);
   border-left: 3px solid var(--cal-accent);
-  background: color-mix(in srgb, var(--color-primary) .07, transparent);
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -392,15 +392,15 @@
   overflow: hidden; text-overflow: ellipsis;
   flex: 1;
 }
-.cal-page .ev.water  { border-left-color: var(--cal-sky); background: color-mix(in srgb, var(--cal-sky) .10, transparent); }
-.cal-page .ev.bloom  { border-left-color: var(--cal-accent); background: color-mix(in srgb, var(--color-primary) .08, transparent); }
-.cal-page .ev.prune  { border-left-color: var(--cal-terra); background: color-mix(in srgb, var(--color-secondary) .10, transparent); }
-.cal-page .ev.feed   { border-left-color: var(--cal-gold); background: color-mix(in srgb, var(--cal-gold) .10, transparent); }
-.cal-page .ev.sow    { border-left-color: var(--cal-accent-hl); background: color-mix(in srgb, var(--cal-accent-hl) .10, transparent); }
-.cal-page .ev.repot  { border-left-color: var(--cal-terra-dk); background: color-mix(in srgb, var(--cal-terra-dk) .10, transparent); }
-.cal-page .ev.harvest{ border-left-color: var(--cal-accent-dk); background: color-mix(in srgb, var(--cal-accent-dk) .10, transparent); }
-.cal-page .ev.scan   { border-left-color: var(--cal-sky-dk); background: color-mix(in srgb, var(--cal-sky-dk) .08, transparent); }
-.cal-page .ev.rain   { border-left-color: var(--cal-ink-faint); background: color-mix(in srgb, var(--cal-ink-faint) .10, transparent); color: var(--cal-ink-soft); font-style: italic; }
+.cal-page .ev.water  { border-left-color: var(--cal-sky); background: color-mix(in srgb, var(--cal-sky) 10%, transparent); }
+.cal-page .ev.bloom  { border-left-color: var(--cal-accent); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.cal-page .ev.prune  { border-left-color: var(--cal-terra); background: color-mix(in srgb, var(--color-secondary) 10%, transparent); }
+.cal-page .ev.feed   { border-left-color: var(--cal-gold); background: color-mix(in srgb, var(--cal-gold) 10%, transparent); }
+.cal-page .ev.sow    { border-left-color: var(--cal-accent-hl); background: color-mix(in srgb, var(--cal-accent-hl) 10%, transparent); }
+.cal-page .ev.repot  { border-left-color: var(--cal-terra-dk); background: color-mix(in srgb, var(--cal-terra-dk) 10%, transparent); }
+.cal-page .ev.harvest{ border-left-color: var(--cal-accent-dk); background: color-mix(in srgb, var(--cal-accent-dk) 10%, transparent); }
+.cal-page .ev.scan   { border-left-color: var(--cal-sky-dk); background: color-mix(in srgb, var(--cal-sky-dk) 8%, transparent); }
+.cal-page .ev.rain   { border-left-color: var(--cal-ink-faint); background: color-mix(in srgb, var(--cal-ink-faint) 10%, transparent); color: var(--cal-ink-soft); font-style: italic; }
 .cal-page .ev-more {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
@@ -459,7 +459,7 @@
   cursor: pointer;
   transition: background .15s;
 }
-.cal-page .agenda-item:hover { background: color-mix(in srgb, var(--color-secondary) .04, transparent); }
+.cal-page .agenda-item:hover { background: color-mix(in srgb, var(--color-secondary) 4%, transparent); }
 .cal-page .agenda-item:last-child { border-bottom: 0; }
 
 /* Grouped agenda row */
@@ -483,7 +483,7 @@
   font-weight: 600;
   font-size: 15px;
   color: var(--cal-ink-soft);
-  background: color-mix(in srgb, var(--color-text) .04, transparent);
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
   border-radius: 99px;
   padding: 2px 10px;
   align-self: center;
@@ -511,7 +511,7 @@
   border: 1px solid var(--color-border);
 }
 .cal-page .ag-btn-skip:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-secondary) .06, transparent);
+  background: color-mix(in srgb, var(--color-secondary) 6%, transparent);
 }
 .cal-page .agenda-icon {
   width: 48px; height: 48px;
@@ -666,7 +666,7 @@
 /* Seasonal almanac block */
 .cal-page .almanac-side {
   background:
-    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-due) .15, transparent), transparent 50%),
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-due) 15%, transparent), transparent 50%),
     linear-gradient(160deg, var(--cal-accent) 0%, var(--cal-accent-dk) 100%);
   color: var(--cal-paper);
   position: relative;
