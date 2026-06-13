@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { CARE_TYPE_INFO } from '../types'
-import type { CareTask, RecentLogEntry, MapInfo, Plant, PlantFactOut, WarningSummaryOut, BucketPlantOut } from '../types'
+import type { RecentLogEntry, MapInfo, Plant, PlantFactOut, WarningSummaryOut, BucketPlantOut } from '../types'
 import type { WeatherData } from '../hooks/useWeather'
 import { useWeather } from '../hooks/useWeather'
 import UserSwitcher from '../components/UserSwitcher'
-import { HALO_COLORS } from '../hooks/usePlantStatus'
 import { useT } from '../context/LanguageContext'
 import { getToken } from '../api/auth'
 import type { Translations } from '../i18n/translations'
@@ -51,7 +50,6 @@ export default function Dashboard() {
 
   const nuCount      = warningSummary?.buckets.nu.length           ?? 0
   const vandaagCount = warningSummary?.buckets.vandaag.length      ?? 0
-  const weekCount    = warningSummary?.buckets.komende_week.length ?? 0
 
   const date = new Date().toLocaleDateString(t.locale, { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -99,7 +97,7 @@ export default function Dashboard() {
             </div>
           ) : isLoading ? (
             <div style={{ display: 'flex', width: '100%', height: 132, alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 18 }}>
-              {t.dashboard.loading ?? 'Loading…'}
+              {'Loading…'}
             </div>
           ) : (
             <button onClick={() => setShowNewMap(true)} style={{
@@ -640,11 +638,6 @@ function parseCanvasZones(canvasData: string | null) {
   } catch { return null }
 }
 
-function careColor(status: Plant['care_status']): string | null {
-  if (status === 'overdue')   return '#C83C3C'
-  if (status === 'due_today') return '#D4943A'
-  return null
-}
 
 function MapCard({ map, t, warningSummary, plants }: { map: MapInfo; t: Translations; warningSummary: WarningSummaryOut | null; plants: Plant[] }) {
   const typeLabel = map.map_type === 'outdoor' ? t.dashboard.actions.mapTypeOutdoor : t.dashboard.actions.mapTypeIndoor

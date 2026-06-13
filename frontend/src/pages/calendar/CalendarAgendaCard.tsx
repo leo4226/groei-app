@@ -13,7 +13,7 @@ interface Props {
   onSkip: (e: CalendarEvent) => void
 }
 
-export default function CalendarAgendaCard({ selectedIso, events, todayIso, saving, onDone, onSkip }: Props) {
+export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDone, onSkip }: Props) {
   const t = useT()
   const [y, m, d] = selectedIso.split('-').map(Number)
   const dayName = DAY_LONG_NL[dowMon(y, m, d)]
@@ -80,7 +80,7 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, savi
         )}
         {Object.entries(groups).map(([type, groupEvents]) => {
           const def = EVENT_TYPE_BY_ID[type]
-          const label = t.utility[EVENT_TYPE_UTILITY_KEY[type]] ?? type
+          const label = t.utility[EVENT_TYPE_UTILITY_KEY[type as EventTypeId]] ?? type
           const busyGroup = savingType === type
 
           return (

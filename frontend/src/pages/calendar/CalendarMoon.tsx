@@ -22,7 +22,7 @@ export default function CalendarMoon({ year, month1, todayDay }: Props) {
       <div className="sc-head">
         <div className="sc-eye">{t.calendar.moonPhase}</div>
         <h2 className="sc-title">{t.calendar.week} <em>{wk}</em>.</h2>
-        <p className="sc-sub">{t.calendar[MOON_PHASE_KEY[center.phase]]}.</p>
+        <p className="sc-sub">{t.calendar[MOON_PHASE_KEY[center.phase]] as string}.</p>
       </div>
       <div className="moon-strip">
         <div className="moon-row">
@@ -42,7 +42,7 @@ export default function CalendarMoon({ year, month1, todayDay }: Props) {
             )
           })}
         </div>
-        <p className="moon-phase-label">{t.calendar[MOON_PHASE_KEY[center.phase]]}.</p>
+        <p className="moon-phase-label">{t.calendar[MOON_PHASE_KEY[center.phase]] as string}.</p>
       </div>
     </section>
   )

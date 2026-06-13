@@ -46,7 +46,7 @@ export function createLightEngine(config: MapLightConfig): LightEngine {
       if (cache.has(month)) return Promise.resolve(cache.get(month)!)
       return new Promise(resolve =>
         setTimeout(() => {
-          const cells = computeHeatmap(month, 0.15, 10, lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter)
+          const cells = computeHeatmap(month, 0.15, 10, lat, lon, bearing, shadowCasters, gardenBounds, gardenPerimeter ?? undefined)
           cache.set(month, cells)
           resolve(cells)
         }, 0)

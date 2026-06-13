@@ -44,7 +44,6 @@ function useIsMobile() {
 
 export default function Plants() {
   const { plants, isLoading, maps } = useFloreren()
-  const CATEGORY_LABELS = useCategoryLabels()
   const PLANT_TYPE_LABELS = useTypeLabels()
   const FORM_LABELS = useFormLabels()
   const t = useT()
@@ -174,21 +173,6 @@ export default function Plants() {
   }, [])
 
   // ───────────── Mutually exclusive: only one filter active ─────────────
-  const activeFilter = ['all', 'tuin', 'huis'].includes(filterArea) && filterArea !== 'all'
-    ? `area:${filterArea}`
-    : filterType !== 'all'
-    ? `type:${filterType}`
-    : filterForm !== 'all'
-    ? `form:${filterForm}`
-    : null
-
-  const clearFilters = () => {
-    setFilterArea('all')
-    setFilterType('all')
-    setFilterForm('all')
-    setQuery('')
-  }
-
   const hasActiveFilters = filterArea !== 'all' || filterType !== 'all' || filterForm !== 'all' || !!query
 
   const categoryCount = new Set(plants.map(p => p.plant_type).filter(Boolean)).size
@@ -317,7 +301,7 @@ export default function Plants() {
               border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
               transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
             }}>
-              {t.plantsPage.cancel ?? 'Annuleren'}
+              {'Annuleren'}
             </button>
           ) : (
             <button onClick={() => setIsSelecting(true)} style={{
@@ -779,7 +763,7 @@ export default function Plants() {
         gap: isMobile ? 10 : 16,
       }}>
         {filtered.map((plant) => (
-          <PlantCard key={plant.id} plant={plant} iconMap={iconMap} index={plants.indexOf(plant) + 1}
+          <PlantCard key={plant.id} plant={plant} iconMap={iconMap}
             isSelecting={isSelecting} selected={selectedIds.has(plant.id)} onToggle={() => toggleSelect(plant.id)} />
         ))}
       </div>
@@ -833,7 +817,7 @@ function Count({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, PlantIcon> }) {
+function PlantIconWell({ plant }: { plant: Plant }) {
   if (plant.icon_key) {
     return (
       <div style={{
@@ -876,8 +860,8 @@ function PlantIconWell({ plant, iconMap }: { plant: Plant; iconMap: Map<string, 
   )
 }
 
-function PlantCard({ plant, iconMap, index, isSelecting, selected, onToggle }: {
-  plant: Plant; iconMap: Map<string, PlantIcon>; index: number;
+function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
+  plant: Plant; iconMap: Map<string, PlantIcon>;
   isSelecting?: boolean; selected?: boolean; onToggle?: () => void;
 }) {
   const CATEGORY_LABELS = useCategoryLabels()
@@ -898,7 +882,7 @@ function PlantCard({ plant, iconMap, index, isSelecting, selected, onToggle }: {
         }}
       >
         <div style={{ position: 'relative' }}>
-          <PlantIconWell plant={plant} iconMap={iconMap} />
+          <PlantIconWell plant={plant} />
           <div style={{
             position: 'absolute', top: 6, right: 6,
             width: 22, height: 22, borderRadius: 22,
@@ -942,7 +926,7 @@ function PlantCard({ plant, iconMap, index, isSelecting, selected, onToggle }: {
       style={{ borderRadius: 14, overflow: 'hidden', color: 'inherit', textDecoration: 'none' }}
     >
       <div style={{ position: 'relative' }}>
-        <PlantIconWell plant={plant} iconMap={iconMap} />
+        <PlantIconWell plant={plant} />
         {typeDisplay && (
           <span style={{
             position: 'absolute', top: 6, left: 6,

@@ -25,7 +25,7 @@ export default function MapSettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function MapSettingsPage() {
       setLon(m.lon != null ? String(m.lon) : '')
       setBearing(m.bearing ?? 0)
       setLoading(false)
-    }).catch(e => {
+    }).catch(() => {
       if (mounted.current) setError(t.mapSettings.notFound)
       setLoading(false)
     })

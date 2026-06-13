@@ -86,7 +86,7 @@ export default function AddPlant() {
       : ''
   )
   const [locationId] = useState<number | undefined>()
-  const [area, setArea] = useState<'tuin' | 'huis' | null>(null)
+  const [, setArea] = useState<'tuin' | 'huis' | null>(null)
   const [potSize] = useState('')
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
   const [notes, setNotes] = useState(
@@ -195,7 +195,7 @@ export default function AddPlant() {
     speciesApi.lookupLatin(latin)
       .then(resp => {
         if (cancelled || !resp.care_thresholds) return
-        setSchedules(prev => buildSchedules(
+        setSchedules(() => buildSchedules(
           prefill,
           resp.care_thresholds,
         ))
@@ -326,13 +326,6 @@ export default function AddPlant() {
     }
   }
 
-  function toggleSchedule(type: CareType) {
-    setSchedules(prev => ({ ...prev, [type]: { ...prev[type], enabled: !prev[type].enabled } }))
-  }
-
-  function setScheduleDays(type: CareType, days: number) {
-    setSchedules(prev => ({ ...prev, [type]: { ...prev[type], days } }))
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -381,7 +374,7 @@ export default function AddPlant() {
     }
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+  
 
   // Derived Latin name for species row (read-only, from prefill)
   const latinName = useMemo(() => {

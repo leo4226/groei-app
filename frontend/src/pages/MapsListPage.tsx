@@ -5,7 +5,7 @@ import { useT } from '../context/LanguageContext'
 import type { MapInfo } from '../types'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
-  const isOutdoor = map.map_type === 'outdoor' || map.map_type === 'garden'
+  const isOutdoor = map.map_type === 'outdoor'
   const baseColor = isOutdoor ? '#7A9E5A' : '#E8E0D0'
   const accentColor = isOutdoor ? '#C8A96A' : '#C8A060'
 
