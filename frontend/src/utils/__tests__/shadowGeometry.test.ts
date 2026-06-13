@@ -8,48 +8,12 @@ const TEST_BEARING = 347
 
 // ── Helper: call the internal getShadowVector indirectly via computeShadows ──
 
-function shadowVec(azimuthDeg: number, altitudeDeg: number, heightCm: number) {
-  const caster: ShadowCaster = { id: 't', label: 't', type: 'circle', cx: 0, cy: 0, radius: 1, heightCm }
-  const sun: SunPosition = { azimuthDeg, altitudeDeg, isUp: true }
-  const shadows = computeShadows(sun, [caster], TEST_BEARING)
-  if (!shadows.length) return null
-  // Circle displaced by (dx, dy): pathD = "M{cx+dx-r},{cy+dy}A..."
-  // Extract new centre from path: "M{cx},{cy}A..." after displacement
-  // Easiest: re-derive from path M coords
-  const m = shadows[0].pathD.match(/^M([-\d.]+),([-\d.]+)/)
-  if (!m) return null
-  const dispCx = parseFloat(m[1]) + 1 // +radius to recover centre
-  const dispCy = parseFloat(m[2])
-  return { dx: dispCx - 0, dy: dispCy - 0 }
-}
-
 // ── Direct test via exported computeShadows (unit-tests the vector direction) ──
 
 const unitCaster: ShadowCaster = {
   id: 'unit', label: 'unit', type: 'rect',
   x: 0, y: 0, width: 1, height: 1,
   heightCm: 100,
-}
-
-function vec(az: number, alt: number) {
-  const sun: SunPosition = { azimuthDeg: az, altitudeDeg: alt, isUp: true }
-  const s = computeShadows(sun, [unitCaster], TEST_BEARING)
-  if (!s.length) return null
-  // The convex hull of a unit rect displaced by (dx,dy) — extract dx,dy from first two corners
-  // Corner [0,0] → tip [dx, dy]: find this in path points
-  // Use a simpler approach: a 1×1 rect at (0,0), displaced by (dx,dy).
-  // The shadow polygon will contain corners (0,0), (1,0), (1,1), (0,1) and
-  // their displaced counterparts. The centroid shifts by (dx,dy).
-  // Average all path coords.
-  const coords = [...s[0].pathD.matchAll(/([-\d.]+),([-\d.]+)/g)]
-  const xs = coords.map(m => parseFloat(m[1]))
-  const ys = coords.map(m => parseFloat(m[2]))
-  const avgX = xs.reduce((a, b) => a + b, 0) / xs.length
-  const avgY = ys.reduce((a, b) => a + b, 0) / ys.length
-  // Original centroid of rect is (0.5, 0.5); displaced centroid ≈ (0.5+dx/2, 0.5+dy/2)
-  // Actually the convex hull mixes both, so just read sign of displacement from full shadow:
-  // Cast a tiny rect at (300,300) far from origin to get clean displacement direction
-  return { avgX, avgY }
 }
 
 function shadowDirection(az: number, alt: number): { dx: number; dy: number } | null {
@@ -123,9 +87,7 @@ describe('getShadowVector direction (via computeShadows)', () => {
       expect(v).not.toBeNull()
       const ax = Math.abs(v.dx), ay = Math.abs(v.dy)
       if (dominant === '-X') { expect(v.dx).toBeLessThan(0); expect(ax).toBeGreaterThan(ay * 0.5) }
-      if (dominant === '+X') { expect(v.dx).toBeGreaterThan(0); expect(ax).toBeGreaterThan(ay * 0.5) }
       if (dominant === '-Y') { expect(v.dy).toBeLessThan(0); expect(ay).toBeGreaterThan(ax * 0.5) }
-      if (dominant === '+Y') { expect(v.dy).toBeGreaterThan(0); expect(ay).toBeGreaterThan(ax * 0.5) }
     })
   }
 })

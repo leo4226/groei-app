@@ -5,7 +5,6 @@ export default function UserSwitcher() {
   const activeUserId = useFloreren((s) => s.activeUserId)
   const setActiveUser = useFloreren((s) => s.setActiveUser)
 
-  const activeUser = users.find((u) => u.id === activeUserId)
 
   return (
     <div className="flex items-center gap-2">

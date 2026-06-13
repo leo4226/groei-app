@@ -111,21 +111,6 @@ export default function LayoutEditorPage() {
     }
   }, [mapId])
 
-  const doSave = useCallback(
-    async (data: CanvasData) => {
-      if (!mapId) return
-      setSaveStatus('saving')
-      try {
-        await client.maps.update(mapId, { canvas_data: JSON.stringify(data) })
-        editor.markClean()
-        setSaveStatus('saved')
-      } catch {
-        setSaveStatus('unsaved')
-      }
-    },
-    [mapId, editor.markClean]
-  )
-
   const isSavingRef = useRef(false)
 
   useEffect(() => {
