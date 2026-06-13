@@ -71,6 +71,7 @@ export const nl: Translations = {
       rain: 'Regen',
       tonight: 'Nacht',
       loading: 'Weer laden…',
+      unavailable: 'Weer niet beschikbaar',
     },
     comingSoon: 'Binnenkort',
     warnings: {
