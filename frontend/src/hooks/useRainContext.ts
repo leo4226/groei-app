@@ -8,7 +8,7 @@ export interface RainDay {
 export interface RainContext {
   days: RainDay[]
   total_7day_mm: number
-  assessment: 'well_watered' | 'moderate' | 'dry' | 'very_dry'
+  assessment: 'well_watered' | 'moderate' | 'dry' | 'very_dry' | 'unknown'
 }
 
 interface State {

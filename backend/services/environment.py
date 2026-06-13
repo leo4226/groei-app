@@ -66,10 +66,16 @@ async def _read_db_cache(db, cache_key: str) -> dict | None:
 
 
 async def _write_db_cache(db, cache_key: str, data: dict) -> None:
-    """Persist weather data to DB cache."""
-    await db.execute(
+    """Persist weather data to DB cache.
+
+    Use execute_fetchall + RETURNING to avoid DbAdapter.execute() appending
+    ``RETURNING id``. The weather_cache table is keyed by cache_key and has no
+    numeric id column.
+    """
+    await db.execute_fetchall(
         "INSERT INTO weather_cache (cache_key, data_json, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
-        "ON CONFLICT (cache_key) DO UPDATE SET data_json = EXCLUDED.data_json, fetched_at = CURRENT_TIMESTAMP",
+        "ON CONFLICT (cache_key) DO UPDATE SET data_json = EXCLUDED.data_json, fetched_at = CURRENT_TIMESTAMP "
+        "RETURNING cache_key",
         (cache_key, json.dumps(data)),
     )
     await db.commit()
