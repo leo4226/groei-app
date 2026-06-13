@@ -21,22 +21,16 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   throw new Error(msg)
 }
 
-export async function apiRequest<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
-  const url = BASE + path + (options.params ? '?' + new URLSearchParams(options.params) : '')
+function buildUrl(path: string, params?: Record<string, string>) {
+  return BASE + path + (params ? '?' + new URLSearchParams(params) : '')
+}
+
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('floreren-token')
-  const headers: Record<string, string> = {}
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
-  const init: RequestInit = { method, headers }
-  if (options.form) {
-    init.body = options.form
-  } else if (options.body !== undefined) {
-    headers['Content-Type'] = 'application/json'
-    init.body = JSON.stringify(options.body)
-  }
-
-  const res = await fetch(url, init)
-
+async function handleAuthErrors(res: Response): Promise<void> {
   if (res.status === 401) {
     localStorage.removeItem('floreren-token')
     window.location.href = '/login'
@@ -48,10 +42,35 @@ export async function apiRequest<T>(method: string, path: string, options: ApiOp
     try { const body = await res.json(); if (body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail) } catch {}
     throw new Error(detail)
   }
+}
 
+export async function apiRequest<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
+  const url = buildUrl(path, options.params)
+  const headers = authHeaders()
+
+  const init: RequestInit = { method, headers }
+  if (options.form) {
+    init.body = options.form
+  } else if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+    init.body = JSON.stringify(options.body)
+  }
+
+  const res = await fetch(url, init)
+  await handleAuthErrors(res)
   await ensureOk(res, `Failed: ${method} ${path}`)
   if (res.status === 204) return undefined as T
   return res.json()
+}
+
+export async function apiBlob(path: string, options: { params?: Record<string, string> } = {}): Promise<Blob> {
+  const res = await fetch(buildUrl(path, options.params), {
+    method: 'GET',
+    headers: authHeaders(),
+  })
+  await handleAuthErrors(res)
+  await ensureOk(res, `Failed: GET ${path}`)
+  return res.blob()
 }
 
 /** Retry transient network errors (TypeError from fetch). */
@@ -321,6 +340,11 @@ export const auth = {
   me: () => api<AccountMe>("GET", "/auth/me"),
   changePassword: (data: { current_password: string; new_password: string }) =>
     api<{ message: string }>("POST", "/auth/change-password", { body: data }),
+}
+
+export const dataExport = {
+  bundle:     () => apiBlob('/export'),
+  careLogCsv: () => apiBlob('/export/care-log.csv'),
 }
 
 export const admin = {

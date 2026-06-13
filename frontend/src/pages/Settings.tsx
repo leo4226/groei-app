@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { apiRequest, icons, auth, household, notifications, type NotificationPrefs, users as usersApi } from '../api/client'
+import { apiRequest, icons, auth, household, notifications, dataExport, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
@@ -45,6 +45,9 @@ export default function Settings() {
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
+  const [exportBusy, setExportBusy] = useState<'json' | 'csv' | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [exportReady, setExportReady] = useState(false)
 
   // Profile state
   const [profileName, setProfileName] = useState('')
@@ -284,6 +287,41 @@ export default function Settings() {
       setSyncError(e instanceof Error ? e.message : t.common.error)
     } finally {
       setSyncing(false)
+    }
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  async function handleDownloadExport(kind: 'json' | 'csv') {
+    setExportBusy(kind)
+    setExportError(null)
+    setExportReady(false)
+    try {
+      const blob = kind === 'json'
+        ? await dataExport.bundle()
+        : await dataExport.careLogCsv()
+      const day = new Date().toISOString().slice(0, 10)
+      downloadBlob(
+        blob,
+        kind === 'json'
+          ? `floreren-export-${day}.json`
+          : `floreren-care-log-${day}.csv`,
+      )
+      setExportReady(true)
+      setTimeout(() => setExportReady(false), 2500)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : t.settings.downloadError)
+    } finally {
+      setExportBusy(null)
     }
   }
 
@@ -613,6 +651,39 @@ export default function Settings() {
       </section>
 
             <section className="mb-8">
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataTitle}</h2>
+        <div className="card p-4 space-y-3">
+          <p className="text-sm text-text-muted">{t.settings.dataDescription}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              onClick={() => handleDownloadExport('json')}
+              disabled={exportBusy !== null}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              {exportBusy === 'json' ? (
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t.settings.downloading}</>
+              ) : (
+                <>{t.settings.downloadData}</>
+              )}
+            </button>
+            <button
+              onClick={() => handleDownloadExport('csv')}
+              disabled={exportBusy !== null}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-border bg-surface text-text font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-50"
+            >
+              {exportBusy === 'csv' ? (
+                <><span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> {t.settings.downloading}</>
+              ) : (
+                <>{t.settings.downloadCareLogCsv}</>
+              )}
+            </button>
+          </div>
+          {exportReady && <p className="text-sm text-primary">{t.settings.downloadReady}</p>}
+          {exportError && <p className="text-sm text-fiery-red">{exportError}</p>}
+        </div>
+      </section>
+
+      <section className="mb-8">
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.householdTitle}</h2>
         <div className="card p-4 space-y-4">
           {/* Editable household name */}
