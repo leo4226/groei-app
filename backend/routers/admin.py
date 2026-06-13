@@ -92,6 +92,57 @@ async def backfill_care_schedules(db = Depends(db_dep)):
     return {"checked": len(rows), "seeded": seeded}
 
 
+@router.post("/admin/backfill-species")
+async def backfill_species(db = Depends(db_dep)):
+    """Retry species generation for all active plants missing species_id."""
+    rows = await db.execute_fetchall(
+        "SELECT id, name FROM plants WHERE species_id IS NULL AND is_active = 1"
+    )
+
+    processed = len(rows)
+    succeeded = 0
+    failures = []
+
+    for row in rows:
+        plant_id = row["id"]
+        plant_name = row["name"]
+        try:
+            species_id = await get_or_create_species(db, plant_name)
+            await db.execute(
+                "UPDATE plants SET species_id = $1 WHERE id = $2",
+                (species_id, plant_id),
+            )
+            await db.commit()
+            succeeded += 1
+            print(f"  ✓ Species created for plant {plant_id} ({plant_name})")
+        except Exception as exc:
+            failures.append({"plant_id": plant_id, "name": plant_name, "error": str(exc)})
+            print(f"  ✗ Failed for plant {plant_id} ({plant_name}): {exc}")
+
+    return {
+        "processed": processed,
+        "succeeded": succeeded,
+        "failed": len(failures),
+        "failures": failures,
+    }
+
+
+@router.get("/admin/backfill-species/preview")
+async def backfill_species_preview(db = Depends(db_dep)):
+    """Preview: count plants missing species_id."""
+    rows = await db.execute_fetchall(
+        "SELECT id AS plant_id, name FROM plants WHERE species_id IS NULL AND is_active = 1"
+    )
+    total_active = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE is_active = 1"
+    )
+    return {
+        "active_total": len(total_active),
+        "missing_species": [dict(r) for r in rows],
+        "missing_count": len(rows),
+    }
+
+
 @router.get("/admin/backfill-care-schedules/preview")
 async def backfill_care_schedules_preview(db = Depends(db_dep)):
     """Preview: count plants that backfill-care-schedules would seed."""

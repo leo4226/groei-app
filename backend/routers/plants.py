@@ -250,6 +250,47 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
     return await get_plant(plant_id, db=db)
 
 
+@router.post("/plants/{plant_id}/retry-species", response_model=PlantOut)
+async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    """Retry generating species data for a plant whose species_id is NULL.
+
+    Calls get_or_create_species again (LLM) to generate phenology/care data
+    and links the result. Also retries thresholds if still missing.
+    """
+    cursor = await db.execute(
+        "SELECT id, name, species, species_id, care_thresholds "
+        "FROM plants WHERE id = ? AND is_active = 1",
+        (plant_id,),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    plant = dict(row)
+    species_id = await get_or_create_species(db, plant["name"])
+    await db.execute(
+        "UPDATE plants SET species_id = ? WHERE id = ?",
+        (species_id, plant_id),
+    )
+    await db.commit()
+
+    # If thresholds are still missing, retry those too
+    if not plant.get("care_thresholds"):
+        try:
+            thresholds = await generate_thresholds(plant["name"], plant.get("species"))
+            thresholds_json = json.dumps(thresholds)
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                (thresholds_json, plant_id),
+            )
+            await db.commit()
+            await _seed_care_schedules(db, plant_id, thresholds_json)
+        except Exception as exc:
+            print(f"Warning: could not regenerate thresholds for {plant['name']}: {exc}")
+
+    return await get_plant(plant_id, db=db)
+
+
 @router.put("/plants/{plant_id}", response_model=PlantOut)
 async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
     # Build SET clause from non-None fields

@@ -101,6 +101,7 @@ export default function PlantDetail() {
 
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
+  const [retryingSpecies, setRetryingSpecies] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
   const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
   const [carePhotoBusy, setCarePhotoBusy] = useState(false)
@@ -183,6 +184,20 @@ export default function PlantDetail() {
     }
   }
 
+  async function handleRetrySpecies() {
+    setRetryingSpecies(true)
+    try {
+      const updated = await plantsApi.retrySpecies(plantId)
+      setPlant(updated)
+      // Also refresh the store so other pages see the new data
+      await loadPlants()
+    } catch (e) {
+      console.error('Species retry failed:', e)
+    } finally {
+      setRetryingSpecies(false)
+    }
+  }
+
   if (loading) {
     return (
       <div>
@@ -247,13 +262,28 @@ export default function PlantDetail() {
     </div>
   )
 
-  const calendarBlock = plant.phenology && (
+  const calendarBlock = plant.phenology ? (
     <Section title={t.plantDetail.yearCalendar}>
       <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
     </Section>
+  ) : (
+    <Section title={t.plantDetail.yearCalendar}>
+      <div className="bg-surface rounded-xl px-4 py-6 text-center border border-border">
+        <p className="text-sm text-text-muted mb-3">Nog geen jaarkalender beschikbaar</p>
+        <button
+          onClick={handleRetrySpecies}
+          disabled={retryingSpecies}
+          className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50"
+        >
+          {retryingSpecies ? 'Bezig...' : '🔄 Soortgegevens ophalen'}
+        </button>
+      </div>
+    </Section>
   )
 
-  const ecologyBlock = plant.species_id != null && <EcologyCard speciesId={plant.species_id} />
+  const ecologyBlock = plant.species_id != null
+    ? <EcologyCard speciesId={plant.species_id} />
+    : null
 
   const alertsBlock = <PlantAlerts plantId={plantId} phenology={plant.phenology ?? null} />
 

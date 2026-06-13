@@ -198,6 +198,7 @@ export const plants = {
   warnings:          (plantId: number)                             => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`),
   warningSummary:    (env: string = 'all')                         => api<import('../types').WarningSummaryOut>('GET', '/warnings/summary', { params: { env } }),
   patchCareProfile:  (plantId: number, data: Record<string, { active: boolean }>) => api<void>('PATCH', `/plants/${plantId}/care-profile`, { body: data }),
+  retrySpecies:      (plantId: number)                                  => api<Plant>('POST', `/plants/${plantId}/retry-species`),
   fact:              ()                                            => api<PlantFactOut>('GET', '/plant-fact'),
   identify:          async (imageBlob: Blob, lang: 'nl' | 'en' = 'nl')  => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?lang=${lang}`, { form: f }) },
   identifyPlantnet:  async (imageBlob: Blob, lang: 'nl' | 'en' = 'en')  => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?engine=plantnet&lang=${lang}`, { form: f }) },
@@ -332,6 +333,8 @@ export const admin = {
   schedulesPreview:      ()           => api<{ total_with_thresholds: number; missing_schedules: number; has_schedules: number }>('GET', '/admin/backfill-care-schedules/preview'),
   backfillPlantTypes:    ()           => api<{ status: string; found: number; updated: number; skipped: number }>('POST', '/admin/backfill-plant-types'),
   backfillPlantTypesPreview: ()     => api<{ total_active_plants: number; missing_plant_type: number }>('GET', '/admin/backfill-plant-types/preview'),
+  backfillSpecies:   ()           => api<{ processed: number; succeeded: number; failed: number; failures: Array<{plant_id: number; name: string; error: string}> }>('POST', '/admin/backfill-species'),
+  backfillSpeciesPreview: ()    => api<{ active_total: number; missing_species: Array<{plant_id: number; name: string}>; missing_count: number }>('GET', '/admin/backfill-species/preview'),
 }
 
 export const adminPanel = {
