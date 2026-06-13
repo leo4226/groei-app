@@ -5,6 +5,7 @@ import { plants as plantsApi, care as careApi } from '../api/client'
 import type { Plant, CareType } from '../types'
 import { CARE_TYPE_INFO } from '../types'
 import { displayToIso, isoToDisplay } from '../utils/dateFormat'
+import { compressImage } from '../utils/compressImage'
 import { useT } from '../context/LanguageContext'
 import IconPicker from '../components/IconPicker'
 import Card from '../components/ui/Card'
@@ -173,7 +174,8 @@ export default function EditPlant() {
       }
 
       if (photoFile) {
-        await uploadPhoto(plantId, photoFile)
+        const compressed = await compressImage(photoFile)
+        await uploadPhoto(plantId, new File([compressed], 'photo.jpg', { type: 'image/jpeg' }))
       }
 
       navigate(-1)
