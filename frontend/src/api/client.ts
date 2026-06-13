@@ -260,6 +260,7 @@ export const care = {
   done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number) => api<{ ok: boolean; next_due: string; care_log_id: number }>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount } }),
   skip:           (plantId: number, careType: string, userId: number)                  => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } }),
   deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),
+  updateScheduleInterval: (scheduleId: number, intervalDays: number)                    => api<{ ok: boolean; schedule_id: number; interval_days: number }>('PATCH', `/care/schedules/${scheduleId}`, { body: { interval_days: intervalDays } }),
   log:            (plantId: number)                                                     => api<CareLogEntry[]>('GET', `/care/log/${plantId}`),
   householdLog:   (limit = 50, offset = 0)                                              => api<RecentLogEntry[]>('GET', '/care/log', { params: { limit: String(limit), offset: String(offset) } }),
 }

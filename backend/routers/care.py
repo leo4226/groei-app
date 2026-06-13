@@ -152,3 +152,37 @@ async def get_care_log(plant_id: int, db = Depends(db_dep)):
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
+
+@router.patch("/care/schedules/{schedule_id}")
+async def update_schedule_interval(
+    schedule_id: int,
+    body: dict,
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
+    interval = body.get("interval_days")
+    if not isinstance(interval, int) or interval < 1:
+        raise HTTPException(status_code=422, detail="interval_days must be a positive integer")
+
+    # Scope to caller's household via plant join
+    cursor = await db.execute(
+        """SELECT cs.id, cs.care_type FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.id = ? AND cs.is_active = 1
+             AND p.household_id = ?""",
+        (schedule_id, account["household_id"]),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    # Don't allow changing photo schedule interval via this endpoint
+    if row["care_type"] == "photo":
+        raise HTTPException(status_code=400, detail="Photo schedule interval is managed via the photo-reminder endpoint")
+
+    await db.execute(
+        "UPDATE care_schedules SET interval_days = ? WHERE id = ?",
+        (interval, schedule_id),
+    )
+    await db.commit()
+    return {"ok": True, "schedule_id": schedule_id, "interval_days": interval}

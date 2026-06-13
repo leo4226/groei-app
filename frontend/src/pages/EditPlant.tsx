@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { plants as plantsApi } from '../api/client'
+import { plants as plantsApi, care as careApi } from '../api/client'
 import type { Plant, CareType } from '../types'
 import { CARE_TYPE_INFO } from '../types'
 import { displayToIso, isoToDisplay } from '../utils/dateFormat'
@@ -32,6 +32,7 @@ const SUN_TILE_TO_DB: Record<string, string> = {
 function buildSchedulesFromPlant(plant: Plant): Record<CareType, { enabled: boolean; days: number }> {
   const initial: Record<string, { enabled: boolean; days: number }> = {}
   for (const [type, info] of Object.entries(CARE_TYPE_INFO)) {
+    if (type === 'photo') continue // photo reminder managed from PlantDetail (groeidagboek)
     const cs = plant.care_schedules?.find(s => s.care_type === type && s.is_active)
     initial[type] = {
       enabled: !!cs,
@@ -71,24 +72,15 @@ export default function EditPlant() {
   const [formType, setFormType] = useState('pot')
   const [phase, setPhase] = useState('established')
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
-  const [locationText, setLocationText] = useState('')
 
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
-  const [potMaterial, setPotMaterial] = useState('terracotta')
-  const [potDiameter, setPotDiameter] = useState('')
-  const [potHeight, setPotHeight] = useState('')
-  const [hasDrainage, setHasDrainage] = useState(false)
-  const [substrate, setSubstrate] = useState<string[]>([])
 
   // Care
   const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
     {} as Record<CareType, { enabled: boolean; days: number }>
   )
-  const [feedingSchedule, setFeedingSchedule] = useState('monthly')
-  const [pruningType, setPruningType] = useState('none')
-  const [pruningFrequency, setPruningFrequency] = useState('never')
 
   // Album
   const [iconKey, setIconKey] = useState<string | null>(null)
@@ -122,9 +114,12 @@ export default function EditPlant() {
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
         setSunRequirement(p.sun_requirement ? (SUN_DB_TO_TILE[p.sun_requirement] ?? p.sun_requirement) : null)
-        setFormType(p.plant_type === 'tree' ? 'tree' : 'pot')
+        setFormType(p.plant_type ?? 'pot')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         setSchedules(buildSchedulesFromPlant(p))
+        // Remember original water schedule for change detection
+        const waterSched = p.care_schedules?.find(s => s.care_type === 'water' && s.is_active)
+        if (waterSched) origWaterSchedule.current = { id: waterSched.id, days: waterSched.interval_days }
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -176,7 +171,14 @@ export default function EditPlant() {
         sun_requirement: sunRequirement ? (SUN_TILE_TO_DB[sunRequirement] ?? sunRequirement) : null,
         phase: phase as any,
         sown_date: displayToIso(sownDateInput) || null,
+        plant_type: formType,
       })
+
+      // PATCH water schedule interval if changed
+      const newWaterDays = schedules.water?.days
+      if (origWaterSchedule.current && newWaterDays && newWaterDays !== origWaterSchedule.current.days) {
+        await careApi.updateScheduleInterval(origWaterSchedule.current.id, newWaterDays)
+      }
 
       if (photoFile) {
         await uploadPhoto(plantId, photoFile)
@@ -369,24 +371,15 @@ export default function EditPlant() {
 
                 {/* Acquisition */}
                 <FormRow label={t.addPlant.labelAcquired} description={t.addPlant.labelAcquiredDesc}>
-                  <div className="grid grid-cols-[1fr_1fr] gap-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={acquiredDateInput}
-                      onChange={(e) => setAcquiredDateInput(e.target.value)}
-                      placeholder="DD-MM-YYYY"
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                    <input
-                      type="text"
-                      value={locationText}
-                      onChange={(e) => setLocationText(e.target.value)}
-                      placeholder={t.addPlant.placeholderAcquiredAt}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={acquiredDateInput}
+                    onChange={(e) => setAcquiredDateInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
                 </FormRow>
               </Card>
 
@@ -427,63 +420,8 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Pot material */}
-                <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
-                  <TileGrid
-                    options={[
-                      { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: '🏺' },
-                      { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: '🪣' },
-                      { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: '🫖' },
-                      { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: '🧺' },
-                    ]}
-                    value={potMaterial}
-                    onChange={setPotMaterial}
-                  />
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotDiameter}</label>
-                      <input
-                        type="number"
-                        value={potDiameter || ''}
-                        onChange={(e) => setPotDiameter(e.target.value)}
-                        placeholder="⌀ 18"
-                        className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotHeight}</label>
-                      <input
-                        type="number"
-                        value={potHeight || ''}
-                        onChange={(e) => setPotHeight(e.target.value)}
-                        placeholder="↑ 22"
-                        className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                      />
-                    </div>
-                  </div>
-                  <label className="inline-flex items-center gap-2 mt-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={hasDrainage}
-                      onChange={(e) => setHasDrainage(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all">
-                      {hasDrainage ? '✓ ' : ''}{t.addPlant.labelDrainageYes}
-                    </span>
-                  </label>
-                </FormRow>
-
                 {/* Substrate */}
-                <FormRow
-                  label={t.addPlant.labelSubstrate}
-                  description={t.addPlant.labelSubstrateDesc}
-                  help={t.addPlant.substrateHelp}
-                >
-                  <div className="text-sm text-text-soft">
-                    {substrate.length > 0 ? substrate.join(', ') : t.addPlant.substrateHelp}
-                  </div>
-                </FormRow>
+
 
                 {/* Last repotted */}
                 <FormRow label={t.editPlant.lastRepottedLabel} description={t.addPlant.labelSownDesc}>
@@ -552,47 +490,11 @@ export default function EditPlant() {
                     />
                     </FormRow>
 
-                    {/* Feeding schedule */}
-                  <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
-                    <TileGrid
-                      options={[
-                        { id: 'weekly', title: t.addPlant.feedWeekly, subtitle: t.addPlant.feedWeeklySub, glyph: '💪' },
-                        { id: 'monthly', title: t.addPlant.feedMonthly, subtitle: t.addPlant.feedMonthlySub, glyph: '📅' },
-                        { id: 'seasonal', title: t.addPlant.feedSeasonal, subtitle: t.addPlant.feedSeasonalSub, glyph: '🍂' },
-                        { id: 'optional', title: t.addPlant.feedOptional, subtitle: t.addPlant.feedOptionalSub, glyph: '✨' },
-                      ]}
-                      value={feedingSchedule}
-                      onChange={setFeedingSchedule}
-                    />
-                  </FormRow>
 
-                  {/* Pruning type */}
-                  <FormRow label={t.addPlant.labelPruneType} description={t.addPlant.labelPruneTypeDesc}>
-                    <TileGrid
-                      options={[
-                        { id: 'none', title: t.addPlant.pruneNone, subtitle: t.addPlant.pruneNoneSub, glyph: '🌿' },
-                        { id: 'light', title: t.addPlant.pruneLight, subtitle: t.addPlant.pruneLightSub, glyph: '✂️' },
-                        { id: 'moderate', title: t.addPlant.pruneModerate, subtitle: t.addPlant.pruneModerateSub, glyph: '✂️' },
-                        { id: 'heavy', title: t.addPlant.pruneHeavy, subtitle: t.addPlant.pruneHeavySub, glyph: '🪓' },
-                      ]}
-                      value={pruningType}
-                      onChange={setPruningType}
-                    />
-                  </FormRow>
 
-                  {/* Pruning frequency */}
-                  <FormRow label={t.addPlant.labelPruneFreq} description={t.addPlant.labelPruneFreqSub}>
-                    <TileGrid
-                      options={[
-                        { id: 'never', title: t.addPlant.pruneNever, subtitle: t.addPlant.pruneNeverSub, glyph: '—' },
-                        { id: 'weekly', title: t.addPlant.pruneW, subtitle: t.addPlant.pruneWSub, glyph: '📅' },
-                        { id: 'monthly', title: t.addPlant.pruneM, subtitle: t.addPlant.pruneMSub, glyph: '📅' },
-                        { id: 'seasonal', title: t.addPlant.pruneS, subtitle: t.addPlant.pruneSSub, glyph: '🍂' },
-                      ]}
-                      value={pruningFrequency}
-                      onChange={setPruningFrequency}
-                    />
-                  </FormRow>
+
+
+
                 </Card>
               )}
 
