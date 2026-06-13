@@ -31,6 +31,7 @@ from routers import chat as chat_router
 from routers import bug_report as bug_report_router
 from routers import notifications as notifications_router
 from routers import plant_photos as plant_photos_router
+from routers import watchdog as watchdog_router
 
 
 @asynccontextmanager
@@ -122,6 +123,7 @@ app.include_router(chat_router.router, prefix="/api")
 app.include_router(bug_report_router.router, prefix="/api")
 app.include_router(notifications_router.router, prefix="/api")
 app.include_router(plant_photos_router.router, prefix="/api")
+app.include_router(watchdog_router.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
