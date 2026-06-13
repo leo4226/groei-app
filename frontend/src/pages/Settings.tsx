@@ -399,46 +399,44 @@ export default function Settings() {
             <p className="text-sm text-fiery-red">{profileLoadError}</p>
           )}
 
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-semibold mb-1.5">{t.settings.profileName}</label>
-            <input
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
-              value={profileName}
-              onChange={(e) => setProfileName(e.target.value)}
-              placeholder={t.settings.profileName}
-            />
-          </div>
-
-          {/* Avatar emoji picker */}
-          <div>
-            <label className="block text-sm font-semibold mb-1.5">{t.settings.profileAvatar}</label>
-            <div className="flex items-center gap-3">
+          {/* Avatar + Name row (side by side on desktop) */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+            {/* Avatar emoji picker */}
+            <div className="sm:min-w-[4.5rem]">
+              <label className="block text-sm font-semibold mb-1.5">{t.settings.profileAvatar}</label>
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-2xl border border-primary/20 active:scale-90 transition-transform"
               >
                 {profileAvatar || '🌱'}
               </button>
-              <span className="text-sm text-text-muted">
-                {profileAvatar ? profileAvatar : '🌱'}
-              </span>
+              {showEmojiPicker && (
+                <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2">
+                  {PROFILE_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => { setProfileAvatar(emoji); setShowEmojiPicker(false) }}
+                      className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all active:scale-90 ${
+                        profileAvatar === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-primary/10'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {showEmojiPicker && (
-              <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2">
-                {PROFILE_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => { setProfileAvatar(emoji); setShowEmojiPicker(false) }}
-                    className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all active:scale-90 ${
-                      profileAvatar === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-primary/10'
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* Name */}
+            <div className="flex-1">
+              <label className="block text-sm font-semibold mb-1.5">{t.settings.profileName}</label>
+              <input
+                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder={t.settings.profileName}
+              />
+            </div>
           </div>
 
           {/* Email (display-only) */}
