@@ -3,13 +3,13 @@
 Owns Species-level care knowledge: scientific name → family, light, precipitation
 range, bloom months, height, toxicity, etc. Sourced (in order) from:
   1. plant_care_cache table (30-day TTL)
-  2. Trefle API (if TREFLE_TOKEN set)
-  3. Curated fallback table (10 species, RHS/Missouri Botanical/Gardenia.net)
-  4. LLM fallback via OpenRouter (if OPENROUTER_API_KEY set)
+  2. Curated fallback table (~30 species, RHS/Missouri Botanical/Gardenia.net)
+  3. Plant phenology registry (local plant_species table)
+  4. LLM via OpenRouter (primary source for unknown species, cached in plant_care_cache)
 
 Public API:
     fetch_species_knowledge(scientific_name) -> dict | None
-        Trefle → curated → AI cascade, no caching. Returns the unified species dict.
+        Curated → phenology → AI cascade, no caching. Returns the unified species dict.
 
     get_species_knowledge(scientific_name, db) -> dict | None
         Cache-aware: checks plant_care_cache, falls back to fetch_species_knowledge,
@@ -17,13 +17,10 @@ Public API:
         `cached_at` fields, or None if nothing was found.
 """
 import json
-import os
 from datetime import datetime, timedelta, timezone
 
 import httpx
 
-TREFLE_TOKEN     = os.getenv("TREFLE_TOKEN") or ""
-TREFLE_BASE      = "https://trefle.io/api/v1"
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 # ── curated fallback data ────────────────────────────────────────────────────
@@ -337,77 +334,10 @@ def _normalise_duration(duration) -> str | None:
 
 # ── Trefle fetch ──────────────────────────────────────────────────────────────
 
-async def _fetch_trefle(scientific_name: str) -> dict | None:
-    """Search Trefle by species name, fall back to genus only."""
-    async with httpx.AsyncClient(timeout=12) as client:
-        for query in [scientific_name, scientific_name.split()[0]]:
-            search_resp = await client.get(
-                f"{TREFLE_BASE}/species/search",
-                params={"q": query, "token": TREFLE_TOKEN},
-            )
-            if search_resp.status_code != 200:
-                continue
-            results = search_resp.json().get("data") or []
-            if not results:
-                continue
-
-            accepted = next(
-                (r for r in results if r.get("status") == "accepted"),
-                results[0],
-            )
-            slug = accepted.get("slug")
-            if not slug:
-                continue
-
-            detail_resp = await client.get(
-                f"{TREFLE_BASE}/species/{slug}",
-                params={"token": TREFLE_TOKEN},
-            )
-            if detail_resp.status_code != 200:
-                continue
-            d = (detail_resp.json().get("data") or {})
-
-            growth  = d.get("growth")  or {}
-            specs   = d.get("specifications") or {}
-            foliage = d.get("foliage")  or {}
-            flower  = d.get("flower")   or {}
-
-            precip_min = (growth.get("minimum_precipitation") or {}).get("value")
-            precip_max = (growth.get("maximum_precipitation") or {}).get("value")
-            avg_h      = (specs.get("average_height") or {}).get("value")
-            max_h      = (specs.get("maximum_height") or {}).get("value")
-            bloom      = growth.get("bloom_months") or []
-            colors     = flower.get("color") or []
-            light_raw  = growth.get("light")
-
-            result = {
-                "trefle_slug":    slug,
-                "common_name":    d.get("common_name") or accepted.get("common_name"),
-                "family":         d.get("family"),
-                "duration":       _normalise_duration(d.get("duration")),
-                "leaf_retention": foliage.get("leaf_retention"),
-                "light_raw":      light_raw,
-                "light_label":    _normalise_light(light_raw),
-                "humidity_raw":   growth.get("atmospheric_humidity"),
-                "precip_min_mm":  int(precip_min) if precip_min is not None else None,
-                "precip_max_mm":  int(precip_max) if precip_max is not None else None,
-                "bloom_months":   _expand_months(bloom),
-                "flower_colors":  [c.lower() for c in colors if isinstance(c, str)],
-                "avg_height_cm":  int(avg_h) if avg_h is not None else None,
-                "max_height_cm":  int(max_h) if max_h is not None else None,
-                "toxicity":       specs.get("toxicity"),
-                "edible":         d.get("edible"),
-                "image_url":      d.get("image_url"),
-            }
-            return _merge_curated(result, scientific_name)
-
-    return None
-
-
-# ── AI (Deepseek) fallback ───────────────────────────────────────────────────
+# ── AI (Deepseek) — primary data source ──────────────────────────────────────
 
 async def _fetch_ai_species(scientific_name: str) -> dict | None:
-    """Ask Deepseek for care data when Trefle has no results."""
+    """Ask LLM for care data for an unknown species. Primary source."""
     if not LLM_API_KEY:
         return None
 
@@ -483,6 +413,7 @@ Geef alleen geldige JSON terug met dit formaat:
         "toxicity":      d.get("toxicity"),
         "edible":        d.get("edible"),
         "image_url":     None,
+        "source":        "llm",
     }
 
 
@@ -544,11 +475,7 @@ async def _from_plant_species(scientific_name: str, db) -> dict | None:
 
 
 async def fetch_species_knowledge(scientific_name: str, db=None) -> dict | None:
-    """Run the Trefle → curated → plant_species → AI cascade. No caching."""
-    if TREFLE_TOKEN:
-        data = await _fetch_trefle(scientific_name)
-        if data:
-            return data
+    """Run the curated → plant_species → AI cascade. No caching."""
     curated = _curated_as_species_dict(scientific_name)
     if curated:
         return curated

@@ -182,13 +182,13 @@ async def get_recommendations(
 # ── Environment context endpoints ────────────────────────────────────────────
 
 @router.get("/garden/rain-context")
-async def get_rain_context():
-    return await get_rain_data()
+async def get_rain_context(db = Depends(db_dep)):
+    return await get_rain_data(db=db)
 
 
 @router.get("/garden/temperature-context")
-async def get_temperature_context():
-    return await get_temp_data()
+async def get_temperature_context(db = Depends(db_dep)):
+    return await get_temp_data(db=db)
 
 
 # ── Garden water log ─────────────────────────────────────────────────────────
@@ -219,9 +219,9 @@ async def latest_garden_watering(db = Depends(db_dep)):
 
 
 @router.get("/garden/water-status")
-async def get_garden_water_status():
+async def get_garden_water_status(db = Depends(db_dep)):
     """Garden-wide water status from 14-day Amsterdam rainfall vs. seasonal ET budget."""
-    rain         = await get_rain_data()
+    rain         = await get_rain_data(db=db)
     last_watered = await get_last_garden_watered()
     total_14d    = rain.get("total_14day_mm", 0)
     total_7d     = rain.get("total_7day_mm", 0)

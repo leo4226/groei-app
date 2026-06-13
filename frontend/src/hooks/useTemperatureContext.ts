@@ -9,7 +9,7 @@ export interface TempDay {
 export interface TempContext {
   days: TempDay[]
   avg_max_7day: number
-  assessment: 'hot' | 'warm' | 'mild' | 'cool' | 'cold'
+  assessment: 'hot' | 'warm' | 'mild' | 'cool' | 'cold' | 'unknown'
 }
 
 interface State {
