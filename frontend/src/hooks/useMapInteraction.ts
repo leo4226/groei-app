@@ -173,7 +173,7 @@ export function useMapInteraction({
     }
     setDragging({ type: 'plant', id: plant.id })
     didDrag.current = false
-    setDragPositions((prev) => ({ ...prev, [key]: { x: plant.map_x, y: plant.map_y } }))
+    setDragPositions((prev) => ({ ...prev, [key]: prev[key] ?? { x: plant.map_x, y: plant.map_y } }))
   }, [selection.mode, svgRef, onDocMove, onDocUp])
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
