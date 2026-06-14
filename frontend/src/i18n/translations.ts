@@ -129,6 +129,13 @@ export type Translations = {
     failedDelete: string
     indoor: string
     outdoor: string
+    // PageMasthead keys (issue #180)
+    mastheadEyebrow: string
+    mastheadTitle: string
+    mastheadAccent: string
+    mastheadLede: string
+    // Stat label for masthead
+    mastheadStatLabel: string
   }
 
   // ── Map settings page ───────────────────────────────────────────
@@ -161,6 +168,9 @@ export type Translations = {
     notFound: string           // "Map not found"
     outdoor: string            // "Garden"
     indoor: string             // "House"
+    // PageMasthead keys (issue #180)
+    mastheadTitle: string
+    mastheadAccent: string
   }
 
   editor: {
