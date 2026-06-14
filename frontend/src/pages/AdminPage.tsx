@@ -231,7 +231,6 @@ function FilterBar({ options, active, onChange }: { options: { id: string; label
 function SparklineBar({ data, color, max: forcedMax }: { data: number[]; color: string; max?: number }) {
   const h = 40
   const w = Math.max(data.length * 10 - 2, 20)
-  const localMax = forcedMax ?? Math.max(...data, 1)
   const barW = 8
   const gap = 2
   const trimmed = data.slice(-Math.min(data.length, Math.floor(w / (barW + gap))))
@@ -251,6 +250,29 @@ function SparklineBar({ data, color, max: forcedMax }: { data: number[]; color: 
   )
 }
 
+
+function DeltaBadge({ delta, deltaPct }: { delta: number; deltaPct: number }) {
+  const positive = delta >= 0
+  const color = positive ? 'var(--color-primary)' : 'var(--color-overdue)'
+  const arrow = positive ? '▲' : '▼'
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 9, color, marginLeft: 'auto' }}>
+      {arrow} {Math.abs(delta)} ({Math.abs(deltaPct).toFixed(1)}%)
+    </span>
+  )
+}
+
+function MiniChartCard({ label, data, color, delta, deltaPct }: { label: string; data: number[]; color: string; delta: number; deltaPct: number }) {
+  return (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)' }}>{label}</span>
+        <DeltaBadge delta={delta} deltaPct={deltaPct} />
+      </div>
+      <SparklineBar data={data} color={color} />
+    </div>
+  )
+}
 function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
   const [data, setData] = useState<AdminOverview | null>(null)
   const [err, setErr] = useState('')
