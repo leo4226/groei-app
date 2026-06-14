@@ -14,6 +14,7 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
+import PageMasthead from '../components/ui/PageMasthead'
 
 /** Map database sunRequirement values to TileGrid IDs. */
 const SUN_DB_TO_TILE: Record<string, string> = {
@@ -220,31 +221,21 @@ export default function EditPlant() {
   return (
     <div>
       {/* ——— Masthead ——— */}
-      <header className="border-b border-border">
-        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8 pb-5">
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
-            >
-              ←
-            </button>
-          </div>
-          <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
-            <span className="text-primary">§</span>
-            <span>{t.editPlant.title}</span>
-            <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
-          </div>
-          <h1 className="font-heading font-bold text-2xl sm:text-3xl mt-1">
-            {plant.name}
-          </h1>
-          {plant.species && (
-            <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
-              {plant.species}
-            </p>
-          )}
-        </div>
-      </header>
+      <PageMasthead
+        eyebrow={t.editPlant.title}
+        title={plant.name}
+        lede={plant.species ?? undefined}
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label={t.common.back}
+            className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text transition-colors hover:bg-paper"
+          >
+            ←
+          </button>
+        }
+      />
 
       {/* ——— BASIS / DETAILS Toggle ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
@@ -272,9 +263,9 @@ export default function EditPlant() {
 
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
-        <div className="flex flex-col gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8">
           {/* LEFT: form content */}
-          <div className="space-y-6 max-w-2xl mx-auto w-full">
+          <div className="space-y-6 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Photo */}
               <label className="card p-4 flex items-center gap-4 cursor-pointer">
