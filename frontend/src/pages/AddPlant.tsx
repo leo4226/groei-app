@@ -11,6 +11,7 @@ import { icons, species as speciesApi } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
 import EntryBanner from '../components/add/EntryBanner'
 import { displayToIso } from '../utils/dateFormat'
+import { compressImage } from '../utils/compressImage'
 import Card from '../components/ui/Card'
 import FormRow from '../components/ui/FormRow'
 import TileGrid from '../components/ui/TileGrid'
@@ -362,7 +363,8 @@ export default function AddPlant() {
       }))
 
       if (photoFile) {
-        await uploadPhoto(plant.id, photoFile)
+        const compressed = await compressImage(photoFile)
+        await uploadPhoto(plant.id, new File([compressed], 'photo.jpg', { type: 'image/jpeg' }))
       }
     } catch (e) {
       console.error('AddPlant: add failed', e)
