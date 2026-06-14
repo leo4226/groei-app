@@ -159,6 +159,11 @@ export const en: Translations = {
     failedDelete: 'Failed to delete map',
     indoor: 'Indoor',
     outdoor: 'Outdoor',
+    mastheadEyebrow: 'Garden & indoor spaces',
+    mastheadTitle: 'Your',
+    mastheadAccent: 'maps',
+    mastheadLede: 'View and manage all your gardens and indoor spaces.',
+    mastheadStatLabel: 'maps',
   },
 
   // ── Map settings page ───────────────────────────────────────────
@@ -191,6 +196,9 @@ export const en: Translations = {
     notFound: 'Map not found',
     outdoor: 'Garden',
     indoor: 'House',
+    // PageMasthead keys (issue #180)
+    mastheadTitle: 'Map',
+    mastheadAccent: 'settings',
   },
 
   editor: {

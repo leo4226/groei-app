@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
+import PageMasthead from '../components/ui/PageMasthead'
 import type { MapInfo } from '../types'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
@@ -92,15 +93,23 @@ export default function MapsListPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-text">{t.maps.title}</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          {t.maps.newMap}
-        </button>
-      </div>
+      <PageMasthead
+        eyebrow={t.maps.mastheadEyebrow}
+        title={t.maps.mastheadTitle}
+        accent={t.maps.mastheadAccent}
+        lede={t.maps.mastheadLede}
+        stats={[
+          { value: maps.length, label: t.maps.mastheadStatLabel },
+        ]}
+        actions={
+          <button
+            onClick={() => setShowCreate(true)}
+            className="rounded-full border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary hover:text-surface max-[720px]:bg-primary max-[720px]:text-white max-[720px]:hover:bg-primary"
+          >
+            {t.maps.newMap}
+          </button>
+        }
+      />
 
       {showCreate && (
         <div className="bg-surface border border-border rounded-xl p-4 mb-4">

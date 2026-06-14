@@ -159,6 +159,11 @@ export const nl: Translations = {
     failedDelete: 'Verwijderen mislukt',
     indoor: 'Binnen',
     outdoor: 'Buiten',
+    mastheadEyebrow: 'Tuin & binnenruimtes',
+    mastheadTitle: 'Jouw',
+    mastheadAccent: 'kaarten',
+    mastheadLede: 'Bekijk en beheer al je tuinen en binnenruimtes.',
+    mastheadStatLabel: 'kaarten',
   },
 
   // ── Map settings page ───────────────────────────────────────────
@@ -191,6 +196,9 @@ export const nl: Translations = {
     notFound: 'Kaart niet gevonden',
     outdoor: 'Tuin',
     indoor: 'Huis',
+    // PageMasthead keys (issue #180)
+    mastheadTitle: 'Kaart',
+    mastheadAccent: 'instellingen',
   },
 
   editor: {
