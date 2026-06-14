@@ -157,6 +157,30 @@ export interface AdminActivityEvent {
   ts: string | null
 }
 
+export interface DailyBucket {
+  date: string
+  signups: number
+  plants_added: number
+  care_logs: number
+  active_households: number
+}
+
+export interface MetricDelta {
+  current: number
+  previous: number
+  delta: number
+  delta_pct: number
+}
+
+export interface AdminMetrics {
+  days: number
+  daily: DailyBucket[]
+  deltas: {
+    last_7d: { signups: MetricDelta; plants_added: MetricDelta; care_logs: MetricDelta; active_households: MetricDelta }
+    last_30d: { signups: MetricDelta; plants_added: MetricDelta; care_logs: MetricDelta; active_households: MetricDelta }
+  }
+}
+
 export interface AdminOverview {
   total_accounts: number
   total_plants: number
@@ -363,6 +387,7 @@ export const admin = {
 
 export const adminPanel = {
   overview: () => api<AdminOverview>('GET', '/admin-panel/overview'),
+  metrics: (days: number = 30) => api<AdminMetrics>('GET', `/admin-panel/metrics?days=${days}`),
   users:    () => api<AdminUserRow[]>('GET', '/admin-panel/users'),
   plants:   () => api<AdminPlantRow[]>('GET', '/admin-panel/plants'),
   species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),

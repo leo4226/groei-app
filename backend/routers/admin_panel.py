@@ -104,6 +104,105 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
     }
 
 
+@router.get("/admin-panel/metrics")
+async def admin_metrics(days: int = 30, admin=Depends(require_admin), db=Depends(db_dep)):
+    """Daily growth metrics for the last N days: signups, plants added, care activity."""
+    from datetime import datetime, timedelta
+
+    days = min(max(days, 1), 90)  # clamp to [1, 90]
+    cutoff = (datetime.utcnow() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+    # Generate the date series (works in both SQLite and PostgreSQL)
+    dates = [(datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+             for i in range(days - 1, -1, -1)]
+
+    # Signups per day
+    signups_raw = await db.execute_fetchall("""
+        SELECT DATE(created_at) as d, COUNT(*) as n
+        FROM accounts
+        WHERE DATE(created_at) >= ?
+        GROUP BY DATE(created_at)
+    """, (cutoff,))
+    signups_map = {r["d"]: r["n"] for r in signups_raw}
+
+    # Plants added per day
+    plants_raw = await db.execute_fetchall("""
+        SELECT DATE(created_at) as d, COUNT(*) as n
+        FROM plants
+        WHERE is_active = 1 AND DATE(created_at) >= ?
+        GROUP BY DATE(created_at)
+    """, (cutoff,))
+    plants_map = {r["d"]: r["n"] for r in plants_raw}
+
+    # Care logs per day
+    care_raw = await db.execute_fetchall("""
+        SELECT DATE(done_at) as d, COUNT(*) as n
+        FROM care_log
+        WHERE DATE(done_at) >= ?
+        GROUP BY DATE(done_at)
+    """, (cutoff,))
+    care_map = {r["d"]: r["n"] for r in care_raw}
+
+    # Active households per day (households with >=1 care log that day)
+    hh_raw = await db.execute_fetchall("""
+        SELECT DATE(cl.done_at) as d, COUNT(DISTINCT p.household_id) as n
+        FROM care_log cl
+        JOIN plants p ON cl.plant_id = p.id
+        WHERE DATE(cl.done_at) >= ?
+        GROUP BY DATE(cl.done_at)
+    """, (cutoff,))
+    hh_map = {r["d"]: r["n"] for r in hh_raw}
+
+    # Daily buckets
+    daily = []
+    for d in dates:
+        daily.append({
+            "date": d,
+            "signups": signups_map.get(d, 0),
+            "plants_added": plants_map.get(d, 0),
+            "care_logs": care_map.get(d, 0),
+            "active_households": hh_map.get(d, 0),
+        })
+
+    # Delta: compare last 7 days to the 7 days before that
+    def sum_window(window_days: int) -> dict:
+        window_dates = dates[-window_days:] if window_days <= len(dates) else dates
+        prev_dates = dates[-(2*window_days):-window_days] if 2*window_days <= len(dates) else dates[:len(dates)-window_days]
+        current = {
+            "signups": sum(signups_map.get(d, 0) for d in window_dates),
+            "plants_added": sum(plants_map.get(d, 0) for d in window_dates),
+            "care_logs": sum(care_map.get(d, 0) for d in window_dates),
+            "active_households": sum(hh_map.get(d, 0) for d in window_dates),
+        }
+        previous = {
+            "signups": sum(signups_map.get(d, 0) for d in prev_dates),
+            "plants_added": sum(plants_map.get(d, 0) for d in prev_dates),
+            "care_logs": sum(care_map.get(d, 0) for d in prev_dates),
+            "active_households": sum(hh_map.get(d, 0) for d in prev_dates),
+        }
+        return {
+            "current": current,
+            "previous": previous,
+            "delta": {k: current[k] - previous[k] for k in current},
+            "delta_pct": {
+                k: round((current[k] - previous[k]) / max(previous[k], 1) * 100, 1)
+                for k in current
+            },
+        }
+
+    deltas = {
+        "last_7d": sum_window(7),
+        "last_30d": sum_window(30),
+    }
+
+    return {
+        "days": days,
+        "daily": daily,
+        "deltas": deltas,
+    }
+
+
 @router.get("/admin-panel/users")
 async def admin_users(admin=Depends(require_admin), db=Depends(db_dep)):
     rows = await db.execute_fetchall("""
