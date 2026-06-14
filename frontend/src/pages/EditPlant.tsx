@@ -14,6 +14,7 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
+import PageMasthead from '../components/ui/PageMasthead'
 
 /** Map database sunRequirement values to TileGrid IDs. */
 const SUN_DB_TO_TILE: Record<string, string> = {
@@ -127,6 +128,15 @@ export default function EditPlant() {
     load()
   }, [plantId, navigate])
 
+  // Revoke old object URL when preview changes or on unmount
+  useEffect(() => {
+    return () => {
+      if (photoPreview && photoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview)
+      }
+    }
+  }, [photoPreview])
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
@@ -211,32 +221,21 @@ export default function EditPlant() {
   return (
     <div>
       {/* ——— Masthead ——— */}
-      <header className="border-b border-border">
-        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8 pb-5">
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
-            >
-              ←
-            </button>
-            <h1 className="text-2xl font-extrabold">{t.editPlant.title}</h1>
-          </div>
-          <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
-            <span className="text-primary">§</span>
-            <span>{plant.name}</span>
-            <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
-          </div>
-          <h1 className="font-heading font-bold text-2xl sm:text-3xl mt-1">
-            {plant.name}
-          </h1>
-          {plant.species && (
-            <p className="font-heading italic text-base sm:text-lg text-text-soft mt-3 sm:mt-3.5 max-w-[540px] leading-[1.45]">
-              {plant.species}
-            </p>
-          )}
-        </div>
-      </header>
+      <PageMasthead
+        eyebrow={t.editPlant.title}
+        title={plant.name}
+        lede={plant.species ?? undefined}
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label={t.common.back}
+            className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text transition-colors hover:bg-paper"
+          >
+            ←
+          </button>
+        }
+      />
 
       {/* ——— BASIS / DETAILS Toggle ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
@@ -264,9 +263,9 @@ export default function EditPlant() {
 
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
-        <div className="flex flex-col gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8">
           {/* LEFT: form content */}
-          <div className="space-y-6 max-w-2xl mx-auto w-full">
+          <div className="space-y-6 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Photo */}
               <label className="card p-4 flex items-center gap-4 cursor-pointer">
@@ -318,22 +317,13 @@ export default function EditPlant() {
 
                 {/* Species */}
                 <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
-                  <div className="grid grid-cols-[1fr_1fr] gap-3">
-                    <input
-                      type="text"
-                      value={species}
-                      onChange={(e) => setSpecies(e.target.value)}
-                      placeholder={t.addPlant.placeholderSpecies}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                    <input
-                      type="text"
-                      readOnly
-                      value={plant.species ?? ''}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading italic text-sm text-text-soft"
-                      placeholder={t.addPlant.placeholderSpeciesLatin}
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={species}
+                    onChange={(e) => setSpecies(e.target.value)}
+                    placeholder={t.addPlant.placeholderSpecies}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
                 </FormRow>
 
                 {/* Form type */}
@@ -433,13 +423,13 @@ export default function EditPlant() {
               )}
 
               {/* ——— § III · Care Card ——— */}
-              {!showDetails ? (
-                <Card
-                  eyebrow={t.addPlant.secCare}
-                  title={t.addPlant.secCareTitle}
-                >
-                  {/* Water gift frequency */}
-                  <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
+              <Card
+                eyebrow={t.addPlant.secCare}
+                title={t.addPlant.secCareTitle}
+                subtitle={showDetails ? t.addPlant.secCareSubtitle : undefined}
+              >
+                {/* Water gift frequency */}
+                <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
                     <FrequencySlider
                       label={t.addPlant.labelWatering}
                       value={schedules.water?.days ?? CARE_TYPE_INFO.water.defaultIndoor}
@@ -457,40 +447,7 @@ export default function EditPlant() {
                       ]}
                     />
                   </FormRow>
-                </Card>
-              ) : (
-                <Card
-                  eyebrow={t.addPlant.secCare}
-                  title={t.addPlant.secCareTitle}
-                  subtitle={t.addPlant.secCareSubtitle}
-                >
-                  {/* Water gift frequency */}
-                  <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
-                    <FrequencySlider
-                      label={t.addPlant.labelWatering}
-                      value={schedules.water?.days ?? CARE_TYPE_INFO.water.defaultIndoor}
-                      onChange={(v) => {
-                        setSchedules(prev => ({
-                          ...prev,
-                          water: { ...prev.water, days: v },
-                        }))
-                      }}
-                      presets={[
-                        { label: t.addPlant.presetSeldom, value: 14 },
-                        { label: t.addPlant.presetWeekly, value: 7 },
-                        { label: t.addPlant.presetBiweekly, value: 3 },
-                        { label: t.addPlant.presetDaily, value: 1 },
-                      ]}
-                    />
-                    </FormRow>
-
-
-
-
-
-
-                </Card>
-              )}
+              </Card>
 
               {/* ——— § IV · Album Card ——— */}
               {showDetails ? (
