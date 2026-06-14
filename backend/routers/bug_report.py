@@ -69,7 +69,18 @@ async def submit_bug_report(
         device_lines.append(f"**Screen:** {req.device.screen_size}")
 
     body_parts = [
-        "## Bug Report (via Stekkie)",
+        "## Source",
+        "",
+        f"- **Reported by:** User via Stekkie",
+        f"- **Account:** {account_name} (account #{account['account_id']})",
+        f"- **Page/context:** {req.page or 'Unknown'}",
+        f"- **Reported at:** {date_str}",
+        "",
+    ] + device_lines + [
+        "",
+        "---",
+        "",
+        "## Bug Report",
         "",
         f"**What were you doing?** {user_answers[0] if len(user_answers) > 0 else 'N/A'}",
         "",
@@ -77,12 +88,7 @@ async def submit_bug_report(
         "",
         f"**Last step before the bug:** {user_answers[2] if len(user_answers) > 2 else 'N/A'}",
         "",
-        "---",
-        f"*Reported by: {account_name} (account #{account['account_id']})*",
-        f"*Page: {req.page or 'N/A'}*",
-        f"*Date: {date_str}*",
-        "",
-    ] + device_lines
+    ]
 
     # Generate title: combine context (Q1) + symptom (Q2), capped at 120 chars
     title = "Bug report (no details)"
@@ -91,6 +97,8 @@ async def submit_bug_report(
         title = combined[:120]
     elif user_answers:
         title = user_answers[0][:120]
+
+    title = f"[User reported] {title}"
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
