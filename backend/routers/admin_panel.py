@@ -1,6 +1,6 @@
 import re
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from database import db_dep
 from auth import require_admin
@@ -37,6 +37,55 @@ async def _existing_sci(db) -> set[str]:
     """Latin names already covered by curated OR generated icons (normalised)."""
     catalog = await load_catalog(db)
     return {icons_router._normalize(e.get("sci", "")) for e in catalog if e.get("sci")}
+
+
+def _sort_clause(sort: str, direction: str, allowed: dict[str, str], default: str, default_dir: str = "asc") -> str:
+    """Build a safe ORDER BY clause from a whitelist.
+
+    Sort keys arrive from the admin UI, so never interpolate them directly.
+    Only known keys map to SQL fragments; unknown keys fall back to the default.
+    """
+    key = sort if sort in allowed else default
+    safe_dir = direction.lower() if direction and direction.lower() in {"asc", "desc"} else default_dir
+    return f"{allowed[key]} {safe_dir.upper()}"
+
+
+def _add_search(where: list[str], params: list[object], q: str | None, columns: list[str]) -> None:
+    term = (q or "").strip()
+    if not term:
+        return
+    clauses = []
+    for column in columns:
+        clauses.append(f"LOWER(COALESCE({column}, '')) LIKE LOWER(?)")
+        params.append(f"%{term}%")
+    where.append("(" + " OR ".join(clauses) + ")")
+
+
+def _where_sql(where: list[str]) -> str:
+    return " WHERE " + " AND ".join(where) if where else ""
+
+
+async def _fetch_admin_page(
+    db,
+    *,
+    select_sql: str,
+    from_sql: str,
+    where: list[str],
+    params: list[object],
+    order_by: str,
+    limit: int,
+    offset: int,
+) -> dict:
+    where_sql = _where_sql(where)
+    total_row = (await db.execute_fetchall(
+        f"SELECT COUNT(*) as n {from_sql}{where_sql}",
+        tuple(params),
+    ))[0]
+    rows = await db.execute_fetchall(
+        f"{select_sql} {from_sql}{where_sql} ORDER BY {order_by} LIMIT ? OFFSET ?",
+        tuple(params + [limit, offset]),
+    )
+    return {"rows": [dict(r) for r in rows], "total": int(total_row["n"])}
 
 
 @router.get("/admin-panel/me")
@@ -105,55 +154,161 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
 
 
 @router.get("/admin-panel/users")
-async def admin_users(admin=Depends(require_admin), db=Depends(db_dep)):
-    rows = await db.execute_fetchall("""
-        SELECT
-            a.id, a.name, a.email, a.created_at::text as created_at,
-            h.id as household_id, h.name as household_name,
-            (SELECT COUNT(*) FROM plants p
-             WHERE p.household_id = a.household_id AND p.is_active = 1) as plant_count,
-            (SELECT COUNT(*) FROM maps m
-             WHERE m.household_id = a.household_id) as map_count,
-            (SELECT MAX(cl.done_at)::text FROM care_log cl
-             JOIN plants p ON cl.plant_id = p.id
-             WHERE p.household_id = a.household_id) as last_activity
-        FROM accounts a
-        JOIN households h ON a.household_id = h.id
-        ORDER BY a.created_at DESC
-    """)
-    return [dict(r) for r in rows]
+async def admin_users(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = None,
+    sort: str = "created_at",
+    direction: str = Query("desc", alias="dir"),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    where: list[str] = []
+    params: list[object] = []
+    _add_search(where, params, q, ["a.name", "a.email", "h.name"])
+    order_by = _sort_clause(
+        sort,
+        direction,
+        {
+            "name": "a.name",
+            "email": "a.email",
+            "household": "h.name",
+            "plant_count": "plant_count",
+            "map_count": "map_count",
+            "last_activity": "last_activity",
+            "created_at": "a.created_at",
+        },
+        "created_at",
+        "desc",
+    )
+    return await _fetch_admin_page(
+        db,
+        select_sql="""
+            SELECT
+                a.id, a.name, a.email, CAST(a.created_at AS TEXT) as created_at,
+                h.id as household_id, h.name as household_name,
+                (SELECT COUNT(*) FROM plants p
+                 WHERE p.household_id = a.household_id AND p.is_active = 1) as plant_count,
+                (SELECT COUNT(*) FROM maps m
+                 WHERE m.household_id = a.household_id) as map_count,
+                (SELECT CAST(MAX(cl.done_at) AS TEXT) FROM care_log cl
+                 JOIN plants p ON cl.plant_id = p.id
+                 WHERE p.household_id = a.household_id) as last_activity
+        """,
+        from_sql="""
+            FROM accounts a
+            JOIN households h ON a.household_id = h.id
+        """,
+        where=where,
+        params=params,
+        order_by=order_by,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/admin-panel/plants")
-async def admin_plants(admin=Depends(require_admin), db=Depends(db_dep)):
-    rows = await db.execute_fetchall("""
-        SELECT
-            p.id, p.name, p.species, p.icon_key, p.phase,
-            p.icon_requested,
-            (p.care_thresholds IS NOT NULL) as has_thresholds,
-            h.name as household_name,
-            p.created_at::text as created_at
-        FROM plants p
-        JOIN households h ON p.household_id = h.id
-        WHERE p.is_active = 1
-        ORDER BY p.created_at DESC
-    """)
-    return [dict(r) for r in rows]
+async def admin_plants(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = None,
+    filter: str = "all",
+    sort: str = "created_at",
+    direction: str = Query("desc", alias="dir"),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    where: list[str] = ["p.is_active = 1"]
+    params: list[object] = []
+    _add_search(where, params, q, ["p.name", "p.species", "h.name"])
+    if filter == "no_icon":
+        where.append("(p.icon_key IS NULL OR p.icon_key = '')")
+    elif filter == "no_thresholds":
+        where.append("p.care_thresholds IS NULL")
+    order_by = _sort_clause(
+        sort,
+        direction,
+        {
+            "name": "p.name",
+            "species": "p.species",
+            "household": "h.name",
+            "phase": "p.phase",
+            "icon": "p.icon_key",
+            "thresholds": "has_thresholds",
+            "created_at": "p.created_at",
+        },
+        "created_at",
+        "desc",
+    )
+    return await _fetch_admin_page(
+        db,
+        select_sql="""
+            SELECT
+                p.id, p.name, p.species, p.icon_key, p.phase,
+                p.icon_requested,
+                (p.care_thresholds IS NOT NULL) as has_thresholds,
+                h.name as household_name,
+                CAST(p.created_at AS TEXT) as created_at
+        """,
+        from_sql="""
+            FROM plants p
+            JOIN households h ON p.household_id = h.id
+        """,
+        where=where,
+        params=params,
+        order_by=order_by,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/admin-panel/species")
-async def admin_species(admin=Depends(require_admin), db=Depends(db_dep)):
-    rows = await db.execute_fetchall("""
-        SELECT
-            ps.id, ps.common_name_nl, ps.latin_name,
-            (ps.care_thresholds IS NOT NULL) as has_thresholds,
-            (ps.latin_name IS NOT NULL) as has_latin_name,
-            (SELECT COUNT(*) FROM plants p
-             WHERE p.species_id = ps.id AND p.is_active = 1) as plant_count
-        FROM plant_species ps
-        ORDER BY ps.common_name_nl
-    """)
-    return [dict(r) for r in rows]
+async def admin_species(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = None,
+    filter: str = "all",
+    sort: str = "common_name",
+    direction: str = Query("asc", alias="dir"),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    where: list[str] = []
+    params: list[object] = []
+    _add_search(where, params, q, ["ps.common_name_nl", "ps.latin_name"])
+    if filter == "no_latin":
+        where.append("(ps.latin_name IS NULL OR ps.latin_name = '')")
+    elif filter == "no_thresholds":
+        where.append("ps.care_thresholds IS NULL")
+    order_by = _sort_clause(
+        sort,
+        direction,
+        {
+            "common_name": "ps.common_name_nl",
+            "latin_name": "ps.latin_name",
+            "plant_count": "plant_count",
+            "thresholds": "has_thresholds",
+        },
+        "common_name",
+        "asc",
+    )
+    return await _fetch_admin_page(
+        db,
+        select_sql="""
+            SELECT
+                ps.id, ps.common_name_nl, ps.latin_name,
+                (ps.care_thresholds IS NOT NULL) as has_thresholds,
+                (ps.latin_name IS NOT NULL AND ps.latin_name != '') as has_latin_name,
+                (SELECT COUNT(*) FROM plants p
+                 WHERE p.species_id = ps.id AND p.is_active = 1) as plant_count
+        """,
+        from_sql="FROM plant_species ps",
+        where=where,
+        params=params,
+        order_by=order_by,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/admin-panel/activity")

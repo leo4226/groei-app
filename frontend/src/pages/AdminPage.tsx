@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   adminPanel, admin,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
-  type AdminSpeciesRow, type AdminActivityEvent,
+  type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
   type IconGenerateResult,
 } from '../api/client'
 
@@ -39,6 +39,30 @@ const RESPONSIVE_STYLES = `@media (max-width: 767px) {
   [data-admin-table-wrap] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
 }
 `
+
+const PAGE_SIZE = 50
+const SEARCH_DEBOUNCE_MS = 300
+
+type SortDir = 'asc' | 'desc'
+type SortState = { sort: string; dir: SortDir }
+type AdminTableHead = string | { label: string; sortKey?: string }
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(timeout)
+  }, [value, delayMs])
+
+  return debounced
+}
+
+function nextSortDir(current: SortState, sortKey: string, initialDir: SortDir = 'asc'): SortDir {
+  if (current.sort !== sortKey) return initialDir
+  return current.dir === 'asc' ? 'desc' : 'asc'
+}
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
@@ -157,14 +181,28 @@ function SectionCard({ title, action, children }: { title: string; action?: { la
   )
 }
 
-function AdminTable({ heads, children, scrollable }: { heads: string[]; children: React.ReactNode; scrollable?: boolean }) {
+function AdminTable({ heads, children, scrollable, sort, onSort }: { heads: AdminTableHead[]; children: React.ReactNode; scrollable?: boolean; sort?: SortState; onSort?: (sortKey: string) => void }) {
   const table = (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
-          {heads.map(h => (
-            <th key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.15em', color: 'var(--color-text-muted)', padding: '10px 18px', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>{h}</th>
-          ))}
+          {heads.map(head => {
+            const label = typeof head === 'string' ? head : head.label
+            const sortKey = typeof head === 'string' ? undefined : head.sortKey
+            const active = Boolean(sortKey && sort?.sort === sortKey)
+            return (
+              <th key={`${label}-${sortKey ?? 'static'}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.15em', color: 'var(--color-text-muted)', padding: '10px 18px', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)', whiteSpace: 'nowrap' }}>
+                {sortKey && onSort ? (
+                  <button
+                    onClick={() => onSort(sortKey)}
+                    style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', color: active ? 'var(--color-primary)' : 'inherit', textTransform: 'inherit', letterSpacing: 'inherit' }}
+                  >
+                    {label} <span aria-hidden="true">{active ? (sort?.dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
+                ) : label}
+              </th>
+            )
+          })}
         </tr>
       </thead>
       <tbody>{children}</tbody>
@@ -187,6 +225,34 @@ function Loading() {
 
 function ErrorMsg({ msg }: { msg: string }) {
   return <div style={{ padding: '16px 18px', color: 'var(--color-overdue)', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13 }}>{msg}</div>
+}
+
+function PaginationFooter({ total, limit, offset, onOffsetChange, loading }: { total: number; limit: number; offset: number; onOffsetChange: (offset: number) => void; loading?: boolean }) {
+  const start = total === 0 ? 0 : offset + 1
+  const end = Math.min(offset + limit, total)
+  const canPrev = offset > 0
+  const canNext = offset + limit < total
+  const btnStyle = (disabled: boolean): React.CSSProperties => ({
+    background: disabled ? 'var(--color-bg-warm)' : 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 6,
+    color: disabled ? 'var(--color-text-muted)' : 'var(--color-primary)',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 10,
+    padding: '5px 10px',
+    opacity: loading ? .65 : 1,
+  })
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 18px', borderTop: '1px solid var(--color-border-soft)', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
+      <span>{start}–{end} of {total}{loading ? ' · loading…' : ''}</span>
+      <span style={{ display: 'flex', gap: 8 }}>
+        <button disabled={!canPrev || loading} onClick={() => onOffsetChange(Math.max(0, offset - limit))} style={btnStyle(!canPrev || Boolean(loading))}>Prev</button>
+        <button disabled={!canNext || loading} onClick={() => onOffsetChange(offset + limit)} style={btnStyle(!canNext || Boolean(loading))}>Next</button>
+      </span>
+    </div>
+  )
 }
 
 function ActivityRow({ event }: { event: AdminActivityEvent }) {
@@ -288,8 +354,13 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
 
 function UsersView() {
   const [users, setUsers] = useState<AdminUserRow[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
+  const [sortState, setSortState] = useState<SortState>({ sort: 'created_at', dir: 'desc' })
+  const [offset, setOffset] = useState(0)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -297,14 +368,43 @@ function UsersView() {
   const [bulkConfirm, setBulkConfirm] = useState(false)
 
   useEffect(() => {
-    adminPanel.users().then(setUsers).catch(e => setErr(e.message))
-  }, [])
+    let cancelled = false
+    const params: AdminTableParams = { limit: PAGE_SIZE, offset, q: debouncedSearch, sort: sortState.sort, dir: sortState.dir }
+    setLoading(true)
+    setErr('')
+    adminPanel.users(params)
+      .then(data => {
+        if (cancelled) return
+        setUsers(data.rows)
+        setTotal(data.total)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setErr(e.message)
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [debouncedSearch, offset, sortState])
+
+  function handleSearch(value: string) {
+    setSearch(value)
+    setOffset(0)
+  }
+
+  function handleSort(sortKey: string) {
+    setSortState(current => ({
+      sort: sortKey,
+      dir: nextSortDir(current, sortKey, sortKey === 'created_at' ? 'desc' : 'asc'),
+    }))
+    setOffset(0)
+  }
 
   async function handleDelete(id: number) {
     setDeletingId(id)
     try {
       await admin.deleteAccount(id)
       setUsers(u => u ? u.filter(x => x.id !== id) : u)
+      setTotal(t => Math.max(0, t - 1))
       setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Delete failed')
@@ -320,6 +420,7 @@ function UsersView() {
       const ids = [...selectedIds]
       await admin.deleteAccounts(ids)
       setUsers(u => u ? u.filter(x => !selectedIds.has(x.id)) : u)
+      setTotal(t => Math.max(0, t - ids.length))
       setSelectedIds(new Set())
       setBulkConfirm(false)
     } catch (e) {
@@ -337,32 +438,32 @@ function UsersView() {
     })
   }
 
+  const pageRows = users ?? []
+  const deletableRows = pageRows.filter(u => u.email !== 'leon_korbee@hotmail.com')
+  const allSelected = deletableRows.length > 0 && deletableRows.every(u => selectedIds.has(u.id))
+
   function toggleAll() {
     if (!users) return
-    const deletable = users.filter(u => u.email !== 'leon_korbee@hotmail.com')
-    if (selectedIds.size === deletable.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(deletable.map(u => u.id)))
-    }
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (allSelected) {
+        deletableRows.forEach(u => next.delete(u.id))
+      } else {
+        deletableRows.forEach(u => next.add(u.id))
+      }
+      return next
+    })
   }
-
-  const filtered = (users ?? []).filter(u =>
-    !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const deletableCount = filtered.filter(u => u.email !== 'leon_korbee@hotmail.com').length
-  const allSelected = deletableCount > 0 && selectedIds.size === deletableCount
 
   return (
     <div>
-      <PageHeader title="Users" sub={`${users?.length ?? '…'} accounts across all households`} />
+      <PageHeader title="Users" sub={`${users ? total : '…'} accounts across all households`} />
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name or email…"
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search by name, email or household…"
           style={{ flex: 1, minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
         />
 
@@ -391,11 +492,25 @@ function UsersView() {
       </div>
 
       {err && <ErrorMsg msg={err} />}
-      {!users && !err && <Loading />}
+      {loading && !users && !err && <Loading />}
 
       {users && (
-        <SectionCard title={`${filtered.length} accounts`}>
-          <AdminTable heads={['', 'Name', 'Email', 'Household', 'Plants', 'Maps', 'Joined', 'Actions']} scrollable>
+        <SectionCard title={`${total} accounts`}>
+          <AdminTable
+            heads={[
+              '',
+              { label: 'Name', sortKey: 'name' },
+              { label: 'Email', sortKey: 'email' },
+              { label: 'Household', sortKey: 'household' },
+              { label: 'Plants', sortKey: 'plant_count' },
+              { label: 'Maps', sortKey: 'map_count' },
+              { label: 'Joined', sortKey: 'created_at' },
+              'Actions',
+            ]}
+            sort={sortState}
+            onSort={handleSort}
+            scrollable
+          >
             <tr style={{ background: 'var(--color-bg-warm)' }}>
               <th style={{ padding: '8px 18px', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll}
@@ -403,11 +518,11 @@ function UsersView() {
               </th>
               <th colSpan={7} style={{ padding: '8px 0', textAlign: 'left', borderBottom: '1px solid var(--color-border-soft)' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)', letterSpacing: '.1em' }}>
-                  {allSelected ? 'All selected' : selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+                  {allSelected ? 'Page selected' : selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select this page'}
                 </span>
               </th>
             </tr>
-            {filtered.map(u => {
+            {pageRows.map(u => {
               const joined = new Date(u.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
               const isAdmin = u.email === 'leon_korbee@hotmail.com'
               return (
@@ -450,6 +565,8 @@ function UsersView() {
               )
             })}
           </AdminTable>
+          {pageRows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No accounts found.</div>}
+          <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
       )}
     </div>
@@ -458,26 +575,70 @@ function UsersView() {
 
 function PlantsView() {
   const [plants, setPlants] = useState<AdminPlantRow[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
+  const [sortState, setSortState] = useState<SortState>({ sort: 'created_at', dir: 'desc' })
+  const [offset, setOffset] = useState(0)
 
   useEffect(() => {
-    adminPanel.plants().then(setPlants).catch(e => setErr(e.message))
-  }, [])
+    let cancelled = false
+    const params: AdminTableParams = { limit: PAGE_SIZE, offset, q: debouncedSearch, filter, sort: sortState.sort, dir: sortState.dir }
+    setLoading(true)
+    setErr('')
+    adminPanel.plants(params)
+      .then(data => {
+        if (cancelled) return
+        setPlants(data.rows)
+        setTotal(data.total)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setErr(e.message)
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [debouncedSearch, filter, offset, sortState])
 
-  const filtered = (plants ?? []).filter(p => {
-    if (filter === 'no_icon') return !p.icon_key
-    if (filter === 'no_thresholds') return !p.has_thresholds
-    return true
-  })
+  function handleSearch(value: string) {
+    setSearch(value)
+    setOffset(0)
+  }
+
+  function handleFilter(value: string) {
+    setFilter(value)
+    setOffset(0)
+  }
+
+  function handleSort(sortKey: string) {
+    setSortState(current => ({
+      sort: sortKey,
+      dir: nextSortDir(current, sortKey, sortKey === 'created_at' ? 'desc' : 'asc'),
+    }))
+    setOffset(0)
+  }
+
+  const rows = plants ?? []
 
   return (
     <div>
-      <PageHeader title="Plants" sub={`${plants?.length ?? '…'} active plants across all households`} />
+      <PageHeader title="Plants" sub={`${plants ? total : '…'} active plants across all households`} />
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search by name, species or household…"
+          style={{ flex: 1, minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
+        />
+      </div>
 
       <FilterBar
         active={filter}
-        onChange={setFilter}
+        onChange={handleFilter}
         options={[
           { id: 'all', label: 'All' },
           { id: 'no_icon', label: 'No icon' },
@@ -486,12 +647,24 @@ function PlantsView() {
       />
 
       {err && <ErrorMsg msg={err} />}
-      {!plants && !err && <Loading />}
+      {loading && !plants && !err && <Loading />}
 
       {plants && (
-        <SectionCard title={`${filtered.length} plants`}>
-          <AdminTable heads={['Name', 'Species', 'Household', 'Phase', 'Icon', 'Thresholds']} scrollable>
-            {filtered.map(p => (
+        <SectionCard title={`${total} plants`}>
+          <AdminTable
+            heads={[
+              { label: 'Name', sortKey: 'name' },
+              { label: 'Species', sortKey: 'species' },
+              { label: 'Household', sortKey: 'household' },
+              { label: 'Phase', sortKey: 'phase' },
+              { label: 'Icon', sortKey: 'icon' },
+              { label: 'Thresholds', sortKey: 'thresholds' },
+            ]}
+            sort={sortState}
+            onSort={handleSort}
+            scrollable
+          >
+            {rows.map(p => (
               <tr key={p.id}>
                 <Td><strong>{p.name}</strong></Td>
                 <Td>{p.species ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
@@ -502,6 +675,8 @@ function PlantsView() {
               </tr>
             ))}
           </AdminTable>
+          {rows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No plants found.</div>}
+          <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
       )}
     </div>
@@ -510,26 +685,70 @@ function PlantsView() {
 
 function SpeciesView() {
   const [species, setSpecies] = useState<AdminSpeciesRow[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
+  const [sortState, setSortState] = useState<SortState>({ sort: 'common_name', dir: 'asc' })
+  const [offset, setOffset] = useState(0)
 
   useEffect(() => {
-    adminPanel.species().then(setSpecies).catch(e => setErr(e.message))
-  }, [])
+    let cancelled = false
+    const params: AdminTableParams = { limit: PAGE_SIZE, offset, q: debouncedSearch, filter, sort: sortState.sort, dir: sortState.dir }
+    setLoading(true)
+    setErr('')
+    adminPanel.species(params)
+      .then(data => {
+        if (cancelled) return
+        setSpecies(data.rows)
+        setTotal(data.total)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setErr(e.message)
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [debouncedSearch, filter, offset, sortState])
 
-  const filtered = (species ?? []).filter(s => {
-    if (filter === 'no_latin') return !s.has_latin_name
-    if (filter === 'no_thresholds') return !s.has_thresholds
-    return true
-  })
+  function handleSearch(value: string) {
+    setSearch(value)
+    setOffset(0)
+  }
+
+  function handleFilter(value: string) {
+    setFilter(value)
+    setOffset(0)
+  }
+
+  function handleSort(sortKey: string) {
+    setSortState(current => ({
+      sort: sortKey,
+      dir: nextSortDir(current, sortKey),
+    }))
+    setOffset(0)
+  }
+
+  const rows = species ?? []
 
   return (
     <div>
-      <PageHeader title="Species" sub={`${species?.length ?? '…'} species in the catalogue`} />
+      <PageHeader title="Species" sub={`${species ? total : '…'} species in the catalogue`} />
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search by common or latin name…"
+          style={{ flex: 1, minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
+        />
+      </div>
 
       <FilterBar
         active={filter}
-        onChange={setFilter}
+        onChange={handleFilter}
         options={[
           { id: 'all', label: 'All' },
           { id: 'no_latin', label: 'No latin name' },
@@ -538,12 +757,22 @@ function SpeciesView() {
       />
 
       {err && <ErrorMsg msg={err} />}
-      {!species && !err && <Loading />}
+      {loading && !species && !err && <Loading />}
 
       {species && (
-        <SectionCard title={`${filtered.length} species`}>
-          <AdminTable heads={['Common name', 'Latin name', 'Plants', 'Thresholds']} scrollable>
-            {filtered.map(s => (
+        <SectionCard title={`${total} species`}>
+          <AdminTable
+            heads={[
+              { label: 'Common name', sortKey: 'common_name' },
+              { label: 'Latin name', sortKey: 'latin_name' },
+              { label: 'Plants', sortKey: 'plant_count' },
+              { label: 'Thresholds', sortKey: 'thresholds' },
+            ]}
+            sort={sortState}
+            onSort={handleSort}
+            scrollable
+          >
+            {rows.map(s => (
               <tr key={s.id}>
                 <Td><strong>{s.common_name_nl}</strong></Td>
                 <Td>{s.latin_name ? <em>{s.latin_name}</em> : <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
@@ -552,6 +781,8 @@ function SpeciesView() {
               </tr>
             ))}
           </AdminTable>
+          {rows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No species found.</div>}
+          <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
       )}
     </div>
