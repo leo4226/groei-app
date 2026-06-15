@@ -166,6 +166,22 @@ export interface AdminOverview {
   recent_activity: AdminActivityEvent[]
 }
 
+export type AdminHealthStatus = 'ok' | 'degraded' | 'down' | 'unconfigured'
+
+export interface AdminServiceHealth {
+  status: AdminHealthStatus
+  latency_ms: number | null
+  detail: string
+}
+
+export interface AdminSystemHealth {
+  database: AdminServiceHealth
+  bioclip: AdminServiceHealth
+  r2: AdminServiceHealth
+  llm: AdminServiceHealth
+  email: AdminServiceHealth
+}
+
 export interface AdminPlantRow {
   id: number
   name: string
@@ -388,6 +404,7 @@ export const admin = {
 
 export const adminPanel = {
   overview: () => api<AdminOverview>('GET', '/admin-panel/overview'),
+  health:   () => api<AdminSystemHealth>('GET', '/admin-panel/health'),
   users:    (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminUserRow>>('GET', '/admin-panel/users', { params: adminTableParams(params) }),
   plants:   (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminPlantRow>>('GET', '/admin-panel/plants', { params: adminTableParams(params) }),
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),

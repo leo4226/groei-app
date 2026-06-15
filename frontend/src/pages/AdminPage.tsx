@@ -4,6 +4,7 @@ import {
   adminPanel, admin,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
   type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
+  type AdminSystemHealth, type AdminHealthStatus,
   type IconGenerateResult,
 } from '../api/client'
 
@@ -29,6 +30,7 @@ const RESPONSIVE_STYLES = `@media (max-width: 767px) {
   [data-admin-stat-cards] { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
   [data-admin-tools-grid] { grid-template-columns: 1fr !important; }
   [data-admin-overview-cards] { grid-template-columns: 1fr !important; }
+  [data-admin-health-row] { grid-template-columns: 1fr !important; gap: 6px !important; }
 }
 @media (min-width: 768px) {
   [data-admin-hamburger] { display: none !important; }
@@ -46,6 +48,14 @@ const SEARCH_DEBOUNCE_MS = 300
 type SortDir = 'asc' | 'desc'
 type SortState = { sort: string; dir: SortDir }
 type AdminTableHead = string | { label: string; sortKey?: string }
+
+const HEALTH_SERVICES: { key: keyof AdminSystemHealth; label: string }[] = [
+  { key: 'database', label: 'Database' },
+  { key: 'bioclip', label: 'BioCLIP worker' },
+  { key: 'r2', label: 'R2 storage' },
+  { key: 'llm', label: 'LLM (Nous)' },
+  { key: 'email', label: 'Email (Resend)' },
+]
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -292,18 +302,77 @@ function FilterBar({ options, active, onChange }: { options: { id: string; label
   )
 }
 
+function healthTone(status: AdminHealthStatus): 'green' | 'amber' | 'red' | 'muted' {
+  if (status === 'ok') return 'green'
+  if (status === 'degraded') return 'amber'
+  if (status === 'down') return 'red'
+  return 'muted'
+}
+
+function healthDotColor(status: AdminHealthStatus): string {
+  if (status === 'ok') return 'var(--color-primary)'
+  if (status === 'degraded') return 'var(--color-due)'
+  if (status === 'down') return 'var(--color-overdue)'
+  return 'var(--color-text-muted)'
+}
+
+function SystemHealthCard({ health, loading, error, onRefresh }: { health: AdminSystemHealth | null; loading: boolean; error: string; onRefresh: () => void }) {
+  return (
+    <SectionCard title="System health" action={{ label: loading ? 'Refreshing…' : 'Refresh ↻', onClick: onRefresh }}>
+      {error && <ErrorMsg msg={error} />}
+      {!health && !error && <Loading />}
+      {health && (
+        <div>
+          {HEALTH_SERVICES.map(({ key, label }) => {
+            const service = health[key]
+            const tone = healthTone(service.status)
+            const latency = service.latency_ms == null ? '—' : `${service.latency_ms} ms`
+            return (
+              <div key={key} data-admin-health-row style={{ display: 'grid', gridTemplateColumns: '180px 110px 86px 1fr', gap: 12, alignItems: 'center', padding: '10px 18px', borderBottom: '1px dashed var(--color-border-soft)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: healthDotColor(service.status), boxShadow: service.status === 'ok' ? '0 0 0 3px rgba(47,93,58,.08)' : 'none', flexShrink: 0 }} />
+                  <strong style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</strong>
+                </div>
+                <Pill label={service.status} tone={tone} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{latency}</span>
+                <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>{service.detail}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
 // ── Section views ─────────────────────────────────────────────────────────────
 
 function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
   const [data, setData] = useState<AdminOverview | null>(null)
   const [err, setErr] = useState('')
+  const [health, setHealth] = useState<AdminSystemHealth | null>(null)
+  const [healthErr, setHealthErr] = useState('')
+  const [healthLoading, setHealthLoading] = useState(false)
+
+  const loadHealth = useCallback(() => {
+    setHealthLoading(true)
+    setHealthErr('')
+    adminPanel.health()
+      .then(setHealth)
+      .catch(e => setHealthErr(e instanceof Error ? e.message : 'System health unavailable'))
+      .finally(() => setHealthLoading(false))
+  }, [])
 
   useEffect(() => {
     adminPanel.overview().then(setData).catch(e => setErr(e.message))
   }, [])
 
-  if (err) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><ErrorMsg msg={err} /></div>
-  if (!data) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><Loading /></div>
+  useEffect(() => {
+    loadHealth()
+  }, [loadHealth])
+
+  if (err) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} /><ErrorMsg msg={err} /></div>
+  if (!data) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} /><Loading /></div>
 
   const statCards = [
     { label: 'Accounts',      value: data.total_accounts, color: 'var(--color-primary)' },
@@ -315,6 +384,8 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
   return (
     <div>
       <PageHeader title="Overview" sub={`Platform health at a glance — ${new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} />
+
+      <SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} />
 
       <div data-admin-stat-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
         {statCards.map(c => (
