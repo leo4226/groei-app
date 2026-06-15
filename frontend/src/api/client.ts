@@ -187,6 +187,31 @@ export interface AdminSpeciesRow {
   plant_count: number
 }
 
+export interface AdminPagedResponse<T> {
+  rows: T[]
+  total: number
+}
+
+export interface AdminTableParams {
+  limit?: number
+  offset?: number
+  q?: string
+  sort?: string
+  dir?: 'asc' | 'desc'
+  filter?: string
+}
+
+function adminTableParams(params: AdminTableParams = {}): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (params.limit != null) out.limit = String(params.limit)
+  if (params.offset != null) out.offset = String(params.offset)
+  if (params.q?.trim()) out.q = params.q.trim()
+  if (params.sort) out.sort = params.sort
+  if (params.dir) out.dir = params.dir
+  if (params.filter && params.filter !== 'all') out.filter = params.filter
+  return out
+}
+
 // ── Domain namespaces ──
 
 export const users = {
@@ -363,9 +388,9 @@ export const admin = {
 
 export const adminPanel = {
   overview: () => api<AdminOverview>('GET', '/admin-panel/overview'),
-  users:    () => api<AdminUserRow[]>('GET', '/admin-panel/users'),
-  plants:   () => api<AdminPlantRow[]>('GET', '/admin-panel/plants'),
-  species:  () => api<AdminSpeciesRow[]>('GET', '/admin-panel/species'),
+  users:    (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminUserRow>>('GET', '/admin-panel/users', { params: adminTableParams(params) }),
+  plants:   (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminPlantRow>>('GET', '/admin-panel/plants', { params: adminTableParams(params) }),
+  species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
   backfillFacts: (limit: number = 50) => api<{ processed: number; updated: number; skipped: number; errors: Array<{species_id: number; name: string; error: string}> }>('POST', `/admin-panel/backfill-facts?limit=${limit}`),
