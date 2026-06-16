@@ -1,4 +1,9 @@
+import asyncio
+import os
 import re
+import time
+from collections.abc import Awaitable, Callable
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Query
 
@@ -15,6 +20,139 @@ from routers.icon_generator import (
 import routers.icons as icons_router
 
 router = APIRouter(tags=["admin-panel"])
+
+HEALTH_CHECK_TIMEOUT_SECONDS = 3.0
+_R2_REQUIRED_ENV = (
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "R2_PUBLIC_BASE_URL",
+)
+
+
+def _health(status: str, detail: str, latency_ms: int | None = None) -> dict:
+    return {"status": status, "latency_ms": latency_ms, "detail": detail}
+
+
+def _error_detail(exc: Exception) -> str:
+    message = str(exc).strip()
+    return message or exc.__class__.__name__
+
+
+async def _run_health_check(check: Callable[[], Awaitable[dict]]) -> dict:
+    started = time.perf_counter()
+    try:
+        result = await asyncio.wait_for(check(), timeout=HEALTH_CHECK_TIMEOUT_SECONDS)
+    except asyncio.TimeoutError:
+        return _health(
+            "down",
+            f"Timed out after {HEALTH_CHECK_TIMEOUT_SECONDS:g}s",
+            round((time.perf_counter() - started) * 1000),
+        )
+    except Exception as exc:  # noqa: BLE001 — health checks must isolate failures
+        return _health(
+            "down",
+            _error_detail(exc),
+            round((time.perf_counter() - started) * 1000),
+        )
+
+    if result.get("latency_ms") is None:
+        result["latency_ms"] = round((time.perf_counter() - started) * 1000)
+    return result
+
+
+async def _check_database(db) -> dict:
+    await db.execute_fetchall("SELECT 1 as ok")
+    return _health("ok", "SELECT 1 succeeded")
+
+
+async def _check_bioclip_worker() -> dict:
+    worker_url = (os.environ.get("BIOCLIP_WORKER_URL") or "").strip()
+    if not worker_url:
+        return _health("unconfigured", "BIOCLIP_WORKER_URL is not set")
+
+    import httpx
+
+    async with httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT_SECONDS) as client:
+        response = await client.get(f"{worker_url.rstrip('/')}/health")
+
+    if response.status_code >= 500:
+        return _health("down", f"HTTP {response.status_code} from worker")
+    if response.status_code >= 400:
+        return _health("degraded", f"HTTP {response.status_code} from worker")
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    worker_status = payload.get("status")
+    model_loaded = payload.get("model_loaded")
+    embeddings_loaded = payload.get("embeddings_loaded")
+    device = payload.get("device") or "unknown"
+
+    status = "ok" if response.is_success else "degraded"
+    if worker_status and worker_status != "ok":
+        status = "degraded"
+    if model_loaded is False or embeddings_loaded is False:
+        status = "degraded"
+
+    detail_bits = [f"device={device}"]
+    if model_loaded is not None:
+        detail_bits.append(f"model_loaded={bool(model_loaded)}")
+    if embeddings_loaded is not None:
+        detail_bits.append(f"embeddings_loaded={bool(embeddings_loaded)}")
+    if worker_status:
+        detail_bits.append(f"status={worker_status}")
+    return _health(status, "; ".join(detail_bits))
+
+
+def _missing_env(names: tuple[str, ...]) -> list[str]:
+    return [name for name in names if not (os.environ.get(name) or "").strip()]
+
+
+async def _check_r2_storage() -> dict:
+    missing = _missing_env(_R2_REQUIRED_ENV)
+    if missing:
+        return _health("unconfigured", "Missing " + ", ".join(missing))
+
+    storage = build_storage_from_env()
+    health_key = (os.environ.get("R2_HEALTHCHECK_KEY") or "").strip().lstrip("/")
+
+    def _probe() -> tuple[str, str]:
+        if health_key:
+            response = storage._client.head_object(Bucket=storage.bucket, Key=health_key)  # noqa: SLF001
+            code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            status = "ok" if code is None or 200 <= int(code) < 300 else "degraded"
+            return status, f"head_object ok for {health_key}"
+
+        response = storage._client.list_objects_v2(Bucket=storage.bucket, MaxKeys=1)  # noqa: SLF001
+        code = response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        status = "ok" if code is None or 200 <= int(code) < 300 else "degraded"
+        count = response.get("KeyCount", 0)
+        return status, f"bucket {storage.bucket} reachable; sampled {count} object(s)"
+
+    status, detail = await asyncio.to_thread(_probe)
+    return _health(status, detail)
+
+
+async def _check_llm_config() -> dict:
+    from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+
+    if not LLM_API_KEY:
+        return _health("unconfigured", "NOUS_API_KEY is not set")
+
+    host = urlparse(LLM_CHAT_URL).netloc or "custom endpoint"
+    return _health("ok", f"Configured for {LLM_MODEL} via {host}; no live call made")
+
+
+async def _check_email_config() -> dict:
+    if not (os.environ.get("RESEND_API_KEY") or "").strip():
+        return _health("unconfigured", "RESEND_API_KEY is not set")
+    return _health("ok", "Resend API key configured; no live call made")
 
 
 def _slug(text: str) -> str:
@@ -91,6 +229,29 @@ async def _fetch_admin_page(
 @router.get("/admin-panel/me")
 async def admin_me(admin=Depends(require_admin)):
     return {"email": admin["email"], "is_admin": True}
+
+
+@router.get("/admin-panel/health")
+async def admin_health(admin=Depends(require_admin), db=Depends(db_dep)):
+    checks: dict[str, Callable[[], Awaitable[dict]]] = {
+        "database": lambda: _check_database(db),
+        "bioclip": _check_bioclip_worker,
+        "r2": _check_r2_storage,
+        "llm": _check_llm_config,
+        "email": _check_email_config,
+    }
+    results = await asyncio.gather(
+        *(_run_health_check(check) for check in checks.values()),
+        return_exceptions=True,
+    )
+
+    response: dict[str, dict] = {}
+    for service, result in zip(checks.keys(), results):
+        if isinstance(result, Exception):
+            response[service] = _health("down", _error_detail(result))
+        else:
+            response[service] = result
+    return response
 
 
 @router.get("/admin-panel/overview")
