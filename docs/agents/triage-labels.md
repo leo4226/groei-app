@@ -28,3 +28,20 @@ mirrors the ⭐ convention in `docs/plans/TODO.md`.
 Apply one during triage. The **🐛 Bug report** form
 (`.github/ISSUE_TEMPLATE/bug_report.yml`) lets the reporter add a guess in the body;
 confirm it with the real label when the issue is triaged.
+
+## `in-progress` — soft lock (parallel agents)
+
+Several agents run at once, so `in-progress` is a **soft lock, not a triage state**. An
+agent adds it the moment it starts an issue (§7) and removes it if it abandons the work.
+**Only pick issues that are `ready-for-agent` and NOT `in-progress`.** See
+`how-we-work.md` §3 and §7.
+
+## Routing — who works which role
+
+When the `triage` skill accepts an issue (and clears `needs-triage`), it must set a
+`difficulty: …` label **and** route to one of:
+
+- `ready-for-agent` → **DeepSeek / executor agents** — clear, fully specified, AFK-ready.
+- `ready-for-human` → **Claude or Leon** — needs a plan, judgment, or has no obvious solution.
+
+See `triage-cheatsheet.md` for the step-by-step.

@@ -4,8 +4,9 @@ How the engineering skills should consume this repo's domain documentation when 
 
 ## Before exploring, read these
 
-- **`CONTEXT.md`** at the repo root
-- **`docs/archive/`** — archived ADRs and specs may contain past decisions relevant to the area you're about to work in.
+- **`CONTEXT.md`** at the repo root — the domain glossary.
+- **`docs/archive/`** — archived ADRs and specs; past decisions relevant to the area you're about to work in.
+- **`docs/plans/`** — active plans and design docs for in-flight work.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
@@ -15,13 +16,21 @@ Single-context repo:
 
 ```
 /
-├── CONTEXT.md
-├── docs/archive/
-│   └── (archived ADRs and specs)
-├── docs/agents/
-├── docs/specs/in-progress/
+├── CONTEXT.md                  # domain glossary
+├── docs/archive/               # archived ADRs and specs (past decisions)
+├── docs/plans/                 # active plans, specs & design docs
+├── docs/agents/                # this config: tracker, labels, domain, how-we-work
 └── (backend/, frontend/)
 ```
+
+There is **no** `docs/adr/` — ADRs live (archived) under `docs/archive/`.
+
+### Where the skills write docs
+
+- Glossary terms → `CONTEXT.md`.
+- New ADRs / resolved decisions → `docs/archive/`.
+- Plans, specs, design docs (`grill-with-docs`, design output) → `docs/plans/`.
+- PRDs (`to-prd`) → a GitHub issue (see `issue-tracker.md`), not a file.
 
 ## Use the glossary's vocabulary
 

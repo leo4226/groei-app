@@ -241,6 +241,10 @@ Credentials (`cert.pem`, `config.yml`, `<tunnel-id>.json`) must live in BOTH:
 
 ## Agent skills
 
+Matt Pocock's engineering + productivity skills are installed globally
+(`~/.claude/skills/`). `docs/agents/how-we-work.md` §4 maps each skill to a workflow
+step; the three configs below tell those skills Floreren's specifics.
+
 ### Issue tracker
 
 Issues live in GitHub Issues (`leo4226/groei-app`). See `docs/agents/issue-tracker.md`.
@@ -251,4 +255,6 @@ Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 
 ### Domain docs
 
-Single-context — `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
+Single-context — `CONTEXT.md` (glossary) at repo root; ADRs/specs archived in
+`docs/archive/`, active plans & designs in `docs/plans/` (there is no `docs/adr/`). See
+`docs/agents/domain.md`.

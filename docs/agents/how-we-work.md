@@ -119,6 +119,29 @@ Leon's bug  ──► GitHub Issue            (needs-triage)
 
 See **`docs/agents/triage-cheatsheet.md`** for the triage step-by-step.
 
+### Which skill to use at each step
+
+The steps above are backed by installed agent skills (Matt Pocock's set, in
+`~/.claude/skills/`). When you're on a step, invoke its skill — each one already reads
+Floreren's config in `docs/agents/` and follows the rules in this file.
+
+| Step / situation | Skill | Floreren specifics it must honour |
+|---|---|---|
+| Triage a `needs-triage` issue | `triage` | Our labels + `difficulty: …` + the `in-progress` soft-lock (§3); see `triage-cheatsheet.md`. |
+| Fuzzy goal — stress-test before building | `grilling` / `grill-me` | Claude's lane; nail scope before any code. |
+| Turn a discussion into a plan + docs | `grill-with-docs` | ADRs → `docs/archive/`, glossary → `CONTEXT.md`, designs → `docs/plans/`. |
+| Publish a plan as a PRD | `to-prd` | Creates a GitHub issue (§6), not a file. |
+| Break a plan into issues | `to-issues` | Keep a coupled epic as **one** issue (§2); split only if slices are independent. |
+| Implement a `ready-for-*` issue | `tdd` + `implement` | Follow §5/§7: claim `in-progress`, own worktree, test (§8), PR with `Closes #n`, never self-merge. |
+| Hard bug / regression | `diagnosing-bugs` | Reads `CONTEXT.md` + `docs/archive/`. |
+| Mid-merge/rebase conflict | `resolving-merge-conflicts` | — |
+| Design or deepen a module | `codebase-design` / `domain-modeling` | Use the glossary's vocabulary (`CONTEXT.md`). |
+| Running low on context / handing off | `handoff` | Compact state for the next agent. |
+
+**This file wins.** Where a skill's generic default conflicts with a golden rule (§1) —
+e.g. it would edit `master` directly, skip the worktree, or skip the `in-progress`
+claim — follow this file, not the skill.
+
 ---
 
 ## 5. Isolation: one worktree per agent (important with parallel agents)
@@ -160,7 +183,7 @@ and `backend/.venv` are per-folder and git-ignored, so a brand-new worktree star
 without them. Before running the app or backend tests there, set up once:
 
 ```bash
-# Frontend deps — needed for `npx tsc --noEmit` and `npm run dev`
+# Frontend deps — needed for `npm run build` and `npm run dev`
 cd frontend && npm install && cd ..
 
 # Backend venv + deps — needed to run the server or any test that hits the DB
@@ -249,17 +272,20 @@ Example: `fix(map): correct sun heatmap orientation on south cells (#13)`
 # Backend (Python)
 cd backend && python -m pytest -q
 
-# Frontend (TypeScript) — must print nothing and exit 0
-cd frontend && npx tsc --noEmit
+# Frontend (TypeScript + production build) — must exit 0
+cd frontend && npm run build
 ```
 
 - Fails **because of your change** → fix it.
 - Was **already failing** before your change → note it in the PR and continue.
 
-**Before you open a PR, both must pass locally:** `tsc` (frontend) and the backend
-tests. CI (`.github/workflows/ci.yml`) re-runs them on every PR and a **red ❌ blocks
-the merge** — so catch it locally instead of bouncing it off CI. In a fresh worktree
-that means `npm install` first (§5), or the `tsc` check silently can't run.
+**Before you open a PR, both must pass locally:** `npm run build` (frontend) and the
+backend tests. Run the **build**, not just `tsc --noEmit` — `tsc` is lenient about JSX
+nesting (e.g. an unbalanced `</div>`) that Vite's rolldown build rejects, so `tsc` can
+pass while the production build and the Vercel deploy fail (see `CLAUDE.md`). CI
+(`.github/workflows/ci.yml`) re-runs both on every PR as the `Frontend · tsc + build`
+check and a **red ❌ blocks the merge** — so catch it locally. In a fresh worktree, run
+`npm install` first (§5) or the build can't run.
 
 ---
 
@@ -334,7 +360,7 @@ git worktree add ../floreren-<n> -b fix/<n>-slug origin/master
 cd ../floreren-<n>
 #   ...edit...
 cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
-cd ../frontend && npx tsc --noEmit
+cd ../frontend && npm run build
 
 # commit, push, PR
 git add <changed files>
