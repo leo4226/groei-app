@@ -4,7 +4,7 @@ import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi, care as careApi } from '../api/client'
 import type { Plant, CareType } from '../types'
 import { CARE_TYPE_INFO } from '../types'
-import { displayToIso, isoToDisplay } from '../utils/dateFormat'
+import { isoToDisplay } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
 import { useT } from '../context/LanguageContext'
 import IconPicker from '../components/IconPicker'
@@ -15,20 +15,7 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
 import PageMasthead from '../components/ui/PageMasthead'
-
-/** Map database sunRequirement values to TileGrid IDs. */
-const SUN_DB_TO_TILE: Record<string, string> = {
-  shade: 'shade',
-  partial_sun: 'indirect',
-  full_sun: 'full-sun',
-}
-
-/** Reverse: map TileGrid sunRequirement IDs back to database values. */
-const SUN_TILE_TO_DB: Record<string, string> = {
-  shade: 'shade',
-  indirect: 'partial_sun',
-  'full-sun': 'full_sun',
-}
+import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
 
 /** Build initial schedules map from the plant's existing care_schedules. */
 function buildSchedulesFromPlant(plant: Plant): Record<CareType, { enabled: boolean; days: number }> {
@@ -151,31 +138,26 @@ export default function EditPlant() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || !plant) return
 
     setSubmitting(true)
     try {
-      // Use the actual map the user selected in the ZonePicker
-      const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
-      const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
-
-      await updatePlant(plantId, {
-        name: name.trim(),
-        species: species.trim() || null,
-        location_id: placedMap?.id ?? null,
-        map_id: placedMap?.id ?? null,
-        map_x: mapPos?.x ?? null,
-        map_y: mapPos?.y ?? null,
-        pot_size_cm: null, // keep existing
-        acquired_date: displayToIso(acquiredDateInput) || null,
-        last_repotted: displayToIso(lastRepottedInput) || null,
-        notes: notes.trim() || null,
-        icon_key: iconKey,
-        sun_requirement: sunRequirement ? (SUN_TILE_TO_DB[sunRequirement] ?? sunRequirement) : null,
-        phase: phase as any,
-        sown_date: displayToIso(sownDateInput) || null,
-        plant_type: formType,
-      })
+      await updatePlant(plantId, buildEditPlantPayload({
+        plant,
+        maps,
+        selectedZoneId,
+        name,
+        species,
+        acquiredDateInput,
+        lastRepottedInput,
+        notes,
+        iconKey,
+        sunRequirement,
+        phase: phase as Plant['phase'],
+        sownDateInput,
+        formType,
+        randomMapPos,
+      }))
 
       // PATCH water schedule interval if changed
       const newWaterDays = schedules.water?.days
