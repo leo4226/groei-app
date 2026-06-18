@@ -20,3 +20,23 @@ Create a GitHub issue.
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --comments`.
+
+## Floreren house style
+
+- **Titles** lead with an emoji: `🐛 …` for bugs, `✨ …` for features/enhancements.
+- **New issues** default to `bug,needs-triage` (or `enhancement,needs-triage`); triage
+  later adds a `difficulty: …` label and routes to `ready-for-agent` / `ready-for-human`
+  (see `triage-labels.md`).
+- **Auto-close on merge:** put `Closes #<n>` in the PR body — don't close manually.
+- **Don't start** `needs-triage` / `needs-info` issues; only work `ready-for-*` issues
+  that aren't already `in-progress`.
+
+## Plans vs issues — how `to-prd` / `to-issues` behave here
+
+- A **full, multi-phase plan** lives as a markdown file in `.hermes/plans/` and gets
+  **one umbrella tracking issue** linking to it, with a checklist mirroring its phases.
+  The plan file is the source of truth; the issue is how the work is claimed and merged.
+- Smaller specs and design docs live in `docs/plans/`.
+- `to-issues` should **keep a coupled epic as a single issue** (one agent owns it end to
+  end) and only fan out into separate issues when the slices are genuinely independent —
+  different files, no ordering. See `how-we-work.md` §2.
