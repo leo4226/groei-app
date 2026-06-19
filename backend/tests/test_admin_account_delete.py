@@ -33,9 +33,9 @@ EXTRA_SCHEMA = """
 
 
 @pytest_asyncio.fixture
-async def delete_fixture(seeded_db, monkeypatch):
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
+async def delete_fixture(seeded_db):
     db = seeded_db
+    await db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
         INSERT INTO households (id, name) VALUES (2, 'Shared'), (3, 'Solo');

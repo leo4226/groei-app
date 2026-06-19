@@ -124,6 +124,7 @@ export interface AdminAccount {
   id: number
   email: string
   name: string
+  is_admin: boolean
   created_at: string
   household_name: string
 }
@@ -142,6 +143,7 @@ export interface AdminUserRow {
   id: number
   name: string
   email: string
+  is_admin: boolean
   created_at: string
   household_id: number
   household_name: string

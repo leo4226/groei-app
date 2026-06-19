@@ -30,7 +30,8 @@ async def test_admin_health_reports_each_service_without_live_llm_call(
     async def failing_bioclip_worker():
         raise RuntimeError("connection refused")
 
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    await seeded_db.commit()
     monkeypatch.setenv("BIOCLIP_WORKER_URL", "https://bioclip.example")
     monkeypatch.setenv("R2_ACCOUNT_ID", "account")
     monkeypatch.setenv("R2_ACCESS_KEY_ID", "access")
@@ -71,7 +72,8 @@ async def test_admin_health_times_out_slow_checks_without_blocking_others(
         await asyncio.sleep(1)
         return {"status": "ok", "latency_ms": None, "detail": "too slow"}
 
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    await seeded_db.commit()
     for name in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_BASE_URL"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(admin_panel, "HEALTH_CHECK_TIMEOUT_SECONDS", 0.01)

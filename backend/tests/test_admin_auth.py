@@ -34,7 +34,8 @@ async def test_admin_routes_reject_non_admin(client, seeded_db, auth_header, met
 
 @pytest.mark.asyncio
 async def test_admin_can_use_previews(client, seeded_db, auth_header, monkeypatch):
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    await seeded_db.commit()
     res = await client.get("/api/admin/backfill-thresholds/preview", headers=auth_header)
     assert res.status_code == 200
     assert "missing_thresholds" in res.json()
@@ -45,9 +46,49 @@ async def test_admin_can_use_previews(client, seeded_db, auth_header, monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_is_admin_column_grants_admin_access(client, seeded_db, auth_header):
+    await seeded_db.execute(
+        "UPDATE accounts SET email = ?, is_admin = 1 WHERE id = 1",
+        ("ops@example.com",),
+    )
+    await seeded_db.commit()
+
+    res = await client.get("/api/admin/backfill-thresholds/preview", headers=auth_header)
+
+    assert res.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_admin_email_without_is_admin_is_rejected(client, seeded_db, auth_header):
+    old_admin_email = "leon_korbee" + "@hotmail.com"
+    await seeded_db.execute(
+        "UPDATE accounts SET email = ?, is_admin = 0 WHERE id = 1",
+        (old_admin_email,),
+    )
+    await seeded_db.commit()
+
+    res = await client.get("/api/admin/backfill-thresholds/preview", headers=auth_header)
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_auth_me_exposes_is_admin_from_account_column(client, seeded_db, auth_header):
+    await seeded_db.execute(
+        "UPDATE accounts SET email = ?, is_admin = 1 WHERE id = 1",
+        ("ops@example.com",),
+    )
+    await seeded_db.commit()
+
+    res = await client.get("/api/auth/me", headers=auth_header)
+
+    assert res.status_code == 200
+    assert res.json()["is_admin"] is True
+
+
+@pytest.mark.asyncio
 async def test_token_for_deleted_account_is_rejected(client, seeded_db, monkeypatch):
     """A syntactically valid JWT whose account no longer exists must not pass."""
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
     token = create_token(account_id=999, household_id=1)
     res = await client.get(
         "/api/admin/accounts", headers={"Authorization": f"Bearer {token}"}

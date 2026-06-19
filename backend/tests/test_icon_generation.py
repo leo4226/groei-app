@@ -11,7 +11,7 @@ BAD_PLANT = '<foreignObject/>'
 
 @pytest.fixture
 async def admin_db(seeded_db):
-    await seeded_db.execute("UPDATE accounts SET email='leon_korbee@hotmail.com' WHERE id=1")
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id=1")
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested BOOLEAN DEFAULT 0")
     await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, latin_name TEXT)")
     await seeded_db.execute("INSERT INTO plant_species (id, common_name_nl, latin_name) VALUES (1,'Roos','Rosa canina')")

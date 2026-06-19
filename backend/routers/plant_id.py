@@ -28,7 +28,6 @@ from services.storage import build_storage_from_env
 
 logger = logging.getLogger(__name__)
 
-_ADMIN_EMAIL = "leon_korbee@hotmail.com"
 _DAILY_QUOTA = 20
 
 router = APIRouter(prefix="/plants", tags=["plant-id"])
@@ -201,13 +200,13 @@ async def _check_quota(db, account: dict) -> str | None:
     Raises HTTPException 429 if quota exceeded.
     """
     rows = await db.execute_fetchall(
-        "SELECT email FROM accounts WHERE id = ?", (account["account_id"],)
+        "SELECT email, is_admin FROM accounts WHERE id = ?", (account["account_id"],)
     )
     if not rows:
         raise HTTPException(status_code=403, detail="Account not found")
 
     email = rows[0]["email"]
-    if email == _ADMIN_EMAIL:
+    if bool(rows[0]["is_admin"]):
         return email
 
     today = date.today().isoformat()
