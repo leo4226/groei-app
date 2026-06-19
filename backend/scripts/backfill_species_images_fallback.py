@@ -40,7 +40,7 @@ _REQUEST_DELAY_S = 0.5
 
 _HEADERS = {
     # Wikipedia rest API asks for an identifying User-Agent
-    "User-Agent": "Floreren/1.0 (https://floreren.app; leon_korbee@hotmail.com)",
+    "User-Agent": "Floreren/1.0 (https://floreren.app)",
 }
 
 

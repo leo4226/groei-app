@@ -17,7 +17,7 @@ from io import BytesIO
 from database import init_pool, get_db, close_pool
 from services.bioclip_id import get_service
 
-HEADERS = {"User-Agent": "Floreren/1.0 (test; leon_korbee@hotmail.com)"}
+HEADERS = {"User-Agent": "Floreren/1.0 (test; https://floreren.app)"}
 
 TEST_IMAGES = [
     ("https://images.pexels.com/photos/1167355/pexels-photo-1167355.jpeg", "leaf_pexels"),

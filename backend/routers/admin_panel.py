@@ -203,6 +203,13 @@ def _where_sql(where: list[str]) -> str:
     return " WHERE " + " AND ".join(where) if where else ""
 
 
+def _admin_row(row) -> dict:
+    data = dict(row)
+    if "is_admin" in data:
+        data["is_admin"] = bool(data["is_admin"])
+    return data
+
+
 async def _fetch_admin_page(
     db,
     *,
@@ -223,7 +230,7 @@ async def _fetch_admin_page(
         f"{select_sql} {from_sql}{where_sql} ORDER BY {order_by} LIMIT ? OFFSET ?",
         tuple(params + [limit, offset]),
     )
-    return {"rows": [dict(r) for r in rows], "total": int(total_row["n"])}
+    return {"rows": [_admin_row(r) for r in rows], "total": int(total_row["n"])}
 
 
 @router.get("/admin-panel/me")
@@ -266,7 +273,7 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
     ))[0]["n"]
 
     recent_accounts = await db.execute_fetchall("""
-        SELECT a.id, a.name, a.email, a.created_at::text, h.name as household_name,
+        SELECT a.id, a.name, a.email, a.is_admin, a.created_at::text, h.name as household_name,
                (SELECT COUNT(*) FROM plants p
                 WHERE p.household_id = a.household_id AND p.is_active = 1) as plant_count
         FROM accounts a
@@ -309,7 +316,7 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
         "total_plants": total_plants,
         "total_maps": total_maps,
         "missing_icons": missing_icons,
-        "recent_accounts": [dict(r) for r in recent_accounts],
+        "recent_accounts": [_admin_row(r) for r in recent_accounts],
         "recent_activity": activity,
     }
 
@@ -346,7 +353,7 @@ async def admin_users(
         db,
         select_sql="""
             SELECT
-                a.id, a.name, a.email, CAST(a.created_at AS TEXT) as created_at,
+                a.id, a.name, a.email, a.is_admin, CAST(a.created_at AS TEXT) as created_at,
                 h.id as household_id, h.name as household_name,
                 (SELECT COUNT(*) FROM plants p
                  WHERE p.household_id = a.household_id AND p.is_active = 1) as plant_count,

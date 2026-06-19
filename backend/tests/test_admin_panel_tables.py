@@ -3,8 +3,7 @@ import pytest_asyncio
 
 
 @pytest_asyncio.fixture
-async def admin_panel_fixture(seeded_db, monkeypatch):
-    monkeypatch.setattr("auth.ADMIN_EMAIL", "test@example.com")
+async def admin_panel_fixture(seeded_db):
     db = seeded_db
     await db.executescript("""
         ALTER TABLE plants ADD COLUMN icon_requested BOOLEAN DEFAULT 0;
@@ -33,6 +32,8 @@ async def admin_panel_fixture(seeded_db, monkeypatch):
             (2, 2, 'anna@example.com', 'Anna', 'x', '2026-06-01'),
             (3, 2, 'bob@example.com', 'Bob', 'x', '2026-06-02'),
             (4, 3, 'carla@example.com', 'Carla', 'x', '2026-06-03');
+
+        UPDATE accounts SET is_admin = 1 WHERE id IN (1, 2);
 
         INSERT INTO maps (id, name, household_id) VALUES
             (21, 'Balcony map', 2),
@@ -69,6 +70,8 @@ async def test_admin_users_page_search_and_sort(client, admin_panel_fixture, aut
     body = res.json()
     assert body["total"] == 4
     assert [row["name"] for row in body["rows"]] == ["Anna", "Bob"]
+    assert body["rows"][0]["is_admin"] is True
+    assert body["rows"][1]["is_admin"] is False
 
     res = await client.get(
         "/api/admin-panel/users?q=balcony&sort=email&dir=desc",

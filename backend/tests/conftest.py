@@ -49,6 +49,7 @@ SCHEMA = """
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         avatar TEXT,
+        is_admin INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE plants (

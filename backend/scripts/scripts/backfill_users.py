@@ -25,7 +25,7 @@ async def main():
         }
         print(f"Existing users in household 3: {existing_names}")
 
-        # Account id=3 = leon_korbee@hotmail.com, name=Leon → already exists
+        # Account id=3 = Leon's account → already exists
         # No other accounts in household 3
 
         # 3. For remaining orphan accounts (not in household 3), create a default user per household
