@@ -112,6 +112,22 @@ async def test_delete_last_account_removes_household(client, delete_fixture, aut
 
 
 @pytest.mark.asyncio
+async def test_is_admin_flag_not_email_allows_bulk_delete(client, delete_fixture, auth_header):
+    db = delete_fixture
+    admin_rows = await db.execute_fetchall("SELECT email, is_admin FROM accounts WHERE id = 1")
+    assert admin_rows[0]["email"] == "test@example.com"
+    assert bool(admin_rows[0]["is_admin"])
+
+    res = await client.request(
+        "DELETE", "/api/admin/accounts/bulk",
+        json={"account_ids": [3]}, headers=auth_header,
+    )
+
+    assert res.status_code == 200
+    assert await _count(db, "SELECT COUNT(*) n FROM accounts WHERE id = 3") == 0
+
+
+@pytest.mark.asyncio
 async def test_bulk_delete_whole_household(client, delete_fixture, auth_header):
     db = delete_fixture
     res = await client.request(

@@ -3,6 +3,7 @@
 Revision ID: 0018
 Revises: 0017
 """
+import sqlalchemy as sa
 from alembic import op
 
 revision = "0018"
@@ -17,8 +18,14 @@ def upgrade() -> None:
     # Seed the current production admin once. Runtime authorization reads only
     # accounts.is_admin, so future admin changes are normal DB updates.
     current_admin_email = "leon_korbee" + "@hotmail.com"
-    escaped = current_admin_email.replace("'", "''")
-    op.execute(f"UPDATE accounts SET is_admin = TRUE WHERE email = '{escaped}'")
+    result = op.get_bind().execute(
+        sa.text("UPDATE accounts SET is_admin = TRUE WHERE email = :email"),
+        {"email": current_admin_email},
+    )
+    if result.rowcount != 1:
+        raise RuntimeError(
+            "Expected to seed exactly one admin account while adding accounts.is_admin"
+        )
 
 
 def downgrade() -> None:
