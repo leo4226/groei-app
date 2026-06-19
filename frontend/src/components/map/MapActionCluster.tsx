@@ -9,17 +9,19 @@ interface Props {
   sunActive: boolean
   sunAvailable: boolean
   inspectorMode: boolean
+  moveModeActive: boolean
   onWater: () => void
   onFertilize: () => void
   onToggleSun: () => void
   onToggleInspector: () => void
+  onToggleMoveMode: () => void
   onAddPlant: () => void
 }
 
 export default function MapActionCluster({
   isOutdoor, waterStatus,
-  sunActive, sunAvailable, inspectorMode,
-  onWater, onFertilize, onToggleSun, onToggleInspector,
+  sunActive, sunAvailable, inspectorMode, moveModeActive,
+  onWater, onFertilize, onToggleSun, onToggleInspector, onToggleMoveMode,
   onAddPlant,
 }: Props) {
   const t = useT()
@@ -87,6 +89,20 @@ export default function MapActionCluster({
         className={`${iconBtn} ${inspectorMode ? 'bg-orange-500/30 text-orange-600' : 'text-orange-500 hover:bg-orange-500/15'}`}
       >
         <span className="text-xs font-bold">🔍</span>
+      </button>
+
+      {/* Move mode — intentional repositioning only */}
+      <button
+        type="button"
+        onClick={onToggleMoveMode}
+        onPointerDown={(e) => e.stopPropagation()}
+        title={moveModeActive ? t.mapPage.moveModeDone : t.mapPage.moveMode}
+        className={`${iconBtn} ${moveModeActive ? 'bg-primary text-white' : 'text-primary hover:bg-primary/15'}`}
+        style={{ touchAction: 'manipulation' }}
+      >
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M7.5 1.5v12M7.5 1.5L5.5 3.5M7.5 1.5l2 2M7.5 13.5l-2-2M7.5 13.5l2-2M1.5 7.5h12M1.5 7.5l2-2M1.5 7.5l2 2M13.5 7.5l-2-2M13.5 7.5l-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
       {/* Add plant — primary, always last */}

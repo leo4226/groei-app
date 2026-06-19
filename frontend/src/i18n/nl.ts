@@ -545,6 +545,8 @@ export const nl: Translations = {
     removeFrom: 'Verwijderen',
     plantedIn: 'Geplant in:',
     move: 'Verplaatsen',
+    moveOnMap: 'Verplaats op kaart',
+    moveToMap: 'Verplaats naar andere kaart',
     thisSpot: 'Dit punt:',
     goodFit: '✓ Geschikt',
     partialFit: '~ Deels',
@@ -1013,6 +1015,10 @@ export const nl: Translations = {
     unplacedTitle: 'Nog te plaatsen',
     unplacedCount: (n) => `${n} niet geplaatst`,
     spotInspectorHint: 'Tik op een plek om te inspecteren',
+    moveMode: 'Verplaats planten',
+    moveModeDone: 'Klaar met verplaatsen',
+    moveModeHint: 'Verplaatsmodus: sleep planten naar hun plek. Tik Klaar als je klaar bent.',
+    moveOnePlantHint: 'Sleep deze plant naar zijn nieuwe plek.',
   },
 
   garden: {

@@ -504,6 +504,8 @@ export type Translations = {
     removeFrom: string
     plantedIn: string
     move: string
+    moveOnMap: string
+    moveToMap: string
     thisSpot: string
     goodFit: string
     partialFit: string
@@ -1031,6 +1033,10 @@ export type Translations = {
     unplacedTitle: string                        // "Nog te plaatsen" — unplaced tray header
     unplacedCount: (n: number) => string         // "{n} niet geplaatst"
     spotInspectorHint: string
+    moveMode: string
+    moveModeDone: string
+    moveModeHint: string
+    moveOnePlantHint: string
   }
 
   garden: {

@@ -545,6 +545,8 @@ export const en: Translations = {
     removeFrom: 'Remove',
     plantedIn: 'Planted in:',
     move: 'Move',
+    moveOnMap: 'Move on map',
+    moveToMap: 'Move to another map',
     thisSpot: 'This spot:',
     goodFit: '✓ Good fit',
     partialFit: '~ Partial',
@@ -1013,6 +1015,10 @@ export const en: Translations = {
     unplacedTitle: 'To place',
     unplacedCount: (n) => `${n} unplaced`,
     spotInspectorHint: 'Tap a spot to inspect it',
+    moveMode: 'Move plants',
+    moveModeDone: 'Done moving',
+    moveModeHint: 'Move mode: drag plants to their spot. Tap Done when finished.',
+    moveOnePlantHint: 'Drag this plant to its new spot.',
   },
 
   garden: {

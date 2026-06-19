@@ -45,13 +45,16 @@ interface Props {
   onHeatmapCellTap?: (cell: HeatmapCell) => void
   /** Arbitrary SVG content rendered on top of everything (used by ?debug=svf). */
   debugOverlay?: ReactNode
+  moveMode?: boolean
+  movePlantId?: number | null
+  onPlantMoveComplete?: (plantId: number) => void | Promise<void>
   // Dynamic garden geometry
   gardenPerimeter?: [number, number][] | null
   gardenBounds?: { minX: number; minY: number; maxX: number; maxY: number }
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
@@ -289,6 +292,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     canvasData,
     gardenBounds,
     isMobile,
+    moveMode,
+    movePlantId,
+    onPlantMoveComplete,
     onPlantTap,
     onObjectTap,
     onOpenDetails,
@@ -450,6 +456,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             dragPositions={dragPositions}
             draggingKey={dragKey}
             selectedId={selection.selectedId}
+            moveMode={moveMode}
+            movePlantId={movePlantId}
             showLabels={showLabels}
             onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
             onPointerDown={handlePlantPointerDown}
