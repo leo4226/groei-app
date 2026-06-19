@@ -11,7 +11,7 @@ function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: Ca
   const t = useT()
   return (
     <div className="standalone-toggle-container" style={{
-      maxWidth: 1480, margin: '0 auto', padding: 'clamp(16px, 4vw, 48px) clamp(16px, 4vw, 48px) 0',
+      maxWidth: 1480, margin: '0 auto', padding: 'max(clamp(16px, 4vw, 48px), env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 48px) 0',
       display: 'flex', justifyContent: 'flex-end',
     }}>
       <div className="view-toggle">

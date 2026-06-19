@@ -225,7 +225,7 @@ function DashboardHeader({
 
   return (
     <header className="dashboard-header" style={{
-      padding: '40px 24px 20px', borderBottom: '1px solid var(--color-border)',
+      padding: 'max(40px, env(safe-area-inset-top, 0px)) 24px 20px', borderBottom: '1px solid var(--color-border)',
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20,
     }}>
       <div style={{ flex: 1, minWidth: 240 }}>
