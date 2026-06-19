@@ -844,7 +844,7 @@ function LogboekSection({ entries, t }: { entries: RecentLogEntry[]; t: Translat
 
 function CareTipCard({ fact, t }: { fact: PlantFactOut; t: Translations }) {
   return (
-    <div className="card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+    <div className="card" style={{ borderRadius: 14, overflow: 'visible', marginBottom: 18 }}>
       <div style={{ padding: '16px 18px 6px' }}>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.didYouKnow}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>

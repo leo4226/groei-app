@@ -54,7 +54,7 @@ export default function WeatherCard({ weather, loading, error, t }: {
   t: Translations
 }) {
   return (
-    <div className="card weather-card" style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 18 }}>
+    <div className="card weather-card" style={{ borderRadius: 14, overflow: 'visible', marginBottom: 18 }}>
       <div className="weather-card-header">
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', marginBottom: 4 }}>{t.dashboard.sections.weather}</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 22, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
