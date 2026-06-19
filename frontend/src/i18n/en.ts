@@ -583,6 +583,8 @@ export const en: Translations = {
     xDays: 'Every {n} days',
     byPerson: 'by {name}',
     deleteSchedule: 'Delete schedule',
+    deleteScheduleConfirm: 'Are you sure you want to delete this care schedule?',
+    undo: 'Undo',
     photoJournal: 'Growth journal',
     careHistory: 'Care history',
     skipped: 'skipped:',

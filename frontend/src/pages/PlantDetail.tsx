@@ -106,6 +106,14 @@ export default function PlantDetail() {
   const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
   const [carePhotoBusy, setCarePhotoBusy] = useState(false)
   const [journalRefresh, setJournalRefresh] = useState(0)
+  const [undoInfo, setUndoInfo] = useState<{
+    careLogId: number
+    previousNextDue: string | null
+    previousLastDone: string | null
+    previousLastDoneBy: number | null
+    careType: string
+  } | null>(null)
+  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const carePhotoRef = useRef<HTMLInputElement>(null)
 
   const plantId = Number(id)
@@ -164,6 +172,7 @@ export default function PlantDetail() {
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
+    if (!window.confirm(t.plantDetail.deleteScheduleConfirm)) return
     await care.deleteSchedule(scheduleId)
     await loadPlants() // store.sync effect picks up the updated plant
   }
@@ -359,22 +368,32 @@ export default function PlantDetail() {
     </Section>
   )
 
-  // Non-blocking "add a photo?" affordance after logging care
+  // Non-blocking "add a photo?" + undo affordance after logging care
   const carePhotoUi = (
     <>
       <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
              className="hidden" onChange={handleCarePhotoPick} />
-      {pendingCareLogId != null && (
+      {(pendingCareLogId != null || undoInfo != null) && (
         <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
-          <button
-            className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
-            disabled={carePhotoBusy}
-            onClick={() => carePhotoRef.current?.click()}
-          >
-            📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
-          </button>
+          {undoInfo && (
+            <button
+              className="flex-1 py-2 rounded-full bg-surface border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
+              onClick={handleUndo}
+            >
+              ↩ {t.plantDetail.undo}
+            </button>
+          )}
+          {pendingCareLogId != null && (
+            <button
+              className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+              disabled={carePhotoBusy}
+              onClick={() => carePhotoRef.current?.click()}
+            >
+              📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
+            </button>
+          )}
           <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
-                  onClick={() => setPendingCareLogId(null)}>
+                  onClick={() => { setPendingCareLogId(null); setUndoInfo(null); if (undoTimer) clearTimeout(undoTimer) }}>
             ✕
           </button>
         </div>

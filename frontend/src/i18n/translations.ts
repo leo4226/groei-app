@@ -542,6 +542,8 @@ export type Translations = {
     xDays: string  // "Every {n} days"
     byPerson: string  // "by {name}"
     deleteSchedule: string
+    deleteScheduleConfirm: string
+    undo: string
     photoJournal: string
     careHistory: string
     skipped: string  // "skipped:"

@@ -583,6 +583,8 @@ export const nl: Translations = {
     xDays: 'Elke {n} dagen',
     byPerson: 'Door {name}',
     deleteSchedule: 'Verwijder schema',
+    deleteScheduleConfirm: 'Weet je zeker dat je dit verzorgingsschema wilt verwijderen?',
+    undo: 'Ongedaan maken',
     photoJournal: 'Groeidagboek',
     careHistory: 'Zorggeschiedenis',
     skipped: 'sloeg over:',
