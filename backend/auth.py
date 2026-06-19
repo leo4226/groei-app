@@ -49,17 +49,14 @@ async def get_current_account(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "leon_korbee@hotmail.com")
-
-
 async def require_admin(account=Depends(get_current_account), db=Depends(db_dep)) -> dict:
-    """FastAPI dependency — 403 unless the caller is the admin account.
+    """FastAPI dependency — 403 unless the caller has admin privileges.
 
-    Injects {"account_id", "household_id", "email"}.
+    Injects {"account_id", "household_id", "email", "is_admin"}.
     """
     rows = await db.execute_fetchall(
-        "SELECT email FROM accounts WHERE id = ?", (account["account_id"],)
+        "SELECT email, is_admin FROM accounts WHERE id = ?", (account["account_id"],)
     )
-    if not rows or rows[0]["email"] != ADMIN_EMAIL:
+    if not rows or not bool(rows[0]["is_admin"]):
         raise HTTPException(status_code=403, detail="Forbidden")
-    return {**account, "email": rows[0]["email"]}
+    return {**account, "email": rows[0]["email"], "is_admin": bool(rows[0]["is_admin"])}

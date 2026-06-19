@@ -233,12 +233,17 @@ async def backfill_plant_types(db = Depends(db_dep)):
 @router.get("/admin/accounts")
 async def list_accounts(db = Depends(db_dep)):
     accounts = await db.execute_fetchall("""
-        SELECT a.id, a.email, a.name, a.created_at, h.name as household_name
+        SELECT a.id, a.email, a.name, a.is_admin, a.created_at, h.name as household_name
         FROM accounts a
         JOIN households h ON a.household_id = h.id
         ORDER BY a.created_at DESC
     """)
-    return [dict(r) for r in accounts]
+    rows = []
+    for r in accounts:
+        row = dict(r)
+        row["is_admin"] = bool(row["is_admin"])
+        rows.append(row)
+    return rows
 
 
 # NB: /admin/accounts/bulk MUST be defined before /admin/accounts/{account_id},

@@ -18,7 +18,7 @@ from models import (
     ResetPasswordInput,
     ChangePasswordInput,
 )
-from auth import ADMIN_EMAIL, hash_password, verify_password, create_token, get_current_account
+from auth import hash_password, verify_password, create_token, get_current_account
 from services.email import send_password_reset
 import asyncpg
 
@@ -206,7 +206,8 @@ async def change_password(body: ChangePasswordInput, current=Depends(get_current
 @router.get("/me", response_model=AccountOut)
 async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     rows = await db.execute_fetchall(
-        """SELECT a.id, a.household_id, a.email, a.name, a.avatar, h.name AS household_name
+        """SELECT a.id, a.household_id, a.email, a.name, a.avatar, a.is_admin,
+                  h.name AS household_name
            FROM accounts a
            JOIN households h ON h.id = a.household_id
            WHERE a.id = ?""",
@@ -215,5 +216,4 @@ async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     if not rows:
         raise HTTPException(status_code=404, detail="Account not found")
     account = dict(rows[0])
-    is_admin = account["email"] == ADMIN_EMAIL
-    return {**account, "is_admin": is_admin}
+    return {**account, "is_admin": bool(account["is_admin"])}

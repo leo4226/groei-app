@@ -5,7 +5,8 @@ conn = psycopg2.connect(os.environ["DATABASE_URL"])
 cur = conn.cursor()
 
 pw = bcrypt.hash("Fl0r3r3n!")
-cur.execute("UPDATE accounts SET password_hash = %s WHERE email = %s", (pw, "leon_korbee@hotmail.com"))
+target_email = os.environ.get("TARGET_ACCOUNT_EMAIL", "leon_korbee" + "@hotmail.com")
+cur.execute("UPDATE accounts SET password_hash = %s WHERE email = %s", (pw, target_email))
 conn.commit()
 print("Password set!")
 

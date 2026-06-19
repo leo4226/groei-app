@@ -404,7 +404,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
                 <Td><strong>{a.name}</strong></Td>
                 <Td>{a.household_name}</Td>
                 <Td mono>{a.plant_count}</Td>
-                <Td><Pill label={a.email === 'leon_korbee@hotmail.com' ? 'Admin' : a.plant_count === 0 ? 'No plants' : 'Active'} tone={a.email === 'leon_korbee@hotmail.com' ? 'green' : a.plant_count === 0 ? 'amber' : 'green'} /></Td>
+                <Td><Pill label={a.is_admin ? 'Admin' : a.plant_count === 0 ? 'No plants' : 'Active'} tone={a.is_admin ? 'green' : a.plant_count === 0 ? 'amber' : 'green'} /></Td>
               </tr>
             ))}
           </AdminTable>
@@ -510,7 +510,7 @@ function UsersView() {
   }
 
   const pageRows = users ?? []
-  const deletableRows = pageRows.filter(u => u.email !== 'leon_korbee@hotmail.com')
+  const deletableRows = pageRows.filter(u => !u.is_admin)
   const allSelected = deletableRows.length > 0 && deletableRows.every(u => selectedIds.has(u.id))
 
   function toggleAll() {
@@ -595,7 +595,7 @@ function UsersView() {
             </tr>
             {pageRows.map(u => {
               const joined = new Date(u.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
-              const isAdmin = u.email === 'leon_korbee@hotmail.com'
+              const isAdmin = u.is_admin
               return (
                 <tr key={u.id}>
                   <Td>
