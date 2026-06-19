@@ -49,7 +49,7 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: 
                 <button
                   key={m.id}
                   onClick={() => { setOpen(false); navigate(`/map/${m.slug}`) }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-text hover:bg-bg/60 w-full text-left transition-colors"
+                  className="flex items-center gap-2 px-3 py-3 text-sm text-text hover:bg-bg/60 w-full text-left transition-colors min-h-[44px]"
                 >
                   {m.map_type === 'outdoor' ? '🌿' : '🏠'} {m.name}
                 </button>
@@ -59,7 +59,7 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: 
           )}
           <button
             onClick={() => { setOpen(false); onToggleLabels() }}
-            className="flex items-center gap-2 px-3 py-2 text-sm w-full text-left transition-colors hover:bg-bg/60"
+            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
           >
             <span className="text-sm">📝</span>
             <span className={showLabels ? '' : 'text-text-muted'}>
@@ -70,7 +70,7 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: 
           <div className="h-px bg-border mx-3 my-1" />
           <button
             onClick={() => { setOpen(false); navigate(`/maps/${map.id}/settings`) }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:bg-bg/60 w-full text-left transition-colors"
+            className="flex items-center gap-2 px-3 py-3 text-sm text-text-muted hover:bg-bg/60 w-full text-left transition-colors min-h-[44px]"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />

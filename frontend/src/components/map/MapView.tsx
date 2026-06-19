@@ -359,9 +359,10 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             transform: 'translateX(-50%)',
             zIndex: 10,
             pointerEvents: 'none',
+            maxWidth: 'calc(100% - 2rem)',
           }}
         >
-          <div className="bg-surface/90 border border-border rounded-full px-3 py-1 text-xs font-semibold text-text shadow-md backdrop-blur-sm whitespace-nowrap">
+          <div className="bg-surface/90 border border-border rounded-full px-3 py-1 text-xs font-semibold text-text shadow-md backdrop-blur-sm truncate">
             Planten in {hoveredZoneName}
           </div>
         </div>
