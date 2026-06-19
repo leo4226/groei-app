@@ -152,8 +152,40 @@ export default function PlantDetail() {
   }, [plants, plantId])
 
   async function handleQuickAction(careType: string) {
-    const careLogId = await markCareDone(plantId, careType)
-    if (careLogId != null) setPendingCareLogId(careLogId)
+    const result = await markCareDone(plantId, careType)
+    if (result != null) {
+      setPendingCareLogId(result.care_log_id)
+      setUndoInfo({
+        careLogId: result.care_log_id,
+        previousNextDue: result.previous_next_due,
+        previousLastDone: result.previous_last_done,
+        previousLastDoneBy: result.previous_last_done_by,
+        careType,
+      })
+      if (undoTimer) clearTimeout(undoTimer)
+      setUndoTimer(setTimeout(() => {
+        setUndoInfo(null)
+        setUndoTimer(null)
+      }, 8000))
+    }
+  }
+
+  async function handleUndo() {
+    if (!undoInfo) return
+    if (undoTimer) clearTimeout(undoTimer)
+    try {
+      await care.undo(
+        undoInfo.careLogId,
+        undoInfo.previousNextDue,
+        undoInfo.previousLastDone,
+        undoInfo.previousLastDoneBy,
+      )
+      await loadPlants()
+    } finally {
+      setUndoInfo(null)
+      setUndoTimer(null)
+      setPendingCareLogId(null)
+    }
   }
 
   async function handleCarePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
