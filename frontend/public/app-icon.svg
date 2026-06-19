@@ -1,29 +1,62 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-      <defs>
-        <linearGradient id="g-glass" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#FFFDF6"/>
-          <stop offset="100%" stop-color="#F0E8D0"/>
-        </linearGradient>
-        <clipPath id="g-clip">
-          <rect x="0" y="0" width="100" height="100" rx="22" ry="22"/>
-        </clipPath>
-      </defs>
-      <g clip-path="url(#g-clip)">
-        <rect x="0" y="0" width="100" height="100" fill="url(#g-glass)"/>
-        <!-- soft daylight wash from top-left -->
-        <ellipse cx="20" cy="10" rx="60" ry="40" fill="#FFF6DC" opacity="0.6"/>
-        <!-- muntins -->
-        <g stroke="#6B4A35" stroke-width="0.6" opacity="0.55">
-          <line x1="33.3" y1="0" x2="33.3" y2="100"/>
-          <line x1="66.6" y1="0" x2="66.6" y2="100"/>
-          <line x1="0" y1="33.3" x2="100" y2="33.3"/>
-          <line x1="0" y1="66.6" x2="100" y2="66.6"/>
-        </g>
-        <!-- frame perimeter -->
-        <rect x="3" y="3" width="94" height="94" rx="19" ry="19"
-              fill="none" stroke="#6B4A35" stroke-width="1.2" opacity="0.55"/>
-        <!-- subtle glass highlight -->
-        <path d="M 6 10 L 28 10 L 6 32 Z" fill="#FFFFFF" opacity="0.35"/>
-        <path d="M 38 36 L 60 36 L 38 58 Z" fill="#FFFFFF" opacity="0.18"/>
-      </g>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#FBF7EE"/>
+      <stop offset="100%" stop-color="#E8DCC6"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect x="0" y="0" width="100" height="100" rx="22" ry="22"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#clip)">
+    <!-- Warm paper background -->
+    <rect width="100" height="100" fill="url(#bg)"/>
+    <!-- Soft daylight glow top-left -->
+    <ellipse cx="18" cy="10" rx="52" ry="32" fill="#FFF8E8" opacity="0.5"/>
+
+    <!-- Terracotta pot -->
+    <path d="M 31 80 L 35 96 Q 35 98 37 98 L 63 98 Q 65 98 65 96 L 69 80 Z" fill="#B2664A"/>
+    <rect x="29" y="77" width="42" height="5" rx="1.5" fill="#C77B5D"/>
+    <path d="M 35 96 Q 35 98 37 98 L 63 98 Q 65 98 65 96 L 63 94 L 37 94 Z" fill="#8E4A33" opacity="0.5"/>
+    <ellipse cx="50" cy="79.5" rx="17" ry="1.7" fill="#4A3429"/>
+
+    <!-- Stems -->
+    <path d="M 50 80 Q 50 62 50 46" stroke="#3D5C3A" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 50 72 Q 43 62 38 54" stroke="#3D5C3A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M 50 65 Q 58 56 63 50" stroke="#3D5C3A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Back-left leaf -->
+    <g transform="translate(36 50) rotate(-22)">
+      <path d="M 0 2 Q -18 -6 -20 -22 Q -16 -30 -8 -26 Q -3 -19 0 -13 Q 3 -19 8 -26 Q 16 -30 20 -22 Q 18 -6 0 2 Z" fill="#2F5D3A"/>
+      <path d="M -12 -15 L -7 -10 M 10 -13 L 6 -10 M 7 -21 L 3 -15 M -6 -21 L -2 -15" stroke="#4A7C4E" stroke-width="1.7" stroke-linecap="round"/>
+    </g>
+
+    <!-- Back-right leaf -->
+    <g transform="translate(63 48) rotate(24)">
+      <path d="M 0 2 Q -15 -5 -17 -19 Q -14 -27 -7 -23 Q -2 -17 0 -11 Q 2 -17 7 -23 Q 14 -27 17 -19 Q 15 -5 0 2 Z" fill="#2F5D3A"/>
+      <path d="M -10 -13 L -6 -9 M 9 -11 L 5 -9 M 6 -18 L 3 -13 M -5 -18 L -1 -13" stroke="#4A7C4E" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+
+    <!-- Front center leaf — large monstera with fenestration -->
+    <g transform="translate(50 44) rotate(3)">
+      <path d="M 0 4 Q -24 -4 -28 -24 Q -22 -36 -11 -30 Q -4 -22 0 -13 Q 4 -22 11 -30 Q 22 -36 28 -24 Q 24 -4 0 4 Z" fill="#4A7C4E"/>
+      <!-- Split-leaf cuts -->
+      <path d="M -18 -18 L -9 -12" stroke="#2F5D3A" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M 18 -18 L 9 -12" stroke="#2F5D3A" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M -12 -27 L -4 -19" stroke="#2F5D3A" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M 12 -27 L 4 -19" stroke="#2F5D3A" stroke-width="2.2" stroke-linecap="round"/>
+      <!-- Fenestration holes (warm paper showing through) -->
+      <ellipse cx="-10" cy="-17" rx="2" ry="3" fill="#E0D0B4"/>
+      <ellipse cx="10" cy="-17" rx="2" ry="3" fill="#E0D0B4"/>
+      <!-- Center vein -->
+      <path d="M 0 0 Q 0 -20 0 -32" stroke="#2F5D3A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Small new growth leaf, top -->
+    <g transform="translate(54 28) rotate(12)">
+      <ellipse cx="0" cy="-7" rx="5" ry="8.5" fill="#2F5D3A"/>
+      <path d="M 0 0 L 0 -14" stroke="#4A7C4E" stroke-width="1" fill="none"/>
+    </g>
+  </g>
 </svg>

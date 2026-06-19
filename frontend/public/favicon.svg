@@ -1,25 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-      <defs>
-        <linearGradient id="g-glass" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#FFFDF6"/>
-          <stop offset="100%" stop-color="#F0E8D0"/>
-        </linearGradient>
-        <clipPath id="g-clip">
-          <rect x="0" y="0" width="100" height="100" rx="22" ry="22"/>
-        </clipPath>
-      </defs>
-      <g clip-path="url(#g-clip)">
-        <rect x="0" y="0" width="100" height="100" fill="url(#g-glass)"/>
-        <ellipse cx="20" cy="10" rx="60" ry="40" fill="#FFF6DC" opacity="0.6"/>
-        <g stroke="#6B4A35" stroke-width="0.6" opacity="0.55">
-          <line x1="33.3" y1="0" x2="33.3" y2="100"/>
-          <line x1="66.6" y1="0" x2="66.6" y2="100"/>
-          <line x1="0" y1="33.3" x2="100" y2="33.3"/>
-          <line x1="0" y1="66.6" x2="100" y2="66.6"/>
-        </g>
-        <rect x="3" y="3" width="94" height="94" rx="19" ry="19"
-              fill="none" stroke="#6B4A35" stroke-width="1.2" opacity="0.55"/>
-        <path d="M 6 10 L 28 10 L 6 32 Z" fill="#FFFFFF" opacity="0.35"/>
-        <path d="M 38 36 L 60 36 L 38 58 Z" fill="#FFFFFF" opacity="0.18"/>
-      </g>
+  <defs>
+    <clipPath id="clip">
+      <rect x="0" y="0" width="100" height="100" rx="22" ry="22"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <!-- Dark green background -->
+    <rect width="100" height="100" fill="#2F5D3A"/>
+    <!-- Soft highlight top-left -->
+    <ellipse cx="20" cy="15" rx="48" ry="30" fill="#3D7A4E" opacity="0.5"/>
+
+    <!-- Monstera leaf silhouette in warm paper color -->
+    <g transform="translate(50 56) rotate(3)">
+      <path d="M 0 6 Q -26 -4 -30 -28 Q -24 -42 -12 -34 Q -4 -24 0 -14 Q 4 -24 12 -34 Q 24 -42 30 -28 Q 26 -4 0 6 Z" fill="#FBF7EE"/>
+      <!-- Split cuts -->
+      <path d="M -20 -22 L -10 -14" stroke="#2F5D3A" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 20 -22 L 10 -14" stroke="#2F5D3A" stroke-width="3" stroke-linecap="round"/>
+      <path d="M -13 -32 L -5 -22" stroke="#2F5D3A" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 13 -32 L 5 -22" stroke="#2F5D3A" stroke-width="3" stroke-linecap="round"/>
+      <!-- Center vein -->
+      <path d="M 0 2 Q 0 -22 0 -38" stroke="#D4C8B0" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Small pot hint at bottom -->
+    <rect x="38" y="82" width="24" height="4" rx="1.5" fill="#C77B5D"/>
+    <path d="M 40 86 L 42 96 L 58 96 L 60 86 Z" fill="#B2664A"/>
+  </g>
 </svg>
