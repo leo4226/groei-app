@@ -5,6 +5,7 @@ import { screenToSVG, resolveDropTarget } from '../utils/svgCoords'
 import type { DropTarget } from '../utils/svgCoords'
 import { useMapSelection } from './useMapSelection'
 import type { MapSelection } from './useMapSelection'
+import { canStartContainerDrag, canStartPlantDrag } from '../components/map/plantDragPermissions'
 
 type DragItem = { type: 'plant'; id: number } | { type: 'container'; id: number }
 
@@ -18,6 +19,9 @@ export interface UseMapInteractionConfig {
   canvasData: CanvasData | null
   gardenBounds?: { minX: number; minY: number; maxX: number; maxY: number }
   isMobile: boolean
+  moveMode?: boolean
+  movePlantId?: number | null
+  onPlantMoveComplete?: (plantId: number) => void | Promise<void>
   onPlantTap?: (plant: MapPlant) => void
   onObjectTap?: (obj: MapObject) => void
   onOpenDetails?: (type: 'plant' | 'object', id: number) => void
@@ -61,6 +65,9 @@ export function useMapInteraction({
   canvasData,
   gardenBounds,
   isMobile,
+  moveMode = false,
+  movePlantId = null,
+  onPlantMoveComplete,
   onPlantTap,
   onObjectTap,
   onOpenDetails,
@@ -157,7 +164,7 @@ export function useMapInteraction({
 
   const handlePlantPointerDown = useCallback((e: React.PointerEvent, plant: MapPlant) => {
     if (selection.mode === 'resizing') return
-    if (plant.is_locked) return
+    if (!canStartPlantDrag(plant, { moveMode, movePlantId })) return
     e.stopPropagation()
     // Register the SVG <g> element for imperative DOM transform during drag
     dragElementRef.current = e.currentTarget as SVGGElement | null
@@ -173,9 +180,10 @@ export function useMapInteraction({
     setDragging({ type: 'plant', id: plant.id })
     didDrag.current = false
     setDragPositions((prev) => ({ ...prev, [key]: prev[key] ?? { x: plant.map_x, y: plant.map_y } }))
-  }, [selection.mode, svgRef, onDocMove, onDocUp])
+  }, [selection.mode, svgRef, onDocMove, onDocUp, moveMode, movePlantId])
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
+    if (!canStartContainerDrag({ moveMode, movePlantId })) return
     e.stopPropagation()
     // Register the SVG element for imperative DOM transform during drag
     dragElementRef.current = e.currentTarget as SVGGElement | null
@@ -192,7 +200,7 @@ export function useMapInteraction({
     setDragging({ type: 'container', id: obj.id })
     didDrag.current = false
     setDragPositions((prev) => ({ ...prev, [key]: { x: obj.map_x ?? 0, y: obj.map_y ?? 0 } }))
-  }, [svgRef, onDocMove, onDocUp])
+  }, [svgRef, onDocMove, onDocUp, moveMode, movePlantId])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!svgRef.current) return
@@ -333,6 +341,9 @@ export function useMapInteraction({
         // at the dropped position without a full data reload. Skip the full
         // refresh — the API call already persisted the change.
         setDragPositions((prev) => ({ ...prev, [key]: pos }))
+        if (dragging.type === 'plant') {
+          await onPlantMoveComplete?.(dragging.id)
+        }
       } catch (err) {
         console.error('Failed to update position:', err)
         // On error: clean up dragPositions so the plant snaps back to its
@@ -350,7 +361,7 @@ export function useMapInteraction({
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
-  }, [dragging, mapId, dropTarget, onPositionUpdate, selection.mode, dispatch])
+  }, [dragging, mapId, dropTarget, onPositionUpdate, selection.mode, dispatch, onPlantMoveComplete])
 
   // Keep ptrMoveRef/ptrUpRef in sync with latest handler callbacks
   useEffect(() => {

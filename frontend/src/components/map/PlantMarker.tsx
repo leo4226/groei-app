@@ -27,6 +27,7 @@ interface Props {
   x: number
   y: number
   isDragging: boolean
+  canDrag?: boolean
   isSelected?: boolean
   showLabel?: boolean
   onTap: (plant: MapPlant) => void
@@ -37,7 +38,7 @@ interface Props {
 const PX_PER_CM = 0.46
 
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
@@ -163,7 +164,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, isSelect
       transform={`translate(${x}, ${y})`}
       onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(plant) }}
       onPointerDown={(e) => onPointerDown(e, plant)}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+      style={{ cursor: isDragging ? 'grabbing' : canDrag ? 'grab' : 'pointer', touchAction: 'none' }}
     >
       {/* Status halo */}
       {haloColor && (

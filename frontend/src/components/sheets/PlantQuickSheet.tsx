@@ -20,6 +20,7 @@ interface Props {
   onClose: () => void
   onCareAction: () => void
   onAction: () => void
+  onMoveOnMap?: (plant: MapPlant) => void | Promise<void>
   onDuplicate?: (plantId: number) => void
   onRemove?: (plantId: number) => void
 }
@@ -27,7 +28,7 @@ interface Props {
 export default function PlantQuickSheet({
   plant, objects, soilGroundZones = [], heatmapCells,
   mapId, mapName,
-  onClose, onCareAction, onAction, onDuplicate, onRemove,
+  onClose, onCareAction, onAction, onMoveOnMap, onDuplicate, onRemove,
 }: Props) {
   const t = useT()
   const navigate = useNavigate()
@@ -36,6 +37,7 @@ export default function PlantQuickSheet({
   const [detail, setDetail] = useState<Plant | null>(null)
   const [doneTypes, setDoneTypes] = useState<Set<string>>(new Set())
   const [savingType, setSavingType] = useState<string | null>(null)
+  const [startingMapMove, setStartingMapMove] = useState(false)
   const [showMoveSheet, setShowMoveSheet] = useState(false)
   const [moveError, setMoveError] = useState(false)
 
@@ -104,6 +106,17 @@ export default function PlantQuickSheet({
       onAction()
     } catch {
       setLocked(!next)
+    }
+  }
+
+  const handleMoveOnMap = async () => {
+    if (!onMoveOnMap) return
+    setStartingMapMove(true)
+    try {
+      await onMoveOnMap(plant)
+      onClose()
+    } finally {
+      setStartingMapMove(false)
     }
   }
 
@@ -312,12 +325,23 @@ export default function PlantQuickSheet({
             </button>
           </div>
 
+          {onMoveOnMap && (
+            <button
+              onClick={handleMoveOnMap}
+              disabled={startingMapMove}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10, padding: '12px 0', borderRadius: 12, background: 'var(--color-bg)', color: 'var(--color-primary)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, cursor: 'pointer', opacity: startingMapMove ? 0.65 : 1 }}
+            >
+              <span aria-hidden="true">↔</span>
+              {t.plantQuickSheet.moveOnMap}
+            </button>
+          )}
+
           {/* ── Secondary actions ── */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--color-border-soft)' }}>
             {/* Move plant */}
             <button
               onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
-              title="Verplaats"
+              title={t.plantQuickSheet.moveToMap}
               style={iconBtnStyle}
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">

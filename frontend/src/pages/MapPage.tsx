@@ -84,6 +84,9 @@ export default function MapPage() {
   const [showLabels, setShowLabels] = useState(true)
   const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
+  const [moveMode, setMoveMode] = useState(false)
+  const [targetedMove, setTargetedMove] = useState<{ plantId: number; relockAfterMove: boolean } | null>(null)
+  const moveModeActive = moveMode || targetedMove !== null
 
   async function handleCreateContainer(preset: ObjectPreset) {
     if (!map) return
@@ -185,6 +188,51 @@ export default function MapPage() {
   const { remove: mapRemove, duplicate: mapDuplicate, refresh } = mapData
   const { trigger: undoTrigger } = undo
 
+  const endMoveMode = useCallback(async () => {
+    const move = targetedMove
+    setMoveMode(false)
+    setTargetedMove(null)
+    if (move?.relockAfterMove) {
+      try {
+        await clientApis.plants.setLock(move.plantId, true)
+      } finally {
+        await refresh()
+      }
+    }
+  }, [targetedMove, refresh])
+
+  const handleToggleMoveMode = useCallback(() => {
+    if (moveModeActive) {
+      void endMoveMode()
+      return
+    }
+    handleCloseSheet()
+    setTargetedMove(null)
+    setMoveMode(true)
+  }, [moveModeActive, endMoveMode])
+
+  const handleMovePlantOnMap = useCallback(async (plant: MapPlant) => {
+    handleCloseSheet()
+    setMoveMode(false)
+    const relockAfterMove = plant.is_locked
+    if (relockAfterMove) {
+      await clientApis.plants.setLock(plant.id, false)
+      await refresh()
+    }
+    setTargetedMove({ plantId: plant.id, relockAfterMove })
+  }, [refresh])
+
+  const handlePlantMoveComplete = useCallback(async (plantId: number) => {
+    if (targetedMove?.plantId !== plantId) return
+    const move = targetedMove
+    setTargetedMove(null)
+    setMoveMode(false)
+    if (move.relockAfterMove) {
+      await clientApis.plants.setLock(plantId, true)
+    }
+    await refresh()
+  }, [targetedMove, refresh])
+
   const handleCareAction = useCallback(async () => {
     await refresh()
     setSelectedPlant(null)
@@ -260,6 +308,9 @@ export default function MapPage() {
           onOpenDetails={handleOpenDetails}
           onRemoveItem={handleRemoveItem}
           onFixedPlantTap={setSelectedFixedPlant}
+          moveMode={moveMode}
+          movePlantId={targetedMove?.plantId ?? null}
+          onPlantMoveComplete={handlePlantMoveComplete}
           showLabels={showLabels}
           sunModeActive={sun.active}
           shadows={sun.shadows}
@@ -323,16 +374,33 @@ export default function MapPage() {
           sunActive={sun.active}
           sunAvailable={sun.available}
           inspectorMode={sun.inspectorMode}
+          moveModeActive={moveModeActive}
           onWater={water.togglePicker}
           onFertilize={fertilize.togglePicker}
           onToggleSun={sun.toggle}
           onToggleInspector={sun.toggleInspectorMode}
+          onToggleMoveMode={handleToggleMoveMode}
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
         />
         <div className="landscape-mobile-hide">
           {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" onModalOpenChange={setBiodiversityModalOpen} />}
         </div>
       </div>
+
+      {moveModeActive && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3" style={{ backdropFilter: 'blur(10px)' }}>
+          <span className="font-heading text-xs text-text-soft whitespace-nowrap">
+            {targetedMove ? t.mapPage.moveOnePlantHint : t.mapPage.moveModeHint}
+          </span>
+          <button
+            type="button"
+            onClick={() => void endMoveMode()}
+            className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white active:scale-95 transition-transform"
+          >
+            {t.mapPage.moveModeDone}
+          </button>
+        </div>
+      )}
 
       {/* Bottom sheet — care needs OR sun controls */}
       <div className="landscape-mobile-hide">
@@ -415,6 +483,7 @@ export default function MapPage() {
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
           onAction={handleCareAction}
+          onMoveOnMap={handleMovePlantOnMap}
           onDuplicate={handleDuplicate}
           onRemove={(id) => handleRemoveItem('plant', id)}
         />
