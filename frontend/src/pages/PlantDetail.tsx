@@ -115,6 +115,7 @@ export default function PlantDetail() {
   } | null>(null)
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const carePhotoRef = useRef<HTMLInputElement>(null)
+  const carePhotoUploadLogId = useRef<number | null>(null)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -170,6 +171,11 @@ export default function PlantDetail() {
     }
   }
 
+  function openCarePhotoPicker(careLogId: number | null = null) {
+    carePhotoUploadLogId.current = careLogId
+    carePhotoRef.current?.click()
+  }
+
   async function handleUndo() {
     if (!undoInfo) return
     if (undoTimer) clearTimeout(undoTimer)
@@ -191,12 +197,19 @@ export default function PlantDetail() {
   async function handleCarePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || pendingCareLogId == null) return
+    const careLogId = carePhotoUploadLogId.current
+    carePhotoUploadLogId.current = null
+    if (!file) return
     setCarePhotoBusy(true)
     try {
       const blob = await compressImage(file)
-      await photosApi.upload(plantId, blob, { careLogId: pendingCareLogId })
+      await photosApi.upload(
+        plantId,
+        blob,
+        careLogId != null ? { careLogId } : {},
+      )
       setJournalRefresh(k => k + 1)
+      await loadPlants()
       setPendingCareLogId(null)
     } finally {
       setCarePhotoBusy(false)
@@ -337,7 +350,7 @@ export default function PlantDetail() {
           return (
             <button
               key={sched.id}
-              onClick={() => handleQuickAction(sched.care_type)}
+              onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
             >
               {info?.icon ?? '🌿'} {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
@@ -419,7 +432,7 @@ export default function PlantDetail() {
             <button
               className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
               disabled={carePhotoBusy}
-              onClick={() => carePhotoRef.current?.click()}
+              onClick={() => openCarePhotoPicker(pendingCareLogId)}
             >
               📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
             </button>
