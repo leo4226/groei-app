@@ -20,13 +20,13 @@ const NAV: { id: Section; icon: string; label: string }[] = [
 ]
 
 const RESPONSIVE_STYLES = `@media (max-width: 767px) {
-  [data-admin-sidebar] { position: fixed !important; top: 48px; left: 0; bottom: 0;
+  [data-admin-sidebar] { position: fixed !important; top: calc(48px + env(safe-area-inset-top, 0px)); left: 0; bottom: 0;
     z-index: 50; width: 240px !important; transform: translateX(-100%);
     transition: transform .2s ease; box-shadow: 4px 0 20px rgba(0,0,0,.15); }
   [data-admin-sidebar].open { transform: translateX(0) !important; }
   [data-admin-hamburger] { display: flex !important; }
   [data-admin-overlay] { display: block !important; }
-  [data-admin-main] { padding: 16px !important; }
+  [data-admin-main] { padding: 16px !important; padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important; -webkit-overflow-scrolling: touch; }
   [data-admin-stat-cards] { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
   [data-admin-tools-grid] { grid-template-columns: 1fr !important; }
   [data-admin-overview-cards] { grid-template-columns: 1fr !important; }
@@ -98,22 +98,24 @@ export default function AdminPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--color-bg)' }}><style>{RESPONSIVE_STYLES}</style><div data-admin-overlay onClick={closeSidebar} style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.3)', zIndex: 45 }} />
-      <div style={{ background: 'var(--color-primary)', color: '#fff', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
-            title="Back to app"
-          >
-            ←
-          </button>
-          🌿 Floreren
-          <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.18em', textTransform: 'uppercase' }}>Admin</span>
+      <div style={{ background: 'var(--color-primary)', color: '#fff', paddingTop: 'env(safe-area-inset-top, 0px)', flexShrink: 0 }}>
+        <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+              title="Back to app"
+            >
+              ←
+            </button>
+            🌿 Floreren
+            <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.18em', textTransform: 'uppercase' }}>Admin</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><button data-admin-hamburger onClick={() => setSidebarOpen(prev => !prev)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'none', alignItems: 'center' }}>{sidebarOpen ? String.fromCharCode(10005) : String.fromCharCode(9776)}</button><span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: .7 }}>{email}</span></div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><button data-admin-hamburger onClick={() => setSidebarOpen(prev => !prev)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'none', alignItems: 'center' }}>{sidebarOpen ? String.fromCharCode(10005) : String.fromCharCode(9776)}</button><span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: .7 }}>{email}</span></div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         <aside data-admin-sidebar className={sidebarOpen ? "open" : ""} style={{ width: 200, background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', padding: '16px 0', flexShrink: 0, overflowY: 'auto' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.2em', color: 'var(--color-text-muted)', padding: '0 16px 8px' }}>Platform</div>
           {NAV.slice(0, 4).map(item => (
@@ -125,7 +127,7 @@ export default function AdminPage() {
           ))}
         </aside>
 
-        <main data-admin-main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+        <main data-admin-main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', minHeight: 0, WebkitOverflowScrolling: 'touch' as const }}>
           {section === 'overview'  && <OverviewView onNavigate={setSection} />}
           {section === 'users'     && <UsersView />}
           {section === 'plants'    && <PlantsView />}
