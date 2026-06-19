@@ -156,7 +156,8 @@ export default function Dashboard() {
         }
 
         /* ── Sidebar shrink guard ── */
-        .dashboard-sidebar { min-width: 0; overflow-x: hidden; }
+        /* Clip horizontal spill without making vertical overflow auto; hover lifts cards up 2px. */
+        .dashboard-sidebar { min-width: 0; overflow-x: clip; overflow-y: visible; }
 
         /* ── Weather card ── */
         .weather-card { min-width: 0; }
