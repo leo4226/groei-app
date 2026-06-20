@@ -1,6 +1,7 @@
 import type { MapPlant, MapObject } from '../../types'
 import { useT } from '../../context/LanguageContext'
 import { useState } from 'react'
+import { buildCareNeedsGroups, getCareTypeDisplay, type WarningPlant, type PlantWithMeta } from './careNeedsListModel'
 
 interface Props {
   plants: MapPlant[]
@@ -8,62 +9,20 @@ interface Props {
   onPlantTap: (plant: MapPlant) => void
 }
 
-type PlantWithMeta = MapPlant & { containerName?: string }
-
-// Care type → display (covers both legacy and new pipeline care_type values)
-const WARNING_LABEL: Record<string, { icon: string; label: string }> = {
-  water:         { icon: '💧', label: 'Water' },
-  fertilize:     { icon: '🧪', label: 'Mest' },
-  mist:          { icon: '🌫️', label: 'Bevochtigen' },
-  rotate:        { icon: '🔄', label: 'Draaien' },
-  repot:         { icon: '🪴', label: 'Verpotten' },
-  prune:         { icon: '✂️', label: 'Snoeien' },
-  pest_check:    { icon: '🐛', label: 'Luizen-check' },
-  dust:          { icon: '🧽', label: 'Afnemen' },
-  protect_cold:  { icon: '🧤', label: 'Vorst' },
-  protect_heat:  { icon: '🧴', label: 'Hitte' },
-  frost_protect: { icon: '❄️', label: 'Vorst' },
-  heat_protect:  { icon: '🔥', label: 'Hitte' },
-}
-
 export default function CareNeedsList({ plants, objects, onPlantTap }: Props) {
   const t = useT()
-  const containedPlants: PlantWithMeta[] = objects.flatMap((obj) =>
-    obj.contained_plants.map((p) => ({ ...p, containerName: obj.name }))
-  )
+  const { groups, goodPlants } = buildCareNeedsGroups(plants, objects)
 
-  const allPlants: PlantWithMeta[] = [...plants, ...containedPlants].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-  )
-
-  if (allPlants.length === 0) return null
-
-  // Group plants that have a top_warning by care_type
-  const warningPlants = allPlants.filter(p => p.top_warning !== null)
-  const goodPlants = allPlants.filter(p => p.top_warning === null)
-
-  // Build care-type groups
-  const groups = new Map<string, PlantWithMeta[]>()
-  for (const p of warningPlants) {
-    const ct = p.top_warning!.care_type
-    if (!groups.has(ct)) groups.set(ct, [])
-    groups.get(ct)!.push(p)
-  }
-
-  // Sort groups: largest count first, then alphabetical
-  const sortedGroups = [...groups.entries()].sort((a, b) => {
-    if (b[1].length !== a[1].length) return b[1].length - a[1].length
-    return a[0].localeCompare(b[0])
-  })
+  if (groups.length === 0 && goodPlants.length === 0) return null
 
   return (
     <div className="space-y-2">
-      {sortedGroups.map(([careType, plants]) => (
+      {groups.map((group) => (
         <CareTypeGroup
-          key={careType}
-          careType={careType}
-          plants={plants}
-          plantCount={plants.length}
+          key={group.careType}
+          careType={group.careType}
+          plants={group.plants}
+          plantCount={group.plants.length}
           onPlantTap={onPlantTap}
         />
       ))}
@@ -90,13 +49,14 @@ function CareTypeGroup({
   onPlantTap,
 }: {
   careType: string
-  plants: (MapPlant & { containerName?: string })[]
+  plants: WarningPlant[]
   plantCount: number
   onPlantTap: (p: MapPlant) => void
 }) {
+  const t = useT()
   const [expanded, setExpanded] = useState(false)
-  const info = WARNING_LABEL[careType] ?? { icon: '⚙️', label: careType }
-  const dotColor = plants[0]?.top_warning?.color ?? '#ea0706'
+  const info = getCareTypeDisplay(careType, t)
+  const dotColor = plants[0]?.warning.color ?? '#ea0706'
 
   return (
     <div className="mb-1.5 last:mb-0">
@@ -121,13 +81,13 @@ function CareTypeGroup({
       </button>
       {expanded && (
         <ul className="pl-6 space-y-0.5 mt-0.5 border-l border-border/30 ml-2.5">
-          {plants.map(plant => (
+          {plants.map((plant) => (
             <PlantRow
-              key={plant.id}
+              key={`${plant.id}-${plant.warning.care_type}`}
               plant={plant}
               onTap={onPlantTap}
-              dotColor={plant.top_warning?.color ?? dotColor}
-              icon={plant.top_warning?.icon ?? undefined}
+              dotColor={plant.warning.color ?? dotColor}
+              icon={plant.warning.icon ?? undefined}
             />
           ))}
         </ul>

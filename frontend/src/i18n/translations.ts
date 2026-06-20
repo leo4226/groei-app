@@ -1020,6 +1020,13 @@ export type Translations = {
     recordWatering: string                  // "Registreer tuin bewatering"
     lastFertilized: (date: string) => string // "Laatst bemest: {date}"
     recordFertilizing: string               // "Registreer tuin bemesting"
+    gardenActionClose: string               // "Close" / "Sluiten"
+    gardenActionScope: string               // "This applies to all plants on this map at once."
+    gardenActionDateLabel: string           // "Date" / "Datum"
+    gardenWaterButton: string               // "Water all plants"
+    gardenWaterDelete: string               // "Delete watering"
+    gardenFertilizeButton: string           // "Fertilize all plants"
+    gardenFertilizeDelete: string           // "Delete fertilizing"
     addPot: string                          // "Pot toevoegen"
     more: string                             // "Meer" / "More" (mobile overflow menu button)
     options: string                          // "Opties" / "Options" (mobile menu trigger)
