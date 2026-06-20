@@ -320,6 +320,116 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
         "recent_activity": activity,
     }
 
+@router.get("/admin-panel/growth-metrics")
+async def admin_growth_metrics(
+    days: int = Query(30, ge=1, le=365),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Daily growth metrics over the last N days: signups, plants added, care logs, active households."""
+    from collections import defaultdict
+    from datetime import date, timedelta
+
+    # Generate complete date series
+    today = date.today()
+    start_date = today - timedelta(days=days - 1)
+    date_series = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
+
+    # --- 1. Signups per day ---
+    signups_raw = await db.execute_fetchall("""
+        SELECT DATE(created_at) as d, COUNT(*) as n
+        FROM accounts
+        WHERE created_at >= $1::date
+        GROUP BY DATE(created_at)
+        ORDER BY d
+    """, (start_date,))
+    signups_map: dict[str, int] = {}
+    for r in signups_raw:
+        signups_map[r["d"]] = r["n"]
+
+    # --- 2. Plants added per day ---
+    plants_raw = await db.execute_fetchall("""
+        SELECT DATE(created_at) as d, COUNT(*) as n
+        FROM plants
+        WHERE is_active = 1 AND created_at >= $1::date
+        GROUP BY DATE(created_at)
+        ORDER BY d
+    """, (start_date,))
+    plants_map: dict[str, int] = {}
+    for r in plants_raw:
+        plants_map[r["d"]] = r["n"]
+
+    # --- 3. Care logs per day ---
+    care_raw = await db.execute_fetchall("""
+        SELECT DATE(done_at) as d, COUNT(*) as n
+        FROM care_log
+        WHERE done_at >= $1::date
+        GROUP BY DATE(done_at)
+        ORDER BY d
+    """, (start_date,))
+    care_map: dict[str, int] = {}
+    for r in care_raw:
+        care_map[r["d"]] = r["n"]
+
+    # --- 4. Active households (≥1 care log) per day ---
+    active_raw = await db.execute_fetchall("""
+        SELECT DATE(cl.done_at) as d, COUNT(DISTINCT p.household_id) as n
+        FROM care_log cl
+        JOIN plants p ON cl.plant_id = p.id
+        WHERE cl.done_at >= $1::date
+        GROUP BY DATE(cl.done_at)
+        ORDER BY d
+    """, (start_date,))
+    active_map: dict[str, int] = {}
+    for r in active_raw:
+        active_map[r["d"]] = r["n"]
+
+    # Build the response — fill in zeros for missing dates
+    signups = [{"date": d, "count": signups_map.get(d, 0)} for d in date_series]
+    plants_added = [{"date": d, "count": plants_map.get(d, 0)} for d in date_series]
+    care_logs = [{"date": d, "count": care_map.get(d, 0)} for d in date_series]
+    active_households = [{"date": d, "count": active_map.get(d, 0)} for d in date_series]
+
+    # --- Deltas: current period vs previous period of same length ---
+    previous_start = start_date - timedelta(days=days)
+
+    # Compute previous period totals using separate queries
+    prev_signups_raw = await db.execute_fetchall("""
+        SELECT COUNT(*) as n FROM accounts
+        WHERE created_at >= $1::date AND created_at < $2::date
+    """, (previous_start, start_date))
+    prev_plants_raw = await db.execute_fetchall("""
+        SELECT COUNT(*) as n FROM plants
+        WHERE is_active = 1 AND created_at >= $1::date AND created_at < $2::date
+    """, (previous_start, start_date))
+    prev_care_raw = await db.execute_fetchall("""
+        SELECT COUNT(*) as n FROM care_log
+        WHERE done_at >= $1::date AND done_at < $2::date
+    """, (previous_start, start_date))
+
+    current_signups = sum(v["count"] for v in signups)
+    current_plants = sum(v["count"] for v in plants_added)
+    current_care = sum(v["count"] for v in care_logs)
+
+    prev_signups = prev_signups_raw[0]["n"]
+    prev_plants = prev_plants_raw[0]["n"]
+    prev_care = prev_care_raw[0]["n"]
+
+    return {
+        "days": days,
+        "metrics": {
+            "signups": signups,
+            "plants_added": plants_added,
+            "care_logs": care_logs,
+            "active_households": active_households,
+        },
+        "deltas": {
+            "signups": current_signups - prev_signups,
+            "plants_added": current_plants - prev_plants,
+            "care_logs": current_care - prev_care,
+        },
+    }
+
 
 @router.get("/admin-panel/users")
 async def admin_users(

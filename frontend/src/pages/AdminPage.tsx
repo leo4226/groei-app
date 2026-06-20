@@ -5,6 +5,7 @@ import {
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
   type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
   type AdminSystemHealth, type AdminHealthStatus,
+  type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type IconGenerateResult,
 } from '../api/client'
 
@@ -349,12 +350,53 @@ function SystemHealthCard({ health, loading, error, onRefresh }: { health: Admin
 
 // ── Section views ─────────────────────────────────────────────────────────────
 
+function SparkBarChart({ data, color = 'var(--color-primary)', height = 40 }: { data: AdminGrowthMetricPoint[]; color?: string; height?: number }) {
+  const values = data.map(d => d.count)
+  const max = Math.max(...values, 1)
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, width: '100%' }}>
+      {data.map((d) => {
+        const pct = (d.count / max) * 100
+        return (
+          <div key={d.date} title={d.date + ': ' + d.count} style={{
+            flex: 1, height: Math.max(pct, 2) + '%',
+            background: color, borderRadius: '2px 2px 0 0',
+            opacity: d.count === 0 ? 0.25 : 0.8,
+            transition: 'all .15s', cursor: 'default',
+            minWidth: 3,
+          }} />
+        )
+      })}
+    </div>
+  )
+}
+
+function MetricSparklineCard({ title, data, delta, color }: { title: string; data: AdminGrowthMetricPoint[]; delta: number; color: string }) {
+  const total = data.reduce((s, d) => s + d.count, 0)
+  const deltaStr = delta >= 0 ? '+' + delta : '' + delta
+  return (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)' }}>{title}</div>
+        <div style={{ fontSize: 11, color: delta >= 0 ? 'var(--color-primary)' : 'var(--color-overdue)', fontWeight: 500 }}>{deltaStr}</div>
+      </div>
+      <div style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 500, lineHeight: 1.2, color, marginBottom: 8 }}>{total.toLocaleString()}</div>
+      <SparkBarChart data={data} color={color} />
+    </div>
+  )
+}
+
+
 function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
   const [data, setData] = useState<AdminOverview | null>(null)
   const [err, setErr] = useState('')
   const [health, setHealth] = useState<AdminSystemHealth | null>(null)
   const [healthErr, setHealthErr] = useState('')
   const [healthLoading, setHealthLoading] = useState(false)
+
+  const [growth, setGrowth] = useState<AdminGrowthMetrics | null>(null)
+  const [growthDays, setGrowthDays] = useState(30)
+  const [growthLoading, setGrowthLoading] = useState(false)
 
   const loadHealth = useCallback(() => {
     setHealthLoading(true)
@@ -373,33 +415,76 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
     loadHealth()
   }, [loadHealth])
 
+  useEffect(() => {
+    setGrowthLoading(true)
+    adminPanel.growthMetrics(growthDays)
+      .then(setGrowth)
+      .catch(() => {})
+      .finally(() => setGrowthLoading(false))
+  }, [growthDays])
+
   if (err) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} /><ErrorMsg msg={err} /></div>
   if (!data) return <div><PageHeader title="Overview" sub="Platform health at a glance" /><SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} /><Loading /></div>
 
   const statCards = [
-    { label: 'Accounts',      value: data.total_accounts, color: 'var(--color-primary)' },
-    { label: 'Plants',        value: data.total_plants,   color: 'var(--color-text)' },
-    { label: 'Maps',          value: data.total_maps,     color: 'var(--color-text)' },
-    { label: 'Missing icons', value: data.missing_icons,  color: data.missing_icons > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)' },
+    { label: 'Accounts',      value: data.total_accounts, color: 'var(--color-primary)', deltaKey: 'signups' as const },
+    { label: 'Plants',        value: data.total_plants,   color: 'var(--color-text)',    deltaKey: 'plants_added' as const },
+    { label: 'Maps',          value: data.total_maps,     color: 'var(--color-text)',    deltaKey: undefined },
+    { label: 'Missing icons', value: data.missing_icons,  color: data.missing_icons > 0 ? 'var(--color-overdue)' : 'var(--color-text-muted)', deltaKey: undefined },
   ]
-
   return (
     <div>
-      <PageHeader title="Overview" sub={`Platform health at a glance — ${new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`} />
+      <PageHeader title="Overview" sub={'Platform health at a glance ' + String.fromCharCode(8212) + ' ' + new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
 
       <SystemHealthCard health={health} loading={healthLoading} error={healthErr} onRefresh={loadHealth} />
 
       <div data-admin-stat-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
-        {statCards.map(c => (
-          <div key={c.label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>{c.label}</div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 500, lineHeight: 1, color: c.color }}>{c.value}</div>
-          </div>
-        ))}
+        {statCards.map(c => {
+          const delta = c.deltaKey && growth?.deltas[c.deltaKey]
+          return (
+            <div key={c.label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 18px', position: 'relative' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>{c.label}</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 500, lineHeight: 1, color: c.color }}>{c.value}</div>
+              {delta !== undefined && delta !== null && (
+                <div style={{
+                  position: 'absolute', top: 12, right: 14,
+                  fontSize: 10, fontWeight: 600,
+                  color: delta >= 0 ? 'var(--color-primary)' : 'var(--color-overdue)',
+                  background: delta >= 0 ? 'color-mix(in srgb, var(--color-primary) 12%, transparent)' : 'color-mix(in srgb, var(--color-overdue) 12%, transparent)',
+                  padding: '2px 7px', borderRadius: 99,
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {delta >= 0 ? '+' : ''}{delta} this period
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20 }}>
-        <SectionCard title="Recent accounts" action={{ label: 'View all →', onClick: () => onNavigate('users') }}>
+      <SectionCard title="Growth metrics">
+        <FilterBar
+          options={[
+            { id: '7', label: '7 days' },
+            { id: '30', label: '30 days' },
+            { id: '90', label: '90 days' },
+          ]}
+          active={String(growthDays)}
+          onChange={v => setGrowthDays(Number(v))} />
+        {growthLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 13 }}>Loading growth data...</div>}
+        {growth && !growthLoading && (
+          <div data-growth-metrics style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+            <MetricSparklineCard title="Signups" data={growth.metrics.signups} delta={growth.deltas.signups} color="var(--color-primary)" />
+            <MetricSparklineCard title="Plants added" data={growth.metrics.plants_added} delta={growth.deltas.plants_added} color="var(--color-secondary)" />
+            <MetricSparklineCard title="Care logs" data={growth.metrics.care_logs} delta={growth.deltas.care_logs} color="var(--color-due)" />
+            <MetricSparklineCard title="Active households" data={growth.metrics.active_households} delta={0} color="var(--color-text-muted)" />
+          </div>
+        )}
+        {!growth && !growthLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13 }}>Growth data unavailable.</div>}
+      </SectionCard>
+
+      <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 20, marginTop: 20 }}>
+        <SectionCard title="Recent accounts" action={{ label: 'View all ' + String.fromCharCode(8594), onClick: () => onNavigate('users') }}>
           <AdminTable heads={['Name', 'Household', 'Plants', 'Status']}>
             {data.recent_accounts.map(a => (
               <tr key={a.id}>
@@ -412,7 +497,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
           </AdminTable>
         </SectionCard>
 
-        <SectionCard title="Recent activity" action={{ label: 'Full log →', onClick: () => onNavigate('activity') }}>
+        <SectionCard title="Recent activity" action={{ label: 'Full log ' + String.fromCharCode(8594), onClick: () => onNavigate('activity') }}>
           <div>
             {data.recent_activity.map((ev, i) => (
               <ActivityRow key={i} event={ev} />
