@@ -13,7 +13,8 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
                          account = Depends(get_current_account)):
     # Find the matching schedule — scoped to the caller's household
     cursor = await db.execute(
-        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral
+        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
+                  cs.next_due, cs.last_done, cs.last_done_by
            FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
            WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
              AND p.household_id = ?""",
@@ -35,11 +36,9 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     care_log_id = cursor.lastrowid
 
     # Capture previous state for undo support
+    previous_next_due = schedule.get("next_due")
     previous_last_done = schedule.get("last_done")
     previous_last_done_by = schedule.get("last_done_by")
-    cursor2 = await db.execute('SELECT next_due FROM care_schedules WHERE id = ?', (schedule["id"],))
-    sched_row = await cursor2.fetchone()
-    previous_next_due = sched_row["next_due"] if sched_row else None
 
     # Update schedule
     if schedule["is_ephemeral"]:

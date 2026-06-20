@@ -95,6 +95,48 @@ async def test_care_undo_restores_schedule(client, undo_db, auth_header):
 
 
 @pytest.mark.asyncio
+async def test_care_undo_restores_existing_last_done_state(client, undo_db, auth_header):
+    """Undo preserves the schedule state that existed before the new action."""
+    await undo_db.execute(
+        """UPDATE care_schedules
+           SET next_due = ?, last_done = ?, last_done_by = ?
+           WHERE id = 1""",
+        ("2026-06-12", "2026-06-01T09:30:00", 1),
+    )
+    await undo_db.commit()
+
+    res = await client.post(
+        "/api/care/done",
+        json={"plant_id": 1, "care_type": "water", "user_id": 1},
+        headers=auth_header,
+    )
+    assert res.status_code == 200
+    done = res.json()
+    assert done["previous_next_due"] == "2026-06-12"
+    assert done["previous_last_done"] == "2026-06-01T09:30:00"
+    assert done["previous_last_done_by"] == 1
+
+    res2 = await client.post(
+        "/api/care/undo",
+        json={
+            "care_log_id": done["care_log_id"],
+            "previous_next_due": done["previous_next_due"],
+            "previous_last_done": done["previous_last_done"],
+            "previous_last_done_by": done["previous_last_done_by"],
+        },
+        headers=auth_header,
+    )
+    assert res2.status_code == 200
+
+    rows = await undo_db.execute_fetchall(
+        "SELECT next_due, last_done, last_done_by FROM care_schedules WHERE id = 1"
+    )
+    assert str(rows[0]["next_due"]) == "2026-06-12"
+    assert str(rows[0]["last_done"]) == "2026-06-01T09:30:00"
+    assert rows[0]["last_done_by"] == 1
+
+
+@pytest.mark.asyncio
 async def test_care_undo_rejects_foreign_household(client, undo_db, auth_header):
     """Undo scoped to caller's household — 404 for foreign care_log."""
     # Create a care log for household 1

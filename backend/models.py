@@ -161,8 +161,8 @@ class CareAction(BaseModel):
 
 class CareUndo(BaseModel):
     care_log_id: int
-    previous_next_due: str | None = None
-    previous_last_done: str | None = None
+    previous_next_due: date | None = None
+    previous_last_done: datetime | None = None
     previous_last_done_by: int | None = None
 
 
