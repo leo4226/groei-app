@@ -9,8 +9,8 @@ interface GardenActionConfig<TStatus> {
   getLastDoneAt: (status: TStatus | null) => string | null | undefined
 }
 
-export function getGardenActionDefaultDate(_lastDoneAt: string | null | undefined, now = new Date()): string {
-  return now.toISOString().slice(0, 10)
+export function getGardenActionDefaultDate(lastDoneAt: string | null | undefined, now = new Date()): string {
+  return lastDoneAt ?? now.toISOString().slice(0, 10)
 }
 
 function useGardenAction<TStatus>(config: GardenActionConfig<TStatus>) {
