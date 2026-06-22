@@ -36,9 +36,11 @@ export default function DiscoveriesSection() {
     if (typeof navigator.share === 'function') {
       await navigator.share({ title: item.common_name, text }).catch(() => {})
     } else {
-      await navigator.clipboard.writeText(text).catch(() => {})
-      setCopiedId(item.id)
-      setTimeout(() => setCopiedId(null), 2000)
+      const ok = await navigator.clipboard.writeText(text).then(() => true, () => false)
+      if (ok) {
+        setCopiedId(item.id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
     }
   }
 
