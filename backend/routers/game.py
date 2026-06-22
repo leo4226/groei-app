@@ -1,5 +1,8 @@
+import base64
+import logging
+import os
 import random
-import string
+import struct
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -8,10 +11,71 @@ from pydantic import BaseModel
 from database import db_dep
 from auth import get_current_account
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["game"])
 
 # Characters for join codes — exclude ambiguous 0/O/I/1
 _CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+_BIOCLIP_WORKER_URL = os.environ.get("BIOCLIP_WORKER_URL", "")
+_BIOCLIP_WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
+_EMBED_THRESHOLD = float(os.environ.get("GAME_EMBED_THRESHOLD", "0.82"))
+
+
+def _worker_headers() -> dict:
+    return {"X-Worker-Token": _BIOCLIP_WORKER_TOKEN} if _BIOCLIP_WORKER_TOKEN else {}
+
+
+async def _embed_bytes(image_bytes: bytes) -> str | None:
+    """POST image bytes to BioCLIP worker /embed-image; return base64-encoded 512-d vector or None."""
+    if not _BIOCLIP_WORKER_URL:
+        return None
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                f"{_BIOCLIP_WORKER_URL.rstrip('/')}/embed-image",
+                files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+                headers=_worker_headers(),
+            )
+        if resp.status_code == 200 and len(resp.content) == 2048:
+            return base64.b64encode(resp.content).decode()
+    except Exception as exc:
+        logger.warning("Game embed failed: %s", exc)
+    return None
+
+
+async def _embed_url(url: str) -> str | None:
+    """Download an image from a URL and return its BioCLIP embedding as base64, or None."""
+    if not url or not _BIOCLIP_WORKER_URL:
+        return None
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=20) as client:
+            img = await client.get(url, timeout=15)
+        if img.status_code != 200:
+            return None
+        return await _embed_bytes(img.content)
+    except Exception as exc:
+        logger.warning("Game embed_url failed for %s: %s", url, exc)
+    return None
+
+
+def _cosine_sim(a_b64: str, b_b64: str) -> float:
+    """Cosine similarity between two base64-encoded 512-d float32 vectors."""
+    a = struct.unpack("512f", base64.b64decode(a_b64))
+    b = struct.unpack("512f", base64.b64decode(b_b64))
+    dot = sum(x * y for x, y in zip(a, b))
+    mag_a = sum(x * x for x in a) ** 0.5
+    mag_b = sum(x * x for x in b) ** 0.5
+    return dot / (mag_a * mag_b) if mag_a and mag_b else 0.0
+
+
+def _strip_data_url(b64: str) -> str:
+    if "," in b64 and b64.lstrip().startswith("data:"):
+        return b64.split(",", 1)[1]
+    return b64
 
 
 def _make_code() -> str:
@@ -40,13 +104,14 @@ def _species_matches(scanned: str, target: str, alt_names: list[str]) -> bool:
 class GameCreateRequest(BaseModel):
     map_id: int
     plant_ids: list[int]
+    clue_mode: str = "photo"  # "photo" | "name"
 
 
 class AnswerRequest(BaseModel):
     scanned_species: str
     confidence: float = 0.0
-    # BioCLIP top-3 candidates for lenient matching
     candidates: list[str] = []
+    image_data_url: str | None = None  # base64 data URL for embedding similarity
 
 
 # ── Helper: build full session state ─────────────────────────────────────────
@@ -77,7 +142,7 @@ async def _build_state(db, code: str, account_id: int) -> dict:
 
     rounds_rows = await db.execute_fetchall(
         """SELECT id, round_index, plant_name_nl, plant_name_en,
-                  clue_photo_url, clue_hint_nl, clue_hint_en
+                  clue_photo_url, clue_hint_nl, clue_hint_en, target_embedding
            FROM game_rounds WHERE session_id = ? ORDER BY round_index""",
         (session["id"],),
     )
@@ -132,6 +197,7 @@ async def _build_state(db, code: str, account_id: int) -> dict:
             "map_slug": session["map_slug"],
             "host_account_id": session["host_account_id"],
             "host_name": session["host_name"],
+            "clue_mode": session.get("clue_mode", "photo"),
         },
         "players": players,
         "current_clue": current_clue,
@@ -174,10 +240,12 @@ async def create_game(
     else:
         raise HTTPException(500, "Could not generate unique join code")
 
+    clue_mode = body.clue_mode if body.clue_mode in ("photo", "name") else "photo"
+
     await db.execute(
-        """INSERT INTO game_sessions (join_code, host_account_id, map_id, status, current_round, created_at)
-           VALUES (?, ?, ?, 'waiting', 0, ?)""",
-        (code, account["account_id"], body.map_id, _now()),
+        """INSERT INTO game_sessions (join_code, host_account_id, map_id, status, current_round, created_at, clue_mode)
+           VALUES (?, ?, ?, 'waiting', 0, ?, ?)""",
+        (code, account["account_id"], body.map_id, _now(), clue_mode),
     )
     session_rows = await db.execute_fetchall(
         "SELECT id FROM game_sessions WHERE join_code = ?", (code,)
@@ -209,12 +277,15 @@ async def create_game(
         name_nl = p.get("common_name_nl") or p["name"]
         name_en = p.get("common_name_en") or p["name"]
 
+        embedding = await _embed_url(p.get("photo_path") or "")
+
         await db.execute(
             """INSERT INTO game_rounds
                (session_id, round_index, plant_id, plant_name_nl, plant_name_en,
-                target_species, clue_photo_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (session_id, i, plant_id, name_nl, name_en, target, p.get("photo_path")),
+                target_species, clue_photo_url, target_embedding)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, i, plant_id, name_nl, name_en, target,
+             p.get("photo_path"), embedding),
         )
 
     await db.commit()
@@ -364,7 +435,9 @@ async def submit_answer(
 
     # Get current round
     round_rows = await db.execute_fetchall(
-        "SELECT id, target_species, plant_name_nl, plant_name_en, started_at FROM game_rounds WHERE session_id = ? AND round_index = ?",
+        """SELECT id, target_species, plant_name_nl, plant_name_en,
+                  started_at, target_embedding
+           FROM game_rounds WHERE session_id = ? AND round_index = ?""",
         (session["id"], session["current_round"]),
     )
     if not round_rows:
@@ -379,7 +452,7 @@ async def submit_answer(
     if existing and dict(existing[0])["is_correct"]:
         raise HTTPException(400, "Already answered correctly")
 
-    # Check match — accept if primary scanned or any candidate matches
+    # Species-name match — accept if primary scanned or any candidate matches
     alt_names = [rnd["plant_name_nl"], rnd["plant_name_en"]]
     all_candidates = [body.scanned_species] + body.candidates
     is_correct = any(
@@ -387,6 +460,19 @@ async def submit_answer(
         for c in all_candidates
         if c
     )
+
+    # Embedding similarity — try if we have a reference embedding and a scan image
+    if not is_correct and rnd.get("target_embedding") and body.image_data_url:
+        try:
+            scan_bytes = base64.b64decode(_strip_data_url(body.image_data_url))
+            scan_embedding = await _embed_bytes(scan_bytes)
+            if scan_embedding:
+                sim = _cosine_sim(rnd["target_embedding"], scan_embedding)
+                logger.info("Game embedding similarity=%.4f threshold=%.2f", sim, _EMBED_THRESHOLD)
+                if sim >= _EMBED_THRESHOLD:
+                    is_correct = True
+        except Exception as exc:
+            logger.warning("Game embedding similarity check failed: %s", exc)
 
     points = 0
     if is_correct:

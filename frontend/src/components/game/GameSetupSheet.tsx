@@ -16,6 +16,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
   const navigate = useNavigate()
   const [plants, setPlants] = useState<MapPlant[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [clueMode, setClueMode] = useState<'photo' | 'name'>('photo')
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,6 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
   useEffect(() => {
     mapsApi.plants(mapSlug)
       .then((ps) => {
-        // Only show plants that have a photo
         setPlants(ps.filter((p) => p.photo_path))
         setLoading(false)
       })
@@ -44,7 +44,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
     setCreating(true)
     setError(null)
     try {
-      const { join_code } = await gameApi.create(mapId, Array.from(selected))
+      const { join_code } = await gameApi.create(mapId, Array.from(selected), clueMode)
       navigate(`/game/${join_code}/host`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error)
@@ -69,6 +69,29 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-bg text-text-muted hover:text-text">
             ✕
           </button>
+        </div>
+
+        {/* Clue mode toggle */}
+        <div className="px-5 pb-3 flex-shrink-0">
+          <p className="text-xs text-text-muted mb-2">{t.game.clueModeSectionLabel}</p>
+          <div className="flex rounded-xl overflow-hidden border border-border">
+            <button
+              onClick={() => setClueMode('photo')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                clueMode === 'photo' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+              }`}
+            >
+              📸 {t.game.clueModePhoto}
+            </button>
+            <button
+              onClick={() => setClueMode('name')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                clueMode === 'name' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+              }`}
+            >
+              🔤 {t.game.clueModeName}
+            </button>
+          </div>
         </div>
 
         {/* Notice about photos */}

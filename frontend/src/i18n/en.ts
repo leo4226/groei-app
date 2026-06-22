@@ -1256,5 +1256,8 @@ export const en: Translations = {
     place1: '🥇',
     place2: '🥈',
     place3: '🥉',
+    clueModePhoto: 'Photo clue',
+    clueModeName: 'Name clue',
+    clueModeSectionLabel: 'Clue type',
   },
 }

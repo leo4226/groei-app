@@ -77,7 +77,7 @@ export default function GamePlayerPage() {
     return () => clearInterval(id)
   }, [step])
 
-  async function handleCapture(blob: Blob) {
+  async function handleCapture(blob: Blob, dataUrl: string) {
     if (!code) return
     setStep('analyzing')
     try {
@@ -86,7 +86,7 @@ export default function GamePlayerPage() {
       const otherCandidates = resp.candidates?.slice(1, 3).map((c) => c.scientific_name) ?? []
       const confidence = resp.candidates?.[0]?.confidence ?? 0
 
-      const result = await gameApi.answer(code, topCandidate, otherCandidates, confidence)
+      const result = await gameApi.answer(code, topCandidate, otherCandidates, confidence, dataUrl)
       setScanResult(result)
       setStep('result')
     } catch {
@@ -141,7 +141,7 @@ export default function GamePlayerPage() {
   if (step === 'camera') {
     return (
       <IdentifyCamera
-        onCapture={(blob) => handleCapture(blob)}
+        onCapture={(blob, dataUrl) => handleCapture(blob, dataUrl)}
         onCancel={() => setStep('clue')}
       />
     )
@@ -171,7 +171,15 @@ export default function GamePlayerPage() {
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
-          {clue?.clue_photo_url ? (
+          {state.session.clue_mode === 'name' ? (
+            <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-6 flex flex-col items-center gap-3 shadow-lg">
+              <span className="text-5xl">🌿</span>
+              <p className="text-2xl font-bold text-text text-center">{clue?.plant_name_nl}</p>
+              {clue?.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
+                <p className="text-sm text-text-muted text-center italic">{clue.plant_name_en}</p>
+              )}
+            </div>
+          ) : clue?.clue_photo_url ? (
             <div className="w-full max-w-xs aspect-square rounded-2xl overflow-hidden shadow-lg">
               <img
                 src={clue.clue_photo_url}
