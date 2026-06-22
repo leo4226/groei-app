@@ -50,6 +50,7 @@ export default function DiscoveriesSection() {
         prefill: {
           name: item.common_name,
           scientific_name: item.latin_name ?? undefined,
+          species_id: item.species_id ?? undefined,
         },
         from: 'journal',
       },
@@ -125,7 +126,7 @@ export default function DiscoveriesSection() {
               color: copiedId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
               fontSize: 18, flexShrink: 0,
             }}
-            aria-label={t.discovery.share}
+            aria-label={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
           >
             {copiedId === item.id ? '✓' : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
