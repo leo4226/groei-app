@@ -121,7 +121,7 @@ export default function DiscoveriesSection() {
               padding: '6px 8px', borderRadius: 8, border: 'none',
               background: 'none', cursor: 'pointer',
               color: copiedId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              fontSize: 15, flexShrink: 0,
+              fontSize: 18, flexShrink: 0,
             }}
             aria-label={t.discovery.share}
           >
