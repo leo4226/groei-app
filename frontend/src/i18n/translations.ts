@@ -1179,6 +1179,42 @@ export type Translations = {
     envIndoor: string    // "Indoor" / "Binnen"
   }
 
+  discovery: {
+    // Entry point (Plants page button)
+    identifyWild: string       // "Identificeer in het wild"
+    identifyWildSubtitle: string  // "Fotografeer een plant buiten en leer er meer over"
+    // DiscoveryCard page
+    funFact: string            // "Wist je dat..."
+    funFactLoading: string     // "Weetje laden..."
+    funFactError: string       // "Kon geen weetje laden"
+    ecology: string            // "Ecologie"
+    nativeNl: string           // "Inheems in NL"
+    invasiveNl: string         // "Invasief in NL"
+    pollinatorHigh: string     // "Top bestuiversplant"
+    pollinatorGood: string     // "Goed voor bijen"
+    pollinatorLow: string      // "Enige waarde voor bestuivers"
+    floweringMonths: string    // "Bloeiperiode"
+    gardenFit: string          // "Tuinadvies"
+    gardenFitLoading: string   // "Tuinadvies laden..."
+    gardenFitNone: string      // "Geen tuinen gevonden"
+    fitPerfect: string         // "Ideaal licht"
+    fitAcceptable: string      // "Geschikt licht"
+    fitMarginal: string        // "Krap licht"
+    fitTolerated: string       // "Past overal"
+    fitNone: string            // "Waarschijnlijk te donker"
+    fitUnknown: string         // "Licht onbekend"
+    saveToJournal: string      // "Opslaan in veldboek"
+    savedToJournal: string     // "Opgeslagen!"
+    addToGarden: string        // "Toevoegen aan tuin"
+    // Journal tab (Plants page)
+    journalTab: string         // "Veldboek"
+    myPlantsTab: string        // "Mijn planten"
+    journalEmpty: string       // "Nog geen veldwaarnemingen"
+    journalEmptyHint: string   // "Fotografeer planten buiten met de camera-knop"
+    journalDeleteConfirm: string  // "Waarneming verwijderen?"
+    discovered: string         // "Gevonden"
+  }
+
   game: {
     // Setup
     newGame: string

@@ -31,6 +31,7 @@ const LogboekPage = lazy(() => import('./pages/LogboekPage'))
 const GameJoinPage = lazy(() => import('./pages/GameJoinPage'))
 const GameHostPage = lazy(() => import('./pages/GameHostPage'))
 const GamePlayerPage = lazy(() => import('./pages/GamePlayerPage'))
+const DiscoveryCard = lazy(() => import('./pages/DiscoveryCard'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -190,6 +191,14 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <AddPlant />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/plants/discovery"
+                element={
+                  <RequireAuth>
+                    <DiscoveryCard />
                   </RequireAuth>
                 }
               />

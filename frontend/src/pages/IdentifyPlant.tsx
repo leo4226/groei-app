@@ -31,7 +31,7 @@ export function IdentifyPlantPage() {
   const location = useLocation()
   // MapPage launches /identify with state {mapId, mapSlug} so the sighting sheet
   // can preselect the user's current map. From Dashboard the state is absent.
-  const routeState = location.state as { mapId?: number; mapSlug?: string } | null
+  const routeState = location.state as { mapId?: number; mapSlug?: string; mode?: 'discover' | 'add' } | null
 
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
@@ -83,11 +83,19 @@ export function IdentifyPlantPage() {
     setStep({ kind: 'enriching' })
     try {
       const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
-      navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
+      if (routeState?.mode === 'discover') {
+        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl } })
+      } else {
+        navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
+      }
     } catch (e) {
       const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
       if (isNotFound) {
-        navigate('/plants/add', { state: { prefill: { scientific_name: candidate.scientific_name }, from: 'identify' } })
+        if (routeState?.mode === 'discover') {
+          navigate('/plants/discovery', { state: { candidate: { scientific_name: candidate.scientific_name, common_name_nl: candidate.common_name }, thumbnail: capturedPhotoDataUrl } })
+        } else {
+          navigate('/plants/add', { state: { prefill: { scientific_name: candidate.scientific_name }, from: 'identify' } })
+        }
         return
       }
       setStep({
