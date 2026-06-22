@@ -1028,6 +1028,7 @@ export const nl: Translations = {
     moveModeDone: 'Klaar met verplaatsen',
     moveModeHint: 'Verplaatsmodus: sleep planten naar hun plek. Tik Klaar als je klaar bent.',
     moveOnePlantHint: 'Sleep deze plant naar zijn nieuwe plek.',
+    sunNoGpsHint: 'Stel eerst de locatie van je tuin in om de zon te gebruiken',
   },
 
   garden: {
