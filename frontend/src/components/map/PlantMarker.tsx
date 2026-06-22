@@ -35,6 +35,27 @@ interface Props {
   heatmapCells?: HeatmapCell[]
 }
 
+type MarkerBadge = { alert_type: string; severity: string; icon: string }
+
+export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
+  const warnings = plant.warnings?.length
+    ? plant.warnings
+    : plant.top_warning
+      ? [plant.top_warning]
+      : []
+
+  if (warnings.length) {
+    return warnings.map((warning) => ({
+      alert_type: `${warning.care_type}-${warning.trigger}`,
+      severity: warning.severity,
+      icon: warning.icon,
+    }))
+  }
+
+  if (plant.alerts?.length) return plant.alerts
+  return plant.top_alert ? [plant.top_alert] : []
+}
+
 const PX_PER_CM = 0.46
 
 
@@ -48,10 +69,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         ? getHaloColor(plant)
         : null)
     : getHaloColor(plant)
-  const alerts = plant.alerts ?? []
-  if (!alerts.length && plant.top_alert) {
-    alerts.push(plant.top_alert)
-  }
+  const alerts = markerBadgesForPlant(plant)
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }

@@ -1,3 +1,4 @@
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   /** 'water' or 'fertilize' — controls header icon and button labels */
@@ -34,21 +35,6 @@ interface Props {
   onClose: () => void
 }
 
-const CONFIG = {
-  water: {
-    icon: '💧',
-    title: 'Water geven',
-    buttonLabel: 'Alle planten water geven',
-    deleteLabel: 'Wis waterbeurt',
-  },
-  fertilize: {
-    icon: '🌿',
-    title: 'Bemesten',
-    buttonLabel: 'Alle planten bemesten',
-    deleteLabel: 'Wis bemesting',
-  },
-} as const
-
 export default function GardenActionSheet({
   actionType,
   pickerDate,
@@ -59,7 +45,20 @@ export default function GardenActionSheet({
   onDelete,
   onClose,
 }: Props) {
-  const cfg = CONFIG[actionType]
+  const t = useT()
+  const cfg = actionType === 'water'
+    ? {
+        icon: '💧',
+        title: t.mapPage.recordWatering,
+        buttonLabel: t.mapPage.gardenWaterButton,
+        deleteLabel: t.mapPage.gardenWaterDelete,
+      }
+    : {
+        icon: '🌿',
+        title: t.mapPage.recordFertilizing,
+        buttonLabel: t.mapPage.gardenFertilizeButton,
+        deleteLabel: t.mapPage.gardenFertilizeDelete,
+      }
   const todayStr = new Date().toISOString().slice(0, 10)
 
   return (
@@ -72,7 +71,7 @@ export default function GardenActionSheet({
         {/* Drag handle */}
         <button
           onClick={onClose}
-          aria-label="Sluiten"
+          aria-label={t.mapPage.gardenActionClose}
           className="block mx-auto mt-3 mb-4 px-6 py-2 -my-1 group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
@@ -84,13 +83,13 @@ export default function GardenActionSheet({
             {cfg.icon} {cfg.title}
           </h2>
           <p className="text-xs text-text-muted mb-5">
-            Dit werkt voor alle planten op deze kaart tegelijk.
+            {t.mapPage.gardenActionScope}
           </p>
 
           {/* Date picker row */}
           <div className="flex items-center gap-2 mb-5">
             <label className="text-sm text-text-muted shrink-0">
-              Datum
+              {t.mapPage.gardenActionDateLabel}
             </label>
             <input
               type="date"

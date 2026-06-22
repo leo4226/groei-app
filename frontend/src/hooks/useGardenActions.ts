@@ -9,6 +9,10 @@ interface GardenActionConfig<TStatus> {
   getLastDoneAt: (status: TStatus | null) => string | null | undefined
 }
 
+export function getGardenActionDefaultDate(lastDoneAt: string | null | undefined, now = new Date()): string {
+  return lastDoneAt ?? now.toISOString().slice(0, 10)
+}
+
 function useGardenAction<TStatus>(config: GardenActionConfig<TStatus>) {
   const [status, setStatus] = useState<TStatus | null>(null)
   const [operating, setOperating] = useState(false)
@@ -25,7 +29,7 @@ function useGardenAction<TStatus>(config: GardenActionConfig<TStatus>) {
     if (showPicker) {
       setShowPicker(false)
     } else {
-      setPickerDate(config.getLastDoneAt(status) ?? new Date().toISOString().slice(0, 10))
+      setPickerDate(getGardenActionDefaultDate(config.getLastDoneAt(status)))
       setShowPicker(true)
     }
   }

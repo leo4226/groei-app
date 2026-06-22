@@ -113,7 +113,7 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
         """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm,
                   p.sun_requirement, p.plant_type, p.icon_key, p.species_id,
-                  p.is_locked, p.care_thresholds,
+                  p.is_locked, p.care_thresholds, p.care_profile,
                   s.phenology_json
            FROM plants p
            LEFT JOIN plant_species s ON p.species_id = s.id
@@ -141,20 +141,21 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
     temp_data = await get_temp_data()
     rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered()
+    last_fertilized = await get_last_garden_fertilized()
 
     # Free-standing + ground-zone plants (not inside a container)
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                   p.plant_type, p.icon_key, p.species_id, p.is_locked, p.care_thresholds,
-                  s.phenology_json
+                  p.care_profile, s.phenology_json
            FROM plants p
            LEFT JOIN plant_species s ON p.species_id = s.id
            WHERE p.map_id = ? AND p.is_active = 1 AND p.map_x IS NOT NULL AND p.map_y IS NOT NULL
              AND p.container_id IS NULL""",
         (map_id,),
     )
-    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
+    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
 
     # Objects on this map
     obj_rows = await db.execute_fetchall(
@@ -169,13 +170,13 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
             """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                       p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                       p.plant_type, p.icon_key, p.species_id, p.is_locked, p.care_thresholds,
-                      s.phenology_json
+                      p.care_profile, s.phenology_json
                FROM plants p
                LEFT JOIN plant_species s ON p.species_id = s.id
                WHERE p.container_id = ? AND p.is_active = 1""",
             (obj["id"],),
         )
-        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, map_type=map_type)
+        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
         for p in contained:
             p["map_x"] = p["map_x"] or 0
             p["map_y"] = p["map_y"] or 0
