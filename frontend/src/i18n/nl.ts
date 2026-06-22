@@ -1028,6 +1028,7 @@ export const nl: Translations = {
     moveModeDone: 'Klaar met verplaatsen',
     moveModeHint: 'Verplaatsmodus: sleep planten naar hun plek. Tik Klaar als je klaar bent.',
     moveOnePlantHint: 'Sleep deze plant naar zijn nieuwe plek.',
+    sunNoGpsHint: 'Stel eerst de locatie van je tuin in om de zon te gebruiken',
   },
 
   garden: {
@@ -1206,6 +1207,7 @@ export const nl: Translations = {
     funFactLoading: 'Weetje laden...',
     funFactError: 'Kon geen weetje laden',
     ecology: 'Ecologie',
+    ecologyLoading: 'Ecologie laden...',
     nativeNl: 'Inheems in NL',
     invasiveNl: 'Invasief in NL',
     pollinatorHigh: 'Top bestuiversplant',
@@ -1232,6 +1234,7 @@ export const nl: Translations = {
     discovered: 'Gevonden',
     share: 'Delen',
     shareCopied: 'Gekopieerd!',
+    saveError: 'Opslaan mislukt, probeer opnieuw',
   },
 
   game: {

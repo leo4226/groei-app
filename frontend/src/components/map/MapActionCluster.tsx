@@ -76,7 +76,7 @@ export default function MapActionCluster({
           </button>
           {showGpsHint && (
             <div className="absolute top-full right-0 mt-2 z-50 bg-black/85 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-              Stel eerst de locatie van je tuin in om de zon te gebruiken
+              {t.mapPage.sunNoGpsHint}
               <div className="absolute bottom-full right-4 w-2 h-2 bg-black/85 rotate-45" />
             </div>
           )}

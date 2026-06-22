@@ -1046,6 +1046,7 @@ export type Translations = {
     moveModeDone: string
     moveModeHint: string
     moveOnePlantHint: string
+    sunNoGpsHint: string    // "Set garden location first to use sun features"
   }
 
   garden: {
@@ -1188,6 +1189,7 @@ export type Translations = {
     funFactLoading: string     // "Weetje laden..."
     funFactError: string       // "Kon geen weetje laden"
     ecology: string            // "Ecologie"
+    ecologyLoading: string     // "Ecologie laden..."
     nativeNl: string           // "Inheems in NL"
     invasiveNl: string         // "Invasief in NL"
     pollinatorHigh: string     // "Top bestuiversplant"
@@ -1215,6 +1217,7 @@ export type Translations = {
     discovered: string         // "Gevonden"
     share: string              // "Delen"
     shareCopied: string        // "Gekopieerd!"
+    saveError: string          // "Opslaan mislukt, probeer opnieuw"
   }
 
   game: {

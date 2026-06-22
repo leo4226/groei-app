@@ -1028,6 +1028,7 @@ export const en: Translations = {
     moveModeDone: 'Done moving',
     moveModeHint: 'Move mode: drag plants to their spot. Tap Done when finished.',
     moveOnePlantHint: 'Drag this plant to its new spot.',
+    sunNoGpsHint: 'Set the garden location first to use sun features',
   },
 
   garden: {
@@ -1206,6 +1207,7 @@ export const en: Translations = {
     funFactLoading: 'Loading fun fact...',
     funFactError: 'Could not load fun fact',
     ecology: 'Ecology',
+    ecologyLoading: 'Loading ecology data...',
     nativeNl: 'Native to NL',
     invasiveNl: 'Invasive in NL',
     pollinatorHigh: 'Top pollinator plant',
@@ -1232,6 +1234,7 @@ export const en: Translations = {
     discovered: 'Found',
     share: 'Share',
     shareCopied: 'Copied!',
+    saveError: 'Failed to save, please try again',
   },
 
   game: {

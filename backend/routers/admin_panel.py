@@ -406,14 +406,22 @@ async def admin_growth_metrics(
         SELECT COUNT(*) as n FROM care_log
         WHERE done_at >= $1::date AND done_at < $2::date
     """, (previous_start, start_date))
+    prev_active_raw = await db.execute_fetchall("""
+        SELECT COUNT(DISTINCT p.household_id) as n
+        FROM care_log cl
+        JOIN plants p ON cl.plant_id = p.id
+        WHERE cl.done_at >= $1::date AND cl.done_at < $2::date
+    """, (previous_start, start_date))
 
     current_signups = sum(v["count"] for v in signups)
     current_plants = sum(v["count"] for v in plants_added)
     current_care = sum(v["count"] for v in care_logs)
+    current_active = sum(1 for v in active_households if v["count"] > 0)
 
     prev_signups = prev_signups_raw[0]["n"]
     prev_plants = prev_plants_raw[0]["n"]
     prev_care = prev_care_raw[0]["n"]
+    prev_active = prev_active_raw[0]["n"]
 
     return {
         "days": days,
@@ -427,6 +435,7 @@ async def admin_growth_metrics(
             "signups": current_signups - prev_signups,
             "plants_added": current_plants - prev_plants,
             "care_logs": current_care - prev_care,
+            "active_households": current_active - prev_active,
         },
     }
 
