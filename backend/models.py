@@ -159,6 +159,13 @@ class CareAction(BaseModel):
     notes: str | None = None
 
 
+class CareUndo(BaseModel):
+    care_log_id: int
+    previous_next_due: date | None = None
+    previous_last_done: datetime | None = None
+    previous_last_done_by: int | None = None
+
+
 class CareLogOut(BaseModel):
     id: int
     plant_id: int

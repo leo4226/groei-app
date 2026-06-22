@@ -106,7 +106,16 @@ export default function PlantDetail() {
   const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
   const [carePhotoBusy, setCarePhotoBusy] = useState(false)
   const [journalRefresh, setJournalRefresh] = useState(0)
+  const [undoInfo, setUndoInfo] = useState<{
+    careLogId: number
+    previousNextDue: string | null
+    previousLastDone: string | null
+    previousLastDoneBy: number | null
+    careType: string
+  } | null>(null)
+  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const carePhotoRef = useRef<HTMLInputElement>(null)
+  const carePhotoUploadLogId = useRef<number | null>(null)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -144,19 +153,63 @@ export default function PlantDetail() {
   }, [plants, plantId])
 
   async function handleQuickAction(careType: string) {
-    const careLogId = await markCareDone(plantId, careType)
-    if (careLogId != null) setPendingCareLogId(careLogId)
+    const result = await markCareDone(plantId, careType)
+    if (result != null) {
+      setPendingCareLogId(result.care_log_id)
+      setUndoInfo({
+        careLogId: result.care_log_id,
+        previousNextDue: result.previous_next_due,
+        previousLastDone: result.previous_last_done,
+        previousLastDoneBy: result.previous_last_done_by,
+        careType,
+      })
+      if (undoTimer) clearTimeout(undoTimer)
+      setUndoTimer(setTimeout(() => {
+        setUndoInfo(null)
+        setUndoTimer(null)
+      }, 8000))
+    }
+  }
+
+  function openCarePhotoPicker(careLogId: number | null = null) {
+    carePhotoUploadLogId.current = careLogId
+    carePhotoRef.current?.click()
+  }
+
+  async function handleUndo() {
+    if (!undoInfo) return
+    if (undoTimer) clearTimeout(undoTimer)
+    try {
+      await care.undo(
+        undoInfo.careLogId,
+        undoInfo.previousNextDue,
+        undoInfo.previousLastDone,
+        undoInfo.previousLastDoneBy,
+      )
+      await loadPlants()
+    } finally {
+      setUndoInfo(null)
+      setUndoTimer(null)
+      setPendingCareLogId(null)
+    }
   }
 
   async function handleCarePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || pendingCareLogId == null) return
+    const careLogId = carePhotoUploadLogId.current
+    carePhotoUploadLogId.current = null
+    if (!file) return
     setCarePhotoBusy(true)
     try {
       const blob = await compressImage(file)
-      await photosApi.upload(plantId, blob, { careLogId: pendingCareLogId })
+      await photosApi.upload(
+        plantId,
+        blob,
+        careLogId != null ? { careLogId } : {},
+      )
       setJournalRefresh(k => k + 1)
+      await loadPlants()
       setPendingCareLogId(null)
     } finally {
       setCarePhotoBusy(false)
@@ -164,6 +217,7 @@ export default function PlantDetail() {
   }
 
   async function handleDeleteSchedule(scheduleId: number) {
+    if (!window.confirm(t.plantDetail.deleteScheduleConfirm)) return
     await care.deleteSchedule(scheduleId)
     await loadPlants() // store.sync effect picks up the updated plant
   }
@@ -296,7 +350,7 @@ export default function PlantDetail() {
           return (
             <button
               key={sched.id}
-              onClick={() => handleQuickAction(sched.care_type)}
+              onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
             >
               {info?.icon ?? '🌿'} {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
@@ -359,22 +413,32 @@ export default function PlantDetail() {
     </Section>
   )
 
-  // Non-blocking "add a photo?" affordance after logging care
+  // Non-blocking "add a photo?" + undo affordance after logging care
   const carePhotoUi = (
     <>
       <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
              className="hidden" onChange={handleCarePhotoPick} />
-      {pendingCareLogId != null && (
+      {(pendingCareLogId != null || undoInfo != null) && (
         <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
-          <button
-            className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
-            disabled={carePhotoBusy}
-            onClick={() => carePhotoRef.current?.click()}
-          >
-            📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
-          </button>
+          {undoInfo && (
+            <button
+              className="flex-1 py-2 rounded-full bg-surface border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
+              onClick={handleUndo}
+            >
+              ↩ {t.plantDetail.undo}
+            </button>
+          )}
+          {pendingCareLogId != null && (
+            <button
+              className="flex-1 py-2 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
+              disabled={carePhotoBusy}
+              onClick={() => openCarePhotoPicker(pendingCareLogId)}
+            >
+              📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
+            </button>
+          )}
           <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
-                  onClick={() => setPendingCareLogId(null)}>
+                  onClick={() => { setPendingCareLogId(null); setUndoInfo(null); if (undoTimer) clearTimeout(undoTimer) }}>
             ✕
           </button>
         </div>

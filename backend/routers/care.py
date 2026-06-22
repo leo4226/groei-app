@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
-from models import CareAction, CareLogOut, RecentLogEntry
+from models import CareAction, CareUndo, CareLogOut, RecentLogEntry
 from services.scheduling import calculate_next_due
 from datetime import date, datetime, timedelta
 from auth import get_current_account
@@ -13,7 +13,8 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
                          account = Depends(get_current_account)):
     # Find the matching schedule — scoped to the caller's household
     cursor = await db.execute(
-        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral
+        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
+                  cs.next_due, cs.last_done, cs.last_done_by
            FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
            WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
              AND p.household_id = ?""",
@@ -34,6 +35,11 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     )
     care_log_id = cursor.lastrowid
 
+    # Capture previous state for undo support
+    previous_next_due = schedule.get("next_due")
+    previous_last_done = schedule.get("last_done")
+    previous_last_done_by = schedule.get("last_done_by")
+
     # Update schedule
     if schedule["is_ephemeral"]:
         next_due = today + timedelta(days=1)
@@ -49,7 +55,12 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     )
 
     await db.commit()
-    return {"ok": True, "next_due": str(next_due), "care_log_id": care_log_id}
+    return {
+        "ok": True, "next_due": str(next_due), "care_log_id": care_log_id,
+        "previous_next_due": str(previous_next_due) if previous_next_due else None,
+        "previous_last_done": str(previous_last_done) if previous_last_done else None,
+        "previous_last_done_by": previous_last_done_by,
+    }
 
 
 @router.post("/care/skip")
@@ -152,6 +163,49 @@ async def get_care_log(plant_id: int, db = Depends(db_dep)):
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]
+
+
+@router.post("/care/undo")
+async def undo_care_done(action: CareUndo, db = Depends(db_dep),
+                          account = Depends(get_current_account)):
+    # Find the care log — scoped to the caller's household
+    cursor = await db.execute(
+        """SELECT cl.id, cl.plant_id, cl.care_type
+           FROM care_log cl
+           JOIN plants p ON cl.plant_id = p.id
+           WHERE cl.id = ? AND p.household_id = ?""",
+        (action.care_log_id, account["household_id"]),
+    )
+    log_entry = await cursor.fetchone()
+    if not log_entry:
+        raise HTTPException(status_code=404, detail="Care log entry not found")
+
+    # Find the matching schedule
+    cursor = await db.execute(
+        """SELECT cs.id FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+             AND p.household_id = ?""",
+        (log_entry["plant_id"], log_entry["care_type"], account["household_id"]),
+    )
+    schedule = await cursor.fetchone()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="No active schedule found")
+
+    # Restore schedule state to before the care action
+    await db.execute(
+        """UPDATE care_schedules
+           SET last_done = ?, last_done_by = ?, next_due = ?
+           WHERE id = ?""",
+        (action.previous_last_done, action.previous_last_done_by,
+         action.previous_next_due, schedule["id"]),
+    )
+
+    # Delete the care log entry
+    await db.execute("DELETE FROM care_log WHERE id = ?", (action.care_log_id,))
+
+    await db.commit()
+    return {"ok": True}
 
 @router.patch("/care/schedules/{schedule_id}")
 async def update_schedule_interval(

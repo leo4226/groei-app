@@ -28,7 +28,7 @@ interface FlorerStore {
   archivePlant: (id: number) => Promise<void>
   bulkArchivePlants: (ids: number[]) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
-  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<number | undefined>
+  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<{ care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null } | undefined>
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
@@ -174,7 +174,12 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     // Refetch to get correct status_counts and warning summary
     get().loadDashboardV2()
     get().loadWarningSummary()
-    return result.care_log_id  // lets callers offer a photo attach
+    return {
+      care_log_id: result.care_log_id,
+      previous_next_due: result.previous_next_due,
+      previous_last_done: result.previous_last_done,
+      previous_last_done_by: result.previous_last_done_by,
+    }
   },
 
   skipCare: async (plantId, careType) => {
