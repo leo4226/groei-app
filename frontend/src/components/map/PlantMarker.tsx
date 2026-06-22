@@ -44,16 +44,11 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
       ? [plant.top_warning]
       : []
 
-  if (warnings.length) {
-    return warnings.map((warning) => ({
-      alert_type: `${warning.care_type}-${warning.trigger}`,
-      severity: warning.severity,
-      icon: warning.icon,
-    }))
-  }
-
-  if (plant.alerts?.length) return plant.alerts
-  return plant.top_alert ? [plant.top_alert] : []
+  return warnings.map((warning) => ({
+    alert_type: `${warning.care_type}-${warning.trigger}`,
+    severity: warning.severity,
+    icon: warning.icon,
+  }))
 }
 
 const PX_PER_CM = 0.46

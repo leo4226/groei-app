@@ -4,6 +4,7 @@ import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { resolveIconUrl } from '../../utils/icons'
+import { markerBadgesForPlant } from './PlantMarker'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -150,10 +151,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
       const haloColor = getHaloColor(plant)
-      const alerts = plant.alerts ?? []
-      if (!alerts.length && plant.top_alert) {
-        alerts.push(plant.top_alert)
-      }
+      const alerts = markerBadgesForPlant(plant)
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Status halo — extends beyond pot outline to shine through */}
