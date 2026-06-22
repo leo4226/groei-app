@@ -100,10 +100,12 @@ export default function DiscoveryCard() {
     if (typeof navigator.share === 'function') {
       await navigator.share({ title: displayName, text }).catch(() => {})
     } else {
-      const ok = await navigator.clipboard.writeText(text).then(() => true, () => false)
-      if (ok) {
+      try {
+        await navigator.clipboard.writeText(text)
         setShared(true)
         setTimeout(() => setShared(false), 2000)
+      } catch {
+        // clipboard unavailable — fail silently
       }
     }
   }
