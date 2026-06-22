@@ -1213,6 +1213,7 @@ export type Translations = {
     journalEmptyHint: string   // "Fotografeer planten buiten met de camera-knop"
     journalDeleteConfirm: string  // "Waarneming verwijderen?"
     discovered: string         // "Gevonden"
+    saveError: string          // "Opslaan mislukt, probeer opnieuw"
   }
 
   game: {

@@ -1230,6 +1230,7 @@ export const en: Translations = {
     journalEmptyHint: 'Photograph plants outside using the camera button',
     journalDeleteConfirm: 'Delete observation?',
     discovered: 'Found',
+    saveError: 'Failed to save, please try again',
   },
 
   game: {
