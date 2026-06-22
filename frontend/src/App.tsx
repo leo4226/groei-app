@@ -28,6 +28,9 @@ const LayoutEditorPage = lazy(() => import('./pages/LayoutEditorPage'))
 const MapSettingsPage = lazy(() => import('./pages/MapSettingsPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const LogboekPage = lazy(() => import('./pages/LogboekPage'))
+const GameJoinPage = lazy(() => import('./pages/GameJoinPage'))
+const GameHostPage = lazy(() => import('./pages/GameHostPage'))
+const GamePlayerPage = lazy(() => import('./pages/GamePlayerPage'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -251,6 +254,23 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <AdminPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/game" element={<GameJoinPage />} />
+              <Route
+                path="/game/:code/host"
+                element={
+                  <RequireAuth>
+                    <GameHostPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/game/:code"
+                element={
+                  <RequireAuth>
+                    <GamePlayerPage />
                   </RequireAuth>
                 }
               />

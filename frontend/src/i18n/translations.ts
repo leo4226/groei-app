@@ -1178,4 +1178,70 @@ export type Translations = {
     envPotted: string    // "Potted" / "Pot"
     envIndoor: string    // "Indoor" / "Binnen"
   }
+
+  game: {
+    // Setup
+    newGame: string
+    setupTitle: string
+    setupSubtitle: string
+    selectMin: string
+    selectMax: string
+    createGame: string
+    creating: string
+    noPhotosWarning: string
+    // Waiting room (host)
+    joinCode: string
+    copyLink: string
+    linkCopied: string
+    waitingForPlayers: string
+    playersJoined: string
+    startGame: string
+    cancelGame: string
+    minPlayersHint: string
+    // Waiting room (player)
+    enterCode: string
+    joinButton: string
+    invalidCode: string
+    gameAlreadyStarted: string
+    waitingForHost: string
+    youAreIn: string
+    otherPlayers: string
+    // Round
+    roundTitle: string
+    findThisPlant: string
+    hint: string
+    scanButton: string
+    scanning: string
+    correctScan: string
+    wrongScan: string
+    waitingForNextRound: string
+    noPhotoAvailable: string
+    roundOf: string
+    // Round result
+    roundResult: string
+    correct: string
+    tooSlow: string
+    pointsEarned: string
+    totalScore: string
+    nextRoundSoon: string
+    // Host round view
+    answered: string
+    waitingForAnswers: string
+    nextRound: string
+    endGame: string
+    plantHint: string
+    // Leaderboard
+    gameOver: string
+    finalLeaderboard: string
+    yourPosition: string
+    playAgain: string
+    backToMap: string
+    shareResults: string
+    newGame2: string
+    roundBreakdown: string
+    hostedBy: string
+    place1: string
+    place2: string
+    place3: string
+  }
 }

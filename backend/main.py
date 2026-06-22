@@ -33,6 +33,7 @@ from routers import notifications as notifications_router
 from routers import plant_photos as plant_photos_router
 from routers import watchdog as watchdog_router
 from routers import export as export_router
+from routers import game as game_router
 
 
 @asynccontextmanager
@@ -126,6 +127,7 @@ app.include_router(notifications_router.router, prefix="/api")
 app.include_router(plant_photos_router.router, prefix="/api")
 app.include_router(watchdog_router.router, prefix="/api")
 app.include_router(export_router.router, prefix="/api")
+app.include_router(game_router.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
