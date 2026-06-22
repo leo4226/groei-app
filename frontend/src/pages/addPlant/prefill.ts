@@ -229,13 +229,16 @@ export function normalizePrefill(
     }
   }
 
-  // manual { name } — preserve the legacy behaviour where the species field
-  // defaults to the typed name (the old initializer fell back to it).
-  const name = String((prefill as { name?: string }).name ?? '')
+  // manual / journal path — pick up name, scientific_name, and species_id if present
+  const raw = prefill as { name?: string; scientific_name?: string; species_id?: number }
+  const name = String(raw.name ?? '')
   return {
-    kind: 'manual', name, species: name, notes: '',
+    kind: 'manual', name,
+    species: String(raw.scientific_name ?? name),
+    notes: '',
     sunRequirement: null, formType: 'pot', iconKeyHint: null,
-    speciesId: null, careThresholds: null, photoPath: null,
+    speciesId: typeof raw.species_id === 'number' ? raw.species_id : null,
+    careThresholds: null, photoPath: null,
   }
 }
 

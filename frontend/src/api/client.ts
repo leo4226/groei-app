@@ -315,6 +315,7 @@ export const species = {
   lookupLatin: (latin: string) => api<{ id: number; care_thresholds: Record<string, unknown> | null }>('GET', `/species/by-latin/${encodeURIComponent(latin)}`),
   funFact: (id: number) => api<{ fun_fact_nl: string; fun_fact_en: string }>('GET', `/species/${id}/fun-fact`),
   gardenFit: (id: number) => api<Array<{ map_id: number; map_name: string; sun_fit: string | null; reason: string }>>('GET', `/species/${id}/garden-fit`),
+  gardenFitBatch: (ids: number[]) => api<Record<string, Array<{ map_id: number; map_name: string; sun_fit: string | null; reason: string }>>>('POST', '/species/garden-fit/batch', { body: { species_ids: ids } }),
 }
 
 export const maps = {
