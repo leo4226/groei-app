@@ -255,7 +255,7 @@ export default function PlantQuickSheet({
                         onClick={() => handleCare(sched.care_type)}
                         style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}
                       >
-                        Gedaan
+                        {t.dashboard.actions.done}
                       </button>
                     </div>
                   )
@@ -264,7 +264,7 @@ export default function PlantQuickSheet({
             ) : detail !== null ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--color-bg)' }}>
                 <span style={{ color: 'var(--color-primary)', fontSize: 14 }}>✓</span>
-                <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>Alles op schema</span>
+                <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>{t.mapPage.sheetAllGood}</span>
               </div>
             ) : null}
           </div>
@@ -274,7 +274,7 @@ export default function PlantQuickSheet({
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 14 }}>
               <span style={{ fontSize: 14, flexShrink: 0 }}>☀</span>
               <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                ~{sunFitInfo.sunHours.toFixed(1)}u{' · '}{sunFitInfo.profile.labelNl}
+                ~{sunFitInfo.sunHours.toFixed(1)}u{' · '}{t.locale.startsWith('en') ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: SUN_FIT_COLORS[sunFitInfo.fit] + '22', color: SUN_FIT_COLORS[sunFitInfo.fit], flexShrink: 0 }}>
                 {sunFitInfo.fit === 'good' ? t.plantQuickSheet.goodFit : sunFitInfo.fit === 'partial' ? t.plantQuickSheet.partialFit : t.plantQuickSheet.insufficientFit}

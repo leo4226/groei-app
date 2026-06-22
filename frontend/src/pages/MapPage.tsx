@@ -152,7 +152,7 @@ export default function MapPage() {
   const attentionCount = useMemo(() => {
     const containedPlants = objects.flatMap((o) => o.contained_plants ?? [])
     const all = [...plants, ...containedPlants]
-    return all.filter((p) => p.top_warning !== null).length
+    return all.filter((p) => (p.warnings?.length ?? 0) > 0 || p.top_warning !== null).length
   }, [plants, objects])
 
   const sheetMode: SheetMode = sun.active && isOutdoor ? 'sun' : 'care'

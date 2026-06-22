@@ -1046,6 +1046,7 @@ export type Translations = {
     moveModeDone: string
     moveModeHint: string
     moveOnePlantHint: string
+    sunNoGpsHint: string    // "Set garden location first to use sun features"
   }
 
   garden: {

@@ -1028,6 +1028,7 @@ export const en: Translations = {
     moveModeDone: 'Done moving',
     moveModeHint: 'Move mode: drag plants to their spot. Tap Done when finished.',
     moveOnePlantHint: 'Drag this plant to its new spot.',
+    sunNoGpsHint: 'Set the garden location first to use sun features',
   },
 
   garden: {
