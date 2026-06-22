@@ -207,16 +207,77 @@ export default function PlantQuickSheet({
               </button>
             </div>
 
-            {/* Close */}
-            <button
-              onClick={onClose}
-              aria-label={t.plantQuickSheet.close}
-              style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0, cursor: 'pointer' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M10 2L2 10M2 2l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            </button>
+            {/* Action icons + close — always visible at the top */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <button
+                onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
+                title={t.plantQuickSheet.moveToMap}
+                style={headerIconBtnStyle}
+              >
+                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                  <path d="M4 2L2 4l2 2M11 2l2 2-2 2M2 7.5h11M4 11l-2 2 2 2M11 11l2 2-2 2M7.5 2v11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {onDuplicate && (
+                <button
+                  onClick={() => { onDuplicate(plant.id); onClose() }}
+                  title={t.plantQuickSheet.duplicate}
+                  style={headerIconBtnStyle}
+                >
+                  <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                    <rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M2 11V2h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
+                title={t.plantQuickSheet.edit}
+                style={headerIconBtnStyle}
+              >
+                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+                  <path d="M10.5 2.5l2 2L5 12H3v-2l7.5-7.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button
+                onClick={handleToggleLock}
+                title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
+                style={{ ...headerIconBtnStyle, color: locked ? 'var(--color-due)' : undefined, background: locked ? 'rgba(212,148,58,0.12)' : headerIconBtnStyle.background }}
+              >
+                {locked ? (
+                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
+                    <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M4.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
+                    <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M4.5 7V5a2.5 2.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                  </svg>
+                )}
+              </button>
+              {onRemove && (
+                <button
+                  onClick={() => { onRemove(plant.id); onClose() }}
+                  title={t.plantQuickSheet.remove}
+                  style={{ ...headerIconBtnStyle, color: 'var(--color-overdue)', background: 'rgba(200,60,60,0.08)' }}
+                >
+                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
+                    <path d="M2 4h10M5 4V2.5h4V4M6 7v4M8 7v4M3 4l.75 8.5h6.5L11 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+              {/* Close */}
+              <button
+                onClick={onClose}
+                aria-label={t.plantQuickSheet.close}
+                style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0, cursor: 'pointer' }}
+              >
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M10 2L2 10M2 2l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* ── Care signals (overdue + due today only) ── */}
@@ -336,70 +397,6 @@ export default function PlantQuickSheet({
             </button>
           )}
 
-          {/* ── Secondary actions ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingTop: 6, paddingBottom: 4, borderTop: '1px solid var(--color-border-soft)' }}>
-            {/* Move plant */}
-            <button
-              onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
-              title={t.plantQuickSheet.moveToMap}
-              style={iconBtnStyle}
-            >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M4 2L2 4l2 2M11 2l2 2-2 2M2 7.5h11M4 11l-2 2 2 2M11 11l2 2-2 2M7.5 2v11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {/* Icon-only utility buttons */}
-            {onDuplicate && (
-              <button
-                onClick={() => { onDuplicate(plant.id); onClose() }}
-                title={t.plantQuickSheet.duplicate}
-                style={iconBtnStyle}
-              >
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                  <rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                  <path d="M2 11V2h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              </button>
-            )}
-            <button
-              onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
-              title={t.plantQuickSheet.edit}
-              style={iconBtnStyle}
-            >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                <path d="M10.5 2.5l2 2L5 12H3v-2l7.5-7.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button
-              onClick={handleToggleLock}
-              title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
-              style={{ ...iconBtnStyle, color: locked ? 'var(--color-due)' : undefined, background: locked ? 'rgba(212,148,58,0.12)' : iconBtnStyle.background }}
-            >
-              {locked ? (
-                <svg width="14" height="15" viewBox="0 0 14 15" fill="none">
-                  <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                  <path d="M4.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              ) : (
-                <svg width="14" height="15" viewBox="0 0 14 15" fill="none">
-                  <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                  <path d="M4.5 7V5a2.5 2.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                </svg>
-              )}
-            </button>
-            {onRemove && (
-              <button
-                onClick={() => { onRemove(plant.id); onClose() }}
-                title={t.plantQuickSheet.remove}
-                style={{ ...iconBtnStyle, color: 'var(--color-overdue)', background: 'rgba(200,60,60,0.08)' }}
-              >
-                <svg width="14" height="15" viewBox="0 0 14 15" fill="none">
-                  <path d="M2 4h10M5 4V2.5h4V4M6 7v4M8 7v4M3 4l.75 8.5h6.5L11 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            )}
-          </div>
-
         </div>
       </div>
 
@@ -416,8 +413,8 @@ export default function PlantQuickSheet({
   )
 }
 
-const iconBtnStyle: React.CSSProperties = {
-  width: 36, height: 36, borderRadius: 10,
+const headerIconBtnStyle: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: 8,
   background: 'var(--color-bg)',
   border: '1px solid var(--color-border-soft)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
