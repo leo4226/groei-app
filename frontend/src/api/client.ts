@@ -313,6 +313,8 @@ export const dashboard = {
 export const species = {
   ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),
   lookupLatin: (latin: string) => api<{ id: number; care_thresholds: Record<string, unknown> | null }>('GET', `/species/by-latin/${encodeURIComponent(latin)}`),
+  funFact: (id: number) => api<{ fun_fact_nl: string; fun_fact_en: string }>('GET', `/species/${id}/fun-fact`),
+  gardenFit: (id: number) => api<Array<{ map_id: number; map_name: string; sun_fit: string | null; reason: string }>>('GET', `/species/${id}/garden-fit`),
 }
 
 export const maps = {
@@ -486,6 +488,32 @@ export interface NotificationPrefs {
   digest_enabled: boolean
   digest_time: string  // "HH:MM" — the send hour for digest AND push (Europe/Amsterdam)
   push_enabled: boolean
+}
+
+export interface PlantDiscovery {
+  id: number
+  species_id: number | null
+  common_name: string
+  latin_name: string | null
+  thumbnail_url: string | null
+  notes: string | null
+  location_lat: number | null
+  location_lon: number | null
+  discovered_at: string
+}
+
+export const discoveries = {
+  list: () => api<PlantDiscovery[]>('GET', '/discover'),
+  save: (data: {
+    species_id?: number
+    common_name: string
+    latin_name?: string
+    thumbnail_url?: string
+    notes?: string
+    location_lat?: number
+    location_lon?: number
+  }) => api<PlantDiscovery>('POST', '/discover', { body: data }),
+  delete: (id: number) => api<void>('DELETE', `/discover/${id}`),
 }
 
 export const notifications = {

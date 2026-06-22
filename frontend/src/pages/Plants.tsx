@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { PLANT_ICONS } from '../constants/plantIcons'
@@ -7,6 +7,8 @@ import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
 import { alerts, icons } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
+
+const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 
 /** Plant is outdoor (tuin) when its map has map_type='outdoor'. Null map_id → fallback to huis. */
 const isOutdoor = (plant: Plant, mapTypeByMapId: Map<number, 'outdoor' | 'indoor'>) => {
@@ -60,6 +62,7 @@ export default function Plants() {
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [activeTab, setActiveTab] = useState<'plants' | 'journal'>('plants')
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -283,6 +286,22 @@ export default function Plants() {
               {navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K'}
             </span>
           </div>
+          <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
+            fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+            color: 'var(--color-text-soft)', padding: '10px 16px',
+            border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+            transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {t.discovery.identifyWild}
+          </button>
           <button onClick={() => navigate('/plants/add')} style={{
             fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
             color: 'var(--color-primary)', textDecoration: 'none', padding: '10px 16px',
@@ -318,8 +337,23 @@ export default function Plants() {
           )}
         </div>
 
+        {/* Tab toggle — desktop */}
+        <div style={{ padding: '12px 24px 0', display: 'flex', gap: 8 }}>
+          {(['plants', 'journal'] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+              padding: '7px 18px', borderRadius: 100, cursor: 'pointer', border: 'none',
+              background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
+              transition: 'all 0.15s',
+            }}>
+              {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
+            </button>
+          ))}
+        </div>
+
         {/* Filters — desktop rows */}
-        <div className="plants-filter-strip">
+        <div className="plants-filter-strip" style={{ display: activeTab === 'journal' ? 'none' : undefined }}>
           <div className="filter-row" style={{ padding: '14px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className="filter-label" style={{
               fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
@@ -365,7 +399,12 @@ export default function Plants() {
 
         {/* Results & plant grid – shared */}
         <div style={{ padding: '0 24px' }}>
-          {alertsOnly && (
+          {activeTab === 'journal' && (
+            <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
+              <DiscoveriesSection />
+            </Suspense>
+          )}
+          {activeTab === 'plants' && alertsOnly && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '8px 12px', marginBottom: 12, marginTop: 12,
@@ -382,10 +421,10 @@ export default function Plants() {
               </button>
             </div>
           )}
-          <ResultsBar />
-          <LoadingSkeleton />
-          <EmptyState />
-          <PlantGrid />
+          {activeTab === 'plants' && <ResultsBar />}
+          {activeTab === 'plants' && <LoadingSkeleton />}
+          {activeTab === 'plants' && <EmptyState />}
+          {activeTab === 'plants' && <PlantGrid />}
           {isSelecting && (
             <div style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
@@ -457,6 +496,17 @@ export default function Plants() {
             }}>{filtered.length}</span>
           </h1>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
+            }} aria-label={t.discovery.identifyWild}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
             <button onClick={() => navigate('/plants/add')} style={{
               fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
               color: 'var(--color-surface)', background: 'var(--color-primary)',
@@ -503,8 +553,22 @@ export default function Plants() {
           />
         </div>
 
+        {/* Tab toggle — mobile */}
+        <div style={{ padding: '0 16px 6px', display: 'flex', gap: 6 }}>
+          {(['plants', 'journal'] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
+              padding: '6px 14px', borderRadius: 100, cursor: 'pointer', border: 'none',
+              background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
+            }}>
+              {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
+            </button>
+          ))}
+        </div>
+
         {/* Filter button — opens bottom sheet */}
-        <div style={{ padding: '0 16px 10px' }}>
+        <div style={{ padding: '0 16px 10px', display: activeTab === 'journal' ? 'none' : undefined }}>
           <button
             onClick={() => setShowFilterSheet(true)}
             style={{
@@ -655,7 +719,12 @@ export default function Plants() {
 
       {/* Main content */}
       <div style={{ padding: '0 16px' }}>
-        {alertsOnly && (
+        {activeTab === 'journal' && (
+          <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
+            <DiscoveriesSection />
+          </Suspense>
+        )}
+        {activeTab === 'plants' && alertsOnly && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '8px 12px', marginBottom: 10,
@@ -673,10 +742,10 @@ export default function Plants() {
           </div>
         )}
 
-        <ResultsBar />
-        <LoadingSkeleton />
-        <EmptyState />
-        <PlantGrid />
+        {activeTab === 'plants' && <ResultsBar />}
+        {activeTab === 'plants' && <LoadingSkeleton />}
+        {activeTab === 'plants' && <EmptyState />}
+        {activeTab === 'plants' && <PlantGrid />}
       </div>
     </div>
   )
