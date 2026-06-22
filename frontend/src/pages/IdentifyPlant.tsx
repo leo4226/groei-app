@@ -92,7 +92,7 @@ export function IdentifyPlantPage() {
       const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
       if (isNotFound) {
         if (routeState?.mode === 'discover') {
-          navigate('/plants/discovery', { state: { candidate: { scientific_name: candidate.scientific_name, common_name_nl: candidate.common_name }, thumbnail: capturedPhotoDataUrl } })
+          navigate('/plants/discovery', { state: { candidate: { scientific_name: candidate.scientific_name, common_name_nl: candidate.common_names_nl?.[0] ?? candidate.scientific_name }, thumbnail: capturedPhotoDataUrl } })
         } else {
           navigate('/plants/add', { state: { prefill: { scientific_name: candidate.scientific_name }, from: 'identify' } })
         }
