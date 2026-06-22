@@ -1,5 +1,4 @@
 import { useT } from '../../context/LanguageContext'
-import { useFloreren } from '../../store/useFloreren'
 import type { GameState } from '../../api/game'
 
 interface Props {
@@ -11,11 +10,8 @@ interface Props {
 
 export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMap }: Props) {
   const t = useT()
-  const activeUserId = useFloreren((s) => s.activeUserId)
-  const currentUser = useFloreren((s) => s.users.find((u) => u.id === activeUserId))
 
   const sorted = [...state.players].sort((a, b) => b.score - a.score)
-  const myRank = sorted.findIndex((p) => p.account_id === currentUser?.household_id) + 1
 
   function medal(i: number) {
     if (i === 0) return t.game.place1
@@ -45,35 +41,21 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
       </div>
 
       <div className="w-full bg-surface rounded-2xl border border-border overflow-hidden">
-        {sorted.map((p, i) => {
-          const isMe = p.account_id === currentUser?.household_id
-          return (
-            <div
-              key={p.account_id}
-              className={`flex items-center justify-between px-4 py-3 ${
-                i < sorted.length - 1 ? 'border-b border-border' : ''
-              } ${isMe ? 'bg-primary/8' : ''}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg w-8 text-center">{medal(i)}</span>
-                <span className={`text-sm ${isMe ? 'font-bold text-primary' : 'text-text'}`}>
-                  {p.player_name}
-                  {isMe && <span className="ml-1 text-primary/60 text-xs">(jij)</span>}
-                </span>
-              </div>
-              <span className={`font-semibold text-sm ${isMe ? 'text-primary' : 'text-text-muted'}`}>
-                {p.score} pt
-              </span>
+        {sorted.map((p, i) => (
+          <div
+            key={p.account_id}
+            className={`flex items-center justify-between px-4 py-3 ${
+              i < sorted.length - 1 ? 'border-b border-border' : ''
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-lg w-8 text-center">{medal(i)}</span>
+              <span className="text-sm text-text">{p.player_name}</span>
             </div>
-          )
-        })}
+            <span className="font-semibold text-sm text-text-muted">{p.score} pt</span>
+          </div>
+        ))}
       </div>
-
-      {myRank > 0 && (
-        <p className="text-sm text-text-muted text-center">
-          {t.game.yourPosition.replace('{rank}', String(myRank)).replace('{suffix}', '')}
-        </p>
-      )}
 
       <div className="w-full space-y-3">
         <button
