@@ -124,6 +124,8 @@ export default function AddPlant() {
     return { bareBases, pottedVariants }
   }, [iconCatalog])
 
+  const [gardenFitChip, setGardenFitChip] = useState<Array<{ map_id: number; map_name: string; sun_fit: string | null; reason: string }> | null>(null)
+
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
@@ -209,6 +211,16 @@ export default function AddPlant() {
       .catch(() => {}) // latin name may not match — silently skip
     return () => { cancelled = true }
   }, [norm.kind, norm.species])
+
+  // Garden fit chip — shown when species_id is known (identify or journal paths)
+  useEffect(() => {
+    if (norm.speciesId == null) return
+    let cancelled = false
+    speciesApi.gardenFit(norm.speciesId)
+      .then(fits => { if (!cancelled) setGardenFitChip(fits) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [norm.speciesId])
 
   // Photo-ID path: lazily fetch the species ecology profile and fill the sun
   // requirement from it. Non-blocking and fire-and-forget (mirrors the catalog
@@ -539,6 +551,39 @@ export default function AddPlant() {
           }
         />
       </div>
+
+      {/* ——— Garden fit chip ——— */}
+      {gardenFitChip && gardenFitChip.length > 0 && (() => {
+        const FIT_RANK: Record<string, number> = { perfect: 4, acceptable: 3, marginal: 2, tolerated: 1 }
+        const FIT_COLOR: Record<string, string> = { perfect: '#24e34c', acceptable: '#a3e635', marginal: '#f59e0b', tolerated: '#6b7280' }
+        const FIT_LABEL: Record<string, string> = {
+          perfect: t.discovery.fitPerfect,
+          acceptable: t.discovery.fitAcceptable,
+          marginal: t.discovery.fitMarginal,
+          tolerated: t.discovery.fitTolerated,
+        }
+        const best = gardenFitChip.reduce((b, v) =>
+          (FIT_RANK[v.sun_fit ?? ''] ?? 0) > (FIT_RANK[b.sun_fit ?? ''] ?? 0) ? v : b,
+          gardenFitChip[0]
+        )
+        if (!best.sun_fit) return null
+        const color = FIT_COLOR[best.sun_fit] ?? '#d1d5db'
+        return (
+          <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pb-2 pt-2">
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '7px 14px', borderRadius: 20,
+              background: color + '18', border: `1px solid ${color}50`,
+            }}>
+              <div style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: 'var(--color-text-soft)' }}>
+                <strong style={{ color: 'var(--color-text)' }}>{FIT_LABEL[best.sun_fit]}</strong>
+                {' — '}{best.map_name}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">

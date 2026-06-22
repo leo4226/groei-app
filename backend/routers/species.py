@@ -92,6 +92,65 @@ class GardenFitVerdict(BaseModel):
     reason: str
 
 
+class BatchFitRequest(BaseModel):
+    species_ids: list[int]
+
+
+@router.post("/garden-fit/batch")
+async def batch_species_garden_fit(
+    body: BatchFitRequest,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+) -> dict[str, list[GardenFitVerdict]]:
+    """Return garden-fit verdicts for multiple species in one round-trip."""
+    if not body.species_ids:
+        return {}
+    if len(body.species_ids) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 species per batch request")
+
+    placeholders = ",".join("?" * len(body.species_ids))
+    sp_rows = await db.execute_fetchall(
+        f"SELECT id, sun_preference FROM plant_species WHERE id IN ({placeholders})",
+        tuple(body.species_ids),
+    )
+    sp_map = {r["id"]: r["sun_preference"] for r in sp_rows}
+
+    maps = await db.execute_fetchall(
+        "SELECT id, name, map_type FROM maps WHERE household_id = ?",
+        (account["household_id"],),
+    )
+
+    from services.plant_suggestions import fit_grade, bucket_for
+
+    _FIT_LABEL_NL = {
+        "perfect": "Ideaal licht",
+        "acceptable": "Geschikt licht",
+        "marginal": "Krap licht",
+        "tolerated": "Past in elke tuin",
+    }
+
+    result: dict[str, list[GardenFitVerdict]] = {}
+    for sid in body.species_ids:
+        sun_preference = sp_map.get(sid)
+        verdicts = []
+        for m in maps:
+            if not sun_preference:
+                verdicts.append(GardenFitVerdict(
+                    map_id=m["id"], map_name=m["name"],
+                    sun_fit=None, reason="Geen lichtvoorkeur bekend",
+                ))
+                continue
+            avg_sun = 4.5 if m["map_type"] == "outdoor" else 2.0
+            grade = fit_grade(sun_preference, bucket_for(float(avg_sun)))
+            reason = _FIT_LABEL_NL.get(grade, "Onbekend") if grade else "Waarschijnlijk te donker"
+            verdicts.append(GardenFitVerdict(
+                map_id=m["id"], map_name=m["name"], sun_fit=grade, reason=reason,
+            ))
+        result[str(sid)] = verdicts
+
+    return result
+
+
 @router.get("/{species_id}/fun-fact", response_model=FunFactOut)
 async def get_species_fun_fact(species_id: int, db=Depends(db_dep)):
     """Return a fun fact for a species. Generates via LLM on first access, then caches."""
