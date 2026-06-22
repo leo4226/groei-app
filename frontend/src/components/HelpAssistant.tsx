@@ -104,6 +104,11 @@ export default function HelpAssistant() {
   } | null>(null)
   const hasTriggeredRef = useRef(false)
 
+  // Bubble throttle: set true once user opens chat — no more proactive bubbles
+  const hasInteractedRef = useRef(false)
+  // Track which pageKeys have already shown a bubble this session
+  const shownPagesRef = useRef<Set<string>>(new Set())
+
   // Drag state
   const buttonRef = useRef<HTMLButtonElement>(null)
   const wasDraggedRef = useRef(false)
@@ -138,23 +143,25 @@ export default function HelpAssistant() {
 
   // ---------- bubble cycle ----------
   useEffect(() => {
-    if (!pageKey || open || dismissed) {
+    if (!pageKey || open || dismissed || hasInteractedRef.current) {
       if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
       setBubbleVisible(false)
       return
     }
 
-    const showBubble = () => {
+    // Show at most once per page per session
+    if (shownPagesRef.current.has(pageKey)) return
+
+    shownPagesRef.current.add(pageKey)
+
+    const delayTimer = setTimeout(() => {
       setBubble(randomBubble(pageKey, userName))
       setBubbleVisible(true)
       bubbleTimerRef.current = setTimeout(() => setBubbleVisible(false), 4000)
-    }
+    }, 5000)
 
-    showBubble()
-
-    const interval = setInterval(showBubble, 15000)
     return () => {
-      clearInterval(interval)
+      clearTimeout(delayTimer)
       if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current)
     }
   }, [pageKey, open, dismissed, userName])
@@ -367,6 +374,7 @@ export default function HelpAssistant() {
             wasDraggedRef.current = false
             return
           }
+          hasInteractedRef.current = true
           setOpen(true)
         }}
         onPointerDown={handlePointerDown}
