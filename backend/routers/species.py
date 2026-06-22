@@ -105,6 +105,8 @@ async def batch_species_garden_fit(
     """Return garden-fit verdicts for multiple species in one round-trip."""
     if not body.species_ids:
         return {}
+    if len(body.species_ids) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 species per batch request")
 
     placeholders = ",".join("?" * len(body.species_ids))
     sp_rows = await db.execute_fetchall(
