@@ -1206,6 +1206,7 @@ export const nl: Translations = {
     funFactLoading: 'Weetje laden...',
     funFactError: 'Kon geen weetje laden',
     ecology: 'Ecologie',
+    ecologyLoading: 'Ecologie laden...',
     nativeNl: 'Inheems in NL',
     invasiveNl: 'Invasief in NL',
     pollinatorHigh: 'Top bestuiversplant',

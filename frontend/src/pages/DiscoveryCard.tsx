@@ -186,7 +186,7 @@ export default function DiscoveryCard() {
             {t.discovery.ecology}
           </p>
           {ecologyLoading && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-soft)' }}>{t.discovery.funFactLoading}</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-soft)' }}>{t.discovery.ecologyLoading}</p>
           )}
           {ecology && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
