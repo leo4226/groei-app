@@ -237,7 +237,6 @@ export default function MapPage() {
 
   const handleCareAction = useCallback(async () => {
     await refresh()
-    setSelectedPlant(null)
   }, [refresh])
 
   const handlePositionUpdate = useCallback(async () => {
