@@ -477,7 +477,7 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
             <MetricSparklineCard title="Signups" data={growth.metrics.signups} delta={growth.deltas.signups} color="var(--color-primary)" />
             <MetricSparklineCard title="Plants added" data={growth.metrics.plants_added} delta={growth.deltas.plants_added} color="var(--color-secondary)" />
             <MetricSparklineCard title="Care logs" data={growth.metrics.care_logs} delta={growth.deltas.care_logs} color="var(--color-due)" />
-            <MetricSparklineCard title="Active households" data={growth.metrics.active_households} delta={0} color="var(--color-text-muted)" />
+            <MetricSparklineCard title="Active households" data={growth.metrics.active_households} delta={growth.deltas.active_households} color="var(--color-text-muted)" />
           </div>
         )}
         {!growth && !growthLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13 }}>Growth data unavailable.</div>}

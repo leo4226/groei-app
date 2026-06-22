@@ -177,6 +177,7 @@ export interface AdminGrowthDeltas {
   signups: number
   plants_added: number
   care_logs: number
+  active_households: number
 }
 
 export interface AdminGrowthMetrics {

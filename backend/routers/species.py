@@ -248,13 +248,13 @@ async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tup
 
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 LLM_CHAT_URL,
                 headers={"Authorization": f"Bearer {LLM_API_KEY}", "content-type": "application/json"},
                 json={
                     "model": LLM_MODEL,
-                    "max_tokens": 300,
+                    "max_tokens": 150,
                     "messages": [{"role": "user", "content": prompt}],
                 },
             )

@@ -40,6 +40,9 @@ export default function DiscoveryCard() {
   const [showGardenFit, setShowGardenFit] = useState(false)
   const [savedId, setSavedId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [shared, setShared] = useState(false)
+  const [saveError, setSaveError] = useState(false)
+  const [ecologyLoading, setEcologyLoading] = useState(false)
 
   const speciesId = state?.candidate?.species_id ?? null
   const scientificName = state?.candidate?.scientific_name ?? ''
@@ -50,7 +53,8 @@ export default function DiscoveryCard() {
 
   useEffect(() => {
     if (!speciesId) return
-    speciesApi.ecology(speciesId).then(setEcology).catch(() => {})
+    setEcologyLoading(true)
+    speciesApi.ecology(speciesId).then(setEcology).catch(() => {}).finally(() => setEcologyLoading(false))
 
     setFunFactLoading(true)
     speciesApi.funFact(speciesId)
@@ -73,16 +77,37 @@ export default function DiscoveryCard() {
   async function handleSave() {
     if (savedId) return
     setSaving(true)
+    setSaveError(false)
     try {
+      // Don't store raw camera data URLs — they're multi-MB blobs, not URLs.
+      // Only pass thumbnail_url if it's already a real https:// URL.
+      const thumbnail_url = state?.thumbnail?.startsWith('https://') ? state.thumbnail : undefined
       const result = await discoveries.save({
         species_id: speciesId ?? undefined,
         common_name: displayName,
         latin_name: scientificName || undefined,
-        thumbnail_url: state?.thumbnail || undefined,
+        thumbnail_url,
       })
       setSavedId(result.id)
-    } catch { /* ignore */ }
+    } catch {
+      setSaveError(true)
+    }
     setSaving(false)
+  }
+
+  async function handleShare() {
+    const text = `${displayName}${scientificName ? ` (${scientificName})` : ''} 🌿 — floreren.app`
+    if (typeof navigator.share === 'function') {
+      await navigator.share({ title: displayName, text }).catch(() => {})
+    } else {
+      try {
+        await navigator.clipboard.writeText(text)
+        setShared(true)
+        setTimeout(() => setShared(false), 2000)
+      } catch {
+        // clipboard unavailable — fail silently
+      }
+    }
   }
 
   function handleAddToGarden() {
@@ -171,34 +196,39 @@ export default function DiscoveryCard() {
       </div>
 
       {/* Ecology badges */}
-      {ecology && (
+      {(ecologyLoading || ecology) && (
         <div style={{ margin: '16px 20px 0' }}>
           <p style={{ margin: '0 0 8px', fontSize: 11, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>
             {t.discovery.ecology}
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {ecology.native_to_nl === true && (
-              <Badge color="#24e34c" label={t.discovery.nativeNl} />
-            )}
-            {ecology.invasive_nl === true && (
-              <Badge color="#ef4444" label={t.discovery.invasiveNl} />
-            )}
-            {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value >= 3 && (
-              <Badge color="#f59e0b" label={t.discovery.pollinatorHigh} />
-            )}
-            {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value === 2 && (
-              <Badge color="#fbbf24" label={t.discovery.pollinatorGood} />
-            )}
-            {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value === 1 && (
-              <Badge color="#d1d5db" label={t.discovery.pollinatorLow} />
-            )}
-            {ecology.flowering_months && ecology.flowering_months.length > 0 && (
-              <Badge
-                color="#6366f1"
-                label={`${t.discovery.floweringMonths}: ${ecology.flowering_months.map(m => MONTH_NL[m - 1]).join(', ')}`}
-              />
-            )}
-          </div>
+          {ecologyLoading && (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-soft)' }}>{t.discovery.ecologyLoading}</p>
+          )}
+          {ecology && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {ecology.native_to_nl === true && (
+                <Badge color="#24e34c" label={t.discovery.nativeNl} />
+              )}
+              {ecology.invasive_nl === true && (
+                <Badge color="#ef4444" label={t.discovery.invasiveNl} />
+              )}
+              {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value >= 3 && (
+                <Badge color="#f59e0b" label={t.discovery.pollinatorHigh} />
+              )}
+              {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value === 2 && (
+                <Badge color="#fbbf24" label={t.discovery.pollinatorGood} />
+              )}
+              {ecology.pollinator_value !== null && ecology.pollinator_value !== undefined && ecology.pollinator_value === 1 && (
+                <Badge color="#d1d5db" label={t.discovery.pollinatorLow} />
+              )}
+              {ecology.flowering_months && ecology.flowering_months.length > 0 && (
+                <Badge
+                  color="#6366f1"
+                  label={`${t.discovery.floweringMonths}: ${ecology.flowering_months.map(m => MONTH_NL[m - 1]).join(', ')}`}
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -263,6 +293,33 @@ export default function DiscoveryCard() {
           }}
         >
           {savedId ? t.discovery.savedToJournal : saving ? '...' : t.discovery.saveToJournal}
+        </button>
+        {saveError && (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-overdue)', textAlign: 'center' }}>
+            {t.discovery.saveError}
+          </p>
+        )}
+        <button
+          onClick={handleShare}
+          style={{
+            padding: '14px 24px', borderRadius: 12,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            color: shared ? 'var(--color-primary)' : 'var(--color-text-soft)',
+            fontSize: 15, fontWeight: 500, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {shared ? t.discovery.shareCopied : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              {t.discovery.share}
+            </>
+          )}
         </button>
         <button
           onClick={handleAddToGarden}
