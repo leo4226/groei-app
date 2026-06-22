@@ -168,6 +168,28 @@ export interface AdminOverview {
   recent_activity: AdminActivityEvent[]
 }
 
+export interface AdminGrowthMetricPoint {
+  date: string
+  count: number
+}
+
+export interface AdminGrowthDeltas {
+  signups: number
+  plants_added: number
+  care_logs: number
+}
+
+export interface AdminGrowthMetrics {
+  days: number
+  metrics: {
+    signups: AdminGrowthMetricPoint[]
+    plants_added: AdminGrowthMetricPoint[]
+    care_logs: AdminGrowthMetricPoint[]
+    active_households: AdminGrowthMetricPoint[]
+  }
+  deltas: AdminGrowthDeltas
+}
+
 export type AdminHealthStatus = 'ok' | 'degraded' | 'down' | 'unconfigured'
 
 export interface AdminServiceHealth {
@@ -406,8 +428,9 @@ export const admin = {
 }
 
 export const adminPanel = {
-  overview: () => api<AdminOverview>('GET', '/admin-panel/overview'),
-  health:   () => api<AdminSystemHealth>('GET', '/admin-panel/health'),
+  overview:       () => api<AdminOverview>('GET', '/admin-panel/overview'),
+  growthMetrics:  (days: number = 30) => api<AdminGrowthMetrics>('GET', '/admin-panel/growth-metrics', { params: { days: String(days) } }),
+  health:         () => api<AdminSystemHealth>('GET', '/admin-panel/health'),
   users:    (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminUserRow>>('GET', '/admin-panel/users', { params: adminTableParams(params) }),
   plants:   (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminPlantRow>>('GET', '/admin-panel/plants', { params: adminTableParams(params) }),
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
