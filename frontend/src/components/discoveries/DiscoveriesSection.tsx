@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, type PlantDiscovery } from '../../api/client'
 
@@ -12,6 +13,7 @@ function formatDate(iso: string): string {
 
 export default function DiscoveriesSection() {
   const t = useT()
+  const navigate = useNavigate()
   const [items, setItems] = useState<PlantDiscovery[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -26,6 +28,18 @@ export default function DiscoveriesSection() {
     if (!window.confirm(t.discovery.journalDeleteConfirm)) return
     await discoveriesApi.delete(id).catch(() => {})
     setItems((prev) => prev.filter((d) => d.id !== id))
+  }
+
+  function handleAddToGarden(item: PlantDiscovery) {
+    navigate('/plants/add', {
+      state: {
+        prefill: {
+          name: item.common_name,
+          scientific_name: item.latin_name ?? undefined,
+        },
+        from: 'journal',
+      },
+    })
   }
 
   if (loading) {
@@ -88,6 +102,18 @@ export default function DiscoveriesSection() {
               {t.discovery.discovered}: {formatDate(item.discovered_at)}
             </p>
           </div>
+          <button
+            onClick={() => handleAddToGarden(item)}
+            title={t.discovery.addToGarden}
+            style={{
+              padding: '6px 8px', borderRadius: 8, border: 'none',
+              background: 'none', cursor: 'pointer', color: 'var(--color-primary)',
+              fontSize: 18, flexShrink: 0,
+            }}
+            aria-label={t.discovery.addToGarden}
+          >
+            +
+          </button>
           <button
             onClick={() => handleDelete(item.id)}
             style={{
