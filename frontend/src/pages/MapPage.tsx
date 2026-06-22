@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import MapView from '../components/map/MapView'
@@ -28,6 +28,7 @@ import * as clientApis from '../api/client'
 import { useT } from '../context/LanguageContext'
 import UnplacedPlantsTray from '../components/map/UnplacedPlantsTray'
 import { selectUnplacedPlants, viewboxCenter } from '../components/map/unplacedPlants'
+const GameSetupSheet = lazy(() => import('../components/game/GameSetupSheet'))
 
 export default function MapPage() {
   const t = useT()
@@ -83,6 +84,7 @@ export default function MapPage() {
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
   const [showLabels, setShowLabels] = useState(true)
   const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
+  const [showGameSetup, setShowGameSetup] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
   const [moveMode, setMoveMode] = useState(false)
   const [targetedMove, setTargetedMove] = useState<{ plantId: number; relockAfterMove: boolean } | null>(null)
@@ -381,6 +383,7 @@ export default function MapPage() {
           onToggleInspector={sun.toggleInspectorMode}
           onToggleMoveMode={handleToggleMoveMode}
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
+          onNewGame={isOutdoor ? () => setShowGameSetup(true) : undefined}
         />
         <div className="landscape-mobile-hide">
           {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" onModalOpenChange={setBiodiversityModalOpen} />}
@@ -557,6 +560,16 @@ export default function MapPage() {
           mapId={map?.id ?? null}
           onClose={sun.closeGrowHere}
         />
+      )}
+
+      {showGameSetup && map && (
+        <Suspense fallback={null}>
+          <GameSetupSheet
+            mapId={map.id}
+            mapSlug={map.slug}
+            onClose={() => setShowGameSetup(false)}
+          />
+        </Suspense>
       )}
 
       {undo.toast && (

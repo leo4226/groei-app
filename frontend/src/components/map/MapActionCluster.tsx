@@ -16,13 +16,14 @@ interface Props {
   onToggleInspector: () => void
   onToggleMoveMode: () => void
   onAddPlant: () => void
+  onNewGame?: () => void
 }
 
 export default function MapActionCluster({
   isOutdoor, waterStatus,
   sunActive, sunAvailable, inspectorMode, moveModeActive,
   onWater, onFertilize, onToggleSun, onToggleInspector, onToggleMoveMode,
-  onAddPlant,
+  onAddPlant, onNewGame,
 }: Props) {
   const t = useT()
   const [showGpsHint, setShowGpsHint] = useState(false)
@@ -104,6 +105,17 @@ export default function MapActionCluster({
           <path d="M7.5 1.5v12M7.5 1.5L5.5 3.5M7.5 1.5l2 2M7.5 13.5l-2-2M7.5 13.5l2-2M1.5 7.5h12M1.5 7.5l2-2M1.5 7.5l2 2M13.5 7.5l-2-2M13.5 7.5l-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+
+      {/* Garden game — outdoor only */}
+      {isOutdoor && onNewGame && (
+        <button
+          onClick={onNewGame}
+          title={t.game.newGame}
+          className={`${iconBtn} text-emerald-700 hover:bg-emerald-500/15`}
+        >
+          <span className="text-xs">🎮</span>
+        </button>
+      )}
 
       {/* Add plant — primary, always last */}
       <button
