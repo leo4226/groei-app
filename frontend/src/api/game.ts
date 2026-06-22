@@ -27,6 +27,7 @@ export interface GameSession {
   map_slug: string
   host_account_id: number
   host_name: string
+  clue_mode: 'photo' | 'name'
 }
 
 export interface MyAnswer {
@@ -49,8 +50,8 @@ export interface AnswerResult {
 }
 
 export const gameApi = {
-  create: (map_id: number, plant_ids: number[]) =>
-    apiRequest<{ join_code: string }>('POST', '/games', { body: { map_id, plant_ids } }),
+  create: (map_id: number, plant_ids: number[], clue_mode: 'photo' | 'name' = 'photo') =>
+    apiRequest<{ join_code: string }>('POST', '/games', { body: { map_id, plant_ids, clue_mode } }),
 
   getState: (code: string) =>
     apiRequest<GameState>('GET', `/games/${code}`),
@@ -64,9 +65,15 @@ export const gameApi = {
   next: (code: string) =>
     apiRequest<GameState>('POST', `/games/${code}/next`),
 
-  answer: (code: string, scanned_species: string, candidates: string[] = [], confidence = 0) =>
+  answer: (
+    code: string,
+    scanned_species: string,
+    candidates: string[] = [],
+    confidence = 0,
+    image_data_url?: string,
+  ) =>
     apiRequest<AnswerResult>('POST', `/games/${code}/answer`, {
-      body: { scanned_species, candidates, confidence },
+      body: { scanned_species, candidates, confidence, image_data_url },
     }),
 
   delete: (code: string) =>

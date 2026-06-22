@@ -1243,5 +1243,9 @@ export type Translations = {
     place1: string
     place2: string
     place3: string
+    // Clue mode
+    clueModePhoto: string
+    clueModeName: string
+    clueModeSectionLabel: string
   }
 }

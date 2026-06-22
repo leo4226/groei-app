@@ -1256,5 +1256,8 @@ export const nl: Translations = {
     place1: '🥇',
     place2: '🥈',
     place3: '🥉',
+    clueModePhoto: 'Foto aanwijzing',
+    clueModeName: 'Naam aanwijzing',
+    clueModeSectionLabel: 'Aanwijzingstype',
   },
 }
