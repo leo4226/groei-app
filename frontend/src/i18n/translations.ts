@@ -1215,6 +1215,8 @@ export type Translations = {
     journalEmptyHint: string   // "Fotografeer planten buiten met de camera-knop"
     journalDeleteConfirm: string  // "Waarneming verwijderen?"
     discovered: string         // "Gevonden"
+    share: string              // "Delen"
+    shareCopied: string        // "Gekopieerd!"
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
   }
 

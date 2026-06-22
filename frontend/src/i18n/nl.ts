@@ -1232,6 +1232,8 @@ export const nl: Translations = {
     journalEmptyHint: 'Fotografeer planten buiten met de camera-knop',
     journalDeleteConfirm: 'Waarneming verwijderen?',
     discovered: 'Gevonden',
+    share: 'Delen',
+    shareCopied: 'Gekopieerd!',
     saveError: 'Opslaan mislukt, probeer opnieuw',
   },
 
