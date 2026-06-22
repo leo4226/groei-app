@@ -1206,6 +1206,7 @@ export const nl: Translations = {
     funFactLoading: 'Weetje laden...',
     funFactError: 'Kon geen weetje laden',
     ecology: 'Ecologie',
+    ecologyLoading: 'Ecologie laden...',
     nativeNl: 'Inheems in NL',
     invasiveNl: 'Invasief in NL',
     pollinatorHigh: 'Top bestuiversplant',
@@ -1230,6 +1231,7 @@ export const nl: Translations = {
     journalEmptyHint: 'Fotografeer planten buiten met de camera-knop',
     journalDeleteConfirm: 'Waarneming verwijderen?',
     discovered: 'Gevonden',
+    saveError: 'Opslaan mislukt, probeer opnieuw',
   },
 
   game: {

@@ -1206,6 +1206,7 @@ export const en: Translations = {
     funFactLoading: 'Loading fun fact...',
     funFactError: 'Could not load fun fact',
     ecology: 'Ecology',
+    ecologyLoading: 'Loading ecology data...',
     nativeNl: 'Native to NL',
     invasiveNl: 'Invasive in NL',
     pollinatorHigh: 'Top pollinator plant',
@@ -1230,6 +1231,7 @@ export const en: Translations = {
     journalEmptyHint: 'Photograph plants outside using the camera button',
     journalDeleteConfirm: 'Delete observation?',
     discovered: 'Found',
+    saveError: 'Failed to save, please try again',
   },
 
   game: {
