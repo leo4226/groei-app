@@ -1230,6 +1230,8 @@ export const en: Translations = {
     journalEmptyHint: 'Photograph plants outside using the camera button',
     journalDeleteConfirm: 'Delete observation?',
     discovered: 'Found',
+    share: 'Share',
+    shareCopied: 'Copied!',
   },
 
   game: {

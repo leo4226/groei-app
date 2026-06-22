@@ -40,6 +40,7 @@ export default function DiscoveryCard() {
   const [showGardenFit, setShowGardenFit] = useState(false)
   const [savedId, setSavedId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [shared, setShared] = useState(false)
 
   const speciesId = state?.candidate?.species_id ?? null
   const scientificName = state?.candidate?.scientific_name ?? ''
@@ -83,6 +84,17 @@ export default function DiscoveryCard() {
       setSavedId(result.id)
     } catch { /* ignore */ }
     setSaving(false)
+  }
+
+  async function handleShare() {
+    const text = `${displayName}${scientificName ? ` (${scientificName})` : ''} 🌿 — floreren.app`
+    if (typeof navigator.share === 'function') {
+      await navigator.share({ title: displayName, text }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {})
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    }
   }
 
   function handleAddToGarden() {
@@ -263,6 +275,28 @@ export default function DiscoveryCard() {
           }}
         >
           {savedId ? t.discovery.savedToJournal : saving ? '...' : t.discovery.saveToJournal}
+        </button>
+        <button
+          onClick={handleShare}
+          style={{
+            padding: '14px 24px', borderRadius: 12,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            color: shared ? 'var(--color-primary)' : 'var(--color-text-soft)',
+            fontSize: 15, fontWeight: 500, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {shared ? t.discovery.shareCopied : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              {t.discovery.share}
+            </>
+          )}
         </button>
         <button
           onClick={handleAddToGarden}

@@ -16,6 +16,7 @@ export default function DiscoveriesSection() {
   const navigate = useNavigate()
   const [items, setItems] = useState<PlantDiscovery[]>([])
   const [loading, setLoading] = useState(true)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
 
   useEffect(() => {
     discoveriesApi.list()
@@ -28,6 +29,17 @@ export default function DiscoveriesSection() {
     if (!window.confirm(t.discovery.journalDeleteConfirm)) return
     await discoveriesApi.delete(id).catch(() => {})
     setItems((prev) => prev.filter((d) => d.id !== id))
+  }
+
+  async function handleShare(item: PlantDiscovery) {
+    const text = `${item.common_name}${item.latin_name ? ` (${item.latin_name})` : ''} 🌿 — floreren.app`
+    if (typeof navigator.share === 'function') {
+      await navigator.share({ title: item.common_name, text }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {})
+      setCopiedId(item.id)
+      setTimeout(() => setCopiedId(null), 2000)
+    }
   }
 
   function handleAddToGarden(item: PlantDiscovery) {
@@ -102,6 +114,25 @@ export default function DiscoveriesSection() {
               {t.discovery.discovered}: {formatDate(item.discovered_at)}
             </p>
           </div>
+          <button
+            onClick={() => handleShare(item)}
+            title={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
+            style={{
+              padding: '6px 8px', borderRadius: 8, border: 'none',
+              background: 'none', cursor: 'pointer',
+              color: copiedId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontSize: 15, flexShrink: 0,
+            }}
+            aria-label={t.discovery.share}
+          >
+            {copiedId === item.id ? '✓' : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            )}
+          </button>
           <button
             onClick={() => handleAddToGarden(item)}
             title={t.discovery.addToGarden}
