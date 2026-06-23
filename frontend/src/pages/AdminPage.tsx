@@ -7,6 +7,7 @@ import {
   type AdminSystemHealth, type AdminHealthStatus,
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type IconGenerateResult, type AdminHouseholdDetail, type AdminAuditRow,
+  type AdminJob, type AdminJobStatus,
 } from '../api/client'
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity' | 'audit'
@@ -1292,16 +1293,98 @@ function SpeciesView() {
   )
 }
 
+type KindJobState = {
+  jobId: number | null
+  status: AdminJobStatus | 'idle'
+  done: number
+  total: number
+  result: string
+}
+
+const IDLE_JOB: KindJobState = { jobId: null, status: 'idle', done: 0, total: 0, result: '' }
+
+function jobResultSummary(kind: string, job: AdminJob): string {
+  if (job.status === 'failed') return `✗ ${job.error ?? 'Failed'}`
+  if (job.status === 'interrupted') return '✗ Interrupted (server restarted)'
+  const r = job.result
+  if (!r) return '✓ Done'
+  if (kind === 'backfill_thresholds') return `✓ ${r.succeeded ?? 0} updated · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
+  if (kind === 'backfill_care_schedules') return `✓ ${r.seeded ?? 0} schedules seeded out of ${r.checked ?? 0} checked`
+  if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0}`
+  if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0}`
+  if (kind === 'generate_icons') {
+    const count = Number(r.count ?? 0)
+    const skipped = Number(r.skipped_count ?? 0)
+    const matched = Number((r.sync_result as { matched?: number } | null)?.matched ?? 0)
+    const remaining = Number(r.remaining ?? 0)
+    return `✓ ${count} generated · ${skipped} skipped · ${matched} plants matched · ${remaining} left`
+  }
+  return '✓ Done'
+}
+
+function JobProgressBar({ done, total, status }: { done: number; total: number; status: AdminJobStatus | 'idle' }) {
+  if (status === 'idle' || status === 'completed' || status === 'failed' || status === 'interrupted') return null
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+  const indeterminate = total === 0
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', borderRadius: 2, background: 'var(--color-primary)',
+          width: indeterminate ? '40%' : `${pct}%`,
+          transition: 'width .4s ease',
+          animation: indeterminate ? 'adminJobIndeterminate 1.4s ease-in-out infinite' : 'none',
+        }} />
+      </div>
+      {!indeterminate && (
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', marginTop: 4 }}>
+          {done} / {total}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RecentJobsCard({ jobs, loading }: { jobs: AdminJob[] | null; loading: boolean }) {
+  if (loading) return null
+  if (!jobs || jobs.length === 0) return null
+
+  const statusColor = (s: AdminJobStatus) => {
+    if (s === 'completed') return 'var(--color-primary)'
+    if (s === 'failed' || s === 'interrupted') return 'var(--color-overdue)'
+    return 'var(--color-text-muted)'
+  }
+
+  const statusLabel: Record<AdminJobStatus, string> = {
+    pending: 'pending', running: 'running…', completed: 'done',
+    failed: 'failed', interrupted: 'interrupted',
+  }
+
+  return (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', marginTop: 20 }}>
+      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 15, margin: '0 0 12px' }}>Recent jobs</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {jobs.map(j => (
+          <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+            <span style={{ color: statusColor(j.status), flexShrink: 0, width: 70 }}>{statusLabel[j.status]}</span>
+            <span style={{ flex: 1 }}>{j.kind.replace(/_/g, ' ')}</span>
+            {(j.status === 'running' || j.status === 'pending') && j.progress_total > 0 && (
+              <span style={{ color: 'var(--color-text-muted)' }}>{j.progress_done}/{j.progress_total}</span>
+            )}
+            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
+              {new Date(j.created_at).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ToolsView() {
-  const [thresholdsResult, setThresholdsResult] = useState('')
-  const [thresholdsRunning, setThresholdsRunning] = useState(false)
-  const [schedulesResult, setSchedulesResult] = useState('')
-  const [schedulesRunning, setSchedulesRunning] = useState(false)
-  const [iconsResult, setIconsResult] = useState<IconGenerateResult | null>(null)
-  const [iconScope, setIconScope] = useState<'all' | 'in_use' | null>(null)
-  const [iconsError, setIconsError] = useState('')
   const [mapOnly, setMapOnly] = useState(false)
   const [iconLimit, setIconLimit] = useState(25)
+  const [factsLimit, setFactsLimit] = useState(25)
   const [ipAll, setIpAll] = useState<number | null>(null)
   const [ipInUse, setIpInUse] = useState<number | null>(null)
   const [iconRefresh, setIconRefresh] = useState(0)
@@ -1309,17 +1392,21 @@ function ToolsView() {
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
   const [fp, setFp] = useState<{ total_species: number; missing_facts: number } | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
-  const [factsResult, setFactsResult] = useState('')
-  const [factsRunning, setFactsRunning] = useState(false)
-  const [factsLimit, setFactsLimit] = useState(25)
-  const [plantTypesResult, setPlantTypesResult] = useState('')
-  const [plantTypesRunning, setPlantTypesRunning] = useState(false)
+
+  const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
+  const [recentJobs, setRecentJobs] = useState<AdminJob[] | null>(null)
+  const [recentLoading, setRecentLoading] = useState(true)
+
+  const getJob = (kind: string): KindJobState => jobs[kind] ?? IDLE_JOB
+  const setJob = useCallback((kind: string, patch: Partial<KindJobState>) =>
+    setJobs(prev => ({ ...prev, [kind]: { ...(prev[kind] ?? IDLE_JOB), ...patch } })), [])
 
   useEffect(() => {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
     adminPanel.backfillFactsPreview().then(setFp).catch(() => {})
     admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
+    adminPanel.listJobs(20).then(j => { setRecentJobs(j); setRecentLoading(false) }).catch(() => setRecentLoading(false))
   }, [])
 
   useEffect(() => {
@@ -1327,144 +1414,81 @@ function ToolsView() {
     adminPanel.generateIconsPreview({ scope: 'in_use', mapOnly }).then(r => setIpInUse(r.count)).catch(() => {})
   }, [mapOnly, iconRefresh])
 
-  async function handleBackfillThresholds() {
-    setThresholdsRunning(true)
-    setThresholdsResult('')
+  useEffect(() => {
+    const activeKinds = Object.entries(jobs)
+      .filter(([, j]) => j.status === 'pending' || j.status === 'running')
+      .map(([kind]) => kind)
+    if (activeKinds.length === 0) return
+
+    let cancelled = false
+    const interval = window.setInterval(async () => {
+      if (cancelled) return
+      for (const kind of activeKinds) {
+        const jobId = jobs[kind]?.jobId
+        if (!jobId) continue
+        try {
+          const j = await adminPanel.getJob(jobId)
+          if (!cancelled) {
+            const done = j.status === 'completed' || j.status === 'failed' || j.status === 'interrupted'
+            setJob(kind, {
+              status: j.status,
+              done: j.progress_done,
+              total: j.progress_total,
+              result: done ? jobResultSummary(kind, j) : '',
+            })
+            if (done) {
+              if (kind === 'generate_icons') setIconRefresh(n => n + 1)
+              adminPanel.listJobs(20).then(setRecentJobs).catch(() => {})
+            }
+          }
+        } catch { /* network blip */ }
+      }
+    }, 2000)
+
+    return () => { cancelled = true; window.clearInterval(interval) }
+  }, [jobs, setJob])
+
+  async function runJob(kind: string, params: Record<string, unknown> = {}) {
+    setJob(kind, { jobId: null, status: 'pending', done: 0, total: 0, result: '' })
     try {
-      const r = await admin.backfillThresholds()
-      setThresholdsResult(`✓ ${r.succeeded} updated · ${r.failed} failed out of ${r.processed}`)
-      admin.thresholdsPreview().then(setTp).catch(() => {})
+      const { job_id } = await adminPanel.startJob(kind, params)
+      setJob(kind, { jobId: job_id, status: 'pending' })
     } catch (e) {
-      setThresholdsResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
-    } finally {
-      setThresholdsRunning(false)
+      setJob(kind, { status: 'failed', result: `✗ ${e instanceof Error ? e.message : 'Failed'}` })
     }
   }
 
-  async function handleBackfillSchedules() {
-    setSchedulesRunning(true)
-    setSchedulesResult('')
-    try {
-      const r = await admin.backfillCareSchedules()
-      setSchedulesResult(`✓ ${r.seeded} schedules seeded out of ${r.checked} checked`)
-      admin.schedulesPreview().then(setSp).catch(() => {})
-    } catch (e) {
-      setSchedulesResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
-    } finally {
-      setSchedulesRunning(false)
-    }
+  const busy = (kind: string) => {
+    const s = getJob(kind).status
+    return s === 'pending' || s === 'running'
   }
 
-  async function handleGenerateIcons(scope: 'all' | 'in_use') {
-    setIconScope(scope)
-    setIconsResult(null)
-    setIconsError('')
-    try {
-      const r = await adminPanel.generateIcons({ scope, mapOnly: scope === 'in_use' ? mapOnly : false, limit: iconLimit })
-      setIconsResult(r)
-      setIconRefresh(n => n + 1)
-    } catch (e) {
-      setIconsError(e instanceof Error ? e.message : 'Failed to generate icons')
-    } finally {
-      setIconScope(null)
-    }
-  }
-
-  async function handleBackfillFacts() {
-    setFactsRunning(true)
-    setFactsResult('')
-    try {
-      const r = await adminPanel.backfillFacts(factsLimit)
-      setFactsResult('✓ ' + r.updated + ' updated · ' + r.skipped + ' skipped out of ' + r.processed)
-      adminPanel.backfillFactsPreview().then(setFp).catch(() => {})
-    } catch (e) {
-      setFactsResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
-    } finally {
-      setFactsRunning(false)
-    }
-  }
-
-  async function handleBackfillPlantTypes() {
-    setPlantTypesRunning(true)
-    setPlantTypesResult('')
-    try {
-      const r = await admin.backfillPlantTypes()
-      setPlantTypesResult('✓ ' + r.updated + ' updated · ' + r.skipped + ' skipped out of ' + r.found)
-      admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
-    } catch (e) {
-      setPlantTypesResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
-    } finally {
-      setPlantTypesRunning(false)
-    }
-  }
-
-  const tools = [
-    {
-      title: 'Backfill thresholds',
-      desc: 'Generate care thresholds via DeepSeek for all plants that are missing them.',
-      preview: tp ? `${tp.missing_thresholds} of ${tp.active_total} active plants need thresholds` : 'Loading…',
-      running: thresholdsRunning, result: thresholdsResult, onRun: handleBackfillThresholds,
-    },
-    {
-      title: 'Backfill care schedules',
-      desc: 'Seed water & fertilize schedules for plants that have thresholds but no active schedule.',
-      preview: sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…',
-      running: schedulesRunning, result: schedulesResult, onRun: handleBackfillSchedules,
-    },
-    {
-      title: 'Backfill plant types',
-      desc: 'Set plant_type from icon manifest cat field for plants where it is NULL.',
-      preview: pp ? pp.missing_plant_type + ' of ' + pp.total_active_plants + ' active plants need a type' : 'Loading...',
-      running: plantTypesRunning, result: plantTypesResult, onRun: handleBackfillPlantTypes,
-    },
-  ]
-
-  const iconCard = iconsResult && (
-    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
-      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 8px' }}>Result</h3>
-      {iconsResult.count > 0 ? (
-        <>
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>
-            ✓ {iconsResult.count} icons generated · {iconsResult.skipped_count} skipped · {iconsResult.sync_result.matched} plants matched · {iconsResult.remaining ?? 0} still to do
-          </p>
-          <div style={{ maxHeight: 300, overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.6 }}>
-            {iconsResult.generated.map(g => (
-              <div key={g.icon_id} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
-                <span style={{ color: 'var(--color-primary)', flexShrink: 0 }}>+</span>
-                <span>{g.name}</span>
-                <span style={{ color: 'var(--color-text-muted)' }}>({g.latin})</span>
-                <span style={{ color: 'var(--color-text-muted)' }}>→ {g.icon_id}.svg</span>
-                <span style={{ color: '#aaa', fontStyle: 'italic' }}>{g.cat}</span>
-              </div>
-            ))}
-            {iconsResult.skipped.map(s => (
-              <div key={s.id} style={{ display: 'flex', gap: 8, padding: '2px 0', color: 'var(--color-overdue)' }}>
-                <span>✗</span>
-                <span>{s.name}</span>
-                <span style={{ color: 'var(--color-text-muted)' }}>({s.latin})</span>
-                <span>{s.error}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>
-            Synced: {iconsResult.sync_result.matched} plant{iconsResult.sync_result.matched !== 1 ? 's' : ''} got a new icon_key
-          </div>
-        </>
-      ) : (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)' }}>
-          {iconsResult.skipped_count > 0
-            ? `All species with latin names already have icons in the manifest. ${iconsResult.skipped_count} species were skipped.`
-            : 'All species with latin names already have icons in the manifest.'}
-        </p>
-      )}
-    </div>
-  )
-
-  const iconBtn = (busy: boolean) => ({
+  const btnStyle = (isBusy: boolean) => ({
     background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8,
     padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11,
-    cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .6 : 1,
+    cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? .6 : 1,
   } as const)
+
+  const resultColor = (r: string) => r.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)'
+
+  const simpleTool = (kind: string, title: string, desc: string, preview: string) => {
+    const j = getJob(kind)
+    return (
+      <div key={kind} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px' }}>
+        <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>{title}</h3>
+        <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 8px', lineHeight: 1.5 }}>{desc}</p>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>{preview}</div>
+        <button onClick={() => runJob(kind)} disabled={busy(kind)} style={btnStyle(busy(kind))}>
+          {busy(kind) ? 'Running…' : 'Run'}
+        </button>
+        <JobProgressBar done={j.done} total={j.total} status={j.status} />
+        {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(j.result) }}>{j.result}</p>}
+      </div>
+    )
+  }
+
+  const iconsJob = getJob('generate_icons')
+  const iconsBusy = busy('generate_icons')
 
   const factsTool = (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
@@ -1480,21 +1504,21 @@ function ToolsView() {
                  style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
         </label>
         <span style={{ color: 'var(--color-primary)' }}>
-          {fp ? fp.missing_facts + ' of ' + fp.total_species + ' species need facts' : 'Loading preview...'}
+          {fp ? fp.missing_facts + ' of ' + fp.total_species + ' species need facts' : 'Loading preview…'}
         </span>
       </div>
-      <button
-        onClick={handleBackfillFacts}
-        disabled={factsRunning}
-        style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: factsRunning ? 'not-allowed' : 'pointer', opacity: factsRunning ? .6 : 1 }}
-      >
-        {factsRunning ? 'Generating...' : 'Run for up to ' + factsLimit + ' species'}
-      </button>
-      {factsResult && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: factsResult.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
-          {factsResult}
-        </p>
-      )}
+      {(() => {
+        const j = getJob('backfill_facts')
+        return (
+          <>
+            <button onClick={() => runJob('backfill_facts', { limit: factsLimit })} disabled={busy('backfill_facts')} style={btnStyle(busy('backfill_facts'))}>
+              {busy('backfill_facts') ? 'Generating…' : `Run for up to ${factsLimit} species`}
+            </button>
+            <JobProgressBar done={j.done} total={j.total} status={j.status} />
+            {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(j.result) }}>{j.result}</p>}
+          </>
+        )
+      })()}
     </div>
   )
 
@@ -1521,54 +1545,44 @@ function ToolsView() {
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
             My plants{mapOnly ? ' on a map' : ''} needing an icon: {ipInUse ?? '…'}
           </div>
-          <button onClick={() => handleGenerateIcons('in_use')} disabled={iconScope !== null} style={iconBtn(iconScope !== null)}>
-            {iconScope === 'in_use' ? 'Generating…' : `Generate for my plants${ipInUse != null ? ` (${Math.min(ipInUse, iconLimit)})` : ''}`}
+          <button onClick={() => runJob('generate_icons', { scope: 'in_use', map_only: mapOnly, limit: iconLimit })} disabled={iconsBusy} style={btnStyle(iconsBusy)}>
+            {iconsBusy ? 'Generating…' : `Generate for my plants${ipInUse != null ? ` (${Math.min(ipInUse, iconLimit)})` : ''}`}
           </button>
         </div>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
             Whole species catalog uncovered: {ipAll ?? '…'}
           </div>
-          <button onClick={() => handleGenerateIcons('all')} disabled={iconScope !== null} style={iconBtn(iconScope !== null)}>
-            {iconScope === 'all' ? 'Generating…' : `Generate all catalog${ipAll != null ? ` (${Math.min(ipAll, iconLimit)})` : ''}`}
+          <button onClick={() => runJob('generate_icons', { scope: 'all', map_only: false, limit: iconLimit })} disabled={iconsBusy} style={btnStyle(iconsBusy)}>
+            {iconsBusy ? 'Generating…' : `Generate all catalog${ipAll != null ? ` (${Math.min(ipAll, iconLimit)})` : ''}`}
           </button>
         </div>
       </div>
-      {iconsError && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 12, color: 'var(--color-overdue)' }}>{iconsError}</p>
+      <JobProgressBar done={iconsJob.done} total={iconsJob.total} status={iconsJob.status} />
+      {iconsJob.result && (
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(iconsJob.result) }}>{iconsJob.result}</p>
       )}
     </div>
   )
 
   return (
     <div>
+      <style>{`@keyframes adminJobIndeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }`}</style>
       <PageHeader title="Tools" sub="One-off maintenance operations" />
       <div data-admin-tools-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        {tools.map(tool => (
-          <div key={tool.title} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px' }}>
-            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>{tool.title}</h3>
-            <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 8px', lineHeight: 1.5 }}>{tool.desc}</p>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 10 }}>
-              {tool.preview}
-            </div>
-            <button
-              onClick={tool.onRun}
-              disabled={tool.running}
-              style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: tool.running ? 'not-allowed' : 'pointer', opacity: tool.running ? .6 : 1 }}
-            >
-              {tool.running ? 'Running…' : 'Run'}
-            </button>
-            {tool.result && (
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: tool.result.startsWith('\u2713') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
-                {tool.result}
-              </p>
-            )}
-          </div>
-        ))}
+        {simpleTool('backfill_thresholds', 'Backfill thresholds',
+          'Generate care thresholds via DeepSeek for all plants that are missing them.',
+          tp ? `${tp.missing_thresholds} of ${tp.active_total} active plants need thresholds` : 'Loading…')}
+        {simpleTool('backfill_care_schedules', 'Backfill care schedules',
+          'Seed water & fertilize schedules for plants that have thresholds but no active schedule.',
+          sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…')}
+        {simpleTool('backfill_plant_types', 'Backfill plant types',
+          'Set plant_type from icon manifest cat field for plants where it is NULL.',
+          pp ? `${pp.missing_plant_type} of ${pp.total_active_plants} active plants need a type` : 'Loading…')}
         {factsTool}
         {iconTool}
       </div>
-      {iconCard}
+      <RecentJobsCard jobs={recentJobs} loading={recentLoading} />
     </div>
   )
 }

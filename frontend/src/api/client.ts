@@ -482,6 +482,12 @@ export const adminPanel = {
     if (params.offset != null) p.offset = String(params.offset)
     return api<{ rows: AdminAuditRow[]; total: number }>('GET', '/admin-panel/audit', { params: p })
   },
+  startJob: (kind: string, params: Record<string, unknown> = {}) =>
+    api<{ job_id: number }>('POST', '/admin-panel/jobs', { body: { kind, params } }),
+  getJob: (id: number) =>
+    api<AdminJob>('GET', `/admin-panel/jobs/${id}`),
+  listJobs: (limit = 20) =>
+    api<AdminJob[]>('GET', '/admin-panel/jobs', { params: { limit: String(limit) } }),
 }
 
 export interface AdminAuditRow {
@@ -491,6 +497,21 @@ export interface AdminAuditRow {
   detail: Record<string, unknown> | null
   created_at: string
   admin_email: string | null
+  admin_name: string | null
+}
+
+export type AdminJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'interrupted'
+
+export interface AdminJob {
+  id: number
+  kind: string
+  status: AdminJobStatus
+  progress_done: number
+  progress_total: number
+  result: Record<string, unknown> | null
+  error: string | null
+  created_at: string
+  updated_at: string
   admin_name: string | null
 }
 

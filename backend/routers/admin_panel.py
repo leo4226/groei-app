@@ -5,7 +5,7 @@ import time
 from collections.abc import Awaitable, Callable
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from database import db_dep
@@ -15,6 +15,7 @@ from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
 from services.admin_audit import log_admin_action
+from services.job_runner import start_job, is_kind_running, mark_stale_jobs_interrupted  # noqa: F401
 from routers.icon_generator import (
     generate_icon_svg, guess_category, derive_common_name,
     make_pot, make_ground_shadow, CANVAS,
@@ -1065,6 +1066,238 @@ async def admin_household_detail(
         "plants": [dict(r) for r in plants],
         "care_log": [dict(r) for r in care_log],
     }
+
+
+# ── Background job runner functions ──────────────────────────────────────────
+
+async def _run_generate_icons(db, params: dict, on_progress) -> dict:
+    scope = params.get("scope", "all")
+    map_only = bool(params.get("map_only", False))
+    limit = int(params.get("limit", 25))
+
+    storage = build_storage_from_env()
+    targets = await _target_species(db, scope=scope, map_only=map_only)
+    total_targets = len(targets)
+    if limit and limit > 0:
+        targets = targets[:limit]
+
+    await on_progress(0, len(targets))
+    generated, skipped = [], []
+    for i, row in enumerate(targets):
+        latin = row["latin_name"]
+        name_nl = row["common_name_nl"] or derive_common_name(latin)
+        base_id = f"gen_{_slug(name_nl)}"
+
+        source = "ai"
+        ai_svgs = None
+        for _attempt in range(3):
+            try:
+                ai = await generate_icon_variants(name=name_nl, sci=latin)
+                plant = ai["plant_svg"]
+                potted = validate_icon_svg(_compose_icon(plant, potted=True))
+                bare = validate_icon_svg(_compose_icon(plant, potted=False))
+                cat = ai.get("cat") or guess_category(latin) or "unknown"
+                ai_svgs = (potted, bare, cat)
+                break
+            except Exception:
+                continue
+        if ai_svgs is not None:
+            potted, bare, cat = ai_svgs
+        else:
+            source = "procedural"
+            cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+            potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
+            bare = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+
+        try:
+            potted_url = storage.put(f"icons/generated/{base_id}.svg", potted.encode("utf-8"), "image/svg+xml")
+            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare.encode("utf-8"), "image/svg+xml")
+        except Exception as exc:
+            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": f"r2: {exc}"})
+            await on_progress(i + 1, len(targets))
+            continue
+
+        for icon_id, form, variant_of, url in [
+            (base_id, "potted", None, potted_url),
+            (f"{base_id}_bare", "bare", base_id, bare_url),
+        ]:
+            await db.execute("DELETE FROM generated_icons WHERE id = ?", (icon_id,))
+            await db.execute(
+                "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
+            )
+        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
+        await on_progress(i + 1, len(targets))
+
+    sync_result = await _sync_from_admin(db)
+    return {
+        "generated": generated, "count": len(generated),
+        "skipped": skipped, "skipped_count": len(skipped),
+        "sync_result": sync_result,
+        "scope": scope, "map_only": map_only,
+        "remaining": max(0, total_targets - len(generated)),
+    }
+
+
+async def _run_backfill_thresholds(db, params: dict, on_progress) -> dict:
+    import json as _json
+    from threshold_service import generate_thresholds as _gen_thresholds
+
+    rows = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    succeeded = 0
+    failures = []
+    for i, row in enumerate(rows):
+        try:
+            thresholds = await _gen_thresholds(row["name"], row["species"])
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                (_json.dumps(thresholds), row["id"]),
+            )
+            succeeded += 1
+        except Exception as exc:
+            failures.append({"plant_id": row["id"], "name": row["name"], "error": str(exc)})
+        await on_progress(i + 1, total)
+    return {"processed": total, "succeeded": succeeded, "failed": len(failures)}
+
+
+async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
+    from routers.plants import _seed_care_schedules
+
+    rows = await db.execute_fetchall(
+        """SELECT p.id, p.care_thresholds FROM plants p
+           WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
+           AND p.id NOT IN (
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+           )"""
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    seeded = 0
+    for i, row in enumerate(rows):
+        try:
+            await _seed_care_schedules(db, row["id"], row["care_thresholds"])
+            seeded += 1
+        except Exception as exc:
+            pass
+        await on_progress(i + 1, total)
+    return {"checked": total, "seeded": seeded}
+
+
+async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
+    from species_service import backfill_missing_facts
+    limit = int(params.get("limit", 50))
+    await on_progress(0, 1)
+    result = await backfill_missing_facts(db, limit=limit)
+    await on_progress(1, 1)
+    return result
+
+
+async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
+    await on_progress(0, 1)
+    rows = await db.execute_fetchall(
+        "SELECT id, icon_key FROM plants WHERE plant_type IS NULL AND is_active = 1 AND icon_key IS NOT NULL"
+    )
+    from services.icon_catalog import load_catalog as _load_catalog
+    catalog = await _load_catalog(db)
+    cat_map = {e["id"]: e.get("cat", "houseplant") for e in catalog if e.get("id")}
+    updated = skipped = 0
+    for row in rows:
+        cat = cat_map.get(row["icon_key"])
+        if cat:
+            await db.execute(
+                "UPDATE plants SET plant_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (cat, row["id"]),
+            )
+            updated += 1
+        else:
+            skipped += 1
+    await on_progress(1, 1)
+    return {"found": len(rows), "updated": updated, "skipped": skipped}
+
+
+_JOB_RUNNERS = {
+    "generate_icons":         _run_generate_icons,
+    "backfill_thresholds":    _run_backfill_thresholds,
+    "backfill_care_schedules": _run_backfill_care_schedules,
+    "backfill_facts":         _run_backfill_facts,
+    "backfill_plant_types":   _run_backfill_plant_types,
+}
+
+
+class StartJobRequest(BaseModel):
+    kind: str
+    params: dict = {}
+
+
+@router.post("/admin-panel/jobs")
+async def start_admin_job(
+    body: StartJobRequest,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    runner = _JOB_RUNNERS.get(body.kind)
+    if runner is None:
+        raise HTTPException(status_code=400, detail=f"Unknown job kind: {body.kind!r}")
+    if is_kind_running(body.kind):
+        raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
+    job_id = await start_job(db, admin, body.kind, body.params, runner)
+    return {"job_id": job_id}
+
+
+@router.get("/admin-panel/jobs")
+async def list_admin_jobs(
+    limit: int = Query(20, ge=1, le=100),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    rows = await db.execute_fetchall(
+        """SELECT j.id, j.kind, j.status, j.progress_done, j.progress_total,
+                  CAST(j.created_at AS TEXT) as created_at,
+                  CAST(j.updated_at AS TEXT) as updated_at,
+                  a.name as admin_name
+           FROM admin_jobs j
+           LEFT JOIN accounts a ON j.account_id = a.id
+           ORDER BY j.created_at DESC
+           LIMIT ?""",
+        (limit,),
+    )
+    return [dict(r) for r in rows]
+
+
+@router.get("/admin-panel/jobs/{job_id}")
+async def get_admin_job(
+    job_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    import json as _json
+
+    rows = await db.execute_fetchall(
+        """SELECT j.id, j.kind, j.status, j.progress_done, j.progress_total,
+                  j.result, j.error,
+                  CAST(j.created_at AS TEXT) as created_at,
+                  CAST(j.updated_at AS TEXT) as updated_at,
+                  a.name as admin_name
+           FROM admin_jobs j
+           LEFT JOIN accounts a ON j.account_id = a.id
+           WHERE j.id = ?""",
+        (job_id,),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Job not found")
+    row = dict(rows[0])
+    result = row.get("result")
+    if isinstance(result, str):
+        try:
+            row["result"] = _json.loads(result)
+        except Exception:
+            pass
+    return row
 
 
 @router.get("/admin-panel/audit")
