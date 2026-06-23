@@ -816,3 +816,62 @@ async def backfill_plant_facts(
     from species_service import backfill_missing_facts
     result = await backfill_missing_facts(db, limit=limit)
     return result
+
+
+@router.get("/admin-panel/households/{household_id}")
+async def admin_household_detail(
+    household_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Household drill-down: accounts, maps, plants, and recent care log."""
+    from fastapi import HTTPException
+
+    hh = await db.execute_fetchall(
+        "SELECT id, name, CAST(created_at AS TEXT) as created_at FROM households WHERE id = ?",
+        (household_id,),
+    )
+    if not hh:
+        raise HTTPException(status_code=404, detail="Household not found")
+    hh = dict(hh[0])
+
+    accounts = await db.execute_fetchall(
+        """SELECT id, name, email, is_admin, CAST(created_at AS TEXT) as created_at
+           FROM accounts WHERE household_id = ? ORDER BY created_at""",
+        (household_id,),
+    )
+
+    maps = await db.execute_fetchall(
+        """SELECT m.id, m.name, m.map_type,
+                  (SELECT COUNT(*) FROM plants p WHERE p.map_id = m.id AND p.is_active = 1) as plant_count
+           FROM maps m WHERE m.household_id = ? ORDER BY m.name""",
+        (household_id,),
+    )
+
+    plants = await db.execute_fetchall(
+        """SELECT p.id, p.name, p.species, p.icon_key, p.phase,
+                  (p.care_thresholds IS NOT NULL) as has_thresholds,
+                  CAST(p.created_at AS TEXT) as created_at
+           FROM plants p WHERE p.household_id = ? AND p.is_active = 1
+           ORDER BY p.created_at DESC""",
+        (household_id,),
+    )
+
+    care_log = await db.execute_fetchall(
+        """SELECT cl.id, p.name as plant_name, cl.care_type, CAST(cl.done_at AS TEXT) as done_at
+           FROM care_log cl
+           JOIN plants p ON cl.plant_id = p.id
+           WHERE p.household_id = ?
+           ORDER BY cl.done_at DESC LIMIT 20""",
+        (household_id,),
+    )
+
+    return {
+        "id": hh["id"],
+        "name": hh["name"],
+        "created_at": hh["created_at"],
+        "accounts": [_admin_row(r) for r in accounts],
+        "maps": [dict(r) for r in maps],
+        "plants": [dict(r) for r in plants],
+        "care_log": [dict(r) for r in care_log],
+    }

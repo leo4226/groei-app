@@ -219,6 +219,16 @@ export interface AdminPlantRow {
   created_at: string
 }
 
+export interface AdminHouseholdDetail {
+  id: number
+  name: string
+  created_at: string
+  accounts: Array<{ id: number; name: string; email: string; is_admin: boolean; created_at: string }>
+  maps: Array<{ id: number; name: string; map_type: string; plant_count: number }>
+  plants: Array<{ id: number; name: string; species: string | null; icon_key: string | null; phase: string | null; has_thresholds: boolean; created_at: string }>
+  care_log: Array<{ id: number; plant_name: string; care_type: string; done_at: string }>
+}
+
 export interface AdminSpeciesRow {
   id: number
   common_name_nl: string
@@ -457,6 +467,7 @@ export const adminPanel = {
     const qs = q.toString()
     return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
   },
+  household: (id: number) => api<AdminHouseholdDetail>('GET', `/admin-panel/households/${id}`),
 }
 
 export interface IconGenerateResult {

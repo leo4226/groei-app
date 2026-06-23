@@ -6,7 +6,7 @@ import {
   type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
   type AdminSystemHealth, type AdminHealthStatus,
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
-  type IconGenerateResult,
+  type IconGenerateResult, type AdminHouseholdDetail,
 } from '../api/client'
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity'
@@ -524,6 +524,17 @@ function UsersView() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkConfirm, setBulkConfirm] = useState(false)
+  const [selectedHousehold, setSelectedHousehold] = useState<{ id: number; name: string } | null>(null)
+
+  if (selectedHousehold) {
+    return (
+      <HouseholdDetailView
+        householdId={selectedHousehold.id}
+        householdName={selectedHousehold.name}
+        onBack={() => setSelectedHousehold(null)}
+      />
+    )
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -693,7 +704,14 @@ function UsersView() {
                   </Td>
                   <Td><strong>{u.name}</strong></Td>
                   <Td mono>{u.email}</Td>
-                  <Td>{u.household_name}</Td>
+                  <Td>
+                    <button
+                      onClick={() => setSelectedHousehold({ id: u.household_id, name: u.household_name })}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-primary)', fontFamily: 'var(--font-body)', fontSize: 12, textDecoration: 'underline' }}
+                    >
+                      {u.household_name}
+                    </button>
+                  </Td>
                   <Td mono>{u.plant_count}</Td>
                   <Td mono>{u.map_count}</Td>
                   <Td mono>{joined}</Td>
@@ -726,6 +744,95 @@ function UsersView() {
           {pageRows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No accounts found.</div>}
           <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
+      )}
+    </div>
+  )
+}
+
+function HouseholdDetailView({ householdId, householdName, onBack }: { householdId: number; householdName: string; onBack: () => void }) {
+  const [data, setData] = useState<AdminHouseholdDetail | null>(null)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    adminPanel.household(householdId).then(setData).catch(e => setErr(e instanceof Error ? e.message : 'Failed to load'))
+  }, [householdId])
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24, paddingBottom: 18, borderBottom: '1px solid var(--color-border)' }}>
+        <button
+          onClick={onBack}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          ← Users
+        </button>
+        <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 26, letterSpacing: '-.02em', margin: '0 0 4px' }}>{householdName}</h1>
+        <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: 0 }}>Household detail</p>
+      </div>
+
+      {err && <ErrorMsg msg={err} />}
+      {!data && !err && <Loading />}
+
+      {data && (
+        <>
+          <SectionCard title={`${data.accounts.length} account${data.accounts.length !== 1 ? 's' : ''}`}>
+            <AdminTable heads={['Name', 'Email', 'Role', 'Joined']}>
+              {data.accounts.map(a => (
+                <tr key={a.id}>
+                  <Td><strong>{a.name}</strong></Td>
+                  <Td mono>{a.email}</Td>
+                  <Td><Pill label={a.is_admin ? 'Admin' : 'Member'} tone={a.is_admin ? 'green' : 'muted'} /></Td>
+                  <Td mono>{formatDate(a.created_at)}</Td>
+                </tr>
+              ))}
+            </AdminTable>
+            {data.accounts.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No accounts.</div>}
+          </SectionCard>
+
+          <SectionCard title={`${data.maps.length} map${data.maps.length !== 1 ? 's' : ''}`}>
+            <AdminTable heads={['Name', 'Type', 'Plants on map']}>
+              {data.maps.map(m => (
+                <tr key={m.id}>
+                  <Td><strong>{m.name}</strong></Td>
+                  <Td><Pill label={m.map_type} tone={m.map_type === 'outdoor' ? 'green' : 'muted'} /></Td>
+                  <Td mono>{m.plant_count}</Td>
+                </tr>
+              ))}
+            </AdminTable>
+            {data.maps.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No maps.</div>}
+          </SectionCard>
+
+          <SectionCard title={`${data.plants.length} active plant${data.plants.length !== 1 ? 's' : ''}`}>
+            <AdminTable heads={['Name', 'Species', 'Phase', 'Thresholds', 'Added']} scrollable>
+              {data.plants.map(p => (
+                <tr key={p.id}>
+                  <Td><strong>{p.name}</strong></Td>
+                  <Td>{p.species ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
+                  <Td>{p.phase ?? '—'}</Td>
+                  <Td><Pill label={p.has_thresholds ? 'Yes' : 'No'} tone={p.has_thresholds ? 'green' : 'amber'} /></Td>
+                  <Td mono>{formatDate(p.created_at)}</Td>
+                </tr>
+              ))}
+            </AdminTable>
+            {data.plants.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No active plants.</div>}
+          </SectionCard>
+
+          <SectionCard title="Recent care log">
+            <AdminTable heads={['Plant', 'Care type', 'Done at']}>
+              {data.care_log.map(c => (
+                <tr key={c.id}>
+                  <Td>{c.plant_name}</Td>
+                  <Td mono>{c.care_type}</Td>
+                  <Td mono>{formatDate(c.done_at)}</Td>
+                </tr>
+              ))}
+            </AdminTable>
+            {data.care_log.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No care log entries.</div>}
+          </SectionCard>
+        </>
       )}
     </div>
   )
