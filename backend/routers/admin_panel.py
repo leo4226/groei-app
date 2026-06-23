@@ -5,7 +5,8 @@ import time
 from collections.abc import Awaitable, Callable
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from database import db_dep
 from auth import require_admin
@@ -13,6 +14,8 @@ from services.svg_validator import validate_icon_svg
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
+from services.admin_audit import log_admin_action
+from services.job_runner import start_job, is_kind_running, mark_stale_jobs_interrupted  # noqa: F401
 from routers.icon_generator import (
     generate_icon_svg, guess_category, derive_common_name,
     make_pot, make_ground_shadow, CANVAS,
@@ -757,10 +760,12 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
         generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
 
     sync_result = await _sync_from_admin(db)
-    return {"generated": generated, "count": len(generated),
-            "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
-            "scope": scope, "map_only": map_only,
-            "remaining": max(0, total_targets - len(generated))}
+    result = {"generated": generated, "count": len(generated),
+              "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
+              "scope": scope, "map_only": map_only,
+              "remaining": max(0, total_targets - len(generated))}
+    await log_admin_action(db, admin, "generate_icons", target=f"scope={scope}", detail={"count": len(generated), "skipped": len(skipped), "scope": scope, "map_only": map_only})
+    return result
 
 
 async def _sync_from_admin(db):
@@ -815,4 +820,521 @@ async def backfill_plant_facts(
     """Generate interesting_facts_nl for plant_species entries that lack one."""
     from species_service import backfill_missing_facts
     result = await backfill_missing_facts(db, limit=limit)
+    await log_admin_action(db, admin, "backfill_facts", target=f"limit={limit}", detail={"processed": result.get("processed"), "updated": result.get("updated"), "skipped": result.get("skipped")})
     return result
+
+
+@router.patch("/admin-panel/species/{species_id}")
+async def admin_patch_species(
+    species_id: int,
+    body: dict,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Edit common_name_nl and/or latin_name for a species."""
+    from fastapi import HTTPException
+
+    allowed = {"common_name_nl", "latin_name"}
+    updates = {k: v for k, v in body.items() if k in allowed}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    row = await db.execute_fetchall("SELECT id FROM plant_species WHERE id = ?", (species_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    await db.execute(
+        f"UPDATE plant_species SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (*updates.values(), species_id),
+    )
+    await db.commit()
+
+    updated = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    row = dict(updated[0])
+    await log_admin_action(db, admin, "patch_species", target=f"species/{species_id}", detail={"fields": list(updates.keys()), **updates})
+    return row
+
+
+@router.post("/admin-panel/species/{species_id}/regenerate-thresholds")
+async def admin_regenerate_species_thresholds(
+    species_id: int,
+    propagate: bool = False,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Re-run threshold generation for this species. Optionally propagate to linked plants."""
+    from fastapi import HTTPException
+    from threshold_service import generate_thresholds
+    import json as _json
+
+    row = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    name = row[0]["common_name_nl"]
+    latin = row[0]["latin_name"]
+
+    try:
+        thresholds = await generate_thresholds(name, latin)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Threshold generation failed: {exc}") from exc
+
+    thresholds_json = _json.dumps(thresholds, ensure_ascii=False)
+    await db.execute(
+        "UPDATE plant_species SET care_thresholds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (thresholds_json, species_id),
+    )
+
+    plants_updated = 0
+    if propagate:
+        plant_rows = await db.execute_fetchall(
+            "SELECT id FROM plants WHERE species_id = ? AND is_active = 1",
+            (species_id,),
+        )
+        for p in plant_rows:
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (thresholds_json, p["id"]),
+            )
+        plants_updated = len(plant_rows)
+
+    await db.commit()
+    result = {"species_id": species_id, "name": name, "propagated_to_plants": plants_updated}
+    await log_admin_action(db, admin, "regenerate_species_thresholds", target=f"{name} (id={species_id})", detail={"propagate": propagate, "plants_updated": plants_updated})
+    return result
+
+
+@router.post("/admin-panel/species/{species_id}/regenerate-fact")
+async def admin_regenerate_species_fact(
+    species_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Re-run the interesting-fact generator for this species."""
+    from fastapi import HTTPException
+    from species_service import generate_fact_for_species
+    import json as _json
+
+    row = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    name = row[0]["common_name_nl"]
+    latin = row[0]["latin_name"]
+    phenology_str = row[0]["phenology_json"]
+
+    try:
+        fact = await generate_fact_for_species(name, latin)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Fact generation failed: {exc}") from exc
+
+    if not fact:
+        raise HTTPException(status_code=503, detail="LLM returned empty fact")
+
+    try:
+        phenology = _json.loads(phenology_str) if phenology_str else {}
+    except _json.JSONDecodeError:
+        phenology = {}
+
+    phenology["interesting_facts_nl"] = fact
+    await db.execute(
+        "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (_json.dumps(phenology, ensure_ascii=False), species_id),
+    )
+    await db.commit()
+    await log_admin_action(db, admin, "regenerate_species_fact", target=f"{name} (id={species_id})", detail=None)
+    return {"species_id": species_id, "name": name, "fact": fact}
+
+
+class SpeciesMergeRequest(BaseModel):
+    source_id: int
+    target_id: int
+
+
+@router.post("/admin-panel/species/merge")
+async def admin_merge_species(
+    body: SpeciesMergeRequest,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Repoint all plants from source species to target, then delete source."""
+    from fastapi import HTTPException
+
+    if body.source_id == body.target_id:
+        raise HTTPException(status_code=400, detail="Cannot merge a species into itself")
+
+    source = await db.execute_fetchall(
+        "SELECT id, common_name_nl FROM plant_species WHERE id = ?", (body.source_id,)
+    )
+    target = await db.execute_fetchall(
+        "SELECT id, common_name_nl FROM plant_species WHERE id = ?", (body.target_id,)
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Source species not found")
+    if not target:
+        raise HTTPException(status_code=404, detail="Target species not found")
+
+    plant_rows = await db.execute_fetchall(
+        "SELECT COUNT(*) as n FROM plants WHERE species_id = ? AND is_active = 1",
+        (body.source_id,),
+    )
+    moved = plant_rows[0]["n"]
+
+    await db.execute(
+        "UPDATE plants SET species_id = ?, updated_at = CURRENT_TIMESTAMP WHERE species_id = ?",
+        (body.target_id, body.source_id),
+    )
+    await db.execute("DELETE FROM plant_species WHERE id = ?", (body.source_id,))
+    await db.commit()
+
+    result = {
+        "merged": True,
+        "source_id": body.source_id,
+        "source_name": source[0]["common_name_nl"],
+        "target_id": body.target_id,
+        "target_name": target[0]["common_name_nl"],
+        "plants_moved": moved,
+    }
+    await log_admin_action(db, admin, "merge_species", target=f"{source[0]['common_name_nl']} → {target[0]['common_name_nl']}", detail={"source_id": body.source_id, "target_id": body.target_id, "plants_moved": moved})
+    return result
+
+
+@router.get("/admin-panel/households/{household_id}")
+async def admin_household_detail(
+    household_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Household drill-down: accounts, maps, plants, and recent care log."""
+    from fastapi import HTTPException
+
+    hh = await db.execute_fetchall(
+        "SELECT id, name, CAST(created_at AS TEXT) as created_at FROM households WHERE id = ?",
+        (household_id,),
+    )
+    if not hh:
+        raise HTTPException(status_code=404, detail="Household not found")
+    hh = dict(hh[0])
+
+    accounts = await db.execute_fetchall(
+        """SELECT id, name, email, is_admin, CAST(created_at AS TEXT) as created_at
+           FROM accounts WHERE household_id = ? ORDER BY created_at""",
+        (household_id,),
+    )
+
+    maps = await db.execute_fetchall(
+        """SELECT m.id, m.name, m.map_type,
+                  (SELECT COUNT(*) FROM plants p WHERE p.map_id = m.id AND p.is_active = 1) as plant_count
+           FROM maps m WHERE m.household_id = ? ORDER BY m.name""",
+        (household_id,),
+    )
+
+    plants = await db.execute_fetchall(
+        """SELECT p.id, p.name, p.species, p.icon_key, p.phase,
+                  (p.care_thresholds IS NOT NULL) as has_thresholds,
+                  CAST(p.created_at AS TEXT) as created_at
+           FROM plants p WHERE p.household_id = ? AND p.is_active = 1
+           ORDER BY p.created_at DESC""",
+        (household_id,),
+    )
+
+    care_log = await db.execute_fetchall(
+        """SELECT cl.id, p.name as plant_name, cl.care_type, CAST(cl.done_at AS TEXT) as done_at
+           FROM care_log cl
+           JOIN plants p ON cl.plant_id = p.id
+           WHERE p.household_id = ?
+           ORDER BY cl.done_at DESC LIMIT 20""",
+        (household_id,),
+    )
+
+    return {
+        "id": hh["id"],
+        "name": hh["name"],
+        "created_at": hh["created_at"],
+        "accounts": [_admin_row(r) for r in accounts],
+        "maps": [dict(r) for r in maps],
+        "plants": [dict(r) for r in plants],
+        "care_log": [dict(r) for r in care_log],
+    }
+
+
+# ── Background job runner functions ──────────────────────────────────────────
+
+async def _run_generate_icons(db, params: dict, on_progress) -> dict:
+    scope = params.get("scope", "all")
+    map_only = bool(params.get("map_only", False))
+    limit = int(params.get("limit", 25))
+
+    storage = build_storage_from_env()
+    targets = await _target_species(db, scope=scope, map_only=map_only)
+    total_targets = len(targets)
+    if limit and limit > 0:
+        targets = targets[:limit]
+
+    await on_progress(0, len(targets))
+    generated, skipped = [], []
+    for i, row in enumerate(targets):
+        latin = row["latin_name"]
+        name_nl = row["common_name_nl"] or derive_common_name(latin)
+        base_id = f"gen_{_slug(name_nl)}"
+
+        source = "ai"
+        ai_svgs = None
+        for _attempt in range(3):
+            try:
+                ai = await generate_icon_variants(name=name_nl, sci=latin)
+                plant = ai["plant_svg"]
+                potted = validate_icon_svg(_compose_icon(plant, potted=True))
+                bare = validate_icon_svg(_compose_icon(plant, potted=False))
+                cat = ai.get("cat") or guess_category(latin) or "unknown"
+                ai_svgs = (potted, bare, cat)
+                break
+            except Exception:
+                continue
+        if ai_svgs is not None:
+            potted, bare, cat = ai_svgs
+        else:
+            source = "procedural"
+            cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+            potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
+            bare = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+
+        try:
+            potted_url = storage.put(f"icons/generated/{base_id}.svg", potted.encode("utf-8"), "image/svg+xml")
+            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare.encode("utf-8"), "image/svg+xml")
+        except Exception as exc:
+            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": f"r2: {exc}"})
+            await on_progress(i + 1, len(targets))
+            continue
+
+        for icon_id, form, variant_of, url in [
+            (base_id, "potted", None, potted_url),
+            (f"{base_id}_bare", "bare", base_id, bare_url),
+        ]:
+            await db.execute("DELETE FROM generated_icons WHERE id = ?", (icon_id,))
+            await db.execute(
+                "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
+            )
+        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
+        await on_progress(i + 1, len(targets))
+
+    sync_result = await _sync_from_admin(db)
+    return {
+        "generated": generated, "count": len(generated),
+        "skipped": skipped, "skipped_count": len(skipped),
+        "sync_result": sync_result,
+        "scope": scope, "map_only": map_only,
+        "remaining": max(0, total_targets - len(generated)),
+    }
+
+
+async def _run_backfill_thresholds(db, params: dict, on_progress) -> dict:
+    import json as _json
+    from threshold_service import generate_thresholds as _gen_thresholds
+
+    rows = await db.execute_fetchall(
+        "SELECT id, name, species FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    succeeded = 0
+    failures = []
+    for i, row in enumerate(rows):
+        try:
+            thresholds = await _gen_thresholds(row["name"], row["species"])
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+                (_json.dumps(thresholds), row["id"]),
+            )
+            succeeded += 1
+        except Exception as exc:
+            failures.append({"plant_id": row["id"], "name": row["name"], "error": str(exc)})
+        await on_progress(i + 1, total)
+    return {"processed": total, "succeeded": succeeded, "failed": len(failures)}
+
+
+async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
+    from routers.plants import _seed_care_schedules
+
+    rows = await db.execute_fetchall(
+        """SELECT p.id, p.care_thresholds FROM plants p
+           WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
+           AND p.id NOT IN (
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+           )"""
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    seeded = 0
+    for i, row in enumerate(rows):
+        try:
+            await _seed_care_schedules(db, row["id"], row["care_thresholds"])
+            seeded += 1
+        except Exception as exc:
+            pass
+        await on_progress(i + 1, total)
+    return {"checked": total, "seeded": seeded}
+
+
+async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
+    from species_service import backfill_missing_facts
+    limit = int(params.get("limit", 50))
+    await on_progress(0, 1)
+    result = await backfill_missing_facts(db, limit=limit)
+    await on_progress(1, 1)
+    return result
+
+
+async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
+    await on_progress(0, 1)
+    rows = await db.execute_fetchall(
+        "SELECT id, icon_key FROM plants WHERE plant_type IS NULL AND is_active = 1 AND icon_key IS NOT NULL"
+    )
+    from services.icon_catalog import load_catalog as _load_catalog
+    catalog = await _load_catalog(db)
+    cat_map = {e["id"]: e.get("cat", "houseplant") for e in catalog if e.get("id")}
+    updated = skipped = 0
+    for row in rows:
+        cat = cat_map.get(row["icon_key"])
+        if cat:
+            await db.execute(
+                "UPDATE plants SET plant_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (cat, row["id"]),
+            )
+            updated += 1
+        else:
+            skipped += 1
+    await on_progress(1, 1)
+    return {"found": len(rows), "updated": updated, "skipped": skipped}
+
+
+_JOB_RUNNERS = {
+    "generate_icons":         _run_generate_icons,
+    "backfill_thresholds":    _run_backfill_thresholds,
+    "backfill_care_schedules": _run_backfill_care_schedules,
+    "backfill_facts":         _run_backfill_facts,
+    "backfill_plant_types":   _run_backfill_plant_types,
+}
+
+
+class StartJobRequest(BaseModel):
+    kind: str
+    params: dict = {}
+
+
+@router.post("/admin-panel/jobs")
+async def start_admin_job(
+    body: StartJobRequest,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    runner = _JOB_RUNNERS.get(body.kind)
+    if runner is None:
+        raise HTTPException(status_code=400, detail=f"Unknown job kind: {body.kind!r}")
+    if is_kind_running(body.kind):
+        raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
+    job_id = await start_job(db, admin, body.kind, body.params, runner)
+    return {"job_id": job_id}
+
+
+@router.get("/admin-panel/jobs")
+async def list_admin_jobs(
+    limit: int = Query(20, ge=1, le=100),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    rows = await db.execute_fetchall(
+        """SELECT j.id, j.kind, j.status, j.progress_done, j.progress_total,
+                  CAST(j.created_at AS TEXT) as created_at,
+                  CAST(j.updated_at AS TEXT) as updated_at,
+                  a.name as admin_name
+           FROM admin_jobs j
+           LEFT JOIN accounts a ON j.account_id = a.id
+           ORDER BY j.created_at DESC
+           LIMIT ?""",
+        (limit,),
+    )
+    return [dict(r) for r in rows]
+
+
+@router.get("/admin-panel/jobs/{job_id}")
+async def get_admin_job(
+    job_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    import json as _json
+
+    rows = await db.execute_fetchall(
+        """SELECT j.id, j.kind, j.status, j.progress_done, j.progress_total,
+                  j.result, j.error,
+                  CAST(j.created_at AS TEXT) as created_at,
+                  CAST(j.updated_at AS TEXT) as updated_at,
+                  a.name as admin_name
+           FROM admin_jobs j
+           LEFT JOIN accounts a ON j.account_id = a.id
+           WHERE j.id = ?""",
+        (job_id,),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Job not found")
+    row = dict(rows[0])
+    result = row.get("result")
+    if isinstance(result, str):
+        try:
+            row["result"] = _json.loads(result)
+        except Exception:
+            pass
+    return row
+
+
+@router.get("/admin-panel/audit")
+async def admin_audit(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Paginated audit log of all admin actions."""
+    import json as _json
+
+    total_row = await db.execute_fetchall("SELECT COUNT(*) as n FROM admin_audit_log")
+    total = int(total_row[0]["n"])
+
+    rows = await db.execute_fetchall(
+        """SELECT al.id, al.action, al.target, al.detail,
+                  CAST(al.created_at AS TEXT) as created_at,
+                  a.email as admin_email, a.name as admin_name
+           FROM admin_audit_log al
+           LEFT JOIN accounts a ON al.account_id = a.id
+           ORDER BY al.created_at DESC
+           LIMIT ? OFFSET ?""",
+        (limit, offset),
+    )
+
+    result_rows = []
+    for r in rows:
+        row = dict(r)
+        detail = row.get("detail")
+        if isinstance(detail, str):
+            try:
+                row["detail"] = _json.loads(detail)
+            except Exception:
+                pass
+        elif detail is None:
+            row["detail"] = None
+        result_rows.append(row)
+
+    return {"rows": result_rows, "total": total}

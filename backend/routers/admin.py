@@ -9,6 +9,7 @@ from auth import get_current_account, require_admin
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
 from routers.icons import load_manifest
+from services.admin_audit import log_admin_action
 
 # Every /admin/* route requires the admin account — never add an unprotected route here.
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_admin)])
@@ -19,7 +20,7 @@ class BulkDeleteRequest(BaseModel):
 
 
 @router.post("/admin/backfill-thresholds")
-async def backfill_thresholds(db = Depends(db_dep)):
+async def backfill_thresholds(account=Depends(get_current_account), db = Depends(db_dep)):
     """One-time tool: generate care_thresholds for all plants that don't have them yet."""
     rows = await db.execute_fetchall(
         "SELECT id, name, species FROM plants WHERE care_thresholds IS NULL AND is_active = 1"
@@ -46,12 +47,9 @@ async def backfill_thresholds(db = Depends(db_dep)):
             failures.append({"plant_id": plant_id, "name": name, "error": str(exc)})
             print(f"  ✗ Failed for plant {plant_id} ({name}): {exc}")
 
-    return {
-        "processed": processed,
-        "succeeded": succeeded,
-        "failed": len(failures),
-        "failures": failures,
-    }
+    result = {"processed": processed, "succeeded": succeeded, "failed": len(failures), "failures": failures}
+    await log_admin_action(db, account, "backfill_thresholds", target=f"{processed} plants", detail={"succeeded": succeeded, "failed": len(failures)})
+    return result
 
 
 @router.get("/admin/backfill-thresholds/preview")
@@ -71,7 +69,7 @@ async def backfill_thresholds_preview(db = Depends(db_dep)):
 
 
 @router.post("/admin/backfill-care-schedules")
-async def backfill_care_schedules(db = Depends(db_dep)):
+async def backfill_care_schedules(account=Depends(get_current_account), db = Depends(db_dep)):
     """Seed care_schedules for all active plants that have thresholds but no water schedule."""
     rows = await db.execute_fetchall(
         """SELECT p.id, p.care_thresholds FROM plants p
@@ -89,7 +87,9 @@ async def backfill_care_schedules(db = Depends(db_dep)):
         except Exception as exc:
             print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
 
-    return {"checked": len(rows), "seeded": seeded}
+    result = {"checked": len(rows), "seeded": seeded}
+    await log_admin_action(db, account, "backfill_care_schedules", target=f"{len(rows)} plants checked", detail=result)
+    return result
 
 
 @router.post("/admin/backfill-species")
@@ -282,7 +282,9 @@ async def bulk_delete_accounts(
     await db.commit()
 
     names = [t["name"] for t in targets]
-    return {"status": "deleted", "account_ids": ids, "names": names, "households_cleared": households_cleared}
+    result = {"status": "deleted", "account_ids": ids, "names": names, "households_cleared": households_cleared}
+    await log_admin_action(db, account, "bulk_delete_accounts", target=", ".join(names), detail={"account_ids": ids, "households_cleared": households_cleared})
+    return result
 
 
 @router.delete("/admin/accounts/{account_id}")
@@ -301,12 +303,9 @@ async def delete_account(account_id: int, account = Depends(get_current_account)
     household_deleted = await _delete_household_if_empty(db, household_id)
     await db.commit()
 
-    return {
-        "status": "deleted",
-        "account_id": account_id,
-        "name": target_row["name"],
-        "household_deleted": household_deleted,
-    }
+    result = {"status": "deleted", "account_id": account_id, "name": target_row["name"], "household_deleted": household_deleted}
+    await log_admin_action(db, account, "delete_account", target=f"{target_row['name']} (id={account_id})", detail={"household_deleted": household_deleted})
+    return result
 
 
 async def _delete_account(db, target: dict):

@@ -41,6 +41,11 @@ from routers import discoveries as discoveries_router
 async def lifespan(app: FastAPI):
     await init_pool()
 
+    # Mark any admin jobs that were left in running/pending state as interrupted.
+    from services.job_runner import mark_stale_jobs_interrupted
+    async with get_db() as _db:
+        await mark_stale_jobs_interrupted(_db)
+
     # Preload BioCLIP in background (first load downloads from HF Hub, ~60s).
     # Skipped when BIOCLIP_WORKER_URL is set — on Fly we offload to the remote
     # GPU worker and don't ship torch/open_clip in the image.

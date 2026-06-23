@@ -219,6 +219,16 @@ export interface AdminPlantRow {
   created_at: string
 }
 
+export interface AdminHouseholdDetail {
+  id: number
+  name: string
+  created_at: string
+  accounts: Array<{ id: number; name: string; email: string; is_admin: boolean; created_at: string }>
+  maps: Array<{ id: number; name: string; map_type: string; plant_count: number }>
+  plants: Array<{ id: number; name: string; species: string | null; icon_key: string | null; phase: string | null; has_thresholds: boolean; created_at: string }>
+  care_log: Array<{ id: number; plant_name: string; care_type: string; done_at: string }>
+}
+
 export interface AdminSpeciesRow {
   id: number
   common_name_nl: string
@@ -457,6 +467,52 @@ export const adminPanel = {
     const qs = q.toString()
     return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
   },
+  household: (id: number) => api<AdminHouseholdDetail>('GET', `/admin-panel/households/${id}`),
+  patchSpecies: (id: number, body: { common_name_nl?: string; latin_name?: string }) =>
+    api<{ id: number; common_name_nl: string; latin_name: string | null }>('PATCH', `/admin-panel/species/${id}`, { body }),
+  regenerateSpeciesThresholds: (id: number, propagate = false) =>
+    api<{ species_id: number; name: string; propagated_to_plants: number }>('POST', `/admin-panel/species/${id}/regenerate-thresholds`, { params: { propagate: String(propagate) } }),
+  regenerateSpeciesFact: (id: number) =>
+    api<{ species_id: number; name: string; fact: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
+  mergeSpecies: (source_id: number, target_id: number) =>
+    api<{ merged: boolean; source_name: string; target_name: string; plants_moved: number }>('POST', '/admin-panel/species/merge', { body: { source_id, target_id } }),
+  audit: (params: { limit?: number; offset?: number } = {}) => {
+    const p: Record<string, string> = {}
+    if (params.limit != null) p.limit = String(params.limit)
+    if (params.offset != null) p.offset = String(params.offset)
+    return api<{ rows: AdminAuditRow[]; total: number }>('GET', '/admin-panel/audit', { params: p })
+  },
+  startJob: (kind: string, params: Record<string, unknown> = {}) =>
+    api<{ job_id: number }>('POST', '/admin-panel/jobs', { body: { kind, params } }),
+  getJob: (id: number) =>
+    api<AdminJob>('GET', `/admin-panel/jobs/${id}`),
+  listJobs: (limit = 20) =>
+    api<AdminJob[]>('GET', '/admin-panel/jobs', { params: { limit: String(limit) } }),
+}
+
+export interface AdminAuditRow {
+  id: number
+  action: string
+  target: string | null
+  detail: Record<string, unknown> | null
+  created_at: string
+  admin_email: string | null
+  admin_name: string | null
+}
+
+export type AdminJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'interrupted'
+
+export interface AdminJob {
+  id: number
+  kind: string
+  status: AdminJobStatus
+  progress_done: number
+  progress_total: number
+  result: Record<string, unknown> | null
+  error: string | null
+  created_at: string
+  updated_at: string
+  admin_name: string | null
 }
 
 export interface IconGenerateResult {
