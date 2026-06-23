@@ -948,6 +948,218 @@ function PlantsView() {
   )
 }
 
+function SpeciesEditPanel({ species: initial, allSpecies, onSaved, onClose }: {
+  species: AdminSpeciesRow
+  allSpecies: AdminSpeciesRow[]
+  onSaved: (updated: Partial<AdminSpeciesRow>) => void
+  onClose: () => void
+}) {
+  const [commonName, setCommonName] = useState(initial.common_name_nl)
+  const [latinName, setLatinName] = useState(initial.latin_name ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+
+  const [threshResult, setThreshResult] = useState('')
+  const [threshRunning, setThreshRunning] = useState(false)
+  const [propagate, setPropagate] = useState(false)
+
+  const [factResult, setFactResult] = useState('')
+  const [factRunning, setFactRunning] = useState(false)
+
+  const [mergeTarget, setMergeTarget] = useState('')
+  const [mergeConfirm, setMergeConfirm] = useState(false)
+  const [mergeRunning, setMergeRunning] = useState(false)
+  const [mergeMsg, setMergeMsg] = useState('')
+
+  const otherSpecies = allSpecies.filter(s => s.id !== initial.id)
+  const mergeTargetObj = otherSpecies.find(s => String(s.id) === mergeTarget)
+
+  async function handleSave() {
+    setSaving(true)
+    setSaveMsg('')
+    try {
+      const updated = await adminPanel.patchSpecies(initial.id, {
+        common_name_nl: commonName.trim(),
+        latin_name: latinName.trim() || undefined,
+      })
+      setSaveMsg('✓ Saved')
+      onSaved({ common_name_nl: updated.common_name_nl, latin_name: updated.latin_name ?? undefined })
+    } catch (e) {
+      setSaveMsg('✗ ' + (e instanceof Error ? e.message : 'Save failed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRegenThresholds() {
+    setThreshRunning(true)
+    setThreshResult('')
+    try {
+      const r = await adminPanel.regenerateSpeciesThresholds(initial.id, propagate)
+      setThreshResult(`✓ Thresholds regenerated${r.propagated_to_plants ? ` · propagated to ${r.propagated_to_plants} plant${r.propagated_to_plants !== 1 ? 's' : ''}` : ''}`)
+      onSaved({ has_thresholds: true })
+    } catch (e) {
+      setThreshResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
+    } finally {
+      setThreshRunning(false)
+    }
+  }
+
+  async function handleRegenFact() {
+    setFactRunning(true)
+    setFactResult('')
+    try {
+      const r = await adminPanel.regenerateSpeciesFact(initial.id)
+      setFactResult(`✓ "${r.fact}"`)
+    } catch (e) {
+      setFactResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
+    } finally {
+      setFactRunning(false)
+    }
+  }
+
+  async function handleMerge() {
+    if (!mergeTargetObj) return
+    setMergeRunning(true)
+    setMergeMsg('')
+    try {
+      const r = await adminPanel.mergeSpecies(initial.id, mergeTargetObj.id)
+      setMergeMsg(`✓ Merged — ${r.plants_moved} plant${r.plants_moved !== 1 ? 's' : ''} moved to "${r.target_name}". This species is now deleted.`)
+      onClose()
+    } catch (e) {
+      setMergeMsg('✗ ' + (e instanceof Error ? e.message : 'Merge failed'))
+      setMergeRunning(false)
+      setMergeConfirm(false)
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
+    background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'var(--font-body)', fontSize: 13,
+    boxSizing: 'border-box',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+    letterSpacing: '.15em', color: 'var(--color-text-muted)', marginBottom: 5,
+  }
+  const runBtn = (busy: boolean, danger = false): React.CSSProperties => ({
+    background: danger ? 'var(--color-overdue)' : 'var(--color-primary)', color: '#fff', border: 'none',
+    borderRadius: 7, padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+    cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .6 : 1, whiteSpace: 'nowrap',
+  })
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
+      background: 'rgba(0,0,0,.35)',
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        width: 420, maxWidth: '100vw', height: '100%', overflowY: 'auto',
+        background: 'var(--color-bg)', borderLeft: '1px solid var(--color-border)',
+        padding: '28px 24px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 24,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 4 }}>Edit species</div>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 20, margin: 0 }}>{initial.common_name_nl}</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-text-muted)', lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+
+        {/* Edit fields */}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-soft)', marginBottom: -4 }}>Names</div>
+          <div>
+            <label style={labelStyle}>Common name (NL)</label>
+            <input value={commonName} onChange={e => setCommonName(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Latin name</label>
+            <input value={latinName} onChange={e => setLatinName(e.target.value)} placeholder="e.g. Rosa canina" style={{ ...inputStyle, fontStyle: 'italic' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={handleSave} disabled={saving} style={runBtn(saving)}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+            {saveMsg && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: saveMsg.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{saveMsg}</span>}
+          </div>
+        </div>
+
+        {/* Regenerate thresholds */}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-soft)' }}>Thresholds</div>
+          <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', margin: 0, lineHeight: 1.5 }}>
+            Re-run the LLM threshold generator for this species.
+          </p>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={propagate} onChange={e => setPropagate(e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} />
+            Also propagate to linked plants ({initial.plant_count})
+          </label>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={handleRegenThresholds} disabled={threshRunning} style={runBtn(threshRunning)}>
+              {threshRunning ? 'Generating…' : 'Regenerate thresholds'}
+            </button>
+            {threshResult && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: threshResult.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{threshResult}</span>}
+          </div>
+        </div>
+
+        {/* Regenerate fact */}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-soft)' }}>Interesting fact</div>
+          <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', margin: 0, lineHeight: 1.5 }}>
+            Re-generate the interesting fact stored in phenology_json.
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={handleRegenFact} disabled={factRunning} style={runBtn(factRunning)}>
+              {factRunning ? 'Generating…' : 'Regenerate fact'}
+            </button>
+          </div>
+          {factResult && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, margin: 0, color: factResult.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)', lineHeight: 1.5 }}>{factResult}</p>}
+        </div>
+
+        {/* Merge into another species */}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-soft)' }}>Merge into…</div>
+          <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', margin: 0, lineHeight: 1.5 }}>
+            Move all {initial.plant_count} plants to the target species, then delete this one. Irreversible.
+          </p>
+          <select
+            value={mergeTarget}
+            onChange={e => { setMergeTarget(e.target.value); setMergeConfirm(false); setMergeMsg('') }}
+            style={{ ...inputStyle, fontFamily: 'var(--font-body)', cursor: 'pointer' }}
+          >
+            <option value="">— pick target species —</option>
+            {otherSpecies.map(s => (
+              <option key={s.id} value={String(s.id)}>
+                {s.common_name_nl}{s.latin_name ? ` (${s.latin_name})` : ''}
+              </option>
+            ))}
+          </select>
+          {mergeTarget && mergeTargetObj && !mergeConfirm && (
+            <button onClick={() => setMergeConfirm(true)} style={runBtn(false, true)}>
+              Merge into "{mergeTargetObj.common_name_nl}" →
+            </button>
+          )}
+          {mergeConfirm && mergeTargetObj && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-overdue)' }}>
+                Move {initial.plant_count} plant{initial.plant_count !== 1 ? 's' : ''} → "{mergeTargetObj.common_name_nl}" and delete this species?
+              </span>
+              <button onClick={handleMerge} disabled={mergeRunning} style={runBtn(mergeRunning, true)}>
+                {mergeRunning ? 'Merging…' : 'Yes, merge'}
+              </button>
+              <button onClick={() => setMergeConfirm(false)} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 10px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+                Cancel
+              </button>
+            </div>
+          )}
+          {mergeMsg && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, margin: 0, color: mergeMsg.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{mergeMsg}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SpeciesView() {
   const [species, setSpecies] = useState<AdminSpeciesRow[] | null>(null)
   const [total, setTotal] = useState(0)
@@ -958,6 +1170,7 @@ function SpeciesView() {
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
   const [sortState, setSortState] = useState<SortState>({ sort: 'common_name', dir: 'asc' })
   const [offset, setOffset] = useState(0)
+  const [editingSpecies, setEditingSpecies] = useState<AdminSpeciesRow | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -996,6 +1209,11 @@ function SpeciesView() {
     setOffset(0)
   }
 
+  function handleSaved(id: number, updated: Partial<AdminSpeciesRow>) {
+    setSpecies(prev => prev ? prev.map(s => s.id === id ? { ...s, ...updated } : s) : prev)
+    if (editingSpecies?.id === id) setEditingSpecies(prev => prev ? { ...prev, ...updated } : prev)
+  }
+
   const rows = species ?? []
 
   return (
@@ -1032,23 +1250,41 @@ function SpeciesView() {
               { label: 'Latin name', sortKey: 'latin_name' },
               { label: 'Plants', sortKey: 'plant_count' },
               { label: 'Thresholds', sortKey: 'thresholds' },
+              '',
             ]}
             sort={sortState}
             onSort={handleSort}
             scrollable
           >
             {rows.map(s => (
-              <tr key={s.id}>
+              <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => setEditingSpecies(s)}>
                 <Td><strong>{s.common_name_nl}</strong></Td>
                 <Td>{s.latin_name ? <em>{s.latin_name}</em> : <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
                 <Td mono>{s.plant_count}</Td>
                 <Td><Pill label={s.has_thresholds ? 'yes' : 'no'} tone={s.has_thresholds ? 'green' : 'red'} /></Td>
+                <Td>
+                  <button
+                    onClick={e => { e.stopPropagation(); setEditingSpecies(s) }}
+                    style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 5, padding: '3px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                  >
+                    ✎ Edit
+                  </button>
+                </Td>
               </tr>
             ))}
           </AdminTable>
           {rows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No species found.</div>}
           <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
+      )}
+
+      {editingSpecies && (
+        <SpeciesEditPanel
+          species={editingSpecies}
+          allSpecies={rows}
+          onSaved={updated => handleSaved(editingSpecies.id, updated)}
+          onClose={() => setEditingSpecies(null)}
+        />
       )}
     </div>
   )

@@ -468,6 +468,14 @@ export const adminPanel = {
     return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
   },
   household: (id: number) => api<AdminHouseholdDetail>('GET', `/admin-panel/households/${id}`),
+  patchSpecies: (id: number, body: { common_name_nl?: string; latin_name?: string }) =>
+    api<{ id: number; common_name_nl: string; latin_name: string | null }>('PATCH', `/admin-panel/species/${id}`, { body }),
+  regenerateSpeciesThresholds: (id: number, propagate = false) =>
+    api<{ species_id: number; name: string; propagated_to_plants: number }>('POST', `/admin-panel/species/${id}/regenerate-thresholds`, { params: { propagate: String(propagate) } }),
+  regenerateSpeciesFact: (id: number) =>
+    api<{ species_id: number; name: string; fact: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
+  mergeSpecies: (source_id: number, target_id: number) =>
+    api<{ merged: boolean; source_name: string; target_name: string; plants_moved: number }>('POST', '/admin-panel/species/merge', { body: { source_id, target_id } }),
 }
 
 export interface IconGenerateResult {

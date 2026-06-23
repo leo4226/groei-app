@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
 from database import db_dep
 from auth import require_admin
@@ -816,6 +817,184 @@ async def backfill_plant_facts(
     from species_service import backfill_missing_facts
     result = await backfill_missing_facts(db, limit=limit)
     return result
+
+
+@router.patch("/admin-panel/species/{species_id}")
+async def admin_patch_species(
+    species_id: int,
+    body: dict,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Edit common_name_nl and/or latin_name for a species."""
+    from fastapi import HTTPException
+
+    allowed = {"common_name_nl", "latin_name"}
+    updates = {k: v for k, v in body.items() if k in allowed}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    row = await db.execute_fetchall("SELECT id FROM plant_species WHERE id = ?", (species_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    await db.execute(
+        f"UPDATE plant_species SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (*updates.values(), species_id),
+    )
+    await db.commit()
+
+    updated = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    return dict(updated[0])
+
+
+@router.post("/admin-panel/species/{species_id}/regenerate-thresholds")
+async def admin_regenerate_species_thresholds(
+    species_id: int,
+    propagate: bool = False,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Re-run threshold generation for this species. Optionally propagate to linked plants."""
+    from fastapi import HTTPException
+    from threshold_service import generate_thresholds
+    import json as _json
+
+    row = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    name = row[0]["common_name_nl"]
+    latin = row[0]["latin_name"]
+
+    try:
+        thresholds = await generate_thresholds(name, latin)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Threshold generation failed: {exc}") from exc
+
+    thresholds_json = _json.dumps(thresholds, ensure_ascii=False)
+    await db.execute(
+        "UPDATE plant_species SET care_thresholds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (thresholds_json, species_id),
+    )
+
+    plants_updated = 0
+    if propagate:
+        plant_rows = await db.execute_fetchall(
+            "SELECT id FROM plants WHERE species_id = ? AND is_active = 1",
+            (species_id,),
+        )
+        for p in plant_rows:
+            await db.execute(
+                "UPDATE plants SET care_thresholds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (thresholds_json, p["id"]),
+            )
+        plants_updated = len(plant_rows)
+
+    await db.commit()
+    return {"species_id": species_id, "name": name, "propagated_to_plants": plants_updated}
+
+
+@router.post("/admin-panel/species/{species_id}/regenerate-fact")
+async def admin_regenerate_species_fact(
+    species_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Re-run the interesting-fact generator for this species."""
+    from fastapi import HTTPException
+    from species_service import generate_fact_for_species
+    import json as _json
+
+    row = await db.execute_fetchall(
+        "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Species not found")
+
+    name = row[0]["common_name_nl"]
+    latin = row[0]["latin_name"]
+    phenology_str = row[0]["phenology_json"]
+
+    try:
+        fact = await generate_fact_for_species(name, latin)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Fact generation failed: {exc}") from exc
+
+    if not fact:
+        raise HTTPException(status_code=503, detail="LLM returned empty fact")
+
+    try:
+        phenology = _json.loads(phenology_str) if phenology_str else {}
+    except _json.JSONDecodeError:
+        phenology = {}
+
+    phenology["interesting_facts_nl"] = fact
+    await db.execute(
+        "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (_json.dumps(phenology, ensure_ascii=False), species_id),
+    )
+    await db.commit()
+    return {"species_id": species_id, "name": name, "fact": fact}
+
+
+class SpeciesMergeRequest(BaseModel):
+    source_id: int
+    target_id: int
+
+
+@router.post("/admin-panel/species/merge")
+async def admin_merge_species(
+    body: SpeciesMergeRequest,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Repoint all plants from source species to target, then delete source."""
+    from fastapi import HTTPException
+
+    if body.source_id == body.target_id:
+        raise HTTPException(status_code=400, detail="Cannot merge a species into itself")
+
+    source = await db.execute_fetchall(
+        "SELECT id, common_name_nl FROM plant_species WHERE id = ?", (body.source_id,)
+    )
+    target = await db.execute_fetchall(
+        "SELECT id, common_name_nl FROM plant_species WHERE id = ?", (body.target_id,)
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Source species not found")
+    if not target:
+        raise HTTPException(status_code=404, detail="Target species not found")
+
+    plant_rows = await db.execute_fetchall(
+        "SELECT COUNT(*) as n FROM plants WHERE species_id = ? AND is_active = 1",
+        (body.source_id,),
+    )
+    moved = plant_rows[0]["n"]
+
+    await db.execute(
+        "UPDATE plants SET species_id = ?, updated_at = CURRENT_TIMESTAMP WHERE species_id = ?",
+        (body.target_id, body.source_id),
+    )
+    await db.execute("DELETE FROM plant_species WHERE id = ?", (body.source_id,))
+    await db.commit()
+
+    return {
+        "merged": True,
+        "source_id": body.source_id,
+        "source_name": source[0]["common_name_nl"],
+        "target_id": body.target_id,
+        "target_name": target[0]["common_name_nl"],
+        "plants_moved": moved,
+    }
 
 
 @router.get("/admin-panel/households/{household_id}")
