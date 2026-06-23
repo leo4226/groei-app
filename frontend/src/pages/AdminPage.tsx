@@ -6,7 +6,7 @@ import {
   type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
   type AdminSystemHealth, type AdminHealthStatus,
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
-  type IconGenerateResult, type AdminHouseholdDetail, type AdminAuditRow,
+  type AdminHouseholdDetail, type AdminAuditRow,
   type AdminJob, type AdminJobStatus,
 } from '../api/client'
 
