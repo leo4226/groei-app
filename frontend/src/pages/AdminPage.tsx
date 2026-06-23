@@ -6,10 +6,10 @@ import {
   type AdminSpeciesRow, type AdminActivityEvent, type AdminTableParams,
   type AdminSystemHealth, type AdminHealthStatus,
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
-  type IconGenerateResult, type AdminHouseholdDetail,
+  type IconGenerateResult, type AdminHouseholdDetail, type AdminAuditRow,
 } from '../api/client'
 
-type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity'
+type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity' | 'audit'
 
 const NAV: { id: Section; icon: string; label: string }[] = [
   { id: 'overview', icon: '📊', label: 'Overview' },
@@ -18,6 +18,7 @@ const NAV: { id: Section; icon: string; label: string }[] = [
   { id: 'species',  icon: '🔬', label: 'Species' },
   { id: 'tools',    icon: '🔧', label: 'Tools' },
   { id: 'activity', icon: '📋', label: 'Activity' },
+  { id: 'audit',    icon: '🔏', label: 'Audit log' },
 ]
 
 const RESPONSIVE_STYLES = `@media (max-width: 767px) {
@@ -135,6 +136,7 @@ export default function AdminPage() {
           {section === 'species'   && <SpeciesView />}
           {section === 'tools'     && <ToolsView />}
           {section === 'activity'  && <ActivityView />}
+          {section === 'audit'     && <AuditView />}
         </main>
       </div>
     </div>
@@ -1607,6 +1609,87 @@ function ActivityView() {
         <SectionCard title={`${filtered.length} events`}>
           {filtered.map((ev, i) => <ActivityRow key={i} event={ev} />)}
           {filtered.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No events.</div>}
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
+const ACTION_LABEL: Record<string, string> = {
+  delete_account:                  'Delete account',
+  bulk_delete_accounts:            'Bulk delete',
+  backfill_thresholds:             'Backfill thresholds',
+  backfill_care_schedules:         'Backfill schedules',
+  backfill_facts:                  'Backfill facts',
+  generate_icons:                  'Generate icons',
+  patch_species:                   'Edit species',
+  regenerate_species_thresholds:   'Regen thresholds',
+  regenerate_species_fact:         'Regen fact',
+  merge_species:                   'Merge species',
+}
+
+function AuditView() {
+  const [rows, setRows] = useState<AdminAuditRow[] | null>(null)
+  const [total, setTotal] = useState(0)
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [offset, setOffset] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setErr('')
+    adminPanel.audit({ limit: PAGE_SIZE, offset })
+      .then(data => {
+        if (cancelled) return
+        setRows(data.rows)
+        setTotal(data.total)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setErr(e instanceof Error ? e.message : 'Failed to load audit log')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [offset])
+
+  const formatTs = (iso: string) =>
+    new Date(iso).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  const formatDetail = (detail: Record<string, unknown> | null) => {
+    if (!detail) return null
+    return Object.entries(detail)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
+      .join(' · ')
+  }
+
+  return (
+    <div>
+      <PageHeader title="Audit log" sub={`${rows != null ? total : '…'} admin actions recorded`} />
+
+      {err && <ErrorMsg msg={err} />}
+      {loading && !rows && !err && <Loading />}
+
+      {rows && (
+        <SectionCard title={`${total} entries`}>
+          <AdminTable heads={['When', 'Admin', 'Action', 'Target', 'Detail']} scrollable>
+            {rows.map(r => (
+              <tr key={r.id}>
+                <Td mono>{formatTs(r.created_at)}</Td>
+                <Td mono>{r.admin_email ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>deleted</span>}</Td>
+                <Td><Pill label={ACTION_LABEL[r.action] ?? r.action} tone="muted" /></Td>
+                <Td>{r.target ?? '—'}</Td>
+                <Td>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }}>
+                    {formatDetail(r.detail) ?? '—'}
+                  </span>
+                </Td>
+              </tr>
+            ))}
+          </AdminTable>
+          {rows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No audit entries yet.</div>}
+          <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
         </SectionCard>
       )}
     </div>

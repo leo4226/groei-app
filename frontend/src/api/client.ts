@@ -476,6 +476,22 @@ export const adminPanel = {
     api<{ species_id: number; name: string; fact: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
   mergeSpecies: (source_id: number, target_id: number) =>
     api<{ merged: boolean; source_name: string; target_name: string; plants_moved: number }>('POST', '/admin-panel/species/merge', { body: { source_id, target_id } }),
+  audit: (params: { limit?: number; offset?: number } = {}) => {
+    const p: Record<string, string> = {}
+    if (params.limit != null) p.limit = String(params.limit)
+    if (params.offset != null) p.offset = String(params.offset)
+    return api<{ rows: AdminAuditRow[]; total: number }>('GET', '/admin-panel/audit', { params: p })
+  },
+}
+
+export interface AdminAuditRow {
+  id: number
+  action: string
+  target: string | null
+  detail: Record<string, unknown> | null
+  created_at: string
+  admin_email: string | null
+  admin_name: string | null
 }
 
 export interface IconGenerateResult {

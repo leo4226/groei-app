@@ -14,6 +14,7 @@ from services.svg_validator import validate_icon_svg
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
+from services.admin_audit import log_admin_action
 from routers.icon_generator import (
     generate_icon_svg, guess_category, derive_common_name,
     make_pot, make_ground_shadow, CANVAS,
@@ -758,10 +759,12 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
         generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
 
     sync_result = await _sync_from_admin(db)
-    return {"generated": generated, "count": len(generated),
-            "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
-            "scope": scope, "map_only": map_only,
-            "remaining": max(0, total_targets - len(generated))}
+    result = {"generated": generated, "count": len(generated),
+              "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
+              "scope": scope, "map_only": map_only,
+              "remaining": max(0, total_targets - len(generated))}
+    await log_admin_action(db, admin, "generate_icons", target=f"scope={scope}", detail={"count": len(generated), "skipped": len(skipped), "scope": scope, "map_only": map_only})
+    return result
 
 
 async def _sync_from_admin(db):
@@ -816,6 +819,7 @@ async def backfill_plant_facts(
     """Generate interesting_facts_nl for plant_species entries that lack one."""
     from species_service import backfill_missing_facts
     result = await backfill_missing_facts(db, limit=limit)
+    await log_admin_action(db, admin, "backfill_facts", target=f"limit={limit}", detail={"processed": result.get("processed"), "updated": result.get("updated"), "skipped": result.get("skipped")})
     return result
 
 
@@ -849,7 +853,9 @@ async def admin_patch_species(
         "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
         (species_id,),
     )
-    return dict(updated[0])
+    row = dict(updated[0])
+    await log_admin_action(db, admin, "patch_species", target=f"species/{species_id}", detail={"fields": list(updates.keys()), **updates})
+    return row
 
 
 @router.post("/admin-panel/species/{species_id}/regenerate-thresholds")
@@ -899,7 +905,9 @@ async def admin_regenerate_species_thresholds(
         plants_updated = len(plant_rows)
 
     await db.commit()
-    return {"species_id": species_id, "name": name, "propagated_to_plants": plants_updated}
+    result = {"species_id": species_id, "name": name, "propagated_to_plants": plants_updated}
+    await log_admin_action(db, admin, "regenerate_species_thresholds", target=f"{name} (id={species_id})", detail={"propagate": propagate, "plants_updated": plants_updated})
+    return result
 
 
 @router.post("/admin-panel/species/{species_id}/regenerate-fact")
@@ -943,6 +951,7 @@ async def admin_regenerate_species_fact(
         (_json.dumps(phenology, ensure_ascii=False), species_id),
     )
     await db.commit()
+    await log_admin_action(db, admin, "regenerate_species_fact", target=f"{name} (id={species_id})", detail=None)
     return {"species_id": species_id, "name": name, "fact": fact}
 
 
@@ -987,7 +996,7 @@ async def admin_merge_species(
     await db.execute("DELETE FROM plant_species WHERE id = ?", (body.source_id,))
     await db.commit()
 
-    return {
+    result = {
         "merged": True,
         "source_id": body.source_id,
         "source_name": source[0]["common_name_nl"],
@@ -995,6 +1004,8 @@ async def admin_merge_species(
         "target_name": target[0]["common_name_nl"],
         "plants_moved": moved,
     }
+    await log_admin_action(db, admin, "merge_species", target=f"{source[0]['common_name_nl']} → {target[0]['common_name_nl']}", detail={"source_id": body.source_id, "target_id": body.target_id, "plants_moved": moved})
+    return result
 
 
 @router.get("/admin-panel/households/{household_id}")
@@ -1054,3 +1065,43 @@ async def admin_household_detail(
         "plants": [dict(r) for r in plants],
         "care_log": [dict(r) for r in care_log],
     }
+
+
+@router.get("/admin-panel/audit")
+async def admin_audit(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Paginated audit log of all admin actions."""
+    import json as _json
+
+    total_row = await db.execute_fetchall("SELECT COUNT(*) as n FROM admin_audit_log")
+    total = int(total_row[0]["n"])
+
+    rows = await db.execute_fetchall(
+        """SELECT al.id, al.action, al.target, al.detail,
+                  CAST(al.created_at AS TEXT) as created_at,
+                  a.email as admin_email, a.name as admin_name
+           FROM admin_audit_log al
+           LEFT JOIN accounts a ON al.account_id = a.id
+           ORDER BY al.created_at DESC
+           LIMIT ? OFFSET ?""",
+        (limit, offset),
+    )
+
+    result_rows = []
+    for r in rows:
+        row = dict(r)
+        detail = row.get("detail")
+        if isinstance(detail, str):
+            try:
+                row["detail"] = _json.loads(detail)
+            except Exception:
+                pass
+        elif detail is None:
+            row["detail"] = None
+        result_rows.append(row)
+
+    return {"rows": result_rows, "total": total}
