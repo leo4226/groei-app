@@ -1,8 +1,13 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 
 export default function BottomNav() {
   const t = useT()
+  const location = useLocation()
+
+  const lastMapSlug = localStorage.getItem('lastMapSlug')
+  const mapTo = lastMapSlug ? `/map/${lastMapSlug}` : '/maps'
+  const isOnMap = location.pathname.startsWith('/map')
 
   const tabs = [
     {
@@ -28,7 +33,8 @@ export default function BottomNav() {
       ),
     },
     {
-      to: '/maps',
+      to: mapTo,
+      forceActive: isOnMap,
       label: t.nav.maps,
       icon: (active: boolean) => (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
@@ -69,20 +75,22 @@ export default function BottomNav() {
           key={tab.to}
           to={tab.to}
           end={tab.to === '/dashboard'}
-          className={({ isActive }) =>
-            `flex flex-col items-center justify-center gap-0.5 px-3 pt-2 pb-1 text-[10px] transition-colors min-w-[64px] ${
-              isActive
-                ? 'text-primary font-semibold'
-                : 'text-text-muted'
+          className={({ isActive }) => {
+            const active = tab.forceActive ?? isActive
+            return `flex flex-col items-center justify-center gap-0.5 px-3 pt-2 pb-1 text-[10px] transition-colors min-w-[64px] ${
+              active ? 'text-primary font-semibold' : 'text-text-muted'
             }`
-          }
+          }}
         >
-          {({ isActive }) => (
-            <>
-              {tab.icon(isActive)}
-              <span>{tab.label}</span>
-            </>
-          )}
+          {({ isActive }) => {
+            const active = tab.forceActive ?? isActive
+            return (
+              <>
+                {tab.icon(active)}
+                <span>{tab.label}</span>
+              </>
+            )
+          }}
         </NavLink>
       ))}
     </nav>
