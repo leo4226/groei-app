@@ -1200,7 +1200,7 @@ async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     await on_progress(0, 1)
     rows = await db.execute_fetchall(
-        "SELECT id, icon_key FROM plants WHERE plant_type IS NULL AND is_active = 1 AND icon_key IS NOT NULL"
+        "SELECT id, icon_key FROM plants WHERE plant_type IS NULL AND icon_key IS NOT NULL"
     )
     from services.icon_catalog import load_catalog as _load_catalog
     catalog = await _load_catalog(db)
