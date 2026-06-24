@@ -46,6 +46,11 @@ export default function MapPage() {
   const mapData = useMapData(slug)
   const { refresh: refreshMapData } = mapData
 
+  // Persist last visited map so BottomNav can return here directly.
+  useEffect(() => {
+    localStorage.setItem('lastMapSlug', slug)
+  }, [slug])
+
   // Force refresh when navigating back (location.key changes on popstate)
   useEffect(() => {
     refreshMapData()
