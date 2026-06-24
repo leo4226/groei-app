@@ -150,9 +150,10 @@ export default function Dashboard() {
 
         .dashboard-grid > div { min-width: 0; }
         @media (min-width: 900px) {
-          .dashboard-grid { grid-template-columns: 1fr 1fr 340px !important; align-items: stretch; padding: 0 24px; gap: 28px; }
+          .dashboard-grid { grid-template-columns: 1fr 1fr 340px !important; align-items: start; padding: 0 24px; gap: 28px; }
           .dashboard-sidebar { padding: 0 !important; }
           .dash-signals-col > section { padding-left: 0 !important; padding-right: 0 !important; }
+          .dash-section-hpad { padding-left: 0 !important; padding-right: 0 !important; }
         }
 
         /* ── Sidebar shrink guard ── */
