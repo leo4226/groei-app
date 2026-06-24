@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from auth import get_current_account
 from database import db_dep
+from services.garden_biodiversity import compute_for_map
+from services.plant_suggestions import recommend_for_garden
 
 router = APIRouter()
 
@@ -32,6 +34,7 @@ class BotRequest(BaseModel):
     history: list[ChatMessage] = []
     plants_context: str = ""
     maps_context: str = ""
+    biodiversity_context: str = ""
     page_context: dict | None = None
 
 
@@ -142,6 +145,62 @@ async def _fetch_plants_context(db, household_id: int, map_slug: str | None = No
     return "\n\n".join(sections)
 
 
+_MONTH_NL = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"]
+
+
+async def _fetch_biodiversity_context(db, household_id: int, map_slug: str | None = None) -> str:
+    """Biodiversity score + top plant suggestions for each outdoor map."""
+    outdoor_maps = await db.execute_fetchall(
+        """SELECT id, name, slug FROM maps
+           WHERE household_id = ? AND map_type = 'outdoor'
+           ORDER BY sort_order""",
+        (household_id,),
+    )
+    if not outdoor_maps:
+        return ""
+
+    if map_slug:
+        outdoor_maps = [m for m in outdoor_maps if m["slug"] == map_slug]
+
+    sections = []
+    for m in outdoor_maps:
+        map_id, map_name = int(m["id"]), m["name"]
+
+        bio = await compute_for_map(db, map_id)
+        covered = [_MONTH_NL[i] for i, v in enumerate(bio.pollinator_coverage_months) if v]
+        gaps = [_MONTH_NL[i] for i, v in enumerate(bio.pollinator_coverage_months) if not v]
+
+        lines = [
+            f"{map_name}: score {bio.score}/100 | {bio.species_count} soorten "
+            f"({bio.native_count} inheems, {bio.invasive_count} invasief)"
+        ]
+        if covered:
+            lines.append(f"  Bestuiversbloom: {', '.join(covered)}")
+        if gaps:
+            lines.append(f"  Bloeigat (geen bestuivers): {', '.join(gaps)}")
+
+        try:
+            suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
+            if suggestions:
+                sugg_parts = []
+                for s in suggestions:
+                    label = s.dutch_name
+                    if s.latin_name and s.latin_name != s.dutch_name:
+                        label += f" ({s.latin_name})"
+                    if s.reason:
+                        label += f": {s.reason}"
+                    sugg_parts.append(label)
+                lines.append(f"  Plantaanbevelingen: {'; '.join(sugg_parts)}")
+        except Exception:
+            pass
+
+        sections.append("\n".join(lines))
+
+    if not sections:
+        return ""
+    return "Tuinbiodiversiteit:\n" + "\n\n".join(sections)
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_current_account)):
     """Forward chat message to Stekkie with user's plants as context."""
@@ -149,6 +208,7 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
         map_slug = req.page_context.map_slug if req.page_context else None
         plants_ctx = await _fetch_plants_context(db, account["household_id"], map_slug)
         maps_ctx = await _fetch_maps_context(db, account["household_id"])
+        bio_ctx = await _fetch_biodiversity_context(db, account["household_id"], map_slug)
 
         async with httpx.AsyncClient(timeout=70.0) as client:
             bot_req = BotRequest(
@@ -156,6 +216,7 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
                 history=req.history,
                 plants_context=plants_ctx,
                 maps_context=maps_ctx,
+                biodiversity_context=bio_ctx,
                 page_context=req.page_context.model_dump() if req.page_context else None,
             )
             resp = await client.post(
