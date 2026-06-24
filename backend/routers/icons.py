@@ -177,6 +177,10 @@ DUTCH_TO_ICON: dict[str, str] = {
     "pluimgras": "silvergrass",
     "chineespluimgras": "silvergrass",
     "siergrassen": "silvergrass",
+    "chinesewaaierpalm": "areca",  # Chinese fan palm → closest palm icon
+    "chinesewaaierplant": "areca",
+    "waaierpalm": "areca",
+    "waaierplant": "areca",
     "vijgenboom": "figtree",
     "vijg": "figtree",
     "buxus": "boxwood",
@@ -188,6 +192,8 @@ DUTCH_TO_ICON: dict[str, str] = {
     "basilicum": "basil",
     "munt": "mint",
     "kruizemunt": "mint",
+    "citroenmelisse": "mint",      # lemon balm — same Lamiaceae family as mint
+    "melisse": "mint",
     # Edible
     "tomaat": "tomato",
     "bruineboon": "brownbean",
