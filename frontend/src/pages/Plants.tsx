@@ -219,7 +219,7 @@ export default function Plants() {
               color: 'var(--color-text)',
               margin: 0,
             }}>
-              {t.plantsPage.title} <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>Icons</em>.
+              {t.plantsPage.title}.
             </h1>
             <p style={{
               fontFamily: 'var(--font-heading)',
@@ -487,7 +487,7 @@ export default function Plants() {
             color: 'var(--color-text)', margin: 0,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            {t.plantsPage.title} <em style={{ fontStyle: 'italic', color: 'var(--color-primary)', fontWeight: 400 }}>Icons</em>.
+            {t.plantsPage.title}.
             <span style={{
               fontFamily: 'var(--font-mono)', fontSize: 10,
               fontWeight: 400, color: 'var(--color-text-muted)',
