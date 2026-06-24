@@ -428,7 +428,7 @@ export default function Settings() {
         accent={t.settings.mastheadAccent}
         lede={t.settings.mastheadLede}
       />
-      <div className="px-4 pt-6 min-[721px]:max-w-[760px] min-[721px]:px-6">
+      <div className="px-4 pt-6 md:px-8 md:max-w-[900px] lg:max-w-[1100px] mx-auto">
 
       <section className="mb-8">
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.profile}</h2>
