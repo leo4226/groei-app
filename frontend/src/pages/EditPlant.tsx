@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { plants as plantsApi, care as careApi } from '../api/client'
+import { plants as plantsApi, care as careApi, icons as iconsApi } from '../api/client'
 import type { Plant, CareType } from '../types'
 import { CARE_TYPE_INFO } from '../types'
 import { isoToDisplay } from '../utils/dateFormat'
@@ -82,6 +82,19 @@ export default function EditPlant() {
   const [submitting, setSubmitting] = useState(false)
   const origWaterSchedule = useRef<{id: number; days: number} | null>(null)
 
+  // Icon catalog for potted/bare variant switching
+  const [iconCatalog, setIconCatalog] = useState<{ id: string; form?: string; variant_of?: string }[]>([])
+  const baseIconRef = useRef<string | null>(null)
+  const iconLookup = useMemo(() => {
+    const bareBases = new Set<string>()
+    const pottedVariants = new Map<string, string>()
+    for (const icon of iconCatalog) {
+      if (icon.form === 'bare' && icon.variant_of) bareBases.add(icon.variant_of)
+      if (icon.form === 'potted' && icon.variant_of) pottedVariants.set(icon.variant_of, icon.id)
+    }
+    return { bareBases, pottedVariants }
+  }, [iconCatalog])
+
   // Derived area from the selected zone
 
   // Load plant data
@@ -115,6 +128,32 @@ export default function EditPlant() {
     load()
   }, [plantId, navigate])
 
+  // Load icon catalog once for potted/bare switching
+  useEffect(() => {
+    iconsApi.catalog().then(setIconCatalog).catch(() => {})
+  }, [])
+
+  // Set base icon ref when plant data and catalog are both available
+  useEffect(() => {
+    if (!plant?.icon_key || iconCatalog.length === 0) return
+    const entry = iconCatalog.find(e => e.id === plant.icon_key)
+    baseIconRef.current = entry?.variant_of ?? plant.icon_key
+  }, [iconCatalog, plant])
+
+  // Switch icon variant when form type or catalog changes
+  useEffect(() => {
+    const base = baseIconRef.current
+    if (!base || iconCatalog.length === 0) return
+    const isPotted = formType === 'pot'
+    const bareExists = iconLookup.bareBases.has(base)
+    const pottedOverride = iconLookup.pottedVariants.get(base)
+    if (isPotted) {
+      setIconKey(pottedOverride ?? base)
+    } else {
+      setIconKey(bareExists ? `${base}_bare` : base)
+    }
+  }, [formType, iconLookup])
+
   // Revoke old object URL when preview changes or on unmount
   useEffect(() => {
     return () => {
@@ -135,6 +174,16 @@ export default function EditPlant() {
 
 
 
+
+  function handleIconChange(key: string | null) {
+    if (key) {
+      const entry = iconCatalog.find(e => e.id === key)
+      baseIconRef.current = entry?.variant_of ?? key
+    } else {
+      baseIconRef.current = null
+    }
+    setIconKey(key)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -440,7 +489,7 @@ export default function EditPlant() {
                 >
                   {/* Icon */}
                   <FormRow label={t.addPlant.labelIcon} description={t.addPlant.labelIconDesc}>
-                    <IconPicker value={iconKey} onChange={setIconKey} />
+                    <IconPicker value={iconKey} onChange={handleIconChange} />
                   </FormRow>
 
                   {/* Sown date */}
