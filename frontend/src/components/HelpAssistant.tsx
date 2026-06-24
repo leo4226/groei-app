@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
-import { sendChatMessage, submitBugReport, type ChatMessage } from '../api/chat'
+import { sendChatMessage, submitBugReport, type ChatMessage, type PageContext } from '../api/chat'
 
 type PageKey = 'dashboard' | 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
 
@@ -217,7 +217,12 @@ export default function HelpAssistant() {
     }
 
     try {
-      const reply = await sendChatMessage(userMsg, messages)
+      const pageContext: PageContext = { route: location.pathname }
+      if (pageKey === 'map') {
+        const slug = location.pathname.replace(/^\/map\//, '')
+        if (slug) pageContext.map_slug = slug
+      }
+      const reply = await sendChatMessage(userMsg, messages, pageContext)
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       const isOffline = err instanceof TypeError

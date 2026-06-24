@@ -7,9 +7,16 @@ export interface ChatMessage {
   content: string
 }
 
+export interface PageContext {
+  route: string
+  map_slug?: string
+  plant_id?: number
+}
+
 export async function sendChatMessage(
   message: string,
   history: ChatMessage[],
+  pageContext?: PageContext,
 ): Promise<string> {
   const token = getToken()
   const resp = await fetch(`${BASE}/chat`, {
@@ -18,7 +25,7 @@ export async function sendChatMessage(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, page_context: pageContext ?? null }),
   })
   if (!resp.ok) throw new Error(`Chat error: ${resp.status}`)
   const data = await resp.json()
