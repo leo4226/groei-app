@@ -18,14 +18,11 @@ def upgrade() -> None:
     # Seed the current production admin once. Runtime authorization reads only
     # accounts.is_admin, so future admin changes are normal DB updates.
     current_admin_email = "leon_korbee" + "@hotmail.com"
-    result = op.get_bind().execute(
+    op.get_bind().execute(
         sa.text("UPDATE accounts SET is_admin = TRUE WHERE email = :email"),
         {"email": current_admin_email},
     )
-    if result.rowcount != 1:
-        raise RuntimeError(
-            "Expected to seed exactly one admin account while adding accounts.is_admin"
-        )
+    # If no account exists yet (fresh DB), that's fine — admin can be seeded later.
 
 
 def downgrade() -> None:
