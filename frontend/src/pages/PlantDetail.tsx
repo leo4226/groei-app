@@ -279,6 +279,7 @@ export default function PlantDetail() {
   })()
 
   const locale = t.locale || 'nl-NL'
+  const isEN = locale.startsWith('en')
 
   // ── Shared content blocks (identical markup in both layouts) ──
 
@@ -305,7 +306,7 @@ export default function PlantDetail() {
       <span className="text-lg">☀️</span>
       <span className="text-sm text-text-muted flex-1">
         {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
-        {' · '}{sunFitInfo.profile.labelNl}
+        {' · '}{isEN ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
       </span>
       <span
         className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -323,13 +324,17 @@ export default function PlantDetail() {
   ) : (
     <Section title={t.plantDetail.yearCalendar}>
       <div className="bg-surface rounded-xl px-4 py-6 text-center border border-border">
-        <p className="text-sm text-text-muted mb-3">Nog geen jaarkalender beschikbaar</p>
+        <p className="text-sm text-text-muted mb-3">
+          {isEN ? 'No year calendar available yet' : 'Nog geen jaarkalender beschikbaar'}
+        </p>
         <button
           onClick={handleRetrySpecies}
           disabled={retryingSpecies}
           className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50"
         >
-          {retryingSpecies ? 'Bezig...' : '🔄 Soortgegevens ophalen'}
+          {retryingSpecies
+            ? (isEN ? 'Loading...' : 'Bezig...')
+            : (isEN ? '🔄 Fetch species data' : '🔄 Soortgegevens ophalen')}
         </button>
       </div>
     </Section>

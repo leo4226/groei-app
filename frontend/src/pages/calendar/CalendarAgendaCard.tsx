@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
-import { DAY_LONG_NL, MONTH_SHORT_NL, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
@@ -15,9 +14,11 @@ interface Props {
 
 export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDone, onSkip }: Props) {
   const t = useT()
+  const locale = t.locale || 'nl-NL'
   const [y, m, d] = selectedIso.split('-').map(Number)
-  const dayName = DAY_LONG_NL[dowMon(y, m, d)]
-  const monthShort = MONTH_SHORT_NL[m - 1]
+  const dateObj = new Date(y, m - 1, d)
+  const dayName = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
+  const monthShort = new Intl.DateTimeFormat(locale, { month: 'short' }).format(dateObj).replace('.', '')
   const [savingType, setSavingType] = useState<string | null>(null)
 
   const groups = useMemo(() => {
