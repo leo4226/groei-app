@@ -284,7 +284,7 @@ export default function MapPage() {
 
   if (loading && !map) {
     return (
-      <div className="flex flex-col h-[calc(100dvh-5rem)] p-4 overflow-hidden">
+      <div className="flex flex-col h-full p-4 overflow-hidden">
         <div className="h-8 w-32 bg-surface rounded-lg animate-pulse mb-4 shrink-0" />
         <div className="flex-1 bg-surface rounded-2xl animate-pulse" />
       </div>
