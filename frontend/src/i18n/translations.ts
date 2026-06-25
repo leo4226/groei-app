@@ -1092,6 +1092,12 @@ export type Translations = {
       label: string     // "Voeg je eerste plant toe"
       cta: string       // "Plant toevoegen"
     }
+    installApp: {
+      label: string     // "Voeg toe aan beginscherm"
+      hintIos: string   // "Deel → Zet op beginscherm"
+      hintAndroid: string // "Menu → Toevoegen aan startscherm"
+      done: string      // "Al geïnstalleerd ✓"
+    }
     dismiss: string     // "Sluiten" / "Dismiss"
     completed: string   // "✅ Klaar! Je hebt alle stappen voltooid"
   }

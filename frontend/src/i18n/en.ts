@@ -1112,6 +1112,12 @@ export const en: Translations = {
       label: 'Add your first plant',
       cta: 'Add plant',
     },
+    installApp: {
+      label: 'Add Floreren to your home screen',
+      hintIos: 'Share → Add to Home Screen',
+      hintAndroid: 'Browser menu → Add to Home Screen',
+      done: 'Already installed ✓',
+    },
     dismiss: 'Later',
     completed: '✅ All done! You\'ve completed all the steps',
   },
