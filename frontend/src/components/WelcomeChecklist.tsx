@@ -33,10 +33,23 @@ export default function WelcomeChecklist({ hasMap, hasPlant, accountId, onCreate
   const t = useT()
   const navigate = useNavigate()
   const [dismissed, setDismissedState] = useState(() => isDismissed(accountId))
+  const [isInstalled, setIsInstalled] = useState(
+    () => window.matchMedia('(display-mode: standalone)').matches
+  )
+
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(display-mode: standalone)')
+    const handler = (e: MediaQueryListEvent) => setIsInstalled(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const complete = hasMap && hasPlant
 
-  // Auto-hide when everything is done
+  // Auto-hide when map + plant are done
   useEffect(() => {
     if (complete && !isDismissed(accountId)) {
       setDismissed(accountId)
@@ -46,21 +59,38 @@ export default function WelcomeChecklist({ hasMap, hasPlant, accountId, onCreate
 
   if (dismissed) return null
 
-  const steps = [
+  type Step = {
+    key: string
+    done: boolean
+    label: string
+    cta?: string
+    action?: () => void
+    hint?: string
+  }
+
+  const steps: Step[] = [
     {
-      key: 'map' as const,
+      key: 'map',
       done: hasMap,
       label: t.onboarding.createMap.label,
       cta: t.onboarding.createMap.cta,
       action: onCreateMap,
     },
     {
-      key: 'plant' as const,
+      key: 'plant',
       done: hasPlant,
       label: t.onboarding.addPlant.label,
       cta: t.onboarding.addPlant.cta,
       action: () => navigate('/plants/add'),
     },
+    ...(isMobile ? [{
+      key: 'install',
+      done: isInstalled,
+      label: t.onboarding.installApp.label,
+      hint: isIos
+        ? t.onboarding.installApp.hintIos
+        : t.onboarding.installApp.hintAndroid,
+    }] : []),
   ]
 
   const completedCount = steps.filter((s) => s.done).length
@@ -118,19 +148,30 @@ export default function WelcomeChecklist({ hasMap, hasPlant, accountId, onCreate
             </div>
 
             {/* Label */}
-            <div
-              style={{
-                flex: 1,
-                fontFamily: 'var(--font-heading)', fontWeight: 400,
-                fontSize: 13, color: step.done ? 'var(--color-text-muted)' : 'var(--color-text)',
-                textDecoration: step.done ? 'line-through' : 'none',
-              }}
-            >
-              {step.label}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--font-heading)', fontWeight: 400,
+                  fontSize: 13, color: step.done ? 'var(--color-text-muted)' : 'var(--color-text)',
+                  textDecoration: step.done ? 'line-through' : 'none',
+                }}
+              >
+                {step.label}
+              </div>
+              {/* Hint for steps without a CTA (e.g. install) */}
+              {!step.done && step.hint && (
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 9,
+                  textTransform: 'uppercase', letterSpacing: '0.13em',
+                  color: 'var(--color-text-muted)', marginTop: 3,
+                }}>
+                  {step.hint}
+                </div>
+              )}
             </div>
 
-            {/* CTA button — only show if not done */}
-            {!step.done && (
+            {/* CTA button — only show if not done and has an action */}
+            {!step.done && step.cta && step.action && (
               <button
                 onClick={step.action}
                 style={{

@@ -1112,6 +1112,12 @@ export const nl: Translations = {
       label: 'Voeg je eerste plant toe',
       cta: 'Plant toevoegen',
     },
+    installApp: {
+      label: 'Voeg Floreren toe aan je beginscherm',
+      hintIos: 'Deel → Zet op beginscherm',
+      hintAndroid: 'Browsermenu → Toevoegen aan startscherm',
+      done: 'Al geïnstalleerd ✓',
+    },
     dismiss: 'Later',
     completed: '✅ Klaar! Je hebt alle stappen doorlopen',
   },
