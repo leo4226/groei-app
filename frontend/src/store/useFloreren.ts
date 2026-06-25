@@ -12,6 +12,7 @@ interface FlorerStore {
   plantFact: PlantFactOut | null
   activeUserId: number | null
   isLoading: boolean
+  hasLoaded: boolean
   error: string | null
   showPlantPicker: boolean
   careVersions: Record<number, number>
@@ -68,6 +69,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   plantFact: null,
   activeUserId: getSavedUserId(),
   isLoading: false,
+  hasLoaded: false,
   error: null,
   showPlantPicker: false,
   careVersions: {},
@@ -82,14 +84,14 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         mapsApi.list(),
         plantsApi.list(),
       ])
-      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false }
+      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true }
       if (!get().activeUserId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))
       }
       set(state)
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false })
+      set({ error: (e as Error).message, isLoading: false, hasLoaded: true })
     }
   },
 

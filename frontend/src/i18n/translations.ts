@@ -136,6 +136,10 @@ export type Translations = {
     mastheadLede: string
     // Stat label for masthead
     mastheadStatLabel: string
+    // Empty state when no maps exist
+    noMaps: string
+    createFirstMap: string
+    createFirstLede: string
   }
 
   // ── Map settings page ───────────────────────────────────────────
@@ -1002,6 +1006,11 @@ export type Translations = {
     emptyNoPlants: string             // "Nog geen planten in deze collectie."
     emptySearchHint: string           // "Probeer een andere zoekopdracht"
     emptyNoPlantsHint: string         // "Voeg je eerste plant toe via + Toevoegen"
+    select: string                    // "Selecteer" / "Select"
+    selected: (n: number) => string   // "2 planten geselecteerd"
+    bulkArchiveBtn: (n: number) => string   // "Archiveer (2)"
+    bulkArchiveConfirm: (n: number) => string  // confirm dialog text
+    renameHint: string                // aria-label for rename button
   }
 
   // ── Map page (garden/indoor view) ────────────────────────

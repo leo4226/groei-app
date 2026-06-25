@@ -164,6 +164,9 @@ export const nl: Translations = {
     mastheadAccent: 'kaarten',
     mastheadLede: 'Bekijk en beheer al je tuinen en binnenruimtes.',
     mastheadStatLabel: 'kaarten',
+    noMaps: 'Nog geen kaarten',
+    createFirstMap: 'Maak je eerste kaart',
+    createFirstLede: 'Teken je tuin of voeg een binnenruimte toe om te beginnen.',
   },
 
   // ── Map settings page ───────────────────────────────────────────
@@ -984,6 +987,11 @@ export const nl: Translations = {
     emptyNoPlants: 'Nog geen planten in deze collectie.',
     emptySearchHint: 'Probeer een andere zoekopdracht',
     emptyNoPlantsHint: 'Voeg je eerste plant toe via + Toevoegen',
+    select: 'Selecteer',
+    selected: (n) => n === 1 ? '1 plant geselecteerd' : `${n} planten geselecteerd`,
+    bulkArchiveBtn: (n) => `Archiveer (${n})`,
+    bulkArchiveConfirm: (n) => n === 1 ? 'Weet je zeker dat je 1 plant wilt verwijderen?' : `Weet je zeker dat je ${n} planten wilt verwijderen?`,
+    renameHint: 'Hernoem',
   },
 
   // ── Map page (garden/indoor view) ────────────────────────

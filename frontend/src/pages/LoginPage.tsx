@@ -146,7 +146,7 @@ export default function LoginPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      placeholder="Leon"
+                      placeholder="Sam"
                       style={inputStyle}
                     />
                   </div>
@@ -159,7 +159,7 @@ export default function LoginPage() {
                       type="text"
                       value={householdName}
                       onChange={(e) => setHouseholdName(e.target.value)}
-                      placeholder={name ? `${name}'s Garden` : "Korbee Garden"}
+                      placeholder={name ? `${name}'s Garden` : 'My Garden'}
                       style={inputStyle}
                     />
                   </div>
