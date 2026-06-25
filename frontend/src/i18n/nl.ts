@@ -984,6 +984,11 @@ export const nl: Translations = {
     emptyNoPlants: 'Nog geen planten in deze collectie.',
     emptySearchHint: 'Probeer een andere zoekopdracht',
     emptyNoPlantsHint: 'Voeg je eerste plant toe via + Toevoegen',
+    select: 'Selecteer',
+    selected: (n) => n === 1 ? '1 plant geselecteerd' : `${n} planten geselecteerd`,
+    bulkArchiveBtn: (n) => `Archiveer (${n})`,
+    bulkArchiveConfirm: (n) => n === 1 ? 'Weet je zeker dat je 1 plant wilt verwijderen?' : `Weet je zeker dat je ${n} planten wilt verwijderen?`,
+    renameHint: 'Hernoem',
   },
 
   // ── Map page (garden/indoor view) ────────────────────────

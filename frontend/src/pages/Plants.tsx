@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense, useRef } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { PLANT_ICONS } from '../constants/plantIcons'
@@ -83,9 +83,7 @@ export default function Plants() {
   const handleBulkArchive = async () => {
     const ids = [...selectedIds]
     if (ids.length === 0) return
-    const msg = ids.length === 1
-      ? `Weet je zeker dat je ${ids.length} plant wilt verwijderen?`
-      : `Weet je zeker dat je ${ids.length} planten wilt verwijderen?`
+    const msg = t.plantsPage.bulkArchiveConfirm(ids.length)
     if (!window.confirm(msg)) return
     await bulkArchivePlants(ids)
     clearSelection()
@@ -320,7 +318,7 @@ export default function Plants() {
               border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
               transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
             }}>
-              {'Annuleren'}
+              {t.common.cancel}
             </button>
           ) : (
             <button onClick={() => setIsSelecting(true)} style={{
@@ -332,7 +330,7 @@ export default function Plants() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
             >
-              {'Selecteer'}
+              {t.plantsPage.select}
             </button>
           )}
         </div>
@@ -436,9 +434,7 @@ export default function Plants() {
               boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
             }}>
               <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text)' }}>
-                {selectedIds.size === 1
-                  ? `1 plant geselecteerd`
-                  : `${selectedIds.size} planten geselecteerd`}
+                {t.plantsPage.selected(selectedIds.size)}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={clearSelection} style={{
@@ -447,7 +443,7 @@ export default function Plants() {
                   border: '1px solid var(--color-border)', background: 'transparent',
                   color: 'var(--color-text)',
                 }}>
-                  Annuleren
+                  {t.common.cancel}
                 </button>
                 <button onClick={handleBulkArchive} disabled={selectedIds.size === 0} style={{
                   fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
@@ -456,7 +452,7 @@ export default function Plants() {
                   color: 'var(--color-surface)',
                   opacity: selectedIds.size === 0 ? 0.5 : 1,
                 }}>
-                  Archiveer ({selectedIds.size})
+                  {t.plantsPage.bulkArchiveBtn(selectedIds.size)}
                 </button>
               </div>
             </div>
@@ -525,7 +521,7 @@ export default function Plants() {
                 padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
-              {isSelecting ? 'Annuleren' : 'Selecteer'}
+              {isSelecting ? t.common.cancel : t.plantsPage.select}
             </button>
           </div>
         </div>
@@ -934,11 +930,106 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
   isSelecting?: boolean; selected?: boolean; onToggle?: () => void;
 }) {
   const CATEGORY_LABELS = useCategoryLabels()
+  const { updatePlant } = useFloreren()
+  const t = useT()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(plant.name)
+  const [saving, setSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
   const typeLabel = icon?.cat || plant.plant_type || null
   const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null
   const formLabel = icon?.form || null
   const familyName = icon?.family || null
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [isEditing])
+
+  useEffect(() => {
+    if (!isEditing) setEditName(plant.name)
+  }, [plant.name, isEditing])
+
+  async function commitEdit() {
+    const trimmed = editName.trim()
+    if (!trimmed || trimmed === plant.name) {
+      setIsEditing(false)
+      setEditName(plant.name)
+      return
+    }
+    setSaving(true)
+    try {
+      await updatePlant(plant.id, { name: trimmed })
+      setIsEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function startEdit(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditName(plant.name)
+    setIsEditing(true)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
+    if (e.key === 'Escape') { setIsEditing(false); setEditName(plant.name) }
+  }
+
+  const nameRow = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden' }}>
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          value={editName}
+          onChange={e => setEditName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={commitEdit}
+          disabled={saving}
+          style={{
+            flex: 1, minWidth: 0,
+            fontFamily: 'var(--font-heading)', fontWeight: 500,
+            fontSize: 14, lineHeight: 1.2, color: 'var(--color-text)',
+            letterSpacing: '-0.01em', border: 'none', outline: 'none',
+            background: 'transparent', padding: 0, margin: 0,
+          }}
+        />
+      ) : (
+        <>
+          <h3 style={{
+            margin: 0, flex: 1, fontFamily: 'var(--font-heading)', fontWeight: 500,
+            fontSize: 14, lineHeight: 1.2, color: 'var(--color-text)',
+            letterSpacing: '-0.01em', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {plant.name}
+          </h3>
+          {!isSelecting && (
+            <button
+              onClick={startEdit}
+              aria-label={t.plantsPage.renameHint}
+              style={{
+                flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+                padding: 2, color: 'var(--color-text-muted)', opacity: 0.5,
+                display: 'flex', alignItems: 'center',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
 
   if (isSelecting) {
     return (
@@ -967,14 +1058,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
           </div>
         </div>
         <div style={{ padding: '10px 12px 12px' }}>
-          <h3 style={{
-            margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 500,
-            fontSize: 14, lineHeight: 1.2, color: 'var(--color-text)',
-            letterSpacing: '-0.01em', whiteSpace: 'nowrap',
-            overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {plant.name}
-          </h3>
+          {nameRow}
           {plant.species && (
             <p style={{
               margin: '1px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic',
@@ -993,6 +1077,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
     <Link to={`/plants/${plant.id}`}
       className="card card-glow no-underline block"
       style={{ borderRadius: 14, overflow: 'hidden', color: 'inherit', textDecoration: 'none' }}
+      onClick={isEditing ? e => e.preventDefault() : undefined}
     >
       <div style={{ position: 'relative' }}>
         <PlantIconWell plant={plant} />
@@ -1021,14 +1106,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
         )}
       </div>
       <div style={{ padding: '10px 12px 12px' }}>
-        <h3 style={{
-          margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 500,
-          fontSize: 14, lineHeight: 1.2, color: 'var(--color-text)',
-          letterSpacing: '-0.01em', whiteSpace: 'nowrap',
-          overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {plant.name}
-        </h3>
+        {nameRow}
         {plant.species && (
           <p style={{
             margin: '1px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic',

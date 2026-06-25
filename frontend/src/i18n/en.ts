@@ -984,6 +984,11 @@ export const en: Translations = {
     emptyNoPlants: 'No plants in this collection yet.',
     emptySearchHint: 'Try a different search term',
     emptyNoPlantsHint: 'Add your first plant via + Add',
+    select: 'Select',
+    selected: (n) => n === 1 ? '1 plant selected' : `${n} plants selected`,
+    bulkArchiveBtn: (n) => `Archive (${n})`,
+    bulkArchiveConfirm: (n) => n === 1 ? 'Are you sure you want to remove 1 plant?' : `Are you sure you want to remove ${n} plants?`,
+    renameHint: 'Rename',
   },
 
   // ── Map page (garden/indoor view) ────────────────────────
