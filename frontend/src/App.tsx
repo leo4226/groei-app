@@ -108,7 +108,6 @@ function MapRedirect() {
 
 export default function App() {
   const load = useFloreren((s) => s.load)
-  const maps = useFloreren((s) => s.maps)
   const isLoading = useFloreren((s) => s.isLoading)
   const hasLoaded = useFloreren((s) => s.hasLoaded)
   const error = useFloreren((s) => s.error)
