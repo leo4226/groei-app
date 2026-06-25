@@ -2,23 +2,26 @@ import { useState } from 'react'
 import { usePlantCareProfile } from '../../hooks/usePlantCareProfile'
 import { CARE_TYPE_INFO, type CareType } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   plantId: number
 }
 
-const STATUS_PILL: Record<string, { label: string; className: string }> = {
-  overdue:   { label: 'Achter',  className: 'text-overdue bg-overdue/10' },
-  due_today: { label: 'Vandaag', className: 'text-amber-600 bg-amber-50' },
-  good:      { label: 'Goed',    className: 'text-good bg-good/10' },
-  soon:      { label: 'Binnenkort', className: 'text-sky-600 bg-sky-50' },
-  inactive:  { label: 'Uit',     className: 'text-text-muted bg-bg' },
-}
-
 export function CareProfileSection({ plantId }: Props) {
+  const t = useT()
+  const isEN = t.locale?.startsWith('en') ?? false
   const { state, loading } = usePlantCareProfile(plantId)
   const { markCareDone, patchCareProfile } = useFloreren()
   const [saving, setSaving] = useState<string | null>(null)
+
+  const STATUS_PILL: Record<string, { label: string; className: string }> = {
+    overdue:   { label: isEN ? 'Overdue'  : 'Achter',     className: 'text-overdue bg-overdue/10' },
+    due_today: { label: isEN ? 'Today'    : 'Vandaag',    className: 'text-amber-600 bg-amber-50' },
+    good:      { label: isEN ? 'Good'     : 'Goed',       className: 'text-good bg-good/10' },
+    soon:      { label: isEN ? 'Soon'     : 'Binnenkort', className: 'text-sky-600 bg-sky-50' },
+    inactive:  { label: isEN ? 'Off'      : 'Uit',        className: 'text-text-muted bg-bg' },
+  }
 
   if (loading) {
     return (
@@ -32,11 +35,13 @@ export function CareProfileSection({ plantId }: Props) {
 
   if (!state) {
     return (
-      <p className="text-sm text-text-muted">Kon verzorgingsprofiel niet laden.</p>
+      <p className="text-sm text-text-muted">
+        {isEN ? 'Could not load care profile.' : 'Kon verzorgingsprofiel niet laden.'}
+      </p>
     )
   }
 
-  const envLabel = state.environment === 'outdoor' ? 'Tuin' : 'Binnen'
+  const envLabel = state.environment === 'outdoor' ? t.common.garden : t.common.envIndoor
 
   async function handleQuickAction(careType: string) {
     await markCareDone(plantId, careType)
@@ -72,7 +77,7 @@ export function CareProfileSection({ plantId }: Props) {
         </span>
         {state.top_warning && (
           <span className="text-xs flex items-center gap-1" style={{ color: state.top_warning.color }}>
-            {state.top_warning.icon} {state.top_warning.message_nl}
+            {state.top_warning.icon} {isEN ? state.top_warning.message_en : state.top_warning.message_nl}
           </span>
         )}
       </div>
@@ -104,7 +109,7 @@ export function CareProfileSection({ plantId }: Props) {
                 </div>
                 {summary?.last_done && (
                   <p className="text-xs text-text-muted">
-                    Laatst: {new Date(summary.last_done).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+                    {isEN ? 'Last:' : 'Laatst:'} {new Date(summary.last_done).toLocaleDateString(t.locale || 'nl-NL', { day: 'numeric', month: 'short' })}
                   </p>
                 )}
               </div>
@@ -115,7 +120,7 @@ export function CareProfileSection({ plantId }: Props) {
                   onClick={() => handleQuickAction(careType)}
                   className="flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded-full text-xs font-semibold active:scale-95 transition-transform whitespace-nowrap"
                 >
-                  Doen
+                  {isEN ? 'Done' : 'Doen'}
                 </button>
               )}
 
@@ -127,7 +132,7 @@ export function CareProfileSection({ plantId }: Props) {
                     ? 'bg-primary text-white border-primary'
                     : 'text-text-muted border-border hover:border-primary/50'
                 }`}
-                title={isActive ? 'Uitschakelen' : 'Inschakelen'}
+                title={isActive ? (isEN ? 'Disable' : 'Uitschakelen') : (isEN ? 'Enable' : 'Inschakelen')}
               >
                 {isActive ? '✓' : '+'}
               </button>

@@ -36,12 +36,15 @@ export function computeSuitability(
   phenology: Phenology | null | undefined,
   sunHoursAtSpot: number | null,
   month: number,
+  locale?: string,
 ): SuitabilityResult {
+  const isEN = locale?.startsWith('en') ?? false
+
   if (!phenology || !phenology.months) {
     return {
       status: 'unknown',
       badgeLabel: '?',
-      detailLabel: 'Geen soortdata beschikbaar',
+      detailLabel: isEN ? 'No species data available' : 'Geen soortdata beschikbaar',
       sunNeeded: 0,
       sunActual: sunHoursAtSpot ?? 0,
       phaseLabel: '',
@@ -54,7 +57,7 @@ export function computeSuitability(
     return {
       status: 'unknown',
       badgeLabel: '?',
-      detailLabel: 'Geen maanddata',
+      detailLabel: isEN ? 'No month data' : 'Geen maanddata',
       sunNeeded: 0,
       sunActual: sunHoursAtSpot ?? 0,
       phaseLabel: '',
@@ -62,17 +65,20 @@ export function computeSuitability(
     }
   }
 
-  const { phase, phase_label_nl, sun_hours_needed, description_nl, actions_nl } = monthData
+  const { phase, phase_label_nl, phase_label_en, sun_hours_needed, description_nl, description_en, actions_nl, actions_en } = monthData
+  const phaseLabel = (isEN && phase_label_en) ? phase_label_en : phase_label_nl
+  const description = (isEN && description_en) ? description_en : description_nl
+  const actions = (isEN && actions_en?.length) ? actions_en : actions_nl
 
   if (!ACTIVE_PHASES.has(phase)) {
     return {
       status: 'dormant',
-      badgeLabel: phase_label_nl,
-      detailLabel: description_nl,
+      badgeLabel: phaseLabel,
+      detailLabel: description,
       sunNeeded: 0,
       sunActual: sunHoursAtSpot ?? 0,
-      phaseLabel: phase_label_nl,
-      actions: actions_nl,
+      phaseLabel,
+      actions,
     }
   }
 
@@ -81,27 +87,29 @@ export function computeSuitability(
   if (diff >= -0.5) {
     return {
       status: 'good',
-      badgeLabel: 'Goed',
+      badgeLabel: isEN ? 'Good' : 'Goed',
       detailLabel: sunHoursAtSpot != null
-        ? `${description_nl} Dit punt heeft genoeg zon.`
-        : description_nl,
+        ? `${description} ${isEN ? 'This spot has enough sun.' : 'Dit punt heeft genoeg zon.'}`
+        : description,
       sunNeeded: sun_hours_needed,
       sunActual: sunHoursAtSpot ?? 0,
-      phaseLabel: phase_label_nl,
-      actions: actions_nl,
+      phaseLabel,
+      actions,
     }
   }
 
   return {
     status: 'too_little',
-    badgeLabel: 'Te weinig zon',
+    badgeLabel: isEN ? 'Too little sun' : 'Te weinig zon',
     detailLabel: sunHoursAtSpot != null
-      ? `${description_nl} Dit punt heeft ~${sunHoursAtSpot.toFixed(1)}u zon, maar de plant heeft ${sun_hours_needed}u nodig.`
-      : description_nl,
+      ? isEN
+        ? `${description} This spot gets ~${sunHoursAtSpot.toFixed(1)}h of sun, but the plant needs ${sun_hours_needed}h.`
+        : `${description} Dit punt heeft ~${sunHoursAtSpot.toFixed(1)}u zon, maar de plant heeft ${sun_hours_needed}u nodig.`
+      : description,
     sunNeeded: sun_hours_needed,
     sunActual: sunHoursAtSpot ?? 0,
-    phaseLabel: phase_label_nl,
-    actions: actions_nl,
+    phaseLabel,
+    actions,
   }
 }
 

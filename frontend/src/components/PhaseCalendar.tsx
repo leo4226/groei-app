@@ -21,7 +21,7 @@ export default function PhaseCalendar({
 }: Props) {
   const t = useT()
   const currentMonth = new Date().getMonth() + 1
-  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth)
+  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth, locale)
 
   // Locale-aware month formatting
   const locale = t.locale || 'nl-NL'

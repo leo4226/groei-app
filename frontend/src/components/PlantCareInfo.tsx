@@ -115,15 +115,19 @@ export default function PlantCareInfo({ plantId }: Props) {
         ) : care.data ? (
           <>
             {/* Light bar */}
-            {care.data.light_raw != null && (
+            {(care.data.light_label != null || care.data.light_raw != null) && (
               <div className="flex items-center gap-2">
                 <span className="text-sm shrink-0">☀️</span>
-                <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-pumpkin-swirl rounded-full"
-                    style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
-                  />
-                </div>
+                {care.data.light_raw != null ? (
+                  <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-pumpkin-swirl rounded-full"
+                      style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1" />
+                )}
                 <span className="text-xs text-text-muted shrink-0 w-20 text-right">
                   {lightLabel[care.data.light_label ?? ''] ?? care.data.light_label}
                 </span>
