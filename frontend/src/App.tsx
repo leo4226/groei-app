@@ -5,11 +5,13 @@ import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
 import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
+import NewMapModal from './components/dashboard/NewMapModal'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { icons } from './api/client'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { useT } from './context/LanguageContext'
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -51,7 +53,9 @@ function MapRedirect() {
   const maps = useFloreren((s) => s.maps)
   const loadMaps = useFloreren((s) => s.loadMaps)
   const isLoading = useFloreren((s) => s.isLoading)
+  const t = useT()
   const [ready, setReady] = useState(maps.length > 0)
+  const [showCreate, setShowCreate] = useState(false)
 
   // Load maps on mount if not already loaded
   useEffect(() => {
@@ -69,16 +73,44 @@ function MapRedirect() {
   }
 
   if (!ready) {
-    return <div className="p-6 text-text-muted text-center">Loading maps…</div>
+    return <div className="p-6 text-text-muted text-center">{t.maps.loading}</div>
   }
 
-  return <div className="p-6 text-text-muted text-center">No maps found.</div>
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      minHeight: '60vh', padding: '40px 24px', textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🗺️</div>
+      <h2 style={{
+        fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 24,
+        color: 'var(--color-text)', margin: '0 0 8px', letterSpacing: '-0.01em',
+      }}>{t.maps.noMaps}</h2>
+      <p style={{
+        fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--color-text-muted)',
+        maxWidth: 280, lineHeight: 1.5, margin: '0 0 28px',
+      }}>{t.maps.createFirstLede}</p>
+      <button
+        onClick={() => setShowCreate(true)}
+        style={{
+          padding: '12px 28px', borderRadius: 100,
+          background: 'var(--color-primary)', color: '#fff',
+          fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600,
+          border: 'none', cursor: 'pointer',
+        }}
+      >
+        {t.maps.createFirstMap}
+      </button>
+      <NewMapModal open={showCreate} onClose={() => setShowCreate(false)} />
+    </div>
+  )
 }
 
 export default function App() {
   const load = useFloreren((s) => s.load)
   const maps = useFloreren((s) => s.maps)
   const isLoading = useFloreren((s) => s.isLoading)
+  const hasLoaded = useFloreren((s) => s.hasLoaded)
   const error = useFloreren((s) => s.error)
   const clearError = useFloreren((s) => s.clearError)
   const showPlantPicker = useFloreren((s) => s.showPlantPicker)
@@ -98,10 +130,10 @@ export default function App() {
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
   useEffect(() => {
-    if (getToken() && !isLoginPage && maps.length === 0 && !isLoading) {
+    if (getToken() && !isLoginPage && !hasLoaded && !isLoading) {
       load()
     }
-  }, [load, isLoginPage, maps.length, isLoading])
+  }, [load, isLoginPage, hasLoaded, isLoading])
 
   // Prime the icon URL index once so generated (R2) icons resolve app-wide.
   useEffect(() => { icons.catalog().catch(() => {}) }, [])

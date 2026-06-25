@@ -136,6 +136,10 @@ export type Translations = {
     mastheadLede: string
     // Stat label for masthead
     mastheadStatLabel: string
+    // Empty state when no maps exist
+    noMaps: string
+    createFirstMap: string
+    createFirstLede: string
   }
 
   // ── Map settings page ───────────────────────────────────────────

@@ -164,6 +164,9 @@ export const nl: Translations = {
     mastheadAccent: 'kaarten',
     mastheadLede: 'Bekijk en beheer al je tuinen en binnenruimtes.',
     mastheadStatLabel: 'kaarten',
+    noMaps: 'Nog geen kaarten',
+    createFirstMap: 'Maak je eerste kaart',
+    createFirstLede: 'Teken je tuin of voeg een binnenruimte toe om te beginnen.',
   },
 
   // ── Map settings page ───────────────────────────────────────────

@@ -164,6 +164,9 @@ export const en: Translations = {
     mastheadAccent: 'maps',
     mastheadLede: 'View and manage all your gardens and indoor spaces.',
     mastheadStatLabel: 'maps',
+    noMaps: 'No maps yet',
+    createFirstMap: 'Create your first map',
+    createFirstLede: 'Draw your garden or add an indoor space to get started.',
   },
 
   // ── Map settings page ───────────────────────────────────────────
