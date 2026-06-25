@@ -21,10 +21,10 @@ export default function PhaseCalendar({
 }: Props) {
   const t = useT()
   const currentMonth = new Date().getMonth() + 1
-  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth, locale)
 
   // Locale-aware month formatting
   const locale = t.locale || 'nl-NL'
+  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth, locale)
   const fmtMonth = (m: number) => {
     return new Intl.DateTimeFormat(locale, { month: 'short' })
       .format(new Date(2026, m - 1, 1))
