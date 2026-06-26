@@ -41,7 +41,7 @@ export default function LogboekPage() {
       {/* Header */}
       <div style={{ padding: '28px 18px 0', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <h2 style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--color-primary)', margin: 0 }}>{t.log.title}</h2>
-        <Link to="/dashboard" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)', textDecoration: 'none' }}>{t.common.back}</Link>
+        <Link to="/maps" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)', textDecoration: 'none' }}>{t.common.back}</Link>
       </div>
 
       {/* Entries */}

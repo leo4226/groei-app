@@ -117,7 +117,7 @@ export default function MapSettingsPage() {
     setDeleting(true)
     try {
       await deleteMap(mapId)
-      navigate('/dashboard', { replace: true })
+      navigate('/maps', { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : t.mapSettings.deleteFailed)
       setDeleting(false)

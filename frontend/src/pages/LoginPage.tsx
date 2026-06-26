@@ -25,16 +25,16 @@ export default function LoginPage() {
       if (mode === 'login') {
         const res = await login(email, password)
         saveToken(res.token)
-        navigate('/dashboard', { replace: true })
+        navigate('/maps', { replace: true })
       } else if (mode === 'register') {
         const hName = householdName.trim() || `${name.trim()}'s Garden`
         const res = await register(email, password, name, hName)
         saveToken(res.token)
-        navigate('/dashboard', { replace: true })
+        navigate('/maps', { replace: true })
       } else if (mode === 'join') {
         const res = await household.join({ code: code.toUpperCase().trim(), email, password, name })
         saveToken(res.token)
-        navigate('/dashboard', { replace: true })
+        navigate('/maps', { replace: true })
       } else {
         await forgotPassword(email)
         setForgotSent(true)

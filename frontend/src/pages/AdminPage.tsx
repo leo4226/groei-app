@@ -87,10 +87,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('floreren-token')
-    if (!token) { navigate('/dashboard', { replace: true }); return }
+    if (!token) { navigate('/maps', { replace: true }); return }
     adminPanel.me()
       .then(d => { setEmail(d.email); setChecking(false) })
-      .catch(() => navigate('/dashboard', { replace: true }))
+      .catch(() => navigate('/maps', { replace: true }))
   }, [navigate])
 
   if (checking) return (
@@ -105,7 +105,7 @@ export default function AdminPage() {
         <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
           <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/maps')}
               style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
               title="Back to app"
             >
