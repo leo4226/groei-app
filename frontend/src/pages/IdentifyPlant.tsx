@@ -20,9 +20,12 @@ type Step =
   | { kind: 'camera' }
   | { kind: 'identifying'; thumbnail: string }
   | ({ kind: 'results' } & ResultsState)
+  | ({ kind: 'destination'; candidate: PlantIdCandidate; from: ResultsState })
   | { kind: 'enriching' }
   | ({ kind: 'sighting'; weedId: number; weedName: string; from: ResultsState })
   | { kind: 'error'; message: string; thumbnail: string | null }
+
+type ScanDestination = 'journal' | 'garden'
 
 
 export function IdentifyPlantPage() {
@@ -78,12 +81,18 @@ export function IdentifyPlantPage() {
     }
   }
 
-  async function handleChoose(candidate: PlantIdCandidate) {
-    if (!capturedPhotoDataUrl) return
+  function handleChoose(candidate: PlantIdCandidate) {
+    if (step.kind !== 'results') return
+    setStep({ kind: 'destination', candidate, from: step })
+  }
+
+  async function handleDestination(destination: ScanDestination) {
+    if (step.kind !== 'destination' || !capturedPhotoDataUrl) return
+    const candidate = step.candidate
     setStep({ kind: 'enriching' })
     try {
       const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
-      if (routeState?.mode === 'discover') {
+      if (destination === 'journal') {
         navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl } })
       } else {
         navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
@@ -91,10 +100,27 @@ export function IdentifyPlantPage() {
     } catch (e) {
       const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
       if (isNotFound) {
-        if (routeState?.mode === 'discover') {
-          navigate('/plants/discovery', { state: { candidate: { scientific_name: candidate.scientific_name, common_name_nl: candidate.common_names_nl?.[0] ?? candidate.scientific_name }, thumbnail: capturedPhotoDataUrl } })
+        const commonName = activeLang === 'en'
+          ? candidate.common_names_en?.[0] ?? candidate.common_names_nl?.[0] ?? candidate.scientific_name
+          : candidate.common_names_nl?.[0] ?? candidate.common_names_en?.[0] ?? candidate.scientific_name
+        if (destination === 'journal') {
+          navigate('/plants/discovery', {
+            state: {
+              candidate: {
+                scientific_name: candidate.scientific_name,
+                common_name: commonName,
+                common_name_nl: candidate.common_names_nl?.[0] ?? commonName,
+              },
+              thumbnail: capturedPhotoDataUrl,
+            },
+          })
         } else {
-          navigate('/plants/add', { state: { prefill: { scientific_name: candidate.scientific_name }, from: 'identify' } })
+          navigate('/plants/add', {
+            state: {
+              prefill: { name: commonName, scientific_name: candidate.scientific_name },
+              from: 'identify',
+            },
+          })
         }
         return
       }
@@ -166,6 +192,56 @@ export function IdentifyPlantPage() {
     return (
       <div className="p-6 max-w-md mx-auto text-center">
         <p className="text-text-soft">{t.identify.enriching}</p>
+      </div>
+    )
+  }
+
+  if (step.kind === 'destination') {
+    const commonName = activeLang === 'en'
+      ? step.candidate.common_names_en?.[0] ?? step.candidate.common_names_nl?.[0] ?? step.candidate.scientific_name
+      : step.candidate.common_names_nl?.[0] ?? step.candidate.common_names_en?.[0] ?? step.candidate.scientific_name
+
+    return (
+      <div
+        className="min-h-screen bg-bg flex flex-col max-w-md mx-auto"
+        style={{ padding: 'max(env(safe-area-inset-top, 0px), 24px) 20px max(env(safe-area-inset-bottom, 0px), 24px)' }}
+      >
+        <button
+          onClick={() => setStep({ kind: 'results', ...step.from })}
+          className="self-start text-text-muted text-sm mb-5"
+        >
+          ← {t.identify.destination.backToMatches}
+        </button>
+
+        <div className="flex flex-col items-center text-center gap-3 mb-7">
+          <img src={step.from.thumbnail} alt="" className="w-28 h-28 rounded-2xl object-cover shadow-sm" />
+          <div>
+            <p className="text-xl font-semibold text-text">{commonName}</p>
+            <p className="text-xs italic text-text-soft mt-1">{step.candidate.scientific_name}</p>
+          </div>
+        </div>
+
+        <div className="mb-5 text-center">
+          <h2 className="text-2xl font-semibold text-text mb-2">{t.identify.destination.title}</h2>
+          <p className="text-sm text-text-muted leading-relaxed">{t.identify.destination.subtitle}</p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => handleDestination('journal')}
+            className="w-full p-4 rounded-2xl border-2 border-primary bg-primary/10 text-left active:scale-[0.99] transition-transform"
+          >
+            <span className="block text-base font-semibold text-primary">🌿 {t.identify.destination.journalTitle}</span>
+            <span className="block text-sm text-text-muted mt-1">{t.identify.destination.journalSubtitle}</span>
+          </button>
+          <button
+            onClick={() => handleDestination('garden')}
+            className="w-full p-4 rounded-2xl border border-border bg-surface text-left active:scale-[0.99] transition-transform"
+          >
+            <span className="block text-base font-semibold text-text">🏡 {t.identify.destination.gardenTitle}</span>
+            <span className="block text-sm text-text-muted mt-1">{t.identify.destination.gardenSubtitle}</span>
+          </button>
+        </div>
       </div>
     )
   }
