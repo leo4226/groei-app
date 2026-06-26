@@ -1053,6 +1053,16 @@ export type Translations = {
     sheetOtherGardenHint: string                 // "in een andere tuin"
     careDone: string                             // "Klaar" — mark care done
     careSkip: string                             // "Overslaan" — skip care
+    // Weather pill (outdoor maps)
+    weatherConditions: {
+      sun: string
+      partly: string
+      rain: string
+      snow: string
+      thunder: string
+    }
+    weatherTodayRain: string                     // "Regen vandaag" — today's rainfall label
+    weatherForecastLink: string                  // "Bekijk kalender →" — link to /calendar
     unplacedTitle: string                        // "Nog te plaatsen" — unplaced tray header
     unplacedCount: (n: number) => string         // "{n} niet geplaatst"
     spotInspectorHint: string

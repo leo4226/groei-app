@@ -7,6 +7,7 @@ import MapActionCluster from '../components/map/MapActionCluster'
 import MapBottomSheet, { type SheetMode } from '../components/map/MapBottomSheet'
 import CareNeedsList from '../components/map/CareNeedsList'
 import GlobalCareSheet from '../components/map/GlobalCareSheet'
+import WeatherPill from '../components/map/WeatherPill'
 import GardenBiodiversityCard from '../components/GardenBiodiversityCard'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
 import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
@@ -432,6 +433,11 @@ export default function MapPage() {
         <div className="landscape-mobile-hide">
           {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" onModalOpenChange={setBiodiversityModalOpen} />}
         </div>
+        {isOutdoor && mapLat != null && mapLon != null && (
+          <div className="landscape-mobile-hide">
+            <WeatherPill lat={mapLat} lon={mapLon} />
+          </div>
+        )}
       </div>
 
       {moveModeActive && (
