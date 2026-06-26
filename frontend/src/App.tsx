@@ -17,7 +17,6 @@ import { useT } from './context/LanguageContext'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const MapPage = lazy(() => import('./pages/MapPage'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Plants = lazy(() => import('./pages/Plants'))
 const AddPlant = lazy(() => import('./pages/AddPlant'))
 const PlantDetail = lazy(() => import('./pages/PlantDetail'))
@@ -201,14 +200,9 @@ export default function App() {
                   </RequireAuth>
                 }
               />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
+              {/* Dashboard retired (map-as-home migration). Keep the path as a
+                  redirect so old bookmarks / deep links don't 404. */}
+              <Route path="/dashboard" element={<Navigate to="/maps" replace />} />
               <Route
                 path="/plants"
                 element={
