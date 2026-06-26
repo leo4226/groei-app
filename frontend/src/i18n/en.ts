@@ -4,6 +4,7 @@ export const en: Translations = {
   locale: 'en-GB',
 
   nav: {
+    home: 'Home',
     plants: 'Plants',
     maps: 'Map',
     calendar: 'Calendar',

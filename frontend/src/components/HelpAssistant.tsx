@@ -5,7 +5,7 @@ import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
 import { sendChatMessage, submitBugReport, type ChatMessage, type PageContext } from '../api/chat'
 
-type PageKey = 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
+type PageKey = 'dashboard' | 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
 
 
 const STORAGE_KEY_POS = 'floreren_stekkie_pos'
@@ -18,6 +18,7 @@ const DEFAULT_BOTTOM = 80 // bottom-20
 function detectPage(pathname: string): PageKey | null {
   if (pathname.startsWith('/maps/') && pathname.includes('/edit-layout')) return 'editor'
   if (pathname.startsWith('/maps/') && pathname.includes('/settings')) return 'editor'
+  if (pathname.startsWith('/dashboard')) return 'dashboard'
   if (pathname.startsWith('/calendar')) return 'calendar'
   if (pathname.startsWith('/settings')) return 'settings'
   if (pathname.startsWith('/map/')) return 'map'
@@ -29,6 +30,12 @@ function detectPage(pathname: string): PageKey | null {
 
 function randomBubble(pageKey: PageKey, name: string): string {
   const bubbles: Record<PageKey, string[]> = {
+    dashboard: [
+      `Hey ${name}, got a question? 👋`,
+      `Know what to do today? Ask me!`,
+      `Tap me for help, ${name}.`,
+      `${name}, can I help you with anything?`,
+    ],
     calendar: [
       `Want to know what's on the schedule this week?`,
       `Ask me about care tips for this month!`,
