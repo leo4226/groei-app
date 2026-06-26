@@ -1126,10 +1126,15 @@ export const nl: Translations = {
   // ── Onboarding checklist ────────────────────────────────────────
   onboarding: {
     title: 'Welkom bij Floreren! 🌱',
+    firstRunLede: 'Een paar stappen om je tuin tot leven te brengen.',
     stepLabel: (c, t) => `Stap ${c} van ${t}`,
     createMap: {
       label: 'Maak je eerste tuin aan',
       cta: 'Tuin aanmaken',
+    },
+    drawLayout: {
+      label: 'Teken je tuinindeling',
+      cta: 'Indeling tekenen',
     },
     addPlant: {
       label: 'Voeg je eerste plant toe',

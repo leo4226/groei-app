@@ -10,7 +10,6 @@ import { useT } from '../context/LanguageContext'
 import { getToken } from '../api/auth'
 import type { Translations } from '../i18n/translations'
 import PageDecor from '../components/PageDecor'
-import WelcomeChecklist from '../components/WelcomeChecklist'
 import WeatherCard from '../components/dashboard/WeatherCard'
 import NewMapModal from '../components/dashboard/NewMapModal'
 import { resolveIconUrl } from '../utils/icons'
@@ -75,15 +74,7 @@ export default function Dashboard() {
           weather={weather}
           />
 
-        {/* ── Onboarding Checklist — only show when data is definitely loaded ── */}
-        {!isLoading && (
-          <WelcomeChecklist
-            hasMap={maps.length > 0}
-            hasPlant={plants.length > 0}
-            accountId={activeUserId ?? 0}
-            onCreateMap={() => setShowNewMap(true)}
-          />
-        )}
+        {/* Onboarding moved to the map's FirstRunOverlay (map-as-home migration). */}
 
         {/* ── Mijn Tuinen — hero position ── */}
         <section style={{ padding: '0 24px' }}>

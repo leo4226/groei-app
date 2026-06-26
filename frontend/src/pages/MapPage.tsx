@@ -8,6 +8,7 @@ import MapBottomSheet, { type SheetMode } from '../components/map/MapBottomSheet
 import CareNeedsList from '../components/map/CareNeedsList'
 import GlobalCareSheet from '../components/map/GlobalCareSheet'
 import WeatherPill from '../components/map/WeatherPill'
+import FirstRunOverlay from '../components/map/FirstRunOverlay'
 import GardenBiodiversityCard from '../components/GardenBiodiversityCard'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
 import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
@@ -43,6 +44,8 @@ export default function MapPage() {
   const loadPlantsStore = useFloreren((s) => s.loadPlants)
   const warningSummary = useFloreren((s) => s.warningSummary)
   const loadWarningSummary = useFloreren((s) => s.loadWarningSummary)
+  const hasLoaded = useFloreren((s) => s.hasLoaded)
+  const activeUserId = useFloreren((s) => s.activeUserId)
   useEffect(() => {
     if (allPlants.length === 0) loadPlantsStore()
   }, [loadPlantsStore])
@@ -149,6 +152,12 @@ export default function MapPage() {
     if (!map?.canvas_data) return null
     try { return JSON.parse(map.canvas_data) as CanvasData } catch { return null }
   }, [map?.canvas_data])
+
+  // First-run onboarding: show the overlay only for genuinely-new gardens —
+  // no plants anywhere, or the user's only map has no layout drawn yet. The
+  // overlay itself owns dismissal + auto-dismiss once both steps are done.
+  const hasZones = (canvasData?.zones?.length ?? 0) > 0
+  const showFirstRun = hasLoaded && (allPlants.length === 0 || (maps.length === 1 && !hasZones))
 
   // Derive plantable soil zones from canvas_data, merging soil_note from API
   const soilGroundZones = useMemo((): GroundZone[] => {
@@ -625,6 +634,15 @@ export default function MapPage() {
             onClose={() => setShowGameSetup(false)}
           />
         </Suspense>
+      )}
+
+      {showFirstRun && map && (
+        <FirstRunOverlay
+          mapId={map.id}
+          hasZones={hasZones}
+          hasPlant={allPlants.length > 0}
+          accountId={activeUserId ?? 0}
+        />
       )}
 
       {undo.toast && (
