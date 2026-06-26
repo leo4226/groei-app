@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 
@@ -258,7 +259,32 @@ Geef ALLEEN dit JSON-formaat terug, geen uitleg, geen markdown:
 """
 
 
-async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> str:
+def _strip_json_response(raw: str) -> str:
+    raw = raw.strip()
+    raw = re.sub(r"^```json\s*", "", raw)
+    raw = re.sub(r"^```\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    return raw.strip()
+
+
+def _normalise_fact_payload(payload) -> dict[str, str]:
+    """Validate and normalise the bilingual fact shape returned by the LLM.
+
+    Accepts both the prompt shape (`fact_nl`/`fact_en`) and the stored phenology
+    shape (`interesting_facts_nl`/`interesting_facts_en`) so tests and admin
+    tools can share one validation seam.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("Expected JSON object with fact_nl and fact_en")
+
+    fact_nl = (payload.get("fact_nl") or payload.get("interesting_facts_nl") or "").strip()
+    fact_en = (payload.get("fact_en") or payload.get("interesting_facts_en") or "").strip()
+    if not fact_nl or not fact_en:
+        raise ValueError("LLM response must include non-empty fact_nl and fact_en")
+    return {"fact_nl": fact_nl, "fact_en": fact_en}
+
+
+async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> dict[str, str]:
     name = plant_name
     if latin_name:
         name = f"{plant_name} ({latin_name})"
@@ -278,55 +304,113 @@ async def generate_fact_for_species(plant_name: str, latin_name: str | None = No
         )
         resp.raise_for_status()
         body = resp.json()
-        raw = body["choices"][0]["message"]["content"].strip()
-    raw = re.sub(r'^["\']|["\']$', "", raw)
+        raw = body["choices"][0]["message"]["content"]
+
+    cleaned = _strip_json_response(raw)
+    try:
+        data = json.loads(cleaned)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise ValueError("LLM returned invalid fact JSON") from exc
+    return _normalise_fact_payload(data)
+
+
+def _load_phenology_json(raw: str | None) -> dict:
+    if not raw:
+        return {}
     try:
         data = json.loads(raw)
-        return data.get("fact_nl", raw)
-    except (json.JSONDecodeError, TypeError):
-        pass
-    return raw
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _has_bilingual_facts(phenology: dict) -> bool:
+    return bool(
+        str(phenology.get("interesting_facts_nl") or "").strip()
+        and str(phenology.get("interesting_facts_en") or "").strip()
+    )
+
+
+async def _generate_fact_with_retries(
+    plant_name: str,
+    latin_name: str | None,
+    attempts: int = 2,
+) -> dict[str, str]:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return _normalise_fact_payload(await generate_fact_for_species(plant_name, latin_name))
+        except Exception as exc:  # noqa: BLE001 - caller returns structured skip detail
+            last_error = exc
+            if attempt < attempts - 1:
+                await asyncio.sleep(1 + attempt * 2)
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Fact generation failed")
 
 
 async def backfill_missing_facts(db, limit: int = 50) -> dict:
     rows = await db.execute_fetchall(
         "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species "
         "WHERE phenology_json IS NULL OR phenology_json = '' "
-        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' LIMIT ?",
+        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' "
+        "   OR phenology_json NOT LIKE '%interesting_facts_en%' "
+        "LIMIT ?",
         (limit,),
     )
+
     if not rows:
-        return {"processed": 0, "updated": 0, "skipped": 0, "message": "All species already have facts."}
+        return {
+            "processed": 0,
+            "updated": 0,
+            "skipped": 0,
+            "errors": [],
+            "skipped_details": [],
+            "message": "All species already have bilingual facts.",
+        }
+
     updated = 0
-    skipped = 0
     errors = []
+    skipped_details = []
+    processed = 0
+
     for row in rows:
         species_id = row["id"]
         plant_name = row["common_name_nl"]
         latin_name = row.get("latin_name")
-        phenology_str = row.get("phenology_json")
+        phenology = _load_phenology_json(row.get("phenology_json"))
+        if _has_bilingual_facts(phenology):
+            continue
+
+        processed += 1
         try:
-            fact = await generate_fact_for_species(plant_name, latin_name)
-            if not fact:
-                skipped += 1
-                continue
-            if phenology_str:
-                try:
-                    phenology = json.loads(phenology_str)
-                except json.JSONDecodeError:
-                    phenology = {}
-            else:
-                phenology = {}
-            phenology["interesting_facts_nl"] = fact
-            new_phenology_str = json.dumps(phenology, ensure_ascii=False)
+            facts = await _generate_fact_with_retries(plant_name, latin_name)
+            if not str(phenology.get("interesting_facts_nl") or "").strip():
+                phenology["interesting_facts_nl"] = facts["fact_nl"]
+            if not str(phenology.get("interesting_facts_en") or "").strip():
+                phenology["interesting_facts_en"] = facts["fact_en"]
+
             await db.execute(
                 "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (new_phenology_str, species_id),
+                (json.dumps(phenology, ensure_ascii=False), species_id),
             )
             updated += 1
         except Exception as e:
+            detail = {
+                "species_id": species_id,
+                "name": plant_name,
+                "reason": "fact_generation_failed",
+                "error": str(e),
+            }
             errors.append({"species_id": species_id, "name": plant_name, "error": str(e)})
-            skipped += 1
+            skipped_details.append(detail)
+
     if updated:
         await db.commit()
-    return {"processed": len(rows), "updated": updated, "skipped": skipped, "errors": errors}
+    return {
+        "processed": processed,
+        "updated": updated,
+        "skipped": len(skipped_details),
+        "errors": errors,
+        "skipped_details": skipped_details,
+    }

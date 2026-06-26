@@ -264,6 +264,199 @@ async def admin_health(admin=Depends(require_admin), db=Depends(db_dep)):
     return response
 
 
+def _worker_headers() -> dict[str, str]:
+    token = (os.environ.get("BIOCLIP_WORKER_TOKEN") or "").strip()
+    return {"X-Worker-Token": token} if token else {}
+
+
+async def _fetch_bioclip_coverage() -> dict:
+    worker_url = (os.environ.get("BIOCLIP_WORKER_URL") or "").strip()
+    if not worker_url:
+        return {
+            "status": "unconfigured",
+            "detail": "BIOCLIP_WORKER_URL is not set",
+            "embedded_species": 0,
+            "species_ids": [],
+        }
+
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=HEALTH_CHECK_TIMEOUT_SECONDS) as client:
+            response = await client.get(
+                f"{worker_url.rstrip('/')}/coverage",
+                headers=_worker_headers(),
+            )
+    except Exception as exc:  # noqa: BLE001 - coverage should degrade gracefully
+        return {
+            "status": "down",
+            "detail": _error_detail(exc),
+            "embedded_species": 0,
+            "species_ids": [],
+        }
+
+    if response.status_code >= 400:
+        return {
+            "status": "down",
+            "detail": f"HTTP {response.status_code} from worker",
+            "embedded_species": 0,
+            "species_ids": [],
+        }
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    raw_ids = payload.get("species_ids") or []
+    species_ids: list[int] = []
+    for sid in raw_ids:
+        try:
+            species_ids.append(int(sid))
+        except (TypeError, ValueError):
+            continue
+
+    ready = bool(payload.get("ready", True))
+    status = "ok" if ready else "degraded"
+    detail = payload.get("detail") or f"{len(species_ids)} species embedded"
+    return {
+        "status": status,
+        "detail": detail,
+        "embedded_species": int(payload.get("species_count") or len(species_ids)),
+        "species_ids": species_ids,
+    }
+
+
+def _has_text(value) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _parse_json_object(raw) -> dict:
+    if not raw:
+        return {}
+    try:
+        data = __import__("json").loads(raw)
+    except Exception:  # noqa: BLE001 - bad phenology should count as missing data
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _small_plant_row(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "species": row.get("species"),
+        "species_id": row.get("species_id"),
+        "icon_key": row.get("icon_key"),
+        "plant_type": row.get("plant_type"),
+    }
+
+
+@router.get("/admin-panel/coverage")
+async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
+    plant_rows = [dict(r) for r in await db.execute_fetchall(
+        "SELECT id, name, species, species_id, icon_key, plant_type, is_active FROM plants"
+    )]
+    active_plants = [p for p in plant_rows if bool(p.get("is_active"))]
+    archived_plants = [p for p in plant_rows if not bool(p.get("is_active"))]
+
+    species_rows = [dict(r) for r in await db.execute_fetchall(
+        "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json, care_thresholds FROM plant_species"
+    )]
+
+    manifest = icons_router.load_manifest()
+    valid_icon_ids = {entry.get("id") for entry in manifest if entry.get("id")}
+
+    active_stale_icon_rows = [
+        _small_plant_row(p)
+        for p in active_plants
+        if _has_text(p.get("icon_key")) and p.get("icon_key") not in valid_icon_ids
+    ]
+    archived_stale_icon_rows = [
+        _small_plant_row(p)
+        for p in archived_plants
+        if _has_text(p.get("icon_key")) and p.get("icon_key") not in valid_icon_ids
+    ]
+    missing_species_link_rows = [
+        _small_plant_row(p) for p in active_plants if p.get("species_id") is None
+    ]
+
+    species_stats = {
+        "total": len(species_rows),
+        "missing_latin_name": 0,
+        "missing_common_name_nl": 0,
+        "missing_common_name_en": 0,
+        "missing_phenology": 0,
+        "missing_facts_nl": 0,
+        "missing_facts_en": 0,
+        "missing_thresholds": 0,
+    }
+    for row in species_rows:
+        if not _has_text(row.get("latin_name")):
+            species_stats["missing_latin_name"] += 1
+        if not _has_text(row.get("common_name_nl")):
+            species_stats["missing_common_name_nl"] += 1
+        if not _has_text(row.get("common_name_en")):
+            species_stats["missing_common_name_en"] += 1
+        if not _has_text(row.get("care_thresholds")):
+            species_stats["missing_thresholds"] += 1
+        phenology = _parse_json_object(row.get("phenology_json"))
+        if not phenology:
+            species_stats["missing_phenology"] += 1
+        if not _has_text(phenology.get("interesting_facts_nl")):
+            species_stats["missing_facts_nl"] += 1
+        if not _has_text(phenology.get("interesting_facts_en")):
+            species_stats["missing_facts_en"] += 1
+
+    bioclip_worker = await _fetch_bioclip_coverage()
+    embedded_ids = set(bioclip_worker.get("species_ids") or [])
+    db_missing_ids = set()
+    db_missing_rows: list[dict] = []
+    active_missing_bioclip = 0
+    if bioclip_worker.get("status") == "ok":
+        for row in species_rows:
+            sid = row.get("id")
+            if sid is not None and _has_text(row.get("latin_name")) and int(sid) not in embedded_ids:
+                db_missing_ids.add(int(sid))
+                if len(db_missing_rows) < 50:
+                    db_missing_rows.append({
+                        "id": int(sid),
+                        "common_name_nl": row.get("common_name_nl"),
+                        "latin_name": row.get("latin_name"),
+                    })
+        active_missing_bioclip = sum(
+            1 for p in active_plants
+            if p.get("species_id") is not None and int(p["species_id"]) in db_missing_ids
+        )
+
+    return {
+        "plants": {
+            "active_total": len(active_plants),
+            "missing_species_link": len(missing_species_link_rows),
+            "missing_species_link_rows": missing_species_link_rows[:50],
+        },
+        "species": species_stats,
+        "icons": {
+            "active_missing_icon": sum(1 for p in active_plants if not _has_text(p.get("icon_key"))),
+            "active_stale_icon_key": len(active_stale_icon_rows),
+            "archived_stale_icon_key": len(archived_stale_icon_rows),
+            "missing_plant_type": sum(1 for p in active_plants if not _has_text(p.get("plant_type"))),
+            "active_stale_icon_rows": active_stale_icon_rows[:50],
+            "archived_stale_icon_rows": archived_stale_icon_rows[:50],
+        },
+        "bioclip": {
+            "status": bioclip_worker.get("status"),
+            "detail": bioclip_worker.get("detail"),
+            "embedded_species": bioclip_worker.get("embedded_species", 0),
+            "db_species_missing_from_bioclip": len(db_missing_ids),
+            "active_plants_missing_from_bioclip": active_missing_bioclip,
+            "missing_species_rows": db_missing_rows,
+        },
+    }
+
+
 @router.get("/admin-panel/overview")
 async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
     total_accounts = (await db.execute_fetchall("SELECT COUNT(*) as n FROM accounts"))[0]["n"]
@@ -798,16 +991,28 @@ async def backfill_facts_preview(
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
-    """Preview: count species that backfill-facts would process."""
+    """Preview: count species missing either Dutch or English facts."""
     rows = await db.execute_fetchall(
-        "SELECT id FROM plant_species "
-        "WHERE phenology_json IS NULL OR phenology_json = '' "
-        "   OR phenology_json NOT LIKE '%interesting_facts_nl%'"
+        "SELECT id, phenology_json FROM plant_species"
     )
-    total = await db.execute_fetchall("SELECT COUNT(*) as n FROM plant_species")
+    missing_nl = 0
+    missing_en = 0
+    missing_any = 0
+    for row in rows:
+        phenology = _parse_json_object(row.get("phenology_json"))
+        lacks_nl = not _has_text(phenology.get("interesting_facts_nl"))
+        lacks_en = not _has_text(phenology.get("interesting_facts_en"))
+        if lacks_nl:
+            missing_nl += 1
+        if lacks_en:
+            missing_en += 1
+        if lacks_nl or lacks_en:
+            missing_any += 1
     return {
-        "total_species": total[0]["n"],
-        "missing_facts": len(rows),
+        "total_species": len(rows),
+        "missing_facts": missing_any,
+        "missing_facts_nl": missing_nl,
+        "missing_facts_en": missing_en,
     }
 
 
@@ -917,7 +1122,7 @@ async def admin_regenerate_species_fact(
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
-    """Re-run the interesting-fact generator for this species."""
+    """Re-run the bilingual interesting-fact generator for this species."""
     from fastapi import HTTPException
     from species_service import generate_fact_for_species
     import json as _json
@@ -934,26 +1139,31 @@ async def admin_regenerate_species_fact(
     phenology_str = row[0]["phenology_json"]
 
     try:
-        fact = await generate_fact_for_species(name, latin)
+        facts = await generate_fact_for_species(name, latin)
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Fact generation failed: {exc}") from exc
 
-    if not fact:
-        raise HTTPException(status_code=503, detail="LLM returned empty fact")
+    fact_nl = (facts.get("fact_nl") or facts.get("interesting_facts_nl") or "").strip()
+    fact_en = (facts.get("fact_en") or facts.get("interesting_facts_en") or "").strip()
+    if not fact_nl or not fact_en:
+        raise HTTPException(status_code=503, detail="LLM returned incomplete bilingual facts")
 
     try:
         phenology = _json.loads(phenology_str) if phenology_str else {}
     except _json.JSONDecodeError:
         phenology = {}
+    if not isinstance(phenology, dict):
+        phenology = {}
 
-    phenology["interesting_facts_nl"] = fact
+    phenology["interesting_facts_nl"] = fact_nl
+    phenology["interesting_facts_en"] = fact_en
     await db.execute(
         "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (_json.dumps(phenology, ensure_ascii=False), species_id),
     )
     await db.commit()
     await log_admin_action(db, admin, "regenerate_species_fact", target=f"{name} (id={species_id})", detail=None)
-    return {"species_id": species_id, "name": name, "fact": fact}
+    return {"species_id": species_id, "name": name, "fact": fact_nl, "fact_en": fact_en}
 
 
 class SpeciesMergeRequest(BaseModel):
@@ -1200,12 +1410,15 @@ async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     await on_progress(0, 1)
     rows = await db.execute_fetchall(
-        "SELECT id, icon_key FROM plants WHERE plant_type IS NULL AND icon_key IS NOT NULL"
+        "SELECT id, name, icon_key FROM plants "
+        "WHERE is_active = 1 AND plant_type IS NULL AND icon_key IS NOT NULL"
     )
     from services.icon_catalog import load_catalog as _load_catalog
     catalog = await _load_catalog(db)
     cat_map = {e["id"]: e.get("cat", "houseplant") for e in catalog if e.get("id")}
-    updated = skipped = 0
+    updated = 0
+    details: list[dict] = []
+    skipped_details: list[dict] = []
     for row in rows:
         cat = cat_map.get(row["icon_key"])
         if cat:
@@ -1214,10 +1427,28 @@ async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
                 (cat, row["id"]),
             )
             updated += 1
+            details.append({
+                "id": row["id"],
+                "name": row["name"],
+                "icon_key": row["icon_key"],
+                "plant_type": cat,
+            })
         else:
-            skipped += 1
+            skipped_details.append({
+                "id": row["id"],
+                "name": row["name"],
+                "icon_key": row["icon_key"],
+                "reason": "icon_key_not_in_catalog",
+                "message": "Icon key is not present in the icon catalog",
+            })
     await on_progress(1, 1)
-    return {"found": len(rows), "updated": updated, "skipped": skipped}
+    return {
+        "found": len(rows),
+        "updated": updated,
+        "skipped": len(skipped_details),
+        "details": details,
+        "skipped_details": skipped_details,
+    }
 
 
 _JOB_RUNNERS = {
@@ -1255,8 +1486,11 @@ async def list_admin_jobs(
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
+    import json as _json
+
     rows = await db.execute_fetchall(
         """SELECT j.id, j.kind, j.status, j.progress_done, j.progress_total,
+                  j.result, j.error,
                   CAST(j.created_at AS TEXT) as created_at,
                   CAST(j.updated_at AS TEXT) as updated_at,
                   a.name as admin_name
@@ -1266,7 +1500,17 @@ async def list_admin_jobs(
            LIMIT ?""",
         (limit,),
     )
-    return [dict(r) for r in rows]
+    result_rows = []
+    for r in rows:
+        row = dict(r)
+        result = row.get("result")
+        if isinstance(result, str):
+            try:
+                row["result"] = _json.loads(result)
+            except Exception:
+                pass
+        result_rows.append(row)
+    return result_rows
 
 
 @router.get("/admin-panel/jobs/{job_id}")

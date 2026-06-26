@@ -7,16 +7,17 @@ import {
   type AdminSystemHealth, type AdminHealthStatus,
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type AdminHouseholdDetail, type AdminAuditRow,
-  type AdminJob, type AdminJobStatus,
+  type AdminJob, type AdminJobStatus, type AdminCoverage, type AdminSkippedDetail,
 } from '../api/client'
 
-type Section = 'overview' | 'users' | 'plants' | 'species' | 'tools' | 'activity' | 'audit'
+type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'tools' | 'activity' | 'audit'
 
 const NAV: { id: Section; icon: string; label: string }[] = [
   { id: 'overview', icon: '📊', label: 'Overview' },
   { id: 'users',    icon: '👥', label: 'Users' },
   { id: 'plants',   icon: '🌿', label: 'Plants' },
   { id: 'species',  icon: '🔬', label: 'Species' },
+  { id: 'coverage', icon: '🧭', label: 'Coverage' },
   { id: 'tools',    icon: '🔧', label: 'Tools' },
   { id: 'activity', icon: '📋', label: 'Activity' },
   { id: 'audit',    icon: '🔏', label: 'Audit log' },
@@ -135,6 +136,7 @@ export default function AdminPage() {
           {section === 'users'     && <UsersView />}
           {section === 'plants'    && <PlantsView />}
           {section === 'species'   && <SpeciesView />}
+          {section === 'coverage'  && <CoverageView />}
           {section === 'tools'     && <ToolsView />}
           {section === 'activity'  && <ActivityView />}
           {section === 'audit'     && <AuditView />}
@@ -1013,7 +1015,7 @@ function SpeciesEditPanel({ species: initial, allSpecies, onSaved, onClose }: {
     setFactResult('')
     try {
       const r = await adminPanel.regenerateSpeciesFact(initial.id)
-      setFactResult(`✓ "${r.fact}"`)
+      setFactResult(`✓ NL: "${r.fact}" · EN: "${r.fact_en}"`)
     } catch (e) {
       setFactResult('✗ ' + (e instanceof Error ? e.message : 'Failed'))
     } finally {
@@ -1110,7 +1112,7 @@ function SpeciesEditPanel({ species: initial, allSpecies, onSaved, onClose }: {
         <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-soft)' }}>Interesting fact</div>
           <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 12, color: 'var(--color-text-soft)', margin: 0, lineHeight: 1.5 }}>
-            Re-generate the interesting fact stored in phenology_json.
+            Re-generate the Dutch and English interesting facts stored in phenology_json.
           </p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={handleRegenFact} disabled={factRunning} style={runBtn(factRunning)}>
@@ -1310,8 +1312,8 @@ function jobResultSummary(kind: string, job: AdminJob): string {
   if (!r) return '✓ Done'
   if (kind === 'backfill_thresholds') return `✓ ${r.succeeded ?? 0} updated · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
   if (kind === 'backfill_care_schedules') return `✓ ${r.seeded ?? 0} schedules seeded out of ${r.checked ?? 0} checked`
-  if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0}`
-  if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0}`
+  if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} bilingual facts updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
+  if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0} active candidates`
   if (kind === 'generate_icons') {
     const count = Number(r.count ?? 0)
     const skipped = Number(r.skipped_count ?? 0)
@@ -1364,20 +1366,175 @@ function RecentJobsCard({ jobs, loading }: { jobs: AdminJob[] | null; loading: b
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', marginTop: 20 }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 15, margin: '0 0 12px' }}>Recent jobs</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {jobs.map(j => (
-          <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-            <span style={{ color: statusColor(j.status), flexShrink: 0, width: 70 }}>{statusLabel[j.status]}</span>
-            <span style={{ flex: 1 }}>{j.kind.replace(/_/g, ' ')}</span>
-            {(j.status === 'running' || j.status === 'pending') && j.progress_total > 0 && (
-              <span style={{ color: 'var(--color-text-muted)' }}>{j.progress_done}/{j.progress_total}</span>
-            )}
-            <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
-              {new Date(j.created_at).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        ))}
+        {jobs.map(j => {
+          const details = skippedDetailsFromResult(j.result)
+          return (
+            <div key={j.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: statusColor(j.status), flexShrink: 0, width: 70 }}>{statusLabel[j.status]}</span>
+                <span style={{ flex: 1 }}>{j.kind.replace(/_/g, ' ')}</span>
+                {(j.status === 'running' || j.status === 'pending') && j.progress_total > 0 && (
+                  <span style={{ color: 'var(--color-text-muted)' }}>{j.progress_done}/{j.progress_total}</span>
+                )}
+                <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                  {new Date(j.created_at).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              {(j.status === 'completed' || j.status === 'failed' || j.status === 'interrupted') && (
+                <div style={{ marginLeft: 80, marginTop: 4, color: j.status === 'completed' ? 'var(--color-text-muted)' : 'var(--color-overdue)' }}>
+                  {jobResultSummary(j.kind, j)}
+                  <SkippedDetails details={details} />
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+function CoverageStat({ label, value, tone = 'muted' }: { label: string; value: number | string; tone?: 'green' | 'amber' | 'red' | 'muted' }) {
+  return (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '16px 18px' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.16em', color: 'var(--color-text-muted)', marginBottom: 8 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, lineHeight: 1 }}>{value}</span>
+        <Pill label={tone === 'green' ? 'ok' : tone === 'amber' ? 'check' : tone === 'red' ? 'gap' : 'info'} tone={tone} />
+      </div>
+    </div>
+  )
+}
+
+function CoverageView() {
+  const [coverage, setCoverage] = useState<AdminCoverage | null>(null)
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setErr('')
+    adminPanel.coverage()
+      .then(data => { if (!cancelled) setCoverage(data) })
+      .catch(e => { if (!cancelled) setErr(e instanceof Error ? e.message : 'Failed to load coverage') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const bioclipTone: 'green' | 'amber' | 'red' | 'muted' = !coverage
+    ? 'muted'
+    : coverage.bioclip.status === 'ok' && coverage.bioclip.db_species_missing_from_bioclip === 0
+      ? 'green'
+      : coverage.bioclip.status === 'ok'
+        ? 'amber'
+        : coverage.bioclip.status === 'unconfigured'
+          ? 'muted'
+          : 'red'
+
+  return (
+    <div>
+      <PageHeader title="Coverage" sub="Data health across garden plants, species knowledge, icons and BioCLIP reference material" />
+      {err && <ErrorMsg msg={err} />}
+      {loading && !coverage && !err && <Loading />}
+
+      {coverage && (
+        <>
+          <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 20 }}>
+            <CoverageStat label="Garden plants unlinked" value={`${coverage.plants.missing_species_link}/${coverage.plants.active_total}`} tone={coverage.plants.missing_species_link ? 'amber' : 'green'} />
+            <CoverageStat label="Species missing EN facts" value={coverage.species.missing_facts_en} tone={coverage.species.missing_facts_en ? 'amber' : 'green'} />
+            <CoverageStat label="Active stale icons" value={coverage.icons.active_stale_icon_key} tone={coverage.icons.active_stale_icon_key ? 'red' : 'green'} />
+            <CoverageStat label="BioCLIP coverage" value={coverage.bioclip.embedded_species} tone={bioclipTone} />
+          </div>
+
+          <SectionCard title="Species knowledge">
+            <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+              <span>Total species: <strong>{coverage.species.total}</strong></span>
+              <span>Missing Latin: <strong>{coverage.species.missing_latin_name}</strong></span>
+              <span>Missing NL facts: <strong>{coverage.species.missing_facts_nl}</strong></span>
+              <span>Missing EN facts: <strong>{coverage.species.missing_facts_en}</strong></span>
+              <span>Missing phenology: <strong>{coverage.species.missing_phenology}</strong></span>
+              <span>Missing thresholds: <strong>{coverage.species.missing_thresholds}</strong></span>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="BioCLIP reference material">
+            <div style={{ padding: '16px 18px', fontFamily: 'var(--font-heading)', fontSize: 13, lineHeight: 1.6 }}>
+              <div style={{ marginBottom: 8 }}>
+                <Pill label={coverage.bioclip.status} tone={bioclipTone} />{' '}
+                <span style={{ color: 'var(--color-text-soft)' }}>{coverage.bioclip.detail ?? 'No detail'}</span>
+              </div>
+              <p style={{ margin: '0 0 10px', color: 'var(--color-text-soft)' }}>
+                {coverage.bioclip.db_species_missing_from_bioclip} database species are missing from the loaded BioCLIP embeddings; {coverage.bioclip.active_plants_missing_from_bioclip} active plants depend on those species.
+              </p>
+              {coverage.bioclip.missing_species_rows.length > 0 && (
+                <AdminTable heads={['Species', 'Latin name']}>
+                  {coverage.bioclip.missing_species_rows.map(s => (
+                    <tr key={s.id}>
+                      <Td>{s.common_name_nl ?? `#${s.id}`}</Td>
+                      <Td>{s.latin_name ? <em>{s.latin_name}</em> : '—'}</Td>
+                    </tr>
+                  ))}
+                </AdminTable>
+              )}
+            </div>
+          </SectionCard>
+
+          {coverage.plants.missing_species_link_rows.length > 0 && (
+            <SectionCard title="Active garden plants missing species DB link">
+              <AdminTable heads={['Plant', 'User species', 'Icon']} scrollable>
+                {coverage.plants.missing_species_link_rows.map(p => (
+                  <tr key={p.id}>
+                    <Td><strong>{p.name}</strong></Td>
+                    <Td>{p.species ?? '—'}</Td>
+                    <Td mono>{p.icon_key ?? '—'}</Td>
+                  </tr>
+                ))}
+              </AdminTable>
+            </SectionCard>
+          )}
+
+          {(coverage.icons.active_stale_icon_rows.length > 0 || coverage.icons.archived_stale_icon_rows.length > 0) && (
+            <SectionCard title="Icon/catalog gaps">
+              <div style={{ padding: '14px 18px', fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-soft)', lineHeight: 1.6 }}>
+                Active stale icon keys: {coverage.icons.active_stale_icon_key}. Archived stale icon keys: {coverage.icons.archived_stale_icon_key}. Active plants missing type: {coverage.icons.missing_plant_type}.
+              </div>
+              <AdminTable heads={['Plant', 'Icon key', 'Type']} scrollable>
+                {[...coverage.icons.active_stale_icon_rows, ...coverage.icons.archived_stale_icon_rows].map(p => (
+                  <tr key={p.id}>
+                    <Td>{p.name}</Td>
+                    <Td mono>{p.icon_key ?? '—'}</Td>
+                    <Td mono>{p.plant_type ?? '—'}</Td>
+                  </tr>
+                ))}
+              </AdminTable>
+            </SectionCard>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function skippedDetailsFromResult(result: Record<string, unknown> | null): AdminSkippedDetail[] {
+  if (!result) return []
+  const details = result.skipped_details
+  return Array.isArray(details) ? details as AdminSkippedDetail[] : []
+}
+
+function SkippedDetails({ details }: { details: AdminSkippedDetail[] }) {
+  if (details.length === 0) return null
+  return (
+    <details style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }}>
+      <summary style={{ cursor: 'pointer' }}>{details.length} skipped detail{details.length !== 1 ? 's' : ''}</summary>
+      <ul style={{ margin: '6px 0 0 16px', padding: 0, lineHeight: 1.6 }}>
+        {details.slice(0, 10).map((d, i) => (
+          <li key={`${d.id ?? d.species_id ?? i}-${i}`}>
+            {d.name ?? d.icon_key ?? d.species_id ?? d.id ?? 'unknown'} — {d.reason ?? d.error ?? d.message ?? 'skipped'}
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }
 
@@ -1390,7 +1547,7 @@ function ToolsView() {
   const [iconRefresh, setIconRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
-  const [fp, setFp] = useState<{ total_species: number; missing_facts: number } | null>(null)
+  const [fp, setFp] = useState<{ total_species: number; missing_facts: number; missing_facts_nl?: number; missing_facts_en?: number } | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
 
   const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
@@ -1494,7 +1651,7 @@ function ToolsView() {
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Backfill interesting facts</h3>
       <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        Generate interesting_facts_nl via LLM for species that lack one. Each fact is one LLM call, so limit accordingly.
+        Generate bilingual interesting facts via LLM for species missing Dutch or English facts. Each species is one LLM call, so limit accordingly.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -1504,7 +1661,7 @@ function ToolsView() {
                  style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
         </label>
         <span style={{ color: 'var(--color-primary)' }}>
-          {fp ? fp.missing_facts + ' of ' + fp.total_species + ' species need facts' : 'Loading preview…'}
+          {fp ? `${fp.missing_facts} of ${fp.total_species} species need facts${fp.missing_facts_en != null ? ` · EN missing: ${fp.missing_facts_en}` : ''}` : 'Loading preview…'}
         </span>
       </div>
       {(() => {
@@ -1577,7 +1734,7 @@ function ToolsView() {
           'Seed water & fertilize schedules for plants that have thresholds but no active schedule.',
           sp ? `${sp.missing_schedules} of ${sp.total_with_thresholds} plants with thresholds need schedules` : 'Loading…')}
         {simpleTool('backfill_plant_types', 'Backfill plant types',
-          'Set plant_type from icon manifest cat field for plants where it is NULL.',
+          'Set plant_type from icon manifest cat field for active plants where it is NULL. Archived plants are ignored.',
           pp ? `${pp.missing_plant_type} of ${pp.total_active_plants} active plants need a type` : 'Loading…')}
         {factsTool}
         {iconTool}
