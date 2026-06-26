@@ -1011,6 +1011,7 @@ export type Translations = {
     bulkArchiveBtn: (n: number) => string   // "Archiveer (2)"
     bulkArchiveConfirm: (n: number) => string  // confirm dialog text
     renameHint: string                // aria-label for rename button
+    recentCare: string                // "Recent care" — recent-care feed header
   }
 
   // ── Map page (garden/indoor view) ────────────────────────
