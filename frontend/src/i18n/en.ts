@@ -1126,10 +1126,15 @@ export const en: Translations = {
   // ── Onboarding checklist ────────────────────────────────────────
   onboarding: {
     title: 'Welcome to Floreren! 🌱',
+    firstRunLede: 'A few steps to bring your garden to life.',
     stepLabel: (c, t) => `Step ${c} of ${t}`,
     createMap: {
       label: 'Create your first garden',
       cta: 'Create garden',
+    },
+    drawLayout: {
+      label: 'Draw your garden layout',
+      cta: 'Draw layout',
     },
     addPlant: {
       label: 'Add your first plant',

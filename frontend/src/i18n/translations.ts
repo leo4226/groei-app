@@ -1108,10 +1108,15 @@ export type Translations = {
   // ── Onboarding checklist ────────────────────────────────────────
   onboarding: {
     title: string        // "Welkom bij Floreren!"
+    firstRunLede: string // overlay subtitle on the map: "Drie stappen om je tuin tot leven te brengen."
     stepLabel: (current: number, total: number) => string  // "Stap 1 van 2"
     createMap: {
       label: string     // "Maak je eerste tuin"
       cta: string       // "Tuin aanmaken"
+    }
+    drawLayout: {
+      label: string     // "Teken je tuinindeling"
+      cta: string       // "Indeling tekenen"
     }
     addPlant: {
       label: string     // "Voeg je eerste plant toe"
