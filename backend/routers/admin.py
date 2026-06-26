@@ -167,10 +167,10 @@ async def backfill_care_schedules_preview(db = Depends(db_dep)):
 
 @router.get("/admin/backfill-plant-types/preview")
 async def backfill_plant_types_preview(db = Depends(db_dep)):
-    """Preview: count plants that backfill-plant-types would process."""
+    """Preview: count active plants that backfill-plant-types would process."""
     rows = await db.execute_fetchall(
         "SELECT id FROM plants "
-        "WHERE plant_type IS NULL AND icon_key IS NOT NULL"
+        "WHERE is_active = 1 AND plant_type IS NULL AND icon_key IS NOT NULL"
     )
     total = await db.execute_fetchall(
         "SELECT COUNT(*) as n FROM plants WHERE is_active = 1"
@@ -183,7 +183,7 @@ async def backfill_plant_types_preview(db = Depends(db_dep)):
 
 @router.post("/admin/backfill-plant-types")
 async def backfill_plant_types(db = Depends(db_dep)):
-    """Backfill NULL plant_type from icon manifest cat field."""
+    """Backfill NULL plant_type from icon manifest cat field for active plants."""
     manifest = load_manifest()
     icon_to_cat: dict[str, str] = {
         p["id"]: p["cat"] for p in manifest if "cat" in p and p["cat"]
@@ -191,14 +191,22 @@ async def backfill_plant_types(db = Depends(db_dep)):
 
     rows = await db.execute_fetchall(
         "SELECT id, name, icon_key FROM plants "
-        "WHERE plant_type IS NULL AND icon_key IS NOT NULL"
+        "WHERE is_active = 1 AND plant_type IS NULL AND icon_key IS NOT NULL"
     )
 
     if not rows:
-        return {"status": "ok", "message": "No plants need backfilling", "updated": 0}
+        return {
+            "status": "ok",
+            "message": "No active plants need backfilling",
+            "found": 0,
+            "updated": 0,
+            "skipped": 0,
+            "details": [],
+            "skipped_details": [],
+        }
 
     updated = 0
-    skipped = 0
+    skipped_details: list[dict] = []
     details: list[dict] = []
 
     for row in rows:
@@ -217,7 +225,13 @@ async def backfill_plant_types(db = Depends(db_dep)):
                 "plant_type": cat,
             })
         else:
-            skipped += 1
+            skipped_details.append({
+                "id": row["id"],
+                "name": row["name"],
+                "icon_key": icon_key,
+                "reason": "icon_key_not_in_manifest",
+                "message": "Icon key is not present in the icon manifest",
+            })
 
     await db.commit()
 
@@ -225,8 +239,9 @@ async def backfill_plant_types(db = Depends(db_dep)):
         "status": "ok",
         "found": len(rows),
         "updated": updated,
-        "skipped": skipped,
+        "skipped": len(skipped_details),
         "details": details,
+        "skipped_details": skipped_details,
     }
 
 

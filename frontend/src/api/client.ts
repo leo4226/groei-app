@@ -207,9 +207,86 @@ export interface AdminSystemHealth {
   email: AdminServiceHealth
 }
 
+export interface AdminCoveragePlantRow {
+  id: number
+  name: string
+  species: string | null
+  species_id: number | null
+  icon_key: string | null
+  plant_type: string | null
+}
+
+export interface AdminCoverageSpeciesRow {
+  id: number
+  common_name_nl: string | null
+  latin_name: string | null
+}
+
+export interface AdminCoverage {
+  plants: {
+    active_total: number
+    missing_species_link: number
+    missing_species_link_rows: AdminCoveragePlantRow[]
+  }
+  species: {
+    total: number
+    missing_latin_name: number
+    missing_common_name_nl: number
+    missing_common_name_en: number
+    missing_phenology: number
+    missing_facts_nl: number
+    missing_facts_en: number
+    missing_thresholds: number
+  }
+  icons: {
+    active_missing_icon: number
+    active_stale_icon_key: number
+    archived_stale_icon_key: number
+    missing_plant_type: number
+    active_stale_icon_rows: AdminCoveragePlantRow[]
+    archived_stale_icon_rows: AdminCoveragePlantRow[]
+  }
+  bioclip: {
+    status: AdminHealthStatus
+    detail: string | null
+    embedded_species: number
+    db_species_missing_from_bioclip: number
+    active_plants_missing_from_bioclip: number
+    missing_species_rows: AdminCoverageSpeciesRow[]
+  }
+}
+
+export interface AdminSkippedDetail {
+  id?: number
+  species_id?: number
+  name?: string
+  icon_key?: string
+  reason?: string
+  message?: string
+  error?: string
+}
+
+export interface AdminBackfillFactsResult {
+  processed: number
+  updated: number
+  skipped: number
+  errors: Array<{ species_id: number; name: string; error: string }>
+  skipped_details?: AdminSkippedDetail[]
+}
+
+export interface AdminBackfillPlantTypesResult {
+  status?: string
+  found: number
+  updated: number
+  skipped: number
+  details?: Array<{ id: number; name: string; icon_key: string; plant_type: string }>
+  skipped_details?: AdminSkippedDetail[]
+}
+
 export interface AdminPlantRow {
   id: number
   name: string
+
   species: string | null
   icon_key: string | null
   phase: string
@@ -435,7 +512,7 @@ export const admin = {
   backfillCareSchedules:()           => api<{ checked: number; seeded: number }>('POST', '/admin/backfill-care-schedules'),
   thresholdsPreview:     ()           => api<{ active_total: number; missing_thresholds: number; has_thresholds: number }>('GET', '/admin/backfill-thresholds/preview'),
   schedulesPreview:      ()           => api<{ total_with_thresholds: number; missing_schedules: number; has_schedules: number }>('GET', '/admin/backfill-care-schedules/preview'),
-  backfillPlantTypes:    ()           => api<{ status: string; found: number; updated: number; skipped: number }>('POST', '/admin/backfill-plant-types'),
+  backfillPlantTypes:    ()           => api<AdminBackfillPlantTypesResult>('POST', '/admin/backfill-plant-types'),
   backfillPlantTypesPreview: ()     => api<{ total_active_plants: number; missing_plant_type: number }>('GET', '/admin/backfill-plant-types/preview'),
   backfillSpecies:   ()           => api<{ processed: number; succeeded: number; failed: number; failures: Array<{plant_id: number; name: string; error: string}> }>('POST', '/admin/backfill-species'),
   backfillSpeciesPreview: ()    => api<{ active_total: number; missing_species: Array<{plant_id: number; name: string}>; missing_count: number }>('GET', '/admin/backfill-species/preview'),
@@ -445,13 +522,14 @@ export const adminPanel = {
   overview:       () => api<AdminOverview>('GET', '/admin-panel/overview'),
   growthMetrics:  (days: number = 30) => api<AdminGrowthMetrics>('GET', '/admin-panel/growth-metrics', { params: { days: String(days) } }),
   health:         () => api<AdminSystemHealth>('GET', '/admin-panel/health'),
+  coverage:       () => api<AdminCoverage>('GET', '/admin-panel/coverage'),
   users:    (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminUserRow>>('GET', '/admin-panel/users', { params: adminTableParams(params) }),
   plants:   (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminPlantRow>>('GET', '/admin-panel/plants', { params: adminTableParams(params) }),
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
-  backfillFacts: (limit: number = 50) => api<{ processed: number; updated: number; skipped: number; errors: Array<{species_id: number; name: string; error: string}> }>('POST', `/admin-panel/backfill-facts?limit=${limit}`),
-  backfillFactsPreview: () => api<{ total_species: number; missing_facts: number }>('GET', '/admin-panel/backfill-facts/preview'),
+  backfillFacts: (limit: number = 50) => api<AdminBackfillFactsResult>('POST', `/admin-panel/backfill-facts?limit=${limit}`),
+  backfillFactsPreview: () => api<{ total_species: number; missing_facts: number; missing_facts_nl?: number; missing_facts_en?: number }>('GET', '/admin-panel/backfill-facts/preview'),
   generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
     const q = new URLSearchParams()
     if (opts.scope) q.set('scope', opts.scope)
@@ -473,7 +551,7 @@ export const adminPanel = {
   regenerateSpeciesThresholds: (id: number, propagate = false) =>
     api<{ species_id: number; name: string; propagated_to_plants: number }>('POST', `/admin-panel/species/${id}/regenerate-thresholds`, { params: { propagate: String(propagate) } }),
   regenerateSpeciesFact: (id: number) =>
-    api<{ species_id: number; name: string; fact: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
+    api<{ species_id: number; name: string; fact: string; fact_en: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
   mergeSpecies: (source_id: number, target_id: number) =>
     api<{ merged: boolean; source_name: string; target_name: string; plants_moved: number }>('POST', '/admin-panel/species/merge', { body: { source_id, target_id } }),
   audit: (params: { limit?: number; offset?: number } = {}) => {

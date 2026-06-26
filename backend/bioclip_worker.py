@@ -198,6 +198,25 @@ async def health():
     }
 
 
+@app.get("/coverage", dependencies=[Depends(_require_token)])
+async def coverage():
+    """Return the currently loaded BioCLIP reference species IDs.
+
+    The Fly backend uses this to compare live DB species against the worker's
+    precomputed embedding snapshot. This endpoint does not expose embeddings or
+    user data, only integer species IDs and aggregate readiness metadata.
+    """
+    ready = _model is not None and _text_embeddings is not None and _species_ids is not None
+    return {
+        "ready": ready,
+        "model_loaded": _model is not None,
+        "embeddings_loaded": _text_embeddings is not None,
+        "device": _device or "unknown",
+        "species_count": len(_species_ids or []),
+        "species_ids": list(_species_ids or []),
+    }
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("BIOCLIP_PORT", "8001"))
     # Loopback only: cloudflared connects via localhost, so there is no reason
