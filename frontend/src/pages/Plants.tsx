@@ -10,6 +10,7 @@ import { resolveIconUrl } from '../utils/icons'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
+import PlantFactCard from '../components/plants/PlantFactCard'
 
 /** Plant is outdoor (tuin) when its map has map_type='outdoor'. Null map_id → fallback to huis. */
 const isOutdoor = (plant: Plant, mapTypeByMapId: Map<number, 'outdoor' | 'indoor'>) => {
@@ -420,6 +421,7 @@ export default function Plants() {
               </button>
             </div>
           )}
+          {activeTab === 'plants' && !isSelecting && <PlantFactCard />}
           {activeTab === 'plants' && <ResultsBar />}
           {activeTab === 'plants' && <LoadingSkeleton />}
           {activeTab === 'plants' && <EmptyState />}
@@ -740,6 +742,7 @@ export default function Plants() {
           </div>
         )}
 
+        {activeTab === 'plants' && !isSelecting && <PlantFactCard />}
         {activeTab === 'plants' && <ResultsBar />}
         {activeTab === 'plants' && <LoadingSkeleton />}
         {activeTab === 'plants' && <EmptyState />}
