@@ -8,7 +8,6 @@ export type Translations = {
   locale: string
 
   nav: {
-    home: string
     plants: string
     maps: string
     calendar: string
