@@ -820,6 +820,15 @@ export const en: Translations = {
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Pick this one',
     },
+    destination: {
+      title: 'What do you want to do with this scan?',
+      subtitle: 'Choose whether this is a wild observation for your field journal, or a plant you want to add to your garden.',
+      journalTitle: 'Save to field journal',
+      journalSubtitle: 'For plants you find outside and want to remember later.',
+      gardenTitle: 'Add to garden',
+      gardenSubtitle: 'Create a care-tracked plant in your garden or map.',
+      backToMatches: 'Back to matches',
+    },
     lowConfidence: 'Low confidence — review carefully',
     plantnetConfirm: 'Your photo will be sent to Pl@ntNet (a third-party service) for a second identification. Continue?',
     confidence: {

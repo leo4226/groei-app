@@ -794,6 +794,15 @@ export type Translations = {
       poweredBy: string   // "powered by Pl@ntNet"
       choose: string      // "Pick this one"
     }
+    destination: {
+      title: string
+      subtitle: string
+      journalTitle: string
+      journalSubtitle: string
+      gardenTitle: string
+      gardenSubtitle: string
+      backToMatches: string
+    }
     lowConfidence: string  // DEPRECATED, kept until confidence.low rollout completes
     plantnetConfirm: string  // confirm dialog text shown when user clicks the PlantNet fallback button
     confidence: {

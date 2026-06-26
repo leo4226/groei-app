@@ -820,6 +820,15 @@ export const nl: Translations = {
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Kies deze',
     },
+    destination: {
+      title: 'Wat wil je met deze scan doen?',
+      subtitle: 'Kies of dit een wilde waarneming is voor je veldboek, of een plant die je aan je tuin wilt toevoegen.',
+      journalTitle: 'Opslaan in veldboek',
+      journalSubtitle: 'Voor planten die je buiten tegenkomt en later wilt terugvinden.',
+      gardenTitle: 'Toevoegen aan tuin',
+      gardenSubtitle: 'Maak er een verzorgbare plant van in je tuin of op je kaart.',
+      backToMatches: 'Terug naar matches',
+    },
     lowConfidence: 'Lage zekerheid — controleer de resultaten zorgvuldig',
     plantnetConfirm: 'Je foto wordt naar Pl@ntNet gestuurd (een externe dienst) voor een tweede identificatie. Doorgaan?',
     confidence: {
