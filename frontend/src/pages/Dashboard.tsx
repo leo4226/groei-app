@@ -14,6 +14,7 @@ import WelcomeChecklist from '../components/WelcomeChecklist'
 import WeatherCard from '../components/dashboard/WeatherCard'
 import NewMapModal from '../components/dashboard/NewMapModal'
 import { resolveIconUrl } from '../utils/icons'
+import { buildMapGroups, buildBucketItems, itemsPlantCount, type GroupedWarning, type BucketItem } from '../utils/careGrouping'
 
 const PX_PER_M = 46
 
@@ -253,86 +254,6 @@ function DashboardHeader({
   )
 }
 
-// ── Map grouping ──
-
-interface MapGroup {
-  mapName: string
-  isIndoor: boolean
-  nu: BucketPlantOut[]
-  vandaag: BucketPlantOut[]
-  week: BucketPlantOut[]
-}
-
-function buildMapGroups(summary: WarningSummaryOut): MapGroup[] {
-  const maps = new Map<string, MapGroup>()
-  const add = (plants: BucketPlantOut[], bucket: 'nu' | 'vandaag' | 'week') => {
-    for (const p of plants) {
-      const key = p.map_name ?? 'Overige planten'
-      if (!maps.has(key)) maps.set(key, { mapName: key, isIndoor: p.environment === 'indoor', nu: [], vandaag: [], week: [] })
-      maps.get(key)![bucket].push(p)
-    }
-  }
-  add(summary.buckets.nu, 'nu')
-  add(summary.buckets.vandaag, 'vandaag')
-  add(summary.buckets.komende_week, 'week')
-  return [...maps.values()].sort((a, b) => {
-    if (a.isIndoor !== b.isIndoor) return a.isIndoor ? -1 : 1
-    return a.mapName.localeCompare(b.mapName)
-  })
-}
-
-// ── Grouped warning types ──
-
-interface GroupedWarning {
-  care_type: string
-  plants: BucketPlantOut[]
-  severity: string
-  maxDaysOverdue: number
-  hint: string | null
-}
-
-type BucketItem =
-  | { kind: 'individual'; plant: BucketPlantOut }
-  | { kind: 'group'; group: GroupedWarning }
-
-
-function buildBucketItems(plants: BucketPlantOut[], doneIds: Set<string>, grouped: boolean): BucketItem[] {
-  const visible = plants.filter(p => !doneIds.has(`${p.plant_id}_${p.care_type ?? ''}`))
-  if (!grouped) return visible.map(p => ({ kind: 'individual', plant: p }))
-
-  const outdoor = visible.filter(p => p.environment !== 'indoor' && p.care_type)
-  const indoor  = visible.filter(p => p.environment === 'indoor' || !p.care_type)
-
-  const byType = new Map<string, BucketPlantOut[]>()
-  for (const p of outdoor) {
-    const arr = byType.get(p.care_type!) ?? []
-    arr.push(p)
-    byType.set(p.care_type!, arr)
-  }
-
-  const sevOrder: Record<string, number> = { urgent: 0, warning: 1, info: 2 }
-  const groupItems: BucketItem[] = [...byType.entries()].map(([care_type, ps]) => {
-    const sorted = [...ps].sort((a, b) => (sevOrder[a.top_warning?.severity ?? 'info'] ?? 3) - (sevOrder[b.top_warning?.severity ?? 'info'] ?? 3))
-    const top = sorted[0]
-    return {
-      kind: 'group' as const,
-      group: {
-        care_type,
-        plants: sorted,
-        severity: top?.top_warning?.severity ?? 'info',
-        maxDaysOverdue: Math.max(...ps.map(p => p.days_overdue ?? 0)),
-        hint: top?.top_warning?.message_nl ?? null,
-      },
-    }
-  })
-
-  return [...groupItems, ...indoor.map(p => ({ kind: 'individual' as const, plant: p }))]
-}
-
-function itemsPlantCount(items: BucketItem[]): number {
-  return items.reduce((sum, item) => sum + (item.kind === 'group' ? item.group.plants.length : 1), 0)
-}
-
 function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOut; plants: { id: number; icon_key: string | null }[]; t: Translations }) {
   const { markCareDone, skipCare } = useFloreren()
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
@@ -445,9 +366,9 @@ function CareWarningsSection({ summary, plants, t }: { summary: WarningSummaryOu
       {/* Expanded: map-grouped care lists */}
       {showAll && mapGroups.map((mg, mi) => {
         const grouped = !mg.isIndoor
-        const nuItemsMap      = buildBucketItems(mg.nu,      doneIds, grouped)
-        const vandaagItemsMap = buildBucketItems(mg.vandaag, doneIds, grouped)
-        const weekItemsMap    = buildBucketItems(mg.week,    doneIds, grouped)
+        const nuItemsMap      = buildBucketItems(mg.nu,      doneIds, grouped, t.locale)
+        const vandaagItemsMap = buildBucketItems(mg.vandaag, doneIds, grouped, t.locale)
+        const weekItemsMap    = buildBucketItems(mg.week,    doneIds, grouped, t.locale)
         const mapTotal = itemsPlantCount(nuItemsMap) + itemsPlantCount(vandaagItemsMap) + itemsPlantCount(weekItemsMap)
         if (mapTotal === 0) return null
         const isLast = mi === mapGroups.length - 1

@@ -164,7 +164,7 @@ export default function App() {
               <Route
                 path="/"
                 element={
-                  <Navigate to={getToken() ? '/dashboard' : '/login'} replace />
+                  <Navigate to={getToken() ? '/maps' : '/login'} replace />
                 }
               />
               <Route path="/login" element={<LoginPage />} />

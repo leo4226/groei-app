@@ -1048,6 +1048,11 @@ export type Translations = {
     mapSettingsLabel: string               // "Instellingen…" / "Settings…"
     sheetAttentionCount: (n: number) => string  // "3 planten hebben aandacht"
     sheetAllGood: string                         // "Alles op schema"
+    sheetGlobalAttention: (n: number) => string  // "3 planten in je tuinen hebben aandacht"
+    sheetAllGoodGlobal: string                   // "Alles goed in je tuinen"
+    sheetOtherGardenHint: string                 // "in een andere tuin"
+    careDone: string                             // "Klaar" — mark care done
+    careSkip: string                             // "Overslaan" — skip care
     unplacedTitle: string                        // "Nog te plaatsen" — unplaced tray header
     unplacedCount: (n: number) => string         // "{n} niet geplaatst"
     spotInspectorHint: string

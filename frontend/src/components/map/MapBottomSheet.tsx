@@ -11,9 +11,11 @@ interface Props {
   /** When true (sun-mode activates), force open on next render. */
   autoExpand: boolean
   hidden?: boolean
+  /** 'global' shows cross-garden phrasing in the peek label. */
+  careScope?: 'map' | 'global'
 }
 
-export default function MapBottomSheet({ mode, attentionCount, careContent, sunContent, autoExpand, hidden }: Props) {
+export default function MapBottomSheet({ mode, attentionCount, careContent, sunContent, autoExpand, hidden, careScope = 'map' }: Props) {
   const t = useT()
   const [expanded, setExpanded] = useState(autoExpand)
 
@@ -31,8 +33,8 @@ export default function MapBottomSheet({ mode, attentionCount, careContent, sunC
 
   const peekLabel = mode === 'care'
     ? attentionCount === 0
-      ? `✓ ${t.mapPage.sheetAllGood}`
-      : `● ${t.mapPage.sheetAttentionCount(attentionCount)}`
+      ? `✓ ${careScope === 'global' ? t.mapPage.sheetAllGoodGlobal : t.mapPage.sheetAllGood}`
+      : `● ${careScope === 'global' ? t.mapPage.sheetGlobalAttention(attentionCount) : t.mapPage.sheetAttentionCount(attentionCount)}`
     : ''   // sun mode always renders expanded; no peek text
 
   return (
