@@ -992,6 +992,7 @@ export const nl: Translations = {
     bulkArchiveBtn: (n) => `Archiveer (${n})`,
     bulkArchiveConfirm: (n) => n === 1 ? 'Weet je zeker dat je 1 plant wilt verwijderen?' : `Weet je zeker dat je ${n} planten wilt verwijderen?`,
     renameHint: 'Hernoem',
+    recentCare: 'Recente verzorging',
   },
 
   // ── Map page (garden/indoor view) ────────────────────────

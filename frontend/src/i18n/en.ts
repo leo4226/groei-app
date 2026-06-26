@@ -992,6 +992,7 @@ export const en: Translations = {
     bulkArchiveBtn: (n) => `Archive (${n})`,
     bulkArchiveConfirm: (n) => n === 1 ? 'Are you sure you want to remove 1 plant?' : `Are you sure you want to remove ${n} plants?`,
     renameHint: 'Rename',
+    recentCare: 'Recent care',
   },
 
   // ── Map page (garden/indoor view) ────────────────────────
