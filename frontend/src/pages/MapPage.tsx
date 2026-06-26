@@ -6,6 +6,7 @@ import MapTopBar from '../components/map/MapTopBar'
 import MapActionCluster from '../components/map/MapActionCluster'
 import MapBottomSheet, { type SheetMode } from '../components/map/MapBottomSheet'
 import CareNeedsList from '../components/map/CareNeedsList'
+import GlobalCareSheet from '../components/map/GlobalCareSheet'
 import GardenBiodiversityCard from '../components/GardenBiodiversityCard'
 import PlantQuickSheet from '../components/sheets/PlantQuickSheet'
 import ObjectQuickSheet from '../components/sheets/ObjectQuickSheet'
@@ -39,9 +40,15 @@ export default function MapPage() {
   const loadMaps = useFloreren((s) => s.loadMaps)
   const allPlants = useFloreren((s) => s.plants)
   const loadPlantsStore = useFloreren((s) => s.loadPlants)
+  const warningSummary = useFloreren((s) => s.warningSummary)
+  const loadWarningSummary = useFloreren((s) => s.loadWarningSummary)
   useEffect(() => {
     if (allPlants.length === 0) loadPlantsStore()
   }, [loadPlantsStore])
+  // Cross-garden care needs power the bottom sheet's global view.
+  useEffect(() => {
+    if (!warningSummary) loadWarningSummary()
+  }, [loadWarningSummary])
 
   const mapData = useMapData(slug)
   const { refresh: refreshMapData } = mapData
@@ -94,6 +101,19 @@ export default function MapPage() {
   const [moveMode, setMoveMode] = useState(false)
   const [targetedMove, setTargetedMove] = useState<{ plantId: number; relockAfterMove: boolean } | null>(null)
   const moveModeActive = moveMode || targetedMove !== null
+
+  // Arriving from another garden's care list (focusPlantId in nav state):
+  // auto-open that plant's sheet once this map's plants have loaded.
+  useEffect(() => {
+    const focusId = (location.state as { focusPlantId?: number } | null)?.focusPlantId
+    if (!focusId || plants.length === 0) return
+    const plant = plants.find((p) => p.id === focusId)
+    if (plant) {
+      setSelectedObject(null)
+      setSelectedPlant(plant)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.state, plants, navigate, location.pathname])
 
   async function handleCreateContainer(preset: ObjectPreset) {
     if (!map) return
@@ -160,11 +180,31 @@ export default function MapPage() {
     return all.filter((p) => (p.warnings?.length ?? 0) > 0 || p.top_warning !== null).length
   }, [plants, objects])
 
+  // Once cross-garden warnings are loaded, the sheet shows every garden's
+  // needs; until then it falls back to this map's own care list + count.
+  const useGlobalCare = !!warningSummary
+  const globalAttentionCount = useMemo(() => {
+    if (!warningSummary) return attentionCount
+    return warningSummary.buckets.nu.length + warningSummary.buckets.vandaag.length
+  }, [warningSummary, attentionCount])
+
   const sheetMode: SheetMode = sun.active && isOutdoor ? 'sun' : 'care'
 
   const handlePlantTap = (plant: MapPlant) => {
     setSelectedObject(null)
     setSelectedPlant(plant)
+  }
+
+  // Tap a plant in the global care list: pan to it here, or jump to its garden.
+  const handleGlobalPlantTap = (plantId: number, mapName: string | null) => {
+    const targetMap = mapName ? maps.find((m) => m.name === mapName) : null
+    if (targetMap && targetMap.slug !== slug) {
+      navigate(`/map/${targetMap.slug}`, { state: { focusPlantId: plantId } })
+      return
+    }
+    const plant = plants.find((p) => p.id === plantId)
+    if (plant) handlePlantTap(plant)
+    else navigate(`/plants/${plantId}`)
   }
 
   const handleObjectTap = (object: MapObject) => {
@@ -413,10 +453,15 @@ export default function MapPage() {
       <div className="landscape-mobile-hide">
         <MapBottomSheet
           mode={sheetMode}
-          attentionCount={attentionCount}
+          attentionCount={useGlobalCare ? globalAttentionCount : attentionCount}
+          careScope={useGlobalCare ? 'global' : 'map'}
           autoExpand={sun.active}
           hidden={biodiversityModalOpen}
-          careContent={<CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />}
+          careContent={
+            useGlobalCare
+              ? <GlobalCareSheet currentMapName={map?.name ?? null} onPlantTap={handleGlobalPlantTap} />
+              : <CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />
+          }
           sunContent={
             <SunControls
               viewMode={sun.viewMode}
