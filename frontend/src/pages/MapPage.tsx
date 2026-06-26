@@ -642,6 +642,8 @@ export default function MapPage() {
           hasZones={hasZones}
           hasPlant={allPlants.length > 0}
           accountId={activeUserId ?? 0}
+          mapType={map.map_type}
+          mapLat={map.lat}
         />
       )}
 

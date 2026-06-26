@@ -1135,6 +1135,10 @@ export const en: Translations = {
       label: 'Draw your garden layout',
       cta: 'Draw layout',
     },
+    setLocation: {
+      label: "Set your garden's location",
+      cta: 'Set location',
+    },
     addPlant: {
       label: 'Add your first plant',
       cta: 'Add plant',

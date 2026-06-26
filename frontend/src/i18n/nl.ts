@@ -1135,6 +1135,10 @@ export const nl: Translations = {
       label: 'Teken je tuinindeling',
       cta: 'Indeling tekenen',
     },
+    setLocation: {
+      label: 'Stel de locatie van je tuin in',
+      cta: 'Locatie instellen',
+    },
     addPlant: {
       label: 'Voeg je eerste plant toe',
       cta: 'Plant toevoegen',
