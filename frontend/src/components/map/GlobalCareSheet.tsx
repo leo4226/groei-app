@@ -143,9 +143,9 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
               <div className="flex-1 h-px bg-border/40" />
             </div>
 
-            <Bucket label={t.dashboard.warnings.bucketNow} dotColor="var(--color-overdue)" items={nuItems} t={t} saving={saving} currentMapName={currentMapName} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
-            <Bucket label={t.dashboard.warnings.bucketToday} dotColor="var(--color-due)" items={vandaagItems} t={t} saving={saving} currentMapName={currentMapName} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
-            <Bucket label={t.dashboard.warnings.bucketThisWeek} dotColor="var(--color-primary)" items={weekItems} t={t} saving={saving} currentMapName={currentMapName} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+            <Bucket label={t.dashboard.warnings.bucketNow} dotColor="var(--color-overdue)" items={nuItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+            <Bucket label={t.dashboard.warnings.bucketToday} dotColor="var(--color-due)" items={vandaagItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+            <Bucket label={t.dashboard.warnings.bucketThisWeek} dotColor="var(--color-primary)" items={weekItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
           </div>
         )
       })}
@@ -167,7 +167,6 @@ interface BucketProps {
   items: BucketItemT[]
   t: ReturnType<typeof useT>
   saving: string | null
-  currentMapName?: string | null
   onPlantTap?: (plantId: number, mapName: string | null) => void
   onDone: (p: BucketPlantOut) => void
   onSkip: (p: BucketPlantOut) => void
@@ -175,7 +174,7 @@ interface BucketProps {
   onSkipGroup: (g: GroupedWarning) => void
 }
 
-function Bucket({ label, dotColor, items, t, saving, currentMapName, onPlantTap, onDone, onSkip, onDoneGroup, onSkipGroup }: BucketProps) {
+function Bucket({ label, dotColor, items, t, saving, onPlantTap, onDone, onSkip, onDoneGroup, onSkipGroup }: BucketProps) {
   if (items.length === 0) return null
   const count = itemsPlantCount(items)
   return (
@@ -189,7 +188,7 @@ function Bucket({ label, dotColor, items, t, saving, currentMapName, onPlantTap,
           item.kind === 'group' ? (
             <GroupRow key={`g_${item.group.care_type}`} group={item.group} t={t} saving={saving} onDone={onDoneGroup} onSkip={onSkipGroup} />
           ) : (
-            <PlantRow key={bucketKey(item.plant)} plant={item.plant} t={t} saving={saving} currentMapName={currentMapName} onTap={onPlantTap} onDone={onDone} onSkip={onSkip} />
+            <PlantRow key={bucketKey(item.plant)} plant={item.plant} t={t} saving={saving} onTap={onPlantTap} onDone={onDone} onSkip={onSkip} />
           ),
         )}
       </div>
@@ -224,11 +223,10 @@ function GroupRow({ group, t, saving, onDone, onSkip }: {
   )
 }
 
-function PlantRow({ plant, t, saving, currentMapName, onTap, onDone, onSkip }: {
+function PlantRow({ plant, t, saving, onTap, onDone, onSkip }: {
   plant: BucketPlantOut
   t: ReturnType<typeof useT>
   saving: string | null
-  currentMapName?: string | null
   onTap?: (plantId: number, mapName: string | null) => void
   onDone: (p: BucketPlantOut) => void
   onSkip: (p: BucketPlantOut) => void
