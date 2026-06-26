@@ -450,14 +450,14 @@ export default function MapPage() {
       </div>
 
       {moveModeActive && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3" style={{ backdropFilter: 'blur(10px)' }}>
-          <span className="font-heading text-xs text-text-soft whitespace-nowrap">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
+          <span className="font-heading text-xs text-text-soft leading-snug">
             {targetedMove ? t.mapPage.moveOnePlantHint : t.mapPage.moveModeHint}
           </span>
           <button
             type="button"
             onClick={() => void endMoveMode()}
-            className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white active:scale-95 transition-transform"
+            className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white active:scale-95 transition-transform shrink-0"
           >
             {t.mapPage.moveModeDone}
           </button>
