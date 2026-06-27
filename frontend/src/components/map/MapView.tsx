@@ -8,6 +8,7 @@ import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
 import { useMapInteraction } from '../../hooks/useMapInteraction'
+import { shouldStartMapPan } from './plantDragPermissions'
 import ObjectsLayer from './ObjectsLayer'
 import PlantsLayer from './PlantsLayer'
 import PlantResizeOverlay from './PlantResizeOverlay'
@@ -193,6 +194,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   }, [onPanDocMove])
 
   const handlePanPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!shouldStartMapPan({ moveMode, movePlantId })) return
     if (!e.isPrimary) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     if (isPinching.current) return
@@ -216,7 +218,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     document.addEventListener('pointermove', onPanDocMove, { passive: true })
     document.addEventListener('pointerup', onPanDocEnd)
     document.addEventListener('pointercancel', onPanDocEnd)
-  }, [baseCenter, isLandscapeMobile, svgRef, onPanDocMove, onPanDocEnd])
+  }, [baseCenter, isLandscapeMobile, svgRef, onPanDocMove, onPanDocEnd, moveMode, movePlantId])
 
   // Unmount safety: drop listeners if the component dies mid-pan
   useEffect(() => () => {

@@ -5,6 +5,7 @@ import { computeSuitability } from '../../utils/suitability'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { resolveIconUrl } from '../../utils/icons'
+import { getPlantDragHitRadius } from './plantDragPermissions'
 
 export const STATUS_COLORS: Record<string, string> = {
   overdue:   'var(--color-overdue)',
@@ -98,7 +99,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   const baseR = plant.display_radius_cm ? plant.display_radius_cm * PX_PER_CM : 14
   const r = isDragging ? baseR * 1.3 : baseR
   const iconR = r * 0.85
-  const hitR = Math.max(20, r + 6)
+  const hitR = getPlantDragHitRadius(r, canDrag)
   const labelY = iconR + 10
 
   // For locked plants: cap the rendered icon so it never extends off-screen,
