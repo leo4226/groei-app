@@ -93,7 +93,7 @@ export function IdentifyPlantPage() {
     try {
       const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
       if (destination === 'journal') {
-        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl } })
+        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl, destination: 'journal' } })
       } else {
         navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
       }
@@ -112,6 +112,7 @@ export function IdentifyPlantPage() {
                 common_name_nl: candidate.common_names_nl?.[0] ?? commonName,
               },
               thumbnail: capturedPhotoDataUrl,
+              destination: 'journal',
             },
           })
         } else {

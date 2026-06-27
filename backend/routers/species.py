@@ -151,29 +151,85 @@ async def batch_species_garden_fit(
     return result
 
 
+def _normalise_fun_fact(nl: object, en: object) -> dict[str, str] | None:
+    """Return a bilingual fun-fact payload, filling a missing language if needed."""
+    fact_nl = str(nl).strip() if nl else ""
+    fact_en = str(en).strip() if en else ""
+    if not fact_nl and not fact_en:
+        return None
+    return {
+        "fun_fact_nl": fact_nl or fact_en,
+        "fun_fact_en": fact_en or fact_nl,
+    }
+
+
+def _phenology_fun_fact(phenology_json: object) -> dict[str, str] | None:
+    """Fallback to existing species interesting facts when fun-fact generation fails."""
+    if not phenology_json:
+        return None
+    if isinstance(phenology_json, str):
+        try:
+            phenology = json.loads(phenology_json)
+        except json.JSONDecodeError:
+            return None
+    elif isinstance(phenology_json, dict):
+        phenology = phenology_json
+    else:
+        return None
+    return _normalise_fun_fact(
+        phenology.get("interesting_facts_nl"),
+        phenology.get("interesting_facts_en"),
+    )
+
+
 @router.get("/{species_id}/fun-fact", response_model=FunFactOut)
 async def get_species_fun_fact(species_id: int, db=Depends(db_dep)):
-    """Return a fun fact for a species. Generates via LLM on first access, then caches."""
+    """Return a fun fact for a species.
+
+    The dedicated fun_fact_* columns were added after phenology facts already
+    existed. Read/cache those columns defensively so a schema mismatch or LLM
+    failure does not make the DiscoveryCard show a permanent error.
+    """
     row = await db.execute_fetchall(
-        "SELECT latin_name, common_name_nl, fun_fact_nl, fun_fact_en FROM plant_species WHERE id = ?",
+        "SELECT latin_name, common_name_nl, phenology_json FROM plant_species WHERE id = ?",
         (species_id,),
     )
     if not row:
         raise HTTPException(status_code=404, detail="Species not found")
     r = row[0]
-    if r["fun_fact_nl"] and r["fun_fact_en"]:
-        return {"fun_fact_nl": r["fun_fact_nl"], "fun_fact_en": r["fun_fact_en"]}
+    fallback = _phenology_fun_fact(r.get("phenology_json"))
 
-    # Generate fun fact via LLM
+    try:
+        cached_rows = await db.execute_fetchall(
+            "SELECT fun_fact_nl, fun_fact_en FROM plant_species WHERE id = ?",
+            (species_id,),
+        )
+        if cached_rows:
+            cached = _normalise_fun_fact(cached_rows[0].get("fun_fact_nl"), cached_rows[0].get("fun_fact_en"))
+            if cached:
+                return cached
+    except Exception as exc:
+        logger.warning("Fun fact cache unavailable for species %s: %s", species_id, exc)
+        if fallback:
+            return fallback
+
     fact_nl, fact_en = await _generate_fun_fact(r["latin_name"], r["common_name_nl"])
-    if not fact_nl:
-        raise HTTPException(status_code=503, detail="Fun fact generation unavailable")
+    generated = _normalise_fun_fact(fact_nl, fact_en)
 
-    await db.execute(
-        "UPDATE plant_species SET fun_fact_nl = ?, fun_fact_en = ? WHERE id = ?",
-        (fact_nl, fact_en, species_id),
-    )
-    return {"fun_fact_nl": fact_nl, "fun_fact_en": fact_en}
+    if generated:
+        try:
+            await db.execute(
+                "UPDATE plant_species SET fun_fact_nl = ?, fun_fact_en = ? WHERE id = ?",
+                (generated["fun_fact_nl"], generated["fun_fact_en"], species_id),
+            )
+        except Exception as exc:
+            logger.warning("Could not cache fun fact for species %s: %s", species_id, exc)
+        return generated
+
+    if fallback:
+        return fallback
+
+    raise HTTPException(status_code=503, detail="Fun fact generation unavailable")
 
 
 @router.get("/{species_id}/garden-fit", response_model=list[GardenFitVerdict])
