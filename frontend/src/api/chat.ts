@@ -13,6 +13,21 @@ export interface PageContext {
   plant_id?: number
 }
 
+/**
+ * Thrown when the /chat request gets a non-OK HTTP response. Carries the
+ * status so callers can distinguish a worker-offline failure (the backend
+ * proxy returns 502/503/504 when the Stekkie worker is unreachable or times
+ * out) from a generic error.
+ */
+export class ChatRequestError extends Error {
+  status: number
+  constructor(status: number) {
+    super(`Chat error: ${status}`)
+    this.name = 'ChatRequestError'
+    this.status = status
+  }
+}
+
 export async function sendChatMessage(
   message: string,
   history: ChatMessage[],
@@ -27,7 +42,7 @@ export async function sendChatMessage(
     },
     body: JSON.stringify({ message, history, page_context: pageContext ?? null }),
   })
-  if (!resp.ok) throw new Error(`Chat error: ${resp.status}`)
+  if (!resp.ok) throw new ChatRequestError(resp.status)
   const data = await resp.json()
   return data.response
 }
