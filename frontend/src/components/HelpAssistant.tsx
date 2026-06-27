@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
-import { sendChatMessage, submitBugReport, type ChatMessage, type PageContext } from '../api/chat'
+import { sendChatMessage, submitBugReport, ChatRequestError, type ChatMessage, type PageContext } from '../api/chat'
 
 type PageKey = 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
 
@@ -218,7 +218,12 @@ export default function HelpAssistant() {
       const reply = await sendChatMessage(userMsg, messages, pageContext)
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
-      const isOffline = err instanceof TypeError
+      // "Offline" covers a true browser network failure (TypeError) and the
+      // backend's gateway statuses when the Stekkie worker is down/timing out
+      // (502 Bad Gateway, 503, 504 Gateway Timeout). Anything else is generic.
+      const isOffline =
+        err instanceof TypeError ||
+        (err instanceof ChatRequestError && [502, 503, 504].includes(err.status))
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: isOffline ? t.help.chat.unavailable : t.help.chat.error,
