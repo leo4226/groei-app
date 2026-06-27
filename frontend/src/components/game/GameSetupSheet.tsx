@@ -4,6 +4,7 @@ import { useT } from '../../context/LanguageContext'
 import { maps as mapsApi } from '../../api/client'
 import { gameApi } from '../../api/game'
 import type { MapPlant } from '../../types'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 
 interface Props {
   mapId: number
@@ -111,6 +112,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
             <div className="space-y-2">
               {plants.map((p) => {
                 const sel = selected.has(p.id)
+                const displayName = plantDisplayName(p, t.locale)
                 return (
                   <button
                     key={p.id}
@@ -120,12 +122,12 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
                     }`}
                   >
                     {p.photo_path ? (
-                      <img src={p.photo_path} alt={p.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                      <img src={p.photo_path} alt={displayName} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                     ) : (
                       <div className="w-12 h-12 rounded-lg bg-border flex items-center justify-center text-text-muted text-xl flex-shrink-0">🌱</div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${sel ? 'text-primary' : 'text-text'}`}>{p.name}</p>
+                      <p className={`text-sm font-medium truncate ${sel ? 'text-primary' : 'text-text'}`}>{displayName}</p>
                       {p.species && <p className="text-xs text-text-muted truncate">{p.species}</p>}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${sel ? 'border-primary bg-primary' : 'border-border'}`}>

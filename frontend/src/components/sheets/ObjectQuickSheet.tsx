@@ -3,6 +3,7 @@ import { objects, plants as plantsApi } from '../../api/client'
 import { STATUS_COLORS } from '../map/PlantMarker'
 import { useState } from 'react'
 import { useT } from '../../context/LanguageContext'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 
 interface Props {
   object: MapObject
@@ -173,7 +174,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: STATUS_COLORS[plant.care_status] || STATUS_COLORS.good }}
                         />
-                        <span className="flex-1 text-sm text-text">{plant.name}</span>
+                        <span className="flex-1 text-sm text-text">{plantDisplayName(plant, t.locale)}</span>
                         <button
                           onClick={() => handleReleasePlant(plant.id)}
                           disabled={busy}
@@ -211,7 +212,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                           className="w-full flex items-center gap-2 bg-bg rounded-lg px-3 py-2 text-left hover:bg-border/50 transition-colors"
                         >
                           <span className="text-sm">🌱</span>
-                          <span className="flex-1 text-sm text-text">{p.name}</span>
+                          <span className="flex-1 text-sm text-text">{plantDisplayName(p, t.locale)}</span>
                         </button>
                       ))}
                     </div>

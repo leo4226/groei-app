@@ -2,6 +2,8 @@ import type { MapPlant } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import PlantMarker from './PlantMarker'
 import { canStartPlantDrag, resolveDisplayedDragPosition } from './plantDragPermissions'
+import { useT } from '../../context/LanguageContext'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 
 interface Props {
   plants: MapPlant[]
@@ -18,6 +20,8 @@ interface Props {
 }
 
 export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
+  const t = useT()
+
   return (
     <g>
       {plants.map((plant) => {
@@ -35,6 +39,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             canDrag={canDrag}
             isSelected={selectedId === key}
             showLabel={showLabels}
+            displayName={plantDisplayName(plant, t.locale)}
             onTap={onPlantTap}
             onPointerDown={onPointerDown}
             heatmapCells={heatmapCells}

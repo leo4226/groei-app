@@ -67,7 +67,9 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
 async def list_plants(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
-               s.phenology_json
+               s.phenology_json,
+               s.common_name_nl AS species_common_name_nl,
+               s.common_name_en AS species_common_name_en
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id
@@ -121,7 +123,9 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
 async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     cursor = await db.execute("""
         SELECT p.*, l.name as location_name, l.icon as location_icon,
-               s.phenology_json
+               s.phenology_json,
+               s.common_name_nl AS species_common_name_nl,
+               s.common_name_en AS species_common_name_en
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id

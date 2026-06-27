@@ -4,7 +4,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_update_plant_preserves_omitted_nullable_fields(client, seeded_db, auth_header):
     db = seeded_db
-    await db.execute("CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, phenology_json TEXT)")
+    await db.execute("CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, phenology_json TEXT)")
     await db.execute("INSERT INTO locations (id, name, household_id) VALUES (7, 'Living room', 1)")
     await db.execute("INSERT INTO maps (id, name, map_type, household_id) VALUES (3, 'Back garden', 'outdoor', 1)")
     await db.execute(
@@ -36,7 +36,7 @@ async def test_update_plant_preserves_omitted_nullable_fields(client, seeded_db,
 @pytest.mark.asyncio
 async def test_update_plant_explicit_null_still_clears_nullable_fields(client, seeded_db, auth_header):
     db = seeded_db
-    await db.execute("CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, phenology_json TEXT)")
+    await db.execute("CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, phenology_json TEXT)")
     await db.execute("INSERT INTO locations (id, name, household_id) VALUES (7, 'Living room', 1)")
     await db.execute("INSERT INTO maps (id, name, map_type, household_id) VALUES (3, 'Back garden', 'outdoor', 1)")
     await db.execute(

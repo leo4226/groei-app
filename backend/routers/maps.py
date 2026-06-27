@@ -114,7 +114,9 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
                   p.container_id, p.ground_zone_id, p.display_radius_cm,
                   p.sun_requirement, p.plant_type, p.icon_key, p.species_id,
                   p.is_locked, p.care_thresholds, p.care_profile,
-                  s.phenology_json
+                  s.phenology_json,
+                  s.common_name_nl AS species_common_name_nl,
+                  s.common_name_en AS species_common_name_en
            FROM plants p
            LEFT JOIN plant_species s ON p.species_id = s.id
            WHERE p.map_id = ? AND p.is_active = 1 AND p.map_x IS NOT NULL AND p.map_y IS NOT NULL""",
@@ -148,7 +150,9 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
         """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                   p.plant_type, p.icon_key, p.species_id, p.is_locked, p.care_thresholds,
-                  p.care_profile, s.phenology_json
+                  p.care_profile, s.phenology_json,
+                  s.common_name_nl AS species_common_name_nl,
+                  s.common_name_en AS species_common_name_en
            FROM plants p
            LEFT JOIN plant_species s ON p.species_id = s.id
            WHERE p.map_id = ? AND p.is_active = 1 AND p.map_x IS NOT NULL AND p.map_y IS NOT NULL
@@ -170,7 +174,9 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
             """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                       p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
                       p.plant_type, p.icon_key, p.species_id, p.is_locked, p.care_thresholds,
-                      p.care_profile, s.phenology_json
+                      p.care_profile, s.phenology_json,
+                      s.common_name_nl AS species_common_name_nl,
+                      s.common_name_en AS species_common_name_en
                FROM plants p
                LEFT JOIN plant_species s ON p.species_id = s.id
                WHERE p.container_id = ? AND p.is_active = 1""",

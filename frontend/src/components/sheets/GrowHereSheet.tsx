@@ -8,6 +8,7 @@ import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
 import { garden, type GrowHereResponse, type AISuggestion } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 import type { Translations } from '../../i18n/translations'
 import type { PlantRecommendation, RecommendationsOut } from '../../types'
 
@@ -369,7 +370,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                     key={p.id}
                     className="px-3 py-1 rounded-full bg-surface border border-border text-sm text-text"
                   >
-                    {p.name}
+                    {plantDisplayName(p, t.locale)}
                   </span>
                 ))}
               </div>

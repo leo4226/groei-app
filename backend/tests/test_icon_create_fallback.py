@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 @pytest.fixture
 async def db_ready(seeded_db):
-    await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, care_thresholds TEXT, phenology_json TEXT)")
+    await seeded_db.execute("CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, care_thresholds TEXT, phenology_json TEXT)")
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
     await seeded_db.commit()
     return seeded_db
