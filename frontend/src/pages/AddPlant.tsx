@@ -131,7 +131,6 @@ export default function AddPlant() {
     isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
   )
   const [submitting, setSubmitting] = useState(false)
-  const [elapsed, setElapsed] = useState(0)
   const [progressMsg, setProgressMsg] = useState('')
   const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
@@ -336,16 +335,13 @@ export default function AddPlant() {
   // Progress timer: update elapsed seconds + phase message while submitting
   useEffect(() => {
     if (!submitting) {
-      setElapsed(0)
       setProgressMsg('')
       return
     }
     const start = Date.now()
-    setElapsed(0)
     setProgressMsg(t.addPlant.adding)
     const tick = setInterval(() => {
       const sec = Math.floor((Date.now() - start) / 1000)
-      setElapsed(sec)
       if (sec < 5) {
         setProgressMsg(t.addPlant.adding)
       } else if (sec < 25) {
