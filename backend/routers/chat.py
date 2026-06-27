@@ -228,5 +228,13 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
             return resp.json()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Chatbot reageert niet (timeout)")
+    except httpx.HTTPStatusError as e:
+        # The worker responded, but with an error status (e.g. Ollama model
+        # missing → 500, or the worker's own 502). Map any upstream failure to
+        # a gateway status so the frontend shows "Chatbot is offline" instead
+        # of leaking a raw 500 from this proxy. Upstream 5xx → 503, 4xx → 502.
+        upstream = e.response.status_code
+        status = 503 if upstream >= 500 else 502
+        raise HTTPException(status_code=status, detail=f"Chatbot niet beschikbaar (upstream {upstream})")
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Chatbot onbereikbaar: {e}")
