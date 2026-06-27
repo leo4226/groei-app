@@ -26,7 +26,7 @@ export default function SegmentedControl({
             type="button"
             onClick={() => onChange(opt.id)}
             className={`
-              font-heading text-[11px] sm:text-sm px-2 sm:px-3.5 py-1.5 rounded-md flex-1 min-w-0 truncate
+              font-heading text-[10px] sm:text-sm px-1.5 sm:px-3 py-1.5 rounded-md flex-1 min-w-0 truncate
               transition-all duration-150
               ${on
                 ? 'bg-paper text-text shadow-sm font-medium'
