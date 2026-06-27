@@ -11,6 +11,7 @@ const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','n
 type RouteState = {
   candidate: Partial<IdentifyCommitResult> & { scientific_name?: string; common_name?: string; common_name_nl?: string }
   thumbnail: string
+  destination?: 'journal' | 'garden'
 }
 
 type GardenFit = { map_id: number; map_name: string; sun_fit: string | null; reason: string }
@@ -46,6 +47,7 @@ export default function DiscoveryCard() {
 
   const speciesId = state?.candidate?.species_id ?? null
   const scientificName = state?.candidate?.scientific_name ?? ''
+  const hideAddToGarden = state?.destination === 'journal'
   const displayName = state?.candidate?.name_nl_suggested
     ?? state?.candidate?.common_name_nl
     ?? state?.candidate?.common_name
@@ -321,16 +323,18 @@ export default function DiscoveryCard() {
             </>
           )}
         </button>
-        <button
-          onClick={handleAddToGarden}
-          style={{
-            padding: '14px 24px', borderRadius: 12,
-            background: 'var(--color-primary)', color: '#fff',
-            border: 'none', fontSize: 15, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          {t.discovery.addToGarden}
-        </button>
+        {!hideAddToGarden && (
+          <button
+            onClick={handleAddToGarden}
+            style={{
+              padding: '14px 24px', borderRadius: 12,
+              background: 'var(--color-primary)', color: '#fff',
+              border: 'none', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            {t.discovery.addToGarden}
+          </button>
+        )}
       </div>
     </div>
   )
