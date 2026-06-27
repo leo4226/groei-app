@@ -103,14 +103,13 @@ the canvas calm and the logging effort low.
    `quantity`, but that integration is a follow-up and must not block the
    visual MVP. (§Phase 5)
 
-### Open questions for Leon (do not block Phase 1–2)
-- **Q1 — selected-label behaviour:** when labels are off, is showing the name
-  only for the *selected* plant enough, or do you also want labels to appear at
-  high zoom? (Default we build: selected-only + manual "show all" toggle.)
-- **Q2 — multiplicity glyph:** stacked-silhouette + tiny number (default) vs. a
-  plain count badge "×6". We'll mock both in Phase 2 and pick.
-- **Q3 — biodiversity weighting:** should 6 ferns count more than 1 toward the
-  score, and if so, linearly or with diminishing returns? (Phase 5.)
+### Resolved decisions (2026-06-27, Leon)
+- **Q1 — selected-label behaviour:** ✅ **selected-only + manual "show all"
+  toggle.** No zoom-based reveal (kept as a non-goal).
+- **Q2 — multiplicity glyph:** ✅ **stacked-silhouette + tiny count number**
+  (not a plain "×6" badge).
+- **Q3 — biodiversity weighting:** ✅ **diminishing returns** — abundance helps
+  but does not dominate the score (see Phase 5 for the curve).
 
 ## 5. Data model changes
 
@@ -274,9 +273,8 @@ on-canvas hint.
 
 **Changes**
 - `backend/services/garden_biodiversity.py` (`compute_for_map`): weight species
-  presence/abundance by `quantity`. Pick a curve per Q3 (linear vs. diminishing
-  returns — recommend **diminishing returns**, e.g. `1 + log` weighting, so 6
-  ferns help but don't dominate).
+  presence/abundance by `quantity` using **diminishing returns** (decided) —
+  e.g. a `1 + log(quantity)` style weight, so 6 ferns help but don't dominate.
 - Surface nothing new in the UI beyond the existing score; document the change.
 
 **Acceptance**
