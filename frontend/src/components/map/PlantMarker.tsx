@@ -249,7 +249,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
       {/* Drag pill */}
       {isDragging && ringColor && badgeLabel && sunHoursAtPos !== null && (
         <g transform={`translate(0, ${labelY + 16})`}>
-          <rect x={-54} y={-9} width={108} height={18} rx={9} fill={ringColor} opacity={0.92} />
+          <rect x={-75} y={-10} width={150} height={20} rx={10} fill={ringColor} opacity={0.92} />
           <text
             textAnchor="middle"
             dominantBaseline="central"
