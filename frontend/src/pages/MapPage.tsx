@@ -98,7 +98,10 @@ export default function MapPage() {
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
-  const [showLabels, setShowLabels] = useState(true)
+  // Labels are contextual by default: hidden globally to keep a dense map calm;
+  // the selected plant still shows its name (see PlantsLayer), and this toggle
+  // flips ALL names on. See docs/plans/2026-06-27-map-density-multiplicity-plan.md
+  const [showLabels, setShowLabels] = useState(false)
   const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
   const [showGameSetup, setShowGameSetup] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
