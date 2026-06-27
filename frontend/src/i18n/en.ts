@@ -801,6 +801,10 @@ export const en: Translations = {
     substrateOptions: ['Orchid bark', 'All-purpose', 'Coir', 'Perlite', 'Sphagnum', 'Akadama', 'Calcareous', 'Sandy', '+ Other'],
     cancel: '← Cancel',
     submitting: 'Adding...',
+    adding: 'Adding plant...',
+    fetchingSpecies: 'Loading species data...',
+    calculatingCare: 'Calculating care advice...',
+    stillWorking: (n: number) => `Working... (${n}s)`,
   },
 
   // ── Plant identification flow ────────────────────────────

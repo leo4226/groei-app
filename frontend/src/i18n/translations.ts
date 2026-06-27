@@ -775,6 +775,10 @@ export type Translations = {
     // ── Action bar ──
     cancel: string
     submitting: string
+    adding: string           // "Adding plant..." / "Plant aanmaken..."
+    fetchingSpecies: string  // "Loading species data..." / "Soortgegevens ophalen..."
+    calculatingCare: string  // "Calculating care advice..." / "Verzorgingsadvies berekenen..."
+    stillWorking: (n: number) => string  // "Working... (12s)" / "Bezig... (12s)"
   }
 
   // ── Plant identification flow ───────────────────────────────────

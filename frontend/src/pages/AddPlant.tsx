@@ -131,6 +131,8 @@ export default function AddPlant() {
     isFromIdentify ? (prefill as IdentifyCommitResult).photo_path : null
   )
   const [submitting, setSubmitting] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  const [progressMsg, setProgressMsg] = useState('')
   const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
   const [formType, setFormType] = useState(
@@ -330,6 +332,32 @@ export default function AddPlant() {
       repot_check: { ...prev.repot_check, enabled: potSize.trim() !== '' },
     }))
   }, [potSize])
+
+  // Progress timer: update elapsed seconds + phase message while submitting
+  useEffect(() => {
+    if (!submitting) {
+      setElapsed(0)
+      setProgressMsg('')
+      return
+    }
+    const start = Date.now()
+    setElapsed(0)
+    setProgressMsg(t.addPlant.adding)
+    const tick = setInterval(() => {
+      const sec = Math.floor((Date.now() - start) / 1000)
+      setElapsed(sec)
+      if (sec < 5) {
+        setProgressMsg(t.addPlant.adding)
+      } else if (sec < 25) {
+        setProgressMsg(t.addPlant.fetchingSpecies)
+      } else if (sec < 40) {
+        setProgressMsg(t.addPlant.calculatingCare)
+      } else {
+        setProgressMsg(t.addPlant.stillWorking(sec))
+      }
+    }, 1000)
+    return () => clearInterval(tick)
+  }, [submitting])
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -982,9 +1010,9 @@ export default function AddPlant() {
             className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm max-w-[260px] truncate"
           >
             {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t.addPlant.submitting}
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                <span className="truncate">{progressMsg || t.addPlant.submitting}</span>
               </span>
             ) : (
               name ? `${t.addPlant.title} — ${name}` : t.addPlant.title

@@ -801,6 +801,10 @@ export const nl: Translations = {
     substrateOptions: ['Orchideeënbast', 'Universeel', 'Kokosvezel', 'Perliet', 'Sphagnum', 'Akadama', 'Kalkrijk', 'Zandig', '+ Anders'],
     cancel: '← Annuleren',
     submitting: 'Toevoegen...',
+    adding: 'Plant aanmaken...',
+    fetchingSpecies: 'Soortgegevens ophalen...',
+    calculatingCare: 'Verzorgingsadvies berekenen...',
+    stillWorking: (n: number) => `Bezig... (${n}s)`,
   },
 
   // ── Plant identification flow ────────────────────────────
