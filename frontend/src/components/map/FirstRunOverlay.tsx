@@ -7,6 +7,10 @@ interface Props {
   hasZones: boolean
   hasPlant: boolean
   accountId: number
+  /** Map type — the location step only applies to outdoor gardens. */
+  mapType?: 'outdoor' | 'indoor'
+  /** Garden latitude; null/undefined means GPS has not been set yet. */
+  mapLat?: number | null
 }
 
 const STORAGE_PREFIX = 'floreren-firstrun-dismissed-'
@@ -34,7 +38,7 @@ function setDismissed(accountId: number) {
  * genuinely empty (no zones drawn and/or no plants yet). Replaces the
  * Dashboard's WelcomeChecklist now that the map is the landing page.
  */
-export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId }: Props) {
+export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId, mapType, mapLat }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const [dismissed, setDismissedState] = useState(() => isDismissed(accountId))
@@ -78,6 +82,11 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId }
     hint?: string
   }
 
+  // Outdoor gardens need GPS for sun simulation + the weather pill. New maps
+  // are created without it (NewMapModal collects name + type only), so surface
+  // a non-blocking step that links to map settings when it's still missing.
+  const needsLocation = mapType === 'outdoor' && mapLat == null
+
   const steps: Step[] = [
     {
       key: 'layout',
@@ -86,6 +95,13 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId }
       cta: t.onboarding.drawLayout.cta,
       action: () => navigate(`/maps/${mapId}/edit-layout`),
     },
+    ...(needsLocation ? [{
+      key: 'location',
+      done: false,
+      label: t.onboarding.setLocation.label,
+      cta: t.onboarding.setLocation.cta,
+      action: () => navigate(`/maps/${mapId}/settings`),
+    }] : []),
     {
       key: 'plant',
       done: hasPlant,

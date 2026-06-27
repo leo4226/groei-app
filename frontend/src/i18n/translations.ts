@@ -1126,6 +1126,10 @@ export type Translations = {
       label: string     // "Teken je tuinindeling"
       cta: string       // "Indeling tekenen"
     }
+    setLocation: {
+      label: string     // "Stel de locatie van je tuin in" (outdoor only, no GPS yet)
+      cta: string       // "Locatie instellen"
+    }
     addPlant: {
       label: string     // "Voeg je eerste plant toe"
       cta: string       // "Plant toevoegen"
