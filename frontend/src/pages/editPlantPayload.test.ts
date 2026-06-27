@@ -7,6 +7,8 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     id: 1,
     name: 'Existing name',
     species: 'Monstera deliciosa',
+    species_common_name_nl: null,
+    species_common_name_en: null,
     location_id: 7,
     location_name: 'Living room',
     location_icon: '🪴',

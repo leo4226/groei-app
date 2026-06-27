@@ -6,6 +6,7 @@ import { useFloreren } from '../../store/useFloreren'
 import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
@@ -68,6 +69,7 @@ export default function PlantQuickSheet({
 
   // ── Icon resolution: icon_key → photo → emoji ──
   const iconUrl = plant.icon_key ? resolveIconUrl(plant.icon_key) : null
+  const displayName = plantDisplayName(plant, t.locale)
 
   // ── Care schedules: only overdue/today, minus already-done ──
   const urgentSchedules = (detail?.care_schedules ?? []).filter(sched => {
@@ -183,7 +185,7 @@ export default function PlantQuickSheet({
               {iconUrl ? (
                 <img src={iconUrl} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
               ) : plant.photo_path ? (
-                <img src={plant.photo_path} alt={plant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={plant.photo_path} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <span style={{ fontSize: 26 }}>🌱</span>
               )}
@@ -192,7 +194,7 @@ export default function PlantQuickSheet({
             {/* Name + species + meer info */}
             <div className="flex-1 min-w-0">
               <h3 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 18, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {plant.name}
+                {displayName}
               </h3>
               {plant.species && (
                 <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -138,6 +138,32 @@ def test_list_plants_empty(client):
     assert resp.json() == []
 
 
+def test_list_plants_includes_species_common_names(client, _db_cache):
+    """Plant list exposes both localized species names for frontend language switching."""
+    import asyncio
+
+    async def seed():
+        db = await _db_cache.get()
+        await db.execute(
+            "INSERT INTO plant_species (id, slug, common_name_nl, common_name_en, latin_name) VALUES (?, ?, ?, ?, ?)",
+            (7, "monstera-deliciosa", "Gatenplant", "Swiss cheese plant", "Monstera deliciosa"),
+        )
+        await db.execute(
+            "INSERT INTO plants (id, name, species, species_id, household_id, is_active) VALUES (?, ?, ?, ?, ?, 1)",
+            (42, "Gatenplant in de hoek", "Monstera deliciosa", 7, 1),
+        )
+        await db.commit()
+
+    asyncio.run(seed())
+
+    resp = client.get("/api/plants")
+    assert resp.status_code == 200
+    plant = resp.json()[0]
+    assert plant["name"] == "Gatenplant in de hoek"
+    assert plant["species_common_name_nl"] == "Gatenplant"
+    assert plant["species_common_name_en"] == "Swiss cheese plant"
+
+
 def test_create_and_get_plant(client):
     """POST /api/plants inserts into in-memory DB, GET returns it."""
     resp = client.post("/api/plants", json={

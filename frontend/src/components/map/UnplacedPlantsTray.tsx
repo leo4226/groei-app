@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Plant } from '../../types'
 import { useT } from '../../context/LanguageContext'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 
 interface Props {
   plants: Plant[]
@@ -34,7 +35,7 @@ export default function UnplacedPlantsTray({ plants, onPlace }: Props) {
               onClick={() => onPlace(p.id)}
               className="text-left rounded-lg px-3 py-2 font-heading text-sm text-text hover:bg-primary/10 transition-all"
             >
-              {p.name}
+              {plantDisplayName(p, t.locale)}
             </button>
           ))}
         </div>

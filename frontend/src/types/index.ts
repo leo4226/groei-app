@@ -30,6 +30,8 @@ export interface Plant {
   id: number
   name: string
   species: string | null
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
   location_id: number | null
   location_name: string | null
   location_icon: string | null
@@ -270,6 +272,8 @@ export interface MapPlant {
   id: number
   name: string
   species: string | null
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
   map_x: number
   map_y: number
   photo_path: string | null

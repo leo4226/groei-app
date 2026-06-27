@@ -31,6 +31,7 @@ interface Props {
   canDrag?: boolean
   isSelected?: boolean
   showLabel?: boolean
+  displayName?: string
   onTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
   heatmapCells?: HeatmapCell[]
@@ -55,7 +56,7 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
 const PX_PER_CM = 0.46
 
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
@@ -147,7 +148,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
             fontWeight="500"
             style={{ paintOrder: 'stroke', stroke: 'rgba(255,255,255,0.9)', strokeWidth: 3, strokeLinejoin: 'round', pointerEvents: 'none' }}
           >
-            {plant.name}
+            {displayName}
           </text>
         )}
 
@@ -241,7 +242,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
             strokeLinejoin: 'round',
           }}
         >
-          {plant.name}
+          {displayName}
         </text>
       )}
 

@@ -7,6 +7,7 @@ import { useT } from '../context/LanguageContext'
 import type { Plant, PlantIcon } from '../types'
 import { alerts, icons } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
+import { plantDisplayName, plantSearchText } from '../utils/plantDisplayName'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
@@ -154,10 +155,7 @@ export default function Plants() {
     }
     if (query) {
       const q = query.toLowerCase()
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.species?.toLowerCase().includes(q) ?? false)
-      )
+      return plantSearchText(p, t.locale).includes(q)
     }
     return true
   })
@@ -888,7 +886,7 @@ function Count({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PlantIconWell({ plant }: { plant: Plant }) {
+function PlantIconWell({ plant, altName }: { plant: Plant; altName: string }) {
   if (plant.icon_key) {
     return (
       <div style={{
@@ -898,7 +896,7 @@ function PlantIconWell({ plant }: { plant: Plant }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16%', position: 'relative',
       }}>
-        <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name}
+        <img src={resolveIconUrl(plant.icon_key)!} alt={altName}
           style={{ width: '100%', height: '100%', objectFit: 'contain', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
           className="card-icon"
         />
@@ -943,6 +941,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const displayName = plantDisplayName(plant, t.locale)
   const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
   const typeLabel = icon?.cat || plant.plant_type || null
   const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null
@@ -1014,7 +1013,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
             letterSpacing: '-0.01em', whiteSpace: 'nowrap',
             overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            {plant.name}
+            {displayName}
           </h3>
           {!isSelecting && (
             <button
@@ -1048,7 +1047,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
         }}
       >
         <div style={{ position: 'relative' }}>
-          <PlantIconWell plant={plant} />
+          <PlantIconWell plant={plant} altName={displayName} />
           <div style={{
             position: 'absolute', top: 6, right: 6,
             width: 22, height: 22, borderRadius: 22,
@@ -1086,7 +1085,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
       onClick={isEditing ? e => e.preventDefault() : undefined}
     >
       <div style={{ position: 'relative' }}>
-        <PlantIconWell plant={plant} />
+        <PlantIconWell plant={plant} altName={displayName} />
         {typeDisplay && (
           <span style={{
             position: 'absolute', top: 6, left: 6,

@@ -21,6 +21,8 @@ function plant(id: number, name: string, warnings: CareWarningOut[]): MapPlant {
     id,
     name,
     species: null,
+    species_common_name_nl: null,
+    species_common_name_en: null,
     map_x: 0,
     map_y: 0,
     photo_path: null,

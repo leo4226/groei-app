@@ -2,6 +2,7 @@ import type { MapPlant, MapObject } from '../../types'
 import { useT } from '../../context/LanguageContext'
 import { useState } from 'react'
 import { buildCareNeedsGroups, getCareTypeDisplay, type WarningPlant, type PlantWithMeta } from './careNeedsListModel'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 
 interface Props {
   plants: MapPlant[]
@@ -108,6 +109,8 @@ function PlantRow({
   icon?: string
 }) {
   const containerName = plant.containerName ?? null
+  const t = useT()
+  const displayName = plantDisplayName(plant, t.locale)
 
   return (
     <li
@@ -119,7 +122,7 @@ function PlantRow({
         style={{ backgroundColor: dotColor }}
       />
       <span className="flex-1 min-w-0">
-        <span className="text-xs text-text truncate block">{plant.name}</span>
+        <span className="text-xs text-text truncate block">{displayName}</span>
         {containerName && (
           <span className="text-[9px] text-text-muted truncate block">in {containerName}</span>
         )}

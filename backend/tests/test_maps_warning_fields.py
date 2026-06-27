@@ -12,6 +12,8 @@ class FakeDb:
             return [{'id': 1, 'map_type': 'outdoor'}]
         if 'FROM plants p' in query:
             assert 'p.care_profile' in query
+            assert 's.common_name_nl AS species_common_name_nl' in query
+            assert 's.common_name_en AS species_common_name_en' in query
             return []
         if 'SELECT * FROM objects' in query:
             return [{'id': 99, 'name': 'Terracotta pot'}] if self.with_object else []

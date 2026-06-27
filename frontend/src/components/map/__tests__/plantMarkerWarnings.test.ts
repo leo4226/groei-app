@@ -24,6 +24,8 @@ function plant(warnings: CareWarningOut[], alerts: TopAlert[]): MapPlant {
     id: 1,
     name: 'Lavender',
     species: null,
+    species_common_name_nl: null,
+    species_common_name_en: null,
     map_x: 0,
     map_y: 0,
     photo_path: null,

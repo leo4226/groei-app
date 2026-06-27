@@ -13,7 +13,13 @@ import pytest_asyncio
 
 # Tables create_plant -> get_plant joins against, beyond conftest's base schema.
 EXTRA_SCHEMA = """
-CREATE TABLE plant_species (id INTEGER PRIMARY KEY, care_thresholds TEXT, phenology_json TEXT);
+CREATE TABLE plant_species (
+    id INTEGER PRIMARY KEY,
+    common_name_nl TEXT,
+    common_name_en TEXT,
+    care_thresholds TEXT,
+    phenology_json TEXT
+);
 """
 
 

@@ -107,6 +107,8 @@ class PlantOut(BaseModel):
     id: int
     name: str
     species: str | None = None
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
     location_id: int | None = None
     location_name: str | None = None
     location_icon: str | None = None
@@ -293,6 +295,8 @@ class MapPlantOut(BaseModel):
     id: int
     name: str
     species: str | None = None
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
     map_x: float
     map_y: float
     photo_path: str | None = None

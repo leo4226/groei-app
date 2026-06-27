@@ -26,7 +26,7 @@ EXTRA_SCHEMA = """
         care_type TEXT, done_by INTEGER, done_at TEXT, notes TEXT,
         skipped BOOLEAN DEFAULT FALSE
     );
-    CREATE TABLE plant_species (id INTEGER PRIMARY KEY, phenology_json TEXT);
+    CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, common_name_en TEXT, phenology_json TEXT);
 """
 
 
