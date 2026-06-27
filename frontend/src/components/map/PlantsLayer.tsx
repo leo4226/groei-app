@@ -1,7 +1,7 @@
 import type { MapPlant } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import PlantMarker from './PlantMarker'
-import { canStartPlantDrag } from './plantDragPermissions'
+import { canStartPlantDrag, resolveDisplayedDragPosition } from './plantDragPermissions'
 
 interface Props {
   plants: MapPlant[]
@@ -22,7 +22,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
     <g>
       {plants.map((plant) => {
         const key = `plant-${plant.id}`
-        const pos = dragPositions[key] ?? { x: plant.map_x, y: plant.map_y }
+        const pos = resolveDisplayedDragPosition(key, dragPositions, { x: plant.map_x, y: plant.map_y })
         const canDrag = canStartPlantDrag(plant, { moveMode, movePlantId })
         return (
           <PlantMarker

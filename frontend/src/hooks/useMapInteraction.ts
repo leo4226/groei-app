@@ -5,7 +5,7 @@ import { screenToSVG, resolveDropTarget } from '../utils/svgCoords'
 import type { DropTarget } from '../utils/svgCoords'
 import { useMapSelection } from './useMapSelection'
 import type { MapSelection } from './useMapSelection'
-import { canStartContainerDrag, canStartPlantDrag } from '../components/map/plantDragPermissions'
+import { canStartContainerDrag, canStartPlantDrag, resolveDisplayedDragPosition } from '../components/map/plantDragPermissions'
 
 type DragItem = { type: 'plant'; id: number } | { type: 'container'; id: number }
 
@@ -112,8 +112,15 @@ export function useMapInteraction({
   const onDocUp = useCallback((e: PointerEvent) => {
     document.removeEventListener('pointermove', onDocMove)
     document.removeEventListener('pointerup', onDocUp)
+    document.removeEventListener('pointercancel', onDocUp)
     ptrUpRef.current?.(e as unknown as React.PointerEvent<SVGSVGElement>)
   }, [onDocMove])
+
+  useEffect(() => () => {
+    document.removeEventListener('pointermove', onDocMove)
+    document.removeEventListener('pointerup', onDocUp)
+    document.removeEventListener('pointercancel', onDocUp)
+  }, [onDocMove, onDocUp])
 
   const handleItemSelect = useCallback((itemType: 'plant' | 'object', id: number) => {
     // Objects are static — single tap always opens the sheet immediately
@@ -172,15 +179,17 @@ export function useMapInteraction({
     // elements with CSS transforms on mobile browsers).
     document.addEventListener('pointermove', onDocMove, { passive: false })
     document.addEventListener('pointerup', onDocUp)
+    document.addEventListener('pointercancel', onDocUp)
     const key = `plant-${plant.id}`
+    const startPos = resolveDisplayedDragPosition(key, dragPositions, { x: plant.map_x, y: plant.map_y })
     if (svgRef.current) {
       const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
-      dragOffsetRef.current = pt ? { x: plant.map_x - pt.x, y: plant.map_y - pt.y } : { x: 0, y: 0 }
+      dragOffsetRef.current = pt ? { x: startPos.x - pt.x, y: startPos.y - pt.y } : { x: 0, y: 0 }
     }
     setDragging({ type: 'plant', id: plant.id })
     didDrag.current = false
-    setDragPositions((prev) => ({ ...prev, [key]: prev[key] ?? { x: plant.map_x, y: plant.map_y } }))
-  }, [selection.mode, svgRef, onDocMove, onDocUp, moveMode, movePlantId])
+    setDragPositions((prev) => ({ ...prev, [key]: prev[key] ?? startPos }))
+  }, [selection.mode, svgRef, onDocMove, onDocUp, moveMode, movePlantId, dragPositions])
 
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
     if (!canStartContainerDrag({ moveMode, movePlantId })) return
@@ -190,6 +199,7 @@ export function useMapInteraction({
     // Document-level listeners instead of setPointerCapture
     document.addEventListener('pointermove', onDocMove, { passive: false })
     document.addEventListener('pointerup', onDocUp)
+    document.addEventListener('pointercancel', onDocUp)
     const key = `container-${obj.id}`
     if (svgRef.current) {
       const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
