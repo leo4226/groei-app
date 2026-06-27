@@ -28,6 +28,9 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
         const key = `plant-${plant.id}`
         const pos = resolveDisplayedDragPosition(key, dragPositions, { x: plant.map_x, y: plant.map_y })
         const canDrag = canStartPlantDrag(plant, { moveMode, movePlantId })
+        // Contextual labels: when global labels are off, still show the name of
+        // the selected plant so tapping reveals it without crowding the canvas.
+        const isSelected = selectedId === key
         return (
           <PlantMarker
             key={plant.id}
@@ -37,8 +40,8 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             y={pos.y}
             isDragging={draggingKey === key}
             canDrag={canDrag}
-            isSelected={selectedId === key}
-            showLabel={showLabels}
+            isSelected={isSelected}
+            showLabel={showLabels || isSelected}
             displayName={plantDisplayName(plant, t.locale)}
             onTap={onPlantTap}
             onPointerDown={onPointerDown}
