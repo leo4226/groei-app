@@ -4,7 +4,8 @@ import type { Plant } from '../../../types'
 
 function plant(over: Partial<Plant>): Plant {
   return {
-    id: 1, name: 'P', species: null, location_id: null, location_name: null,
+    id: 1, name: 'P', species: null, species_common_name_nl: null,
+    species_common_name_en: null, location_id: null, location_name: null,
     location_icon: null, map_id: null, map_x: null, map_y: null, photo_path: null,
     acquired_date: null, pot_size_cm: null, container_id: null, last_repotted: null,
     notes: null, is_active: true, is_locked: false, created_at: null, sown_date: null,
