@@ -31,6 +31,7 @@ interface Props {
   canDrag?: boolean
   isSelected?: boolean
   showLabel?: boolean
+  showWarnings?: boolean
   displayName?: string
   onTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
@@ -53,10 +54,21 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
   }))
 }
 
+/**
+ * The single most-urgent badge to render on the canvas — `top_warning` first,
+ * falling back to the first warning. The full list lives in the tap sheet and
+ * CareNeedsList; capping the canvas to one badge keeps a dense map legible.
+ */
+export function topMarkerBadge(plant: MapPlant): MarkerBadge | null {
+  const w = plant.top_warning ?? plant.warnings?.[0] ?? null
+  if (!w) return null
+  return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon }
+}
+
 const PX_PER_CM = 0.46
 
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
@@ -66,7 +78,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         ? getHaloColor(plant)
         : null)
     : getHaloColor(plant)
-  const alerts = markerBadgesForPlant(plant)
+  const topBadge = showWarnings ? topMarkerBadge(plant) : null
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
@@ -304,26 +316,16 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         </g>
       )}
 
-      {/* Alert badges — counter-rotated with icon so they arc around the visual top */}
-      {alerts.length > 0 && alerts.map((a, i) => {
-        const count = alerts.length
-        const totalArc = Math.min(count * 30, 140)
-        const startDeg = -(totalArc / 2)
-        const step = count > 1 ? totalArc / (count - 1) : 0
-        const deg = startDeg + i * step
-        const rad = (deg * Math.PI) / 180
-        const orbitR = iconR + 5
-        const bx = orbitR * Math.sin(rad)
-        const by = -(orbitR * Math.cos(rad))
-        return (
-          <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
-            <circle cx={bx} cy={by} r={7} fill="white" stroke={haloColor ?? '#888'} strokeWidth={1.5} />
-            <text x={bx} y={by} textAnchor="middle" dominantBaseline="central" fontSize={8} style={{ pointerEvents: 'none', userSelect: 'none' }}>
-              {a.icon}
-            </text>
-          </g>
-        )
-      })}
+      {/* Single most-urgent alert badge at the top — the canvas shows one; the
+          full warning list lives in the tap sheet / CareNeedsList. */}
+      {topBadge && (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle cx={0} cy={-(iconR + 5)} r={7} fill="white" stroke={haloColor ?? '#888'} strokeWidth={1.5} />
+          <text x={0} y={-(iconR + 5)} textAnchor="middle" dominantBaseline="central" fontSize={8} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+            {topBadge.icon}
+          </text>
+        </g>
+      )}
     </g>
   )
 }
