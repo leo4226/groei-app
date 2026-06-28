@@ -232,3 +232,54 @@ async def test_dangling_icon_key_surfaces_and_is_reassigned(client, admin_db, au
     row = (await admin_db.execute_fetchall("SELECT icon_key, icon_requested FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "gen_basterdkool"
     assert not row["icon_requested"]
+
+@pytest.mark.asyncio
+async def test_sync_upgrades_valid_generic_icon_to_existing_ai_generated_icon(client, admin_db):
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos','Roos','Rosa canina','flower','potted',NULL,'https://r2/gen_roos.svg','ai')"
+    )
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos_bare','Roos','Rosa canina','flower','bare','gen_roos','https://r2/gen_roos_bare.svg','ai')"
+    )
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species,species_id,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Mijn roos','Rosa canina',1,'daisy',0,1,1)"
+    )
+    await admin_db.commit()
+
+    resp = await client.post('/api/icon-catalog/sync')
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body['matched_plants'] == 1
+    assert body['matches'][0]['icon_key'] == 'gen_roos'
+    row = (await admin_db.execute_fetchall("SELECT icon_key, icon_requested FROM plants WHERE id=1"))[0]
+    assert row['icon_key'] == 'gen_roos'
+    assert not row['icon_requested']
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_upgrade_generic_icon_to_procedural_generated_icon(client, admin_db):
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos','Roos','Rosa canina','flower','potted',NULL,'https://r2/gen_roos.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos_bare','Roos','Rosa canina','flower','bare','gen_roos','https://r2/gen_roos_bare.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species,species_id,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Mijn roos','Rosa canina',1,'daisy',0,1,1)"
+    )
+    await admin_db.commit()
+
+    resp = await client.post('/api/icon-catalog/sync')
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body['matched_plants'] == 0
+    row = (await admin_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
+    assert row['icon_key'] == 'daisy'
