@@ -1082,6 +1082,11 @@ export type Translations = {
     sheetOtherGardenHint: string                 // "in een andere tuin"
     careDone: string                             // "Klaar" — mark care done
     careSkip: string                             // "Overslaan" — skip care
+    careDoneAll: string                          // "Alles klaar" — bulk-complete a care action
+    sheetNeedsAttention: string                  // "Nu nodig" — heading for due/overdue care
+    sheetLaterThisWeek: (n: number) => string    // "Later deze week · 42"
+    sheetGardenCount: (n: number) => string      // "in 2 tuinen"
+    sheetPlantCount: (n: number) => string       // "32 planten"
     // Weather pill (outdoor maps)
     weatherConditions: {
       sun: string
