@@ -525,6 +525,7 @@ export const nl: Translations = {
   plantQuickSheet: {
     close: 'Sluiten',
     moreInfo: 'Meer info →',
+    quantityCount: (n: number) => `${n} stuks`,
     copy: 'Kopieer plant',
     duplicate: 'Kopieer plant',
     edit: 'Bewerk plant',
@@ -692,6 +693,8 @@ export const nl: Translations = {
     labelFormDesc: 'Hoe de plant groeit',
     labelPhase: 'Levensfase',
     labelPhaseDesc: 'Huidig groeistadium',
+    labelQuantity: 'Aantal',
+    labelQuantityDesc: 'Hoeveel van deze plant je hebt',
     labelAcquired: 'Verkregen',
     labelAcquiredDesc: 'Wanneer + waar',
     placeholderNickname: 'Lente-orchidee',

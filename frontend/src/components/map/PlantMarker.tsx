@@ -214,6 +214,32 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         <circle r={iconR + 4} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.7} />
       )}
 
+      {/* Multiplicity: faint stacked silhouettes behind the icon hint that this
+          record represents several specimens (quantity > 1). Exact count lives
+          in the tap sheet; a small chip below shows the number. */}
+      {plant.quantity > 1 && plant.icon_key && (() => {
+        const off = iconR * 0.22
+        const href = resolveIconUrl(plant.icon_key)!
+        return (
+          <>
+            <image
+              href={href}
+              x={-iconR + off * 2} y={-iconR + off * 2}
+              width={iconR * 2} height={iconR * 2}
+              opacity={0.22}
+              style={{ pointerEvents: 'none' }}
+            />
+            <image
+              href={href}
+              x={-iconR + off} y={-iconR + off}
+              width={iconR * 2} height={iconR * 2}
+              opacity={0.4}
+              style={{ pointerEvents: 'none' }}
+            />
+          </>
+        )
+      })()}
+
       {/* Plant icon or fallback dot */}
       {plant.icon_key ? (
         <image
@@ -224,6 +250,21 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         />
       ) : (
         <circle r={r * 0.25} fill={color} opacity={0.8} />
+      )}
+
+      {/* Quantity count chip — bottom-right, clear of the top-arced alerts */}
+      {plant.quantity > 1 && (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle cx={iconR * 0.72} cy={iconR * 0.72} r={7} fill="rgba(31,41,55,0.85)" />
+          <text
+            x={iconR * 0.72} y={iconR * 0.72}
+            textAnchor="middle" dominantBaseline="central"
+            fontSize={8} fontWeight={600} fill="#fff"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {plant.quantity > 99 ? '99+' : plant.quantity}
+          </text>
+        </g>
       )}
 
       {/* Label */}

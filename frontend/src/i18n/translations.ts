@@ -485,6 +485,7 @@ export type Translations = {
   plantQuickSheet: {
     close: string
     moreInfo: string
+    quantityCount: (n: number) => string  // "6 stuks" / "6 plants"
     copy: string  // "Copy plant"
     duplicate: string
     edit: string  // "Edit plant"
@@ -652,6 +653,8 @@ export type Translations = {
     labelFormDesc: string
     labelPhase: string
     labelPhaseDesc: string
+    labelQuantity: string
+    labelQuantityDesc: string
     labelAcquired: string
     labelAcquiredDesc: string
     placeholderNickname: string

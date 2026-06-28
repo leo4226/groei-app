@@ -80,6 +80,7 @@ SCHEMA = """
         care_profile TEXT,
         phase TEXT DEFAULT 'established',
         sown_date TEXT,
+        quantity INTEGER NOT NULL DEFAULT 1,
         household_id INTEGER
     );
     CREATE TABLE care_schedules (

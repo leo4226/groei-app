@@ -60,6 +60,7 @@ export default function EditPlant() {
   // Identity card
   const [formType, setFormType] = useState('pot')
   const [phase, setPhase] = useState('established')
+  const [quantity, setQuantity] = useState(1)
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
 
   // Placement card
@@ -106,6 +107,7 @@ export default function EditPlant() {
         setName(p.name)
         setSpecies(p.species ?? '')
         setPhase(p.phase ?? 'established')
+        setQuantity(p.quantity ?? 1)
         setIconKey(p.icon_key ?? null)
         setAcquiredDateInput(p.acquired_date ? isoToDisplay(p.acquired_date) : '')
         setSownDateInput(p.sown_date ? isoToDisplay(p.sown_date) : '')
@@ -205,6 +207,7 @@ export default function EditPlant() {
         phase: phase as Plant['phase'],
         sownDateInput,
         formType,
+        quantity,
         randomMapPos,
       }))
 
@@ -381,6 +384,17 @@ export default function EditPlant() {
                       { id: 'established', label: t.addPlant.phaseEstablished },
                     ]}
                     value={phase} onChange={setPhase}
+                  />
+                </FormRow>
+
+                {/* Quantity */}
+                <FormRow label={t.addPlant.labelQuantity} description={t.addPlant.labelQuantityDesc}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full sm:w-32 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm text-text focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
 
