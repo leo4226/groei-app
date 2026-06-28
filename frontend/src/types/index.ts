@@ -349,9 +349,21 @@ export interface ObjectCreateInput {
   preset?: string
 }
 
+export interface SecondaryMarker {
+  id: number
+  plant_id: number
+  map_x: number
+  map_y: number
+  ground_zone_id: string | null
+  phase: string | null
+  name: string
+  icon_key: string | null
+}
+
 export interface MapItems {
   plants: MapPlant[]
   objects: MapObject[]
+  secondary_markers: SecondaryMarker[]
 }
 
 // --- Garden water log ---

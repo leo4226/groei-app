@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { MapDetail, MapPlant, MapObject, GroundZone } from '../types'
+import type { MapDetail, MapPlant, MapObject, GroundZone, SecondaryMarker } from '../types'
 import { maps, groundZones as groundZonesApi, plants as plantsApi, objects as objectsApi } from '../api/client'
 
 export interface RestoreInfo {
@@ -12,6 +12,7 @@ export interface UseMapDataReturn {
   map: MapDetail | null
   plants: MapPlant[]
   objects: MapObject[]
+  secondaryMarkers: SecondaryMarker[]
   groundZones: GroundZone[]
   loading: boolean
   refresh: () => Promise<void>
@@ -23,6 +24,7 @@ export function useMapData(slug: string): UseMapDataReturn {
   const [map, setMap] = useState<MapDetail | null>(null)
   const [plants, setPlants] = useState<MapPlant[]>([])
   const [objects, setObjects] = useState<MapObject[]>([])
+  const [secondaryMarkers, setSecondaryMarkers] = useState<SecondaryMarker[]>([])
   const [groundZones, setGroundZones] = useState<GroundZone[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -37,6 +39,7 @@ export function useMapData(slug: string): UseMapDataReturn {
       setMap(mapDetail)
       setPlants(items.plants)
       setObjects(items.objects)
+      setSecondaryMarkers(items.secondary_markers ?? [])
       setGroundZones(zones)
     } catch (err) {
       console.error('Failed to load map data:', err)
@@ -125,6 +128,7 @@ export function useMapData(slug: string): UseMapDataReturn {
     map,
     plants,
     objects,
+    secondaryMarkers,
     groundZones,
     loading,
     refresh,

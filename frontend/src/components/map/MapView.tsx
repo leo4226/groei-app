@@ -1,5 +1,5 @@
 import { useRef, useMemo, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData } from '../../types'
+import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData, SecondaryMarker } from '../../types'
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { screenToSVG } from '../../utils/svgCoords'
@@ -11,6 +11,7 @@ import { useMapInteraction } from '../../hooks/useMapInteraction'
 import { shouldStartMapPan } from './plantDragPermissions'
 import ObjectsLayer from './ObjectsLayer'
 import PlantsLayer from './PlantsLayer'
+import SecondaryMarkersLayer from './SecondaryMarkersLayer'
 import PlantResizeOverlay from './PlantResizeOverlay'
 import ShadowLayer from './ShadowLayer'
 import SunDirectionArrow from './SunDirectionArrow'
@@ -50,13 +51,18 @@ interface Props {
   moveMode?: boolean
   movePlantId?: number | null
   onPlantMoveComplete?: (plantId: number) => void | Promise<void>
+  /** When set, a map tap reports SVG coords via onPlacementTap (tap-to-place). */
+  placingPlantId?: number | null
+  onPlacementTap?: (x: number, y: number) => void
+  secondaryMarkers?: SecondaryMarker[]
+  onSecondaryMarkerTap?: (plantId: number) => void
   // Dynamic garden geometry
   gardenPerimeter?: [number, number][] | null
   gardenBounds?: { minX: number; minY: number; maxX: number; maxY: number }
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
@@ -346,6 +352,21 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       onClick={handleContainerClick}
       onPointerDown={handlePanPointerDown}
     >
+      {/* Tap-to-place capture: when placing a secondary spot, the next map tap
+          reports SVG coords and nothing else (no pan/select/move). */}
+      {placingPlantId != null && (
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 40, cursor: 'crosshair' }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            const svg = svgRef.current
+            if (!svg) return
+            const pt = screenToSVG(svg, e.clientX, e.clientY)
+            if (pt) onPlacementTap?.(pt.x, pt.y)
+          }}
+        />
+      )}
       {cw > 0 && ch > 0 && (
       <div
         style={{
@@ -469,6 +490,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
           />
+
+          {/* Secondary placements (extra spots) as light dots */}
+          <SecondaryMarkersLayer markers={secondaryMarkers} onTap={onSecondaryMarkerTap} />
 
           {/* Plant resize overlay */}
           {selectedPlant && selectedPlantPos && (

@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 import { indexIconUrls } from '../utils/icons'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -366,6 +366,9 @@ export const plants = {
   setRadius:         (plantId: number, display_radius_cm: number | null) => api<void>('PUT', `/plants/${plantId}`, { body: { display_radius_cm } }),
   setLock:           (plantId: number, locked: boolean)            => api<void>('PATCH', `/plants/${plantId}/lock`, { params: { locked: String(locked) } }),
   duplicate:         (plantId: number)                             => api<Plant>('POST', `/plants/${plantId}/duplicate`),
+  addPlacement:      (plantId: number, data: { map_id: number; map_x: number; map_y: number; ground_zone_id?: string | null; phase?: string | null }) => api<SecondaryMarker>('POST', `/plants/${plantId}/placements`, { body: data }),
+  updatePlacement:   (plantId: number, placementId: number, data: { map_x?: number; map_y?: number; ground_zone_id?: string | null; phase?: string | null }) => api<SecondaryMarker>('PATCH', `/plants/${plantId}/placements/${placementId}`, { body: data }),
+  deletePlacement:   (plantId: number, placementId: number)        => api<{ ok: boolean }>('DELETE', `/plants/${plantId}/placements/${placementId}`),
   alerts:            (plantId: number)                             => api<PlantAlert[]>('GET', `/plants/${plantId}/alerts`),
   warnings:          (plantId: number)                             => api<import('../types').PlantWarningStateOut>('GET', `/plants/${plantId}/warnings`),
   warningSummary:    (env: string = 'all')                         => api<import('../types').WarningSummaryOut>('GET', '/warnings/summary', { params: { env } }),
