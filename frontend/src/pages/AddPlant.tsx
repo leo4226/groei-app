@@ -7,6 +7,7 @@ import { useFloreren } from '../store/useFloreren'
 import type { CareType, CareScheduleInput } from '../types'
 import { isCareTypeValidForEnv } from '../types'
 import IconPicker from '../components/IconPicker'
+import TileIcon from '../components/ui/TileIcon'
 import type { PlantIcon } from '../types'
 import { icons, species as speciesApi } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
@@ -693,10 +694,10 @@ export default function AddPlant() {
           <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
             <TileGrid
               options={[
-                { id: 'pot', glyph: '🪴', title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
-                { id: 'ground', glyph: '🌱', title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
-                { id: 'seedling', glyph: '🌿', title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
-                { id: 'tree', glyph: '🌳', title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
+                { id: 'pot', glyph: <TileIcon name="form-pot" />, title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
+                { id: 'ground', glyph: <TileIcon name="form-ground" />, title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
+                { id: 'seedling', glyph: <TileIcon name="form-seedling" />, title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
+                { id: 'tree', glyph: <TileIcon name="form-tree" />, title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
               ]}
               value={formType} onChange={setFormType}
             />
@@ -783,11 +784,11 @@ export default function AddPlant() {
           <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
               options={[
-                { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: '🌑' },
-                { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: '🌒' },
-                { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: '🌓' },
-                { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: '🌔' },
-                { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: '🌕' },
+                { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: <TileIcon name="light-dark" /> },
+                { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: <TileIcon name="light-shade" /> },
+                { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: <TileIcon name="light-indirect" /> },
+                { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: <TileIcon name="light-bright" /> },
+                { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: <TileIcon name="light-full" /> },
               ]}
               value={sunRequirement}
               onChange={(v) => setSunRequirement(v || null)}
@@ -798,10 +799,10 @@ export default function AddPlant() {
           <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
             <TileGrid
               options={[
-                { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: '🏺' },
-                { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: '🪣' },
-                { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: '🫖' },
-                { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: '🧺' },
+                { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: <TileIcon name="pot-terracotta" /> },
+                { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: <TileIcon name="pot-plastic" /> },
+                { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: <TileIcon name="pot-ceramic" /> },
+                { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: <TileIcon name="pot-basket" /> },
               ]}
               value={potMaterial}
               onChange={setPotMaterial}
@@ -912,10 +913,10 @@ export default function AddPlant() {
             <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
               <TileGrid
                 options={[
-                  { id: 'weekly', title: t.addPlant.feedWeekly, subtitle: t.addPlant.feedWeeklySub, glyph: '💪' },
-                  { id: 'monthly', title: t.addPlant.feedMonthly, subtitle: t.addPlant.feedMonthlySub, glyph: '📅' },
-                  { id: 'seasonal', title: t.addPlant.feedSeasonal, subtitle: t.addPlant.feedSeasonalSub, glyph: '🍂' },
-                  { id: 'optional', title: t.addPlant.feedOptional, subtitle: t.addPlant.feedOptionalSub, glyph: '✨' },
+                  { id: 'weekly', title: t.addPlant.feedWeekly, subtitle: t.addPlant.feedWeeklySub, glyph: <TileIcon name="feed-weekly" /> },
+                  { id: 'monthly', title: t.addPlant.feedMonthly, subtitle: t.addPlant.feedMonthlySub, glyph: <TileIcon name="feed-monthly" /> },
+                  { id: 'seasonal', title: t.addPlant.feedSeasonal, subtitle: t.addPlant.feedSeasonalSub, glyph: <TileIcon name="feed-seasonal" /> },
+                  { id: 'optional', title: t.addPlant.feedOptional, subtitle: t.addPlant.feedOptionalSub, glyph: <TileIcon name="feed-optional" /> },
                 ]}
                 value={feedingSchedule}
                 onChange={setFeedingSchedule}
@@ -929,10 +930,10 @@ export default function AddPlant() {
             <FormRow label={t.addPlant.labelPruneType} description={t.addPlant.labelPruneTypeDesc}>
               <TileGrid
                 options={[
-                  { id: 'none', title: t.addPlant.pruneNone, subtitle: t.addPlant.pruneNoneSub, glyph: '🌿' },
-                  { id: 'light', title: t.addPlant.pruneLight, subtitle: t.addPlant.pruneLightSub, glyph: '✂️' },
-                  { id: 'moderate', title: t.addPlant.pruneModerate, subtitle: t.addPlant.pruneModerateSub, glyph: '✂️' },
-                  { id: 'heavy', title: t.addPlant.pruneHeavy, subtitle: t.addPlant.pruneHeavySub, glyph: '🪓' },
+                  { id: 'none', title: t.addPlant.pruneNone, subtitle: t.addPlant.pruneNoneSub, glyph: <TileIcon name="prune-none" /> },
+                  { id: 'light', title: t.addPlant.pruneLight, subtitle: t.addPlant.pruneLightSub, glyph: <TileIcon name="prune-light" /> },
+                  { id: 'moderate', title: t.addPlant.pruneModerate, subtitle: t.addPlant.pruneModerateSub, glyph: <TileIcon name="prune-moderate" /> },
+                  { id: 'heavy', title: t.addPlant.pruneHeavy, subtitle: t.addPlant.pruneHeavySub, glyph: <TileIcon name="prune-heavy" /> },
                 ]}
                 value={pruningType}
                 onChange={setPruningType}
@@ -943,10 +944,10 @@ export default function AddPlant() {
             <FormRow label={t.addPlant.labelPruneFreq} description={t.addPlant.labelPruneFreqDesc}>
               <TileGrid
                 options={[
-                  { id: 'never', title: t.addPlant.pruneNever, subtitle: t.addPlant.pruneNeverSub, glyph: '—' },
-                  { id: 'weekly', title: t.addPlant.pruneW, subtitle: t.addPlant.pruneWSub, glyph: '📅' },
-                  { id: 'monthly', title: t.addPlant.pruneM, subtitle: t.addPlant.pruneMSub, glyph: '📅' },
-                  { id: 'seasonal', title: t.addPlant.pruneS, subtitle: t.addPlant.pruneSSub, glyph: '🍂' },
+                  { id: 'never', title: t.addPlant.pruneNever, subtitle: t.addPlant.pruneNeverSub, glyph: <TileIcon name="freq-never" /> },
+                  { id: 'weekly', title: t.addPlant.pruneW, subtitle: t.addPlant.pruneWSub, glyph: <TileIcon name="freq-weekly" /> },
+                  { id: 'monthly', title: t.addPlant.pruneM, subtitle: t.addPlant.pruneMSub, glyph: <TileIcon name="freq-monthly" /> },
+                  { id: 'seasonal', title: t.addPlant.pruneS, subtitle: t.addPlant.pruneSSub, glyph: <TileIcon name="freq-seasonal" /> },
                 ]}
                 value={pruningFrequency}
                 onChange={setPruningFrequency}
