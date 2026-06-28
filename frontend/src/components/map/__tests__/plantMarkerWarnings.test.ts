@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CareWarningOut, MapPlant, TopAlert } from '../../../types'
-import { markerBadgesForPlant } from '../PlantMarker'
+import { markerBadgesForPlant, topMarkerBadge } from '../PlantMarker'
 
 function warning(careType: string, icon: string): CareWarningOut {
   return {
@@ -54,5 +54,16 @@ describe('PlantMarker warning badges', () => {
     const p = plant([warning('water', '💧'), warning('heat_protect', '🔥')], [alert('legacy_prune', '✂️')])
 
     expect(markerBadgesForPlant(p).map(b => b.icon)).toEqual(['💧', '🔥'])
+  })
+})
+
+describe('topMarkerBadge (canvas cap)', () => {
+  it('returns only the single most-urgent badge even with several warnings', () => {
+    const p = plant([warning('water', '💧'), warning('heat_protect', '🔥')], [])
+    expect(topMarkerBadge(p)?.icon).toBe('💧')
+  })
+
+  it('returns null when there are no warnings', () => {
+    expect(topMarkerBadge(plant([], []))).toBeNull()
   })
 })

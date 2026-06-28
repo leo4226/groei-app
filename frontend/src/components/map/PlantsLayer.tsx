@@ -14,12 +14,13 @@ interface Props {
   moveMode?: boolean
   movePlantId?: number | null
   showLabels?: boolean
+  showWarnings?: boolean
   onPlantTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
   heatmapCells?: HeatmapCell[]
 }
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, showWarnings = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
   const t = useT()
 
   return (
@@ -42,6 +43,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             canDrag={canDrag}
             isSelected={isSelected}
             showLabel={showLabels || isSelected}
+            showWarnings={showWarnings}
             displayName={plantDisplayName(plant, t.locale)}
             onTap={onPlantTap}
             onPointerDown={onPointerDown}

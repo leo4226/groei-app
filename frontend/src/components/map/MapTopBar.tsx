@@ -8,9 +8,11 @@ interface Props {
   allMaps: MapInfo[]
   showLabels: boolean
   onToggleLabels: () => void
+  showWarnings: boolean
+  onToggleWarnings: () => void
 }
 
-export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: Props) {
+export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, showWarnings, onToggleWarnings }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -66,6 +68,16 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels }: 
               {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
             </span>
             {showLabels && <span className="ml-auto text-primary text-xs">✓</span>}
+          </button>
+          <button
+            onClick={() => { setOpen(false); onToggleWarnings() }}
+            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
+          >
+            <span className="text-sm">⚠️</span>
+            <span className={showWarnings ? '' : 'text-text-muted'}>
+              {showWarnings ? t.mapPage.warningsHide : t.mapPage.warningsShow}
+            </span>
+            {showWarnings && <span className="ml-auto text-primary text-xs">✓</span>}
           </button>
           <div className="h-px bg-border mx-3 my-1" />
           <button

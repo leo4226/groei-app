@@ -35,6 +35,7 @@ interface Props {
   onRemoveItem?: (type: 'plant' | 'object', id: number) => void
   onFixedPlantTap?: (plant: FixedPlant) => void
   showLabels?: boolean
+  showWarnings?: boolean
   sunModeActive?: boolean
   shadows?: ShadowPolygon[]
   sunPosition?: SunPosition | null
@@ -55,7 +56,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
@@ -447,6 +448,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             objects={objects}
             hoveredContainerId={hoveredContainerId}
             showLabels={showLabels}
+            showWarnings={showWarnings}
             heatmapCells={heatmapCells}
             onObjectTap={(obj) => handleItemSelect('object', obj.id)}
             onContainerPointerDown={handleContainerPointerDown}
@@ -462,6 +464,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             moveMode={moveMode}
             movePlantId={movePlantId}
             showLabels={showLabels}
+            showWarnings={showWarnings}
             onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}

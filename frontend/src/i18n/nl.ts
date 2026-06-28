@@ -1016,6 +1016,8 @@ export const nl: Translations = {
     mapSettings: 'Kaart instellingen',
     labelShow: 'Toon namen',
     labelHide: 'Verberg namen',
+    warningsShow: 'Toon waarschuwingen',
+    warningsHide: 'Verberg waarschuwingen',
     water: 'Bewater',
     fertilize: 'Bemest',
     sun: 'Zon',

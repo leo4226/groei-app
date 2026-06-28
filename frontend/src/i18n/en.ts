@@ -1016,6 +1016,8 @@ export const en: Translations = {
     mapSettings: 'Map settings',
     labelShow: 'Show labels',
     labelHide: 'Hide labels',
+    warningsShow: 'Show warnings',
+    warningsHide: 'Hide warnings',
     water: 'Water',
     fertilize: 'Fertilize',
     sun: 'Sun',

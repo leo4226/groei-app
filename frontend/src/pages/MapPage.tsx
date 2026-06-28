@@ -102,6 +102,9 @@ export default function MapPage() {
   // the selected plant still shows its name (see PlantsLayer), and this toggle
   // flips ALL names on. See docs/plans/2026-06-27-map-density-multiplicity-plan.md
   const [showLabels, setShowLabels] = useState(false)
+  // Per-plant warning badges are capped to one (most-urgent) on the canvas; this
+  // toggle hides them entirely. On by default. Full list lives in the sheets.
+  const [showWarnings, setShowWarnings] = useState(true)
   const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
   const [showGameSetup, setShowGameSetup] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
@@ -371,6 +374,7 @@ export default function MapPage() {
           movePlantId={targetedMove?.plantId ?? null}
           onPlantMoveComplete={handlePlantMoveComplete}
           showLabels={showLabels}
+          showWarnings={showWarnings}
           sunModeActive={sun.active}
           shadows={sun.shadows}
           sunPosition={sun.sunPosition}
@@ -417,7 +421,7 @@ export default function MapPage() {
       {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
           unplaced-plants tray (z-20) stacked directly below it */}
       <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
-        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => !v)} />
+        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => !v)} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
       </div>
 
       {/* Left, below the garden pill: unplaced-plants tray */}

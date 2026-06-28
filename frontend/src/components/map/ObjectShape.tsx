@@ -4,7 +4,7 @@ import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { resolveIconUrl } from '../../utils/icons'
-import { markerBadgesForPlant } from './PlantMarker'
+import { topMarkerBadge } from './PlantMarker'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -14,6 +14,7 @@ interface Props {
   y: number
   isHoverTarget?: boolean
   showLabel?: boolean
+  showWarnings?: boolean
   heatmapCells?: HeatmapCell[]
   onTap?: (object: MapObject) => void
   onPointerDown?: (e: React.PointerEvent, object: MapObject) => void
@@ -79,7 +80,7 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
   }
 }
 
-export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
+export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, showWarnings = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
   const color = object.color || '#888888'
   const effectiveRotation = object.rotation || 0
   const fill = color + '33'
@@ -151,7 +152,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
       const haloColor = getHaloColor(plant)
-      const alerts = markerBadgesForPlant(plant)
+      const topBadge = showWarnings ? topMarkerBadge(plant) : null
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Status halo — extends beyond pot outline to shine through */}
@@ -189,40 +190,29 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
           ) : (
             <circle r={dotR} fill={dotColor} opacity={0.8} />
           )}
-          {/* Alert badges — arc around top of plant */}
-          {alerts.length > 0 && alerts.map((a, i) => {
-            const count = alerts.length
-            const totalArc = Math.min(count * 30, 140)
-            const startDeg = -(totalArc / 2)
-            const step = count > 1 ? totalArc / (count - 1) : 0
-            const deg = startDeg + i * step
-            const rad = (deg * Math.PI) / 180
-            const orbitR = iconHalf + 4
-            const bx = orbitR * Math.sin(rad)
-            const by = -(orbitR * Math.cos(rad))
-            return (
-            <g key={a.alert_type} style={{ pointerEvents: 'none' }}>
+          {/* Single most-urgent alert badge at the top (full list in the sheet) */}
+          {topBadge && (
+            <g style={{ pointerEvents: 'none' }}>
               <circle
-                cx={bx}
-                cy={by}
+                cx={0}
+                cy={-(iconHalf + 4)}
                 r={6}
                 fill="white"
                 stroke={haloColor ?? '#888'}
                 strokeWidth={1.5}
               />
               <text
-                x={bx}
-                y={by}
+                x={0}
+                y={-(iconHalf + 4)}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={7}
                 style={{ pointerEvents: 'none', userSelect: 'none' }}
               >
-                {a.icon}
+                {topBadge.icon}
               </text>
             </g>
-            )
-          })}
+          )}
         </g>
       )
     })

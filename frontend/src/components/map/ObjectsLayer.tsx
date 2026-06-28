@@ -6,6 +6,7 @@ interface Props {
   objects: MapObject[]
   hoveredContainerId: number | null
   showLabels?: boolean
+  showWarnings?: boolean
   heatmapCells?: HeatmapCell[]
   onObjectTap: (object: MapObject) => void
   onContainerPointerDown?: (e: React.PointerEvent, object: MapObject) => void
@@ -16,6 +17,7 @@ export default function ObjectsLayer({
   objects,
   hoveredContainerId,
   showLabels = true,
+  showWarnings = true,
   heatmapCells,
   onObjectTap,
   onContainerPointerDown,
@@ -35,6 +37,7 @@ export default function ObjectsLayer({
             y={dragPos?.y ?? obj.map_y ?? 0}
             isHoverTarget={hoveredContainerId === obj.id}
             showLabel={showLabels}
+            showWarnings={showWarnings}
             heatmapCells={heatmapCells}
             onTap={onObjectTap}
             onPointerDown={isContainer ? onContainerPointerDown : undefined}
