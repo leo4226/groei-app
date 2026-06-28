@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { resolveIconUrl } from '../../utils/icons'
 import Glyph from './Glyph'
 
@@ -22,6 +22,10 @@ interface Props {
 
 export default function Avatar({ value, size = 40, className = '' }: Props) {
   const [broken, setBroken] = useState(false)
+
+  // Reset the broken flag when the avatar changes, so picking a new (valid)
+  // icon after a failed load renders it instead of staying on the fallback.
+  useEffect(() => { setBroken(false) }, [value])
 
   if (isIconKey(value) && !broken) {
     const url = resolveIconUrl(value)
