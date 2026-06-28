@@ -189,7 +189,19 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
         obj["contained_plants"] = contained
         objects.append(obj)
 
-    return {"plants": plants, "objects": objects}
+    # Secondary placements — extra spots for a plant whose primary marker lives
+    # elsewhere (or on another map). Rendered as small dots that open the parent.
+    placement_rows = await db.execute_fetchall(
+        """SELECT pp.id, pp.plant_id, pp.map_x, pp.map_y, pp.ground_zone_id, pp.phase,
+                  p.name, p.icon_key
+           FROM plant_placements pp
+           JOIN plants p ON p.id = pp.plant_id
+           WHERE pp.map_id = ? AND p.is_active = 1""",
+        (map_id,),
+    )
+    secondary_markers = [dict(r) for r in placement_rows]
+
+    return {"plants": plants, "objects": objects, "secondary_markers": secondary_markers}
 
 
 def _slugify(name: str) -> str:

@@ -83,6 +83,16 @@ SCHEMA = """
         quantity INTEGER NOT NULL DEFAULT 1,
         household_id INTEGER
     );
+    CREATE TABLE plant_placements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plant_id INTEGER NOT NULL,
+        map_id INTEGER NOT NULL,
+        map_x REAL NOT NULL,
+        map_y REAL NOT NULL,
+        ground_zone_id TEXT,
+        phase TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE TABLE care_schedules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         plant_id INTEGER,

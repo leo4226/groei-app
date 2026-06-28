@@ -58,4 +58,5 @@ async def test_map_items_selects_care_profile_for_free_and_contained_plants(monk
     assert await maps_router.get_map_items('garden', account={'household_id': 1}, db=FakeDb(with_object=True)) == {
         'plants': [],
         'objects': [{'id': 99, 'name': 'Terracotta pot', 'contained_plants': []}],
+        'secondary_markers': [],
     }
