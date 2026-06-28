@@ -248,6 +248,15 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
             aria-label={t.garden.biodiversity.title}
           >
             <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-end px-4 pt-4 pb-2 bg-gradient-to-b from-[var(--color-surface)] to-transparent">
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="text-text-muted hover:text-text transition-colors p-1 shrink-0"
+                  aria-label="Sluiten"
+                >
+                  ✕
+                </button>
+              </div>
               <GardenBiodiversityCardFull data={data} slug={slug} />
             </div>
           </div>
