@@ -3,6 +3,7 @@ import { usePlantCareProfile } from '../../hooks/usePlantCareProfile'
 import { CARE_TYPE_INFO, type CareType } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
   plantId: number
@@ -77,7 +78,7 @@ export function CareProfileSection({ plantId }: Props) {
         </span>
         {state.top_warning && (
           <span className="text-xs flex items-center gap-1" style={{ color: state.top_warning.color }}>
-            {state.top_warning.icon} {isEN ? state.top_warning.message_en : state.top_warning.message_nl}
+            <CareIcon type={state.top_warning.care_type as CareIconType} size={13} strokeWidth={2} /> {isEN ? state.top_warning.message_en : state.top_warning.message_nl}
           </span>
         )}
       </div>
@@ -97,7 +98,7 @@ export function CareProfileSection({ plantId }: Props) {
               className={`card p-3 flex items-center gap-3 transition-opacity ${saving === careType ? 'opacity-50' : ''}`}
             >
               {/* Icon */}
-              <span className="text-xl shrink-0">{info?.icon ?? '🌿'}</span>
+              <span className="shrink-0 text-text-soft"><CareIcon type={careType as CareIconType} size={22} strokeWidth={1.8} /></span>
 
               {/* Label + status */}
               <div className="flex-1 min-w-0">
