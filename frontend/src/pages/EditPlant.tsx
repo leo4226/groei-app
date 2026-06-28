@@ -392,9 +392,14 @@ export default function EditPlant() {
                   <input
                     type="number"
                     min={1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full sm:w-32 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm text-text focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                    inputMode="numeric"
+                    value={quantity || ''}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10)
+                      setQuantity(Number.isNaN(n) ? 0 : Math.max(0, n))
+                    }}
+                    onBlur={() => { if (quantity < 1) setQuantity(1) }}
+                    className="w-full sm:w-32 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-base text-text focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
 
