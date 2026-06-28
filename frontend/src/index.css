@@ -101,6 +101,19 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 
+/* Prevent iOS Safari from auto-zooming the page when a text field is focused.
+   Safari only zooms when the focused control's font-size is < 16px, so on
+   touch devices we floor form controls at 16px. Scoped to coarse pointers so
+   desktop keeps its compact sizing. !important is needed to win over the
+   per-field Tailwind/inline font sizes that triggered the zoom. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Editor tour spotlight */
 .tour-spotlight {
   position: relative;
