@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException,
 
 from database import db_dep
 from auth import get_current_account
-from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput
+from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput, PlacementCreate, PlacementUpdate, SecondaryMarkerOut
 from routers.icons import resolve_placement_icon, match_icon_key
 from routers.icon_generator import guess_category
 from services.scheduling import calculate_next_due
@@ -322,6 +322,82 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     await db.commit()
 
     return await get_plant(plant_id, db=db)
+
+
+# ── Secondary placements: one plant can sit in several spots on a map ──
+
+async def _fetch_marker(db, placement_id: int) -> dict | None:
+    cur = await db.execute(
+        """SELECT pp.id, pp.plant_id, pp.map_x, pp.map_y, pp.ground_zone_id, pp.phase,
+                  p.name, p.icon_key
+           FROM plant_placements pp
+           JOIN plants p ON p.id = pp.plant_id
+           WHERE pp.id = ?""",
+        (placement_id,),
+    )
+    row = await cur.fetchone()
+    return dict(row) if row else None
+
+
+async def _owned_placement(db, plant_id: int, placement_id: int, household_id: int) -> bool:
+    cur = await db.execute(
+        """SELECT pp.id FROM plant_placements pp
+           JOIN plants p ON p.id = pp.plant_id
+           WHERE pp.id = ? AND pp.plant_id = ? AND p.household_id = ?""",
+        (placement_id, plant_id, household_id),
+    )
+    return (await cur.fetchone()) is not None
+
+
+@router.post("/plants/{plant_id}/placements", response_model=SecondaryMarkerOut)
+async def add_placement(plant_id: int, data: PlacementCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+    cur = await db.execute(
+        "SELECT id, name, icon_key FROM plants WHERE id = ? AND is_active = 1 AND household_id = ?",
+        (plant_id, account["household_id"]),
+    )
+    plant = await cur.fetchone()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    plant = dict(plant)
+    cursor = await db.execute(
+        """INSERT INTO plant_placements (plant_id, map_id, map_x, map_y, ground_zone_id, phase)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (plant_id, data.map_id, data.map_x, data.map_y, data.ground_zone_id, data.phase),
+    )
+    await db.commit()
+    return {
+        "id": cursor.lastrowid, "plant_id": plant_id,
+        "map_x": data.map_x, "map_y": data.map_y,
+        "ground_zone_id": data.ground_zone_id, "phase": data.phase,
+        "name": plant["name"], "icon_key": plant["icon_key"],
+    }
+
+
+@router.patch("/plants/{plant_id}/placements/{placement_id}", response_model=SecondaryMarkerOut)
+async def update_placement(plant_id: int, placement_id: int, data: PlacementUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    if not await _owned_placement(db, plant_id, placement_id, account["household_id"]):
+        raise HTTPException(status_code=404, detail="Placement not found")
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
+    if updates:
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        await db.execute(
+            f"UPDATE plant_placements SET {set_clause} WHERE id = ?",
+            list(updates.values()) + [placement_id],
+        )
+        await db.commit()
+    marker = await _fetch_marker(db, placement_id)
+    if not marker:
+        raise HTTPException(status_code=404, detail="Placement not found")
+    return marker
+
+
+@router.delete("/plants/{plant_id}/placements/{placement_id}")
+async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    if not await _owned_placement(db, plant_id, placement_id, account["household_id"]):
+        raise HTTPException(status_code=404, detail="Placement not found")
+    await db.execute("DELETE FROM plant_placements WHERE id = ?", (placement_id,))
+    await db.commit()
+    return {"ok": True}
 
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)

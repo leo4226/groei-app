@@ -424,9 +424,38 @@ class MapObjectOut(ObjectOut):
     contained_plants: list[MapPlantOut] = []
 
 
+class SecondaryMarkerOut(BaseModel):
+    """An additional placement of a plant on a map (the plant's primary spot
+    stays on plants.map_x/map_y; these are the extra dots)."""
+    id: int
+    plant_id: int
+    map_x: float
+    map_y: float
+    ground_zone_id: str | None = None
+    phase: str | None = None
+    name: str
+    icon_key: str | None = None
+
+
+class PlacementCreate(BaseModel):
+    map_id: int
+    map_x: float
+    map_y: float
+    ground_zone_id: str | None = None
+    phase: str | None = None
+
+
+class PlacementUpdate(BaseModel):
+    map_x: float | None = None
+    map_y: float | None = None
+    ground_zone_id: str | None = None
+    phase: str | None = None
+
+
 class MapItemsOut(BaseModel):
     plants: list[MapPlantOut] = []
     objects: list[MapObjectOut] = []
+    secondary_markers: list[SecondaryMarkerOut] = []
 
 
 # --- Species / Phenology ---
