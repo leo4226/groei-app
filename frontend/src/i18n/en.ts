@@ -433,9 +433,9 @@ export const en: Translations = {
     resetAssistantDone: 'Stekkie has been reset!',
     about: 'About',
     themeLabel: 'Theme',
-    themeLight: '☀️ Light',
-    themeDark: '🌙 Dark',
-    themeSystem: '💻 System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
     logout: 'Log out',
   },
 
