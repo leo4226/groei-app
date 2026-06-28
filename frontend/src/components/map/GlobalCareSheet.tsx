@@ -2,12 +2,6 @@ import { useRef, useState } from 'react'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import type { BucketPlantOut } from '../../types'
-import {
-  buildMapGroups,
-  buildBucketItems,
-  itemsPlantCount,
-  type GroupedWarning,
-} from '../../utils/careGrouping'
 import { getCareTypeDisplay } from './careNeedsListModel'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
@@ -18,15 +12,65 @@ interface Props {
   onPlantTap?: (plantId: number, mapName: string | null) => void
 }
 
-function bucketKey(p: BucketPlantOut) {
-  return `${p.plant_id}_${p.care_type ?? ''}`
+/** One care action aggregated across every garden (e.g. "Water · 32 plants"). */
+interface CareGroup {
+  care_type: string
+  plants: BucketPlantOut[]
+  /** Any plant overdue or flagged urgent → render in the overdue colour. */
+  urgent: boolean
+  maxDaysOverdue: number
+  /** Distinct garden names this action spans. */
+  gardens: string[]
+}
+
+const keyOf = (p: BucketPlantOut) => `${p.plant_id}_${p.care_type ?? ''}`
+
+/**
+ * Collapse a flat list of bucketed plants into care-type-first groups, across
+ * gardens. Plants without a care type (rare) are returned separately so they
+ * can render as plain tappable rows.
+ */
+function groupByCareType(plants: BucketPlantOut[], doneIds: Set<string>): {
+  groups: CareGroup[]
+  loose: BucketPlantOut[]
+  count: number
+} {
+  const visible = plants.filter((p) => !doneIds.has(keyOf(p)))
+  const loose = visible.filter((p) => !p.care_type)
+
+  const byType = new Map<string, BucketPlantOut[]>()
+  for (const p of visible) {
+    if (!p.care_type) continue
+    const arr = byType.get(p.care_type) ?? []
+    arr.push(p)
+    byType.set(p.care_type, arr)
+  }
+
+  const groups: CareGroup[] = [...byType.entries()]
+    .map(([care_type, ps]) => {
+      const sorted = [...ps].sort((a, b) => (b.days_overdue ?? 0) - (a.days_overdue ?? 0))
+      return {
+        care_type,
+        plants: sorted,
+        urgent: ps.some((p) => p.top_warning?.severity === 'urgent' || (p.days_overdue ?? 0) > 0),
+        maxDaysOverdue: Math.max(0, ...ps.map((p) => p.days_overdue ?? 0)),
+        gardens: [...new Set(ps.map((p) => p.map_name).filter((m): m is string => !!m))],
+      }
+    })
+    .sort((a, b) => {
+      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1
+      return b.plants.length - a.plants.length
+    })
+
+  return { groups, loose, count: visible.length }
 }
 
 /**
- * Cross-map care list for the map bottom sheet. Mirrors the dashboard's
- * CareWarningsSection (same grouping model) but compact and Tailwind-styled
- * to match the map surface. Driven by the global `warningSummary` so a user
- * sees every garden's needs without leaving the map they're on.
+ * Care list for the map bottom sheet. Care-type-first: each action a user can
+ * take ("Water 32 plants") is one card with a single bulk Done, expandable to
+ * the individual plants. Only what needs doing *now* (overdue + today) shows by
+ * default; the rest of the week sits behind a quiet expander. Driven by the
+ * global `warningSummary` so a user sees every garden without leaving the map.
  */
 export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
   const t = useT()
@@ -36,6 +80,8 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
 
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [laterOpen, setLaterOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -45,18 +91,17 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
     toastTimer.current = setTimeout(() => setToast(null), 2500)
   }
 
-  if (!summary) {
-    return (
-      <div className="py-6 text-center text-xs text-text-muted">{t.maps.loading}</div>
-    )
+  function toggleCard(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
-
-  const allBucketPlants = [...summary.buckets.nu, ...summary.buckets.vandaag, ...summary.buckets.komende_week]
-  const totalVisible = allBucketPlants.filter((p) => !doneIds.has(bucketKey(p))).length
 
   async function handleDone(plant: BucketPlantOut) {
     if (!plant.care_type) return
-    const key = bucketKey(plant)
+    const key = keyOf(plant)
     setSaving(key)
     try {
       await markCareDone(plant.plant_id, plant.care_type)
@@ -68,7 +113,7 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
 
   async function handleSkip(plant: BucketPlantOut) {
     if (!plant.care_type) return
-    const key = bucketKey(plant)
+    const key = keyOf(plant)
     setSaving(key)
     try {
       await skipCare(plant.plant_id, plant.care_type)
@@ -78,13 +123,13 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
     }
   }
 
-  async function handleDoneGroup(group: GroupedWarning) {
-    setSaving(`group_${group.care_type}`)
+  async function handleDoneGroup(cardId: string, group: CareGroup) {
+    setSaving(`group_${cardId}`)
     try {
-      await Promise.all(group.plants.map((p) => markCareDone(p.plant_id, p.care_type!)))
+      await Promise.all(group.plants.map((p) => markCareDone(p.plant_id, group.care_type)))
       setDoneIds((prev) => {
         const next = new Set([...prev])
-        group.plants.forEach((p) => next.add(bucketKey(p)))
+        group.plants.forEach((p) => next.add(keyOf(p)))
         return next
       })
       const { label } = getCareTypeDisplay(group.care_type, t)
@@ -94,62 +139,98 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
     }
   }
 
-  async function handleSkipGroup(group: GroupedWarning) {
-    setSaving(`group_${group.care_type}`)
-    try {
-      await Promise.all(group.plants.map((p) => skipCare(p.plant_id, p.care_type!)))
-      setDoneIds((prev) => {
-        const next = new Set([...prev])
-        group.plants.forEach((p) => next.add(bucketKey(p)))
-        return next
-      })
-    } finally {
-      setSaving(null)
-    }
+  if (!summary) {
+    return <div className="py-6 text-center text-xs text-text-muted">{t.maps.loading}</div>
   }
 
-  if (totalVisible === 0) {
-    return (
-      <div className="py-6 text-center text-sm text-text-muted italic">
-        {t.mapPage.sheetAllGoodGlobal}
-      </div>
-    )
-  }
-
-  const mapGroups = buildMapGroups(summary)
+  const now = groupByCareType([...summary.buckets.nu, ...summary.buckets.vandaag], doneIds)
+  const later = groupByCareType(summary.buckets.komende_week, doneIds)
 
   return (
-    <div className="space-y-4 pt-1">
-      {mapGroups.map((mg) => {
-        const grouped = !mg.isIndoor
-        const nuItems = buildBucketItems(mg.nu, doneIds, grouped, t.locale)
-        const vandaagItems = buildBucketItems(mg.vandaag, doneIds, grouped, t.locale)
-        const weekItems = buildBucketItems(mg.week, doneIds, grouped, t.locale)
-        const mapTotal = itemsPlantCount(nuItems) + itemsPlantCount(vandaagItems) + itemsPlantCount(weekItems)
-        if (mapTotal === 0) return null
-
-        const isCurrent = !!currentMapName && mg.mapName === currentMapName
-        // Only flag "in another garden" for real, non-current maps — not for
-        // the unplaced-plants fallback group (which lives in no garden).
-        const showOtherGardenHint = !isCurrent && !mg.isUnplaced
-
-        return (
-          <div key={mg.mapName}>
-            {/* Garden header */}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted font-semibold truncate">
-                {mg.isIndoor ? '🏠' : '🌿'} {mg.mapName}
-                {showOtherGardenHint && <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">· {t.mapPage.sheetOtherGardenHint}</span>}
-              </span>
-              <div className="flex-1 h-px bg-border/40" />
-            </div>
-
-            <Bucket label={t.dashboard.warnings.bucketNow} dotColor="var(--color-overdue)" items={nuItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
-            <Bucket label={t.dashboard.warnings.bucketToday} dotColor="var(--color-due)" items={vandaagItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
-            <Bucket label={t.dashboard.warnings.bucketThisWeek} dotColor="var(--color-primary)" items={weekItems} t={t} saving={saving} onPlantTap={onPlantTap} onDone={handleDone} onSkip={handleSkip} onDoneGroup={handleDoneGroup} onSkipGroup={handleSkipGroup} />
+    <div className="space-y-3 pt-1">
+      {/* ── Needs you now (overdue + today) ── */}
+      {now.count === 0 ? (
+        <div className="py-5 flex flex-col items-center gap-2 text-text-muted">
+          <CareIcon type="sprout" size={26} strokeWidth={1.6} />
+          <span className="text-sm italic">{t.mapPage.sheetAllGoodGlobal}</span>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 pb-0.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+              {t.mapPage.sheetNeedsAttention}
+            </span>
+            <div className="flex-1 h-px bg-border/40" />
           </div>
-        )
-      })}
+          {now.groups.map((g) => {
+            const id = `now_${g.care_type}`
+            return (
+              <CareCard
+                key={id}
+                cardId={id}
+                group={g}
+                t={t}
+                currentMapName={currentMapName}
+                expanded={expanded.has(id)}
+                saving={saving}
+                onToggle={() => toggleCard(id)}
+                onDoneGroup={() => handleDoneGroup(id, g)}
+                onPlantTap={onPlantTap}
+                onDone={handleDone}
+                onSkip={handleSkip}
+              />
+            )
+          })}
+          {now.loose.map((p) => (
+            <LooseRow key={keyOf(p)} plant={p} onTap={onPlantTap} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Later this week (collapsed by default) ── */}
+      {later.count > 0 && (
+        <div>
+          <button
+            onClick={() => setLaterOpen((v) => !v)}
+            className="w-full flex items-center gap-2 py-1.5 group"
+            aria-expanded={laterOpen}
+          >
+            <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+              {t.mapPage.sheetLaterThisWeek(later.count)}
+            </span>
+            <div className="flex-1 h-px bg-border/40" />
+            <Chevron open={laterOpen} />
+          </button>
+
+          {laterOpen && (
+            <div className="space-y-2 mt-1.5">
+              {later.groups.map((g) => {
+                const id = `later_${g.care_type}`
+                return (
+                  <CareCard
+                    key={id}
+                    cardId={id}
+                    group={g}
+                    t={t}
+                    muted
+                    currentMapName={currentMapName}
+                    expanded={expanded.has(id)}
+                    saving={saving}
+                    onToggle={() => toggleCard(id)}
+                    onDoneGroup={() => handleDoneGroup(id, g)}
+                    onPlantTap={onPlantTap}
+                    onDone={handleDone}
+                    onSkip={handleSkip}
+                  />
+                )
+              })}
+              {later.loose.map((p) => (
+                <LooseRow key={keyOf(p)} plant={p} onTap={onPlantTap} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-[90px] z-[1000] bg-text text-surface px-5 py-2.5 rounded-full text-[13px] shadow-lg pointer-events-none whitespace-nowrap">
@@ -160,103 +241,133 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
   )
 }
 
-type BucketItemT = ReturnType<typeof buildBucketItems>[number]
-
-interface BucketProps {
-  label: string
-  dotColor: string
-  items: BucketItemT[]
+interface CareCardProps {
+  cardId: string
+  group: CareGroup
   t: ReturnType<typeof useT>
+  muted?: boolean
+  currentMapName?: string | null
+  expanded: boolean
   saving: string | null
+  onToggle: () => void
+  onDoneGroup: () => void
   onPlantTap?: (plantId: number, mapName: string | null) => void
   onDone: (p: BucketPlantOut) => void
   onSkip: (p: BucketPlantOut) => void
-  onDoneGroup: (g: GroupedWarning) => void
-  onSkipGroup: (g: GroupedWarning) => void
 }
 
-function Bucket({ label, dotColor, items, t, saving, onPlantTap, onDone, onSkip, onDoneGroup, onSkipGroup }: BucketProps) {
-  if (items.length === 0) return null
-  const count = itemsPlantCount(items)
-  return (
-    <div className="mb-2 last:mb-0">
-      <div className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest text-text-muted mb-1">
-        <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: dotColor }} />
-        {label} · {count}
-      </div>
-      <div className="border border-border/50 rounded-lg overflow-hidden divide-y divide-border/40">
-        {items.map((item) =>
-          item.kind === 'group' ? (
-            <GroupRow key={`g_${item.group.care_type}`} group={item.group} t={t} saving={saving} onDone={onDoneGroup} onSkip={onSkipGroup} />
-          ) : (
-            <PlantRow key={bucketKey(item.plant)} plant={item.plant} t={t} saving={saving} onTap={onPlantTap} onDone={onDone} onSkip={onSkip} />
-          ),
-        )}
-      </div>
-    </div>
-  )
-}
+function CareCard({
+  cardId, group, t, muted, currentMapName, expanded, saving,
+  onToggle, onDoneGroup, onPlantTap, onDone, onSkip,
+}: CareCardProps) {
+  const { label } = getCareTypeDisplay(group.care_type, t)
+  const accent = muted
+    ? 'var(--color-text-muted)'
+    : group.urgent ? 'var(--color-overdue)' : 'var(--color-due)'
+  const isSaving = saving === `group_${cardId}`
 
-function GroupRow({ group, t, saving, onDone, onSkip }: {
-  group: GroupedWarning
-  t: ReturnType<typeof useT>
-  saving: string | null
-  onDone: (g: GroupedWarning) => void
-  onSkip: (g: GroupedWarning) => void
-}) {
-  const { icon, label } = getCareTypeDisplay(group.care_type, t)
-  const isSaving = saving === `group_${group.care_type}`
-  const isUrgent = group.severity === 'urgent'
+  const subtitle = group.gardens.length > 1
+    ? `${t.mapPage.sheetPlantCount(group.plants.length)} · ${t.mapPage.sheetGardenCount(group.gardens.length)}`
+    : group.gardens[0]
+      ? `${t.mapPage.sheetPlantCount(group.plants.length)} · ${group.gardens[0]}`
+      : t.mapPage.sheetPlantCount(group.plants.length)
+
   return (
-    <div className={`flex items-center gap-2 px-2.5 py-2 transition-opacity ${isSaving ? 'opacity-50' : ''}`}>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium text-text truncate">
-          {icon} {label}
-          <span className="text-text-muted font-normal"> · {group.plants.length}</span>
-          {group.maxDaysOverdue > 0 && (
-            <span className={`ml-1 text-[10px] ${isUrgent ? 'text-overdue' : 'text-due'}`}>+{group.maxDaysOverdue}d</span>
-          )}
+    <div className={`rounded-xl border border-border/60 bg-surface overflow-hidden ${muted ? 'opacity-80' : ''} ${isSaving ? 'opacity-50' : ''}`}>
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <button onClick={onToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+          <span className="shrink-0" style={{ color: accent }}>
+            <CareIcon type={group.care_type as CareIconType} size={20} strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-text truncate">
+              {label}
+              {!muted && group.maxDaysOverdue > 0 && (
+                <span className="ml-1.5 text-[10px] font-medium" style={{ color: accent }}>
+                  +{group.maxDaysOverdue}d
+                </span>
+              )}
+            </span>
+            <span className="block text-[11px] text-text-muted truncate">{subtitle}</span>
+          </span>
+          <Chevron open={expanded} />
+        </button>
+        <button
+          disabled={isSaving}
+          onClick={onDoneGroup}
+          className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-50"
+        >
+          {t.mapPage.careDoneAll}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="divide-y divide-border/40 border-t border-border/40">
+          {group.plants.map((p) => (
+            <PlantRow
+              key={keyOf(p)}
+              plant={p}
+              t={t}
+              currentMapName={currentMapName}
+              saving={saving}
+              onTap={onPlantTap}
+              onDone={onDone}
+              onSkip={onSkip}
+            />
+          ))}
         </div>
-        {group.hint && <div className="text-[10px] text-text-muted italic truncate mt-0.5">{group.hint}</div>}
-      </div>
-      <CareActions disabled={isSaving} onDone={() => onDone(group)} onSkip={() => onSkip(group)} doneLabel={t.mapPage.careDone} skipLabel={t.mapPage.careSkip} />
+      )}
     </div>
   )
 }
 
-function PlantRow({ plant, t, saving, onTap, onDone, onSkip }: {
+function PlantRow({ plant, t, currentMapName, saving, onTap, onDone, onSkip }: {
   plant: BucketPlantOut
   t: ReturnType<typeof useT>
+  currentMapName?: string | null
   saving: string | null
   onTap?: (plantId: number, mapName: string | null) => void
   onDone: (p: BucketPlantOut) => void
   onSkip: (p: BucketPlantOut) => void
 }) {
-  const isSaving = saving === bucketKey(plant)
-  const careInfo = plant.care_type ? getCareTypeDisplay(plant.care_type, t) : null
-  const overdue = plant.days_overdue != null && plant.days_overdue > 0
+  const isSaving = saving === keyOf(plant)
+  const overdue = (plant.days_overdue ?? 0) > 0
+  const otherGarden = !!plant.map_name && plant.map_name !== currentMapName
+  const meta = [
+    overdue ? `+${plant.days_overdue}d` : null,
+    otherGarden ? `${plant.map_name} · ${t.mapPage.sheetOtherGardenHint}` : null,
+  ].filter(Boolean).join(' · ')
+
   return (
-    <div className={`flex items-center gap-2 px-2.5 py-2 transition-opacity ${isSaving ? 'opacity-50' : ''}`}>
-      <button
-        className="flex items-center gap-2 flex-1 min-w-0 text-left"
-        onClick={() => onTap?.(plant.plant_id, plant.map_name)}
-      >
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-text truncate">{plant.plant_name}</div>
-          {careInfo && (
-            <div className="text-[10px] text-text-muted truncate mt-0.5 flex items-center gap-1">
-              {plant.care_type && <CareIcon type={plant.care_type as CareIconType} size={11} strokeWidth={2} />}
-              {careInfo.label}{overdue ? ` +${plant.days_overdue}d` : ''}
-            </div>
-          )}
-        </div>
+    <div className={`flex items-center gap-2 px-3 py-2 transition-opacity ${isSaving ? 'opacity-50' : ''}`}>
+      <button className="flex-1 min-w-0 text-left" onClick={() => onTap?.(plant.plant_id, plant.map_name)}>
+        <span className="block text-xs font-medium text-text truncate">{plant.plant_name}</span>
+        {meta && <span className="block text-[10px] text-text-muted truncate mt-0.5">{meta}</span>}
       </button>
-      {plant.care_type ? (
-        <CareActions disabled={isSaving} onDone={() => onDone(plant)} onSkip={() => onSkip(plant)} doneLabel={t.mapPage.careDone} skipLabel={t.mapPage.careSkip} />
-      ) : (
-        <span className="text-text-muted text-xs shrink-0">→</span>
-      )}
+      <CareActions
+        disabled={isSaving}
+        onDone={() => onDone(plant)}
+        onSkip={() => onSkip(plant)}
+        doneLabel={t.mapPage.careDone}
+        skipLabel={t.mapPage.careSkip}
+      />
     </div>
+  )
+}
+
+/** Plant flagged for attention but with no specific care action — just tappable. */
+function LooseRow({ plant, onTap }: {
+  plant: BucketPlantOut
+  onTap?: (plantId: number, mapName: string | null) => void
+}) {
+  return (
+    <button
+      onClick={() => onTap?.(plant.plant_id, plant.map_name)}
+      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-surface text-left"
+    >
+      <span className="flex-1 min-w-0 text-xs font-medium text-text truncate">{plant.plant_name}</span>
+      <span className="text-text-muted text-xs shrink-0">→</span>
+    </button>
   )
 }
 
@@ -272,7 +383,7 @@ function CareActions({ disabled, onDone, onSkip, doneLabel, skipLabel }: {
       <button
         disabled={disabled}
         onClick={onDone}
-        className="px-2.5 py-1 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap disabled:opacity-50"
+        className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold whitespace-nowrap disabled:opacity-50"
       >
         {doneLabel}
       </button>
@@ -285,5 +396,17 @@ function CareActions({ disabled, onDone, onSkip, doneLabel, skipLabel }: {
         ×
       </button>
     </div>
+  )
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={`shrink-0 text-text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
   )
 }

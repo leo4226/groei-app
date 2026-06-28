@@ -1063,6 +1063,11 @@ export const en: Translations = {
     sheetOtherGardenHint: 'in another garden',
     careDone: 'Done',
     careSkip: 'Skip',
+    careDoneAll: 'Done all',
+    sheetNeedsAttention: 'Needs you now',
+    sheetLaterThisWeek: (n: number) => `Later this week · ${n}`,
+    sheetGardenCount: (n: number) => `across ${n} gardens`,
+    sheetPlantCount: (n: number) => `${n} plant${n === 1 ? '' : 's'}`,
     weatherConditions: {
       sun: 'clear',
       partly: 'partly cloudy',

@@ -1063,6 +1063,11 @@ export const nl: Translations = {
     sheetOtherGardenHint: 'in een andere tuin',
     careDone: 'Klaar',
     careSkip: 'Overslaan',
+    careDoneAll: 'Alles klaar',
+    sheetNeedsAttention: 'Nu nodig',
+    sheetLaterThisWeek: (n: number) => `Later deze week · ${n}`,
+    sheetGardenCount: (n: number) => `in ${n} tuinen`,
+    sheetPlantCount: (n: number) => `${n} plant${n === 1 ? '' : 'en'}`,
     weatherConditions: {
       sun: 'helder',
       partly: 'half bewolkt',
