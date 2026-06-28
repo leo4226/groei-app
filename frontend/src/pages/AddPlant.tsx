@@ -5,6 +5,7 @@ import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import type { CareType, CareScheduleInput } from '../types'
+import { isCareTypeValidForEnv } from '../types'
 import IconPicker from '../components/IconPicker'
 import type { PlantIcon } from '../types'
 import { icons, species as speciesApi } from '../api/client'
@@ -371,13 +372,16 @@ export default function AddPlant() {
 
     setSubmitting(true)
     try {
-      const careSchedules: CareScheduleInput[] = Object.entries(schedules)
-        .filter(([, s]) => s.enabled && s.days > 0)
-        .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
-
       // Use the actual map the user selected in the ZonePicker, not a fuzzy match on area
       const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
+
+      // Drop care types that don't apply to this environment (e.g. rotate/mist
+      // outdoors). No map selected → treated as outdoor, matching the backend.
+      const isIndoor = placedMap?.map_type === 'indoor'
+      const careSchedules: CareScheduleInput[] = Object.entries(schedules)
+        .filter(([type, s]) => s.enabled && s.days > 0 && isCareTypeValidForEnv(type as CareType, isIndoor))
+        .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
 
       const plant = await addPlant(buildCreatePayload({
         name,

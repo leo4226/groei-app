@@ -444,6 +444,18 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; def
   photo:        { label: 'Progress photo', icon: '📷', defaultIndoor: 30,  defaultOutdoor: 30 },
 }
 
+/**
+ * Care types that only make sense for indoor plants. Mirror of the backend
+ * `is_care_type_valid_for_env` rule — outdoor plants (in the ground or in
+ * outdoor containers) never rotate for even light or get misted.
+ */
+export const INDOOR_ONLY_CARE_TYPES: CareType[] = ['rotate', 'mist']
+
+/** Whether a care type applies in the given environment. */
+export function isCareTypeValidForEnv(careType: CareType, isIndoor: boolean): boolean {
+  return isIndoor || !INDOOR_ONLY_CARE_TYPES.includes(careType)
+}
+
 // ── Care warning types (Phase C) ──
 
 export interface CareWarningOut {
