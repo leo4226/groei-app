@@ -10,6 +10,18 @@ import { plantDisplayName } from '../../utils/plantDisplayName'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
+import {
+  PLANT_QUICK_SHEET_ACTIONS_CLASS,
+  PLANT_QUICK_SHEET_BODY_CLASS,
+  PLANT_QUICK_SHEET_CLASS,
+  PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS,
+  PLANT_QUICK_SHEET_HEADER_CLASS,
+  PLANT_QUICK_SHEET_TITLE_ROW_CLASS,
+  clampedPlantNameStyle,
+  clampedPlantSpeciesStyle,
+  plantQuickSheetBodyStyle,
+  plantQuickSheetStyle,
+} from './plantQuickSheetLayout'
 
 interface Props {
   plant: MapPlant
@@ -164,8 +176,8 @@ export default function PlantQuickSheet({
 
       {/* Sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-surface rounded-t-2xl animate-slide-up flex flex-col"
-        style={{ maxHeight: '85dvh' }}
+        className={PLANT_QUICK_SHEET_CLASS}
+        style={plantQuickSheetStyle()}
       >
         {/* Drag handle */}
         <button
@@ -178,13 +190,14 @@ export default function PlantQuickSheet({
 
         {/* Scrollable body */}
         <div
-          className="overflow-y-auto flex-1 px-5"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
+          className={PLANT_QUICK_SHEET_BODY_CLASS}
+          style={plantQuickSheetBodyStyle()}
         >
 
           {/* ── Header ── */}
-          <div className="flex items-center gap-3 py-4">
-            {/* Plant icon */}
+          <div className={PLANT_QUICK_SHEET_HEADER_CLASS}>
+            <div className={PLANT_QUICK_SHEET_TITLE_ROW_CLASS}>
+              {/* Plant icon */}
             <div className="w-14 h-14 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
                  style={{ background: 'linear-gradient(145deg,#FDFAF1,#F4EEDB)', border: '1px solid var(--color-border-soft)' }}>
               {iconUrl ? (
@@ -198,11 +211,11 @@ export default function PlantQuickSheet({
 
             {/* Name + species + meer info */}
             <div className="flex-1 min-w-0">
-              <h3 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 18, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <h3 style={clampedPlantNameStyle()}>
                 {displayName}
               </h3>
               {plant.species && (
-                <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={clampedPlantSpeciesStyle()}>
                   {plant.species}
                 </p>
               )}
@@ -218,9 +231,10 @@ export default function PlantQuickSheet({
                 {t.plantQuickSheet.moreInfo}
               </button>
             </div>
+            </div>
 
-            {/* Action icons + close — always visible at the top */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            {/* Action icons — split away from the title on mobile */}
+            <div className={PLANT_QUICK_SHEET_ACTIONS_CLASS}>
               <button
                 onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
                 title={t.plantQuickSheet.moveToMap}
@@ -251,23 +265,25 @@ export default function PlantQuickSheet({
                   <path d="M10.5 2.5l2 2L5 12H3v-2l7.5-7.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <button
-                onClick={handleToggleLock}
-                title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
-                style={{ ...headerIconBtnStyle, color: locked ? 'var(--color-due)' : undefined, background: locked ? 'rgba(212,148,58,0.12)' : headerIconBtnStyle.background }}
-              >
-                {locked ? (
-                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
-                    <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                    <path d="M4.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                ) : (
-                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
-                    <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                    <path d="M4.5 7V5a2.5 2.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                )}
-              </button>
+              <div className={PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS}>
+                <button
+                  onClick={handleToggleLock}
+                  title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
+                  style={{ ...headerIconBtnStyle, color: locked ? 'var(--color-due)' : undefined, background: locked ? 'rgba(212,148,58,0.12)' : headerIconBtnStyle.background }}
+                >
+                  {locked ? (
+                    <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
+                      <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                      <path d="M4.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
+                      <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                      <path d="M4.5 7V5a2.5 2.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
               {onRemove && (
                 <button
                   onClick={() => { onRemove(plant.id); onClose() }}
@@ -279,16 +295,18 @@ export default function PlantQuickSheet({
                   </svg>
                 </button>
               )}
-              {/* Close */}
-              <button
-                onClick={onClose}
-                aria-label={t.plantQuickSheet.close}
-                style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0, cursor: 'pointer' }}
-              >
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                  <path d="M10 2L2 10M2 2l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              </button>
+              {/* Close remains available on larger screens; mobile already has backdrop + handle. */}
+              <div className={PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS}>
+                <button
+                  onClick={onClose}
+                  aria-label={t.plantQuickSheet.close}
+                  style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0, cursor: 'pointer' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path d="M10 2L2 10M2 2l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
