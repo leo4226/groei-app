@@ -6,6 +6,7 @@ import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { resolveIconUrl } from '../../utils/icons'
 import { getPlantDragHitRadius } from './plantDragPermissions'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 export const STATUS_COLORS: Record<string, string> = {
   overdue:   'var(--color-overdue)',
@@ -38,7 +39,7 @@ interface Props {
   heatmapCells?: HeatmapCell[]
 }
 
-type MarkerBadge = { alert_type: string; severity: string; icon: string }
+type MarkerBadge = { alert_type: string; severity: string; icon: string; care_type: string }
 
 export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
   const warnings = plant.warnings?.length
@@ -51,6 +52,7 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
     alert_type: `${warning.care_type}-${warning.trigger}`,
     severity: warning.severity,
     icon: warning.icon,
+    care_type: warning.care_type,
   }))
 }
 
@@ -62,7 +64,7 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
 export function topMarkerBadge(plant: MapPlant): MarkerBadge | null {
   const w = plant.top_warning ?? plant.warnings?.[0] ?? null
   if (!w) return null
-  return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon }
+  return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon, care_type: w.care_type }
 }
 
 const PX_PER_CM = 0.46
@@ -321,9 +323,11 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
       {topBadge && (
         <g style={{ pointerEvents: 'none' }}>
           <circle cx={0} cy={-(iconR + 5)} r={7} fill="white" stroke={haloColor ?? '#888'} strokeWidth={1.5} />
-          <text x={0} y={-(iconR + 5)} textAnchor="middle" dominantBaseline="central" fontSize={8} style={{ pointerEvents: 'none', userSelect: 'none' }}>
-            {topBadge.icon}
-          </text>
+          <CareIcon
+            type={topBadge.care_type as CareIconType}
+            x={-4.5} y={-(iconR + 5) - 4.5} size={9}
+            strokeWidth={2.2} stroke={haloColor ?? '#5a5a5a'}
+          />
         </g>
       )}
     </g>

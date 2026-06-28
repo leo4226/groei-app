@@ -3,6 +3,7 @@ import { useT } from '../../context/LanguageContext'
 import { useState } from 'react'
 import { buildCareNeedsGroups, getCareTypeDisplay, type WarningPlant, type PlantWithMeta } from './careNeedsListModel'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
   plants: MapPlant[]
@@ -69,7 +70,7 @@ function CareTypeGroup({
           className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: dotColor }}
         />
-        <span className="text-[11px]">{info.icon}</span>
+        <span className="shrink-0 flex items-center" style={{ color: dotColor }}><CareIcon type={careType as CareIconType} size={13} strokeWidth={2} /></span>
         <span className="text-xs text-text font-medium flex-1 min-w-0 truncate">
           {info.label}
         </span>
@@ -88,7 +89,7 @@ function CareTypeGroup({
               plant={plant}
               onTap={onPlantTap}
               dotColor={plant.warning.color ?? dotColor}
-              icon={plant.warning.icon ?? undefined}
+              careType={plant.warning.care_type}
             />
           ))}
         </ul>
@@ -101,12 +102,12 @@ function PlantRow({
   plant,
   onTap,
   dotColor,
-  icon,
+  careType,
 }: {
   plant: PlantWithMeta
   onTap: (p: MapPlant) => void
   dotColor: string
-  icon?: string
+  careType?: string
 }) {
   const containerName = plant.containerName ?? null
   const t = useT()
@@ -127,8 +128,10 @@ function PlantRow({
           <span className="text-[9px] text-text-muted truncate block">in {containerName}</span>
         )}
       </span>
-      {icon && (
-        <span className="text-[11px] shrink-0">{icon}</span>
+      {careType && (
+        <span className="shrink-0 flex items-center" style={{ color: dotColor }}>
+          <CareIcon type={careType as CareIconType} size={12} strokeWidth={2} />
+        </span>
       )}
     </li>
   )

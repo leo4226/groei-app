@@ -9,6 +9,7 @@ import {
   type GroupedWarning,
 } from '../../utils/careGrouping'
 import { getCareTypeDisplay } from './careNeedsListModel'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
   /** Current map's name, so we can flag plants that live in another garden. */
@@ -243,8 +244,9 @@ function PlantRow({ plant, t, saving, onTap, onDone, onSkip }: {
         <div className="min-w-0">
           <div className="text-xs font-medium text-text truncate">{plant.plant_name}</div>
           {careInfo && (
-            <div className="text-[10px] text-text-muted truncate mt-0.5">
-              {careInfo.icon} {careInfo.label}{overdue ? ` +${plant.days_overdue}d` : ''}
+            <div className="text-[10px] text-text-muted truncate mt-0.5 flex items-center gap-1">
+              {plant.care_type && <CareIcon type={plant.care_type as CareIconType} size={11} strokeWidth={2} />}
+              {careInfo.label}{overdue ? ` +${plant.days_overdue}d` : ''}
             </div>
           )}
         </div>

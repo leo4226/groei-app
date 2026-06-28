@@ -5,6 +5,7 @@ import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { resolveIconUrl } from '../../utils/icons'
 import { topMarkerBadge } from './PlantMarker'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
@@ -201,16 +202,11 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
                 stroke={haloColor ?? '#888'}
                 strokeWidth={1.5}
               />
-              <text
-                x={0}
-                y={-(iconHalf + 4)}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={7}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {topBadge.icon}
-              </text>
+              <CareIcon
+                type={topBadge.care_type as CareIconType}
+                x={-4} y={-(iconHalf + 4) - 4} size={8}
+                strokeWidth={2.4} stroke={haloColor ?? '#5a5a5a'}
+              />
             </g>
           )}
         </g>
