@@ -491,6 +491,10 @@ export type Translations = {
     spotSameAge: string                   // "— zelfde leeftijd —" / "— same age —"
     addSpot: string                       // "Voeg nog een plek toe" / "Add another spot"
     removeSpot: string                    // "Plek verwijderen" / "Remove spot"
+    tasksDue: (n: number) => string       // "4 taken te doen" / "4 tasks due"
+    photo: string                         // "Foto" / "Photo"
+    addPhoto: string                      // aria — "Voortgangsfoto toevoegen" / "Add progress photo"
+    menu: string                          // aria — "Meer acties" / "More actions"
     copy: string  // "Copy plant"
     duplicate: string
     edit: string  // "Edit plant"
