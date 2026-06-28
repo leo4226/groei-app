@@ -504,7 +504,7 @@ export default function MapPage() {
       </div>
 
       {moveModeActive && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-2xl border border-border bg-surface/95 px-3.5 py-2.5 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
           <span className="font-heading text-xs text-text-soft leading-snug">
             {targetedMove ? t.mapPage.moveOnePlantHint : t.mapPage.moveModeHint}
           </span>
@@ -519,7 +519,7 @@ export default function MapPage() {
       )}
 
       {placingPlant && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 landscape-mobile-hide rounded-2xl border border-border bg-surface/95 px-3.5 py-2.5 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
           <span className="font-heading text-xs text-text-soft leading-snug">
             {t.mapPage.placeSpotHint(placingPlant.name)}
           </span>
