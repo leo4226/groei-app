@@ -414,13 +414,14 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
+    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
     try:
         await db.execute(
             """UPDATE plants
                SET map_id = ?, map_x = ?, map_y = ?, ground_zone_id = ?,
-                   updated_at = CURRENT_TIMESTAMP
+                   container_id = NULL, icon_key = ?, updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
-            (data.map_id, data.map_x, data.map_y, data.ground_zone_id, plant_id),
+            (data.map_id, data.map_x, data.map_y, data.ground_zone_id, new_icon, plant_id),
         )
         await db.commit()
     except Exception:
@@ -428,9 +429,9 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
         await db.execute(
             """UPDATE plants
                SET map_id = ?, map_x = ?, map_y = ?,
-                   updated_at = CURRENT_TIMESTAMP
+                   container_id = NULL, icon_key = ?, updated_at = CURRENT_TIMESTAMP
                WHERE id = ?""",
-            (data.map_id, data.map_x, data.map_y, plant_id),
+            (data.map_id, data.map_x, data.map_y, new_icon, plant_id),
         )
         await db.commit()
     return await get_plant(plant_id, db=db)
