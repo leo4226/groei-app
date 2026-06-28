@@ -986,19 +986,21 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
 
 
 async def _sync_from_admin(db):
-    """Re-match every plant that lacks a usable icon (flagged, placeholdered,
-    icon-less, or carrying a dangling key) against the unified catalog, assigning
-    a real curated/generated icon when one exists."""
-    valid_ids = {e["id"] for e in await load_catalog(db)}
+    """Re-match active plants after admin icon generation.
+
+    This uses the same rules as Settings → Sync icons: missing/placeholder/
+    dangling icons are assigned a real catalog key, and valid generic/shared icons
+    are upgraded when an exact AI-generated icon exists for the plant.
+    """
+    catalog = await load_catalog(db)
+    valid_ids = {e["id"] for e in catalog}
     plants = await db.execute_fetchall(
         "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
     )
     matched = []
     for row in plants:
         plant = dict(row)
-        if not (plant["icon_requested"] or icons_router._needs_real_icon(plant["icon_key"], valid_ids)):
-            continue
-        found = await icons_router.match_icon_key(db, plant["name"], plant.get("species"))
+        found = await icons_router.sync_match_icon_key(db, plant, catalog=catalog, valid_ids=valid_ids)
         if found and found in valid_ids and not found.startswith("placeholder"):
             await db.execute(
                 "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",

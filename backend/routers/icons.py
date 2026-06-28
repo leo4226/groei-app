@@ -69,6 +69,60 @@ async def resolve_placement_icon(db, icon_key: str | None, *, container_id: int 
     return await find_variant(db, icon_key, target_form)
 
 
+def _is_base_icon(entry: dict) -> bool:
+    return not entry.get("variant_of") and not _FORM_SUFFIXES.search(entry["id"])
+
+
+def _entry_match_texts(entry: dict) -> list[str]:
+    return [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]
+
+
+def _exact_ai_generated_match(catalog: list[dict], name: str, species: str | None) -> str | None:
+    """Return an exact, distinctive generated icon for this plant if one exists.
+
+    This is stricter than the generic matching fallback: only base generated icons
+    with source='ai' qualify, and they must exactly match the plant name or
+    species/scientific text after normalisation. Procedural rows are fallback
+    placeholders and must not block future AI retries or upgrade generic icons.
+    """
+    wanted = {_normalize(text) for text in [name, species or ""] if text}
+    if not wanted:
+        return None
+    for entry in catalog:
+        if entry.get("source") != "ai" or not _is_base_icon(entry):
+            continue
+        if any(_normalize(text) in wanted for text in _entry_match_texts(entry) if text):
+            return entry["id"]
+    return None
+
+
+async def sync_match_icon_key(
+    db,
+    plant: dict,
+    *,
+    catalog: list[dict] | None = None,
+    valid_ids: set[str] | None = None,
+) -> str | None:
+    """Icon key that Settings/Admin sync should apply for a plant.
+
+    Priority 1: upgrade to an exact AI-generated icon if one already exists, even
+    when the current icon is otherwise valid but generic/shared.
+    Priority 2: preserve legacy sync behaviour for requested/missing/placeholder/
+    dangling icons by falling back to best-effort catalog matching.
+    """
+    catalog = catalog if catalog is not None else await load_catalog(db)
+    valid_ids = valid_ids if valid_ids is not None else {e["id"] for e in catalog}
+
+    exact_generated = _exact_ai_generated_match(catalog, plant["name"], plant.get("species"))
+    if exact_generated and exact_generated != plant.get("icon_key"):
+        return exact_generated
+
+    if plant.get("icon_requested") or _needs_real_icon(plant.get("icon_key"), valid_ids):
+        return await match_icon_key(db, plant["name"], plant.get("species"))
+
+    return None
+
+
 async def match_icon_key(db, name: str, species: str | None) -> str | None:
     """Best-effort icon_key for a plant by name/species. None if no match."""
     catalog = await load_catalog(db)
@@ -77,9 +131,9 @@ async def match_icon_key(db, name: str, species: str | None) -> str | None:
         # Only match the base icon — form variants (_bare/_potted, variant_of)
         # share a plant's name/sci and would otherwise shadow the base. A plant's
         # icon_key is always the base; placement derives the bare/potted form.
-        if entry.get("variant_of") or _FORM_SUFFIXES.search(entry["id"]):
+        if not _is_base_icon(entry):
             continue
-        for text in [entry["id"], entry.get("name", ""), entry.get("sci", ""), entry.get("name_nl", "")]:
+        for text in _entry_match_texts(entry):
             if text:
                 lookup[_normalize(text)] = entry["id"]
     for dutch_norm, icon_id in DUTCH_TO_ICON.items():
@@ -238,30 +292,32 @@ async def get_catalog(db=Depends(db_dep)):
 
 @router.post("/sync")
 async def sync_icons(db = Depends(db_dep)):
-    """Re-match plants that lack a usable icon against the unified catalog.
+    """Re-match plants against the unified catalog.
 
-    Targets plants that are flagged, placeholdered, icon-less, OR carry a dangling
-    icon_key that no longer resolves to a real icon (stale keys from the old
-    ephemeral-disk era) — and reassigns them to a real curated/generated icon when
-    one exists. Does NOT touch the filesystem. Idempotent."""
-    valid_ids = {e["id"] for e in await load_catalog(db)}
-    plants = await db.execute_fetchall(
+    Existing behaviour: requested, placeholdered, icon-less, or dangling keys are
+    assigned a real catalog icon when one exists. Upgrade behaviour: if a plant
+    already has a valid generic/shared icon but an exact AI-generated icon exists
+    for its own name/species, switch to that distinctive generated icon. Does NOT
+    generate new files. Idempotent.
+    """
+    catalog = await load_catalog(db)
+    valid_ids = {e["id"] for e in catalog}
+    plants = [dict(r) for r in await db.execute_fetchall(
         "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
-    )
-    candidates = [dict(r) for r in plants
-                  if r["icon_requested"] or _needs_real_icon(r["icon_key"], valid_ids)]
+    )]
     matched: list[dict] = []
-    for plant in candidates:
-        found = await match_icon_key(db, plant["name"], plant.get("species"))
+    unmatched: list[dict] = []
+    for plant in plants:
+        found = await sync_match_icon_key(db, plant, catalog=catalog, valid_ids=valid_ids)
         if found and found in valid_ids and not found.startswith("placeholder"):
             await db.execute(
                 "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (found, plant["id"]))
             matched.append({"plant_id": plant["id"], "plant_name": plant["name"], "icon_key": found})
+        elif plant["icon_requested"] or _needs_real_icon(plant["icon_key"], valid_ids):
+            unmatched.append({"plant_id": plant["id"], "plant_name": plant["name"]})
     if matched:
         await db.commit()
-    unmatched = [{"plant_id": p["id"], "plant_name": p["name"]}
-                 for p in candidates if not any(m["plant_id"] == p["id"] for m in matched)]
     return {"matched_plants": len(matched), "matches": matched,
             "unmatched_plants": len(unmatched), "unmatched": unmatched}
 
