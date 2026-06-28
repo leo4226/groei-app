@@ -24,7 +24,7 @@ export default function PhaseCalendar({
 
   // Locale-aware month formatting
   const locale = t.locale || 'nl-NL'
-  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth, locale)
+  const suitability = computeSuitability(phenology, sunHours, currentMonth, locale)
   const fmtMonth = (m: number) => {
     return new Intl.DateTimeFormat(locale, { month: 'short' })
       .format(new Date(2026, m - 1, 1))
