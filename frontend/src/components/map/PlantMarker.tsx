@@ -67,19 +67,28 @@ export function topMarkerBadge(plant: MapPlant): MarkerBadge | null {
   return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon, care_type: w.care_type }
 }
 
-const PX_PER_CM = 0.46
+export function plantMarkerHaloColor(plant: MapPlant, mapType: 'outdoor' | 'indoor', showWarnings: boolean): string | null {
+  if (!showWarnings) return null
 
-
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
-  const { badgeColor: color } = getCareDisplay(plant)
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
   // Outdoor ground plants: only weather halos. Indoor or container plants: full care halos.
-  const haloColor = isOutdoor && !isContainer
+  return isOutdoor && !isContainer
     ? (plant.temp_status === 'freezing' || plant.temp_status === 'chilling' || plant.temp_status === 'heatstress'
         ? getHaloColor(plant)
         : null)
     : getHaloColor(plant)
+}
+
+export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean): string | null {
+  return showWarnings ? getHaloColor(plant) : null
+}
+
+const PX_PER_CM = 0.46
+
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
+  const { badgeColor: color } = getCareDisplay(plant)
+  const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
   const topBadge = showWarnings ? topMarkerBadge(plant) : null
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {

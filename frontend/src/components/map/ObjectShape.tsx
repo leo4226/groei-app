@@ -2,9 +2,8 @@ import type { MapObject, HardscapePreset } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
-import { getHaloColor } from '../../hooks/usePlantStatus'
 import { resolveIconUrl } from '../../utils/icons'
-import { topMarkerBadge } from './PlantMarker'
+import { containedPlantHaloColor, topMarkerBadge } from './PlantMarker'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
@@ -152,7 +151,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
-      const haloColor = getHaloColor(plant)
+      const haloColor = containedPlantHaloColor(plant, showWarnings)
       const topBadge = showWarnings ? topMarkerBadge(plant) : null
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
