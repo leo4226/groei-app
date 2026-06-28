@@ -486,6 +486,11 @@ export type Translations = {
     close: string
     moreInfo: string
     quantityCount: (n: number) => string  // "6 stuks" / "6 plants"
+    spotsHeading: string                  // "Extra plekken" / "Other spots"
+    spotLabel: (n: number) => string      // "Plek 2" / "Spot 2"
+    spotSameAge: string                   // "— zelfde leeftijd —" / "— same age —"
+    addSpot: string                       // "Voeg nog een plek toe" / "Add another spot"
+    removeSpot: string                    // "Plek verwijderen" / "Remove spot"
     copy: string  // "Copy plant"
     duplicate: string
     edit: string  // "Edit plant"
@@ -1088,6 +1093,7 @@ export type Translations = {
     moveModeDone: string
     moveModeHint: string
     moveOnePlantHint: string
+    placeSpotHint: (name: string) => string
     sunNoGpsHint: string    // "Set garden location first to use sun features"
   }
 

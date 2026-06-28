@@ -22,6 +22,7 @@ CREATE TABLE plant_species (
 @pytest_asyncio.fixture
 async def db_ready(seeded_db):
     await seeded_db.executescript(EXTRA_SCHEMA)
+    await seeded_db.execute("INSERT INTO maps (id, name, map_type, household_id) VALUES (1, 'Garden', 'outdoor', 1)")
     await seeded_db.commit()
     return seeded_db
 
@@ -66,6 +67,23 @@ async def test_add_and_delete_placement(client, db_ready, auth_header):
     rows = await db_ready.execute_fetchall(
         "SELECT id FROM plant_placements WHERE id = ?", (placement_id,)
     )
+    assert rows == []
+
+
+async def test_add_placement_rejects_foreign_map(client, db_ready, auth_header):
+    pid = await _make_plant(client, auth_header)
+    await db_ready.execute("INSERT INTO households (id, name) VALUES (2, 'Other Household')")
+    await db_ready.execute("INSERT INTO maps (id, name, map_type, household_id) VALUES (2, 'Other Garden', 'outdoor', 2)")
+    await db_ready.commit()
+
+    resp = await client.post(
+        f"/api/plants/{pid}/placements", headers=auth_header,
+        json={"map_id": 2, "map_x": 12.5, "map_y": 30.0},
+    )
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Map not found"
+    rows = await db_ready.execute_fetchall("SELECT id FROM plant_placements WHERE plant_id = ?", (pid,))
     assert rows == []
 
 

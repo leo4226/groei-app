@@ -358,6 +358,14 @@ async def add_placement(plant_id: int, data: PlacementCreate, db = Depends(db_de
     plant = await cur.fetchone()
     if not plant:
         raise HTTPException(status_code=404, detail="Plant not found")
+
+    map_rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+        (data.map_id, account["household_id"]),
+    )
+    if not map_rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+
     plant = dict(plant)
     cursor = await db.execute(
         """INSERT INTO plant_placements (plant_id, map_id, map_x, map_y, ground_zone_id, phase)

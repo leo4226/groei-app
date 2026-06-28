@@ -75,7 +75,7 @@ export default function MapPage() {
     if (maps.length === 0) loadMaps()
   }, [loadMaps])
 
-  const { map, plants, objects, groundZones, loading } = mapData
+  const { map, plants, objects, secondaryMarkers, groundZones, loading } = mapData
 
   const unplacedPlants = useMemo(() => selectUnplacedPlants(allPlants), [allPlants])
 
@@ -111,6 +111,49 @@ export default function MapPage() {
   const [moveMode, setMoveMode] = useState(false)
   const [targetedMove, setTargetedMove] = useState<{ plantId: number; relockAfterMove: boolean } | null>(null)
   const moveModeActive = moveMode || targetedMove !== null
+  // Tap-to-place: the plant we're adding an extra spot for (null = not placing).
+  const [placingPlant, setPlacingPlant] = useState<MapPlant | null>(null)
+
+  const handleAddPlacement = useCallback((plant: MapPlant) => {
+    setSelectedPlant(null)
+    setPlacingPlant(plant)
+  }, [])
+
+  const handlePlacementTap = useCallback(async (x: number, y: number) => {
+    if (!placingPlant || !map) return
+    try {
+      await clientApis.plants.addPlacement(placingPlant.id, { map_id: map.id, map_x: x, map_y: y })
+      await refreshMapData()
+    } catch (e) {
+      console.error('Failed to add placement', e)
+    } finally {
+      setPlacingPlant(null)
+    }
+  }, [placingPlant, map, refreshMapData])
+
+  const handleSecondaryMarkerTap = useCallback((plantId: number) => {
+    const plant = plants.find((p) => p.id === plantId)
+    if (plant) setSelectedPlant(plant)
+    else navigate(`/plants/${plantId}`)
+  }, [plants, navigate])
+
+  const handleDeletePlacement = useCallback(async (plantId: number, placementId: number) => {
+    try {
+      await clientApis.plants.deletePlacement(plantId, placementId)
+      await refreshMapData()
+    } catch (e) {
+      console.error('Failed to delete placement', e)
+    }
+  }, [refreshMapData])
+
+  const handleUpdatePlacementPhase = useCallback(async (plantId: number, placementId: number, phase: string) => {
+    try {
+      await clientApis.plants.updatePlacement(plantId, placementId, { phase })
+      await refreshMapData()
+    } catch (e) {
+      console.error('Failed to update placement', e)
+    }
+  }, [refreshMapData])
 
   // Arriving from another garden's care list (focusPlantId in nav state):
   // auto-open that plant's sheet once this map's plants have loaded.
@@ -373,6 +416,10 @@ export default function MapPage() {
           moveMode={moveMode}
           movePlantId={targetedMove?.plantId ?? null}
           onPlantMoveComplete={handlePlantMoveComplete}
+          placingPlantId={placingPlant?.id ?? null}
+          onPlacementTap={handlePlacementTap}
+          secondaryMarkers={secondaryMarkers}
+          onSecondaryMarkerTap={handleSecondaryMarkerTap}
           showLabels={showLabels}
           showWarnings={showWarnings}
           sunModeActive={sun.active}
@@ -471,6 +518,21 @@ export default function MapPage() {
         </div>
       )}
 
+      {placingPlant && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 landscape-mobile-hide rounded-full border border-border bg-surface/95 px-3 py-2 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
+          <span className="font-heading text-xs text-text-soft leading-snug">
+            {t.mapPage.placeSpotHint(placingPlant.name)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPlacingPlant(null)}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft active:scale-95 transition-transform shrink-0"
+          >
+            {t.common.cancel}
+          </button>
+        </div>
+      )}
+
       {/* Bottom sheet — care needs OR sun controls */}
       <div className="landscape-mobile-hide">
         <MapBottomSheet
@@ -560,6 +622,10 @@ export default function MapPage() {
           onMoveOnMap={handleMovePlantOnMap}
           onDuplicate={handleDuplicate}
           onRemove={(id) => handleRemoveItem('plant', id)}
+          placements={secondaryMarkers.filter((m) => m.plant_id === selectedPlant.id)}
+          onAddPlacement={() => handleAddPlacement(selectedPlant)}
+          onDeletePlacement={(placementId) => handleDeletePlacement(selectedPlant.id, placementId)}
+          onUpdatePlacementPhase={(placementId, phase) => handleUpdatePlacementPhase(selectedPlant.id, placementId, phase)}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MapPlant, MapObject, GroundZone, Plant, MapInfo } from '../../types'
+import type { MapPlant, MapObject, GroundZone, Plant, MapInfo, SecondaryMarker } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
 import { plants as plantsApi } from '../../api/client'
@@ -24,12 +24,17 @@ interface Props {
   onMoveOnMap?: (plant: MapPlant) => void | Promise<void>
   onDuplicate?: (plantId: number) => void
   onRemove?: (plantId: number) => void
+  placements?: SecondaryMarker[]
+  onAddPlacement?: () => void
+  onDeletePlacement?: (placementId: number) => void
+  onUpdatePlacementPhase?: (placementId: number, phase: string) => void
 }
 
 export default function PlantQuickSheet({
   plant, objects, soilGroundZones = [], heatmapCells,
   mapId, mapName,
   onClose, onCareAction, onAction, onMoveOnMap, onDuplicate, onRemove,
+  placements = [], onAddPlacement, onDeletePlacement, onUpdatePlacementPhase,
 }: Props) {
   const t = useT()
   const navigate = useNavigate()
@@ -402,6 +407,48 @@ export default function PlantQuickSheet({
               <span aria-hidden="true">↔</span>
               {t.plantQuickSheet.moveOnMap}
             </button>
+          )}
+
+          {/* ── Extra placements (this plant in more than one spot) ── */}
+          {onAddPlacement && (
+            <div style={{ marginTop: 4, marginBottom: 10 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                {t.plantQuickSheet.spotsHeading}
+              </div>
+              {placements.map((pl, i) => (
+                <div key={pl.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 6 }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-soft)', flexShrink: 0 }}>
+                    {t.plantQuickSheet.spotLabel(i + 2)}
+                  </span>
+                  <select
+                    value={pl.phase ?? ''}
+                    onChange={(e) => onUpdatePlacementPhase?.(pl.id, e.target.value)}
+                    style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 6px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                  >
+                    <option value="">{t.plantQuickSheet.spotSameAge}</option>
+                    <option value="seed">{t.addPlant.phaseSeed}</option>
+                    <option value="sprout">{t.addPlant.phaseSprout}</option>
+                    <option value="seedling">{t.addPlant.phaseSeedling}</option>
+                    <option value="young">{t.addPlant.phaseYoung}</option>
+                    <option value="established">{t.addPlant.phaseEstablished}</option>
+                  </select>
+                  <button
+                    onClick={() => onDeletePlacement?.(pl.id)}
+                    aria-label={t.plantQuickSheet.removeSpot}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-overdue)', fontSize: 14, flexShrink: 0, padding: 4 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={onAddPlacement}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'var(--color-bg)', color: 'var(--color-primary)', border: '1px dashed var(--color-border)', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+              >
+                <span aria-hidden="true">＋</span>
+                {t.plantQuickSheet.addSpot}
+              </button>
+            </div>
           )}
 
         </div>

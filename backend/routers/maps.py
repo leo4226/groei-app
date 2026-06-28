@@ -196,8 +196,8 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
                   p.name, p.icon_key
            FROM plant_placements pp
            JOIN plants p ON p.id = pp.plant_id
-           WHERE pp.map_id = ? AND p.is_active = 1""",
-        (map_id,),
+           WHERE pp.map_id = ? AND p.is_active = 1 AND p.household_id = ?""",
+        (map_id, account["household_id"]),
     )
     secondary_markers = [dict(r) for r in placement_rows]
 

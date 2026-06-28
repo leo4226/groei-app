@@ -17,6 +17,10 @@ class FakeDb:
             return []
         if 'SELECT * FROM objects' in query:
             return [{'id': 99, 'name': 'Terracotta pot'}] if self.with_object else []
+        if 'FROM plant_placements pp' in query:
+            assert 'p.household_id = ?' in query
+            assert params == (1, 1)
+            return []
         return []
 
 
