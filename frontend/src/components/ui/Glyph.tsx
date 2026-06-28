@@ -1,0 +1,67 @@
+/**
+ * General-purpose line glyphs for UI chrome (filters, badges, headers) — the
+ * non-care counterpart to CareIcon. Same drawing language: thin stroke,
+ * rounded caps, `currentColor`, 24×24 viewBox. Add a key to GLYPHS to extend.
+ */
+export type GlyphName = 'list' | 'leaf' | 'home' | 'alert'
+
+const GLYPHS: Record<GlyphName, React.ReactNode> = {
+  // all / everything — a bulleted list
+  list: (
+    <>
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // garden / outdoor — a leaf
+  leaf: (
+    <>
+      <path d="M5 19C5 11 9.5 6 19 5c0 9.5-4.5 14-14 14z" />
+      <path d="M5.5 18.5C8.5 13 12 9.5 16 8" />
+    </>
+  ),
+  // house / indoor — a home
+  home: (
+    <>
+      <path d="M4 11 12 4.5 20 11" />
+      <path d="M6 9.8V19a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.8" />
+      <path d="M10 20v-5h4v5" />
+    </>
+  ),
+  // warning / needs action — a triangle
+  alert: (
+    <>
+      <path d="M12 4 21 19H3z" />
+      <path d="M12 10v4" />
+      <circle cx="12" cy="16.8" r="0.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+}
+
+interface Props extends Omit<React.SVGProps<SVGSVGElement>, 'name'> {
+  name: GlyphName
+  size?: number
+}
+
+export default function Glyph({ name, size = 16, strokeWidth = 1.8, ...rest }: Props) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="inline-block shrink-0"
+      {...rest}
+    >
+      {GLYPHS[name]}
+    </svg>
+  )
+}
