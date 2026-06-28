@@ -73,9 +73,10 @@ export default function Settings() {
   const [householdLoadError, setHouseholdLoadError] = useState<string | null>(null)
 
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+  const [catalogError, setCatalogError] = useState(false)
 
   useEffect(() => {
-    icons.catalog().then(setIconCatalog).catch(() => {})
+    icons.catalog().then(setIconCatalog).catch(() => setCatalogError(true))
   }, [])
 
   async function handleSaveProfile() {
@@ -458,7 +459,9 @@ export default function Settings() {
               {showEmojiPicker && (
                 <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2 max-h-64 overflow-y-auto">
                   {iconCatalog.length === 0 && (
-                    <p className="col-span-6 text-xs text-text-muted py-2 text-center">{t.common.loading}</p>
+                    <p className="col-span-6 text-xs text-text-muted py-2 text-center">
+                      {catalogError ? t.common.error : t.common.loading}
+                    </p>
                   )}
                   {iconCatalog.map((icon) => (
                     <button
