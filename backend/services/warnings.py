@@ -25,6 +25,7 @@ from care_types import (
     WEATHER_COLDHEAT_COLORS,
     Severity,
     Trigger,
+    is_care_type_valid_for_env,
     priority_bucket,
 )
 
@@ -97,16 +98,8 @@ def _load_care_profile(
                 # that are not valid in this environment. A care type can be
                 # valid-but-not-default (e.g. indoor mist): existing/custom
                 # profiles should keep that explicit opt-in.
-                for care_type, ct_def in CARE_TYPES.items():
-                    default_interval = ct_def["default_intervals"].get(environment)
-                    is_weather = ct_def.get("is_weather_triggered", False)
-                    valid_environments = ct_def.get("valid_environments")
-                    is_valid = (
-                        environment in valid_environments
-                        if valid_environments is not None
-                        else default_interval is not None or (is_weather and environment != "indoor")
-                    )
-                    if not is_valid:
+                for care_type in CARE_TYPES:
+                    if not is_care_type_valid_for_env(care_type, environment):
                         profile[care_type] = {"active": False}
 
                 return profile
