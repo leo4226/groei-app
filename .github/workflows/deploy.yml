@@ -1,15 +1,34 @@
 name: Fly Deploy
 on:
+  # Direct pushes / human merges to master.
   push:
     branches: [master]
+  # Auto-merged PRs land via the auto-merge workflow's GITHUB_TOKEN, and GitHub
+  # deliberately does NOT retrigger `on: push` workflows for GITHUB_TOKEN pushes
+  # (recursion guard). The PR-merge event is delivered though, so deploy off it
+  # too — otherwise auto-merged backend changes never reach Fly.
+  pull_request:
+    types: [closed]
+  # Manual "Run workflow" button in the Actions tab.
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy backend to Fly.io
+    # Run on a push to master, a manual dispatch, or a PR actually merged into
+    # master (a PR closed without merging is skipped).
+    if: >
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'master')
     runs-on: ubuntu-latest
     concurrency: deploy-group
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Always deploy the current tip of master, regardless of which event
+          # triggered the run.
+          ref: master
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
         env:
