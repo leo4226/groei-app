@@ -104,6 +104,93 @@ async def test_preview_in_use_scope_and_map_only(client, admin_db, auth_header):
 
 
 @pytest.mark.asyncio
+async def test_preview_in_use_counts_only_current_admin_household(client, admin_db, auth_header):
+    await admin_db.execute("INSERT INTO households (id, name) VALUES (2, 'Other household')")
+    await admin_db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, latin_name) VALUES (2,'Andere roos','Rosa gallica')"
+    )
+    await admin_db.executemany(
+        "INSERT INTO plants (id,name,species_id,icon_requested,is_active,map_id,household_id) "
+        "VALUES (?, ?, ?, 1, 1, 5, ?)",
+        [
+            (1, 'Mijn roos', 1, 1),
+            (2, 'Andere roos', 2, 2),
+        ],
+    )
+    await admin_db.commit()
+
+    resp = await client.get(
+        "/api/admin-panel/generate-icons/preview?scope=in_use&map_only=true",
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_preview_counts_procedural_icons_as_still_needing_ai_upgrade(client, admin_db, auth_header):
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos','Roos','Rosa canina','flower','potted',NULL,'https://r2/gen_roos.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos_bare','Roos','Rosa canina','flower','bare','gen_roos','https://r2/gen_roos_bare.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species,species_id,icon_key,icon_requested,is_active,map_id,household_id) "
+        "VALUES (1,'Mijn roos','Rosa canina',1,'gen_roos_bare',0,1,5,1)"
+    )
+    await admin_db.commit()
+
+    all_preview = await client.get("/api/admin-panel/generate-icons/preview?scope=all", headers=auth_header)
+    assert all_preview.status_code == 200, all_preview.text
+    assert all_preview.json()["count"] == 1
+
+    in_use_preview = await client.get(
+        "/api/admin-panel/generate-icons/preview?scope=in_use&map_only=true",
+        headers=auth_header,
+    )
+    assert in_use_preview.status_code == 200, in_use_preview.text
+    assert in_use_preview.json()["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ai_generation_upgrades_existing_procedural_icon(client, admin_db, auth_header):
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos','Roos','Rosa canina','flower','potted',NULL,'https://r2/old_roos.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+        "VALUES ('gen_roos_bare','Roos','Rosa canina','flower','bare','gen_roos','https://r2/old_roos_bare.svg','procedural')"
+    )
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species,species_id,icon_key,icon_requested,is_active,map_id,household_id) "
+        "VALUES (1,'Mijn roos','Rosa canina',1,'gen_roos_bare',0,1,5,1)"
+    )
+    await admin_db.commit()
+
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})),          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        resp = await client.post(
+            "/api/admin-panel/generate-icons?scope=in_use&map_only=true&limit=25",
+            headers=auth_header,
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["count"] == 1
+    rows = await admin_db.execute_fetchall("SELECT id, source, url FROM generated_icons ORDER BY id")
+    by_id = {row["id"]: dict(row) for row in rows}
+    assert by_id["gen_roos"]["source"] == "ai"
+    assert by_id["gen_roos_bare"]["source"] == "ai"
+    assert by_id["gen_roos"]["url"] != "https://r2/old_roos.svg"
+
+
+@pytest.mark.asyncio
 async def test_generate_respects_limit_and_reports_remaining(client, admin_db, auth_header):
     # Second uncovered species -> two candidates under scope=all.
     await admin_db.execute(
