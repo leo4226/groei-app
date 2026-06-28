@@ -1205,6 +1205,13 @@ export type Translations = {
       example: string
       bugReport: string
       bugReportHeader: string
+      expand: string
+      collapse: string
+      next: string
+      review: string
+      stepLabel: (current: number, total: number) => string
+      reviewTitle: string
+      reviewHint: string
       submit: string
       submitting: string
       submitted: string
