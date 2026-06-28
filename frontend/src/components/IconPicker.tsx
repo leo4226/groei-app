@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { PlantIcon } from '../types'
 import { icons } from '../api/client'
 import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
@@ -36,6 +37,14 @@ export default function IconPicker({ value, onChange }: Props) {
   useEffect(() => {
     if (!open) return
     setTimeout(() => searchRef.current?.focus(), 80)
+  }, [open])
+
+  // Lock background scroll while the full-screen picker is open.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
   }, [open])
 
   const filtered = iconList.filter((icon) => {
@@ -113,8 +122,11 @@ export default function IconPicker({ value, onChange }: Props) {
         )}
       </button>
 
-      {/* Full-screen picker overlay */}
-      {open && (
+      {/* Full-screen picker overlay — rendered in a portal on <body> so it is
+          never re-based or clipped by a transformed/overflow-hidden ancestor
+          (e.g. the `.card:hover` translate), which would otherwise push it
+          off-screen and make it unscrollable. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-50 flex flex-col bg-bg">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 border-b border-border bg-surface flex-shrink-0">
@@ -223,7 +235,8 @@ export default function IconPicker({ value, onChange }: Props) {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )
