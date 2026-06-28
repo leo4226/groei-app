@@ -53,6 +53,7 @@ export interface Plant {
   icon_key: string | null
   icon_requested: boolean
   phase: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
+  quantity: number
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -136,6 +137,7 @@ export interface PlantCreateInput {
   icon_key?: string
   phase?: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
   sown_date?: string
+  quantity?: number
   care_schedules: CareScheduleInput[]
 }
 
@@ -289,6 +291,7 @@ export interface MapPlant {
   species_id: number | null
   phenology: Phenology | null
   is_locked: boolean,
+  quantity: number
   top_alert: TopAlert | null
   alerts: TopAlert[]
   top_warning: CareWarningOut | null

@@ -263,6 +263,7 @@ export interface CreatePayloadFormState {
   sunRequirement: string | null
   phase?: PlantCreateInput['phase']
   sownDate?: string
+  quantity?: number
   careSchedules: CareScheduleInput[]
 }
 
@@ -290,6 +291,7 @@ export function buildCreatePayload(s: CreatePayloadFormState): PlantCreateInput 
     sun_requirement: s.sunRequirement ? (SUN_TILE_TO_DB[s.sunRequirement] ?? s.sunRequirement) : undefined,
     phase: s.phase,
     sown_date: s.sownDate,
+    quantity: s.quantity != null && s.quantity > 1 ? s.quantity : undefined,
     care_schedules: s.careSchedules,
   }
 }

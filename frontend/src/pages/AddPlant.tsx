@@ -134,6 +134,7 @@ export default function AddPlant() {
   const [progressMsg, setProgressMsg] = useState('')
   const [sownDateInput, setSownDateInput] = useState('')
   const [phase, setPhase] = useState('established')
+  const [quantity, setQuantity] = useState(1)
   const [formType, setFormType] = useState(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
       ? TYPE_TO_FORM[(prefill as LocalPlant).type] ?? 'pot'
@@ -394,6 +395,7 @@ export default function AddPlant() {
         derivedPlantType,
         sunRequirement,
         phase: phase as any,
+        quantity,
         sownDate: displayToIso(sownDateInput) || undefined,
         careSchedules,
       }))
@@ -707,6 +709,17 @@ export default function AddPlant() {
                 { id: 'established', label: t.addPlant.phaseEstablished },
               ]}
               value={phase} onChange={setPhase}
+            />
+          </FormRow>
+
+          {/* Quantity */}
+          <FormRow label={t.addPlant.labelQuantity} description={t.addPlant.labelQuantityDesc}>
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full sm:w-32 rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm text-text focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
             />
           </FormRow>
 

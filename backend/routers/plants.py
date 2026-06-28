@@ -140,14 +140,15 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
 
 @router.post("/plants", response_model=PlantOut)
 async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+    quantity = max(1, int(data.quantity or 1))
     cursor = await db.execute(
-        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, quantity, household_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
          data.acquired_date,
          data.pot_size_cm, data.notes,
          data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key,
-         data.phase, data.sown_date, account["household_id"]),
+         data.phase, data.sown_date, quantity, account["household_id"]),
     )
     plant_id = cursor.lastrowid
 
@@ -304,6 +305,9 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
             updates[field] = str(value)
         else:
             updates[field] = value
+
+    if "quantity" in updates and updates["quantity"] is not None:
+        updates["quantity"] = max(1, int(updates["quantity"]))
 
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")

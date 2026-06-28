@@ -38,6 +38,7 @@ function plant(id: number, name: string, warnings: CareWarningOut[]): MapPlant {
     species_id: null,
     phenology: null,
     is_locked: false,
+    quantity: 1,
     top_alert: null,
     alerts: [],
     top_warning: warnings[0] ?? null,

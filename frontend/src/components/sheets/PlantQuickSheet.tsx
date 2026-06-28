@@ -201,6 +201,11 @@ export default function PlantQuickSheet({
                   {plant.species}
                 </p>
               )}
+              {plant.quantity > 1 && (
+                <p style={{ margin: '3px 0 0', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)' }}>
+                  <span aria-hidden="true">❋</span>{t.plantQuickSheet.quantityCount(plant.quantity)}
+                </p>
+              )}
               <button
                 onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
                 style={{ marginTop: 4, padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 500, color: 'var(--color-primary)', cursor: 'pointer', display: 'block' }}

@@ -31,6 +31,7 @@ export interface BuildEditPlantPayloadInput {
   phase: Plant['phase']
   sownDateInput: string
   formType: string
+  quantity?: number
   randomMapPos: (viewbox: string) => MapPosition
 }
 
@@ -48,6 +49,10 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,
     plant_type: input.formType,
+  }
+
+  if (input.quantity != null) {
+    payload.quantity = Math.max(1, input.quantity)
   }
 
   const selectedMapId = input.selectedZoneId ? Number(input.selectedZoneId) : null

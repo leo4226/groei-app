@@ -525,6 +525,7 @@ export const en: Translations = {
   plantQuickSheet: {
     close: 'Close',
     moreInfo: 'More info →',
+    quantityCount: (n: number) => `${n} ${n === 1 ? 'plant' : 'plants'}`,
     copy: 'Copy plant',
     duplicate: 'Copy plant',
     edit: 'Edit plant',
@@ -692,6 +693,8 @@ export const en: Translations = {
     labelFormDesc: 'How it grows',
     labelPhase: 'Life phase',
     labelPhaseDesc: 'Current growth stage',
+    labelQuantity: 'Quantity',
+    labelQuantityDesc: 'How many of this plant you have',
     labelAcquired: 'Acquired',
     labelAcquiredDesc: 'When + where',
     placeholderNickname: 'Spring orchid',

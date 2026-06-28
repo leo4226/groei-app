@@ -65,6 +65,7 @@ class PlantCreate(BaseModel):
     icon_key: str | None = None   # icon filename without extension, e.g. 'oak', 'raspberry'
     phase: str = 'established'    # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
     sown_date: date | None = None
+    quantity: int = 1            # how many specimens this record represents
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -83,6 +84,7 @@ class PlantUpdate(BaseModel):
     icon_requested: bool | None = None   # None = don't change
     phase: str | None = None             # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
     sown_date: date | None = None
+    quantity: int | None = None          # None = don't change
     map_id: int | None = None
     map_x: float | None = None
     map_y: float | None = None
@@ -130,6 +132,7 @@ class PlantOut(BaseModel):
     icon_requested: bool = False
     phase: str = 'established'
     sown_date: date | None = None
+    quantity: int = 1
     species_id: int | None = None
     phenology: Any | None = None
     care_schedules: list[CareScheduleOut] = []
@@ -312,6 +315,7 @@ class MapPlantOut(BaseModel):
     species_id: int | None = None
     phenology: Any | None = None
     is_locked: bool = False
+    quantity: int = 1
     top_alert: TopAlert | None = None
     alerts: list[TopAlert] = []
     top_warning: dict | None = None

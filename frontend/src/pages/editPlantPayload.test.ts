@@ -30,6 +30,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     icon_key: 'monstera',
     icon_requested: false,
     phase: 'established',
+    quantity: 1,
     species_id: null,
     phenology: null,
     care_schedules: [],
