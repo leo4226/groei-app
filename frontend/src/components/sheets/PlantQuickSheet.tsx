@@ -8,6 +8,7 @@ import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import { compressImage } from '../../utils/compressImage'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
@@ -241,13 +242,13 @@ export default function PlantQuickSheet({
                 ) : iconUrl ? (
                   <img src={iconUrl} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
                 ) : (
-                  <span style={{ fontSize: 26 }}>🌱</span>
+                  <span style={{ color: 'var(--color-primary)' }}><CareIcon type="sprout" size={28} strokeWidth={1.6} /></span>
                 )}
                 <span style={{
                   position: 'absolute', right: 2, bottom: 2, width: 18, height: 18, borderRadius: '50%',
                   background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', fontSize: 10, border: '1.5px solid var(--color-surface)',
-                }}>{uploadingPhoto ? '…' : '📷'}</span>
+                }}>{uploadingPhoto ? '…' : <CareIcon type="photo" size={11} strokeWidth={2.2} />}</span>
               </button>
 
               {/* Name + species + more info */}
@@ -331,8 +332,8 @@ export default function PlantQuickSheet({
                     disabled={saving || done}
                     style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: done ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
                   >
-                    <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s' }}>
-                      {done ? <span style={{ color: '#fff', fontSize: 20 }}>✓</span> : (info?.icon ?? '📋')}
+                    <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
+                      {done ? <span style={{ color: '#fff', fontSize: 20 }}>✓</span> : <CareIcon type={ct as CareIconType} size={24} />}
                       {!done && (overdue || dueToday) && (
                         <span style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, padding: '0 4px', boxSizing: 'border-box', borderRadius: 9, background: overdue ? 'var(--color-overdue)' : 'var(--color-due)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', border: '1.5px solid var(--color-surface)' }}>
                           {overdue ? `${Math.abs(due as number)}d` : '!'}
@@ -350,8 +351,8 @@ export default function PlantQuickSheet({
                 disabled={uploadingPhoto}
                 style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: uploadingPhoto ? 0.5 : 1, padding: 0 }}
               >
-                <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: 'var(--color-bg)', border: '2px dashed var(--color-border)' }}>
-                  {uploadingPhoto ? '…' : '📷'}
+                <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', border: '2px dashed var(--color-border)', color: 'var(--color-text-soft)' }}>
+                  {uploadingPhoto ? '…' : <CareIcon type="photo" size={24} />}
                 </span>
                 <span style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'var(--color-text-soft)', textAlign: 'center' }}>
                   {t.plantQuickSheet.photo}
