@@ -1,4 +1,5 @@
 import { useFloreren } from '../store/useFloreren'
+import Avatar from './ui/Avatar'
 
 export default function UserSwitcher() {
   const users = useFloreren((s) => s.users)
@@ -18,7 +19,7 @@ export default function UserSwitcher() {
               : 'bg-surface text-text-muted border border-border hover:border-primary/30'
           }`}
         >
-          <span>{user.avatar}</span>
+          <Avatar value={user.avatar} size={18} />
           <span>{user.name}</span>
         </button>
       ))}

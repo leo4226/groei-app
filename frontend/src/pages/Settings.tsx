@@ -10,6 +10,8 @@ import type { IconSyncResult } from '../types'
 import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
+import Avatar from '../components/ui/Avatar'
+import type { PlantIcon } from '../types'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 // Must match the boot script in index.html, which applies the theme before
@@ -70,7 +72,11 @@ export default function Settings() {
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([])
   const [householdLoadError, setHouseholdLoadError] = useState<string | null>(null)
 
-  const PROFILE_EMOJIS = ['🌱', '🌿', '🌻', '🌺', '🌸', '🌷', '🌹', '🍀', '🌵', '🌲', '🍃', '🌾', '🌼', '🪴', '🌴', '🍄', '🐝', '🦋', '🐞', '🧑‍🌾', '👩‍🌾', '👨‍🌾', '🌳', '🌰']
+  const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
+
+  useEffect(() => {
+    icons.catalog().then(setIconCatalog).catch(() => {})
+  }, [])
 
   async function handleSaveProfile() {
     if (!activeUserId || !profileName.trim()) return
@@ -440,26 +446,30 @@ export default function Settings() {
 
           {/* Avatar + Name row (side by side on desktop) */}
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-            {/* Avatar emoji picker */}
+            {/* Avatar — pick from the plant-icon catalog */}
             <div className="sm:min-w-[4.5rem]">
               <label className="block text-sm font-semibold mb-1.5">{t.settings.profileAvatar}</label>
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 text-2xl border border-primary/20 active:scale-90 transition-transform"
+                className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 border border-primary/20 active:scale-90 transition-transform overflow-hidden"
               >
-                {profileAvatar || '🌱'}
+                <Avatar value={profileAvatar} size={40} />
               </button>
               {showEmojiPicker && (
-                <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2">
-                  {PROFILE_EMOJIS.map((emoji) => (
+                <div className="mt-2 p-3 bg-surface border border-border rounded-xl grid grid-cols-6 gap-2 max-h-64 overflow-y-auto">
+                  {iconCatalog.length === 0 && (
+                    <p className="col-span-6 text-xs text-text-muted py-2 text-center">{t.common.loading}</p>
+                  )}
+                  {iconCatalog.map((icon) => (
                     <button
-                      key={emoji}
-                      onClick={() => { setProfileAvatar(emoji); setShowEmojiPicker(false) }}
-                      className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all active:scale-90 ${
-                        profileAvatar === emoji ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-primary/10'
+                      key={icon.id}
+                      onClick={() => { setProfileAvatar(icon.id); setShowEmojiPicker(false) }}
+                      title={icon.name}
+                      className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all active:scale-90 ${
+                        profileAvatar === icon.id ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-primary/10'
                       }`}
                     >
-                      {emoji}
+                      <Avatar value={icon.id} size={34} />
                     </button>
                   ))}
                 </div>
@@ -555,19 +565,19 @@ export default function Settings() {
           <div>
             <div className="font-semibold text-sm mb-2">{t.settings.themeLabel}</div>
             <div className="grid grid-cols-3 gap-2">
-              {([['light', t.settings.themeLight], ['dark', t.settings.themeDark], ['system', t.settings.themeSystem]] as const).map(([value, label]) => {
+              {([['light', t.settings.themeLight, 'sun'], ['dark', t.settings.themeDark, 'moon'], ['system', t.settings.themeSystem, 'monitor']] as const).map(([value, label, glyph]) => {
                 const isActive = theme === value
                 return (
                   <button
                     key={value}
                     onClick={() => setTheme(value)}
-                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${
+                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] flex items-center justify-center gap-1.5 ${
                       isActive
                         ? 'bg-primary text-white shadow-sm'
                         : 'bg-surface border border-border text-text hover:border-primary/30'
                     }`}
                   >
-                    {label}
+                    <Glyph name={glyph} size={15} /> {label}
                   </button>
                 )
               })}
@@ -745,7 +755,7 @@ export default function Settings() {
                               : 'hover:border-primary/20'
                           }`}
                         >
-                          <span className="text-3xl">{member.avatar || users.find(u => u.name === member.name)?.avatar}</span>
+                          <Avatar value={member.avatar || users.find(u => u.name === member.name)?.avatar} size={44} />
                           <span className={`font-semibold ${userId === activeUserId ? "text-primary" : "text-text"}`}>
                             {member.name}
                           </span>
@@ -791,7 +801,7 @@ export default function Settings() {
                             : 'hover:border-primary/20'
                         }`}
                       >
-                        <span className="text-3xl">{user.avatar}</span>
+                        <Avatar value={user.avatar} size={44} />
                         <span className={`font-semibold ${user.id === activeUserId ? "text-primary" : "text-text"}`}>
                           {user.name}
                         </span>

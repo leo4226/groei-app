@@ -6,6 +6,7 @@
 export type GlyphName =
   | 'list' | 'leaf' | 'home' | 'alert'
   | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
+  | 'sun' | 'moon' | 'monitor'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -62,6 +63,22 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   'chevron-up': <path d="M6 15l6-6 6 6" />,
   'chevron-down': <path d="M6 9l6 6 6-6" />,
+  // theme — sun
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" />
+    </>
+  ),
+  // theme — moon
+  moon: <path d="M20 13.5A8 8 0 1 1 10.5 4a6.2 6.2 0 0 0 9.5 9.5z" />,
+  // theme — monitor / system
+  monitor: (
+    <>
+      <rect x="3" y="4.5" width="18" height="12" rx="1.5" />
+      <path d="M9 20h6M12 16.5V20" />
+    </>
+  ),
 }
 
 interface Props extends Omit<React.SVGProps<SVGSVGElement>, 'name'> {
