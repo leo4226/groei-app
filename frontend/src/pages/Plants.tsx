@@ -13,6 +13,13 @@ const DiscoveriesSection = lazy(() => import('../components/discoveries/Discover
 import RecentCareSection from '../components/plants/RecentCareSection'
 import PlantFactCard from '../components/plants/PlantFactCard'
 
+/**
+ * The category/type/form i18n labels carry a leading emoji (e.g. "🪴 Potted").
+ * The tiny uppercase metadata chips on a plant card render text only, so strip
+ * the leading non-letter characters and keep just the localized word.
+ */
+const stripLabelEmoji = (label: string): string => label.replace(/^[^\p{L}]+/u, '').trim() || label
+
 /** Plant is outdoor (tuin) when its map has map_type='outdoor'. Null map_id → fallback to huis. */
 const isOutdoor = (plant: Plant, mapTypeByMapId: Map<number, 'outdoor' | 'indoor'>) => {
   if (plant.map_id == null) return false
@@ -934,6 +941,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
   isSelecting?: boolean; selected?: boolean; onToggle?: () => void;
 }) {
   const CATEGORY_LABELS = useCategoryLabels()
+  const FORM_LABELS = useFormLabels()
   const { updatePlant } = useFloreren()
   const t = useT()
   const [isEditing, setIsEditing] = useState(false)
@@ -944,8 +952,9 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
   const displayName = plantDisplayName(plant, t.locale)
   const icon = plant.icon_key ? iconMap.get(plant.icon_key) : null
   const typeLabel = icon?.cat || plant.plant_type || null
-  const typeDisplay = typeLabel ? (CATEGORY_LABELS[typeLabel] || typeLabel) : null
+  const typeDisplay = typeLabel ? stripLabelEmoji(CATEGORY_LABELS[typeLabel] || typeLabel) : null
   const formLabel = icon?.form || null
+  const formDisplay = formLabel ? stripLabelEmoji(FORM_LABELS[formLabel] || formLabel) : null
   const familyName = icon?.family || null
 
   useEffect(() => {
@@ -1094,7 +1103,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
             background: 'rgba(251,247,238,0.92)', padding: '2px 6px',
             borderRadius: 4, border: '1px solid var(--color-border-soft)',
           }}>
-            {typeLabel}
+            {typeDisplay}
           </span>
         )}
         {formLabel && (
@@ -1106,7 +1115,7 @@ function PlantCard({ plant, iconMap, isSelecting, selected, onToggle }: {
             background: 'rgba(251,247,238,0.92)', padding: '2px 6px',
             borderRadius: 4, border: '1px solid var(--color-border-soft)',
           }}>
-            {formLabel}
+            {formDisplay}
           </span>
         )}
       </div>
