@@ -4,6 +4,7 @@ import type { PlantPhoto } from '../../types'
 import { compressImage } from '../../utils/compressImage'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
+import { photoViewerControlsClassName } from './photoJournalLayout'
 
 const REMINDER_PRESETS = [14, 30, 90]
 
@@ -139,23 +140,23 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
             <img src={photos[viewer].url} alt=""
                  className="flex-1 object-contain min-h-0" />
           )}
-          <div className="p-4 text-white text-sm" onClick={e => e.stopPropagation()}>
+          <div className={photoViewerControlsClassName()} onClick={e => e.stopPropagation()}>
             <p>{new Date(photos[viewer].taken_at).toLocaleDateString()}</p>
             {photos[viewer].note && <p className="text-white/80">{photos[viewer].note}</p>}
             {photos[viewer].species_mismatch && (
               <p className="text-amber-400 text-xs mt-1">⚠ {t.photoJournal.mismatchHint}</p>
             )}
-            <div className="flex gap-4 mt-2">
-              <button disabled={viewer >= photos.length - 1} className="disabled:opacity-40"
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+              <button disabled={viewer >= photos.length - 1} className="disabled:opacity-40 shrink-0"
                       onClick={() => setViewer(v => (v ?? 0) + 1)}>‹ {t.photoJournal.older}</button>
-              <button disabled={viewer <= 0} className="disabled:opacity-40"
+              <button disabled={viewer <= 0} className="disabled:opacity-40 shrink-0"
                       onClick={() => setViewer(v => (v ?? 0) - 1)}>{t.photoJournal.newer} ›</button>
               {photos.length > 1 && (
-                <button onClick={() => setCompare(c => !c)}>
+                <button className="shrink-0" onClick={() => setCompare(c => !c)}>
                   {compare ? t.photoJournal.compareOff : t.photoJournal.compare}
                 </button>
               )}
-              <button className="ml-auto text-red-400"
+              <button className="ml-auto shrink-0 text-red-300 font-semibold"
                       onClick={() => onDelete(photos[viewer])}>{t.photoJournal.delete}</button>
             </div>
           </div>
