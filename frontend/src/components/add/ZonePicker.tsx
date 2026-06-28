@@ -31,10 +31,8 @@ export default function ZonePicker({
   value,
   onChange,
   advice,
-  translations,
   className = '',
 }: ZonePickerProps) {
-  const t = translations ?? { plantsLabel: (n: number) => `${n} planten` }
   const selectedZone = zones.find(z => z.id === value)
 
   // Sort: indoor first if a zone is selected and it's indoor, or no selection → indoor first
@@ -106,12 +104,6 @@ export default function ZonePicker({
                   </div>
                 )}
               </div>
-
-              {zone.plantCount !== undefined && (
-                <div className="font-heading italic text-xs text-text-muted shrink-0">
-                  {t.plantsLabel(zone.plantCount)}
-                </div>
-              )}
             </button>
           )
         })}
