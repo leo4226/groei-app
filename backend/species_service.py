@@ -353,7 +353,13 @@ def _normalise_fact_scope(scope: str | None) -> str:
     return "in_use" if scope == "in_use" else "all"
 
 
-async def _fact_scope_rows(db, *, scope: str = "all", map_only: bool = False) -> list[dict]:
+async def _fact_scope_rows(
+    db,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+    household_id: int | None = None,
+) -> list[dict]:
     scope = _normalise_fact_scope(scope)
     if scope == "in_use":
         sql = (
@@ -362,10 +368,14 @@ async def _fact_scope_rows(db, *, scope: str = "all", map_only: bool = False) ->
             "JOIN plants p ON p.species_id = ps.id "
             "WHERE p.is_active = 1 "
         )
+        params: list[object] = []
+        if household_id is not None:
+            sql += "AND p.household_id = ? "
+            params.append(household_id)
         if map_only:
             sql += "AND p.map_id IS NOT NULL "
         sql += "ORDER BY ps.common_name_nl"
-        rows = await db.execute_fetchall(sql)
+        rows = await db.execute_fetchall(sql, tuple(params)) if params else await db.execute_fetchall(sql)
     else:
         rows = await db.execute_fetchall(
             "SELECT id, common_name_nl, latin_name, phenology_json "
@@ -381,9 +391,15 @@ def _fact_rows_missing_bilingual_facts(rows: list[dict]) -> list[dict]:
     ]
 
 
-async def preview_missing_facts(db, *, scope: str = "all", map_only: bool = False) -> dict:
+async def preview_missing_facts(
+    db,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+    household_id: int | None = None,
+) -> dict:
     scope = _normalise_fact_scope(scope)
-    rows = await _fact_scope_rows(db, scope=scope, map_only=map_only)
+    rows = await _fact_scope_rows(db, scope=scope, map_only=map_only, household_id=household_id)
     missing_nl = 0
     missing_en = 0
     missing_any = 0
@@ -413,10 +429,11 @@ async def backfill_missing_facts(
     *,
     scope: str = "all",
     map_only: bool = False,
+    household_id: int | None = None,
 ) -> dict:
     scope = _normalise_fact_scope(scope)
     all_rows = _fact_rows_missing_bilingual_facts(
-        await _fact_scope_rows(db, scope=scope, map_only=map_only)
+        await _fact_scope_rows(db, scope=scope, map_only=map_only, household_id=household_id)
     )
     rows = all_rows[:limit] if limit and limit > 0 else all_rows
 

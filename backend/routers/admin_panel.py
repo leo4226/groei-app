@@ -174,10 +174,23 @@ def _compose_icon(plant_svg: str, *, potted: bool) -> str:
     )
 
 
+def _is_procedural_icon(entry: dict) -> bool:
+    return entry.get("source") == "procedural"
+
+
 async def _existing_sci(db) -> set[str]:
-    """Latin names already covered by curated OR generated icons (normalised)."""
+    """Latin names already covered by curated OR AI-generated icons.
+
+    Procedural generated icons are fallback placeholders. They make a plant render,
+    but they should not block a later AI retry or make the admin preview report
+    "0 missing" for species that still only have generic fallback art.
+    """
     catalog = await load_catalog(db)
-    return {icons_router._normalize(e.get("sci", "")) for e in catalog if e.get("sci")}
+    return {
+        icons_router._normalize(e.get("sci", ""))
+        for e in catalog
+        if e.get("sci") and not _is_procedural_icon(e)
+    }
 
 
 def _sort_clause(sort: str, direction: str, allowed: dict[str, str], default: str, default_dir: str = "asc") -> str:
@@ -837,27 +850,38 @@ async def admin_activity(admin=Depends(require_admin), db=Depends(db_dep)):
     return all_events[:50]
 
 
-async def _target_species(db, *, scope: str, map_only: bool) -> list[dict]:
+async def _target_species(
+    db,
+    *,
+    scope: str,
+    map_only: bool,
+    household_id: int | None = None,
+) -> list[dict]:
     """The plant_species rows that need an icon generated, deduped by latin name
     and excluding species already covered by a curated/generated icon.
 
     scope="all"     → the whole species catalog (every species with a latin name).
-    scope="in_use"  → only species linked to active plants that still lack a real
-                      icon — flagged, placeholdered, icon-less, OR carrying a
-                      dangling icon_key that no longer resolves to a real icon.
-                      map_only=True further restricts to plants placed on a map.
+    scope="in_use"  → only species linked to this admin household's active plants
+                      that still lack a real/AI icon — flagged, placeholdered,
+                      icon-less, procedurally generated, OR carrying a dangling
+                      icon_key that no longer resolves to a real icon. map_only=True
+                      further restricts to plants placed on a map.
     """
     covered = await _existing_sci(db)
     if scope == "in_use":
-        valid_ids = {e["id"] for e in await load_catalog(db)}
+        valid_ids = {e["id"] for e in await load_catalog(db) if not _is_procedural_icon(e)}
         sql = (
             "SELECT ps.id, ps.common_name_nl, ps.latin_name, p.icon_key, p.icon_requested "
             "FROM plants p JOIN plant_species ps ON p.species_id = ps.id "
             "WHERE p.is_active = 1 AND ps.latin_name IS NOT NULL AND ps.latin_name != '' "
         )
+        params: list[object] = []
+        if household_id is not None:
+            sql += "AND p.household_id = ? "
+            params.append(household_id)
         if map_only:
             sql += "AND p.map_id IS NOT NULL "
-        rows = await db.execute_fetchall(sql)
+        rows = await db.execute_fetchall(sql, tuple(params)) if params else await db.execute_fetchall(sql)
         rows = [r for r in rows
                 if r["icon_requested"] or icons_router._needs_real_icon(r["icon_key"], valid_ids)]
     else:
@@ -881,7 +905,7 @@ async def _target_species(db, *, scope: str, map_only: bool) -> list[dict]:
 async def generate_icons_preview(scope: str = "all", map_only: bool = False,
                                  admin=Depends(require_admin), db=Depends(db_dep)):
     """How many icons a generate-icons run would create — generates nothing."""
-    targets = await _target_species(db, scope=scope, map_only=map_only)
+    targets = await _target_species(db, scope=scope, map_only=map_only, household_id=admin.get("household_id"))
     return {"scope": scope, "map_only": map_only, "count": len(targets)}
 
 
@@ -893,7 +917,7 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
     plants. `scope`/`map_only` pick the target set (see _target_species); `limit`
     caps how many are processed per run (0 = no cap)."""
     storage = build_storage_from_env()
-    targets = await _target_species(db, scope=scope, map_only=map_only)
+    targets = await _target_species(db, scope=scope, map_only=map_only, household_id=admin.get("household_id"))
     total_targets = len(targets)
     if limit and limit > 0:
         targets = targets[:limit]
@@ -996,7 +1020,12 @@ async def backfill_facts_preview(
     """Preview: count species missing either Dutch or English facts."""
     from species_service import preview_missing_facts
 
-    return await preview_missing_facts(db, scope=scope, map_only=map_only)
+    return await preview_missing_facts(
+        db,
+        scope=scope,
+        map_only=map_only,
+        household_id=admin.get("household_id"),
+    )
 
 
 @router.post("/admin-panel/backfill-facts")
@@ -1010,7 +1039,13 @@ async def backfill_plant_facts(
     """Generate bilingual interesting facts for selected plant_species entries."""
     from species_service import backfill_missing_facts
 
-    result = await backfill_missing_facts(db, limit=limit, scope=scope, map_only=map_only)
+    result = await backfill_missing_facts(
+        db,
+        limit=limit,
+        scope=scope,
+        map_only=map_only,
+        household_id=admin.get("household_id"),
+    )
     await log_admin_action(
         db,
         admin,
@@ -1282,9 +1317,15 @@ async def _run_generate_icons(db, params: dict, on_progress) -> dict:
     scope = params.get("scope", "all")
     map_only = bool(params.get("map_only", False))
     limit = int(params.get("limit", 25))
+    household_id = params.get("household_id")
 
     storage = build_storage_from_env()
-    targets = await _target_species(db, scope=scope, map_only=map_only)
+    targets = await _target_species(
+        db,
+        scope=scope,
+        map_only=map_only,
+        household_id=int(household_id) if household_id is not None else None,
+    )
     total_targets = len(targets)
     if limit and limit > 0:
         targets = targets[:limit]
@@ -1402,8 +1443,15 @@ async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
     limit = int(params.get("limit", 50))
     scope = str(params.get("scope", "all"))
     map_only = bool(params.get("map_only", False))
+    household_id = params.get("household_id")
     await on_progress(0, 1)
-    result = await backfill_missing_facts(db, limit=limit, scope=scope, map_only=map_only)
+    result = await backfill_missing_facts(
+        db,
+        limit=limit,
+        scope=scope,
+        map_only=map_only,
+        household_id=int(household_id) if household_id is not None else None,
+    )
     await on_progress(1, 1)
     return result
 
@@ -1477,7 +1525,10 @@ async def start_admin_job(
         raise HTTPException(status_code=400, detail=f"Unknown job kind: {body.kind!r}")
     if is_kind_running(body.kind):
         raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
-    job_id = await start_job(db, admin, body.kind, body.params, runner)
+    params = dict(body.params)
+    if body.kind in {"backfill_facts", "generate_icons"}:
+        params["household_id"] = admin.get("household_id")
+    job_id = await start_job(db, admin, body.kind, params, runner)
     return {"job_id": job_id}
 
 

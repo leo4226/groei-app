@@ -23,6 +23,13 @@ import {
   adminSidebarStyle,
   adminTopbarStyle,
 } from './adminPageLayout'
+import {
+  FACTS_MAP_ONLY_DEFAULT,
+  scopedFactsCountLabel,
+  scopedFactsMissingCount,
+  scopedFactsPreviewIsStaleOrUnsupported,
+  scopedFactsRunParams,
+} from './adminFactsToolModel'
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'tools' | 'activity' | 'audit'
 
@@ -1539,12 +1546,13 @@ function SkippedDetails({ details }: { details: AdminSkippedDetail[] }) {
 
 function ToolsView() {
   const [mapOnly, setMapOnly] = useState(false)
-  const [factsMapOnly, setFactsMapOnly] = useState(false)
+  const [factsMapOnly, setFactsMapOnly] = useState(FACTS_MAP_ONLY_DEFAULT)
   const [iconLimit, setIconLimit] = useState(25)
   const [factsLimit, setFactsLimit] = useState(25)
   const [ipAll, setIpAll] = useState<number | null>(null)
   const [ipInUse, setIpInUse] = useState<number | null>(null)
   const [iconRefresh, setIconRefresh] = useState(0)
+  const [factsRefresh, setFactsRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
   const [fpAll, setFpAll] = useState<AdminBackfillFactsPreview | null>(null)
@@ -1574,7 +1582,7 @@ function ToolsView() {
   useEffect(() => {
     adminPanel.backfillFactsPreview({ scope: 'all' }).then(setFpAll).catch(() => {})
     adminPanel.backfillFactsPreview({ scope: 'in_use', mapOnly: factsMapOnly }).then(setFpInUse).catch(() => {})
-  }, [factsMapOnly])
+  }, [factsMapOnly, factsRefresh])
 
   useEffect(() => {
     const activeKinds = Object.entries(jobs)
@@ -1600,6 +1608,7 @@ function ToolsView() {
             })
             if (done) {
               if (kind === 'generate_icons') setIconRefresh(n => n + 1)
+              if (kind === 'backfill_facts') setFactsRefresh(n => n + 1)
               adminPanel.listJobs(20).then(setRecentJobs).catch(() => {})
             }
           }
@@ -1654,12 +1663,14 @@ function ToolsView() {
 
   const factsJob = getJob('backfill_facts')
   const factsBusy = busy('backfill_facts')
+  const scopedFactsCount = scopedFactsMissingCount(fpInUse, factsMapOnly)
+  const scopedFactsUnsupported = scopedFactsPreviewIsStaleOrUnsupported(fpInUse, factsMapOnly)
 
   const factsTool = (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Backfill interesting facts</h3>
       <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        Generate bilingual interesting facts via LLM for species missing Dutch or English facts. Each species is one LLM call, so start with the species that are actually used by active plants.
+        Generate bilingual interesting facts via LLM for species missing Dutch or English facts. Each species is one LLM call, so start with your map-placed plants.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
@@ -1676,10 +1687,12 @@ function ToolsView() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
-            My active plants{factsMapOnly ? ' on a map' : ''} needing facts: {fpInUse?.missing_facts ?? '…'}
+            {scopedFactsPreviewIsStaleOrUnsupported(fpInUse, factsMapOnly)
+              ? 'Scoped facts preview needs the latest backend deploy'
+              : scopedFactsCountLabel(scopedFactsCount, factsMapOnly)}
           </div>
-          <button onClick={() => runJob('backfill_facts', { scope: 'in_use', map_only: factsMapOnly, limit: factsLimit })} disabled={factsBusy} style={btnStyle(factsBusy)}>
-            {factsBusy ? 'Generating…' : `Generate for my plants${fpInUse ? ` (${Math.min(fpInUse.missing_facts, factsLimit)})` : ''}`}
+          <button onClick={() => runJob('backfill_facts', scopedFactsRunParams(factsLimit, factsMapOnly))} disabled={factsBusy || scopedFactsUnsupported} style={btnStyle(factsBusy || scopedFactsUnsupported)}>
+            {factsBusy ? 'Generating…' : `Generate for my plants${scopedFactsCount != null ? ` (${Math.min(scopedFactsCount, factsLimit)})` : ''}`}
           </button>
         </div>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
@@ -1700,7 +1713,7 @@ function ToolsView() {
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Generate icons</h3>
       <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        AI-generate distinctive SVGs (validated; procedural fallback) → R2 + DB, then re-match plants. Each icon is one LLM call, so start with your real plants.
+        AI-generate distinctive SVGs (validated; procedural fallback) → R2 + DB, then re-match plants. Generic procedural fallbacks still count here so they can be retried for unique AI art.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
