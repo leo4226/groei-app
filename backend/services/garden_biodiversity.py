@@ -3,17 +3,27 @@
 Aggregates the per-species ecology data (already populated by
 `services.ecology_enrichment`) across all plants on an outdoor map.
 
-Counted *per distinct species* — five lavenders count once. That keeps
-the score about ecological breadth, not arms-race-by-plant-count.
+Breadth (pollinator / native / diversity) is still counted *per distinct
+species* — five lavenders count once for those, keeping the bulk of the score
+about ecological breadth, not arms-race-by-plant-count.
+
+Abundance is a small, separate, diminishing-returns bonus (max 10) layered on
+top: a clump of 6 ferns is worth a little more than a single fern, but breadth
+still dominates and the curve saturates so it can never become an arms race.
+Abundance uses the per-plant `quantity` field (Phase 2); extra map placements
+are spatial only and do not add specimens.
 
 See docs/plans/2026-05-27-public-gardens-and-biodiversity.md
-("Per-garden score") for the rationale behind the components.
+("Per-garden score") and docs/plans/2026-06-27-map-density-multiplicity-plan.md
+(Phase 5) for the rationale behind the components.
 
-Components (max 100):
+Components (additive, total capped at 100):
     - Pollinator coverage:  60   — 5 points per month where ≥1 species
                                    with pollinator_value ≥ 2 is flowering.
     - Native count:         30   — 6 points per native species, capped (5 = max).
-    - Diversity bonus:      10   — log-scaled species count; max at 20.
+    - Diversity bonus:      10   — log-scaled distinct-species count; max at 20.
+    - Abundance bonus:      10   — diminishing returns on total extra specimens
+                                   (specimens beyond the first of each species).
 
 Invasive count is reported alongside the score but *not* deducted —
 following the anti-purism principle: a plant great for butterflies
@@ -57,18 +67,28 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     Empty gardens return a zero-everything profile rather than None — the
     UI can decide how to present 'no data yet' on its own."""
     rows = await db.execute_fetchall(
-        """SELECT DISTINCT ps.id AS species_id,
+        """SELECT ps.id AS species_id,
                   ps.native_to_nl,
                   ps.invasive_nl,
                   ps.flowering_months,
-                  ps.pollinator_value
+                  ps.pollinator_value,
+                  p.quantity
            FROM plants p
            JOIN plant_species ps ON p.species_id = ps.id
            WHERE p.map_id = ? AND p.is_active = TRUE""",
         (map_id,),
     )
 
-    species = [dict(r) for r in rows]
+    # Group per distinct species: breadth components use the distinct species,
+    # while `specimens` (Σ quantity) feeds the abundance bonus.
+    by_species: dict = {}
+    for r in rows:
+        d = dict(r)
+        sid = d["species_id"]
+        if sid not in by_species:
+            by_species[sid] = {**d, "specimens": 0}
+        by_species[sid]["specimens"] += max(1, int(d.get("quantity") or 1))
+    species = list(by_species.values())
     species_count = len(species)
 
     if species_count == 0:
@@ -78,7 +98,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             native_count=0,
             invasive_count=0,
             pollinator_coverage_months=[False] * 12,
-            components={"pollinator": 0, "native": 0, "diversity": 0},
+            components={"pollinator": 0, "native": 0, "diversity": 0, "abundance": 0},
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -112,7 +132,15 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         min(10, math.log(species_count + 1) / math.log(20 + 1) * 10)
     )
 
-    total = min(100, pollinator_score + native_score + diversity_score)
+    # ── Abundance bonus ──
+    # Diminishing returns on "extra" specimens (those beyond the first of each
+    # species), so a clump of 6 ferns is worth a little more than one fern, but
+    # the curve saturates (10·x/(x+10), max 10) — abundance never becomes an
+    # arms race and never outweighs breadth.
+    total_extra = sum(max(0, s["specimens"] - 1) for s in species)
+    abundance_score = round(10 * total_extra / (total_extra + 10)) if total_extra else 0
+
+    total = min(100, pollinator_score + native_score + diversity_score + abundance_score)
 
     return GardenBiodiversity(
         score=total,
@@ -124,5 +152,6 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             "pollinator": pollinator_score,
             "native": native_score,
             "diversity": diversity_score,
+            "abundance": abundance_score,
         },
     )
