@@ -988,44 +988,42 @@ async def _sync_from_admin(db):
 
 @router.get("/admin-panel/backfill-facts/preview")
 async def backfill_facts_preview(
+    scope: str = "all",
+    map_only: bool = False,
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
     """Preview: count species missing either Dutch or English facts."""
-    rows = await db.execute_fetchall(
-        "SELECT id, phenology_json FROM plant_species"
-    )
-    missing_nl = 0
-    missing_en = 0
-    missing_any = 0
-    for row in rows:
-        phenology = _parse_json_object(row.get("phenology_json"))
-        lacks_nl = not _has_text(phenology.get("interesting_facts_nl"))
-        lacks_en = not _has_text(phenology.get("interesting_facts_en"))
-        if lacks_nl:
-            missing_nl += 1
-        if lacks_en:
-            missing_en += 1
-        if lacks_nl or lacks_en:
-            missing_any += 1
-    return {
-        "total_species": len(rows),
-        "missing_facts": missing_any,
-        "missing_facts_nl": missing_nl,
-        "missing_facts_en": missing_en,
-    }
+    from species_service import preview_missing_facts
+
+    return await preview_missing_facts(db, scope=scope, map_only=map_only)
 
 
 @router.post("/admin-panel/backfill-facts")
 async def backfill_plant_facts(
     limit: int = 50,
+    scope: str = "all",
+    map_only: bool = False,
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
-    """Generate interesting_facts_nl for plant_species entries that lack one."""
+    """Generate bilingual interesting facts for selected plant_species entries."""
     from species_service import backfill_missing_facts
-    result = await backfill_missing_facts(db, limit=limit)
-    await log_admin_action(db, admin, "backfill_facts", target=f"limit={limit}", detail={"processed": result.get("processed"), "updated": result.get("updated"), "skipped": result.get("skipped")})
+
+    result = await backfill_missing_facts(db, limit=limit, scope=scope, map_only=map_only)
+    await log_admin_action(
+        db,
+        admin,
+        "backfill_facts",
+        target=f"scope={scope};limit={limit}",
+        detail={
+            "processed": result.get("processed"),
+            "updated": result.get("updated"),
+            "skipped": result.get("skipped"),
+            "scope": scope,
+            "map_only": map_only,
+        },
+    )
     return result
 
 
@@ -1400,9 +1398,12 @@ async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
 
 async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
     from species_service import backfill_missing_facts
+
     limit = int(params.get("limit", 50))
+    scope = str(params.get("scope", "all"))
+    map_only = bool(params.get("map_only", False))
     await on_progress(0, 1)
-    result = await backfill_missing_facts(db, limit=limit)
+    result = await backfill_missing_facts(db, limit=limit, scope=scope, map_only=map_only)
     await on_progress(1, 1)
     return result
 
