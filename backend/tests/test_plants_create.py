@@ -133,6 +133,60 @@ async def test_no_duplicate_when_form_and_thresholds_overlap(client, db_ready, a
     assert len(await _schedules(db_ready, pid, "fertilize")) == 1
 
 
+async def test_outdoor_plant_drops_rotate_and_mist(client, db_ready, auth_header):
+    # Outdoor plants must never auto-acquire rotate/mist schedules even when the
+    # client sends them. A plant on an outdoor map (or no map) is outdoor_ground.
+    await db_ready.execute(
+        "INSERT INTO maps (id, name, map_type, household_id) VALUES (1, 'Tuin', 'outdoor', 1)"
+    )
+    await db_ready.commit()
+    with patch("routers.plants.get_or_create_species", new=AsyncMock(return_value=None)), \
+         patch("routers.plants.generate_thresholds", new=AsyncMock(return_value={})):
+        resp = await client.post(
+            "/api/plants", headers=auth_header,
+            json={
+                "name": "Varen",
+                "map_id": 1,
+                "care_schedules": [
+                    {"care_type": "water", "interval_days": 7},
+                    {"care_type": "rotate", "interval_days": 7},
+                    {"care_type": "mist", "interval_days": 3},
+                ],
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    pid = resp.json()["id"]
+    assert len(await _schedules(db_ready, pid, "water")) == 1
+    assert len(await _schedules(db_ready, pid, "rotate")) == 0
+    assert len(await _schedules(db_ready, pid, "mist")) == 0
+
+
+async def test_indoor_plant_keeps_rotate_and_mist(client, db_ready, auth_header):
+    # Indoor plants legitimately get rotate/mist.
+    await db_ready.execute(
+        "INSERT INTO maps (id, name, map_type, household_id) VALUES (2, 'Woonkamer', 'indoor', 1)"
+    )
+    await db_ready.commit()
+    with patch("routers.plants.get_or_create_species", new=AsyncMock(return_value=None)), \
+         patch("routers.plants.generate_thresholds", new=AsyncMock(return_value={})):
+        resp = await client.post(
+            "/api/plants", headers=auth_header,
+            json={
+                "name": "Monstera",
+                "map_id": 2,
+                "care_schedules": [
+                    {"care_type": "water", "interval_days": 7},
+                    {"care_type": "rotate", "interval_days": 7},
+                    {"care_type": "mist", "interval_days": 3},
+                ],
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    pid = resp.json()["id"]
+    assert len(await _schedules(db_ready, pid, "rotate")) == 1
+    assert len(await _schedules(db_ready, pid, "mist")) == 1
+
+
 async def test_species_id_linked(client, db_ready, auth_header):
     with patch("routers.plants.get_or_create_species", new=AsyncMock(return_value=7)), \
          patch("routers.plants.generate_thresholds", new=AsyncMock(return_value={})):

@@ -9,6 +9,7 @@ from auth import get_current_account
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput, PlacementCreate, PlacementUpdate, SecondaryMarkerOut
 from routers.icons import resolve_placement_icon, match_icon_key
 from routers.icon_generator import guess_category
+from care_types import is_care_type_valid_for_env
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from species_service import get_or_create_species
@@ -152,8 +153,25 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
     )
     plant_id = cursor.lastrowid
 
-    # Create care schedules — set next_due to today so tasks appear immediately
+    # Resolve the plant's environment so we can refuse care types that don't
+    # apply to it (e.g. rotate/mist for outdoor plants). Newly created plants
+    # are never containers, so a non-indoor map → outdoor_ground.
+    env_map_type = None
+    if data.map_id is not None:
+        map_rows = await db.execute_fetchall(
+            "SELECT map_type FROM maps WHERE id = ? AND household_id = ?",
+            (data.map_id, account["household_id"]),
+        )
+        if map_rows:
+            env_map_type = map_rows[0]["map_type"]
+    environment = "indoor" if env_map_type == "indoor" else "outdoor_ground"
+
+    # Create care schedules — set next_due to today so tasks appear immediately.
+    # Skip care types that are invalid for this environment so outdoor plants
+    # never auto-acquire rotate/mist (etc.) schedules.
     for sched in data.care_schedules:
+        if not is_care_type_valid_for_env(sched.care_type, environment):
+            continue
         from datetime import date as _date_today
         next_due = _date_today.today()
         await db.execute(

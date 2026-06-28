@@ -100,6 +100,28 @@ WARNING_PRIORITY: list[tuple[Trigger, Severity]] = [
 ]
 
 
+def is_care_type_valid_for_env(care_type: str, environment: Environment) -> bool:
+    """Whether a care type makes sense in a given environment.
+
+    Single source of truth for the env-validity rule (e.g. rotate/mist only
+    make sense indoors, weather-triggered types only outdoors). Used both to
+    suppress stale care-profile entries at read time and to refuse seeding
+    env-inappropriate care schedules at plant-creation time.
+
+    Unknown care types (not in CARE_TYPES) return True so we never silently
+    drop something we don't model.
+    """
+    ct_def = CARE_TYPES.get(care_type)
+    if ct_def is None:
+        return True
+    valid_environments = ct_def.get("valid_environments")
+    if valid_environments is not None:
+        return environment in valid_environments
+    default_interval = ct_def["default_intervals"].get(environment)
+    is_weather = ct_def.get("is_weather_triggered", False)
+    return default_interval is not None or (is_weather and environment != "indoor")
+
+
 def priority_bucket(trigger: Trigger, severity: Severity) -> int:
     """Return the priority bucket index (lower = higher priority)."""
     try:
