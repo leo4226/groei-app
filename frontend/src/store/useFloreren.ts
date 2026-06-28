@@ -96,6 +96,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   },
 
   loadMaps: async () => {
+    set({ error: null })
     try {
       const maps = await mapsApi.list()
       set({ maps })

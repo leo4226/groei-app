@@ -124,6 +124,8 @@ export type Translations = {
     mapNameLabel: string
     mapNamePlaceholder: string
     loading: string
+    loadFailed: string
+    retry: string
     failedCreate: string
     failedDelete: string
     indoor: string
