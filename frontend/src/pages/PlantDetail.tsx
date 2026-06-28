@@ -2,8 +2,8 @@ import { useT } from '../context/LanguageContext'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { CARE_TYPE_INFO } from '../types'
 import type { Phenology, PlantAlert } from '../types'
+import CareIcon, { type CareIconType } from '../components/ui/CareIcon'
 import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
@@ -351,14 +351,13 @@ export default function PlantDetail() {
       {/* Quick action buttons */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
         {plant.care_schedules.map((sched) => {
-          const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
           return (
             <button
               key={sched.id}
               onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
             >
-              {info?.icon ?? '🌿'} {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
+              <CareIcon type={sched.care_type as CareIconType} size={16} strokeWidth={2} /> {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
             </button>
           )
         })}
@@ -367,12 +366,11 @@ export default function PlantDetail() {
       {/* Schedule rows */}
       <div className="space-y-2">
         {plant.care_schedules.map((sched) => {
-          const info      = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
           const isOverdue = sched.next_due < today
           const isDueToday = sched.next_due === today
           return (
             <div key={sched.id} className="card p-3.5 flex items-center gap-3">
-              <span className="text-xl shrink-0">{info?.icon}</span>
+              <span className="shrink-0 text-text-soft"><CareIcon type={sched.care_type as CareIconType} size={22} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}</p>
                 <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
@@ -455,10 +453,9 @@ export default function PlantDetail() {
     <Section title={t.plantDetail.careHistory}>
       <div className="card divide-y divide-border/50">
         {careLog.data.map((entry) => {
-          const info = CARE_TYPE_INFO[entry.care_type as keyof typeof CARE_TYPE_INFO]
           return (
             <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-lg shrink-0">{info?.icon ?? '🌿'}</span>
+              <span className="shrink-0 text-text-soft"><CareIcon type={entry.care_type as CareIconType} size={20} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm">
                   <span className="font-semibold">{entry.done_by_name}</span>

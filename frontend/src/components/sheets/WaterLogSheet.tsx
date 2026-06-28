@@ -1,4 +1,5 @@
 import { useT } from '../../context/LanguageContext'
+import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
   /** 'water' or 'fertilize' — controls header icon and button labels */
@@ -48,13 +49,11 @@ export default function GardenActionSheet({
   const t = useT()
   const cfg = actionType === 'water'
     ? {
-        icon: '💧',
         title: t.mapPage.recordWatering,
         buttonLabel: t.mapPage.gardenWaterButton,
         deleteLabel: t.mapPage.gardenWaterDelete,
       }
     : {
-        icon: '🌿',
         title: t.mapPage.recordFertilizing,
         buttonLabel: t.mapPage.gardenFertilizeButton,
         deleteLabel: t.mapPage.gardenFertilizeDelete,
@@ -79,8 +78,8 @@ export default function GardenActionSheet({
 
         <div className="px-5 pb-6">
           {/* Header */}
-          <h2 className="text-base font-bold text-text mb-1">
-            {cfg.icon} {cfg.title}
+          <h2 className="text-base font-bold text-text mb-1 flex items-center gap-2">
+            <CareIcon type={actionType as CareIconType} size={18} strokeWidth={1.9} /> {cfg.title}
           </h2>
           <p className="text-xs text-text-muted mb-5">
             {t.mapPage.gardenActionScope}

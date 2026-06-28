@@ -172,15 +172,10 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
           onClick={(e) => { e.stopPropagation(); onTap(plant) }}
         >
           <circle cx={lockBadgeOffset} cy={-lockBadgeOffset} r={lockHitR} fill="rgba(30,30,30,0.65)" />
-          <text
-            x={lockBadgeOffset} y={-lockBadgeOffset}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize="6"
-            style={{ pointerEvents: 'none' }}
-          >
-            🔒
-          </text>
+          <g transform={`translate(${lockBadgeOffset}, ${-lockBadgeOffset})`} style={{ pointerEvents: 'none' }}>
+            <rect x={-2.3} y={-0.4} width={4.6} height={3.4} rx={0.8} fill="#fff" />
+            <path d="M-1.5 -0.4V-1.8a1.5 1.5 0 0 1 3 0V-0.4" fill="none" stroke="#fff" strokeWidth={0.7} strokeLinecap="round" />
+          </g>
         </g>
 
       </g>
