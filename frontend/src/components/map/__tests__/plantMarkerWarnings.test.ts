@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CareWarningOut, MapPlant, TopAlert } from '../../../types'
-import { markerBadgesForPlant, topMarkerBadge } from '../PlantMarker'
+import { containedPlantHaloColor, markerBadgesForPlant, plantMarkerHaloColor, topMarkerBadge } from '../PlantMarker'
 
 function warning(careType: string, icon: string): CareWarningOut {
   return {
@@ -65,5 +65,25 @@ describe('topMarkerBadge (canvas cap)', () => {
 
   it('returns null when there are no warnings', () => {
     expect(topMarkerBadge(plant([], []))).toBeNull()
+  })
+})
+
+describe('plant warning halos', () => {
+  it('uses the warning color when the map warnings toggle is enabled', () => {
+    const p = plant([warning('water', '💧')], [])
+
+    expect(plantMarkerHaloColor(p, 'indoor', true)).toBe('#FFC233')
+  })
+
+  it('hides free-standing plant halos when the map warnings toggle is disabled', () => {
+    const p = plant([warning('water', '💧')], [])
+
+    expect(plantMarkerHaloColor(p, 'indoor', false)).toBeNull()
+  })
+
+  it('hides contained plant halos when the map warnings toggle is disabled', () => {
+    const p = { ...plant([warning('water', '💧')], []), container_id: 42 }
+
+    expect(containedPlantHaloColor(p, false)).toBeNull()
   })
 })
