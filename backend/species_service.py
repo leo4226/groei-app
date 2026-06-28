@@ -349,25 +349,89 @@ async def _generate_fact_with_retries(
     raise RuntimeError("Fact generation failed")
 
 
-async def backfill_missing_facts(db, limit: int = 50) -> dict:
-    rows = await db.execute_fetchall(
-        "SELECT id, common_name_nl, latin_name, phenology_json FROM plant_species "
-        "WHERE phenology_json IS NULL OR phenology_json = '' "
-        "   OR phenology_json NOT LIKE '%interesting_facts_nl%' "
-        "   OR phenology_json NOT LIKE '%interesting_facts_en%' "
-        "LIMIT ?",
-        (limit,),
+def _normalise_fact_scope(scope: str | None) -> str:
+    return "in_use" if scope == "in_use" else "all"
+
+
+async def _fact_scope_rows(db, *, scope: str = "all", map_only: bool = False) -> list[dict]:
+    scope = _normalise_fact_scope(scope)
+    if scope == "in_use":
+        sql = (
+            "SELECT DISTINCT ps.id, ps.common_name_nl, ps.latin_name, ps.phenology_json "
+            "FROM plant_species ps "
+            "JOIN plants p ON p.species_id = ps.id "
+            "WHERE p.is_active = 1 "
+        )
+        if map_only:
+            sql += "AND p.map_id IS NOT NULL "
+        sql += "ORDER BY ps.common_name_nl"
+        rows = await db.execute_fetchall(sql)
+    else:
+        rows = await db.execute_fetchall(
+            "SELECT id, common_name_nl, latin_name, phenology_json "
+            "FROM plant_species ORDER BY common_name_nl"
+        )
+    return [dict(row) for row in rows]
+
+
+def _fact_rows_missing_bilingual_facts(rows: list[dict]) -> list[dict]:
+    return [
+        row for row in rows
+        if not _has_bilingual_facts(_load_phenology_json(row.get("phenology_json")))
+    ]
+
+
+async def preview_missing_facts(db, *, scope: str = "all", map_only: bool = False) -> dict:
+    scope = _normalise_fact_scope(scope)
+    rows = await _fact_scope_rows(db, scope=scope, map_only=map_only)
+    missing_nl = 0
+    missing_en = 0
+    missing_any = 0
+    for row in rows:
+        phenology = _load_phenology_json(row.get("phenology_json"))
+        lacks_nl = not str(phenology.get("interesting_facts_nl") or "").strip()
+        lacks_en = not str(phenology.get("interesting_facts_en") or "").strip()
+        if lacks_nl:
+            missing_nl += 1
+        if lacks_en:
+            missing_en += 1
+        if lacks_nl or lacks_en:
+            missing_any += 1
+    return {
+        "scope": scope,
+        "map_only": bool(map_only),
+        "total_species": len(rows),
+        "missing_facts": missing_any,
+        "missing_facts_nl": missing_nl,
+        "missing_facts_en": missing_en,
+    }
+
+
+async def backfill_missing_facts(
+    db,
+    limit: int = 50,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+) -> dict:
+    scope = _normalise_fact_scope(scope)
+    all_rows = _fact_rows_missing_bilingual_facts(
+        await _fact_scope_rows(db, scope=scope, map_only=map_only)
     )
+    rows = all_rows[:limit] if limit and limit > 0 else all_rows
 
     if not rows:
-        return {
+        result = {
             "processed": 0,
             "updated": 0,
             "skipped": 0,
             "errors": [],
             "skipped_details": [],
-            "message": "All species already have bilingual facts.",
+            "message": "All selected species already have bilingual facts.",
         }
+        if scope != "all" or map_only:
+            result.update({"scope": scope, "map_only": bool(map_only), "remaining": 0})
+        return result
 
     updated = 0
     errors = []
@@ -407,10 +471,17 @@ async def backfill_missing_facts(db, limit: int = 50) -> dict:
 
     if updated:
         await db.commit()
-    return {
+    result = {
         "processed": processed,
         "updated": updated,
         "skipped": len(skipped_details),
         "errors": errors,
         "skipped_details": skipped_details,
     }
+    if scope != "all" or map_only:
+        result.update({
+            "scope": scope,
+            "map_only": bool(map_only),
+            "remaining": max(0, len(all_rows) - len(rows)),
+        })
+    return result

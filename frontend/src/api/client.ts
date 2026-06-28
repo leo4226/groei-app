@@ -266,12 +266,26 @@ export interface AdminSkippedDetail {
   error?: string
 }
 
+export type AdminFactsScope = 'all' | 'in_use'
+
 export interface AdminBackfillFactsResult {
   processed: number
   updated: number
   skipped: number
   errors: Array<{ species_id: number; name: string; error: string }>
   skipped_details?: AdminSkippedDetail[]
+  scope?: AdminFactsScope
+  map_only?: boolean
+  remaining?: number
+}
+
+export interface AdminBackfillFactsPreview {
+  scope: AdminFactsScope
+  map_only: boolean
+  total_species: number
+  missing_facts: number
+  missing_facts_nl?: number
+  missing_facts_en?: number
 }
 
 export interface AdminBackfillPlantTypesResult {
@@ -531,8 +545,21 @@ export const adminPanel = {
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
-  backfillFacts: (limit: number = 50) => api<AdminBackfillFactsResult>('POST', `/admin-panel/backfill-facts?limit=${limit}`),
-  backfillFactsPreview: () => api<{ total_species: number; missing_facts: number; missing_facts_nl?: number; missing_facts_en?: number }>('GET', '/admin-panel/backfill-facts/preview'),
+  backfillFacts: (opts: { scope?: AdminFactsScope; mapOnly?: boolean; limit?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.scope) q.set('scope', opts.scope)
+    if (opts.mapOnly) q.set('map_only', 'true')
+    if (opts.limit != null) q.set('limit', String(opts.limit))
+    const qs = q.toString()
+    return api<AdminBackfillFactsResult>('POST', `/admin-panel/backfill-facts${qs ? `?${qs}` : ''}`)
+  },
+  backfillFactsPreview: (opts: { scope?: AdminFactsScope; mapOnly?: boolean } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.scope) q.set('scope', opts.scope)
+    if (opts.mapOnly) q.set('map_only', 'true')
+    const qs = q.toString()
+    return api<AdminBackfillFactsPreview>('GET', `/admin-panel/backfill-facts/preview${qs ? `?${qs}` : ''}`)
+  },
   generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
     const q = new URLSearchParams()
     if (opts.scope) q.set('scope', opts.scope)

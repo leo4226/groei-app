@@ -8,6 +8,7 @@ import {
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type AdminHouseholdDetail, type AdminAuditRow,
   type AdminJob, type AdminJobStatus, type AdminCoverage, type AdminSkippedDetail,
+  type AdminBackfillFactsPreview,
 } from '../api/client'
 import {
   ADMIN_RESPONSIVE_STYLES,
@@ -1538,6 +1539,7 @@ function SkippedDetails({ details }: { details: AdminSkippedDetail[] }) {
 
 function ToolsView() {
   const [mapOnly, setMapOnly] = useState(false)
+  const [factsMapOnly, setFactsMapOnly] = useState(false)
   const [iconLimit, setIconLimit] = useState(25)
   const [factsLimit, setFactsLimit] = useState(25)
   const [ipAll, setIpAll] = useState<number | null>(null)
@@ -1545,7 +1547,8 @@ function ToolsView() {
   const [iconRefresh, setIconRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
-  const [fp, setFp] = useState<{ total_species: number; missing_facts: number; missing_facts_nl?: number; missing_facts_en?: number } | null>(null)
+  const [fpAll, setFpAll] = useState<AdminBackfillFactsPreview | null>(null)
+  const [fpInUse, setFpInUse] = useState<AdminBackfillFactsPreview | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
 
   const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
@@ -1559,7 +1562,6 @@ function ToolsView() {
   useEffect(() => {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
-    adminPanel.backfillFactsPreview().then(setFp).catch(() => {})
     admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
     adminPanel.listJobs(20).then(j => { setRecentJobs(j); setRecentLoading(false) }).catch(() => setRecentLoading(false))
   }, [])
@@ -1568,6 +1570,11 @@ function ToolsView() {
     adminPanel.generateIconsPreview({ scope: 'all' }).then(r => setIpAll(r.count)).catch(() => {})
     adminPanel.generateIconsPreview({ scope: 'in_use', mapOnly }).then(r => setIpInUse(r.count)).catch(() => {})
   }, [mapOnly, iconRefresh])
+
+  useEffect(() => {
+    adminPanel.backfillFactsPreview({ scope: 'all' }).then(setFpAll).catch(() => {})
+    adminPanel.backfillFactsPreview({ scope: 'in_use', mapOnly: factsMapOnly }).then(setFpInUse).catch(() => {})
+  }, [factsMapOnly])
 
   useEffect(() => {
     const activeKinds = Object.entries(jobs)
@@ -1645,35 +1652,47 @@ function ToolsView() {
   const iconsJob = getJob('generate_icons')
   const iconsBusy = busy('generate_icons')
 
+  const factsJob = getJob('backfill_facts')
+  const factsBusy = busy('backfill_facts')
+
   const factsTool = (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Backfill interesting facts</h3>
       <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        Generate bilingual interesting facts via LLM for species missing Dutch or English facts. Each species is one LLM call, so limit accordingly.
+        Generate bilingual interesting facts via LLM for species missing Dutch or English facts. Each species is one LLM call, so start with the species that are actually used by active plants.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={factsMapOnly} onChange={e => setFactsMapOnly(e.target.checked)} />
+          Map-placed plants only
+        </label>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           Batch limit
           <input type="number" min={1} max={500} value={factsLimit}
                  onChange={e => setFactsLimit(Math.max(1, Number(e.target.value) || 1))}
                  style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
         </label>
-        <span style={{ color: 'var(--color-primary)' }}>
-          {fp ? `${fp.missing_facts} of ${fp.total_species} species need facts${fp.missing_facts_en != null ? ` · EN missing: ${fp.missing_facts_en}` : ''}` : 'Loading preview…'}
-        </span>
       </div>
-      {(() => {
-        const j = getJob('backfill_facts')
-        return (
-          <>
-            <button onClick={() => runJob('backfill_facts', { limit: factsLimit })} disabled={busy('backfill_facts')} style={btnStyle(busy('backfill_facts'))}>
-              {busy('backfill_facts') ? 'Generating…' : `Run for up to ${factsLimit} species`}
-            </button>
-            <JobProgressBar done={j.done} total={j.total} status={j.status} />
-            {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(j.result) }}>{j.result}</p>}
-          </>
-        )
-      })()}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
+            My active plants{factsMapOnly ? ' on a map' : ''} needing facts: {fpInUse?.missing_facts ?? '…'}
+          </div>
+          <button onClick={() => runJob('backfill_facts', { scope: 'in_use', map_only: factsMapOnly, limit: factsLimit })} disabled={factsBusy} style={btnStyle(factsBusy)}>
+            {factsBusy ? 'Generating…' : `Generate for my plants${fpInUse ? ` (${Math.min(fpInUse.missing_facts, factsLimit)})` : ''}`}
+          </button>
+        </div>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Whole species catalog missing facts: {fpAll?.missing_facts ?? '…'}{fpAll?.missing_facts_en != null ? ` · EN missing: ${fpAll.missing_facts_en}` : ''}
+          </div>
+          <button onClick={() => runJob('backfill_facts', { scope: 'all', map_only: false, limit: factsLimit })} disabled={factsBusy} style={btnStyle(factsBusy)}>
+            {factsBusy ? 'Generating…' : `Generate catalog${fpAll ? ` (${Math.min(fpAll.missing_facts, factsLimit)})` : ''}`}
+          </button>
+        </div>
+      </div>
+      <JobProgressBar done={factsJob.done} total={factsJob.total} status={factsJob.status} />
+      {factsJob.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(factsJob.result) }}>{factsJob.result}</p>}
     </div>
   )
 
