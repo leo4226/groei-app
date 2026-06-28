@@ -25,7 +25,8 @@ def _db_cache():
                 sun_requirement TEXT, plant_type TEXT, icon_key TEXT,
                 species_id INTEGER, container_id INTEGER, ground_zone_id TEXT,
                 display_radius_cm INTEGER, care_thresholds TEXT,
-                phase TEXT DEFAULT 'established', sown_date TEXT, household_id INTEGER
+                phase TEXT DEFAULT 'established', sown_date TEXT,
+                quantity INTEGER NOT NULL DEFAULT 1, household_id INTEGER
             );
             CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0, household_id INTEGER);
             CREATE TABLE care_schedules (
