@@ -9,6 +9,7 @@ import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
 import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
+import Glyph from '../components/ui/Glyph'
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 // Must match the boot script in index.html, which applies the theme before
@@ -162,7 +163,7 @@ export default function Settings() {
                 title={t.settings.copyCode}
               >
                 {copied ? (
-                  <span className="text-sm text-primary font-bold">✓</span>
+                  <span className="text-primary"><Glyph name="check" size={18} /></span>
                 ) : (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -403,18 +404,18 @@ export default function Settings() {
         <button
           onClick={() => onReorder(loc, 'up')}
           disabled={isFirst}
-          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed text-[10px] leading-none"
+          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed leading-none"
           title={t.settings.moveUp}
         >
-          &#9650;
+          <Glyph name="chevron-up" size={12} />
         </button>
         <button
           onClick={() => onReorder(loc, 'down')}
           disabled={isLast}
-          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed text-[10px] leading-none"
+          className="w-6 h-4 flex items-center justify-center text-text-muted hover:text-text active:scale-90 transition-all disabled:opacity-20 disabled:cursor-not-allowed leading-none"
           title={t.settings.moveDown}
         >
-          &#9660;
+          <Glyph name="chevron-down" size={12} />
         </button>
       </div>
     )
@@ -715,7 +716,7 @@ export default function Settings() {
                 {householdSaving ? (
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : householdSaved ? (
-                  <span className="text-xs">{String.fromCharCode(10003)}</span>
+                  <Glyph name="check" size={15} />
                 ) : (
                   <span className="text-sm">{t.settings.save}</span>
                 )}
@@ -774,7 +775,7 @@ export default function Settings() {
                             className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                             title={t.settings.removeMember}
                           >
-                            {String.fromCharCode(10005)}
+                            <Glyph name="x" size={14} />
                           </button>
                         )}
                       </div>
@@ -848,7 +849,7 @@ export default function Settings() {
                   isSelected ? 'ring-2 ring-primary border-primary/20' : 'hover:border-primary/20'
                 }`}
               >
-                <span className="text-2xl">{lang === 'nl' ? '🇳🇱' : '🇬🇧'}</span>
+                <span className="w-9 h-9 flex items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-xs font-bold tracking-wider">{lang === 'nl' ? 'NL' : 'EN'}</span>
                 <span className={`font-semibold text-sm ${isSelected ? 'text-primary' : 'text-text'}`}>
                   {lang === 'nl' ? t.settings.languageNl : t.settings.languageEn}
                 </span>
@@ -888,17 +889,17 @@ export default function Settings() {
                     />
                     <button
                       onClick={() => handleUpdateLocation(loc.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform"
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white active:scale-90 transition-transform"
                       title={t.settings.save}
                     >
-                      &#10003;
+                      <Glyph name="check" size={16} />
                     </button>
                     <button
                       onClick={() => setEditingLocationId(null)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text text-sm active:scale-90 transition-transform"
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text active:scale-90 transition-transform"
                       title={t.settings.cancel}
                     >
-                      &#10005;
+                      <Glyph name="x" size={15} />
                     </button>
                   </>
                 ) : (
@@ -907,18 +908,18 @@ export default function Settings() {
                     <span className="flex-1 min-w-0 font-medium text-sm truncate">{loc.name}</span>
                     <button
                       onClick={() => startEditing(loc)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface active:scale-90 transition-all text-xs"
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface active:scale-90 transition-all"
                       title={t.settings.rename}
                     >
-                      &#9998;
+                      <Glyph name="edit" size={14} />
                     </button>
                     <LocationOrderButtons loc={loc} locations={locations} onReorder={handleReorder} />
                     <button
                       onClick={() => handleDeleteClick(loc)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50 active:scale-90 transition-all text-xs"
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50 active:scale-90 transition-all"
                       title={t.settings.deleteLocation}
                     >
-                      &#128465;
+                      <Glyph name="trash" size={15} />
                     </button>
                   </>
                 )}
@@ -944,17 +945,17 @@ export default function Settings() {
               <button
                 onClick={handleAddLocation}
                 disabled={!newLocationName.trim()}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform disabled:opacity-40"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white active:scale-90 transition-transform disabled:opacity-40"
                 title={t.settings.save}
               >
-                &#10003;
+                <Glyph name="check" size={16} />
               </button>
               <button
                 onClick={() => setShowAddLocation(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text text-sm active:scale-90 transition-transform"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text active:scale-90 transition-transform"
                 title={t.settings.cancel}
               >
-                &#10005;
+                <Glyph name="x" size={15} />
               </button>
             </div>
           )}
@@ -1033,7 +1034,7 @@ export default function Settings() {
           </button>
           {stekkieReset && (
             <p className="text-center text-sm font-bold text-primary animate-pulse">
-              {t.settings.resetAssistantDone} 🌱
+              {t.settings.resetAssistantDone}
             </p>
           )}
         </div>
@@ -1045,7 +1046,7 @@ export default function Settings() {
             <span className="font-bold text-primary text-base">Floreren</span> v{__APP_VERSION__} · {__BUILD_HASH__}
           </p>
           <p className="text-xs text-text-muted mt-1">
-            Plant care for {activeUser?.name ?? 'your'}'s garden 🌱
+            Plant care for {activeUser?.name ?? 'your'}'s garden
           </p>
         </div>
       </section>
