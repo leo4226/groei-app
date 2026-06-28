@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant, MapInfo, SecondaryMarker } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
@@ -7,16 +7,14 @@ import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import { compressImage } from '../../utils/compressImage'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
 import {
-  PLANT_QUICK_SHEET_ACTIONS_CLASS,
   PLANT_QUICK_SHEET_BODY_CLASS,
   PLANT_QUICK_SHEET_CLASS,
-  PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS,
   PLANT_QUICK_SHEET_HEADER_CLASS,
-  PLANT_QUICK_SHEET_TITLE_ROW_CLASS,
   clampedPlantNameStyle,
   clampedPlantSpeciesStyle,
   plantQuickSheetBodyStyle,
@@ -55,9 +53,28 @@ export default function PlantQuickSheet({
   const [detail, setDetail] = useState<Plant | null>(null)
   const [doneTypes, setDoneTypes] = useState<Set<string>>(new Set())
   const [savingType, setSavingType] = useState<string | null>(null)
-  const [startingMapMove, setStartingMapMove] = useState(false)
+  const [, setStartingMapMove] = useState(false)
   const [showMoveSheet, setShowMoveSheet] = useState(false)
   const [moveError, setMoveError] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      const compressed = await compressImage(file)
+      await plantsApi.uploadPhoto(plant.id, new File([compressed], 'photo.jpg', { type: 'image/jpeg' }))
+      onAction()  // refresh map data so the new photo shows on the tile
+    } catch (err) {
+      console.error('Progress photo upload failed', err)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   const handleMovePlant = async (targetMap: MapInfo) => {
     setMoveError(false)
@@ -105,6 +122,17 @@ export default function PlantQuickSheet({
     protect_cold: t.plantQuickSheet.careProtectCold,
     protect_heat: t.plantQuickSheet.careProtectHeat,
   }
+
+  // Days-until-due per scheduled care type (negative = overdue, 0 = today).
+  const dueByType = new Map<string, number>()
+  for (const s of detail?.care_schedules ?? []) {
+    const days = Math.round((new Date(s.next_due).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000)
+    const prev = dueByType.get(s.care_type)
+    if (prev === undefined || days < prev) dueByType.set(s.care_type, days)
+  }
+  // Quick-log chips: water + feed always, plus any other scheduled care type.
+  const CARE_ORDER = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot_check', 'protect_cold', 'protect_heat']
+  const careChipTypes = CARE_ORDER.filter((ct) => ct === 'water' || ct === 'fertilize' || dueByType.has(ct))
 
   const handleCare = async (careType: string) => {
     setSavingType(careType)
@@ -194,170 +222,142 @@ export default function PlantQuickSheet({
           style={plantQuickSheetBodyStyle()}
         >
 
-          {/* ── Header ── */}
+          {/* ── Header: photo + name + overflow menu ── */}
           <div className={PLANT_QUICK_SHEET_HEADER_CLASS}>
-            <div className={PLANT_QUICK_SHEET_TITLE_ROW_CLASS}>
-              {/* Plant icon */}
-            <div className="w-14 h-14 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
-                 style={{ background: 'linear-gradient(145deg,#FDFAF1,#F4EEDB)', border: '1px solid var(--color-border-soft)' }}>
-              {iconUrl ? (
-                <img src={iconUrl} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
-              ) : plant.photo_path ? (
-                <img src={plant.photo_path} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: 26 }}>🌱</span>
-              )}
-            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+              {/* Photo / icon tile — tap to log a progress photo */}
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                aria-label={t.plantQuickSheet.addPhoto}
+                style={{
+                  position: 'relative', width: 56, height: 56, borderRadius: 12, padding: 0,
+                  overflow: 'hidden', flexShrink: 0, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'linear-gradient(145deg,#FDFAF1,#F4EEDB)', border: '1px solid var(--color-border-soft)',
+                }}
+              >
+                {plant.photo_path ? (
+                  <img src={plant.photo_path} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : iconUrl ? (
+                  <img src={iconUrl} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
+                ) : (
+                  <span style={{ fontSize: 26 }}>🌱</span>
+                )}
+                <span style={{
+                  position: 'absolute', right: 2, bottom: 2, width: 18, height: 18, borderRadius: '50%',
+                  background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 10, border: '1.5px solid var(--color-surface)',
+                }}>{uploadingPhoto ? '…' : '📷'}</span>
+              </button>
 
-            {/* Name + species + meer info */}
-            <div className="flex-1 min-w-0">
-              <h3 style={clampedPlantNameStyle()}>
-                {displayName}
-              </h3>
-              {plant.species && (
-                <p style={clampedPlantSpeciesStyle()}>
-                  {plant.species}
-                </p>
-              )}
-              {plant.quantity > 1 && (
-                <p style={{ margin: '3px 0 0', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)' }}>
-                  <span aria-hidden="true">❋</span>{t.plantQuickSheet.quantityCount(plant.quantity)}
-                </p>
-              )}
-              <button
-                onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
-                style={{ marginTop: 4, padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 500, color: 'var(--color-primary)', cursor: 'pointer', display: 'block' }}
-              >
-                {t.plantQuickSheet.moreInfo}
-              </button>
-            </div>
-            </div>
-
-            {/* Action icons — split away from the title on mobile */}
-            <div className={PLANT_QUICK_SHEET_ACTIONS_CLASS}>
-              <button
-                onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
-                title={t.plantQuickSheet.moveToMap}
-                style={headerIconBtnStyle}
-              >
-                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                  <path d="M4 2L2 4l2 2M11 2l2 2-2 2M2 7.5h11M4 11l-2 2 2 2M11 11l2 2-2 2M7.5 2v11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {onDuplicate && (
+              {/* Name + species + more info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={clampedPlantNameStyle()}>{displayName}</h3>
+                {plant.species && <p style={clampedPlantSpeciesStyle()}>{plant.species}</p>}
+                {plant.quantity > 1 && (
+                  <p style={{ margin: '3px 0 0', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)' }}>
+                    <span aria-hidden="true">❋</span>{t.plantQuickSheet.quantityCount(plant.quantity)}
+                  </p>
+                )}
                 <button
-                  onClick={() => { onDuplicate(plant.id); onClose() }}
-                  title={t.plantQuickSheet.duplicate}
-                  style={headerIconBtnStyle}
+                  onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
+                  style={{ marginTop: 4, padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 500, color: 'var(--color-primary)', cursor: 'pointer', display: 'block' }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                    <rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                    <path d="M2 11V2h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              )}
-              <button
-                onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
-                title={t.plantQuickSheet.edit}
-                style={headerIconBtnStyle}
-              >
-                <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
-                  <path d="M10.5 2.5l2 2L5 12H3v-2l7.5-7.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <div className={PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS}>
-                <button
-                  onClick={handleToggleLock}
-                  title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}
-                  style={{ ...headerIconBtnStyle, color: locked ? 'var(--color-due)' : undefined, background: locked ? 'rgba(212,148,58,0.12)' : headerIconBtnStyle.background }}
-                >
-                  {locked ? (
-                    <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
-                      <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                      <path d="M4.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
-                  ) : (
-                    <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
-                      <rect x="2" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                      <path d="M4.5 7V5a2.5 2.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
-                  )}
+                  {t.plantQuickSheet.moreInfo}
                 </button>
               </div>
-              {onRemove && (
+
+              {/* Overflow (⋯) — rare management actions live here */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
                 <button
-                  onClick={() => { onRemove(plant.id); onClose() }}
-                  title={t.plantQuickSheet.remove}
-                  style={{ ...headerIconBtnStyle, color: 'var(--color-overdue)', background: 'rgba(200,60,60,0.08)' }}
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label={t.plantQuickSheet.menu}
+                  style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                 >
-                  <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
-                    <path d="M2 4h10M5 4V2.5h4V4M6 7v4M8 7v4M3 4l.75 8.5h6.5L11 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>
                 </button>
-              )}
-              {/* Close remains available on larger screens; mobile already has backdrop + handle. */}
-              <div className={PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS}>
-                <button
-                  onClick={onClose}
-                  aria-label={t.plantQuickSheet.close}
-                  style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--color-border-soft)', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0, cursor: 'pointer' }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                    <path d="M10 2L2 10M2 2l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                </button>
+                {menuOpen && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setMenuOpen(false)} />
+                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 61, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 6 }}>
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}>✎</span>{t.plantQuickSheet.edit}</button>
+                      {onMoveOnMap && (
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle}>↔</span>{t.plantQuickSheet.moveOnMap}</button>
+                      )}
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle}>⇄</span>{t.plantQuickSheet.moveToMap}</button>
+                      {onDuplicate && (
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle}>⧉</span>{t.plantQuickSheet.duplicate}</button>
+                      )}
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}>{locked ? '🔓' : '🔒'}</span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
+                      {onRemove && (
+                        <button style={{ ...menuItemStyle, color: 'var(--color-overdue)' }} onClick={() => { setMenuOpen(false); onRemove(plant.id); onClose() }}><span style={menuIconStyle}>🗑</span>{t.plantQuickSheet.remove}</button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
           </div>
 
-          {/* ── Care signals (overdue + due today only) ── */}
+          {/* ── Status line + one-tap care chips ── */}
           <div style={{ marginBottom: 14 }}>
-            {detail === null && plant.most_urgent && !doneTypes.has(plant.most_urgent.care_type) ? (
-              // Loading skeleton — show most_urgent as placeholder
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--color-bg)', borderLeft: '3px solid var(--color-overdue)' }}>
-                <span style={{ fontSize: 16 }}>
-                  {CARE_TYPE_INFO[plant.most_urgent.care_type as keyof typeof CARE_TYPE_INFO]?.icon ?? '📋'}
+            <div style={{ marginBottom: 12, minHeight: 18 }}>
+              {urgentSchedules.length > 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 600, color: 'var(--color-overdue)' }}>
+                  <span aria-hidden="true">⚠</span>{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
                 </span>
-                <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 14, color: 'var(--color-text)' }}>
-                  {careLabelMap[plant.most_urgent.care_type] ?? plant.most_urgent.care_type}
+              ) : detail !== null ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  <span style={{ color: 'var(--color-primary)', fontStyle: 'normal' }}>✓</span>{t.mapPage.sheetAllGood}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-overdue)' }}>
-                  {plant.most_urgent.days_overdue > 0 ? t.plantQuickSheet.overdue(plant.most_urgent.days_overdue) : t.plantQuickSheet.today}
+              ) : null}
+            </div>
+
+            {/* One-tap care chips — tap to log "done today"; + a progress-photo chip */}
+            <div className="no-scrollbar" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+              {careChipTypes.map((ct) => {
+                const info = CARE_TYPE_INFO[ct as keyof typeof CARE_TYPE_INFO]
+                const due = dueByType.get(ct)
+                const overdue = due !== undefined && due < 0
+                const dueToday = due === 0
+                const done = doneTypes.has(ct)
+                const saving = savingType === ct
+                const ring = done ? 'var(--color-primary)' : overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-border)'
+                return (
+                  <button
+                    key={ct}
+                    onClick={() => handleCare(ct)}
+                    disabled={saving || done}
+                    style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: done ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
+                  >
+                    <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s' }}>
+                      {done ? <span style={{ color: '#fff', fontSize: 20 }}>✓</span> : (info?.icon ?? '📋')}
+                      {!done && (overdue || dueToday) && (
+                        <span style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, padding: '0 4px', boxSizing: 'border-box', borderRadius: 9, background: overdue ? 'var(--color-overdue)' : 'var(--color-due)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', border: '1.5px solid var(--color-surface)' }}>
+                          {overdue ? `${Math.abs(due as number)}d` : '!'}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {careLabelMap[ct] ?? info?.label ?? ct}
+                    </span>
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: uploadingPhoto ? 0.5 : 1, padding: 0 }}
+              >
+                <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: 'var(--color-bg)', border: '2px dashed var(--color-border)' }}>
+                  {uploadingPhoto ? '…' : '📷'}
                 </span>
-              </div>
-            ) : urgentSchedules.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {urgentSchedules.map(sched => {
-                  const days = Math.round((new Date(sched.next_due).getTime() - new Date().setHours(0,0,0,0)) / 86400000)
-                  const isOverdue = days < 0
-                  const info = CARE_TYPE_INFO[sched.care_type as keyof typeof CARE_TYPE_INFO]
-                  const isSaving = savingType === sched.care_type
-                  return (
-                    <div key={sched.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--color-bg)', borderLeft: `3px solid ${isOverdue ? 'var(--color-overdue)' : 'var(--color-due)'}`, opacity: isSaving ? 0.5 : 1, transition: 'opacity 0.15s' }}>
-                      <span style={{ fontSize: 16, flexShrink: 0 }}>{info?.icon ?? '📋'}</span>
-                      <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 14, color: 'var(--color-text)' }}>
-                        {careLabelMap[sched.care_type] ?? info?.label ?? sched.care_type}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: isOverdue ? 'var(--color-overdue)' : 'var(--color-due)', marginRight: 8, flexShrink: 0 }}>
-                        {isOverdue ? t.plantQuickSheet.overdue(Math.abs(days)) : t.plantQuickSheet.today}
-                      </span>
-                      <button
-                        disabled={isSaving}
-                        onClick={() => handleCare(sched.care_type)}
-                        style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 11, cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        {t.dashboard.actions.done}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : detail !== null ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'var(--color-bg)' }}>
-                <span style={{ color: 'var(--color-primary)', fontSize: 14 }}>✓</span>
-                <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>{t.mapPage.sheetAllGood}</span>
-              </div>
-            ) : null}
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'var(--color-text-soft)', textAlign: 'center' }}>
+                  {t.plantQuickSheet.photo}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* ── Sun fit ── */}
@@ -396,35 +396,6 @@ export default function PlantQuickSheet({
                 {t.plantQuickSheet.move}
               </button>
             </div>
-          )}
-
-          {/* ── Primary care actions ── */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10, marginTop: 6 }}>
-            <button
-              onClick={() => handleCare('water')}
-              disabled={savingType === 'water'}
-              style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 15, cursor: 'pointer', opacity: savingType === 'water' ? 0.6 : 1, transition: 'opacity 0.15s' }}
-            >
-              {t.plantQuickSheet.water}
-            </button>
-            <button
-              onClick={() => handleCare('fertilize')}
-              disabled={savingType === 'fertilize'}
-              style={{ flex: 1, padding: '14px 0', borderRadius: 12, background: 'rgba(47,93,58,0.12)', color: 'var(--color-primary)', border: 'none', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 15, cursor: 'pointer', opacity: savingType === 'fertilize' ? 0.6 : 1, transition: 'opacity 0.15s' }}
-            >
-              {t.plantQuickSheet.fertilize}
-            </button>
-          </div>
-
-          {onMoveOnMap && (
-            <button
-              onClick={handleMoveOnMap}
-              disabled={startingMapMove}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10, padding: '12px 0', borderRadius: 12, background: 'var(--color-bg)', color: 'var(--color-primary)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, cursor: 'pointer', opacity: startingMapMove ? 0.65 : 1 }}
-            >
-              <span aria-hidden="true">↔</span>
-              {t.plantQuickSheet.moveOnMap}
-            </button>
           )}
 
           {/* ── Extra placements (this plant in more than one spot) ── */}
@@ -485,11 +456,13 @@ export default function PlantQuickSheet({
   )
 }
 
-const headerIconBtnStyle: React.CSSProperties = {
-  width: 30, height: 30, borderRadius: 8,
-  background: 'var(--color-bg)',
-  border: '1px solid var(--color-border-soft)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  color: 'var(--color-text-muted)',
-  cursor: 'pointer', flexShrink: 0,
+const menuItemStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+  padding: '10px 10px', borderRadius: 8, background: 'none', border: 'none',
+  cursor: 'pointer', textAlign: 'left',
+  fontFamily: 'var(--font-heading)', fontSize: 14, color: 'var(--color-text)',
+}
+
+const menuIconStyle: React.CSSProperties = {
+  width: 18, textAlign: 'center', flexShrink: 0, fontSize: 14,
 }
