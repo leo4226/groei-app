@@ -3,7 +3,9 @@
  * non-care counterpart to CareIcon. Same drawing language: thin stroke,
  * rounded caps, `currentColor`, 24×24 viewBox. Add a key to GLYPHS to extend.
  */
-export type GlyphName = 'list' | 'leaf' | 'home' | 'alert'
+export type GlyphName =
+  | 'list' | 'leaf' | 'home' | 'alert'
+  | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -40,6 +42,26 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
       <circle cx="12" cy="16.8" r="0.7" fill="currentColor" stroke="none" />
     </>
   ),
+  // edit — a pencil
+  edit: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </>
+  ),
+  // delete — a bin
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6.5 7l.9 12a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9l.9-12" />
+      <path d="M10 11v5M14 11v5" />
+    </>
+  ),
+  check: <path d="M5 12l5 5L20 7" />,
+  x: <path d="M6 6l12 12M18 6 6 18" />,
+  'chevron-up': <path d="M6 15l6-6 6 6" />,
+  'chevron-down': <path d="M6 9l6 6 6-6" />,
 }
 
 interface Props extends Omit<React.SVGProps<SVGSVGElement>, 'name'> {
