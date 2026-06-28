@@ -154,6 +154,8 @@ export const nl: Translations = {
     mapNameLabel: 'Kaartnaam',
     mapNamePlaceholder: 'bijv. Balkon, Tuin van mama…',
     loading: 'Kaarten laden…',
+    loadFailed: 'Kaarten laden mislukt. Controleer je verbinding en probeer opnieuw.',
+    retry: 'Opnieuw proberen',
     failedCreate: 'Aanmaken mislukt',
     failedDelete: 'Verwijderen mislukt',
     indoor: 'Binnen',

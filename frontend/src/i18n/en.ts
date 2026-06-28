@@ -154,6 +154,8 @@ export const en: Translations = {
     mapNameLabel: 'Map name',
     mapNamePlaceholder: "e.g. Balcony, Mum's garden…",
     loading: 'Loading maps…',
+    loadFailed: 'Could not load maps. Check your connection and try again.',
+    retry: 'Try again',
     failedCreate: 'Failed to create map',
     failedDelete: 'Failed to delete map',
     indoor: 'Indoor',

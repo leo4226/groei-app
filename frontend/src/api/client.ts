@@ -9,6 +9,7 @@ type ApiOptions = {
   body?: unknown
   form?: FormData
   params?: Record<string, string>
+  signal?: AbortSignal
 }
 
 async function ensureOk(res: Response, fallback: string): Promise<void> {
@@ -49,6 +50,7 @@ export async function apiRequest<T>(method: string, path: string, options: ApiOp
   const headers = authHeaders()
 
   const init: RequestInit = { method, headers }
+  if (options.signal) init.signal = options.signal
   if (options.form) {
     init.body = options.form
   } else if (options.body !== undefined) {
@@ -74,6 +76,21 @@ export async function apiBlob(path: string, options: { params?: Record<string, s
 }
 
 /** Retry transient network errors (TypeError from fetch). */
+async function apiWithTimeout<T>(method: string, path: string, options: ApiOptions = {}, timeoutMs = 12000): Promise<T> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await api<T>(method, path, { ...options, signal: controller.signal })
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error('Request timed out')
+    }
+    throw e
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
 async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
   const MAX_RETRIES = 2
   let lastError: unknown
@@ -424,7 +441,7 @@ export const species = {
 }
 
 export const maps = {
-  list:    ()                                                                                                     => api<MapInfo[]>('GET', '/maps'),
+  list:    ()                                                                                                     => apiWithTimeout<MapInfo[]>('GET', '/maps'),
   create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number })             => api<MapInfo>('POST', '/maps', { body: data }),
   update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
   delete:  (id: number)                                                                                          => api<void>('DELETE', `/maps/${id}`),

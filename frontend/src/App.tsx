@@ -12,6 +12,7 @@ import { icons } from './api/client'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useT } from './context/LanguageContext'
+import { defaultMapRedirectSlug } from './appMapRedirectModel'
 
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -51,28 +52,72 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function MapRedirect() {
   const maps = useFloreren((s) => s.maps)
   const loadMaps = useFloreren((s) => s.loadMaps)
-  const isLoading = useFloreren((s) => s.isLoading)
   const t = useT()
   const [ready, setReady] = useState(maps.length > 0)
+  const [loading, setLoading] = useState(maps.length === 0)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
   const [showCreate, setShowCreate] = useState(false)
 
-  // Load maps on mount if not already loaded
+  // Load only the maps needed for this redirect. Do not wait for the app-wide
+  // initial load, because unrelated users/plants requests can be slow or stuck
+  // after a transient backend hiccup.
   useEffect(() => {
-    if (maps.length === 0 && !isLoading) {
-      loadMaps().then(() => setReady(true))
+    if (maps.length > 0) {
+      setReady(true)
+      setLoading(false)
+      setLoadError(null)
+      return
     }
-  }, [isLoading, loadMaps, maps.length])
+
+    let cancelled = false
+    setReady(false)
+    setLoading(true)
+    setLoadError(null)
+
+    loadMaps().then(() => {
+      if (cancelled) return
+      const state = useFloreren.getState()
+      setReady(true)
+      setLoading(false)
+      setLoadError(state.maps.length === 0 ? state.error : null)
+    }).catch((e) => {
+      if (cancelled) return
+      setReady(true)
+      setLoading(false)
+      setLoadError(e instanceof Error ? e.message : t.maps.loadFailed)
+    })
+
+    return () => { cancelled = true }
+  }, [loadMaps, maps.length, retryKey, t.maps.loadFailed])
 
   // If maps are already loaded, redirect synchronously in render —
   // no flash of a loading state.
-  if (maps.length > 0) {
-    const indoor = maps.find((m) => m.map_type === 'indoor')
-    const target = indoor || maps[0]
-    return <Navigate to={`/map/${target.slug}`} replace />
+  const targetSlug = defaultMapRedirectSlug(maps)
+  if (targetSlug) {
+    return <Navigate to={`/map/${targetSlug}`} replace />
   }
 
-  if (!ready) {
+  if (loading || !ready) {
     return <div className="p-6 text-text-muted text-center">{t.maps.loading}</div>
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6 text-center" style={{ color: 'var(--color-text-muted)' }}>
+        <p style={{ marginBottom: 14 }}>{t.maps.loadFailed}</p>
+        <button
+          onClick={() => setRetryKey((v) => v + 1)}
+          style={{
+            padding: '10px 20px', borderRadius: 100,
+            background: 'var(--color-primary)', color: '#fff',
+            border: 'none', cursor: 'pointer', fontWeight: 600,
+          }}
+        >
+          {t.maps.retry}
+        </button>
+      </div>
+    )
   }
 
   return (
