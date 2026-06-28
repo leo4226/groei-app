@@ -3,6 +3,7 @@ import MonthView from './MonthView'
 import PhenologyView from './PhenologyView'
 import { useT } from '../../context/LanguageContext'
 import { useIsNarrow } from './useIsNarrow'
+import Glyph, { type GlyphName } from '../../components/ui/Glyph'
 import './calendar.css'
 
 export type CalendarViewMode = 'month' | 'agenda'
@@ -36,10 +37,10 @@ export default function PlanningCalendarPage() {
         flexWrap: 'wrap',
       }}>
         {([
-          { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, icon: '📋' },
-          { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, icon: '🌿' },
-          { id: 'huis', label: t.common.house, desc: t.calendar.filterDescHouse, icon: '🏠' },
-        ] as const).map(({ id, label, desc, icon }) => {
+          { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, glyph: 'list' as GlyphName },
+          { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, glyph: 'leaf' as GlyphName },
+          { id: 'huis', label: t.common.house, desc: t.calendar.filterDescHouse, glyph: 'home' as GlyphName },
+        ] as const).map(({ id, label, desc, glyph }) => {
           const active = env === id
           return (
             <button
@@ -55,8 +56,8 @@ export default function PlanningCalendarPage() {
                 transition: 'all 0.15s',
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>
-                {icon} {label}
+              <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Glyph name={glyph} size={15} /> {label}
               </span>
               <span style={{
                 fontSize: 11, lineHeight: 1.3, fontWeight: 400,

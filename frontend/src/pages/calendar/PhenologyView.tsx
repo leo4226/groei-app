@@ -3,6 +3,7 @@ import { useFloreren } from '../../store/useFloreren'
 import { alerts } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import type { Plant, Phenology, MonthPhenology } from '../../types'
+import Glyph from '../../components/ui/Glyph'
 
 const MONTH_NAMES_NL = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
@@ -118,7 +119,7 @@ export default function PhenologyView() {
                 <span className="text-sm text-text">
                   {plant.name}
                   {alertPlantIds.has(plant.id) && (
-                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">⚠️</span>
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-orange-700 bg-orange-100"><Glyph name="alert" size={12} /></span>
                   )}
                 </span>
                 <span className="text-xs text-text-muted">{plant._monthData?.phase_label_nl}</span>
@@ -136,8 +137,8 @@ export default function PhenologyView() {
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {grouped.dormant.map(plant => (
-              <span key={plant.id} className={`text-xs border px-2.5 py-1 rounded-full ${alertPlantIds.has(plant.id) ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-surface border-border text-text-muted'}`}>
-                {plant.name}{alertPlantIds.has(plant.id) ? ' ⚠️' : ''}
+              <span key={plant.id} className={`text-xs border px-2.5 py-1 rounded-full inline-flex items-center gap-1 ${alertPlantIds.has(plant.id) ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-surface border-border text-text-muted'}`}>
+                {plant.name}{alertPlantIds.has(plant.id) && <Glyph name="alert" size={11} />}
               </span>
             ))}
           </div>
@@ -166,7 +167,7 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
       <p className="font-medium text-text text-sm">
         {plant.name}
         {hasAlert && (
-          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">⚠️</span>
+          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-orange-700 bg-orange-100"><Glyph name="alert" size={12} /></span>
         )}
       </p>
       <div className="flex gap-1.5 mt-2 flex-wrap">
