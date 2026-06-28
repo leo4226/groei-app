@@ -1082,7 +1082,7 @@ export const en: Translations = {
     spotInspectorHint: 'Tap a spot to inspect it',
     moveMode: 'Move plants',
     moveModeDone: 'Done moving',
-    moveModeHint: 'Move mode: drag plants to their spot. Tap Done when finished.',
+    moveModeHint: 'Drag plants to their new spot.',
     moveOnePlantHint: 'Drag this plant to its new spot.',
     placeSpotHint: (name: string) => `Tap the map to add another spot for ${name}.`,
     sunNoGpsHint: 'Set the garden location first to use sun features',
