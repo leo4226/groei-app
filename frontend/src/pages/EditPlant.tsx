@@ -4,6 +4,7 @@ import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi, care as careApi, icons as iconsApi } from '../api/client'
 import type { Plant, CareType } from '../types'
 import { CARE_TYPE_INFO } from '../types'
+import Glyph from '../components/ui/Glyph'
 import { isoToDisplay } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
 import { useT } from '../context/LanguageContext'
@@ -308,7 +309,7 @@ export default function EditPlant() {
                   <img src={photoPreview} alt={t.editPlant.previewAlt} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-bg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted flex-shrink-0">
-                    <span className="text-2xl">📷</span>
+                    <Glyph name="camera" size={24} />
                     <span className="text-[10px] mt-0.5">{t.editPlant.addPhoto}</span>
                   </div>
                 )}
