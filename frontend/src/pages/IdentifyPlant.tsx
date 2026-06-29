@@ -6,6 +6,7 @@ import { plants as plantsApi, maps as mapsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
+import Glyph from '../components/ui/Glyph'
 import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
 type ResultsState = {
@@ -209,9 +210,10 @@ export function IdentifyPlantPage() {
       >
         <button
           onClick={() => setStep({ kind: 'results', ...step.from })}
-          className="self-start text-text-muted text-sm mb-5"
+          className="self-start text-text-muted text-sm mb-5 inline-flex items-center gap-1.5"
         >
-          ← {t.identify.destination.backToMatches}
+          <Glyph name="arrow-left" size={15} />
+          {t.identify.destination.backToMatches}
         </button>
 
         <div className="flex flex-col items-center text-center gap-3 mb-7">
@@ -232,14 +234,20 @@ export function IdentifyPlantPage() {
             onClick={() => handleDestination('journal')}
             className="w-full p-4 rounded-2xl border-2 border-primary bg-primary/10 text-left active:scale-[0.99] transition-transform"
           >
-            <span className="block text-base font-semibold text-primary">🌿 {t.identify.destination.journalTitle}</span>
+            <span className="flex items-center gap-2 text-base font-semibold text-primary">
+              <Glyph name="book" size={18} />
+              {t.identify.destination.journalTitle}
+            </span>
             <span className="block text-sm text-text-muted mt-1">{t.identify.destination.journalSubtitle}</span>
           </button>
           <button
             onClick={() => handleDestination('garden')}
             className="w-full p-4 rounded-2xl border border-border bg-surface text-left active:scale-[0.99] transition-transform"
           >
-            <span className="block text-base font-semibold text-text">🏡 {t.identify.destination.gardenTitle}</span>
+            <span className="flex items-center gap-2 text-base font-semibold text-text">
+              <Glyph name="leaf" size={18} />
+              {t.identify.destination.gardenTitle}
+            </span>
             <span className="block text-sm text-text-muted mt-1">{t.identify.destination.gardenSubtitle}</span>
           </button>
         </div>
@@ -280,7 +288,9 @@ export function IdentifyPlantPage() {
   // error step
   return (
     <div className="p-6 max-w-md mx-auto text-center">
-      <h2 className="text-xl font-semibold mb-2">⚠️</h2>
+      <div className="flex justify-center mb-3 text-amber-500">
+        <Glyph name="alert" size={32} />
+      </div>
       <p className="text-text-soft mb-6">{step.message}</p>
       {step.thumbnail && (
         <img src={step.thumbnail} alt="" className="w-32 h-32 object-cover rounded mx-auto mb-6 opacity-50" />

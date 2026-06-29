@@ -3,6 +3,7 @@ import { weeds } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { screenToSVG } from '../../utils/svgCoords'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   weedId: number
@@ -145,7 +146,7 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
 
       {needsPrivacyAck && (
         <div className="fixed inset-0 z-[60] bg-bg/95 flex flex-col items-center justify-center p-8 gap-6 text-center">
-          <span className="text-5xl">🌿</span>
+          <Glyph name="leaf" size={56} className="text-primary" />
           <p className="text-sm text-text-muted leading-relaxed max-w-xs">{t.weeds.privacy.notice}</p>
           <button
             onClick={ackPrivacyAndSave}

@@ -3,6 +3,7 @@ import { weeds } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import type { IdentifyConfidence, PlantIdCandidate, WeedSpeciesListItem } from '../../types'
 import { confidenceTone } from './confidenceTone'
+import Glyph from '../ui/Glyph'
 
 type Props = {
   candidates: PlantIdCandidate[]
@@ -58,7 +59,8 @@ export function IdentifyResults({
           </button>
           {fromBioclip && (
             <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded flex items-center justify-center gap-2">
-              🔬 Probeer met PlantNet
+              <Glyph name="flask" size={16} />
+              Probeer met PlantNet
             </button>
           )}
           <button onClick={onManualFallback} className="text-gray-700 px-4 py-3 rounded border">
@@ -94,14 +96,15 @@ export function IdentifyResults({
                 {c.thumbnail_url ? (
                   <img src={c.thumbnail_url} alt="" className="w-16 h-16 object-cover rounded" />
                 ) : (
-                  <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-2xl">🌿</div>
+                  <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-400"><Glyph name="leaf" size={28} /></div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="font-medium truncate">{commonName}</div>
                     {weed && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium shrink-0">
-                        🌿 {t.weeds.knownWeed}
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium shrink-0 inline-flex items-center gap-1">
+                        <Glyph name="alert" size={12} />
+                        {t.weeds.knownWeed}
                       </span>
                     )}
                   </div>
@@ -123,9 +126,10 @@ export function IdentifyResults({
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); onLogSighting(weed.id, weed.common_name_nl) }}
-                    className="text-xs px-3 py-1.5 rounded-full bg-primary text-white font-medium hover:opacity-90 shrink-0"
+                    className="text-xs px-3 py-1.5 rounded-full bg-primary text-white font-medium hover:opacity-90 shrink-0 inline-flex items-center gap-1.5"
                   >
-                    📍 {t.weeds.logSighting}
+                    <Glyph name="pin" size={13} />
+                    {t.weeds.logSighting}
                   </button>
                 </div>
               )}
@@ -148,8 +152,9 @@ export function IdentifyResults({
           <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded text-sm">
             {t.identify.newPhoto}
           </button>
-          <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded text-sm">
-            🔬 Probeer met PlantNet
+          <button onClick={onTryPlantnet} className="bg-emerald-600 text-white px-4 py-3 rounded text-sm flex items-center justify-center gap-2">
+            <Glyph name="flask" size={15} />
+            Probeer met PlantNet
           </button>
         </div>
       )}
