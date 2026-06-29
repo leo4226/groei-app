@@ -37,22 +37,6 @@ export function localizedWarningCopy(warning: CareWarningOut, t: Translations): 
   }
 }
 
-const CARE_TYPE_ICON: Record<string, string> = {
-  water: '💧',
-  fertilize: '🧪',
-  mist: '🌫️',
-  rotate: '🔄',
-  repot: '🪴',
-  repot_check: '🪴',
-  prune: '✂️',
-  pest_check: '🐛',
-  dust: '🧽',
-  protect_cold: '🧤',
-  protect_heat: '🧴',
-  frost_protect: '❄️',
-  heat_protect: '🔥',
-}
-
 const CARE_TYPE_LABEL_FALLBACK: Record<string, { nl: string; en: string }> = {
   repot: { nl: 'Verpotten', en: 'Repot' },
   pest_check: { nl: 'Luizen-check', en: 'Pest check' },
@@ -104,14 +88,11 @@ export function buildCareNeedsGroups(plants: MapPlant[], objects: MapObject[]): 
   return { groups: sortedGroups, goodPlants }
 }
 
-export function getCareTypeDisplay(careType: string, t: Translations): { icon: string; label: string } {
+export function getCareTypeDisplay(careType: string, t: Translations): { label: string } {
   const labelKey = CARE_TYPE_ALIASES[careType] ?? careType
   const translated = (t.care as Record<string, string>)[labelKey]
   const fallback = CARE_TYPE_LABEL_FALLBACK[careType]
   const label = translated ?? (t.locale.startsWith('en') ? fallback?.en : fallback?.nl) ?? careType
 
-  return {
-    icon: CARE_TYPE_ICON[careType] ?? '⚙️',
-    label,
-  }
+  return { label }
 }

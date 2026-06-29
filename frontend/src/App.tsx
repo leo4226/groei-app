@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
+import Glyph from './components/ui/Glyph'
 import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import NewMapModal from './components/dashboard/NewMapModal'
@@ -125,7 +126,7 @@ function MapRedirect() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       minHeight: '60vh', padding: '40px 24px', textAlign: 'center',
     }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🗺️</div>
+      <div style={{ marginBottom: 16, color: 'var(--color-text-muted)' }}><Glyph name="map" size={48} /></div>
       <h2 style={{
         fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 24,
         color: 'var(--color-text)', margin: '0 0 8px', letterSpacing: '-0.01em',
@@ -197,7 +198,7 @@ export default function App() {
       {error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
           <span>{error}</span>
-          <button onClick={clearError} className="font-bold ml-2">✕</button>
+          <button onClick={clearError} className="font-bold ml-2 inline-flex items-center"><Glyph name="x" size={15} /></button>
         </div>
       )}
 

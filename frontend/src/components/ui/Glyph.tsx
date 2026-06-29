@@ -11,7 +11,8 @@ export type GlyphName =
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
   | 'droplet' | 'flower' | 'palette' | 'thermometer' | 'gamepad'
   | 'trophy' | 'clipboard' | 'link' | 'text'
-  | 'chart' | 'users' | 'compass' | 'lock'
+  | 'chart' | 'users' | 'compass' | 'lock' | 'cloud' | 'brick'
+  | 'scissors' | 'eye' | 'bulb' | 'map'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -236,6 +237,46 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
       <rect x="5.5" y="10.5" width="13" height="9" rx="1.5" />
       <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
       <circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // cloud — partial sun / overcast
+  cloud: (
+    <path d="M7.5 18.5h9a3.5 3.5 0 0 0 .3-7A5 5 0 0 0 7.7 9.3 3.6 3.6 0 0 0 7.5 18.5z" />
+  ),
+  // brick — wall / masonry
+  brick: (
+    <>
+      <rect x="3.5" y="6" width="17" height="12" rx="1" />
+      <path d="M3.5 12h17M12 6v3M8 9v3M16 9v3M12 12v3M8 15v3M16 15v3" />
+    </>
+  ),
+  // scissors — cut / trim corner
+  scissors: (
+    <>
+      <circle cx="6" cy="6.5" r="2.2" />
+      <circle cx="6" cy="17.5" r="2.2" />
+      <path d="M7.8 7.8 20 16M7.8 16.2 20 8" />
+    </>
+  ),
+  // eye — preview / view
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
+  // bulb — tip / did you know
+  bulb: (
+    <>
+      <path d="M9 17h6M9.5 20h5" />
+      <path d="M12 3.5a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8v.3h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3.5z" />
+    </>
+  ),
+  // map — folded map / maps list
+  map: (
+    <>
+      <path d="M9 4.5 4 6.5v13l5-2 6 2 5-2v-13l-5 2-6-2z" />
+      <path d="M9 4.5v15M15 6.5v15" />
     </>
   ),
   // gamepad — games
