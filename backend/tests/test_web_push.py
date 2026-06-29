@@ -237,6 +237,22 @@ async def test_test_push_delivers(client, seeded_db, auth_header, monkeypatch):
     assert body["delivered"] == 1
 
 
+async def test_test_push_reports_all_failed(client, seeded_db, auth_header, monkeypatch):
+    # VAPID configured but the push service rejects every send → all_failed,
+    # and the (live) subscription must NOT be pruned.
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "test-private-key")
+    import routers.notifications as notif
+    monkeypatch.setattr(notif, "send_push", lambda sub, payload: "error")
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/push/test", headers=auth_header)
+    body = res.json()
+    assert body["result"] == "all_failed"
+    assert body["failed"] == 1
+    rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
+    assert len(rows) == 1  # transient error → subscription left intact
+
+
 async def test_test_push_prunes_gone_subscription(
     client, seeded_db, auth_header, monkeypatch
 ):
