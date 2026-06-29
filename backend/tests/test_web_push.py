@@ -202,3 +202,50 @@ async def test_gone_subscription_is_pruned(
     assert res.status_code == 200
     rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
     assert rows == []  # 410 Gone → row pruned at send time
+
+
+# ── manual test-push endpoint (#295) ─────────────────────────────────────
+
+async def test_test_push_requires_auth(client, seeded_db):
+    assert (await client.post("/api/push/test")).status_code in (401, 403)
+
+
+async def test_test_push_no_subscription(client, seeded_db, auth_header):
+    res = await client.post("/api/push/test", headers=auth_header)
+    assert res.status_code == 200
+    assert res.json()["result"] == "no_subscription"
+
+
+async def test_test_push_reports_unconfigured_vapid(
+    client, seeded_db, auth_header, monkeypatch
+):
+    monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    res = await client.post("/api/push/test", headers=auth_header)
+    assert res.json()["result"] == "vapid_unconfigured"
+
+
+async def test_test_push_delivers(client, seeded_db, auth_header, monkeypatch):
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "test-private-key")
+    import routers.notifications as notif
+    monkeypatch.setattr(notif, "send_push", lambda sub, payload: "ok")
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/push/test", headers=auth_header)
+    body = res.json()
+    assert body["result"] == "ok"
+    assert body["delivered"] == 1
+
+
+async def test_test_push_prunes_gone_subscription(
+    client, seeded_db, auth_header, monkeypatch
+):
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "test-private-key")
+    import routers.notifications as notif
+    monkeypatch.setattr(notif, "send_push", lambda sub, payload: "gone")
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/push/test", headers=auth_header)
+    assert res.json()["result"] == "all_gone"
+    rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
+    assert rows == []

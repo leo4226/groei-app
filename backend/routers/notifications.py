@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 from auth import get_current_account
 from database import db_dep
-from services.digest import send_due_digests, verify_unsubscribe_token
+from services.digest import APP_URL, send_due_digests, verify_unsubscribe_token
+from services.push import send_push
 
 router = APIRouter(tags=["notifications"])
 
@@ -145,6 +146,76 @@ async def delete_push_subscription(
     )
     await db.commit()
     return {"ok": True}
+
+
+class PushTestResult(BaseModel):
+    # result is a diagnostic verdict the Settings UI maps to a message:
+    #   ok                 — at least one subscription accepted the push
+    #   no_subscription    — this account has no saved subscription (re-toggle)
+    #   vapid_unconfigured — server is missing VAPID_PRIVATE_KEY (Fly secret)
+    #   all_gone           — every subscription was dead (404/410) and pruned
+    #   all_failed         — push service / VAPID error on every subscription
+    result: str
+    subscriptions: int
+    delivered: int
+    failed: int
+    pruned: int
+
+
+@router.post("/push/test", response_model=PushTestResult)
+async def send_test_push(db=Depends(db_dep), account=Depends(get_current_account)):
+    """Send a one-off test push to the caller's own subscriptions and report
+    the outcome. Makes the otherwise-invisible delivery path debuggable: the
+    daily digest only runs at the user's chosen hour, so without this there is
+    no way to tell whether push is broken in VAPID config, a dead subscription,
+    or OS-level delivery (iOS install)."""
+    subs = await db.execute_fetchall(
+        "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
+        (account["account_id"],),
+    )
+    if not subs:
+        return PushTestResult(
+            result="no_subscription", subscriptions=0, delivered=0, failed=0, pruned=0
+        )
+    if not os.environ.get("VAPID_PRIVATE_KEY"):
+        return PushTestResult(
+            result="vapid_unconfigured",
+            subscriptions=len(subs),
+            delivered=0,
+            failed=0,
+            pruned=0,
+        )
+
+    payload = {
+        "title": "Floreren",
+        "body": "Test — pushmeldingen werken op dit apparaat.",
+        "url": f"{APP_URL}/maps",
+    }
+    delivered = failed = pruned = 0
+    for sub in subs:
+        outcome = send_push(dict(sub), payload)
+        if outcome == "ok":
+            delivered += 1
+        elif outcome == "gone":
+            await db.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],))
+            await db.commit()
+            pruned += 1
+        else:
+            failed += 1
+
+    if delivered:
+        result = "ok"
+    elif pruned and not failed:
+        result = "all_gone"
+    else:
+        result = "all_failed"
+    return PushTestResult(
+        result=result,
+        subscriptions=len(subs),
+        delivered=delivered,
+        failed=failed,
+        pruned=pruned,
+    )
 
 
 @router.post("/internal/send-digests")
