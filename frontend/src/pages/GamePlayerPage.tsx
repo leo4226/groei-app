@@ -6,6 +6,7 @@ import { gameApi, type GameState, type AnswerResult } from '../api/game'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
+import Glyph from '../components/ui/Glyph'
 
 type PlayerStep =
   | 'waiting'
@@ -117,7 +118,7 @@ export default function GamePlayerPage() {
   if (step === 'waiting') {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6 text-center">
-        <div className="text-5xl animate-bounce">🌱</div>
+        <div className="animate-bounce text-primary"><Glyph name="sprout" size={44} /></div>
         <div className="space-y-1">
           <p className="font-semibold text-text">{t.game.youAreIn}</p>
           <p className="text-text-muted text-sm">{t.game.waitingForHost}</p>
@@ -173,7 +174,7 @@ export default function GamePlayerPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
           {state.session.clue_mode === 'name' ? (
             <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-6 flex flex-col items-center gap-3 shadow-lg">
-              <span className="text-5xl">🌿</span>
+              <Glyph name="leaf" size={44} className="text-primary" />
               <p className="text-2xl font-bold text-text text-center">{clue?.plant_name_nl}</p>
               {clue?.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
                 <p className="text-sm text-text-muted text-center italic">{clue.plant_name_en}</p>
@@ -188,8 +189,8 @@ export default function GamePlayerPage() {
               />
             </div>
           ) : (
-            <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-5xl border border-border">
-              🌱
+            <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-text-muted border border-border">
+              <Glyph name="sprout" size={44} />
             </div>
           )}
           <p className="text-lg font-semibold text-text text-center">{t.game.findThisPlant}</p>
@@ -211,7 +212,7 @@ export default function GamePlayerPage() {
   if (step === 'answered' || (step === 'clue' && state.my_answer?.is_correct)) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="text-5xl">✅</div>
+        <div className="text-green-500"><Glyph name="check" size={48} strokeWidth={2.4} /></div>
         <p className="font-semibold text-text">{t.game.correctScan}</p>
         <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
         <div className="mt-4 bg-surface rounded-2xl border border-border px-6 py-4">
@@ -235,7 +236,7 @@ export default function GamePlayerPage() {
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
         {scanResult.is_correct ? (
           <>
-            <div className="text-6xl">🎉</div>
+            <div className="text-amber-500"><Glyph name="sparkle" size={52} /></div>
             <p className="text-2xl font-bold text-text">{t.game.correct}</p>
             <p className="text-primary font-semibold text-lg">
               {t.game.pointsEarned.replace('{points}', String(scanResult.points_awarded))}
@@ -243,7 +244,7 @@ export default function GamePlayerPage() {
           </>
         ) : (
           <>
-            <div className="text-5xl">🍂</div>
+            <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
             <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
           </>
         )}

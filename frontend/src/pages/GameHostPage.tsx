@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { gameApi, type GameState } from '../api/game'
 import GameLeaderboard from '../components/game/GameLeaderboard'
+import Glyph from '../components/ui/Glyph'
 
 type HostStep = 'waiting' | 'round' | 'done'
 
@@ -100,7 +101,7 @@ export default function GameHostPage() {
           onClick={copyLink}
           className="flex items-center gap-2 px-4 py-2 rounded-full border border-border text-sm text-text-muted hover:bg-surface transition-colors"
         >
-          <span>{copied ? '✓' : '🔗'}</span>
+          <Glyph name={copied ? 'check' : 'link'} size={15} />
           <span>{copied ? t.game.linkCopied : t.game.copyLink}</span>
         </button>
 
@@ -180,7 +181,7 @@ export default function GameHostPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-text-muted">{p.score} pt</span>
               {p.answered_current_round
-                ? <span className="text-green-500 text-base">✓</span>
+                ? <Glyph name="check" size={16} className="text-green-500" />
                 : <span className="text-text-muted/30 text-base">○</span>}
             </div>
           </div>
