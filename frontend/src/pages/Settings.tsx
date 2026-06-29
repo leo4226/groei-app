@@ -662,10 +662,18 @@ export default function Settings() {
         </div>
       </section>
 
-            <section className="mb-8">
-        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataTitle}</h2>
-        <div className="card p-4 space-y-3">
-          <p className="text-sm text-text-muted">{t.settings.dataDescription}</p>
+      <section className="mb-8">
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataSectionTitle}</h2>
+        <div className="card p-4 space-y-4 border border-primary/15 bg-gradient-to-br from-primary/5 via-surface to-surface">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Glyph name="check" size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-heading text-lg font-bold text-text">{t.settings.dataTitle}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">{t.settings.dataDescription}</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               onClick={() => handleDownloadExport('json')}
