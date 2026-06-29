@@ -75,7 +75,7 @@ export default function MapPage() {
     if (maps.length === 0) loadMaps()
   }, [loadMaps])
 
-  const { map, plants, objects, secondaryMarkers, groundZones, loading } = mapData
+  const { map, plants, objects, secondaryMarkers, groundZones, loading, patchPlant } = mapData
 
   const unplacedPlants = useMemo(() => selectUnplacedPlants(allPlants), [allPlants])
 
@@ -416,6 +416,7 @@ export default function MapPage() {
           moveMode={moveMode}
           movePlantId={targetedMove?.plantId ?? null}
           onPlantMoveComplete={handlePlantMoveComplete}
+          onPlantUpdated={patchPlant}
           placingPlantId={placingPlant?.id ?? null}
           onPlacementTap={handlePlacementTap}
           secondaryMarkers={secondaryMarkers}

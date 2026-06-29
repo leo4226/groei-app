@@ -16,6 +16,8 @@ export interface UseMapDataReturn {
   groundZones: GroundZone[]
   loading: boolean
   refresh: () => Promise<void>
+  /** Patch a single plant in place (top-level or inside a container) without a full reload. */
+  patchPlant: (plantId: number, patch: Partial<MapPlant>) => void
   remove: (type: 'plant' | 'object', id: number) => Promise<RestoreInfo | null>
   duplicate: (plantId: number) => Promise<void>
 }
@@ -51,6 +53,18 @@ export function useMapData(slug: string): UseMapDataReturn {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  const patchPlant = useCallback((plantId: number, patch: Partial<MapPlant>) => {
+    setPlants((prev) => prev.map((p) => (p.id === plantId ? { ...p, ...patch } : p)))
+    // The plant may live inside a container (object.contained_plants).
+    setObjects((prev) =>
+      prev.map((o) =>
+        o.contained_plants.some((cp) => cp.id === plantId)
+          ? { ...o, contained_plants: o.contained_plants.map((cp) => (cp.id === plantId ? { ...cp, ...patch } : cp)) }
+          : o,
+      ),
+    )
+  }, [])
 
   const remove = useCallback(
     async (type: 'plant' | 'object', id: number): Promise<RestoreInfo | null> => {
@@ -132,6 +146,7 @@ export function useMapData(slug: string): UseMapDataReturn {
     groundZones,
     loading,
     refresh,
+    patchPlant,
     remove,
     duplicate,
   }

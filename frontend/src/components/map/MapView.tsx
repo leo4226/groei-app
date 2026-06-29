@@ -51,6 +51,7 @@ interface Props {
   moveMode?: boolean
   movePlantId?: number | null
   onPlantMoveComplete?: (plantId: number) => void | Promise<void>
+  onPlantUpdated?: (plantId: number, patch: Partial<MapPlant>) => void
   /** When set, a map tap reports SVG coords via onPlacementTap (tap-to-place). */
   placingPlantId?: number | null
   onPlacementTap?: (x: number, y: number) => void
@@ -62,7 +63,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
@@ -304,6 +305,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     moveMode,
     movePlantId,
     onPlantMoveComplete,
+    onPlantUpdated,
     onPlantTap,
     onObjectTap,
     onOpenDetails,
