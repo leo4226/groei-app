@@ -48,6 +48,8 @@ export default function Settings() {
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
+  const [pushTestBusy, setPushTestBusy] = useState(false)
+  const [pushTestMsg, setPushTestMsg] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState<'json' | 'csv' | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportReady, setExportReady] = useState(false)
@@ -281,6 +283,27 @@ export default function Settings() {
       )
     } finally {
       setPushBusy(false)
+    }
+  }
+
+  async function handleTestPush() {
+    if (pushTestBusy) return
+    setPushTestBusy(true)
+    setPushTestMsg(null)
+    try {
+      const r = await notifications.pushTest()
+      const messages: Record<typeof r.result, string> = {
+        ok: t.settings.pushTestOk,
+        no_subscription: t.settings.pushTestNoSub,
+        vapid_unconfigured: t.settings.pushTestVapid,
+        all_gone: t.settings.pushTestGone,
+        all_failed: t.settings.pushTestFailed,
+      }
+      setPushTestMsg(messages[r.result] ?? t.settings.pushTestFailed)
+    } catch {
+      setPushTestMsg(t.settings.pushTestFailed)
+    } finally {
+      setPushTestBusy(false)
     }
   }
 
@@ -640,6 +663,21 @@ export default function Settings() {
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.push_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
+          {digestPrefs?.push_enabled && pushSupported() && (
+            <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">{t.settings.pushTestButton}</div>
+                {pushTestMsg && <div className="text-xs text-text-muted mt-0.5">{pushTestMsg}</div>}
+              </div>
+              <button
+                onClick={handleTestPush}
+                disabled={pushTestBusy}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-text bg-surface hover:border-primary/50 transition-colors ${pushTestBusy ? 'opacity-50' : ''}`}
+              >
+                {pushTestBusy ? t.settings.pushTestSending : t.settings.pushTestButton}
+              </button>
+            </div>
+          )}
           {digestPrefs && (digestPrefs.digest_enabled || digestPrefs.push_enabled) && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
               <div>

@@ -707,4 +707,13 @@ export const notifications = {
     api<{ ok: boolean }>('POST', '/push/subscription', { body: sub }),
   pushUnsubscribe: (endpoint: string) =>
     api<{ ok: boolean }>('DELETE', '/push/subscription', { body: { endpoint } }),
+  pushTest: () => api<PushTestResult>('POST', '/push/test'),
+}
+
+export interface PushTestResult {
+  result: 'ok' | 'no_subscription' | 'vapid_unconfigured' | 'all_gone' | 'all_failed'
+  subscriptions: number
+  delivered: number
+  failed: number
+  pruned: number
 }

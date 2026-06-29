@@ -317,6 +317,13 @@ export type Translations = {
     pushDenied: string
     pushUnsupported: string
     pushIosHint: string
+    pushTestButton: string
+    pushTestSending: string
+    pushTestOk: string
+    pushTestNoSub: string
+    pushTestVapid: string
+    pushTestGone: string
+    pushTestFailed: string
     dataSectionTitle: string
     dataTitle: string
     dataDescription: string
