@@ -4,6 +4,7 @@ import type { LocalPlant } from '../data/plants-dataset'
 import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
+import Glyph from '../components/ui/Glyph'
 import type { CareType, CareScheduleInput } from '../types'
 import { isCareTypeValidForEnv } from '../types'
 import IconPicker from '../components/IconPicker'
@@ -449,7 +450,7 @@ export default function AddPlant() {
             className="bg-green-700 text-white p-4 rounded-lg text-left"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">📸</span>
+              <Glyph name="camera" size={24} className="shrink-0" />
               <div>
                 <div className="font-medium">{t.addPlant.entry.identify}</div>
                 <div className="text-xs opacity-85">{t.addPlant.entry.identifySubtitle}</div>
@@ -462,7 +463,7 @@ export default function AddPlant() {
             className="card p-4 text-left"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🔍</span>
+              <Glyph name="search" size={24} className="shrink-0 text-text-muted" />
               <div>
                 <div className="font-medium">{t.addPlant.entry.pick}</div>
                 <div className="text-xs text-text-muted">{t.addPlant.entry.pickSubtitle}</div>
@@ -475,7 +476,7 @@ export default function AddPlant() {
             className="card p-4 text-left"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">✏️</span>
+              <Glyph name="edit" size={24} className="shrink-0 text-text-muted" />
               <div>
                 <div className="font-medium">{t.addPlant.entry.manual}</div>
                 <div className="text-xs text-text-muted">{t.addPlant.entry.manualSubtitle}</div>
@@ -628,7 +629,7 @@ export default function AddPlant() {
             <img src={photoPreview} alt="Preview" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
           ) : (
             <div className="w-20 h-20 rounded-xl bg-bg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted flex-shrink-0">
-              <span className="text-2xl">📷</span>
+              <Glyph name="camera" size={24} />
               <span className="text-[10px] mt-0.5">{t.editPlant.addPhoto}</span>
             </div>
           )}
@@ -836,8 +837,8 @@ export default function AddPlant() {
                 onChange={(e) => setHasDrainage(e.target.checked)}
                 className="sr-only peer"
               />
-              <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all">
-                {hasDrainage ? '✓ ' : ''}{t.addPlant.labelDrainageYes}
+              <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all inline-flex items-center gap-1">
+                {hasDrainage && <Glyph name="check" size={13} />}{t.addPlant.labelDrainageYes}
               </span>
             </label>
           </FormRow>
@@ -974,7 +975,7 @@ export default function AddPlant() {
 
             {isFromDatabase && (
               <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15 text-sm text-primary">
-                <span className="text-base">📋</span>
+                <Glyph name="clipboard" size={16} className="shrink-0" />
                 <span>{t.editPlant.databasePrefill}</span>
               </div>
             )}

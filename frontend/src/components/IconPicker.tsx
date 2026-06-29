@@ -5,6 +5,7 @@ import { icons } from '../api/client'
 import { useCategoryLabels, useFormLabels } from '../constants/plantLabels'
 import { useT } from '../context/LanguageContext'
 import { resolveIconUrl } from '../utils/icons'
+import Glyph from './ui/Glyph'
 
 interface Props {
   value: string | null
@@ -115,7 +116,7 @@ export default function IconPicker({ value, onChange }: Props) {
         ) : (
           <>
             <div className="w-9 h-9 rounded-lg bg-bg border border-dashed border-border flex items-center justify-center text-text-muted flex-shrink-0">
-              <span className="text-xl">🌿</span>
+              <Glyph name="leaf" size={20} />
             </div>
             <span className="text-sm text-text-muted">{t.iconPicker.title}</span>
           </>
