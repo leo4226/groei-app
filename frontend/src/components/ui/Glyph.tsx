@@ -7,6 +7,7 @@ export type GlyphName =
   | 'list' | 'leaf' | 'home' | 'alert'
   | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
   | 'sun' | 'moon' | 'monitor'
+  | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -63,6 +64,43 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   'chevron-up': <path d="M6 15l6-6 6 6" />,
   'chevron-down': <path d="M6 9l6 6 6-6" />,
+  // tree — canopy + trunk
+  tree: (
+    <>
+      <path d="M12 21v-5.5" />
+      <path d="M12 15.5a5.2 5.2 0 0 0 4.7-7.4A4.6 4.6 0 0 0 12 3.4a4.6 4.6 0 0 0-4.7 4.7A5.2 5.2 0 0 0 12 15.5z" />
+    </>
+  ),
+  // pot — planter with a small sprout
+  pot: (
+    <>
+      <path d="M6 10h12l-1.1 7.7a1.5 1.5 0 0 1-1.5 1.3H8.6a1.5 1.5 0 0 1-1.5-1.3z" />
+      <path d="M5 10h14" />
+      <path d="M12 10V6.5" />
+      <path d="M12 7.5c-1.6 0-2.8-1.2-2.8-2.9 1.7 0 2.8 1.2 2.8 2.9z" />
+    </>
+  ),
+  // sprout — two leaves
+  sprout: (
+    <>
+      <path d="M12 20v-7" />
+      <path d="M12 14C9 14 7 12 7 9c3 0 5 2 5 5z" />
+      <path d="M12 12.5C15 12.5 17 10.5 17 7.5c-3 0-5 2-5 5z" />
+    </>
+  ),
+  // rock / hardscape — two stones
+  rock: (
+    <>
+      <path d="M3 16l5-5 5 4 4-3 4 4v2H3z" />
+      <path d="M8 11l2 5M17 12l-2 4" />
+    </>
+  ),
+  // utility — a wrench
+  wrench: (
+    <path d="M15.5 4a4 4 0 0 0-4.8 5.1L4 15.8a1.6 1.6 0 0 0 2.2 2.2l6.7-6.7A4 4 0 0 0 18 9.5l-2.4 2.4-2-2L16 7.5z" />
+  ),
+  // sparkle — new / custom
+  sparkle: <path d="M12 3.5l1.7 5.3 5.3 1.7-5.3 1.7L12 17.5l-1.7-5.3L5 10.5l5.3-1.7z" />,
   // theme — sun
   sun: (
     <>

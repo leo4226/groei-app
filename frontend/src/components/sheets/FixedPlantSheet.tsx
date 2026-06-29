@@ -1,5 +1,6 @@
 import type { FixedPlant } from '../../constants/fixedPlants'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   plant: FixedPlant
@@ -28,10 +29,10 @@ export default function FixedPlantSheet({ plant, onClose }: Props) {
           <div className="flex items-start gap-3 mb-4">
             {/* Tree icon */}
             <div
-              className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: `${plant.markerColor}22`, border: `2px solid ${plant.markerColor}66` }}
+              className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: `${plant.markerColor}22`, border: `2px solid ${plant.markerColor}66`, color: plant.markerColor }}
             >
-              🌳
+              <Glyph name="tree" size={26} />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-semibold text-text truncate">{plant.name}</h3>

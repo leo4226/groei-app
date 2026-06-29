@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Plant } from '../../types'
 import { useT } from '../../context/LanguageContext'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   plants: Plant[]
@@ -21,7 +22,7 @@ export default function UnplacedPlantsTray({ plants, onPlace }: Props) {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 rounded-full bg-paper/90 backdrop-blur border border-border px-3 py-1.5 font-heading text-xs text-text-soft shadow-sm"
       >
-        🪴 {t.mapPage.unplacedCount(plants.length)}
+        <Glyph name="pot" size={14} /> {t.mapPage.unplacedCount(plants.length)}
       </button>
       {open && (
         <div className="flex flex-col gap-1 rounded-2xl bg-paper/95 backdrop-blur border border-border p-2 shadow-md max-h-[40vh] overflow-y-auto">
