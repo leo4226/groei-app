@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { confidenceTone } from '../confidenceTone'
 
 describe('confidenceTone', () => {
-  it('returns non-urgent flags for high', () => {
+  it('returns no flags for high', () => {
     expect(confidenceTone('high')).toEqual({
       showBanner: false,
       showMediumSubtitle: false,
@@ -11,7 +11,7 @@ describe('confidenceTone', () => {
       plantnetCtaProminent: false,
     })
   })
-  it('encourages verification and second opinion for medium', () => {
+  it('shows medium subtitle for medium', () => {
     expect(confidenceTone('medium')).toEqual({
       showBanner: false,
       showMediumSubtitle: true,
@@ -20,7 +20,7 @@ describe('confidenceTone', () => {
       plantnetCtaProminent: true,
     })
   })
-  it('shows low-confidence warning and prominent second opinion for low', () => {
+  it('shows banner for low', () => {
     expect(confidenceTone('low')).toEqual({
       showBanner: true,
       showMediumSubtitle: false,
@@ -29,7 +29,7 @@ describe('confidenceTone', () => {
       plantnetCtaProminent: true,
     })
   })
-  it('shows detailed body and prominent second opinion for no_match', () => {
+  it('shows detailed body for no_match', () => {
     expect(confidenceTone('no_match')).toEqual({
       showBanner: false,
       showMediumSubtitle: false,
