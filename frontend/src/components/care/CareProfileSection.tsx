@@ -4,6 +4,7 @@ import { CARE_TYPE_INFO, type CareType } from '../../types'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   plantId: number
@@ -135,7 +136,7 @@ export function CareProfileSection({ plantId }: Props) {
                 }`}
                 title={isActive ? (isEN ? 'Disable' : 'Uitschakelen') : (isEN ? 'Enable' : 'Inschakelen')}
               >
-                {isActive ? '✓' : '+'}
+                {isActive ? <Glyph name="check" size={15} /> : <span className="text-base leading-none">+</span>}
               </button>
             </div>
           )
