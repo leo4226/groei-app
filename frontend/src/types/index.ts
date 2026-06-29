@@ -467,6 +467,14 @@ export interface CareWarningOut {
   message_en: string
   icon: string
   color: string
+  reason_nl?: string | null
+  reason_en?: string | null
+  action_nl?: string | null
+  action_en?: string | null
+  weather_metric?: string | null
+  weather_value_c?: number | null
+  forecast_day_label_nl?: string | null
+  forecast_day_label_en?: string | null
 }
 
 export interface CareTypeStatusOut {

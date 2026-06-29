@@ -192,6 +192,29 @@ def test_frost_urgent_when_min_below_threshold():
     assert any(w.care_type == "frost_protect" and w.severity == "urgent" for w in warns)
 
 
+def test_frost_warning_explains_reason_action_and_metric():
+    profile = {
+        "frost_protect": {
+            "active": True,
+            "thresholds": {"min_temp_c": 0, "bring_inside_below_c": 5},
+        }
+    }
+    temp = {"days": [{"date": "2026-05-17", "min": -2, "max": 8}]}
+
+    warn = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))[0]
+
+    assert warn.trigger == "weather_event"
+    assert warn.message_en == "Frost tonight — min -2°C"
+    assert warn.reason_en == "Minimum -2°C expected tonight (threshold 0°C)."
+    assert warn.reason_nl == "Minimum -2°C verwacht vannacht (grens 0°C)."
+    assert warn.action_en == "Cover sensitive plants or move pots inside/sheltered."
+    assert warn.action_nl == "Dek gevoelige planten af of zet potten binnen of beschut."
+    assert warn.weather_metric == "min_temp_c"
+    assert warn.weather_value_c == -2
+    assert warn.forecast_day_label_en == "tonight"
+    assert warn.forecast_day_label_nl == "vannacht"
+
+
 def test_frost_warning_when_min_near_bring_inside():
     profile = {
         "frost_protect": {
@@ -223,6 +246,28 @@ def test_heat_urgent_when_max_above_threshold():
     temp = {"days": [{"date": "2026-05-17", "min": 18, "max": 32}]}
     warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     assert any(w.care_type == "heat_protect" and w.severity == "urgent" for w in warns)
+
+
+def test_heat_warning_explains_reason_action_and_metric():
+    profile = {
+        "heat_protect": {
+            "active": True,
+            "thresholds": {"max_temp_c": 28},
+        }
+    }
+    temp = {"days": [{"date": "2026-05-18", "min": 18, "max": 32}]}
+
+    warn = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))[0]
+
+    assert warn.message_en == "Heat tomorrow — max 32°C"
+    assert warn.reason_en == "Maximum 32°C expected tomorrow (threshold 28°C)."
+    assert warn.reason_nl == "Maximum 32°C verwacht morgen (grens 28°C)."
+    assert warn.action_en == "Water early or late; move pots to shade and check containers first."
+    assert warn.action_nl == "Geef vroeg of laat water; zet potten in de schaduw en controleer bakken eerst."
+    assert warn.weather_metric == "max_temp_c"
+    assert warn.weather_value_c == 32
+    assert warn.forecast_day_label_en == "tomorrow"
+    assert warn.forecast_day_label_nl == "morgen"
 
 
 def test_weather_color_overrides_apply():

@@ -43,6 +43,14 @@ class CareWarning:
     message_en: str
     icon: str
     color: str
+    reason_nl: str | None = None
+    reason_en: str | None = None
+    action_nl: str | None = None
+    action_en: str | None = None
+    weather_metric: str | None = None
+    weather_value_c: float | None = None
+    forecast_day_label_nl: str | None = None
+    forecast_day_label_en: str | None = None
 
 
 @dataclass
@@ -199,6 +207,90 @@ def _schedule_warning_for_type(
     )
 
 
+def _format_temp(value: float | int | None) -> str:
+    if value is None:
+        return "?"
+    return f"{value:.0f}"
+
+
+def _forecast_day_label(days_until: int, *, metric: str) -> tuple[str, str]:
+    """Return NL/EN rough timing labels for weather warning copy."""
+    if days_until == 0:
+        return ("vannacht", "tonight") if metric == "min_temp_c" else ("vandaag", "today")
+    if days_until == 1:
+        return "morgen", "tomorrow"
+    return f"over {days_until} dagen", f"in {days_until} days"
+
+
+def _temperature_reason_copy(
+    *,
+    metric: str,
+    value: float | int,
+    threshold: float | int | None,
+    day_label_nl: str,
+    day_label_en: str,
+) -> tuple[str, str]:
+    value_s = _format_temp(value)
+    threshold_s = _format_temp(threshold)
+    if metric == "min_temp_c":
+        return (
+            f"Minimum {value_s}°C verwacht {day_label_nl} (grens {threshold_s}°C).",
+            f"Minimum {value_s}°C expected {day_label_en} (threshold {threshold_s}°C).",
+        )
+    return (
+        f"Maximum {value_s}°C verwacht {day_label_nl} (grens {threshold_s}°C).",
+        f"Maximum {value_s}°C expected {day_label_en} (threshold {threshold_s}°C).",
+    )
+
+
+FROST_ACTION_NL = "Dek gevoelige planten af of zet potten binnen of beschut."
+FROST_ACTION_EN = "Cover sensitive plants or move pots inside/sheltered."
+HEAT_ACTION_NL = "Geef vroeg of laat water; zet potten in de schaduw en controleer bakken eerst."
+HEAT_ACTION_EN = "Water early or late; move pots to shade and check containers first."
+
+
+def _weather_warning(
+    *,
+    care_type: str,
+    severity: Severity,
+    message_nl: str,
+    message_en: str,
+    color: str,
+    metric: str,
+    value: float | int,
+    threshold: float | int | None,
+    days_until: int,
+    action_nl: str,
+    action_en: str,
+) -> CareWarning:
+    day_label_nl, day_label_en = _forecast_day_label(days_until, metric=metric)
+    reason_nl, reason_en = _temperature_reason_copy(
+        metric=metric,
+        value=value,
+        threshold=threshold,
+        day_label_nl=day_label_nl,
+        day_label_en=day_label_en,
+    )
+    return CareWarning(
+        care_type=care_type,
+        severity=severity,
+        trigger="weather_event",
+        days_overdue=None,
+        message_nl=message_nl,
+        message_en=message_en,
+        icon=CARE_TYPES[care_type]["icon"],
+        color=color,
+        reason_nl=reason_nl,
+        reason_en=reason_en,
+        action_nl=action_nl,
+        action_en=action_en,
+        weather_metric=metric,
+        weather_value_c=value,
+        forecast_day_label_nl=day_label_nl,
+        forecast_day_label_en=day_label_en,
+    )
+
+
 def _weather_warnings_for_plant(
     profile: dict, *, temp_data: dict | None, today: date, environment: str = "outdoor_container"
 ) -> list[CareWarning]:
@@ -246,15 +338,18 @@ def _weather_warnings_for_plant(
                 else:
                     msg_nl = f"Over {du} dagen vorst — min {val:.0f}°C"
                     msg_en = f"Frost in {du} days — min {val:.0f}°C"
-                warnings.append(CareWarning(
+                warnings.append(_weather_warning(
                     care_type="frost_protect",
                     severity="urgent",
-                    trigger="weather_event",
-                    days_overdue=None,
                     message_nl=msg_nl,
                     message_en=msg_en,
-                    icon=CARE_TYPES["frost_protect"]["icon"],
                     color=WEATHER_COLDHEAT_COLORS["frost_protect_urgent"],
+                    metric="min_temp_c",
+                    value=val,
+                    threshold=min_temp,
+                    days_until=du,
+                    action_nl=FROST_ACTION_NL,
+                    action_en=FROST_ACTION_EN,
                 ))
 
         # Warning frost: cold approaching bring_inside threshold (only if not already urgent)
@@ -276,15 +371,18 @@ def _weather_warnings_for_plant(
                 else:
                     msg_nl = f"Over {du} dagen koud — min {val:.0f}°C"
                     msg_en = f"Cold in {du} days — min {val:.0f}°C"
-                warnings.append(CareWarning(
+                warnings.append(_weather_warning(
                     care_type="frost_protect",
                     severity="warning",
-                    trigger="weather_event",
-                    days_overdue=None,
                     message_nl=msg_nl,
                     message_en=msg_en,
-                    icon=CARE_TYPES["frost_protect"]["icon"],
                     color=WEATHER_COLDHEAT_COLORS["frost_protect_warning"],
+                    metric="min_temp_c",
+                    value=val,
+                    threshold=bring_in,
+                    days_until=du,
+                    action_nl=FROST_ACTION_NL,
+                    action_en=FROST_ACTION_EN,
                 ))
 
     # ── Heat ───────────────────────────────────────────────────────────
@@ -310,15 +408,18 @@ def _weather_warnings_for_plant(
                 else:
                     msg_nl = f"Over {du} dagen hitte — max {val:.0f}°C"
                     msg_en = f"Heat in {du} days — max {val:.0f}°C"
-                warnings.append(CareWarning(
+                warnings.append(_weather_warning(
                     care_type="heat_protect",
                     severity="urgent",
-                    trigger="weather_event",
-                    days_overdue=None,
                     message_nl=msg_nl,
                     message_en=msg_en,
-                    icon=CARE_TYPES["heat_protect"]["icon"],
                     color=WEATHER_COLDHEAT_COLORS["heat_protect_urgent"],
+                    metric="max_temp_c",
+                    value=val,
+                    threshold=max_temp,
+                    days_until=du,
+                    action_nl=HEAT_ACTION_NL,
+                    action_en=HEAT_ACTION_EN,
                 ))
             else:
                 # Warning: >= max_temp - 3 (approaching)
@@ -337,15 +438,18 @@ def _weather_warnings_for_plant(
                     else:
                         msg_nl = f"Over {du} dagen hitte op komst — max {val:.0f}°C"
                         msg_en = f"Heat building in {du} days — max {val:.0f}°C"
-                    warnings.append(CareWarning(
+                    warnings.append(_weather_warning(
                         care_type="heat_protect",
                         severity="warning",
-                        trigger="weather_event",
-                        days_overdue=None,
                         message_nl=msg_nl,
                         message_en=msg_en,
-                        icon=CARE_TYPES["heat_protect"]["icon"],
                         color=WEATHER_COLDHEAT_COLORS["heat_protect_warning"],
+                        metric="max_temp_c",
+                        value=val,
+                        threshold=max_temp,
+                        days_until=du,
+                        action_nl=HEAT_ACTION_NL,
+                        action_en=HEAT_ACTION_EN,
                     ))
 
     return warnings
