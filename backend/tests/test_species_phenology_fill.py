@@ -52,12 +52,58 @@ async def test_get_or_create_fills_missing_phenology(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_get_or_create_existing_with_phenology_skips_llm(monkeypatch):
+async def test_get_or_create_fills_missing_english_common_name(monkeypatch):
     import species_service
     db = await _db()
     await db.execute(
         "INSERT INTO plant_species (id, common_name_nl, latin_name, phenology_json) "
-        "VALUES (1,'Roos','Rosa','{\"months\":[]}')")
+        "VALUES (1,'Blauwe bes','Vaccinium corymbosum','{\"months\":[]}')")
+    await db.commit()
+
+    async def fake_generate(name):
+        return {
+            "common_name_nl": "Blauwe bes",
+            "common_name_en": "Blueberry",
+            "latin_name": "Vaccinium corymbosum",
+            "phenology": {"months": []},
+        }
+
+    monkeypatch.setattr(species_service, "_generate_species", fake_generate)
+
+    sid = await species_service.get_or_create_species(db, "Blauwe bes")
+    assert sid == 1
+    row = (await db.execute_fetchall(
+        "SELECT common_name_en FROM plant_species WHERE id=1"))[0]
+    assert row["common_name_en"] == "Blueberry"
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_matches_existing_english_common_name(monkeypatch):
+    import species_service
+    db = await _db()
+    await db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json) "
+        "VALUES (1,'Blauwe bes','Blueberry','Vaccinium corymbosum','{\"months\":[]}')")
+    await db.commit()
+
+    async def boom(name):
+        raise AssertionError("LLM must not run when English name already matches")
+
+    monkeypatch.setattr(species_service, "_generate_species", boom)
+
+    sid = await species_service.get_or_create_species(db, "Blueberry")
+    assert sid == 1
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_existing_with_phenology_skips_llm(monkeypatch):
+    import species_service
+    db = await _db()
+    await db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json) "
+        "VALUES (1,'Roos','Rose','Rosa','{\"months\":[]}')")
     await db.commit()
 
     async def boom(name):

@@ -198,3 +198,20 @@ async def test_species_id_linked(client, db_ready, auth_header):
     pid = resp.json()["id"]
     row = await db_ready.execute_fetchall("SELECT species_id FROM plants WHERE id = ?", (pid,))
     assert row[0]["species_id"] == 7
+
+async def test_species_link_prefers_scientific_species_field(client, db_ready, auth_header):
+    get_species = AsyncMock(return_value=7)
+    with patch("routers.plants.get_or_create_species", new=get_species), patch("routers.plants.generate_thresholds", new=AsyncMock(return_value={})):
+        resp = await client.post(
+            "/api/plants",
+            headers=auth_header,
+            json={
+                "name": "Blauwe bes",
+                "species": "Vaccinium corymbosum",
+                "care_schedules": [],
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    get_species.assert_awaited_once()
+    assert get_species.await_args.args[1] == "Vaccinium corymbosum"

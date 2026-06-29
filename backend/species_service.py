@@ -119,16 +119,123 @@ async def ensure_phenology(db, species_id: int, name_hint: str) -> None:
     await db.commit()
 
 
+def _text_or_none(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _localized_name_missing(value, latin_name: str | None) -> bool:
+    text = _text_or_none(value)
+    if text is None:
+        return True
+    latin = _text_or_none(latin_name)
+    return bool(latin and text.casefold() == latin.casefold())
+
+
+async def ensure_species_localized_names(
+    db, species_id: int, name_hint: str | None = None
+) -> bool:
+    """Fill missing NL/EN common names (and phenology) for an existing species.
+
+    Some species rows originate from GBIF/BioCLIP imports with only the current
+    UI language populated. The frontend intentionally falls back to the raw
+    user-entered plant name when a localized species name is missing, so this
+    helper repairs the source data instead of changing display logic.
+
+    Returns True when the row was updated. LLM/API failures are deliberately
+    allowed to bubble up so callers that run in user flows can decide whether
+    the enrichment is best-effort.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json "
+        "FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not rows:
+        return False
+
+    rec = dict(rows[0])
+    latin_name = _text_or_none(rec.get("latin_name"))
+    missing_nl = _localized_name_missing(rec.get("common_name_nl"), latin_name)
+    missing_en = _localized_name_missing(rec.get("common_name_en"), latin_name)
+    missing_phenology = _text_or_none(rec.get("phenology_json")) is None
+
+    if not (missing_nl or missing_en or missing_phenology):
+        return False
+
+    lookup_name = (
+        _text_or_none(name_hint)
+        or latin_name
+        or _text_or_none(rec.get("common_name_nl"))
+        or _text_or_none(rec.get("common_name_en"))
+    )
+    if not lookup_name:
+        return False
+
+    data = await _generate_species(lookup_name)
+    updates: list[str] = []
+    params: list = []
+    generated_latin = _text_or_none(data.get("latin_name"))
+    canonical_latin = latin_name or generated_latin
+
+    if latin_name is None and generated_latin:
+        updates.append("latin_name = ?")
+        params.append(generated_latin)
+
+    if missing_nl:
+        nl_name = _text_or_none(data.get("common_name_nl"))
+        if nl_name and not _localized_name_missing(nl_name, canonical_latin):
+            updates.append("common_name_nl = ?")
+            params.append(nl_name)
+
+    if missing_en:
+        en_name = _text_or_none(data.get("common_name_en"))
+        if en_name and not _localized_name_missing(en_name, canonical_latin):
+            updates.append("common_name_en = ?")
+            params.append(en_name)
+
+    if missing_phenology:
+        phenology = data.get("phenology") or data
+        if isinstance(phenology, dict) and phenology.get("months"):
+            updates.append("phenology_json = ?")
+            params.append(json.dumps(phenology, ensure_ascii=False))
+
+    if not updates:
+        return False
+
+    updates.append("updated_at = CURRENT_TIMESTAMP")
+    params.append(species_id)
+    await db.execute(
+        f"UPDATE plant_species SET {', '.join(updates)} WHERE id = ?",
+        params,
+    )
+    await db.commit()
+    return True
+
+
 async def get_or_create_species(db, plant_name: str) -> int:
     row = await db.execute_fetchall(
-        "SELECT id, latin_name, phenology_json FROM plant_species WHERE LOWER(common_name_nl) = LOWER(?)",
-        (plant_name,),
+        """SELECT id, common_name_nl, common_name_en, latin_name, phenology_json
+           FROM plant_species
+           WHERE LOWER(common_name_nl) = LOWER(?)
+              OR LOWER(COALESCE(common_name_en, '')) = LOWER(?)
+              OR LOWER(COALESCE(latin_name, '')) = LOWER(?)
+           LIMIT 1""",
+        (plant_name, plant_name, plant_name),
     )
     if row:
         rec = dict(row[0])
         species_id = rec["id"]
-        if not rec.get("phenology_json"):
-            await ensure_phenology(db, species_id, rec.get("latin_name") or plant_name)
+        try:
+            await ensure_species_localized_names(
+                db, species_id, rec.get("latin_name") or plant_name
+            )
+        except Exception:
+            # Existing species links must remain non-fatal in user flows. A later
+            # retry/backfill can fill the localized fields if the LLM is down.
+            pass
         return species_id
 
     data = await _generate_species(plant_name)
@@ -139,13 +246,17 @@ async def get_or_create_species(db, plant_name: str) -> int:
         """INSERT INTO plant_species (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone)
            VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(slug) DO UPDATE SET
-             phenology_json = excluded.phenology_json,
+             common_name_nl = COALESCE(NULLIF(plant_species.common_name_nl, ''), excluded.common_name_nl),
+             common_name_en = COALESCE(NULLIF(plant_species.common_name_en, ''), excluded.common_name_en),
+             latin_name     = COALESCE(NULLIF(plant_species.latin_name, ''), excluded.latin_name),
+             phenology_json = COALESCE(NULLIF(plant_species.phenology_json, ''), excluded.phenology_json),
+             climate_zone   = COALESCE(NULLIF(plant_species.climate_zone, ''), excluded.climate_zone),
              updated_at     = CURRENT_TIMESTAMP""",
         (
             slug,
-            data.get("common_name_nl", plant_name),
-            data.get("common_name_en"),
-            data.get("latin_name"),
+            _text_or_none(data.get("common_name_nl")) or plant_name,
+            _text_or_none(data.get("common_name_en")),
+            _text_or_none(data.get("latin_name")),
             phenology_json,
             data.get("climate_zone", "temperate"),
         ),

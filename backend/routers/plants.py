@@ -201,10 +201,14 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         except Exception as exc:  # noqa: BLE001
             print(f"Warning: icon assignment failed for {data.name}: {exc}")
 
-    # Link or create species (non-fatal if Claude is unavailable)
+    # Link or create species (non-fatal if Claude is unavailable). Prefer the
+    # scientific species field when present; identify/database prefills set that
+    # to the Latin name, which lets us reuse existing species rows even when the
+    # user-facing name is localized or missing from the catalog.
     species_id = None
     try:
-        species_id = await get_or_create_species(db, data.name)
+        species_lookup_name = data.species or data.name
+        species_id = await get_or_create_species(db, species_lookup_name)
         await db.execute(
             "UPDATE plants SET species_id = ? WHERE id = ?",
             (species_id, plant_id),
@@ -290,7 +294,8 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
         raise HTTPException(status_code=404, detail="Plant not found")
 
     plant = dict(row)
-    species_id = await get_or_create_species(db, plant["name"])
+    species_lookup_name = plant.get("species") or plant["name"]
+    species_id = await get_or_create_species(db, species_lookup_name)
     await db.execute(
         "UPDATE plants SET species_id = ? WHERE id = ?",
         (species_id, plant_id),

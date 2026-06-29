@@ -96,7 +96,7 @@ async def backfill_care_schedules(account=Depends(get_current_account), db = Dep
 async def backfill_species(db = Depends(db_dep)):
     """Retry species generation for all active plants missing species_id."""
     rows = await db.execute_fetchall(
-        "SELECT id, name FROM plants WHERE species_id IS NULL AND is_active = 1"
+        "SELECT id, name, species FROM plants WHERE species_id IS NULL AND is_active = 1"
     )
 
     processed = len(rows)
@@ -106,8 +106,9 @@ async def backfill_species(db = Depends(db_dep)):
     for row in rows:
         plant_id = row["id"]
         plant_name = row["name"]
+        species_lookup_name = row.get("species") or plant_name
         try:
-            species_id = await get_or_create_species(db, plant_name)
+            species_id = await get_or_create_species(db, species_lookup_name)
             await db.execute(
                 "UPDATE plants SET species_id = $1 WHERE id = $2",
                 (species_id, plant_id),
