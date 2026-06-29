@@ -4,6 +4,7 @@ import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import { species as speciesApi, discoveries } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
+import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
 
 const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
@@ -145,10 +146,10 @@ export default function DiscoveryCard() {
             background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%',
             width: 36, height: 36, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 18,
+            color: '#fff',
           }}
         >
-          ←
+          <Glyph name="arrow-left" size={18} />
         </button>
 
         {state.candidate?.icon_key && (

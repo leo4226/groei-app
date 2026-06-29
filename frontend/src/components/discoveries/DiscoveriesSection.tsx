@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
+import Glyph from '../ui/Glyph'
 
 const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
@@ -91,7 +92,9 @@ export default function DiscoveriesSection() {
   if (items.length === 0) {
     return (
       <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
+        <div style={{ marginBottom: 12, color: 'var(--color-text-muted)' }}>
+          <Glyph name="leaf" size={40} />
+        </div>
         <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--color-text)' }}>
           {t.discovery.journalEmpty}
         </p>
@@ -124,9 +127,9 @@ export default function DiscoveriesSection() {
               <div style={{
                 width: 52, height: 52, borderRadius: 8, background: 'var(--color-surface)',
                 flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24,
+                color: 'var(--color-text-muted)',
               }}>
-                🌿
+                <Glyph name="leaf" size={24} />
               </div>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -156,7 +159,7 @@ export default function DiscoveriesSection() {
               }}
               aria-label={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
             >
-              {copiedId === item.id ? '✓' : (
+              {copiedId === item.id ? <Glyph name="check" size={16} /> : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
                   <polyline points="16 6 12 2 8 6"/>
