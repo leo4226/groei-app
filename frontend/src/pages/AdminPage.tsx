@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Glyph, { type GlyphName } from '../components/ui/Glyph'
 import {
   adminPanel, admin,
   type AdminOverview, type AdminUserRow, type AdminPlantRow,
@@ -33,15 +34,15 @@ import {
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'tools' | 'activity' | 'audit'
 
-const NAV: { id: Section; icon: string; label: string }[] = [
-  { id: 'overview', icon: '📊', label: 'Overview' },
-  { id: 'users',    icon: '👥', label: 'Users' },
-  { id: 'plants',   icon: '🌿', label: 'Plants' },
-  { id: 'species',  icon: '🔬', label: 'Species' },
-  { id: 'coverage', icon: '🧭', label: 'Coverage' },
-  { id: 'tools',    icon: '🔧', label: 'Tools' },
-  { id: 'activity', icon: '📋', label: 'Activity' },
-  { id: 'audit',    icon: '🔏', label: 'Audit log' },
+const NAV: { id: Section; icon: GlyphName; label: string }[] = [
+  { id: 'overview', icon: 'chart',     label: 'Overview' },
+  { id: 'users',    icon: 'users',     label: 'Users' },
+  { id: 'plants',   icon: 'leaf',      label: 'Plants' },
+  { id: 'species',  icon: 'flask',     label: 'Species' },
+  { id: 'coverage', icon: 'compass',   label: 'Coverage' },
+  { id: 'tools',    icon: 'wrench',    label: 'Tools' },
+  { id: 'activity', icon: 'clipboard', label: 'Activity' },
+  { id: 'audit',    icon: 'lock',      label: 'Audit log' },
 ]
 
 const PAGE_SIZE = 50
@@ -116,9 +117,9 @@ export default function AdminPage() {
               style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
               title="Back to app"
             >
-              ←
+              <Glyph name="arrow-left" size={16} />
             </button>
-            🌿 Floreren
+            <Glyph name="leaf" size={16} /> Floreren
             <span style={{ background: 'rgba(255,255,255,.15)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.18em', textTransform: 'uppercase' }}>Admin</span>
           </div>
           <div style={adminHeaderActionsStyle()}><button data-admin-hamburger onClick={() => setSidebarOpen(prev => !prev)} style={{ background: 'rgba(255,255,255,.15)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 8px', display: 'none', alignItems: 'center' }}>{sidebarOpen ? String.fromCharCode(10005) : String.fromCharCode(9776)}</button><span data-admin-email style={{ fontFamily: 'var(--font-mono)', fontSize: 10, opacity: .7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</span></div>
@@ -163,7 +164,7 @@ function NavItem({ item, active, onClick }: { item: typeof NAV[0]; active: boole
       fontWeight: active ? 600 : 400,
       transition: 'all .12s',
     }}>
-      <span style={{ width: 16, textAlign: 'center' }}>{item.icon}</span>
+      <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><Glyph name={item.icon} size={15} /></span>
       {item.label}
     </button>
   )
@@ -778,7 +779,7 @@ function HouseholdDetailView({ householdId, householdName, onBack }: { household
           onClick={onBack}
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 4 }}
         >
-          ← Users
+          <Glyph name="arrow-left" size={12} /> Users
         </button>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 26, letterSpacing: '-.02em', margin: '0 0 4px' }}>{householdName}</h1>
         <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: 0 }}>Household detail</p>
@@ -1278,7 +1279,7 @@ function SpeciesView() {
                     onClick={e => { e.stopPropagation(); setEditingSpecies(s) }}
                     style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 5, padding: '3px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: 'pointer', color: 'var(--color-text-muted)' }}
                   >
-                    ✎ Edit
+                    <Glyph name="edit" size={11} className="inline-block align-[-1px] mr-1" /> Edit
                   </button>
                 </Td>
               </tr>
