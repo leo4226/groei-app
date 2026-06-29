@@ -1,5 +1,6 @@
 import { useT } from '../../context/LanguageContext'
 import type { GameState } from '../../api/game'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   state: GameState
@@ -35,7 +36,7 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 max-w-sm mx-auto space-y-6">
       <div className="text-center space-y-1">
-        <div className="text-5xl mb-2">🏆</div>
+        <div className="flex justify-center mb-2 text-amber-500"><Glyph name="trophy" size={44} /></div>
         <h1 className="text-2xl font-bold text-text">{t.game.gameOver}</h1>
         <p className="text-text-muted text-sm">{state.session.map_name}</p>
       </div>
@@ -62,7 +63,7 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
           onClick={shareText}
           className="w-full py-2.5 rounded-xl border border-border text-sm text-text-muted hover:bg-surface transition-colors flex items-center justify-center gap-2"
         >
-          <span>📋</span> {t.game.shareResults}
+<Glyph name="clipboard" size={15} /> {t.game.shareResults}
         </button>
         {isHost ? (
           <>

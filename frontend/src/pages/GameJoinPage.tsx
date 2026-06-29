@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { gameApi } from '../api/game'
+import Glyph from '../components/ui/Glyph'
 import { getToken } from '../api/auth'
 
 export default function GameJoinPage() {
@@ -52,7 +53,7 @@ export default function GameJoinPage() {
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="text-5xl mb-4">🌿</div>
+          <div className="flex justify-center mb-4 text-primary"><Glyph name="leaf" size={44} /></div>
           <h1 className="text-2xl font-bold text-text">Floreren</h1>
           <p className="text-text-muted text-sm">Tuinspel</p>
         </div>

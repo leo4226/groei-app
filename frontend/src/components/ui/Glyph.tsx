@@ -10,6 +10,7 @@ export type GlyphName =
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
   | 'droplet' | 'flower' | 'palette' | 'thermometer' | 'gamepad'
+  | 'trophy' | 'clipboard' | 'link' | 'text'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -172,6 +173,38 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
       <path d="M12 4.5a2 2 0 0 0-2 2v7.4a3.5 3.5 0 1 0 4 0V6.5a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="17" r="1.9" fill="currentColor" stroke="none" />
       <path d="M12 14V9.5" />
+    </>
+  ),
+  // trophy — leaderboard winner
+  trophy: (
+    <>
+      <path d="M8 4.5h8v4a4 4 0 0 1-8 0z" />
+      <path d="M8 5.5H5.5a1 1 0 0 0-1 1c0 2.2 1.6 3.4 3.5 3.6M16 5.5h2.5a1 1 0 0 1 1 1c0 2.2-1.6 3.4-3.5 3.6" />
+      <path d="M12 12.5V15" />
+      <path d="M9 19.5h6M9.5 19.5l.4-2.2a1 1 0 0 1 1-.8h2.2a1 1 0 0 1 1 .8l.4 2.2" />
+    </>
+  ),
+  // clipboard — copy / share results
+  clipboard: (
+    <>
+      <rect x="6" y="4.5" width="12" height="16" rx="1.5" />
+      <path d="M9 4.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4.5v1H9z" />
+      <path d="M9.5 11h5M9.5 14.5h5" />
+    </>
+  ),
+  // link — shareable url
+  link: (
+    <>
+      <path d="M10.5 13.5a3 3 0 0 0 4.3.1l2.4-2.4a3 3 0 0 0-4.2-4.2l-1.3 1.3" />
+      <path d="M13.5 10.5a3 3 0 0 0-4.3-.1l-2.4 2.4a3 3 0 0 0 4.2 4.2l1.3-1.3" />
+    </>
+  ),
+  // text — name / typed-answer mode
+  text: (
+    <>
+      <path d="M5 7V5.5h14V7" />
+      <path d="M12 5.5V19" />
+      <path d="M9.5 19h5" />
     </>
   ),
   // gamepad — games
