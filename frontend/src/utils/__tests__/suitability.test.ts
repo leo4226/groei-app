@@ -4,7 +4,6 @@ import type { Phenology } from '../../types'
 
 function makePhenology(overrides?: Partial<Phenology>): Phenology {
   return {
-    id: 1,
     months: [
       {
         month: 6,
@@ -18,6 +17,15 @@ function makePhenology(overrides?: Partial<Phenology>): Phenology {
         actions_en: ['Water when soil is dry'],
       },
     ],
+    sow_window: [],
+    transplant_window: [],
+    harvest_window: [],
+    frost_sensitive: false,
+    min_temp_c: null,
+    max_height_cm: null,
+    max_spread_cm: null,
+    interesting_facts_nl: '',
+    climate_zone: '',
     ...overrides,
   }
 }
