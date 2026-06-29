@@ -247,6 +247,22 @@ async def test_care_push_renotifies_after_completion(
     assert len(sent_pushes) == 2
 
 
+async def test_care_push_driven_by_subscription_not_account_flag(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # A subscribed device receives pushes even when the account-wide
+    # push_enabled flag is false (or absent) — delivery is per-subscription, so
+    # unsubscribing one device can't silence another.
+    await _seed_overdue_plant(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    # Note: no _enable_push() — there is no push_enabled=1 prefs row at all.
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 1
+    assert len(sent_pushes) == 1
+    assert sent_pushes[0]["endpoint"] == SUB["endpoint"]
+
+
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
 
 async def test_test_push_requires_auth(client, seeded_db):
