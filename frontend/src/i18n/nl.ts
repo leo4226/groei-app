@@ -906,6 +906,7 @@ export const nl: Translations = {
     notesLabel: 'Notities',
     notesPlaceholder: 'Houdt van indirect licht, van onderen water geven...',
     saving: 'Opslaan...',
+    saveFailed: 'Opslaan mislukt — probeer het opnieuw.',
     databasePrefill: 'Ingevuld uit plantendatabase — pas aan waar nodig',
     careScheduleTitle: 'Verzorgingsschema',
     careScheduleDesc: 'Hoe vaak heeft deze plant verzorging nodig?',

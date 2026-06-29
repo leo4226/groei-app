@@ -321,13 +321,12 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)
 async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    # Build SET clause from non-None fields
-    updates = {}
-    for field, value in data.model_dump(exclude_unset=True).items():
-        if value is not None and isinstance(value, _date):
-            updates[field] = str(value)
-        else:
-            updates[field] = value
+    # Only touch fields the client actually sent. Pass values through as-is —
+    # date objects MUST stay date objects: asyncpg binds them to DATE columns
+    # directly and raises DataError on ISO strings (#142). create_plant binds
+    # dates the same way, and the sqlite test adapter converts date objects too,
+    # so this is correct on both Postgres and the test DB.
+    updates = dict(data.model_dump(exclude_unset=True))
 
     if "quantity" in updates and updates["quantity"] is not None:
         updates["quantity"] = max(1, int(updates["quantity"]))
