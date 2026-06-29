@@ -8,7 +8,7 @@ export type GlyphName =
   | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
   | 'sun' | 'moon' | 'monitor'
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
-  | 'search' | 'camera' | 'book'
+  | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -121,6 +121,28 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
     <>
       <path d="M5 4.5h11a1.5 1.5 0 0 1 1.5 1.5v13a1 1 0 0 0-1-1H5z" />
       <path d="M5 4.5A1.5 1.5 0 0 0 3.5 6v12.5A1.5 1.5 0 0 0 5 20h11.5" />
+    </>
+  ),
+  // arrow-left — back
+  'arrow-left': (
+    <>
+      <path d="M19 12H5" />
+      <path d="M11 6 5 12l6 6" />
+    </>
+  ),
+  // flask — lab / try another engine
+  flask: (
+    <>
+      <path d="M9.5 3.5h5" />
+      <path d="M10 3.5v6L5.3 17a1.6 1.6 0 0 0 1.4 2.5h10.6a1.6 1.6 0 0 0 1.4-2.5L14 9.5v-6" />
+      <path d="M7.6 14h8.8" />
+    </>
+  ),
+  // pin — map location / sighting
+  pin: (
+    <>
+      <path d="M12 21s6-5.3 6-10.5A6 6 0 0 0 6 10.5C6 15.7 12 21 12 21z" />
+      <circle cx="12" cy="10.5" r="2.3" />
     </>
   ),
   // theme — sun
