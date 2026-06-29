@@ -193,6 +193,28 @@ async def _attach_species_id(db, scientific_name: str) -> int | None:
     return rows[0]["id"] if rows else None
 
 
+def _text_or_none(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _localized_name_missing(value, latin_name: str | None) -> bool:
+    text = _text_or_none(value)
+    if text is None:
+        return True
+    latin = _text_or_none(latin_name)
+    return bool(latin and text.casefold() == latin.casefold())
+
+
+def _needs_localized_species_enrichment(row, latin_name: str | None) -> bool:
+    return (
+        _localized_name_missing(row.get("common_name_nl"), latin_name)
+        or _localized_name_missing(row.get("common_name_en"), latin_name)
+    )
+
+
 async def _check_quota(db, account: dict) -> str | None:
     """Check daily Pl@ntNet quota.
 
@@ -328,9 +350,10 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
         row = rows[0]
         latin_name = row["latin_name"]
 
-        # Enrich if the species has no Dutch common name yet (lazy, one-time LLM call)
-        nl_name = row.get("common_name_nl")
-        if not nl_name:
+        # Enrich if either localized common name is missing (lazy, one-time LLM call).
+        # English identify used to skip this when Dutch was present, leaving
+        # common_names_en empty and later plant cards falling back to the raw name.
+        if _needs_localized_species_enrichment(row, latin_name):
             try:
                 await _enrich_species_if_missing(db, latin_name)
                 # Re-fetch after enrichment
@@ -339,10 +362,8 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
                     (species_id,),
                 )
                 if rows2:
-                    nl_name = rows2[0].get("common_name_nl") or ""
-                    en_name = rows2[0].get("common_name_en")
-                    row["common_name_nl"] = nl_name
-                    row["common_name_en"] = en_name
+                    row["common_name_nl"] = rows2[0].get("common_name_nl") or ""
+                    row["common_name_en"] = rows2[0].get("common_name_en")
             except Exception:
                 pass  # Enrichment is best-effort; don't fail the identify request
 
@@ -512,44 +533,26 @@ def _match_icon_key(scientific_name: str) -> str | None:
 
 
 async def _enrich_species_if_missing(db, scientific_name: str) -> int | None:
-    """Ensure a species has Dutch common name data. Looks up by latin_name first,
-    enriches existing rows, and only creates a new species as last resort."""
-    # 1. Already exists with common_name_nl?
+    """Ensure a species row exists and has both localized common names.
+
+    Looks up by latin_name first, enriches existing rows, and only creates a new
+    species as last resort. Best-effort: callers should not fail identify flows
+    just because the LLM/name backfill is temporarily unavailable.
+    """
     row = await db.execute_fetchall(
-        "SELECT id, common_name_nl, phenology_json FROM plant_species WHERE latin_name = ? LIMIT 1",
+        "SELECT id FROM plant_species WHERE latin_name = ? LIMIT 1",
         (scientific_name,),
     )
-    if row and row[0].get("common_name_nl"):
-        return row[0]["id"]
 
-    # 2. Exists but missing NL name — enrich via the LLM. Persist BOTH the names
-    #    and the phenology from the single call (don't pay for phenology and bin it).
     if row:
         species_id = row[0]["id"]
-        from species_service import _generate_species
+        from species_service import ensure_species_localized_names
         try:
-            data = await _generate_species(scientific_name)
-            nl_name = data.get("common_name_nl") or ""
-            en_name = data.get("common_name_en") or ""
-            phen = data.get("phenology")
-            sets, params = [], []
-            if nl_name:
-                sets += ["common_name_nl = ?", "common_name_en = ?"]
-                params += [nl_name, en_name]
-            if phen and not row[0].get("phenology_json"):
-                sets.append("phenology_json = ?")
-                params.append(json.dumps(phen, ensure_ascii=False))
-            if sets:
-                sets.append("updated_at = CURRENT_TIMESTAMP")
-                params.append(species_id)
-                await db.execute(
-                    f"UPDATE plant_species SET {', '.join(sets)} WHERE id = ?", params)
-                await db.commit()
+            await ensure_species_localized_names(db, species_id, scientific_name)
         except Exception:
-            pass  # best-effort
+            pass
         return species_id
 
-    # 3. Doesn't exist at all — create from scratch
     from species_service import get_or_create_species
     try:
         return await get_or_create_species(db, scientific_name)
@@ -581,6 +584,18 @@ async def identify_commit(
     if rows:
         row = dict(rows[0])
         species_id = row["id"]
+        if _needs_localized_species_enrichment(row, body.scientific_name):
+            try:
+                await _enrich_species_if_missing(db, body.scientific_name)
+                refreshed = await db.execute_fetchall(
+                    "SELECT id, common_name_nl, common_name_en, care_thresholds "
+                    "FROM plant_species WHERE id = ?",
+                    (species_id,),
+                )
+                if refreshed:
+                    row = dict(refreshed[0])
+            except Exception:
+                pass
         name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
         thresholds_raw = row["care_thresholds"]
         thresholds = json.loads(thresholds_raw) if thresholds_raw else {}

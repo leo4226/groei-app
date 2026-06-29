@@ -214,3 +214,52 @@ async def test_commit_rejects_unknown_species_on_enrichment_failure(client, seed
         headers=auth_header,
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_commit_backfills_missing_english_name_for_known_species(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """Known species with only NL name should be repaired before later plant lists render it."""
+    monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
+    await seeded_db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS plant_species (
+            id INTEGER PRIMARY KEY,
+            latin_name TEXT,
+            common_name_nl TEXT,
+            common_name_en TEXT,
+            phenology_json TEXT,
+            care_thresholds TEXT,
+            updated_at TEXT
+        )
+        """
+    )
+    await seeded_db.execute(
+        "INSERT INTO plant_species (id, latin_name, common_name_nl, common_name_en, care_thresholds) "
+        "VALUES (7, 'Vaccinium corymbosum', 'Blauwe bes', NULL, '{\"min_temp_c\": -5}')"
+    )
+    await seeded_db.commit()
+
+    async def fake_generate(name):
+        return {
+            "common_name_nl": "Blauwe bes",
+            "common_name_en": "Blueberry",
+            "latin_name": "Vaccinium corymbosum",
+            "phenology": {"months": [{"month": 1, "phase": "dormant"}]},
+        }
+
+    monkeypatch.setattr("species_service._generate_species", fake_generate)
+
+    fake_photo = base64.b64encode(b"\xff\xd8\xff\xe0jpg").decode("ascii")
+    resp = await client.post(
+        "/api/plants/identify/commit",
+        json={"scientific_name": "Vaccinium corymbosum", "photo_base64": fake_photo},
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200, resp.text
+    row = (await seeded_db.execute_fetchall(
+        "SELECT common_name_en FROM plant_species WHERE id = 7"
+    ))[0]
+    assert row["common_name_en"] == "Blueberry"
