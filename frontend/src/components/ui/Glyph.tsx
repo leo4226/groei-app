@@ -8,6 +8,7 @@ export type GlyphName =
   | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
   | 'sun' | 'moon' | 'monitor'
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
+  | 'search' | 'camera' | 'book'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -101,6 +102,27 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
   ),
   // sparkle — new / custom
   sparkle: <path d="M12 3.5l1.7 5.3 5.3 1.7-5.3 1.7L12 17.5l-1.7-5.3L5 10.5l5.3-1.7z" />,
+  // search — magnifier
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.2-4.2" />
+    </>
+  ),
+  // camera
+  camera: (
+    <>
+      <path d="M4 8.5h3.2l1.3-1.9h7l1.3 1.9H20a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </>
+  ),
+  // book — database / library
+  book: (
+    <>
+      <path d="M5 4.5h11a1.5 1.5 0 0 1 1.5 1.5v13a1 1 0 0 0-1-1H5z" />
+      <path d="M5 4.5A1.5 1.5 0 0 0 3.5 6v12.5A1.5 1.5 0 0 0 5 20h11.5" />
+    </>
+  ),
   // theme — sun
   sun: (
     <>
