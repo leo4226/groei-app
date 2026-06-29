@@ -52,6 +52,24 @@ async def test_get_or_create_fills_missing_phenology(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_get_or_create_existing_with_phenology_skips_llm(monkeypatch):
+    import species_service
+    db = await _db()
+    await db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json) "
+        "VALUES (1,'Roos','Rose','Rosa','{\"months\":[]}')")
+    await db.commit()
+
+    async def boom(name):
+        raise AssertionError("LLM must not be called when phenology is already cached")
+
+    monkeypatch.setattr(species_service, "_generate_species", boom)
+    sid = await species_service.get_or_create_species(db, "Roos")
+    assert sid == 1
+    await db.close()
+
+
+@pytest.mark.asyncio
 async def test_get_or_create_fills_missing_english_common_name(monkeypatch):
     import species_service
     db = await _db()
@@ -93,24 +111,6 @@ async def test_get_or_create_matches_existing_english_common_name(monkeypatch):
     monkeypatch.setattr(species_service, "_generate_species", boom)
 
     sid = await species_service.get_or_create_species(db, "Blueberry")
-    assert sid == 1
-    await db.close()
-
-
-@pytest.mark.asyncio
-async def test_get_or_create_existing_with_phenology_skips_llm(monkeypatch):
-    import species_service
-    db = await _db()
-    await db.execute(
-        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json) "
-        "VALUES (1,'Roos','Rose','Rosa','{\"months\":[]}')")
-    await db.commit()
-
-    async def boom(name):
-        raise AssertionError("LLM must not be called when phenology is already cached")
-
-    monkeypatch.setattr(species_service, "_generate_species", boom)
-    sid = await species_service.get_or_create_species(db, "Roos")
     assert sid == 1
     await db.close()
 
