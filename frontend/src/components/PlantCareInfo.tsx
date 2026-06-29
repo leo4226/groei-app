@@ -3,6 +3,7 @@ import { usePlantCareInfo } from '../hooks/usePlantCareInfo'
 import { useRainContext } from '../hooks/useRainContext'
 import { useTemperatureContext } from '../hooks/useTemperatureContext'
 import { useT } from '../context/LanguageContext'
+import Glyph from './ui/Glyph'
 
 interface Props { plantId: number }
 
@@ -96,11 +97,12 @@ export default function PlantCareInfo({ plantId }: Props) {
         {!isLoading && !noData && care.data && (
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-xs text-primary font-medium"
+            className="text-xs text-primary font-medium inline-flex items-center gap-1"
           >
             {expanded
-              ? (isEN ? 'Less ←' : 'Minder ←')
-              : (isEN ? 'More info →' : 'Meer info →')}
+              ? (isEN ? 'Less' : 'Minder')
+              : (isEN ? 'More info' : 'Meer info')}
+            <Glyph name={expanded ? 'chevron-up' : 'chevron-down'} size={13} />
           </button>
         )}
       </div>
@@ -117,7 +119,7 @@ export default function PlantCareInfo({ plantId }: Props) {
             {/* Light bar */}
             {(care.data.light_label != null || care.data.light_raw != null) && (
               <div className="flex items-center gap-2">
-                <span className="text-sm shrink-0">☀️</span>
+                <Glyph name="sun" size={16} className="shrink-0 text-amber-500" />
                 {care.data.light_raw != null ? (
                   <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
                     <div
@@ -137,7 +139,7 @@ export default function PlantCareInfo({ plantId }: Props) {
             {/* Precipitation */}
             {(care.data.precip_min_mm != null || care.data.precip_max_mm != null) && (
               <div className="flex items-start gap-2 text-sm">
-                <span className="shrink-0">💧</span>
+                <Glyph name="droplet" size={16} className="shrink-0 text-sky-500" />
                 <span className="text-text-muted">
                   {care.data.precip_min_mm}–{care.data.precip_max_mm} {isEN ? 'mm/year' : 'mm/jaar'}
                 </span>
@@ -148,7 +150,7 @@ export default function PlantCareInfo({ plantId }: Props) {
             {expanded && <>
               {care.data.bloom_months.length > 0 && (
                 <div className="flex items-start gap-2 text-sm">
-                  <span className="shrink-0">🌸</span>
+                  <Glyph name="flower" size={16} className="shrink-0 text-pink-500" />
                   <span className="text-text-muted">
                     {care.data.bloom_months.map(m => monthAbbr[m] ?? m).join(' · ')}
                   </span>
@@ -157,7 +159,7 @@ export default function PlantCareInfo({ plantId }: Props) {
 
               {(care.data.duration || care.data.leaf_retention != null) && (
                 <div className="flex items-start gap-2 text-sm">
-                  <span className="shrink-0">🌿</span>
+                  <Glyph name="leaf" size={16} className="shrink-0 text-primary" />
                   <span className="text-text-muted capitalize">
                     {[
                       care.data.duration,
@@ -174,7 +176,7 @@ export default function PlantCareInfo({ plantId }: Props) {
 
               {care.data.flower_colors.length > 0 && (
                 <div className="flex items-start gap-2 text-sm">
-                  <span className="shrink-0">🎨</span>
+                  <Glyph name="palette" size={16} className="shrink-0 text-text-muted" />
                   <span className="text-text-muted capitalize">
                     {isEN ? 'Flowers: ' : 'Bloemen: '}{care.data.flower_colors.join(', ')}
                   </span>
@@ -188,8 +190,9 @@ export default function PlantCareInfo({ plantId }: Props) {
         {expanded && rain.data && (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">
-                {isEN ? '🌧 Rainfall — 7 days' : '🌧 Neerslag — 7 dagen'}
+              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
+                <Glyph name="droplet" size={13} className="text-sky-500" />
+                {isEN ? 'Rainfall — 7 days' : 'Neerslag — 7 dagen'}
               </span>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${rainBadge[rain.data.assessment]?.className ?? ''}`}>
                 {rainBadge[rain.data.assessment]?.label ?? rain.data.assessment}
@@ -232,8 +235,9 @@ export default function PlantCareInfo({ plantId }: Props) {
         {expanded && temp.data && (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted">
-                {isEN ? '🌡 Temperature — 7 days' : '🌡 Temperatuur — 7 dagen'}
+              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
+                <Glyph name="thermometer" size={13} className="text-rose-500" />
+                {isEN ? 'Temperature — 7 days' : 'Temperatuur — 7 dagen'}
               </span>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tempBadge[temp.data.assessment]?.className ?? ''}`}>
                 {tempBadge[temp.data.assessment]?.label ?? temp.data.assessment}

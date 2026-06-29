@@ -9,6 +9,7 @@ export type GlyphName =
   | 'sun' | 'moon' | 'monitor'
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
+  | 'droplet' | 'flower' | 'palette' | 'thermometer'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -143,6 +144,34 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
     <>
       <path d="M12 21s6-5.3 6-10.5A6 6 0 0 0 6 10.5C6 15.7 12 21 12 21z" />
       <circle cx="12" cy="10.5" r="2.3" />
+    </>
+  ),
+  // droplet — water / rainfall
+  droplet: <path d="M12 3.5s6 6.4 6 10.6a6 6 0 1 1-12 0C6 9.9 12 3.5 12 3.5z" />,
+  // flower — bloom
+  flower: (
+    <>
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M12 9.6c.8-2.4-.4-4.6-0-4.6s-.8 2.2 0 4.6M12 14.4c-.8 2.4.4 4.6 0 4.6s.8-2.2 0-4.6" />
+      <path d="M9.6 12c-2.4.8-4.6-.4-4.6 0s2.2-.8 4.6 0M14.4 12c2.4-.8 4.6.4 4.6 0s-2.2.8-4.6 0" />
+    </>
+  ),
+  // palette — flower colours
+  palette: (
+    <>
+      <path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.4 0 2-.9 2-1.8 0-.5-.2-.8-.5-1.2-.3-.4-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a4.5 4.5 0 0 0 4.5-4.5C20.5 6.6 16.7 3.5 12 3.5z" />
+      <circle cx="7.5" cy="11" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="10" cy="7.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="14.5" cy="7.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="16.8" cy="11" r="0.9" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // thermometer — temperature
+  thermometer: (
+    <>
+      <path d="M12 4.5a2 2 0 0 0-2 2v7.4a3.5 3.5 0 1 0 4 0V6.5a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="17" r="1.9" fill="currentColor" stroke="none" />
+      <path d="M12 14V9.5" />
     </>
   ),
   // theme — sun

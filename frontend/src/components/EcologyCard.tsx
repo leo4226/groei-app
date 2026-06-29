@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { species as speciesApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
 import type { EcologyOut, EcologyDataSource } from '../types'
+import Glyph from './ui/Glyph'
 
 interface Props {
   speciesId: number
@@ -84,11 +85,12 @@ function SourceBadge({ source, t }: { source: EcologyDataSource; t: ReturnType<t
   if (source === 'llm') {
     return (
       <span
-        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+        className="text-[10px] font-medium px-1.5 py-0.5 rounded inline-flex items-center gap-1"
         style={{ background: 'rgba(217, 164, 24, 0.15)', color: '#7a5a07' }}
         title={t.ecology.sourceLlmWarning}
       >
-        ❓ {t.ecology.sourceLlmWarning}
+        <Glyph name="alert" size={11} />
+        {t.ecology.sourceLlmWarning}
       </span>
     )
   }
