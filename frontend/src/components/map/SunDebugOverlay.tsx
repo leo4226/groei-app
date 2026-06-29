@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom'
 import type { ShadowCaster } from '../../utils/gardenStructures'
 import { getSunPosition } from '../../utils/sunCalc'
 import type { SunPosition } from '../../utils/sunCalc'
+import Glyph from '../ui/Glyph'
 
 function parseSunTime(): Date {
   const params = new URLSearchParams(window.location.search)
@@ -128,7 +129,7 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing, gar
             <line x1={cx} y1={cy} x2={sunEndX} y2={sunEndY} stroke="currentColor" strokeWidth={3} opacity={0.9} />
             <ArrowHead x={sunEndX} y={sunEndY} angle={azToSvgDeg(sun.azimuthDeg)} />
             <text x={sunEndX + 6} y={sunEndY} fill="currentColor" fontSize={9} fontWeight="600">
-              ☀ az={Math.round(sun.azimuthDeg)}° alt={Math.round(sun.altitudeDeg)}°
+              az={Math.round(sun.azimuthDeg)}° alt={Math.round(sun.altitudeDeg)}°
             </text>
           </g>
         )}
@@ -168,7 +169,9 @@ export default function SunDebugOverlay({ sunPosition: externalSun, bearing, gar
             pointerEvents: 'all',
           }}
         >
-          <span style={{ color: '#f59e0b', fontSize: 11, fontWeight: 700 }}>☀ debug</span>
+          <span style={{ color: '#f59e0b', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Glyph name="sun" size={12} /> debug
+          </span>
           <input
             type="datetime-local"
             value={isoStr}

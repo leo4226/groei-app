@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 import type { MapInfo } from '../../types'
 
 interface Props {
@@ -53,7 +54,8 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
                   onClick={() => { setOpen(false); navigate(`/map/${m.slug}`) }}
                   className="flex items-center gap-2 px-3 py-3 text-sm text-text hover:bg-bg/60 w-full text-left transition-colors min-h-[44px]"
                 >
-                  {m.map_type === 'outdoor' ? '🌿' : '🏠'} {m.name}
+                  <Glyph name={m.map_type === 'outdoor' ? 'leaf' : 'home'} size={15} className="text-text-muted shrink-0" />
+                  {m.name}
                 </button>
               ))}
               <div className="h-px bg-border mx-3 my-1" />
@@ -63,21 +65,21 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
             onClick={() => { setOpen(false); onToggleLabels() }}
             className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
           >
-            <span className="text-sm">📝</span>
+            <Glyph name="edit" size={15} className="text-text-muted shrink-0" />
             <span className={showLabels ? '' : 'text-text-muted'}>
               {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
             </span>
-            {showLabels && <span className="ml-auto text-primary text-xs">✓</span>}
+            {showLabels && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
           </button>
           <button
             onClick={() => { setOpen(false); onToggleWarnings() }}
             className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
           >
-            <span className="text-sm">⚠️</span>
+            <Glyph name="alert" size={15} className="text-text-muted shrink-0" />
             <span className={showWarnings ? '' : 'text-text-muted'}>
               {showWarnings ? t.mapPage.warningsHide : t.mapPage.warningsShow}
             </span>
-            {showWarnings && <span className="ml-auto text-primary text-xs">✓</span>}
+            {showWarnings && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
           </button>
           <div className="h-px bg-border mx-3 my-1" />
           <button

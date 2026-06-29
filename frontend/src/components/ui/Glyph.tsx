@@ -9,7 +9,7 @@ export type GlyphName =
   | 'sun' | 'moon' | 'monitor'
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
-  | 'droplet' | 'flower' | 'palette' | 'thermometer'
+  | 'droplet' | 'flower' | 'palette' | 'thermometer' | 'gamepad'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -172,6 +172,15 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
       <path d="M12 4.5a2 2 0 0 0-2 2v7.4a3.5 3.5 0 1 0 4 0V6.5a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="17" r="1.9" fill="currentColor" stroke="none" />
       <path d="M12 14V9.5" />
+    </>
+  ),
+  // gamepad — games
+  gamepad: (
+    <>
+      <path d="M7.5 8.5h9a4 4 0 0 1 4 4l.4 3.2a2 2 0 0 1-3.6 1.4l-1.1-1.6a2 2 0 0 0-1.6-.9H8a2 2 0 0 0-1.6.9l-1.1 1.6a2 2 0 0 1-3.6-1.4L4 12.5a4 4 0 0 1 4-4z" />
+      <path d="M7 11.5v2.5M5.75 12.75h2.5" />
+      <circle cx="15.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="13.8" r="0.9" fill="currentColor" stroke="none" />
     </>
   ),
   // theme — sun
