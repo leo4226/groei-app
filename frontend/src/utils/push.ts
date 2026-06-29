@@ -14,6 +14,19 @@ export function pushSupported(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
+/** Whether *this* device/browser currently holds a push subscription.
+ *  Subscriptions are per-device, so the Settings toggle reflects this rather
+ *  than the account-wide pref (which can be true on another device). */
+export async function isPushSubscribedHere(): Promise<boolean> {
+  if (!pushSupported()) return false
+  try {
+    const registration = await navigator.serviceWorker.ready
+    return (await registration.pushManager.getSubscription()) != null
+  } catch {
+    return false
+  }
+}
+
 /** iOS Safari only allows push for home-screen-installed PWAs (iOS 16.4+). */
 export function iosNeedsInstall(): boolean {
   const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent)

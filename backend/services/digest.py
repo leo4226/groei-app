@@ -255,11 +255,16 @@ def build_care_push_payload(due_rows: list[dict]) -> dict:
 async def send_due_care_pushes(db) -> dict:
     """Push a reminder the moment a care task becomes due, once per due cycle.
 
-    Runs every (hourly) cron call. For each push-enabled account, finds active
-    schedules that are due (next_due <= today) and not yet notified for their
-    current due date, sends one batched push, and stamps `notified_for_due` so
-    the same task never re-pings until it's completed and falls due again.
-    Gated to daytime hours so nobody gets a 3am water reminder.
+    Runs every (hourly) cron call. For every account that has at least one push
+    subscription, finds active schedules that are due (next_due <= today) and
+    not yet notified for their current due date, sends one batched push, and
+    stamps `notified_for_due` so the same task never re-pings until it's
+    completed and falls due again. Gated to daytime hours so nobody gets a 3am
+    water reminder.
+
+    Delivery is driven by the *subscriptions* themselves, not an account-wide
+    flag — subscriptions are per-device, so unsubscribing one device never
+    silences another.
     """
     now = _now()
     today = now.date()
@@ -269,10 +274,9 @@ async def send_due_care_pushes(db) -> dict:
 
     accounts = await db.execute_fetchall(
         """
-        SELECT np.account_id, a.household_id
-        FROM notification_preferences np
-        JOIN accounts a ON a.id = np.account_id
-        WHERE np.push_enabled
+        SELECT DISTINCT ps.account_id, a.household_id
+        FROM push_subscriptions ps
+        JOIN accounts a ON a.id = ps.account_id
         """
     )
 

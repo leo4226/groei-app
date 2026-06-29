@@ -7,7 +7,7 @@ import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
-import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
+import { enablePush, disablePush, pushSupported, iosNeedsInstall, isPushSubscribedHere } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
@@ -48,6 +48,9 @@ export default function Settings() {
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
+  // Whether *this* device holds a push subscription. Subscriptions are
+  // per-device, so the toggle reflects this rather than the account-wide pref.
+  const [pushOnHere, setPushOnHere] = useState(false)
   const [pushTestBusy, setPushTestBusy] = useState(false)
   const [pushTestMsg, setPushTestMsg] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState<'json' | 'csv' | null>(null)
@@ -79,6 +82,11 @@ export default function Settings() {
 
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => setCatalogError(true))
+  }, [])
+
+  // Reflect whether this specific device is subscribed (not the account pref).
+  useEffect(() => {
+    isPushSubscribedHere().then(setPushOnHere)
   }, [])
 
   async function handleSaveProfile() {
@@ -268,11 +276,15 @@ export default function Settings() {
     setPushBusy(true)
     setDigestError(null)
     try {
-      if (digestPrefs.push_enabled) {
+      if (pushOnHere) {
+        // Unsubscribe only *this* device — other devices keep their pushes
+        // (delivery is driven by subscriptions, not the account flag).
         await disablePush()
+        setPushOnHere(false)
         await saveDigestPrefs({ ...digestPrefs, push_enabled: false })
       } else {
         await enablePush()
+        setPushOnHere(true)
         await saveDigestPrefs({ ...digestPrefs, push_enabled: true })
       }
     } catch (e) {
@@ -658,12 +670,12 @@ export default function Settings() {
             <button
               onClick={handlePushToggle}
               disabled={!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()}
-              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${digestPrefs?.push_enabled ? 'bg-primary' : 'bg-border'} ${(!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()) ? 'opacity-50' : ''}`}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${pushOnHere ? 'bg-primary' : 'bg-border'} ${(!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()) ? 'opacity-50' : ''}`}
             >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.push_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pushOnHere ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-          {digestPrefs?.push_enabled && pushSupported() && (
+          {pushOnHere && pushSupported() && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
               <div className="min-w-0">
                 <div className="font-semibold text-sm">{t.settings.pushTestButton}</div>
