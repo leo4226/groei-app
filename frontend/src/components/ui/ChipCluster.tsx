@@ -1,3 +1,5 @@
+import Glyph from './Glyph'
+
 interface ChipClusterProps {
   options: string[]
   selected: string[]
@@ -37,7 +39,7 @@ export default function ChipCluster({
               }
             `}
           >
-            {on && <span className="mr-1">✓</span>}
+            {on && <Glyph name="check" size={13} className="inline-block align-[-1px] mr-1" />}
             {chip}
           </button>
         )
