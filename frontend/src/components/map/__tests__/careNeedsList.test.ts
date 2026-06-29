@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CareWarningOut, MapObject, MapPlant } from '../../../types'
 import { en } from '../../../i18n/en'
-import { buildCareNeedsGroups, getCareTypeDisplay, localizedWarningCopy } from '../careNeedsListModel'
+import { buildCareNeedsGroups, getCareTypeDisplay, localizedWarningCopy, localizedWeatherWarningCopy } from '../careNeedsListModel'
 
 function warning(careType: string, icon: string): CareWarningOut {
   return {
@@ -77,6 +77,33 @@ describe('CareNeedsList grouping', () => {
     expect(getCareTypeDisplay('heat_protect', en).label).toBe('Heat protect')
   })
 
+
+  it('extracts localized weather copy from top_warning carriers for aggregate cards', () => {
+    const weatherWarning: CareWarningOut = {
+      care_type: 'frost_protect',
+      severity: 'urgent',
+      trigger: 'weather_event',
+      days_overdue: null,
+      message_nl: 'Vorst vannacht — min -2°C',
+      message_en: 'Frost tonight — min -2°C',
+      reason_nl: 'Minimum -2°C verwacht vannacht (grens 0°C).',
+      reason_en: 'Minimum -2°C expected tonight (threshold 0°C).',
+      action_nl: 'Dek gevoelige planten af of zet potten binnen of beschut.',
+      action_en: 'Cover sensitive plants or move pots inside/sheltered.',
+      icon: '❄️',
+      color: '#2544a0',
+    }
+
+    expect(localizedWeatherWarningCopy([{ top_warning: weatherWarning }], en)).toEqual({
+      headline: 'Frost tonight — min -2°C',
+      reason: 'Minimum -2°C expected tonight (threshold 0°C).',
+      action: 'Cover sensitive plants or move pots inside/sheltered.',
+    })
+  })
+
+  it('does not show schedule warnings as weather explanation copy', () => {
+    expect(localizedWeatherWarningCopy([{ top_warning: warning('water', '💧') }], en)).toBeNull()
+  })
 
   it('localizes structured weather warning reason and action copy', () => {
     const weatherWarning: CareWarningOut = {
