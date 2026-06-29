@@ -276,16 +276,15 @@ export default function Settings() {
     setPushBusy(true)
     setDigestError(null)
     try {
+      // Manage only *this* device's subscription. Delivery is driven by the
+      // presence of push_subscriptions rows, so there's no account-wide flag
+      // to write — unsubscribing here can't silence another device.
       if (pushOnHere) {
-        // Unsubscribe only *this* device — other devices keep their pushes
-        // (delivery is driven by subscriptions, not the account flag).
         await disablePush()
         setPushOnHere(false)
-        await saveDigestPrefs({ ...digestPrefs, push_enabled: false })
       } else {
         await enablePush()
         setPushOnHere(true)
-        await saveDigestPrefs({ ...digestPrefs, push_enabled: true })
       }
     } catch (e) {
       setDigestError(

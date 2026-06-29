@@ -260,6 +260,7 @@ async def test_care_push_driven_by_subscription_not_account_flag(
     res = await client.post("/api/internal/send-digests", headers=cron_secret)
     assert res.json()["push_sent"] == 1
     assert len(sent_pushes) == 1
+    assert sent_pushes[0]["endpoint"] == SUB["endpoint"]
 
 
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
