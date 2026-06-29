@@ -16,7 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge (squash)
+        # Merge with DEPLOY_PAT when present so the resulting push to master is
+        # attributed to a real user and triggers the Fly Deploy workflow
+        # (GitHub suppresses on:push for GITHUB_TOKEN-authored merges). Falls
+        # back to GITHUB_TOKEN if the secret isn't set — auto-merge still works,
+        # it just won't auto-deploy the backend.
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DEPLOY_PAT || secrets.GITHUB_TOKEN }}
