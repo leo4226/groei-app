@@ -845,6 +845,12 @@ export const en: Translations = {
       confidence: 'confidence',
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Pick this one',
+      sourceBioclip: 'Floreren suggestion',
+      sourcePlantnet: 'PlantNet second opinion',
+      bestMatch: 'Best match',
+      alternativeMatch: 'Could also be',
+      plantnetCta: 'PlantNet second opinion',
+      plantnetProminentCta: 'Ask PlantNet for a second opinion',
     },
     destination: {
       title: 'What do you want to do with this scan?',
@@ -860,6 +866,35 @@ export const en: Translations = {
     confidence: {
       medium: 'Fairly confident',
       low: 'Not sure — pick one manually or try a better photo',
+      compareCandidates: 'Compare the top 2–3 matches before choosing one.',
+      summary: {
+        high: {
+          label: 'Likely match',
+          body: 'The photo looks like a strong match. Still check the visible plant details before saving.',
+        },
+        medium: {
+          label: 'Plausible match — verify details',
+          body: 'This is a plausible identification, not a certain answer. Compare leaves, flowers, and growth habit.',
+        },
+        low: {
+          label: 'Uncertain — treat as a suggestion only',
+          body: 'Floreren has limited evidence from this photo. Use the matches as a starting point, not as the answer.',
+        },
+        no_match: {
+          label: 'No reliable match',
+          body: 'There is no identification with enough confidence. Try a sharper photo or ask for a second opinion.',
+        },
+      },
+    },
+    guidance: {
+      title: 'What to check next',
+      items: [
+        'Check leaf shape.',
+        'Check flower or fruit if visible.',
+        'Check growth habit and location.',
+        'If unsure, try another photo from a different angle.',
+      ],
+      safety: 'Do not rely on app identification alone for edible, medicinal, or toxic plants.',
     },
     noMatch: {
       title: 'No match found',

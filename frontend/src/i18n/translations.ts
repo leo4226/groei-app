@@ -819,6 +819,12 @@ export type Translations = {
       confidence: string  // "confidence"
       poweredBy: string   // "powered by Pl@ntNet"
       choose: string      // "Pick this one"
+      sourceBioclip: string  // "Floreren suggestion"
+      sourcePlantnet: string // "PlantNet second opinion"
+      bestMatch: string      // "Best match"
+      alternativeMatch: string // "Could also be"
+      plantnetCta: string          // "PlantNet second opinion"
+      plantnetProminentCta: string // "Ask PlantNet for a second opinion"
     }
     destination: {
       title: string
@@ -834,6 +840,18 @@ export type Translations = {
     confidence: {
       medium: string       // "Fairly confident" / "Redelijk zeker"
       low: string          // "Not sure — pick one manually or try a better photo"
+      compareCandidates: string // prompt to compare top 2–3 candidates
+      summary: {
+        high: { label: string; body: string }
+        medium: { label: string; body: string }
+        low: { label: string; body: string }
+        no_match: { label: string; body: string }
+      }
+    }
+    guidance: {
+      title: string
+      items: string[]
+      safety: string
     }
     noMatch: {
       title: string           // "No match found"

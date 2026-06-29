@@ -845,6 +845,12 @@ export const nl: Translations = {
       confidence: 'zekerheid',
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Kies deze',
+      sourceBioclip: 'Floreren-herkenning',
+      sourcePlantnet: 'PlantNet second opinion',
+      bestMatch: 'Beste match',
+      alternativeMatch: 'Kan ook zijn',
+      plantnetCta: 'PlantNet second opinion',
+      plantnetProminentCta: 'Vraag PlantNet om een second opinion',
     },
     destination: {
       title: 'Wat wil je met deze scan doen?',
@@ -860,6 +866,35 @@ export const nl: Translations = {
     confidence: {
       medium: 'Redelijk zeker',
       low: 'Niet zeker — kies handmatig of probeer een betere foto',
+      compareCandidates: 'Vergelijk vooral de bovenste 2–3 matches voordat je er één kiest.',
+      summary: {
+        high: {
+          label: 'Waarschijnlijk deze plant',
+          body: 'De foto lijkt sterk overeen te komen. Controleer alsnog de zichtbare kenmerken voordat je opslaat.',
+        },
+        medium: {
+          label: 'Mogelijke match — controleer details',
+          body: 'Dit is een plausibele herkenning, maar geen zekere uitkomst. Vergelijk bladeren, bloemen en groeivorm.',
+        },
+        low: {
+          label: 'Onzeker — zie dit als suggestie',
+          body: 'Floreren heeft weinig houvast in deze foto. Gebruik de matches als startpunt, niet als antwoord.',
+        },
+        no_match: {
+          label: 'Geen betrouwbare match',
+          body: 'Er is geen herkenning met genoeg zekerheid. Probeer een scherpere foto of vraag een tweede opinion.',
+        },
+      },
+    },
+    guidance: {
+      title: 'Wat kun je nu controleren?',
+      items: [
+        'Controleer de bladvorm.',
+        'Controleer bloem of vrucht als die zichtbaar is.',
+        'Controleer groeivorm en vindplaats.',
+        'Twijfel je? Maak nog een foto vanuit een andere hoek.',
+      ],
+      safety: 'Vertrouw bij eetbare, medicinale of giftige planten niet alleen op app-herkenning.',
     },
     noMatch: {
       title: 'Geen match gevonden',
