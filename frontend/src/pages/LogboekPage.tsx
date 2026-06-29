@@ -4,6 +4,7 @@ import { useT } from '../context/LanguageContext'
 import { care } from '../api/client'
 import type { RecentLogEntry } from '../types'
 import { resolveIconUrl } from '../utils/icons'
+import Glyph from '../components/ui/Glyph'
 
 const LOG_TAG: Record<string, { color: string; bg: string; border: string }> = {
   water:       { color: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',      border: 'rgba(47,93,58,.2)' },
@@ -59,7 +60,7 @@ export default function LogboekPage() {
             <div key={entry.id} className="log-entry" style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 14, padding: '16px 18px', alignItems: 'flex-start', borderTop: i > 0 ? '1px solid var(--color-border-soft)' : 'none', overflow: 'hidden' }}>
               <Link to={`/plants/${entry.plant_id}`} style={{ display: 'block', flexShrink: 0 }}>
                 <div style={{ width: 56, height: 56, borderRadius: 8, background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)', border: '1px solid var(--color-border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {entry.icon_key ? <img src={resolveIconUrl(entry.icon_key)!} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <span style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>🌿</span>}
+                  {entry.icon_key ? <img src={resolveIconUrl(entry.icon_key)!} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <span style={{ color: 'var(--color-text-muted)' }}><Glyph name="leaf" size={18} /></span>}
                 </div>
               </Link>
               <div style={{ minWidth: 0, overflow: 'hidden' }}>

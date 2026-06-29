@@ -1,5 +1,6 @@
 import type { SpotInspectorResult, SpeciesSuggestion } from '../../hooks/useSpotInspector'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 const MONTH_NAMES_NL = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
 
@@ -36,7 +37,7 @@ export default function SpotInspectorSheet({ result, loading, onClose }: Props) 
               {result.sunByMonth[currentMonth].toFixed(1)}u zon nu · {suitable.length} {t.spotInspector.suitable.toLowerCase()}
             </p>
           </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text text-xl leading-none">✕</button>
+          <button onClick={onClose} className="text-text-muted hover:text-text leading-none"><Glyph name="x" size={18} /></button>
         </div>
 
         <div className="px-5 pb-5">

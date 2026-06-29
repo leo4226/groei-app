@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
 import { LOCAL_PLANTS } from '../../data/plants-dataset'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 import { resolveIconUrl } from '../../utils/icons'
 
 const TYPE_COLOR: Record<string, string> = {
@@ -91,8 +92,8 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-dashed border-border/60
                        hover:border-primary/40 hover:bg-primary/5 transition-colors mb-3"
           >
-            <div className="w-9 h-9 rounded-lg bg-bg flex items-center justify-center text-lg shrink-0">
-              ✨
+            <div className="w-9 h-9 rounded-lg bg-bg text-primary flex items-center justify-center shrink-0">
+              <Glyph name="sparkle" size={18} />
             </div>
             <div className="text-left">
               <span className="text-sm font-semibold text-primary">
