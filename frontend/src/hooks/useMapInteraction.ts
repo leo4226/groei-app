@@ -22,6 +22,8 @@ export interface UseMapInteractionConfig {
   moveMode?: boolean
   movePlantId?: number | null
   onPlantMoveComplete?: (plantId: number) => void | Promise<void>
+  /** Patch a plant in place after a move (e.g. the recomputed bare/potted icon_key). */
+  onPlantUpdated?: (plantId: number, patch: Partial<MapPlant>) => void
   onPlantTap?: (plant: MapPlant) => void
   onObjectTap?: (obj: MapObject) => void
   onOpenDetails?: (type: 'plant' | 'object', id: number) => void
@@ -68,6 +70,7 @@ export function useMapInteraction({
   moveMode = false,
   movePlantId = null,
   onPlantMoveComplete,
+  onPlantUpdated,
   onPlantTap,
   onObjectTap,
   onOpenDetails,
@@ -334,14 +337,23 @@ export function useMapInteraction({
     if (pos && didDrag.current) {
       try {
         if (dragging.type === 'plant') {
+          let updated
           if (dropTarget?.type === 'container') {
-            await plantsApi.setContainer(dragging.id, dropTarget.target.id)
+            updated = await plantsApi.setContainer(dragging.id, dropTarget.target.id)
           } else if (dropTarget?.type === 'zone') {
             const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
-            await plantsApi.setGroundZone(dragging.id, dropTarget.target.id, rounded.map_x, rounded.map_y)
+            updated = await plantsApi.setGroundZone(dragging.id, dropTarget.target.id, rounded.map_x, rounded.map_y)
           } else {
             const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
-            await plantsApi.setPosition(dragging.id, { map_id: mapId, ...rounded, ground_zone_id: null })
+            updated = await plantsApi.setPosition(dragging.id, { map_id: mapId, ...rounded, ground_zone_id: null })
+          }
+          // Reflect the server-recomputed placement (esp. the bare/potted
+          // icon_key) on the marker without a full reload.
+          if (updated) {
+            onPlantUpdated?.(dragging.id, {
+              icon_key: updated.icon_key,
+              container_id: updated.container_id,
+            })
           }
         } else if (dragging.type === 'container') {
           const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
@@ -371,7 +383,7 @@ export function useMapInteraction({
     setDragging(null)
     setDropTarget(null)
     didDrag.current = false
-  }, [dragging, mapId, dropTarget, onPositionUpdate, selection.mode, dispatch, onPlantMoveComplete])
+  }, [dragging, mapId, dropTarget, onPositionUpdate, selection.mode, dispatch, onPlantMoveComplete, onPlantUpdated])
 
   // Keep ptrMoveRef/ptrUpRef in sync with latest handler callbacks
   useEffect(() => {
