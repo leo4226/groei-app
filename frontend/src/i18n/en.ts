@@ -906,6 +906,7 @@ export const en: Translations = {
     notesLabel: 'Notes',
     notesPlaceholder: 'Likes indirect light, water from below...',
     saving: 'Saving...',
+    saveFailed: "Couldn't save — please try again.",
     databasePrefill: 'Filled from plant database — adjust where needed',
     careScheduleTitle: 'Care schedule',
     careScheduleDesc: 'How often does this plant need care?',

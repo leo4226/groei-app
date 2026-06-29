@@ -83,6 +83,7 @@ export default function EditPlant() {
   const [lastRepottedInput, setLastRepottedInput] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const origWaterSchedule = useRef<{id: number; days: number} | null>(null)
 
   // Icon catalog for potted/bare variant switching
@@ -194,6 +195,7 @@ export default function EditPlant() {
     if (!name.trim() || !plant) return
 
     setSubmitting(true)
+    setSaveError(null)
     try {
       await updatePlant(plantId, buildEditPlantPayload({
         plant,
@@ -225,8 +227,9 @@ export default function EditPlant() {
       }
 
       navigate(-1)
-    } catch {
-      // Error handled by store
+    } catch (e) {
+      // Surface the failure instead of leaving the button silently stuck.
+      setSaveError(e instanceof Error && e.message ? e.message : t.editPlant.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -545,6 +548,9 @@ export default function EditPlant() {
               )}
 
               {/* Action Bar */}
+              {saveError && (
+                <p className="text-sm text-fiery-red mt-4" role="alert">{saveError}</p>
+              )}
               <div className="sticky bottom-0 bg-bg/95 backdrop-blur border-t border-border mt-6 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 py-4 flex items-center justify-between gap-3">
                 <button
                   type="button"

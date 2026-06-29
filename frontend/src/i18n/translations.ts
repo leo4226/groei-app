@@ -880,6 +880,7 @@ export type Translations = {
     notesLabel: string       // "Notes"
     notesPlaceholder: string // "Likes indirect light, water from below..."
     saving: string           // "Saving..."
+    saveFailed: string       // "Couldn't save — please try again."
     databasePrefill: string  // "Filled from plant database — adjust where needed"
     careScheduleTitle: string // "Care schedule"
     careScheduleDesc: string  // "How often does this plant need care?"
