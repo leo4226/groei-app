@@ -367,7 +367,7 @@ export const nl: Translations = {
     digestLoadError: 'Kon e-mailvoorkeuren niet laden. Probeer het later opnieuw.',
     digestSaveError: 'Opslaan mislukt — je vorige instelling is behouden.',
     pushToggle: 'Pushmelding op dit apparaat',
-    pushToggleDesc: 'Eén melding per dag op het gekozen tijdstip — alleen als er taken zijn',
+    pushToggleDesc: 'Een melding op de dag dat een plant verzorging nodig heeft (overdag verstuurd)',
     pushDenied: 'Meldingen zijn geblokkeerd voor deze site. Sta ze toe in je browserinstellingen.',
     pushUnsupported: 'Deze browser ondersteunt geen pushmeldingen.',
     pushIosHint: 'Voeg Floreren eerst toe aan je beginscherm (Deel → Zet op beginscherm), dan werkt push (iOS 16.4+).',

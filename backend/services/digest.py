@@ -176,30 +176,14 @@ def build_digest_email(
     return s["subject"], html
 
 
-# ── push payload ─────────────────────────────────────────────────────────
-
-def build_push_payload(overdue: list[CareTask], due_today: list[CareTask]) -> dict:
-    total = len(overdue) + len(due_today)
-    if overdue:
-        body = f"{total} taken vandaag, waarvan {len(overdue)} te laat"
-    else:
-        body = f"{total} taken vandaag" if total != 1 else "1 taak vandaag"
-    return {
-        "title": "Floreren 🌿",
-        "body": body,
-        "url": f"{APP_URL}/dashboard",
-    }
-
-
-# ── orchestration ────────────────────────────────────────────────────────
+# ── email digest orchestration ─────────────────────────────────────────────
 
 async def send_due_digests(db) -> dict:
-    """Email + push to every opted-in account whose hour matches now.
+    """Email digest to every opted-in account whose digest hour matches now.
 
-    The two channels share the selection and task data but stamp
-    independently (last_digest_sent_on / last_push_sent_on), so one
-    channel failing never blocks the other. Returns counts only — never
-    account data (the response is exposed to the cron caller).
+    Email only — push is real-time per task (`send_due_care_pushes`), not a
+    daily batch. Returns counts only — never account data (the response is
+    exposed to the cron caller).
     """
     now = _now()
     today = now.date()
@@ -207,20 +191,16 @@ async def send_due_digests(db) -> dict:
     prefs = await db.execute_fetchall(
         """
         SELECT np.account_id, np.digest_time, np.digest_enabled,
-               np.last_digest_sent_on, np.push_enabled, np.last_push_sent_on,
-               a.email, a.name, a.household_id
+               np.last_digest_sent_on, a.email, a.name, a.household_id
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
-        WHERE np.digest_enabled OR np.push_enabled
+        WHERE np.digest_enabled
         """
     )
 
     checked = sent = skipped_no_tasks = failed = 0
-    push_sent = push_failed = push_pruned = 0
     for pref in prefs:
-        email_due = pref["digest_enabled"] and account_is_due(pref, now)
-        push_due = pref["push_enabled"] and account_is_due(pref, now, "last_push_sent_on")
-        if not email_due and not push_due:
+        if not account_is_due(pref, now):
             continue
         checked += 1
 
@@ -229,53 +209,128 @@ async def send_due_digests(db) -> dict:
 
         if not overdue and not due_today:
             # Task-free day: nothing to send, but stamp so later calls skip the work.
-            if email_due:
-                await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
-            if push_due:
-                await _stamp(db, pref["account_id"], today, "last_push_sent_on")
+            await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
             skipped_no_tasks += 1
             continue
 
-        if email_due:
-            token = make_unsubscribe_token(pref["account_id"])
-            unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
-            subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
-            if send_email(pref["email"], subject, html):
-                await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
-                sent += 1
-            else:
-                failed += 1  # no stamp — eligible again on the next matching hour/day
-
-        if push_due:
-            subs = await db.execute_fetchall(
-                "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
-                (pref["account_id"],),
-            )
-            if subs:
-                payload = build_push_payload(overdue, due_today)
-                delivered = False
-                for sub in subs:
-                    outcome = send_push(dict(sub), payload)
-                    if outcome == "ok":
-                        delivered = True
-                    elif outcome == "gone":
-                        # Dead endpoint (404/410) — prune at send time.
-                        await db.execute(
-                            "DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],)
-                        )
-                        await db.commit()
-                        push_pruned += 1
-                if delivered:
-                    await _stamp(db, pref["account_id"], today, "last_push_sent_on")
-                    push_sent += 1
-                else:
-                    push_failed += 1
+        token = make_unsubscribe_token(pref["account_id"])
+        unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
+        subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
+        if send_email(pref["email"], subject, html):
+            await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
+            sent += 1
+        else:
+            failed += 1  # no stamp — eligible again on the next matching hour/day
 
     return {
         "checked": checked, "sent": sent,
         "skipped_no_tasks": skipped_no_tasks, "failed": failed,
-        "push_sent": push_sent, "push_failed": push_failed, "push_pruned": push_pruned,
     }
+
+
+# ── real-time care push ────────────────────────────────────────────────────
+
+# Don't ping overnight: only send care pushes during local daytime hours
+# (Amsterdam). A task that becomes due overnight notifies on the first
+# daytime dispatch.
+DAYTIME_START_HOUR = 8
+DAYTIME_END_HOUR = 21  # send when DAYTIME_START_HOUR <= hour < DAYTIME_END_HOUR
+
+
+def build_care_push_payload(due_rows: list[dict]) -> dict:
+    """One push summarising the newly-due tasks for an account.
+
+    due_rows: dicts with plant_name + care_type.
+    """
+    n = len(due_rows)
+    if n == 1:
+        row = due_rows[0]
+        label = CARE_TYPES.get(row["care_type"], {}).get("label_nl", row["care_type"])
+        body = f"{row['plant_name']} heeft aandacht nodig — {label.lower()}"
+    else:
+        body = f"{n} planten hebben verzorging nodig"
+    return {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}
+
+
+async def send_due_care_pushes(db) -> dict:
+    """Push a reminder the moment a care task becomes due, once per due cycle.
+
+    Runs every (hourly) cron call. For each push-enabled account, finds active
+    schedules that are due (next_due <= today) and not yet notified for their
+    current due date, sends one batched push, and stamps `notified_for_due` so
+    the same task never re-pings until it's completed and falls due again.
+    Gated to daytime hours so nobody gets a 3am water reminder.
+    """
+    now = _now()
+    today = now.date()
+    if not (DAYTIME_START_HOUR <= now.hour < DAYTIME_END_HOUR):
+        return {"push_checked": 0, "push_sent": 0, "push_failed": 0,
+                "push_pruned": 0, "off_hours": True}
+
+    accounts = await db.execute_fetchall(
+        """
+        SELECT np.account_id, a.household_id
+        FROM notification_preferences np
+        JOIN accounts a ON a.id = np.account_id
+        WHERE np.push_enabled
+        """
+    )
+
+    push_checked = push_sent = push_failed = push_pruned = 0
+    for acc in accounts:
+        due_rows = await db.execute_fetchall(
+            """
+            SELECT cs.id, cs.next_due, cs.care_type, p.name AS plant_name
+            FROM care_schedules cs
+            JOIN plants p ON cs.plant_id = p.id
+            WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
+              AND cs.next_due <= ?
+              AND (cs.notified_for_due IS NULL OR cs.notified_for_due <> cs.next_due)
+            ORDER BY cs.next_due ASC
+            """,
+            (acc["household_id"], today),
+        )
+        if not due_rows:
+            continue
+        push_checked += 1
+
+        subs = await db.execute_fetchall(
+            "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
+            (acc["account_id"],),
+        )
+        if not subs:
+            continue
+
+        payload = build_care_push_payload([dict(r) for r in due_rows])
+        delivered = False
+        for sub in subs:
+            outcome = send_push(dict(sub), payload)
+            if outcome == "ok":
+                delivered = True
+            elif outcome == "gone":
+                await db.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],))
+                await db.commit()
+                push_pruned += 1
+
+        if delivered:
+            # Stamp each due schedule with the due date we just notified for, so
+            # it won't re-ping until completion advances next_due. Only on a
+            # real delivery — a transient failure stays eligible next hour.
+            for row in due_rows:
+                due = row["next_due"]
+                if isinstance(due, str):
+                    due = date.fromisoformat(due[:10])
+                await db.execute(
+                    "UPDATE care_schedules SET notified_for_due = ? WHERE id = ?",
+                    (due, row["id"]),
+                )
+            await db.commit()
+            push_sent += 1
+        else:
+            push_failed += 1
+
+    return {"push_checked": push_checked, "push_sent": push_sent,
+            "push_failed": push_failed, "push_pruned": push_pruned}
 
 
 _STAMP_COLUMNS = {"last_digest_sent_on", "last_push_sent_on"}
