@@ -4,6 +4,7 @@ import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { HARDSCAPE_PRESETS } from '../../hooks/useEditorState'
 import { ZONE_STYLES, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   activeZoneType: ZoneStyleType
@@ -146,7 +147,7 @@ export default function EditorLegendPanel({
             disabled={!canFenceGarden}
             className="flex items-center gap-2 px-2 py-2 w-full rounded-lg text-left transition-colors bg-bg hover:bg-primary/10 border border-border disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <span className="text-base shrink-0">🧱</span>
+            <Glyph name="brick" size={16} className="shrink-0 text-text-muted" />
             <div className="min-w-0">
               <div className="text-xs font-semibold text-text leading-tight">Omhein de tuin</div>
               <div className="text-[10px] text-text-muted leading-tight mt-0.5">

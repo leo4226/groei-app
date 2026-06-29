@@ -3,6 +3,7 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
 import HeatmapLegend from './HeatmapLegend'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 export type SunViewMode = 'live' | 'heatmap'
 
@@ -146,7 +147,7 @@ export default function SunControls({
                   }`}
                   style={isActive ? { backgroundColor: profile.color + '55' } : undefined}
                 >
-                  <span>{profile.emoji}</span>
+                  <Glyph name={profile.icon} size={13} />
                   <span>{profile.label}</span>
                 </button>
               )
