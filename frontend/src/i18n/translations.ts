@@ -317,6 +317,7 @@ export type Translations = {
     pushDenied: string
     pushUnsupported: string
     pushIosHint: string
+    dataSectionTitle: string
     dataTitle: string
     dataDescription: string
     downloadData: string
