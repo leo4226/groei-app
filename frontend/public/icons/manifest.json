@@ -1,6 +1,6 @@
 {
-  "count": 308,
-  "iconCount": 308,
+  "count": 309,
+  "iconCount": 309,
   "categories": [
     {
       "id": "all",
@@ -3009,6 +3009,16 @@
       "family": "",
       "file": "placeholder_unknown_bare.svg",
       "variant_of": "placeholder_unknown"
+    },
+    {
+      "id": "sunflower_bare",
+      "name": "Zonnebloem",
+      "sci": "Helianthus annuus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "sunflower_bare.svg",
+      "variant_of": "sunflower"
     }
   ]
 }
