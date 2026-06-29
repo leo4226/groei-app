@@ -11,6 +11,7 @@ export type GlyphName =
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
   | 'droplet' | 'flower' | 'palette' | 'thermometer' | 'gamepad'
   | 'trophy' | 'clipboard' | 'link' | 'text'
+  | 'chart' | 'users' | 'compass' | 'lock'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -205,6 +206,36 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
       <path d="M5 7V5.5h14V7" />
       <path d="M12 5.5V19" />
       <path d="M9.5 19h5" />
+    </>
+  ),
+  // chart — overview / stats
+  chart: (
+    <>
+      <path d="M4 20V4M4 20h16" />
+      <path d="M8 17v-4M12 17V8M16 17v-6" />
+    </>
+  ),
+  // users — accounts
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+      <path d="M16 5.5a3 3 0 0 1 0 5.4M16.5 13.5a5.5 5.5 0 0 1 4 5.5" />
+    </>
+  ),
+  // compass — coverage / navigation
+  compass: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M15.2 8.8 13.4 13.4 8.8 15.2 10.6 10.6z" />
+    </>
+  ),
+  // lock — audit / secure
+  lock: (
+    <>
+      <rect x="5.5" y="10.5" width="13" height="9" rx="1.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+      <circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
   // gamepad — games
