@@ -678,7 +678,7 @@ export default function Settings() {
               </button>
             </div>
           )}
-          {digestPrefs && (digestPrefs.digest_enabled || digestPrefs.push_enabled) && (
+          {digestPrefs?.digest_enabled && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
               <div>
                 <div className="font-semibold text-sm">{t.settings.digestTimeLabel}</div>

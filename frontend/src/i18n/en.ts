@@ -367,7 +367,7 @@ export const en: Translations = {
     digestLoadError: 'Could not load email preferences. Try again later.',
     digestSaveError: 'Saving failed — your previous setting was kept.',
     pushToggle: 'Push notification on this device',
-    pushToggleDesc: 'One notification per day at the chosen time — only when there are tasks',
+    pushToggleDesc: 'A reminder the day a plant needs care (sent during the daytime)',
     pushDenied: 'Notifications are blocked for this site. Allow them in your browser settings.',
     pushUnsupported: "This browser doesn't support push notifications.",
     pushIosHint: 'Add Floreren to your home screen first (Share → Add to Home Screen), then push works (iOS 16.4+).',

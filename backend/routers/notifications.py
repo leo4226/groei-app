@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field
 
 from auth import get_current_account
 from database import db_dep
-from services.digest import APP_URL, send_due_digests, verify_unsubscribe_token
+from services.digest import (
+    APP_URL,
+    send_due_care_pushes,
+    send_due_digests,
+    verify_unsubscribe_token,
+)
 from services.push import send_push
 
 router = APIRouter(tags=["notifications"])
@@ -229,8 +234,12 @@ async def send_digests(
         x_digest_secret.encode(), expected.encode()
     ):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    # Counts only — never account data in the response.
-    return await send_due_digests(db)
+    # Two independent channels, same hourly trigger: the daily email digest
+    # (fires at each account's chosen hour) and real-time care pushes (fire
+    # the hour a task becomes due). Counts only — never account data.
+    email_counts = await send_due_digests(db)
+    push_counts = await send_due_care_pushes(db)
+    return {**email_counts, **push_counts}
 
 
 @router.get("/notifications/unsubscribe")

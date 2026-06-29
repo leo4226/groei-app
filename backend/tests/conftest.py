@@ -105,7 +105,8 @@ SCHEMA = """
         notes TEXT,
         season_adjust TEXT,
         created_at TEXT,
-        is_ephemeral INTEGER DEFAULT 0
+        is_ephemeral INTEGER DEFAULT 0,
+        notified_for_due DATE
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,

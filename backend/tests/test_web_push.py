@@ -156,12 +156,15 @@ async def test_push_sent_to_opted_in_account(
     assert res.status_code == 200
     assert res.json()["push_sent"] == 1
     assert len(sent_pushes) == 1
-    assert "/dashboard" in sent_pushes[0]["payload"]["url"]
+    assert "/maps" in sent_pushes[0]["payload"]["url"]
+    assert "Monstera" in sent_pushes[0]["payload"]["body"]
 
+    # The due schedule is stamped with its due date so it won't re-ping until
+    # completion advances next_due.
     row = (await seeded_db.execute_fetchall(
-        "SELECT last_push_sent_on FROM notification_preferences WHERE account_id = 1"
+        "SELECT notified_for_due FROM care_schedules WHERE plant_id = 10"
     ))[0]
-    assert str(row["last_push_sent_on"])[:10] == "2026-06-11"
+    assert str(row["notified_for_due"])[:10] == "2026-06-09"
 
 
 async def test_push_idempotent_within_day(
@@ -202,6 +205,46 @@ async def test_gone_subscription_is_pruned(
     assert res.status_code == 200
     rows = await seeded_db.execute_fetchall("SELECT id FROM push_subscriptions")
     assert rows == []  # 410 Gone → row pruned at send time
+
+
+@pytest.fixture
+def at_night(monkeypatch):
+    import services.digest as digest
+    monkeypatch.setattr(digest, "_now", lambda: datetime(2026, 6, 11, 3, 30, tzinfo=AMS))
+
+
+async def test_no_care_push_overnight(
+    client, seeded_db, cron_secret, sent_pushes, at_night, auth_header
+):
+    # A due task at 3:30am must not ping — care pushes are daytime-only.
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 0
+    assert res.json().get("off_hours") is True
+    assert sent_pushes == []
+
+
+async def test_care_push_renotifies_after_completion(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # Notify once for the current due cycle…
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 1
+
+    # …completing the task advances next_due to a new (still-due) date, which no
+    # longer matches notified_for_due → the next cycle pings again.
+    await seeded_db.execute(
+        "UPDATE care_schedules SET next_due = '2026-06-10' WHERE plant_id = 10"
+    )
+    await seeded_db.commit()
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 2
 
 
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
