@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
+import Glyph from './ui/Glyph'
 import { sendChatMessage, submitBugReport, ChatRequestError, type ChatMessage, type PageContext } from '../api/chat'
 import {
   bugStepFromAnswerCount,
@@ -388,7 +389,9 @@ export default function HelpAssistant() {
             }}
           >
             <p style={{ margin: 0, fontSize: isMobile ? 12 : 13, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>
-              {isMobile ? '🌱 Vraag Stekkie' : bubble}
+              {isMobile
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Glyph name="sprout" size={13} style={{ flexShrink: 0 }} />Vraag Stekkie</span>
+                : bubble}
             </p>
             {!isMobile && (
               <div

@@ -9,6 +9,7 @@ import { resolveIconUrl } from '../../utils/icons'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import { compressImage } from '../../utils/compressImage'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
+import Glyph from '../ui/Glyph'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
@@ -257,7 +258,7 @@ export default function PlantQuickSheet({
                 {plant.species && <p style={clampedPlantSpeciesStyle()}>{plant.species}</p>}
                 {plant.quantity > 1 && (
                   <p style={{ margin: '3px 0 0', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)' }}>
-                    <span aria-hidden="true">❋</span>{t.plantQuickSheet.quantityCount(plant.quantity)}
+                    <Glyph name="sprout" size={12} aria-hidden="true" />{t.plantQuickSheet.quantityCount(plant.quantity)}
                   </p>
                 )}
                 <button
@@ -281,7 +282,7 @@ export default function PlantQuickSheet({
                   <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setMenuOpen(false)} />
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 61, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 6 }}>
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}>✎</span>{t.plantQuickSheet.edit}</button>
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}><Glyph name="edit" size={15} /></span>{t.plantQuickSheet.edit}</button>
                       {onMoveOnMap && (
                         <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle}>↔</span>{t.plantQuickSheet.moveOnMap}</button>
                       )}
@@ -289,9 +290,9 @@ export default function PlantQuickSheet({
                       {onDuplicate && (
                         <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle}>⧉</span>{t.plantQuickSheet.duplicate}</button>
                       )}
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}>{locked ? '🔓' : '🔒'}</span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={15} /></span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
                       {onRemove && (
-                        <button style={{ ...menuItemStyle, color: 'var(--color-overdue)' }} onClick={() => { setMenuOpen(false); onRemove(plant.id); onClose() }}><span style={menuIconStyle}>🗑</span>{t.plantQuickSheet.remove}</button>
+                        <button style={{ ...menuItemStyle, color: 'var(--color-overdue)' }} onClick={() => { setMenuOpen(false); onRemove(plant.id); onClose() }}><span style={menuIconStyle}><Glyph name="trash" size={15} /></span>{t.plantQuickSheet.remove}</button>
                       )}
                     </div>
                   </>
@@ -306,11 +307,11 @@ export default function PlantQuickSheet({
             <div style={{ marginBottom: 12, minHeight: 18 }}>
               {urgentSchedules.length > 0 ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 600, color: 'var(--color-overdue)' }}>
-                  <span aria-hidden="true">⚠</span>{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
+                  <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
                 </span>
               ) : detail !== null ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                  <span style={{ color: 'var(--color-primary)', fontStyle: 'normal' }}>✓</span>{t.mapPage.sheetAllGood}
+                  <Glyph name="check" size={14} style={{ color: 'var(--color-primary)' }} />{t.mapPage.sheetAllGood}
                 </span>
               ) : null}
             </div>
@@ -333,7 +334,7 @@ export default function PlantQuickSheet({
                     style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: done ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
                   >
                     <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
-                      {done ? <span style={{ color: '#fff', fontSize: 20 }}>✓</span> : <CareIcon type={ct as CareIconType} size={24} />}
+                      {done ? <Glyph name="check" size={24} strokeWidth={2.4} style={{ color: '#fff' }} /> : <CareIcon type={ct as CareIconType} size={24} />}
                       {!done && (overdue || dueToday) && (
                         <span style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, padding: '0 4px', boxSizing: 'border-box', borderRadius: 9, background: overdue ? 'var(--color-overdue)' : 'var(--color-due)', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', border: '1.5px solid var(--color-surface)' }}>
                           {overdue ? `${Math.abs(due as number)}d` : '!'}
@@ -364,7 +365,7 @@ export default function PlantQuickSheet({
           {/* ── Sun fit ── */}
           {sunFitInfo && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 14 }}>
-              <span style={{ fontSize: 14, flexShrink: 0 }}>☀</span>
+              <Glyph name="sun" size={14} style={{ flexShrink: 0, color: '#f0a020' }} />
               <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-muted)' }}>
                 ~{sunFitInfo.sunHours.toFixed(1)}u{' · '}{t.locale.startsWith('en') ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
               </span>
@@ -425,9 +426,9 @@ export default function PlantQuickSheet({
                   <button
                     onClick={() => onDeletePlacement?.(pl.id)}
                     aria-label={t.plantQuickSheet.removeSpot}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-overdue)', fontSize: 14, flexShrink: 0, padding: 4 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-overdue)', flexShrink: 0, padding: 4, display: 'inline-flex' }}
                   >
-                    ✕
+                    <Glyph name="x" size={14} />
                   </button>
                 </div>
               ))}

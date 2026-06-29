@@ -12,7 +12,7 @@ export type GlyphName =
   | 'droplet' | 'flower' | 'palette' | 'thermometer' | 'gamepad'
   | 'trophy' | 'clipboard' | 'link' | 'text'
   | 'chart' | 'users' | 'compass' | 'lock' | 'cloud' | 'brick'
-  | 'scissors' | 'eye' | 'bulb' | 'map' | 'calendar' | 'refresh'
+  | 'scissors' | 'eye' | 'bulb' | 'map' | 'calendar' | 'refresh' | 'unlock'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -291,6 +291,14 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
     <>
       <path d="M20 5.5v4h-4" />
       <path d="M19.3 9.5a7.5 7.5 0 1 0 .4 5" />
+    </>
+  ),
+  // unlock — open padlock
+  unlock: (
+    <>
+      <rect x="5.5" y="10.5" width="13" height="9" rx="1.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 7.7-1.5" />
+      <circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
   // gamepad — games

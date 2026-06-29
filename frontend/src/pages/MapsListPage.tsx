@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import PageMasthead from '../components/ui/PageMasthead'
+import Glyph from '../components/ui/Glyph'
 import type { MapInfo } from '../types'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
@@ -89,7 +90,7 @@ export default function MapsListPage() {
       {error && (
         <div className="bg-overdue/10 text-overdue text-sm px-3 py-2 rounded-lg mb-3 flex justify-between items-center">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold ml-2">✕</button>
+          <button onClick={() => setError(null)} className="font-bold ml-2 inline-flex items-center"><Glyph name="x" size={15} /></button>
         </div>
       )}
 

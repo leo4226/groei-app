@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
+import Glyph from '../ui/Glyph'
 import type { RecentLogEntry } from '../../types'
 
 // Tag colours per care type — mirrors the dashboard's LOG_TAG palette.
@@ -84,7 +85,7 @@ function LogRow({ entry, first, locale, actionLabel }: {
         style={{ background: 'linear-gradient(145deg, #FDFAF1, #EDE5D1)' }}>
         {entry.icon_key
           ? <img src={resolveIconUrl(entry.icon_key)!} alt="" className="w-[80%] h-[80%] object-contain" />
-          : <span className="text-text-muted text-sm">🌿</span>}
+          : <Glyph name="leaf" size={20} className="text-text-muted" />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted mb-0.5 truncate">{dateStr} · {timeStr}</div>

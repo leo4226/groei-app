@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import MapView from '../components/map/MapView'
+import Glyph from '../components/ui/Glyph'
 import MapTopBar from '../components/map/MapTopBar'
 import MapActionCluster from '../components/map/MapActionCluster'
 import MapBottomSheet, { type SheetMode } from '../components/map/MapBottomSheet'
@@ -661,7 +662,7 @@ export default function MapPage() {
                 onClick={() => setShowPotPicker(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:bg-surface"
               >
-                ✕
+                <Glyph name="x" size={16} />
               </button>
             </div>
             <div className="flex flex-col gap-2">
