@@ -1030,6 +1030,8 @@ export const nl: Translations = {
     labelHide: 'Verberg namen',
     warningsShow: 'Toon waarschuwingen',
     warningsHide: 'Verberg waarschuwingen',
+    weatherWarningBadge: 'Weer',
+    weatherWarningAction: 'Actie',
     water: 'Bewater',
     fertilize: 'Bemest',
     sun: 'Zon',

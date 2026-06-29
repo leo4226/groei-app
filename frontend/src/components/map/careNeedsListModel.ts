@@ -14,6 +14,29 @@ export interface CareNeedsGroups {
   goodPlants: PlantWithMeta[]
 }
 
+export interface LocalizedWarningCopy {
+  headline: string
+  reason: string | null
+  action: string | null
+}
+
+export function isWeatherWarning(warning: CareWarningOut | null | undefined): warning is CareWarningOut {
+  return warning?.trigger === 'weather_event'
+}
+
+export function localizedWarningCopy(warning: CareWarningOut, t: Translations): LocalizedWarningCopy {
+  const useEnglish = t.locale.startsWith('en')
+  return {
+    headline: useEnglish ? (warning.message_en || warning.message_nl) : warning.message_nl,
+    reason: useEnglish
+      ? (warning.reason_en ?? warning.reason_nl ?? null)
+      : (warning.reason_nl ?? warning.reason_en ?? null),
+    action: useEnglish
+      ? (warning.action_en ?? warning.action_nl ?? null)
+      : (warning.action_nl ?? warning.action_en ?? null),
+  }
+}
+
 const CARE_TYPE_ICON: Record<string, string> = {
   water: '💧',
   fertilize: '🧪',

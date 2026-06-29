@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CareWarningOut, MapObject, MapPlant } from '../../../types'
 import { en } from '../../../i18n/en'
-import { buildCareNeedsGroups, getCareTypeDisplay } from '../careNeedsListModel'
+import { buildCareNeedsGroups, getCareTypeDisplay, localizedWarningCopy } from '../careNeedsListModel'
 
 function warning(careType: string, icon: string): CareWarningOut {
   return {
@@ -75,5 +75,29 @@ describe('CareNeedsList grouping', () => {
   it('uses the active language for care labels', () => {
     expect(getCareTypeDisplay('prune', en).label).toBe('Prune')
     expect(getCareTypeDisplay('heat_protect', en).label).toBe('Heat protect')
+  })
+
+
+  it('localizes structured weather warning reason and action copy', () => {
+    const weatherWarning: CareWarningOut = {
+      care_type: 'heat_protect',
+      severity: 'urgent',
+      trigger: 'weather_event',
+      days_overdue: null,
+      message_nl: 'Hitte morgen — max 32°C',
+      message_en: 'Heat tomorrow — max 32°C',
+      reason_nl: 'Maximum 32°C verwacht morgen (grens 28°C).',
+      reason_en: 'Maximum 32°C expected tomorrow (threshold 28°C).',
+      action_nl: 'Geef vroeg of laat water; zet potten in de schaduw en controleer bakken eerst.',
+      action_en: 'Water early or late; move pots to shade and check containers first.',
+      icon: '🔥',
+      color: '#e08049',
+    }
+
+    expect(localizedWarningCopy(weatherWarning, en)).toEqual({
+      headline: 'Heat tomorrow — max 32°C',
+      reason: 'Maximum 32°C expected tomorrow (threshold 28°C).',
+      action: 'Water early or late; move pots to shade and check containers first.',
+    })
   })
 })

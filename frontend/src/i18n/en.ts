@@ -1030,6 +1030,8 @@ export const en: Translations = {
     labelHide: 'Hide labels',
     warningsShow: 'Show warnings',
     warningsHide: 'Hide warnings',
+    weatherWarningBadge: 'Weather',
+    weatherWarningAction: 'Action',
     water: 'Water',
     fertilize: 'Fertilize',
     sun: 'Sun',

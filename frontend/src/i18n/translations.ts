@@ -1049,6 +1049,8 @@ export type Translations = {
     labelHide: string         // "Verberg namen"
     warningsShow: string      // "Toon waarschuwingen"
     warningsHide: string      // "Verberg waarschuwingen"
+    weatherWarningBadge: string
+    weatherWarningAction: string
     water: string             // "Bewater" (garden watering button)
     fertilize: string         // "Bemest" (garden fertilize button)
     sun: string               // "Zon"
