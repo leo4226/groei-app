@@ -1,7 +1,16 @@
-import type { MapPlant, MapObject } from '../../types'
+import type { CareWarningOut, MapPlant, MapObject } from '../../types'
 import { useT } from '../../context/LanguageContext'
 import { useState } from 'react'
-import { buildCareNeedsGroups, getCareTypeDisplay, type WarningPlant, type PlantWithMeta } from './careNeedsListModel'
+import {
+  buildCareNeedsGroups,
+  getCareTypeDisplay,
+  isWeatherWarning,
+  localizedWarningCopy,
+  localizedWeatherWarningCopy,
+  type LocalizedWarningCopy,
+  type WarningPlant,
+  type PlantWithMeta,
+} from './careNeedsListModel'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
@@ -44,6 +53,20 @@ export default function CareNeedsList({ plants, objects, onPlantTap }: Props) {
   )
 }
 
+function WeatherWarningInline({ copy, t }: { copy: LocalizedWarningCopy; t: ReturnType<typeof useT> }) {
+  return (
+    <span className="mt-1 block space-y-0.5 text-[9px] leading-snug text-text-muted">
+      {copy.reason && <span className="block">{copy.reason}</span>}
+      {copy.action && (
+        <span className="block">
+          <span className="font-semibold text-text">{t.mapPage.weatherWarningAction}: </span>
+          {copy.action}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function CareTypeGroup({
   careType,
   plants,
@@ -59,6 +82,7 @@ function CareTypeGroup({
   const [expanded, setExpanded] = useState(false)
   const info = getCareTypeDisplay(careType, t)
   const dotColor = plants[0]?.warning.color ?? '#ea0706'
+  const weatherCopy = localizedWeatherWarningCopy(plants, t)
 
   return (
     <div className="mb-1.5 last:mb-0">
@@ -74,6 +98,11 @@ function CareTypeGroup({
         <span className="text-xs text-text font-medium flex-1 min-w-0 truncate">
           {info.label}
         </span>
+        {weatherCopy && (
+          <span className="px-1.5 py-0.5 rounded-full bg-aqua-glow/10 text-aqua-glow text-[8px] font-semibold uppercase tracking-wide shrink-0">
+            {t.mapPage.weatherWarningBadge}
+          </span>
+        )}
         <span className="text-[10px] text-text-muted tabular-nums shrink-0">
           {plantCount}
         </span>
@@ -90,6 +119,7 @@ function CareTypeGroup({
               onTap={onPlantTap}
               dotColor={plant.warning.color ?? dotColor}
               careType={plant.warning.care_type}
+              warning={plant.warning}
             />
           ))}
         </ul>
@@ -103,15 +133,20 @@ function PlantRow({
   onTap,
   dotColor,
   careType,
+  warning,
 }: {
   plant: PlantWithMeta
   onTap: (p: MapPlant) => void
   dotColor: string
   careType?: string
+  warning?: CareWarningOut
 }) {
   const containerName = plant.containerName ?? null
   const t = useT()
   const displayName = plantDisplayName(plant, t.locale)
+  const weatherCopy = warning && isWeatherWarning(warning)
+    ? localizedWarningCopy(warning, t)
+    : null
 
   return (
     <li
@@ -127,6 +162,7 @@ function PlantRow({
         {containerName && (
           <span className="text-[9px] text-text-muted truncate block">in {containerName}</span>
         )}
+        {weatherCopy && <WeatherWarningInline copy={weatherCopy} t={t} />}
       </span>
       {careType && (
         <span className="shrink-0 flex items-center" style={{ color: dotColor }}>

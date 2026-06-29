@@ -37,6 +37,22 @@ export function localizedWarningCopy(warning: CareWarningOut, t: Translations): 
   }
 }
 
+export interface WarningCarrier {
+  warning?: CareWarningOut | null
+  top_warning?: CareWarningOut | null
+}
+
+export function localizedWeatherWarningCopy(
+  carriers: WarningCarrier[],
+  t: Translations,
+): LocalizedWarningCopy | null {
+  const warning = carriers
+    .map((carrier) => carrier.warning ?? carrier.top_warning ?? null)
+    .find(isWeatherWarning)
+
+  return warning ? localizedWarningCopy(warning, t) : null
+}
+
 const CARE_TYPE_LABEL_FALLBACK: Record<string, { nl: string; en: string }> = {
   repot: { nl: 'Verpotten', en: 'Repot' },
   pest_check: { nl: 'Luizen-check', en: 'Pest check' },
