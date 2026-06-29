@@ -1,6 +1,6 @@
 {
-  "count": 233,
-  "iconCount": 233,
+  "count": 308,
+  "iconCount": 308,
   "categories": [
     {
       "id": "all",
@@ -2259,6 +2259,756 @@
       "form": "potted",
       "family": "",
       "file": "placeholder_unknown.svg"
+    },
+    {
+      "id": "monstera_bare",
+      "name": "Monstera",
+      "sci": "Monstera deliciosa",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "monstera_bare.svg",
+      "variant_of": "monstera"
+    },
+    {
+      "id": "pothos_bare",
+      "name": "Scindapsus",
+      "sci": "Epipremnum aureum",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "pothos_bare.svg",
+      "variant_of": "pothos"
+    },
+    {
+      "id": "fiddle_bare",
+      "name": "Vioolbladplant",
+      "sci": "Ficus lyrata",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Moraceae",
+      "file": "fiddle_bare.svg",
+      "variant_of": "fiddle"
+    },
+    {
+      "id": "snake_bare",
+      "name": "Vrouwentongen",
+      "sci": "Dracaena trifasciata",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "snake_bare.svg",
+      "variant_of": "snake"
+    },
+    {
+      "id": "zz_bare",
+      "name": "ZZ-plant",
+      "sci": "Zamioculcas zamiifolia",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "zz_bare.svg",
+      "variant_of": "zz"
+    },
+    {
+      "id": "rubber_bare",
+      "name": "Rubberplant",
+      "sci": "Ficus elastica",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Moraceae",
+      "file": "rubber_bare.svg",
+      "variant_of": "rubber"
+    },
+    {
+      "id": "peacelily_bare",
+      "name": "Lepelplant",
+      "sci": "Spathiphyllum wallisii",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "peacelily_bare.svg",
+      "variant_of": "peacelily"
+    },
+    {
+      "id": "spider_bare",
+      "name": "Graslelie",
+      "sci": "Chlorophytum comosum",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "spider_bare.svg",
+      "variant_of": "spider"
+    },
+    {
+      "id": "philo_bare",
+      "name": "Hartblad Philodendron",
+      "sci": "Philodendron hederaceum var. oxycardium",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "philo_bare.svg",
+      "variant_of": "philo"
+    },
+    {
+      "id": "calathea_bare",
+      "name": "Calathea",
+      "sci": "Goeppertia orbifolia",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Marantaceae",
+      "file": "calathea_bare.svg",
+      "variant_of": "calathea"
+    },
+    {
+      "id": "birdnest_bare",
+      "name": "Nestvaren",
+      "sci": "Asplenium nidus",
+      "cat": "fern",
+      "form": "bare",
+      "family": "Aspleniaceae",
+      "file": "birdnest_bare.svg",
+      "variant_of": "birdnest"
+    },
+    {
+      "id": "areca_bare",
+      "name": "Areca-palm",
+      "sci": "Dypsis lutescens",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Arecaceae",
+      "file": "areca_bare.svg",
+      "variant_of": "areca"
+    },
+    {
+      "id": "parlor_bare",
+      "name": "Bergpalm",
+      "sci": "Chamaedorea elegans",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Arecaceae",
+      "file": "parlor_bare.svg",
+      "variant_of": "parlor"
+    },
+    {
+      "id": "aloe_bare",
+      "name": "Aloë Vera",
+      "sci": "Aloe barbadensis",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Asphodelaceae",
+      "file": "aloe_bare.svg",
+      "variant_of": "aloe"
+    },
+    {
+      "id": "jade_bare",
+      "name": "Jadeplant",
+      "sci": "Crassula ovata",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Crassulaceae",
+      "file": "jade_bare.svg",
+      "variant_of": "jade"
+    },
+    {
+      "id": "echeveria_bare",
+      "name": "Echeveria",
+      "sci": "Echeveria elegans",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Crassulaceae",
+      "file": "echeveria_bare.svg",
+      "variant_of": "echeveria"
+    },
+    {
+      "id": "cactus_bare",
+      "name": "Bolcactus",
+      "sci": "Ferocactus glaucescens",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Cactaceae",
+      "file": "cactus_bare.svg",
+      "variant_of": "cactus"
+    },
+    {
+      "id": "prickly_bare",
+      "name": "Schijfcactus",
+      "sci": "Opuntia ficus-indica",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Cactaceae",
+      "file": "prickly_bare.svg",
+      "variant_of": "prickly"
+    },
+    {
+      "id": "stringpearls_bare",
+      "name": "Erwtenplant",
+      "sci": "Curio rowleyanus",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "stringpearls_bare.svg",
+      "variant_of": "stringpearls"
+    },
+    {
+      "id": "orchid_bare",
+      "name": "Vlinderorchidee",
+      "sci": "Phalaenopsis amabilis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Orchidaceae",
+      "file": "orchid_bare.svg",
+      "variant_of": "orchid"
+    },
+    {
+      "id": "africanviolet_bare",
+      "name": "Kaaps Viooltje",
+      "sci": "Streptocarpus ionanthus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Gesneriaceae",
+      "file": "africanviolet_bare.svg",
+      "variant_of": "africanviolet"
+    },
+    {
+      "id": "anthurium_bare",
+      "name": "Flamingoplant",
+      "sci": "Anthurium andraeanum",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Araceae",
+      "file": "anthurium_bare.svg",
+      "variant_of": "anthurium"
+    },
+    {
+      "id": "bromeliad_bare",
+      "name": "Bromelia",
+      "sci": "Guzmania lingulata",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Bromeliaceae",
+      "file": "bromeliad_bare.svg",
+      "variant_of": "bromeliad"
+    },
+    {
+      "id": "bonsai_bare",
+      "name": "Bonsai",
+      "sci": "Ficus retusa",
+      "cat": "tree",
+      "form": "bare",
+      "family": "Moraceae",
+      "file": "bonsai_bare.svg",
+      "variant_of": "bonsai"
+    },
+    {
+      "id": "tulip_bare",
+      "name": "Tulp",
+      "sci": "Tulipa gesneriana",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Liliaceae",
+      "file": "tulip_bare.svg",
+      "variant_of": "tulip"
+    },
+    {
+      "id": "daffodil_bare",
+      "name": "Narcis",
+      "sci": "Narcissus pseudonarcissus",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "file": "daffodil_bare.svg",
+      "variant_of": "daffodil"
+    },
+    {
+      "id": "hyacinth_bare",
+      "name": "Hyacint",
+      "sci": "Hyacinthus orientalis",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "hyacinth_bare.svg",
+      "variant_of": "hyacinth"
+    },
+    {
+      "id": "crocus_bare",
+      "name": "Krokus",
+      "sci": "Crocus vernus",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Iridaceae",
+      "file": "crocus_bare.svg",
+      "variant_of": "crocus"
+    },
+    {
+      "id": "snowdrop_bare",
+      "name": "Sneeuwklokje",
+      "sci": "Galanthus nivalis",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "file": "snowdrop_bare.svg",
+      "variant_of": "snowdrop"
+    },
+    {
+      "id": "iris_bare",
+      "name": "Hollandse Iris",
+      "sci": "Iris × hollandica",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Iridaceae",
+      "file": "iris_bare.svg",
+      "variant_of": "iris"
+    },
+    {
+      "id": "allium_bare",
+      "name": "Sierui",
+      "sci": "Allium giganteum",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Amaryllidaceae",
+      "file": "allium_bare.svg",
+      "variant_of": "allium"
+    },
+    {
+      "id": "rosemary_bare",
+      "name": "Rozemarijn",
+      "sci": "Salvia rosmarinus",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "rosemary_bare.svg",
+      "variant_of": "rosemary"
+    },
+    {
+      "id": "thyme_bare",
+      "name": "Tijm",
+      "sci": "Thymus vulgaris",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "thyme_bare.svg",
+      "variant_of": "thyme"
+    },
+    {
+      "id": "basil_bare",
+      "name": "Basilicum",
+      "sci": "Ocimum basilicum",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "basil_bare.svg",
+      "variant_of": "basil"
+    },
+    {
+      "id": "mint_bare",
+      "name": "Munt",
+      "sci": "Mentha spicata",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "mint_bare.svg",
+      "variant_of": "mint"
+    },
+    {
+      "id": "hydrangea_bare",
+      "name": "Hortensia",
+      "sci": "Hydrangea macrophylla",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Hydrangeaceae",
+      "file": "hydrangea_bare.svg",
+      "variant_of": "hydrangea"
+    },
+    {
+      "id": "rose_bare",
+      "name": "Tuinroos",
+      "sci": "Rosa × hybrida",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Rosaceae",
+      "file": "rose_bare.svg",
+      "variant_of": "rose"
+    },
+    {
+      "id": "poppy_bare",
+      "name": "Klaproos",
+      "sci": "Papaver rhoeas",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Papaveraceae",
+      "file": "poppy_bare.svg",
+      "variant_of": "poppy"
+    },
+    {
+      "id": "daisy_bare",
+      "name": "Margriet",
+      "sci": "Leucanthemum vulgare",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "daisy_bare.svg",
+      "variant_of": "daisy"
+    },
+    {
+      "id": "foxglove_bare",
+      "name": "Vingerhoedskruid",
+      "sci": "Digitalis purpurea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Plantaginaceae",
+      "file": "foxglove_bare.svg",
+      "variant_of": "foxglove"
+    },
+    {
+      "id": "peony_bare",
+      "name": "Pioenroos",
+      "sci": "Paeonia lactiflora",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Paeoniaceae",
+      "file": "peony_bare.svg",
+      "variant_of": "peony"
+    },
+    {
+      "id": "cornflower_bare",
+      "name": "Korenbloem",
+      "sci": "Centaurea cyanus",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "cornflower_bare.svg",
+      "variant_of": "cornflower"
+    },
+    {
+      "id": "boxwood_bare",
+      "name": "Buxus",
+      "sci": "Buxus sempervirens",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Buxaceae",
+      "file": "boxwood_bare.svg",
+      "variant_of": "boxwood"
+    },
+    {
+      "id": "geranium_bare",
+      "name": "Pelargonium",
+      "sci": "Pelargonium × hortorum",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Geraniaceae",
+      "file": "geranium_bare.svg",
+      "variant_of": "geranium"
+    },
+    {
+      "id": "begonia_bare",
+      "name": "Begonia",
+      "sci": "Begonia semperflorens",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Begoniaceae",
+      "file": "begonia_bare.svg",
+      "variant_of": "begonia"
+    },
+    {
+      "id": "marigold_bare",
+      "name": "Afrikaantje",
+      "sci": "Tagetes patula",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "marigold_bare.svg",
+      "variant_of": "marigold"
+    },
+    {
+      "id": "pansy_bare",
+      "name": "Viooltje",
+      "sci": "Viola × wittrockiana",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Violaceae",
+      "file": "pansy_bare.svg",
+      "variant_of": "pansy"
+    },
+    {
+      "id": "fuchsia_bare",
+      "name": "Fuchsia",
+      "sci": "Fuchsia magellanica",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Onagraceae",
+      "file": "fuchsia_bare.svg",
+      "variant_of": "fuchsia"
+    },
+    {
+      "id": "heather_bare",
+      "name": "Struikheide",
+      "sci": "Calluna vulgaris",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Ericaceae",
+      "file": "heather_bare.svg",
+      "variant_of": "heather"
+    },
+    {
+      "id": "ivy_bare",
+      "name": "Klimop",
+      "sci": "Hedera helix",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Araliaceae",
+      "file": "ivy_bare.svg",
+      "variant_of": "ivy"
+    },
+    {
+      "id": "holly_bare",
+      "name": "Hulst",
+      "sci": "Ilex aquifolium",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Aquifoliaceae",
+      "file": "holly_bare.svg",
+      "variant_of": "holly"
+    },
+    {
+      "id": "dahlia_bare",
+      "name": "Dahlia",
+      "sci": "Dahlia pinnata",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "dahlia_bare.svg",
+      "variant_of": "dahlia"
+    },
+    {
+      "id": "petunia_bare",
+      "name": "Petunia",
+      "sci": "Petunia × atkinsiana",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Solanaceae",
+      "file": "petunia_bare.svg",
+      "variant_of": "petunia"
+    },
+    {
+      "id": "forgetmenot_bare",
+      "name": "Vergeet-mij-nietje",
+      "sci": "Myosotis sylvatica",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Boraginaceae",
+      "file": "forgetmenot_bare.svg",
+      "variant_of": "forgetmenot"
+    },
+    {
+      "id": "clematis_bare",
+      "name": "Clematis",
+      "sci": "Clematis × jackmanii",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "clematis_bare.svg",
+      "variant_of": "clematis"
+    },
+    {
+      "id": "laurel_bare",
+      "name": "Laurier",
+      "sci": "Laurus nobilis",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Lauraceae",
+      "file": "laurel_bare.svg",
+      "variant_of": "laurel"
+    },
+    {
+      "id": "camellia_bare",
+      "name": "Camelia",
+      "sci": "Camellia japonica",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Theaceae",
+      "file": "camellia_bare.svg",
+      "variant_of": "camellia"
+    },
+    {
+      "id": "bamboo_bare",
+      "name": "Bamboe",
+      "sci": "Phyllostachys edulis",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "file": "bamboo_bare.svg",
+      "variant_of": "bamboo"
+    },
+    {
+      "id": "avocado_tree_bare",
+      "name": "Avocadoboom (2 jr)",
+      "sci": "Persea americana",
+      "cat": "tree",
+      "form": "bare",
+      "family": "Lauraceae",
+      "variant_of": "avocado_tree_potted",
+      "file": "avocado_tree_bare.svg"
+    },
+    {
+      "id": "drakenplant_bare",
+      "name": "Drakenplant",
+      "sci": "Dracaena marginata",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "drakenplant_bare.svg",
+      "variant_of": "drakenplant"
+    },
+    {
+      "id": "dracaena_compacta_bare",
+      "name": "Dracaena Compacta",
+      "sci": "Dracaena fragrans 'Compacta'",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Asparagaceae",
+      "file": "dracaena_compacta_bare.svg",
+      "variant_of": "dracaena_compacta"
+    },
+    {
+      "id": "pannenkoekenplant_bare",
+      "name": "Pannenkoekenplant",
+      "sci": "Pilea peperomioides",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Urticaceae",
+      "file": "pannenkoekenplant_bare.svg",
+      "variant_of": "pannenkoekenplant"
+    },
+    {
+      "id": "placeholder_houseplant_bare",
+      "name": "Houseplant (placeholder)",
+      "sci": "",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_houseplant_bare.svg",
+      "variant_of": "placeholder_houseplant"
+    },
+    {
+      "id": "placeholder_flower_bare",
+      "name": "Flower (placeholder)",
+      "sci": "",
+      "cat": "flower",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_flower_bare.svg",
+      "variant_of": "placeholder_flower"
+    },
+    {
+      "id": "placeholder_succulent_bare",
+      "name": "Succulent (placeholder)",
+      "sci": "",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_succulent_bare.svg",
+      "variant_of": "placeholder_succulent"
+    },
+    {
+      "id": "placeholder_herb_bare",
+      "name": "Herb (placeholder)",
+      "sci": "",
+      "cat": "herb",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_herb_bare.svg",
+      "variant_of": "placeholder_herb"
+    },
+    {
+      "id": "placeholder_edible_bare",
+      "name": "Edible (placeholder)",
+      "sci": "",
+      "cat": "edible",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_edible_bare.svg",
+      "variant_of": "placeholder_edible"
+    },
+    {
+      "id": "placeholder_tree_bare",
+      "name": "Tree (placeholder)",
+      "sci": "",
+      "cat": "tree",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_tree_bare.svg",
+      "variant_of": "placeholder_tree"
+    },
+    {
+      "id": "placeholder_shrub_bare",
+      "name": "Shrub (placeholder)",
+      "sci": "",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_shrub_bare.svg",
+      "variant_of": "placeholder_shrub"
+    },
+    {
+      "id": "placeholder_grass_bare",
+      "name": "Grass (placeholder)",
+      "sci": "",
+      "cat": "grass",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_grass_bare.svg",
+      "variant_of": "placeholder_grass"
+    },
+    {
+      "id": "placeholder_fern_bare",
+      "name": "Fern (placeholder)",
+      "sci": "",
+      "cat": "fern",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_fern_bare.svg",
+      "variant_of": "placeholder_fern"
+    },
+    {
+      "id": "placeholder_bulb_bare",
+      "name": "Bulb (placeholder)",
+      "sci": "",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_bulb_bare.svg",
+      "variant_of": "placeholder_bulb"
+    },
+    {
+      "id": "placeholder_climber_bare",
+      "name": "Climber (placeholder)",
+      "sci": "",
+      "cat": "climber",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_climber_bare.svg",
+      "variant_of": "placeholder_climber"
+    },
+    {
+      "id": "placeholder_cactus_bare",
+      "name": "Cactus (placeholder)",
+      "sci": "",
+      "cat": "cactus",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_cactus_bare.svg",
+      "variant_of": "placeholder_cactus"
+    },
+    {
+      "id": "placeholder_unknown_bare",
+      "name": "Unknown (placeholder)",
+      "sci": "",
+      "cat": "unknown",
+      "form": "bare",
+      "family": "",
+      "file": "placeholder_unknown_bare.svg",
+      "variant_of": "placeholder_unknown"
     }
   ]
 }
