@@ -119,6 +119,70 @@ async def ensure_phenology(db, species_id: int, name_hint: str) -> None:
     await db.commit()
 
 
+def _phenology_has_months(phenology_json) -> bool:
+    """Whether stored phenology JSON has a usable month-by-month calendar.
+
+    This is the data the UI needs to render the year calendar; a row can have a
+    non-empty `phenology_json` (e.g. just a fact) yet still show
+    "No species data available" because `months` is missing.
+    """
+    if not phenology_json:
+        return False
+    try:
+        phen = json.loads(phenology_json)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return isinstance(phen, dict) and bool(phen.get("months"))
+
+
+async def regenerate_species_phenology(
+    db, species_id: int, name_hint: str | None = None
+) -> bool:
+    """Force-regenerate a species' phenology when it has no usable month calendar.
+
+    Unlike `ensure_phenology` (which only fills a NULL/empty column), this
+    overwrites an *incomplete* phenology — present but missing `months` — which
+    is the state a user hits as "No species data available" with no way to
+    recover. Best-effort: returns True only when a usable calendar was written;
+    LLM/parse failures leave the existing row untouched and return False.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id, latin_name, common_name_nl, common_name_en, phenology_json "
+        "FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    if not rows:
+        return False
+    rec = dict(rows[0])
+    if _phenology_has_months(rec.get("phenology_json")):
+        return False  # already has a usable calendar — nothing to do
+
+    lookup_name = (
+        _text_or_none(name_hint)
+        or _text_or_none(rec.get("latin_name"))
+        or _text_or_none(rec.get("common_name_nl"))
+        or _text_or_none(rec.get("common_name_en"))
+    )
+    if not lookup_name:
+        return False
+
+    try:
+        data = await _generate_species(lookup_name)
+    except Exception:
+        return False
+    phen = data.get("phenology") or data
+    if not isinstance(phen, dict) or not phen.get("months"):
+        return False  # generation didn't yield a usable calendar; keep as-is
+
+    await db.execute(
+        "UPDATE plant_species SET phenology_json = ?, updated_at = CURRENT_TIMESTAMP "
+        "WHERE id = ?",
+        (json.dumps(phen, ensure_ascii=False), species_id),
+    )
+    await db.commit()
+    return True
+
+
 def _text_or_none(value) -> str | None:
     if value is None:
         return None

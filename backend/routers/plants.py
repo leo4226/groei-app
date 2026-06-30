@@ -12,7 +12,7 @@ from routers.icon_generator import guess_category
 from care_types import is_care_type_valid_for_env
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
-from species_service import get_or_create_species
+from species_service import get_or_create_species, regenerate_species_phenology
 from threshold_service import generate_thresholds
 
 router = APIRouter(tags=["plants"])
@@ -279,10 +279,13 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
 
 @router.post("/plants/{plant_id}/retry-species", response_model=PlantOut)
 async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
-    """Retry generating species data for a plant whose species_id is NULL.
+    """Retry generating species data for a plant with missing/incomplete data.
 
-    Calls get_or_create_species again (LLM) to generate phenology/care data
-    and links the result. Also retries thresholds if still missing.
+    Links a species (LLM via get_or_create_species) when one isn't linked, and
+    force-regenerates the species' phenology when it has no usable month
+    calendar — so a plant stuck on "No species data available" can recover even
+    when it already points at an incomplete species row. Also retries thresholds
+    if still missing.
     """
     cursor = await db.execute(
         "SELECT id, name, species, species_id, care_thresholds "
@@ -301,6 +304,15 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
         (species_id, plant_id),
     )
     await db.commit()
+
+    # get_or_create_species reuses an existing species row as-is, so a plant
+    # linked to a species with incomplete phenology (no month calendar) would
+    # otherwise stay broken. Force a regeneration in that case (best-effort).
+    if species_id is not None:
+        try:
+            await regenerate_species_phenology(db, species_id, species_lookup_name)
+        except Exception as exc:  # noqa: BLE001 — never fail the retry on LLM hiccups
+            print(f"Warning: could not regenerate phenology for {plant['name']}: {exc}")
 
     # If thresholds are still missing, retry those too
     if not plant.get("care_thresholds"):
