@@ -92,7 +92,10 @@ export type Translations = {
     fertilize: string
     mist: string
     rotate: string
+    repot: string
     repot_check: string
+    pest_check: string
+    dust: string
     prune: string
     protect_cold: string
     protect_heat: string
@@ -105,7 +108,10 @@ export type Translations = {
     fertilize: string
     mist: string
     rotate: string
+    repot: string
     repot_check: string
+    pest_check: string
+    dust: string
     prune: string
     protect_cold: string
     protect_heat: string
@@ -310,6 +316,10 @@ export type Translations = {
     digestToggleDesc: string
     digestTimeLabel: string
     digestTimeDesc: string
+    quietHoursLabel: string
+    quietHoursDesc: string
+    mutedTypesLabel: string
+    mutedTypesDesc: string
     digestLoadError: string
     digestSaveError: string
     pushToggle: string

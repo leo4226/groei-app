@@ -84,6 +84,27 @@ async def test_prefs_include_push_enabled(client, seeded_db, auth_header):
     assert res.json()["push_enabled"] is True
 
 
+async def test_prefs_persist_quiet_hours_and_validate_muted(client, seeded_db, auth_header):
+    res = await client.put(
+        "/api/settings/notifications",
+        json={
+            "digest_enabled": False, "digest_time": "08:00", "push_enabled": True,
+            "quiet_start": "22:00", "quiet_end": "06:00",
+            "muted_care_types": ["fertilize", "bogus", "water", "repot_check", "water"],
+        },
+        headers=auth_header,
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["quiet_start"] == "22:00" and body["quiet_end"] == "06:00"
+    # 'bogus' is not a real care type → dropped; old frontend alias is
+    # normalized; duplicates are removed while preserving first-seen order.
+    assert body["muted_care_types"] == ["fertilize", "water", "repot"]
+
+    res = await client.get("/api/settings/notifications", headers=auth_header)
+    assert res.json()["muted_care_types"] == ["fertilize", "water", "repot"]
+
+
 # ── subscription endpoints ───────────────────────────────────────────────
 
 async def test_subscription_requires_auth(client, seeded_db):
@@ -207,6 +228,29 @@ async def test_gone_subscription_is_pruned(
     assert rows == []  # 410 Gone → row pruned at send time
 
 
+def test_in_quiet_hours_logic():
+    from services.digest import _in_quiet_hours
+
+    def at(h, m=0):
+        return datetime(2026, 6, 11, h, m, tzinfo=AMS)
+
+    # Overnight wrap 22:00–06:00: start inclusive, end exclusive.
+    assert _in_quiet_hours(at(22), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(23), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(5, 59), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(6), "22:00", "06:00") is False
+    assert _in_quiet_hours(at(12), "22:00", "06:00") is False
+    # Same-day window 07:00–09:00 (no wrap).
+    assert _in_quiet_hours(at(8), "07:00", "09:00") is True
+    assert _in_quiet_hours(at(9), "07:00", "09:00") is False
+    assert _in_quiet_hours(at(6, 59), "07:00", "09:00") is False
+    # Default (None) → 21:00–08:00 overnight wrap.
+    assert _in_quiet_hours(at(3), None, None) is True
+    assert _in_quiet_hours(at(10), None, None) is False
+    # Zero-length window → never quiet.
+    assert _in_quiet_hours(at(5), "09:00", "09:00") is False
+
+
 @pytest.fixture
 def at_night(monkeypatch):
     import services.digest as digest
@@ -216,14 +260,47 @@ def at_night(monkeypatch):
 async def test_no_care_push_overnight(
     client, seeded_db, cron_secret, sent_pushes, at_night, auth_header
 ):
-    # A due task at 3:30am must not ping — care pushes are daytime-only.
+    # A due task at 3:30am must not ping — inside the default quiet window.
     await _seed_overdue_plant(seeded_db)
     await _enable_push(seeded_db)
     await client.post("/api/push/subscription", json=SUB, headers=auth_header)
 
     res = await client.post("/api/internal/send-digests", headers=cron_secret)
     assert res.json()["push_sent"] == 0
-    assert res.json().get("off_hours") is True
+    assert sent_pushes == []
+
+
+async def test_custom_quiet_hours_hold_push(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # 08:30 is normally a send hour, but a custom quiet window covering it holds.
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await seeded_db.execute(
+        "UPDATE notification_preferences SET quiet_start = '07:00', quiet_end = '09:00' WHERE account_id = 1"
+    )
+    await seeded_db.commit()
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 0
+    assert sent_pushes == []
+
+
+async def test_muted_care_type_is_skipped(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # The overdue plant's only due task is 'water'; muting water → no push.
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await seeded_db.execute(
+        "UPDATE notification_preferences SET muted_care_types = 'water,prune' WHERE account_id = 1"
+    )
+    await seeded_db.commit()
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 0
     assert sent_pushes == []
 
 

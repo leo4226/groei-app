@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from auth import get_current_account
+from care_types import parse_muted_care_types
 from database import db_dep
 from services.digest import (
     APP_URL,
@@ -24,16 +25,30 @@ from services.push import send_push
 router = APIRouter(tags=["notifications"])
 
 
+_HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
+# Quiet hours are whole-hour only (the UI offers hour selects), so the stored
+# value always matches what the picker can show — no silent minute truncation.
+_HH00 = r"^([01]\d|2[0-3]):00$"
+
+
 class NotificationPrefs(BaseModel):
     digest_enabled: bool
-    digest_time: str  # "HH:MM" — also the push hour
+    digest_time: str  # "HH:MM" — the email digest hour
     push_enabled: bool = False
+    # Care pushes are only sent inside [quiet_start, quiet_end). NULL → default
+    # 08:00–21:00. muted_care_types lists care_type keys the user has silenced.
+    quiet_start: str | None = None
+    quiet_end: str | None = None
+    muted_care_types: list[str] = []
 
 
 class NotificationPrefsUpdate(BaseModel):
     digest_enabled: bool
-    digest_time: str = Field(default="08:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    digest_time: str = Field(default="08:00", pattern=_HHMM)
     push_enabled: bool = False
+    quiet_start: str | None = Field(default=None, pattern=_HH00)
+    quiet_end: str | None = Field(default=None, pattern=_HH00)
+    muted_care_types: list[str] = []
 
 
 def _to_prefs(row) -> NotificationPrefs:
@@ -41,6 +56,9 @@ def _to_prefs(row) -> NotificationPrefs:
         digest_enabled=bool(row["digest_enabled"]),
         digest_time=str(row["digest_time"])[:5],
         push_enabled=bool(row["push_enabled"]),
+        quiet_start=str(row["quiet_start"])[:5] if row["quiet_start"] else None,
+        quiet_end=str(row["quiet_end"])[:5] if row["quiet_end"] else None,
+        muted_care_types=parse_muted_care_types(row["muted_care_types"]),
     )
 
 
@@ -55,7 +73,8 @@ async def _get_or_create_prefs(db, account_id: int) -> dict:
     await cur.fetchall()  # drain so sqlite can commit
     await db.commit()
     rows = await db.execute_fetchall(
-        "SELECT digest_enabled, digest_time, push_enabled FROM notification_preferences WHERE account_id = ?",
+        "SELECT digest_enabled, digest_time, push_enabled, quiet_start, quiet_end, "
+        "muted_care_types FROM notification_preferences WHERE account_id = ?",
         (account_id,),
     )
     return rows[0]
@@ -73,17 +92,27 @@ async def update_notification_prefs(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
+    # Same parser as the read path: trims + keeps only known care types so a
+    # bad client can't pollute the stored set.
+    muted = parse_muted_care_types(",".join(body.muted_care_types))
+    muted_csv = ",".join(muted)
     cur = await db.execute(
         """
-        INSERT INTO notification_preferences (account_id, digest_enabled, digest_time, push_enabled)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO notification_preferences
+            (account_id, digest_enabled, digest_time, push_enabled,
+             quiet_start, quiet_end, muted_care_types)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (account_id) DO UPDATE SET
             digest_enabled = excluded.digest_enabled,
             digest_time = excluded.digest_time,
-            push_enabled = excluded.push_enabled
+            push_enabled = excluded.push_enabled,
+            quiet_start = excluded.quiet_start,
+            quiet_end = excluded.quiet_end,
+            muted_care_types = excluded.muted_care_types
         RETURNING account_id
         """,
-        (account["account_id"], body.digest_enabled, body.digest_time, body.push_enabled),
+        (account["account_id"], body.digest_enabled, body.digest_time, body.push_enabled,
+         body.quiet_start, body.quiet_end, muted_csv),
     )
     await cur.fetchall()
     await db.commit()
@@ -91,6 +120,9 @@ async def update_notification_prefs(
         digest_enabled=body.digest_enabled,
         digest_time=body.digest_time,
         push_enabled=body.push_enabled,
+        quiet_start=body.quiet_start,
+        quiet_end=body.quiet_end,
+        muted_care_types=muted,
     )
 
 

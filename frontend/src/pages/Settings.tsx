@@ -13,6 +13,9 @@ import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
 
+// Backend care_type keys a user can mute for scheduled care push reminders.
+const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
+
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 // Must match the boot script in index.html, which applies the theme before
 // React loads to avoid a flash of the wrong theme.
@@ -688,6 +691,69 @@ export default function Settings() {
                 {pushTestBusy ? t.settings.pushTestSending : t.settings.pushTestButton}
               </button>
             </div>
+          )}
+          {pushOnHere && pushSupported() && digestPrefs && (
+            <>
+              {/* Quiet hours — care pushes are held inside this window */}
+              <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm">{t.settings.quietHoursLabel}</div>
+                  <div className="text-xs text-text-muted mt-0.5">{t.settings.quietHoursDesc}</div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <select
+                    value={`${(digestPrefs.quiet_start ?? '21:00').slice(0, 2)}:00`}
+                    onChange={(e) => saveDigestPrefs({ ...digestPrefs, quiet_start: e.target.value })}
+                    className="bg-surface border border-border rounded-xl px-2.5 py-2 text-sm font-semibold text-text"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const v = `${String(h).padStart(2, '0')}:00`
+                      return <option key={v} value={v}>{v}</option>
+                    })}
+                  </select>
+                  <span className="text-xs text-text-muted">–</span>
+                  <select
+                    value={`${(digestPrefs.quiet_end ?? '08:00').slice(0, 2)}:00`}
+                    onChange={(e) => saveDigestPrefs({ ...digestPrefs, quiet_end: e.target.value })}
+                    className="bg-surface border border-border rounded-xl px-2.5 py-2 text-sm font-semibold text-text"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const v = `${String(h).padStart(2, '0')}:00`
+                      return <option key={v} value={v}>{v}</option>
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {/* Per-care-type mute toggles */}
+              <div className="pt-3 border-t border-border">
+                <div className="font-semibold text-sm">{t.settings.mutedTypesLabel}</div>
+                <div className="text-xs text-text-muted mt-0.5 mb-2">{t.settings.mutedTypesDesc}</div>
+                <div className="flex flex-wrap gap-2">
+                  {PUSH_CARE_TYPES.map((ct) => {
+                    const muted = digestPrefs.muted_care_types.includes(ct)
+                    return (
+                      <button
+                        key={ct}
+                        onClick={() => {
+                          const next = muted
+                            ? digestPrefs.muted_care_types.filter((c) => c !== ct)
+                            : [...digestPrefs.muted_care_types, ct]
+                          saveDigestPrefs({ ...digestPrefs, muted_care_types: next })
+                        }}
+                        className={`font-heading text-sm rounded-full border px-3 py-1.5 transition-colors ${
+                          muted
+                            ? 'bg-paper border-border text-text-muted line-through'
+                            : 'bg-primary/10 border-primary text-primary font-medium'
+                        }`}
+                      >
+                        {t.careTypes[ct as keyof typeof t.careTypes] ?? ct}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
           )}
           {digestPrefs?.digest_enabled && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">

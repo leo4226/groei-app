@@ -129,7 +129,10 @@ SCHEMA = """
         quiet_hours TEXT,
         last_digest_sent_on DATE,
         push_enabled INTEGER NOT NULL DEFAULT 0,
-        last_push_sent_on DATE
+        last_push_sent_on DATE,
+        quiet_start TEXT,
+        quiet_end TEXT,
+        muted_care_types TEXT
     );
     CREATE TABLE push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
