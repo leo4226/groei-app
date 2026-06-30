@@ -26,6 +26,9 @@ router = APIRouter(tags=["notifications"])
 
 
 _HHMM = r"^([01]\d|2[0-3]):[0-5]\d$"
+# Quiet hours are whole-hour only (the UI offers hour selects), so the stored
+# value always matches what the picker can show — no silent minute truncation.
+_HH00 = r"^([01]\d|2[0-3]):00$"
 
 
 class NotificationPrefs(BaseModel):
@@ -43,8 +46,8 @@ class NotificationPrefsUpdate(BaseModel):
     digest_enabled: bool
     digest_time: str = Field(default="08:00", pattern=_HHMM)
     push_enabled: bool = False
-    quiet_start: str | None = Field(default=None, pattern=_HHMM)
-    quiet_end: str | None = Field(default=None, pattern=_HHMM)
+    quiet_start: str | None = Field(default=None, pattern=_HH00)
+    quiet_end: str | None = Field(default=None, pattern=_HH00)
     muted_care_types: list[str] = []
 
 

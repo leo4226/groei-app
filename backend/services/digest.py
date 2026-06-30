@@ -240,16 +240,22 @@ DEFAULT_QUIET_START = "21:00"
 DEFAULT_QUIET_END = "08:00"
 
 
-def _hm_to_minutes(hm: str) -> int:
-    h, m = hm.split(":", 1)
-    return int(h) * 60 + int(m)
+def _hm_to_minutes(hm: str | None, fallback: str) -> int:
+    """Parse 'HH:MM' to minutes-of-day, falling back to `fallback` if the value
+    is missing or malformed (legacy/manual DB rows must never crash dispatch)."""
+    try:
+        h, m = str(hm or fallback).split(":", 1)
+        return int(h) * 60 + int(m)
+    except (ValueError, AttributeError):
+        h, m = fallback.split(":", 1)
+        return int(h) * 60 + int(m)
 
 
 def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool:
     """True if `now` (Amsterdam) falls inside the [start, end) quiet window,
     handling an overnight wrap (start > end)."""
-    qs = _hm_to_minutes(quiet_start or DEFAULT_QUIET_START)
-    qe = _hm_to_minutes(quiet_end or DEFAULT_QUIET_END)
+    qs = _hm_to_minutes(quiet_start, DEFAULT_QUIET_START)
+    qe = _hm_to_minutes(quiet_end, DEFAULT_QUIET_END)
     if qs == qe:
         return False  # zero-length window → never quiet
     cur = now.hour * 60 + now.minute
