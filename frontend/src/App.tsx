@@ -7,6 +7,7 @@ import Glyph from './components/ui/Glyph'
 import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import NewMapModal from './components/dashboard/NewMapModal'
+import AppLoadingView from './components/ui/AppLoadingView'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { icons } from './api/client'
@@ -100,7 +101,7 @@ function MapRedirect() {
   }
 
   if (loading || !ready) {
-    return <div className="p-6 text-text-muted text-center">{t.maps.loading}</div>
+    return <AppLoadingView title={t.maps.loading} lede={t.maps.loadingLede} />
   }
 
   if (loadError) {

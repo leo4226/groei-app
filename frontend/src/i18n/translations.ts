@@ -130,6 +130,7 @@ export type Translations = {
     mapNameLabel: string
     mapNamePlaceholder: string
     loading: string
+    loadingLede: string
     loadFailed: string
     retry: string
     failedCreate: string

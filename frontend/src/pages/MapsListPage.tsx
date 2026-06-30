@@ -4,6 +4,7 @@ import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
+import AppLoadingView from '../components/ui/AppLoadingView'
 import type { MapInfo } from '../types'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
@@ -82,7 +83,7 @@ export default function MapsListPage() {
   }
 
   if (isLoading) {
-    return <div className="p-6 text-text-muted text-center">{t.maps.loading}</div>
+    return <AppLoadingView title={t.maps.loading} lede={t.maps.loadingLede} />
   }
 
   return (
