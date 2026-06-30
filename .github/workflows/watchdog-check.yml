@@ -2,12 +2,13 @@ name: Watchdog dead-man check
 
 # Calls the check endpoint twice an hour, but only during the awake window —
 # the endpoint never alerts outside 08:00–23:30 Europe/Amsterdam, so running it
-# overnight was pure waste. UTC 6–21 covers ~08:00–23:59 (summer) / 07:00–22:59
-# (winter); the endpoint still applies the exact window. The endpoint owns all
+# overnight was pure waste. UTC 6–22 covers the 08:00–23:30 Amsterdam
+# awake window year-round; the endpoint still suppresses any call outside the
+# exact window. The endpoint owns all
 # logic (staleness, awake window, once-per-outage), so frequent calls are safe.
 on:
   schedule:
-    - cron: "10,40 6-21 * * *"
+    - cron: "10,40 6-22 * * *"
   workflow_dispatch:
 
 jobs:
