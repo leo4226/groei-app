@@ -11,7 +11,7 @@ JWT_SECRET — no login required to unsubscribe).
 import hashlib
 import hmac
 import os
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from auth import SECRET
@@ -51,6 +51,49 @@ def verify_unsubscribe_token(token: str) -> int | None:
     if not hmac.compare_digest(sig, _sign(account_id)):
         return None
     return account_id
+
+
+# ── snooze token (#181) ────────────────────────────────────────────────────
+# The service worker has no JWT (it acts on a notification, not a logged-in
+# session), so a "snooze" tap authenticates with an HMAC capability token —
+# same pattern as the unsubscribe link. It's keyed to the household, since a
+# care push summarises that household's currently-due tasks. The token is only
+# ever embedded in the push payload, which only the subscribed device receives.
+
+_SNOOZE_CONTEXT = b"floreren-care-snooze:"
+SNOOZE_DURATIONS = {"2h", "1d"}  # action values the SW may send
+
+
+def _sign_snooze(household_id: int) -> str:
+    msg = _SNOOZE_CONTEXT + str(household_id).encode()
+    return hmac.new(SECRET.encode(), msg, hashlib.sha256).hexdigest()
+
+
+def make_snooze_token(household_id: int) -> str:
+    return f"{household_id}.{_sign_snooze(household_id)}"
+
+
+def verify_snooze_token(token: str) -> int | None:
+    """Return the household_id if the token is valid, else None."""
+    raw_id, sep, sig = token.partition(".")
+    if not sep or not raw_id.isdigit():
+        return None
+    household_id = int(raw_id)
+    if not hmac.compare_digest(sig, _sign_snooze(household_id)):
+        return None
+    return household_id
+
+
+def snooze_until(kind: str, now: datetime) -> datetime:
+    """Naive-UTC timestamp to suppress care pushes until. '2h' → +2h; '1d' →
+    tomorrow 08:00 Amsterdam (a sensible morning reminder rather than the exact
+    same time next day). `now` is Amsterdam-aware."""
+    if kind == "1d":
+        tomorrow = (now + timedelta(days=1)).date()
+        target = datetime.combine(tomorrow, time(8, 0), tzinfo=AMSTERDAM)
+    else:  # "2h" (default / fallback)
+        target = now + timedelta(hours=2)
+    return target.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 # ── selection ────────────────────────────────────────────────────────────
@@ -289,10 +332,12 @@ def _care_push_label(care_type: str) -> str:
     return CARE_TYPES.get(care_type, {}).get("label_nl", care_type).lower()
 
 
-def build_care_push_payload(due_rows: list[dict]) -> dict:
+def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = None) -> dict:
     """One push summarising the newly-due tasks for an account.
 
-    due_rows: dicts with plant_name + care_type.
+    due_rows: dicts with plant_name + care_type. When `snooze_token` is given,
+    the payload carries a `snooze_url` the service worker uses for its "remind
+    me later" action buttons.
     """
     n = len(due_rows)
     if n == 1:
@@ -301,7 +346,10 @@ def build_care_push_payload(due_rows: list[dict]) -> dict:
         body = f"{row['plant_name']} heeft aandacht nodig — {label}"
     else:
         body = f"{n} planten hebben verzorging nodig"
-    return {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}
+    payload = {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}
+    if snooze_token:
+        payload["snooze_url"] = f"{_api_base()}/api/notifications/snooze?token={snooze_token}"
+    return payload
 
 
 async def send_due_care_pushes(db) -> dict:
@@ -320,6 +368,7 @@ async def send_due_care_pushes(db) -> dict:
     """
     now = _now()
     today = now.date()
+    now_utc = now.astimezone(timezone.utc).replace(tzinfo=None)  # for snoozed_until compare
 
     accounts = await db.execute_fetchall(
         """
@@ -344,10 +393,12 @@ async def send_due_care_pushes(db) -> dict:
             JOIN plants p ON cs.plant_id = p.id
             WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
               AND cs.next_due <= ?
-              AND (cs.notified_for_due IS NULL OR cs.notified_for_due <> cs.next_due)
+              AND (cs.snoozed_until IS NULL OR cs.snoozed_until <= ?)
+              AND (cs.notified_for_due IS NULL OR cs.notified_for_due <> cs.next_due
+                   OR cs.snoozed_until IS NOT NULL)
             ORDER BY cs.next_due ASC
             """,
-            (acc["household_id"], today),
+            (acc["household_id"], today, now_utc),
         )
         # Skip care types this account has muted.
         muted = set(parse_muted_care_types(acc["muted_care_types"]))
@@ -364,7 +415,10 @@ async def send_due_care_pushes(db) -> dict:
         if not subs:
             continue
 
-        payload = build_care_push_payload([dict(r) for r in due_rows])
+        payload = build_care_push_payload(
+            [dict(r) for r in due_rows],
+            snooze_token=make_snooze_token(acc["household_id"]),
+        )
         delivered = False
         for sub in subs:
             outcome = send_push(dict(sub), payload)
@@ -383,8 +437,10 @@ async def send_due_care_pushes(db) -> dict:
                 due = row["next_due"]
                 if isinstance(due, str):
                     due = date.fromisoformat(due[:10])
+                # Clear any (now-elapsed) snooze as we re-notify, so the same
+                # due cycle doesn't immediately re-ping on the next run.
                 await db.execute(
-                    "UPDATE care_schedules SET notified_for_due = ? WHERE id = ?",
+                    "UPDATE care_schedules SET notified_for_due = ?, snoozed_until = NULL WHERE id = ?",
                     (due, row["id"]),
                 )
             await db.commit()

@@ -444,6 +444,68 @@ async def test_digest_survives_weather_fetch_failure(
     assert res.json()["push_sent"] == 1
 
 
+# ── snooze (#181) ────────────────────────────────────────────────────────
+
+def test_snooze_token_roundtrip():
+    from services.digest import make_snooze_token, verify_snooze_token
+    assert verify_snooze_token(make_snooze_token(7)) == 7
+    assert verify_snooze_token("7.deadbeef") is None
+    assert verify_snooze_token("garbage") is None
+    assert verify_snooze_token("") is None
+
+
+async def test_care_push_carries_snooze_url(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    await _seed_overdue_plant(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 1
+    snooze_url = sent_pushes[0]["payload"].get("snooze_url", "")
+    assert "/notifications/snooze?token=" in snooze_url
+
+
+async def test_snooze_rejects_bad_token(client, seeded_db):
+    r = await client.post("/api/notifications/snooze?token=999.bad&for=2h")
+    assert r.status_code == 400
+
+
+async def test_snooze_suppresses_then_renotifies(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header, monkeypatch
+):
+    import services.digest as digest
+
+    await _seed_overdue_plant(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    # 1) initial real-time push at 08:30
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 1
+    token = sent_pushes[0]["payload"]["snooze_url"].split("token=", 1)[1]
+
+    # 2) user taps "2 uur" → snooze_until = 10:30 Amsterdam
+    r = await client.post(f"/api/notifications/snooze?token={token}&for=2h")
+    assert r.status_code == 200 and r.json()["for"] == "2h"
+    row = (await seeded_db.execute_fetchall(
+        "SELECT snoozed_until FROM care_schedules WHERE plant_id = 10"
+    ))[0]
+    assert row["snoozed_until"] is not None
+
+    # 3) a dispatch while still snoozed sends nothing
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 1
+
+    # 4) once the snooze window passes (11:00 Amsterdam), it re-notifies
+    monkeypatch.setattr(digest, "_now", lambda: datetime(2026, 6, 11, 11, 0, tzinfo=AMS))
+    await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert len(sent_pushes) == 2
+    # …and the snooze is cleared so it doesn't loop
+    row = (await seeded_db.execute_fetchall(
+        "SELECT snoozed_until FROM care_schedules WHERE plant_id = 10"
+    ))[0]
+    assert row["snoozed_until"] is None
+
+
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
 
 async def test_test_push_requires_auth(client, seeded_db):
