@@ -21,6 +21,7 @@ from services.digest import (
     verify_unsubscribe_token,
 )
 from services.push import send_push
+from services.weather_task_service import sync_ephemeral_schedules
 
 router = APIRouter(tags=["notifications"])
 
@@ -266,12 +267,25 @@ async def send_digests(
         x_digest_secret.encode(), expected.encode()
     ):
         raise HTTPException(status_code=401, detail="Unauthorized")
+    # Refresh weather-driven ephemeral tasks (frost/heat) before dispatch so a
+    # cold or hot forecast surfaces as a real-time push, not just on the next
+    # dashboard open. Guarded: a weather-fetch hiccup must never block the
+    # email/push channels below.
+    weather_counts = {"weather_created": 0, "weather_deleted": 0}
+    try:
+        synced = await sync_ephemeral_schedules(db)
+        weather_counts = {
+            "weather_created": synced["created"],
+            "weather_deleted": synced["deleted"],
+        }
+    except Exception:  # noqa: BLE001 — best-effort; never fail the digest run
+        pass
     # Two independent channels, same hourly trigger: the daily email digest
     # (fires at each account's chosen hour) and real-time care pushes (fire
     # the hour a task becomes due). Counts only — never account data.
     email_counts = await send_due_digests(db)
     push_counts = await send_due_care_pushes(db)
-    return {**email_counts, **push_counts}
+    return {**weather_counts, **email_counts, **push_counts}
 
 
 @router.get("/notifications/unsubscribe")
