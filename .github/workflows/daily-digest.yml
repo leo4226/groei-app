@@ -1,11 +1,19 @@
 name: Daily care digest
 
-# Hourly trigger for the digest endpoint (#137). The endpoint itself decides
-# which accounts are due (digest hour in Europe/Amsterdam + idempotence
-# stamp), so calling it every hour is safe and never double-sends.
+# Trigger for the digest endpoint (#137). The endpoint itself decides which
+# accounts are due (digest hour in Europe/Amsterdam + idempotence stamp), so
+# calling it repeatedly is safe and never double-sends.
+#
+# Runs every 4 hours during waking hours instead of hourly, so the Neon prod
+# compute can auto-suspend between calls (an always-on hourly poke kept it
+# awake 24/7 and contributed to blowing the free-tier compute quota). The
+# selection predicate (`account_is_due`) delivers at the first run at or after
+# each account's chosen hour, so a sparse schedule still sends once per day.
+# UTC hours 06/10/14/18/21 ≈ Amsterdam 08/12/16/20/23 (summer); the late run
+# covers digest times chosen near end of day.
 on:
   schedule:
-    - cron: "5 * * * *"
+    - cron: "7 6,10,14,18,21 * * *"
   workflow_dispatch:
 
 jobs:

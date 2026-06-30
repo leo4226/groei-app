@@ -52,8 +52,15 @@ def test_due_when_hour_matches_and_never_sent():
     assert account_is_due(_pref("08:00"), NOW) is True
 
 
-def test_not_due_on_other_hour():
+def test_not_due_before_chosen_hour():
+    # NOW is 08:30; a 19:00 digest is still in the future today.
     assert account_is_due(_pref("19:00"), NOW) is False
+
+
+def test_due_after_chosen_hour_catches_up():
+    # Sparse cron: the 06:00 hour has no tick, but the next run (08:30) still
+    # delivers because now is at/after the chosen hour and it hasn't sent today.
+    assert account_is_due(_pref("06:00"), NOW) is True
 
 
 def test_not_due_when_already_sent_today():
