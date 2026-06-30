@@ -11,6 +11,16 @@ export interface PageContext {
   route: string
   map_slug?: string
   plant_id?: number
+  selected_plant_id?: number
+  selected_object_id?: number
+  clicked_map_x?: number
+  clicked_map_y?: number
+  ground_zone_id?: string
+  ground_zone_name?: string
+  ground_zone_type?: string
+  light_bucket?: 'full' | 'part' | 'bright_shade' | 'deep_shade'
+  direct_sun_hours?: number
+  sky_view_factor?: number
 }
 
 /**

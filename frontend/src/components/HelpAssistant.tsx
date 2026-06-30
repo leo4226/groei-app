@@ -35,6 +35,14 @@ function detectPage(pathname: string): PageKey | null {
   return null
 }
 
+
+function extractPlantIdFromRoute(pathname: string): number | undefined {
+  const match = pathname.match(/^\/(?:plants|log)\/(\d+)(?:\/|$)/)
+  if (!match) return undefined
+  const id = Number(match[1])
+  return Number.isFinite(id) ? id : undefined
+}
+
 function randomBubble(pageKey: PageKey, name: string): string {
   const bubbles: Record<PageKey, string[]> = {
     calendar: [
@@ -157,6 +165,7 @@ export default function HelpAssistant() {
 
   const users = useFloreren((s) => s.users)
   const activeUserId = useFloreren((s) => s.activeUserId)
+  const assistantPageContext = useFloreren((s) => s.assistantPageContext)
   const activeUser = users.find((u) => u.id === activeUserId)
   const userName = activeUser?.name ?? 'user'
 
@@ -209,11 +218,16 @@ export default function HelpAssistant() {
     setLoading(true)
 
     try {
-      const pageContext: PageContext = { route: location.pathname }
+      const pageContext: PageContext = {
+        ...assistantPageContext,
+        route: location.pathname,
+      }
       if (pageKey === 'map') {
         const slug = location.pathname.replace(/^\/map\//, '')
         if (slug) pageContext.map_slug = slug
       }
+      const routePlantId = extractPlantIdFromRoute(location.pathname)
+      if (routePlantId !== undefined) pageContext.plant_id = routePlantId
       const reply = await sendChatMessage(userMsg, messages, pageContext, {
         activeUserId,
         language: activeUser?.language,

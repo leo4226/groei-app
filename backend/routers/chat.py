@@ -1,6 +1,6 @@
 import os
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -28,6 +28,16 @@ class PageContext(BaseModel):
     route: str
     map_slug: str | None = None
     plant_id: int | None = None
+    selected_plant_id: int | None = None
+    selected_object_id: int | None = None
+    clicked_map_x: float | None = None
+    clicked_map_y: float | None = None
+    ground_zone_id: str | None = None
+    ground_zone_name: str | None = None
+    ground_zone_type: str | None = None
+    light_bucket: Literal["full", "part", "bright_shade", "deep_shade"] | None = None
+    direct_sun_hours: float | None = None
+    sky_view_factor: float | None = None
 
 
 class ChatRequest(BaseModel):
@@ -64,6 +74,11 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, list):
         return [_json_safe(v) for v in value]
     return value
+
+
+def _without_none(values: dict[str, Any]) -> dict[str, Any]:
+    """Keep structured context compact while preserving explicit false/zero values."""
+    return {k: v for k, v in values.items() if v is not None}
 
 
 def _care_warning_to_context(warning: Any) -> dict[str, Any]:
@@ -190,9 +205,11 @@ async def _fetch_plants_packet(
     *,
     map_slug: str | None = None,
     plant_id: int | None = None,
+    selected_plant_id: int | None = None,
     weather: dict[str, Any] | None = None,
-) -> tuple[list[dict[str, Any]], str]:
+) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
     """Fetch active plants as bounded structured context plus legacy prose."""
+    focused_plant_id = selected_plant_id if selected_plant_id is not None else plant_id
     rows = await db.execute_fetchall(
         """SELECT p.id, p.name, p.species, p.sun_requirement, p.plant_type, p.phase,
                   p.container_id, p.ground_zone_id, p.care_thresholds, p.care_profile,
@@ -208,7 +225,16 @@ async def _fetch_plants_packet(
         (household_id,),
     )
     if not rows:
-        return [], ""
+        return [], "", _without_none(
+            {
+                "total_plants": 0,
+                "included_plants": 0,
+                "truncated": False,
+                "current_map_only": False,
+                "focused_plant_id": focused_plant_id,
+                "focused_map_slug": map_slug,
+            }
+        )
 
     plant_ids = [r["id"] for r in rows]
     care_rows = await db.execute_fetchall(
@@ -224,15 +250,20 @@ async def _fetch_plants_packet(
         care_by_plant.setdefault(c["plant_id"], []).append(dict(c))
 
     all_plants = [dict(r) for r in rows]
-    focal: list[dict] = []
+    focused: list[dict] = []
+    current_map_plants: list[dict] = []
     rest: list[dict] = []
     for plant in all_plants:
-        is_focal = (plant_id is not None and plant["id"] == plant_id) or (
-            map_slug is not None and plant.get("map_slug") == map_slug
-        )
-        (focal if is_focal else rest).append(plant)
+        if focused_plant_id is not None and plant["id"] == focused_plant_id:
+            focused.append(plant)
+        elif map_slug is not None and plant.get("map_slug") == map_slug:
+            current_map_plants.append(plant)
+        else:
+            rest.append(plant)
 
-    ordered = (focal + rest)[:MAX_CONTEXT_PLANTS]
+    focus_group = focused + current_map_plants
+    ordered = (focus_group + rest)[:MAX_CONTEXT_PLANTS]
+    ordered_ids = {p["id"] for p in ordered}
     context_plants: list[dict[str, Any]] = []
     today = date.today()
     warning_weather = {"temp": (weather or {}).get("temp")}
@@ -265,30 +296,48 @@ async def _fetch_plants_packet(
             )
         )
 
-    if not map_slug and plant_id is None:
+    if not map_slug and focused_plant_id is None:
         parts = [_format_plant_row(dict(r), care_by_plant) for r in ordered]
         prose = "Your garden has these plants:\n" + "\n".join(parts)
     else:
         sections = []
-        if focal:
-            label = focal[0].get("map_name") or map_slug or f"plant {plant_id}"
-            focal_lines = [_format_plant_row(p, care_by_plant) for p in focal]
+        ordered_focus = [p for p in focus_group if p["id"] in ordered_ids]
+        ordered_focus_ids = {p["id"] for p in ordered_focus}
+        ordered_rest = [p for p in ordered if p["id"] not in ordered_focus_ids]
+        if ordered_focus:
+            label = ordered_focus[0].get("map_name") or map_slug or f"plant {focused_plant_id}"
+            focal_lines = [_format_plant_row(p, care_by_plant) for p in ordered_focus]
             sections.append(f"Plants in focus ({label}):\n" + "\n".join(focal_lines))
-        if rest:
+        if ordered_rest:
             other_names = sorted({r.get("map_name") or r.get("map_slug") or "?" for r in rest})
-            rest_lines = [_format_plant_row(p, care_by_plant) for p in rest[: max(0, MAX_CONTEXT_PLANTS - len(focal))]]
+            rest_lines = [_format_plant_row(p, care_by_plant) for p in ordered_rest]
             sections.append(
                 f"Other plants (maps: {', '.join(other_names)}):\n" + "\n".join(rest_lines)
             )
         prose = "\n\n".join(sections)
 
-    if len(all_plants) > len(ordered):
+    outside_current_map = [p for p in all_plants if map_slug is not None and p.get("map_slug") != map_slug]
+    includes_outside_current_map = any(
+        map_slug is not None and p.get("map_slug") != map_slug for p in ordered
+    )
+    context_summary = _without_none(
+        {
+            "total_plants": len(all_plants),
+            "included_plants": len(ordered),
+            "truncated": len(all_plants) > len(ordered),
+            "current_map_only": bool(map_slug and outside_current_map and not includes_outside_current_map),
+            "focused_plant_id": focused_plant_id,
+            "focused_map_slug": map_slug,
+        }
+    )
+
+    if context_summary["truncated"]:
         prose += f"\n\n(Context bounded to {len(ordered)} of {len(all_plants)} active plants.)"
-    return context_plants, prose
+    return context_plants, prose, context_summary
 
 
 async def _fetch_plants_context(db, household_id: int, map_slug: str | None = None) -> str:
-    _, prose = await _fetch_plants_packet(db, household_id, map_slug=map_slug)
+    _, prose, _ = await _fetch_plants_packet(db, household_id, map_slug=map_slug)
     return prose
 
 
@@ -392,6 +441,43 @@ async def _fetch_weather_packet(db) -> dict[str, Any]:
     return {"temp": temp, "rain": rain}
 
 
+def _context_scope_guidance(summary: dict[str, Any], language: str) -> str:
+    """Tell Stekkie how complete the supplied context is without changing old fields."""
+    included = int(summary.get("included_plants") or 0)
+    total = summary.get("total_plants")
+    truncated = bool(summary.get("truncated"))
+    current_map_only = bool(summary.get("current_map_only"))
+
+    if not truncated and not current_map_only:
+        return ""
+
+    if language == "en":
+        parts = []
+        if truncated and total is not None:
+            parts.append(
+                f"The supplied garden context contains {included} of {total} active plants. "
+                f"For whole-garden questions, say 'I can see {included} of your {total} plants' "
+                "before drawing conclusions, and avoid certainty about plants outside the packet."
+            )
+        if current_map_only:
+            parts.append(
+                "The supplied plant packet is limited to the current map; do not describe it as the complete garden."
+            )
+        return " ".join(parts)
+
+    parts = []
+    if truncated and total is not None:
+        parts.append(
+            f"De meegegeven tuincontext bevat {included} van de {total} actieve planten. "
+            f"Zeg bij vragen over de hele tuin bijvoorbeeld: 'Ik zie nu {included} van je {total} planten' "
+            "voordat je conclusies trekt, en doe geen stellige uitspraken over planten buiten dit pakket."
+        )
+    if current_map_only:
+        parts.append(
+            "Het plantenpakket is beperkt tot de huidige kaart; beschrijf dit niet als de volledige tuin."
+        )
+    return " ".join(parts)
+
 async def _build_garden_context(
     db,
     household_id: int,
@@ -402,6 +488,8 @@ async def _build_garden_context(
 ) -> tuple[dict[str, Any], str, str, str]:
     map_slug = page_context.map_slug if page_context else None
     plant_id = page_context.plant_id if page_context else None
+    selected_plant_id = page_context.selected_plant_id if page_context else None
+    focused_plant_id = selected_plant_id if selected_plant_id is not None else plant_id
     language = await _fetch_user_language(
         db,
         household_id,
@@ -410,23 +498,37 @@ async def _build_garden_context(
     )
     weather = await _fetch_weather_packet(db)
     maps, maps_ctx = await _fetch_maps_packet(db, household_id)
-    plants, plants_ctx = await _fetch_plants_packet(
+    plants, plants_ctx, context_summary = await _fetch_plants_packet(
         db,
         household_id,
         map_slug=map_slug,
         plant_id=plant_id,
+        selected_plant_id=selected_plant_id,
         weather=weather,
     )
     biodiversity, bio_ctx = await _fetch_biodiversity_packet(db, household_id, map_slug)
+    response_guidance = _context_scope_guidance(context_summary, language)
+    if response_guidance:
+        plants_ctx = (
+            "Context scope guidance:\n"
+            f"{response_guidance}\n\n"
+            f"{plants_ctx}"
+        ).strip()
 
     garden_context = _json_safe(
         {
             "schema_version": "garden-context-v1",
             "language": language,
-            "current_page": page_context.model_dump() if page_context else None,
+            "current_page": page_context.model_dump(exclude_none=True) if page_context else None,
+            "context_summary": context_summary,
+            "response_guidance": response_guidance or None,
             "bounds": {
                 "max_plants": MAX_CONTEXT_PLANTS,
                 "included_plants": len(plants),
+                "total_plants": context_summary.get("total_plants"),
+                "truncated": context_summary.get("truncated", False),
+                "focused_plant_id": focused_plant_id,
+                "focused_map_slug": map_slug,
             },
             "maps": maps,
             "plants": plants,
