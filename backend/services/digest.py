@@ -266,6 +266,21 @@ def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool
 
 
 
+# Weather-driven ephemeral schedules use their own care_type keys
+# (protect_cold/protect_heat) that aren't in the CARE_TYPES catalog, so give
+# them explicit NL push labels here rather than falling back to the raw key.
+_WEATHER_PUSH_LABELS = {
+    "protect_cold": "beschermen tegen kou",
+    "protect_heat": "beschermen tegen hitte",
+}
+
+
+def _care_push_label(care_type: str) -> str:
+    if care_type in _WEATHER_PUSH_LABELS:
+        return _WEATHER_PUSH_LABELS[care_type]
+    return CARE_TYPES.get(care_type, {}).get("label_nl", care_type).lower()
+
+
 def build_care_push_payload(due_rows: list[dict]) -> dict:
     """One push summarising the newly-due tasks for an account.
 
@@ -274,8 +289,8 @@ def build_care_push_payload(due_rows: list[dict]) -> dict:
     n = len(due_rows)
     if n == 1:
         row = due_rows[0]
-        label = CARE_TYPES.get(row["care_type"], {}).get("label_nl", row["care_type"])
-        body = f"{row['plant_name']} heeft aandacht nodig — {label.lower()}"
+        label = _care_push_label(row["care_type"])
+        body = f"{row['plant_name']} heeft aandacht nodig — {label}"
     else:
         body = f"{n} planten hebben verzorging nodig"
     return {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}

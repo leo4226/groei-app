@@ -3,7 +3,7 @@
 The actual webpush send is mocked at the services.push boundary — these tests
 never talk to a push service.
 """
-from datetime import datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -338,6 +338,110 @@ async def test_care_push_driven_by_subscription_not_account_flag(
     assert res.json()["push_sent"] == 1
     assert len(sent_pushes) == 1
     assert sent_pushes[0]["endpoint"] == SUB["endpoint"]
+
+
+# ── weather-driven frost/heat push (#181) ───────────────────────────────
+
+async def _seed_outdoor_plant_with_threshold(db, *, bring_inside=5, household_id=1):
+    await db.execute(
+        "INSERT INTO maps (id, name, map_type, household_id) VALUES (5, 'Tuin', 'outdoor', ?)",
+        (household_id,),
+    )
+    await db.execute(
+        "INSERT INTO plants (id, name, is_active, household_id, map_id, care_thresholds) "
+        "VALUES (20, 'Avocado', 1, ?, 5, ?)",
+        (household_id, f'{{"bring_inside_below_c": {bring_inside}}}'),
+    )
+    await db.commit()
+
+
+@pytest.fixture
+def at_send_hour_today(monkeypatch):
+    """Freeze the dispatch clock to a send hour *on the real current date*, so
+    the ephemeral schedule's next_due (date.today()) counts as due."""
+    import services.digest as digest
+    monkeypatch.setattr(
+        digest, "_now", lambda: datetime.combine(date.today(), time(8, 30), tzinfo=AMS)
+    )
+
+
+@pytest.fixture
+def cold_forecast(monkeypatch):
+    """Make the cached weather report a cold night (min below any threshold)."""
+    async def fake_temp_data():
+        return {"days": [{"min": -2.0, "max": 4.0}]}
+
+    import services.environment as environment
+    monkeypatch.setattr(environment, "get_temp_data", fake_temp_data)
+
+
+async def test_frost_alert_creates_ephemeral_task_and_pushes(
+    client, seeded_db, cron_secret, sent_pushes, at_send_hour_today, cold_forecast, auth_header
+):
+    # An outdoor plant with a bring-inside threshold + a cold forecast should
+    # materialise an ephemeral protect_cold schedule and push it in real time.
+    await _seed_outdoor_plant_with_threshold(seeded_db, bring_inside=5)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["weather_created"] == 1
+    assert body["push_sent"] == 1
+
+    # The ephemeral schedule exists and is the thing we pushed about.
+    rows = await seeded_db.execute_fetchall(
+        "SELECT care_type, is_ephemeral FROM care_schedules WHERE plant_id = 20"
+    )
+    assert len(rows) == 1
+    assert rows[0]["care_type"] == "protect_cold" and rows[0]["is_ephemeral"] == 1
+
+    assert len(sent_pushes) == 1
+    payload_body = sent_pushes[0]["payload"]["body"]
+    assert "Avocado" in payload_body
+    # Weather care types get a friendly NL label, not the raw key.
+    assert "beschermen tegen kou" in payload_body
+    assert "protect_cold" not in payload_body
+
+
+async def test_no_frost_task_when_forecast_mild(
+    client, seeded_db, cron_secret, sent_pushes, at_send_hour_today, monkeypatch, auth_header
+):
+    async def mild():
+        return {"days": [{"min": 12.0, "max": 20.0}]}
+
+    import services.environment as environment
+    monkeypatch.setattr(environment, "get_temp_data", mild)
+
+    await _seed_outdoor_plant_with_threshold(seeded_db, bring_inside=5)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["weather_created"] == 0
+    assert res.json()["push_sent"] == 0
+    assert sent_pushes == []
+
+
+async def test_digest_survives_weather_fetch_failure(
+    client, seeded_db, cron_secret, sent_pushes, at_send_hour_today, auth_header, monkeypatch
+):
+    # A weather-fetch error must not block the email/push channels.
+    async def boom():
+        raise RuntimeError("open-meteo down")
+
+    import services.environment as environment
+    monkeypatch.setattr(environment, "get_temp_data", boom)
+
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.status_code == 200
+    # Weather sync swallowed the error (counts default to 0) but the regular
+    # overdue 'water' task still pushed.
+    assert res.json()["weather_created"] == 0
+    assert res.json()["push_sent"] == 1
 
 
 # ── manual test-push endpoint (#295) ─────────────────────────────────────
