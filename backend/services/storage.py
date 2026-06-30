@@ -3,6 +3,7 @@
 import os
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
 
 
 class Storage:
@@ -22,6 +23,16 @@ class Storage:
             ContentType=content_type,
         )
         return self.public_url(key)
+
+    def get(self, key: str) -> bytes | None:
+        """Return an object's bytes, or None if it doesn't exist."""
+        try:
+            resp = self._client.get_object(Bucket=self.bucket, Key=key.lstrip("/"))
+            return resp["Body"].read()
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") in ("NoSuchKey", "NotFound", "404"):
+                return None
+            raise
 
     def delete(self, key: str) -> None:
         self._client.delete_object(Bucket=self.bucket, Key=key.lstrip("/"))
