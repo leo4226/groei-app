@@ -48,7 +48,7 @@ class NotificationPrefsUpdate(BaseModel):
 
 
 def _split_muted(value) -> list[str]:
-    return [c for c in (str(value).split(",") if value else []) if c]
+    return [c.strip() for c in str(value).split(",") if c.strip()] if value else []
 
 
 def _to_prefs(row) -> NotificationPrefs:

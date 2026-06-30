@@ -259,7 +259,7 @@ def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool
 
 
 def _split_muted(value) -> set[str]:
-    return {c for c in (str(value).split(",") if value else []) if c}
+    return {c.strip() for c in str(value).split(",") if c.strip()} if value else set()
 
 
 def build_care_push_payload(due_rows: list[dict]) -> dict:

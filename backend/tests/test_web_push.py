@@ -207,6 +207,29 @@ async def test_gone_subscription_is_pruned(
     assert rows == []  # 410 Gone → row pruned at send time
 
 
+def test_in_quiet_hours_logic():
+    from services.digest import _in_quiet_hours
+
+    def at(h, m=0):
+        return datetime(2026, 6, 11, h, m, tzinfo=AMS)
+
+    # Overnight wrap 22:00–06:00: start inclusive, end exclusive.
+    assert _in_quiet_hours(at(22), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(23), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(5, 59), "22:00", "06:00") is True
+    assert _in_quiet_hours(at(6), "22:00", "06:00") is False
+    assert _in_quiet_hours(at(12), "22:00", "06:00") is False
+    # Same-day window 07:00–09:00 (no wrap).
+    assert _in_quiet_hours(at(8), "07:00", "09:00") is True
+    assert _in_quiet_hours(at(9), "07:00", "09:00") is False
+    assert _in_quiet_hours(at(6, 59), "07:00", "09:00") is False
+    # Default (None) → 21:00–08:00 overnight wrap.
+    assert _in_quiet_hours(at(3), None, None) is True
+    assert _in_quiet_hours(at(10), None, None) is False
+    # Zero-length window → never quiet.
+    assert _in_quiet_hours(at(5), "09:00", "09:00") is False
+
+
 @pytest.fixture
 def at_night(monkeypatch):
     import services.digest as digest
