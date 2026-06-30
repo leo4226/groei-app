@@ -5,9 +5,12 @@
   when the heartbeat is stale (>90 min) during awake hours (08:00–23:30
   Europe/Amsterdam), exactly once per outage, with one recovery message.
 
-Same shared-secret pattern as the digest cron (X-Digest-Secret): fail
-closed, constant-time compare. The Fly machine auto-stops, so the cadence
-comes from GitHub Actions, not an in-app scheduler.
+State (last heartbeat + outage flag) lives in R2, not Postgres: these two
+callers fire every ~30 min around the clock, and keeping the Neon compute
+awake for them helped blow its free-tier quota. R2 is essentially free for a
+handful of tiny ops a day. Same shared-secret pattern as the digest cron
+(X-Digest-Secret): fail closed, constant-time compare. The Fly machine
+auto-stops, so the cadence comes from GitHub Actions, not an in-app scheduler.
 """
 import datetime
 import os
@@ -15,10 +18,10 @@ import secrets
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
-from database import db_dep
+from services.watchdog_state import read_state, write_state
 
 router = APIRouter(prefix="/internal/watchdog", tags=["watchdog"])
 
@@ -58,35 +61,27 @@ class Heartbeat(BaseModel):
 @router.post("/heartbeat")
 async def heartbeat(
     body: Heartbeat,
-    db=Depends(db_dep),
     x_watchdog_secret: str = Header(default=""),
 ):
     _require_secret(x_watchdog_secret)
-    # Naive UTC datetime object — repo convention for TIMESTAMP columns.
-    # Use _now_ams() so tests can monkeypatch the clock.
+    # Naive UTC — repo convention for stored timestamps. Use _now_ams() so
+    # tests can monkeypatch the clock. Read-modify-write preserves the
+    # outage_alerted flag the check owns.
     now = _now_ams().astimezone(datetime.timezone.utc).replace(tzinfo=None)
-    await db.execute(
-        "UPDATE watchdog_state SET last_heartbeat = ?, summary = ? WHERE id = 1",
-        (now, body.summary),
-    )
-    await db.commit()
+    state = await read_state()
+    state.last_heartbeat = now
+    state.summary = body.summary
+    await write_state(state)
     return {"ok": True}
 
 
 @router.post("/check")
 async def check(
-    db=Depends(db_dep),
     x_watchdog_secret: str = Header(default=""),
 ):
     _require_secret(x_watchdog_secret)
-    row = await (
-        await db.execute(
-            "SELECT last_heartbeat, outage_alerted FROM watchdog_state WHERE id = 1"
-        )
-    ).fetchone()
-    last_hb, outage_alerted = row["last_heartbeat"], bool(row["outage_alerted"])
-    if isinstance(last_hb, str):  # aiosqlite (tests) returns TEXT
-        last_hb = datetime.datetime.fromisoformat(last_hb)
+    state = await read_state()
+    last_hb = state.last_heartbeat
 
     now_ams = _now_ams()
     now_utc = now_ams.astimezone(datetime.timezone.utc).replace(tzinfo=None)
@@ -94,22 +89,18 @@ async def check(
     in_window = WINDOW_START <= now_ams.time() <= WINDOW_END
 
     alerted = False
-    if stale and in_window and not outage_alerted:
+    if stale and in_window and not state.outage_alerted:
         since = last_hb.strftime("%a %H:%M UTC") if last_hb else "ever (no heartbeat yet)"
         if await _send_telegram(
             f"🚨 Watchdog dead-man's switch: your PC hasn't checked in since {since}. "
             "The watchdog, the PC, or the internet connection is down."
         ):
-            await db.execute(
-                "UPDATE watchdog_state SET outage_alerted = ? WHERE id = 1", (True,)
-            )
-            await db.commit()
+            state.outage_alerted = True
+            await write_state(state)
             alerted = True
-    elif not stale and outage_alerted:
+    elif not stale and state.outage_alerted:
         await _send_telegram("✅ Watchdog: PC is back online and heartbeating again.")
-        await db.execute(
-            "UPDATE watchdog_state SET outage_alerted = ? WHERE id = 1", (False,)
-        )
-        await db.commit()
+        state.outage_alerted = False
+        await write_state(state)
 
     return {"stale": stale, "in_window": in_window, "alerted": alerted}
