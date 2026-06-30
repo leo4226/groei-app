@@ -1,8 +1,8 @@
 """add quiet-hours + per-care-type push prefs
 
 Web push v2.1 (#181). Three TEXT columns on notification_preferences:
-- quiet_start / quiet_end ('HH:MM') — the daytime window in which care pushes
-  may be sent (outside it, pushes are held). NULL = default 08:00–21:00.
+- quiet_start / quiet_end ('HH:MM') — the quiet window in which care pushes
+  are held. NULL = default 21:00–08:00.
 - muted_care_types — comma-separated care_type keys the user has muted; an
   empty/NULL value mutes nothing.
 

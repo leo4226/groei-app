@@ -151,11 +151,27 @@ WEATHER_COLDHEAT_COLORS = {
 }
 
 
+CARE_TYPE_ALIASES = {
+    # The frontend historically called this scheduled care type `repot_check`,
+    # while the backend stores schedules as `repot`. Accept the old key so a
+    # stale client cannot silently fail to mute repot reminders.
+    "repot_check": "repot",
+}
+
+
 def parse_muted_care_types(value) -> list[str]:
     """Parse the comma-separated muted-care-types field into a clean, validated
-    list — trims whitespace, drops blanks, and keeps only known care types so a
-    bad client can't pollute the stored set. Shared by the prefs API and the
-    push dispatch."""
+    list — trims whitespace, normalizes known aliases, drops blanks/duplicates,
+    and keeps only known care types so a bad client can't pollute the stored set.
+    Shared by the prefs API and the push dispatch."""
     if not value:
         return []
-    return [c.strip() for c in str(value).split(",") if c.strip() in CARE_TYPES]
+
+    muted: list[str] = []
+    seen: set[str] = set()
+    for raw in str(value).split(","):
+        care_type = CARE_TYPE_ALIASES.get(raw.strip(), raw.strip())
+        if care_type in CARE_TYPES and care_type not in seen:
+            muted.append(care_type)
+            seen.add(care_type)
+    return muted

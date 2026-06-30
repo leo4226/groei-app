@@ -13,8 +13,8 @@ import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
 
-// Care types a user can mute for push (the recurring reminder kinds).
-const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot_check'] as const
+// Backend care_type keys a user can mute for scheduled care push reminders.
+const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 // Must match the boot script in index.html, which applies the theme before

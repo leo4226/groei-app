@@ -90,18 +90,19 @@ async def test_prefs_persist_quiet_hours_and_validate_muted(client, seeded_db, a
         json={
             "digest_enabled": False, "digest_time": "08:00", "push_enabled": True,
             "quiet_start": "22:00", "quiet_end": "06:00",
-            "muted_care_types": ["fertilize", "bogus", "water"],
+            "muted_care_types": ["fertilize", "bogus", "water", "repot_check", "water"],
         },
         headers=auth_header,
     )
     assert res.status_code == 200
     body = res.json()
     assert body["quiet_start"] == "22:00" and body["quiet_end"] == "06:00"
-    # 'bogus' is not a real care type → dropped; order/known ones preserved.
-    assert body["muted_care_types"] == ["fertilize", "water"]
+    # 'bogus' is not a real care type → dropped; old frontend alias is
+    # normalized; duplicates are removed while preserving first-seen order.
+    assert body["muted_care_types"] == ["fertilize", "water", "repot"]
 
     res = await client.get("/api/settings/notifications", headers=auth_header)
-    assert res.json()["muted_care_types"] == ["fertilize", "water"]
+    assert res.json()["muted_care_types"] == ["fertilize", "water", "repot"]
 
 
 # ── subscription endpoints ───────────────────────────────────────────────
