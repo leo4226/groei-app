@@ -9,11 +9,11 @@ name: Daily care digest
 # awake 24/7 and contributed to blowing the free-tier compute quota). The
 # selection predicate (`account_is_due`) delivers at the first run at or after
 # each account's chosen hour, so a sparse schedule still sends once per day.
-# UTC hours 06/10/14/18/21 ≈ Amsterdam 08/12/16/20/23 (summer); the late run
-# covers digest times chosen near end of day.
+# UTC hours 06/10/14/18/21/22 cover the selectable late digest hour
+# year-round (21 UTC is 23:00 in summer, 22 UTC is 23:00 in winter).
 on:
   schedule:
-    - cron: "7 6,10,14,18,21 * * *"
+    - cron: "7 6,10,14,18,21,22 * * *"
   workflow_dispatch:
 
 jobs:
