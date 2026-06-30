@@ -15,7 +15,7 @@ from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 from auth import SECRET
-from care_types import CARE_TYPES
+from care_types import CARE_TYPES, parse_muted_care_types
 from models import CareTask
 from services.care_task_service import fetch_household_schedule_rows, classify_care_tasks
 from services.email import send_email
@@ -258,8 +258,6 @@ def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool
     return cur >= qs or cur < qe  # overnight wrap
 
 
-def _split_muted(value) -> set[str]:
-    return {c.strip() for c in str(value).split(",") if c.strip()} if value else set()
 
 
 def build_care_push_payload(due_rows: list[dict]) -> dict:
@@ -323,7 +321,7 @@ async def send_due_care_pushes(db) -> dict:
             (acc["household_id"], today),
         )
         # Skip care types this account has muted.
-        muted = _split_muted(acc["muted_care_types"])
+        muted = set(parse_muted_care_types(acc["muted_care_types"]))
         if muted:
             due_rows = [r for r in due_rows if r["care_type"] not in muted]
         if not due_rows:

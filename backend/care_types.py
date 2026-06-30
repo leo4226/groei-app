@@ -149,3 +149,13 @@ WEATHER_COLDHEAT_COLORS = {
     "heat_protect_urgent": "#c8541d",
     "heat_protect_warning": "#e08049",
 }
+
+
+def parse_muted_care_types(value) -> list[str]:
+    """Parse the comma-separated muted-care-types field into a clean, validated
+    list — trims whitespace, drops blanks, and keeps only known care types so a
+    bad client can't pollute the stored set. Shared by the prefs API and the
+    push dispatch."""
+    if not value:
+        return []
+    return [c.strip() for c in str(value).split(",") if c.strip() in CARE_TYPES]

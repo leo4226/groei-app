@@ -84,6 +84,26 @@ async def test_prefs_include_push_enabled(client, seeded_db, auth_header):
     assert res.json()["push_enabled"] is True
 
 
+async def test_prefs_persist_quiet_hours_and_validate_muted(client, seeded_db, auth_header):
+    res = await client.put(
+        "/api/settings/notifications",
+        json={
+            "digest_enabled": False, "digest_time": "08:00", "push_enabled": True,
+            "quiet_start": "22:00", "quiet_end": "06:00",
+            "muted_care_types": ["fertilize", "bogus", "water"],
+        },
+        headers=auth_header,
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["quiet_start"] == "22:00" and body["quiet_end"] == "06:00"
+    # 'bogus' is not a real care type → dropped; order/known ones preserved.
+    assert body["muted_care_types"] == ["fertilize", "water"]
+
+    res = await client.get("/api/settings/notifications", headers=auth_header)
+    assert res.json()["muted_care_types"] == ["fertilize", "water"]
+
+
 # ── subscription endpoints ───────────────────────────────────────────────
 
 async def test_subscription_requires_auth(client, seeded_db):

@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from auth import get_current_account
+from care_types import CARE_TYPES, parse_muted_care_types
 from database import db_dep
 from services.digest import (
     APP_URL,
@@ -47,10 +48,6 @@ class NotificationPrefsUpdate(BaseModel):
     muted_care_types: list[str] = []
 
 
-def _split_muted(value) -> list[str]:
-    return [c.strip() for c in str(value).split(",") if c.strip()] if value else []
-
-
 def _to_prefs(row) -> NotificationPrefs:
     return NotificationPrefs(
         digest_enabled=bool(row["digest_enabled"]),
@@ -58,7 +55,7 @@ def _to_prefs(row) -> NotificationPrefs:
         push_enabled=bool(row["push_enabled"]),
         quiet_start=str(row["quiet_start"])[:5] if row["quiet_start"] else None,
         quiet_end=str(row["quiet_end"])[:5] if row["quiet_end"] else None,
-        muted_care_types=_split_muted(row["muted_care_types"]),
+        muted_care_types=parse_muted_care_types(row["muted_care_types"]),
     )
 
 
@@ -92,7 +89,9 @@ async def update_notification_prefs(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
-    muted_csv = ",".join(body.muted_care_types)
+    # Keep only known care types so a bad client can't pollute the stored set.
+    muted = [c for c in body.muted_care_types if c in CARE_TYPES]
+    muted_csv = ",".join(muted)
     cur = await db.execute(
         """
         INSERT INTO notification_preferences
@@ -119,7 +118,7 @@ async def update_notification_prefs(
         push_enabled=body.push_enabled,
         quiet_start=body.quiet_start,
         quiet_end=body.quiet_end,
-        muted_care_types=body.muted_care_types,
+        muted_care_types=muted,
     )
 
 
