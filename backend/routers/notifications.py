@@ -3,21 +3,26 @@
 - GET/PUT /settings/notifications — per-account digest prefs (auth required)
 - POST /internal/send-digests — cron trigger, X-Digest-Secret shared secret
 - GET /notifications/unsubscribe — signed-token opt-out, no login required
+- POST /notifications/snooze — signed-token care-push snooze, no login required
 """
 import os
 import secrets
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+import services.digest as digest
 from auth import get_current_account
 from care_types import parse_muted_care_types
 from database import db_dep
 from services.digest import (
     APP_URL,
+    SNOOZE_DURATIONS,
     send_due_care_pushes,
     send_due_digests,
+    snooze_until,
+    verify_snooze_token,
     verify_unsubscribe_token,
 )
 from services.push import send_push
@@ -286,6 +291,37 @@ async def send_digests(
     email_counts = await send_due_digests(db)
     push_counts = await send_due_care_pushes(db)
     return {**weather_counts, **email_counts, **push_counts}
+
+
+@router.post("/notifications/snooze")
+async def snooze_care_pushes(
+    token: str = "",
+    for_: str = Query(default="2h", alias="for"),
+    db=Depends(db_dep),
+):
+    """Defer the household's currently-due care pushes (#181). Called by the
+    service worker's notification action buttons, authenticated by the signed
+    snooze token in the push payload — no login (the SW has no JWT)."""
+    household_id = verify_snooze_token(token)
+    if household_id is None:
+        raise HTTPException(status_code=400, detail="Invalid snooze link")
+    kind = for_ if for_ in SNOOZE_DURATIONS else "2h"
+    # Resolve _now via the module so a frozen clock in tests is honoured (and so
+    # the endpoint shares the dispatch's notion of "now").
+    now = digest._now()
+    until = snooze_until(kind, now)
+    await db.execute(
+        """
+        UPDATE care_schedules SET snoozed_until = ?
+        WHERE is_active = 1 AND next_due <= ?
+          AND plant_id IN (
+              SELECT id FROM plants WHERE household_id = ? AND is_active = 1
+          )
+        """,
+        (until, now.date(), household_id),
+    )
+    await db.commit()
+    return {"ok": True, "for": kind, "snoozed_until": until.isoformat() + "Z"}
 
 
 @router.get("/notifications/unsubscribe")
