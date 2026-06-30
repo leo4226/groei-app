@@ -103,6 +103,7 @@ export default function PlantDetail() {
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [retryingSpecies, setRetryingSpecies] = useState(false)
+  const [retryFailed, setRetryFailed] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
   const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
   const [carePhotoBusy, setCarePhotoBusy] = useState(false)
@@ -241,13 +242,18 @@ export default function PlantDetail() {
 
   async function handleRetrySpecies() {
     setRetryingSpecies(true)
+    setRetryFailed(false)
     try {
       const updated = await plantsApi.retrySpecies(plantId)
       setPlant(updated)
       // Also refresh the store so other pages see the new data
       await loadPlants()
+      // A 200 doesn't guarantee a usable calendar — the LLM may have come back
+      // empty. Tell the user it didn't land so they can try again later.
+      if (!updated.phenology?.months?.length) setRetryFailed(true)
     } catch (e) {
       console.error('Species retry failed:', e)
+      setRetryFailed(true)
     } finally {
       setRetryingSpecies(false)
     }
@@ -326,9 +332,13 @@ export default function PlantDetail() {
     </div>
   )
 
-  const calendarBlock = plant.phenology ? (
+  // A phenology object can exist yet have no month calendar (incomplete LLM
+  // generation) — that still reads as "No species data available", so treat it
+  // the same as missing and offer the fetch button.
+  const hasYearCalendar = (plant.phenology?.months?.length ?? 0) > 0
+  const calendarBlock = hasYearCalendar ? (
     <Section title={t.plantDetail.yearCalendar}>
-      <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
+      <PhaseCalendar phenology={plant.phenology!} sunHours={sunHours} />
     </Section>
   ) : (
     <Section title={t.plantDetail.yearCalendar}>
@@ -345,6 +355,13 @@ export default function PlantDetail() {
             ? (isEN ? 'Loading...' : 'Bezig...')
             : (<><Glyph name="refresh" size={14} />{isEN ? 'Fetch species data' : 'Soortgegevens ophalen'}</>)}
         </button>
+        {retryFailed && !retryingSpecies && (
+          <p className="text-xs text-text-muted mt-3">
+            {isEN
+              ? "Couldn't fetch species data right now — please try again later."
+              : 'Soortgegevens konden nu niet worden opgehaald — probeer het later opnieuw.'}
+          </p>
+        )}
       </div>
     </Section>
   )
