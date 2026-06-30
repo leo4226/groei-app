@@ -69,9 +69,17 @@ def _as_date(value) -> date | None:
 
 
 def account_is_due(pref_row, now: datetime, last_field: str = "last_digest_sent_on") -> bool:
-    """digest hour matches the current Amsterdam hour and the channel's
-    last-sent stamp (email or push, per `last_field`) isn't today's."""
-    if _digest_hour(pref_row["digest_time"]) != now.hour:
+    """Due when the current Amsterdam hour is at or after the chosen digest hour
+    and the channel's last-sent stamp (email or push, per `last_field`) isn't
+    today's.
+
+    ">=" rather than "==" so the digest survives a *sparse* cron: the trigger no
+    longer runs every hour (it runs a few times a day during waking hours, to
+    let the Neon compute auto-suspend between calls), so an exact-hour match
+    would skip any account whose hour isn't a tick. Catching up at the first run
+    at or after the chosen hour delivers each account exactly once per day. The
+    cron's last daily run is late enough to cover every selectable hour."""
+    if now.hour < _digest_hour(pref_row["digest_time"]):
         return False
     last = _as_date(pref_row[last_field])
     return last is None or last < now.date()
