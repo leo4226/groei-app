@@ -310,6 +310,10 @@ export type Translations = {
     digestToggleDesc: string
     digestTimeLabel: string
     digestTimeDesc: string
+    quietHoursLabel: string
+    quietHoursDesc: string
+    mutedTypesLabel: string
+    mutedTypesDesc: string
     digestLoadError: string
     digestSaveError: string
     pushToggle: string

@@ -216,14 +216,47 @@ def at_night(monkeypatch):
 async def test_no_care_push_overnight(
     client, seeded_db, cron_secret, sent_pushes, at_night, auth_header
 ):
-    # A due task at 3:30am must not ping — care pushes are daytime-only.
+    # A due task at 3:30am must not ping — inside the default quiet window.
     await _seed_overdue_plant(seeded_db)
     await _enable_push(seeded_db)
     await client.post("/api/push/subscription", json=SUB, headers=auth_header)
 
     res = await client.post("/api/internal/send-digests", headers=cron_secret)
     assert res.json()["push_sent"] == 0
-    assert res.json().get("off_hours") is True
+    assert sent_pushes == []
+
+
+async def test_custom_quiet_hours_hold_push(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # 08:30 is normally a send hour, but a custom quiet window covering it holds.
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await seeded_db.execute(
+        "UPDATE notification_preferences SET quiet_start = '07:00', quiet_end = '09:00' WHERE account_id = 1"
+    )
+    await seeded_db.commit()
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 0
+    assert sent_pushes == []
+
+
+async def test_muted_care_type_is_skipped(
+    client, seeded_db, cron_secret, sent_pushes, at_digest_hour, auth_header
+):
+    # The overdue plant's only due task is 'water'; muting water → no push.
+    await _seed_overdue_plant(seeded_db)
+    await _enable_push(seeded_db)
+    await seeded_db.execute(
+        "UPDATE notification_preferences SET muted_care_types = 'water,prune' WHERE account_id = 1"
+    )
+    await seeded_db.commit()
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    res = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert res.json()["push_sent"] == 0
     assert sent_pushes == []
 
 

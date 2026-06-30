@@ -233,8 +233,33 @@ async def send_due_digests(db) -> dict:
 # Don't ping overnight: only send care pushes during local daytime hours
 # (Amsterdam). A task that becomes due overnight notifies on the first
 # daytime dispatch.
-DAYTIME_START_HOUR = 8
-DAYTIME_END_HOUR = 21  # send when DAYTIME_START_HOUR <= hour < DAYTIME_END_HOUR
+# Care pushes are held during each account's quiet window. Default: overnight
+# 21:00–08:00, so nobody gets a 3am water reminder. Users can override per
+# account (#181).
+DEFAULT_QUIET_START = "21:00"
+DEFAULT_QUIET_END = "08:00"
+
+
+def _hm_to_minutes(hm: str) -> int:
+    h, m = hm.split(":", 1)
+    return int(h) * 60 + int(m)
+
+
+def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool:
+    """True if `now` (Amsterdam) falls inside the [start, end) quiet window,
+    handling an overnight wrap (start > end)."""
+    qs = _hm_to_minutes(quiet_start or DEFAULT_QUIET_START)
+    qe = _hm_to_minutes(quiet_end or DEFAULT_QUIET_END)
+    if qs == qe:
+        return False  # zero-length window → never quiet
+    cur = now.hour * 60 + now.minute
+    if qs < qe:
+        return qs <= cur < qe
+    return cur >= qs or cur < qe  # overnight wrap
+
+
+def _split_muted(value) -> set[str]:
+    return {c for c in (str(value).split(",") if value else []) if c}
 
 
 def build_care_push_payload(due_rows: list[dict]) -> dict:
@@ -259,8 +284,8 @@ async def send_due_care_pushes(db) -> dict:
     subscription, finds active schedules that are due (next_due <= today) and
     not yet notified for their current due date, sends one batched push, and
     stamps `notified_for_due` so the same task never re-pings until it's
-    completed and falls due again. Gated to daytime hours so nobody gets a 3am
-    water reminder.
+    completed and falls due again. Held during each account's quiet hours, and
+    care types the account has muted are skipped.
 
     Delivery is driven by the *subscriptions* themselves, not an account-wide
     flag — subscriptions are per-device, so unsubscribing one device never
@@ -268,20 +293,23 @@ async def send_due_care_pushes(db) -> dict:
     """
     now = _now()
     today = now.date()
-    if not (DAYTIME_START_HOUR <= now.hour < DAYTIME_END_HOUR):
-        return {"push_checked": 0, "push_sent": 0, "push_failed": 0,
-                "push_pruned": 0, "off_hours": True}
 
     accounts = await db.execute_fetchall(
         """
-        SELECT DISTINCT ps.account_id, a.household_id
+        SELECT DISTINCT ps.account_id, a.household_id,
+               np.quiet_start, np.quiet_end, np.muted_care_types
         FROM push_subscriptions ps
         JOIN accounts a ON a.id = ps.account_id
+        LEFT JOIN notification_preferences np ON np.account_id = ps.account_id
         """
     )
 
     push_checked = push_sent = push_failed = push_pruned = 0
     for acc in accounts:
+        # Hold during the account's quiet window (default overnight).
+        if _in_quiet_hours(now, acc["quiet_start"], acc["quiet_end"]):
+            continue
+
         due_rows = await db.execute_fetchall(
             """
             SELECT cs.id, cs.next_due, cs.care_type, p.name AS plant_name
@@ -294,6 +322,10 @@ async def send_due_care_pushes(db) -> dict:
             """,
             (acc["household_id"], today),
         )
+        # Skip care types this account has muted.
+        muted = _split_muted(acc["muted_care_types"])
+        if muted:
+            due_rows = [r for r in due_rows if r["care_type"] not in muted]
         if not due_rows:
             continue
         push_checked += 1
