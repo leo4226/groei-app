@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from auth import get_current_account
-from care_types import CARE_TYPES, parse_muted_care_types
+from care_types import parse_muted_care_types
 from database import db_dep
 from services.digest import (
     APP_URL,
@@ -92,8 +92,9 @@ async def update_notification_prefs(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
-    # Keep only known care types so a bad client can't pollute the stored set.
-    muted = [c for c in body.muted_care_types if c in CARE_TYPES]
+    # Same parser as the read path: trims + keeps only known care types so a
+    # bad client can't pollute the stored set.
+    muted = parse_muted_care_types(",".join(body.muted_care_types))
     muted_csv = ",".join(muted)
     cur = await db.execute(
         """
