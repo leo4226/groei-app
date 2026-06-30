@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { User, Location, Plant, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
 import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, dashboard as dashboardApi, icons as iconsApi } from '../api/client'
+import type { PageContext } from '../api/chat'
 
 interface FlorerStore {
   users: User[]
@@ -10,6 +11,7 @@ interface FlorerStore {
   dashboardV2: DashboardV2Data | null
   warningSummary: WarningSummaryOut | null
   plantFact: PlantFactOut | null
+  assistantPageContext: Partial<PageContext> | null
   activeUserId: number | null
   isLoading: boolean
   hasLoaded: boolean
@@ -36,6 +38,7 @@ interface FlorerStore {
   patchCareProfile: (plantId: number, data: Record<string, { active: boolean }>) => Promise<void>
   setActiveUser: (id: number) => void
   setShowPlantPicker: (show: boolean) => void
+  setAssistantPageContext: (context: Partial<PageContext> | null) => void
   updateUserLanguage: (userId: number, language: 'nl' | 'en') => Promise<void>
   clearError: () => void
 }
@@ -67,6 +70,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   dashboardV2: null,
   warningSummary: null,
   plantFact: null,
+  assistantPageContext: null,
   activeUserId: getSavedUserId(),
   isLoading: false,
   hasLoaded: false,
@@ -230,6 +234,8 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   },
 
   setShowPlantPicker: (show) => set({ showPlantPicker: show }),
+
+  setAssistantPageContext: (context) => set({ assistantPageContext: context }),
 
   updateUserLanguage: async (userId, language) => {
     const updated = await usersApi.setLanguage(userId, language)

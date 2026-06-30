@@ -29,7 +29,10 @@ import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
 import * as clientApis from '../api/client'
+import type { PageContext } from '../api/chat'
 import { useT } from '../context/LanguageContext'
+import { bucketFor } from '../utils/lightQuality'
+import { isInsideZone } from '../utils/svgCoords'
 import UnplacedPlantsTray from '../components/map/UnplacedPlantsTray'
 import { selectUnplacedPlants, viewboxCenter } from '../components/map/unplacedPlants'
 const GameSetupSheet = lazy(() => import('../components/game/GameSetupSheet'))
@@ -47,6 +50,7 @@ export default function MapPage() {
   const loadWarningSummary = useFloreren((s) => s.loadWarningSummary)
   const hasLoaded = useFloreren((s) => s.hasLoaded)
   const activeUserId = useFloreren((s) => s.activeUserId)
+  const setAssistantPageContext = useFloreren((s) => s.setAssistantPageContext)
   useEffect(() => {
     if (allPlants.length === 0) loadPlantsStore()
   }, [loadPlantsStore])
@@ -233,6 +237,69 @@ export default function MapPage() {
   }, [canvasData, map, groundZones])
 
   const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData })
+
+  useEffect(() => {
+    const context: Partial<PageContext> = { map_slug: slug }
+
+    const applyZone = (zone: GroundZone | null | undefined) => {
+      if (!zone) return
+      context.ground_zone_id = zone.id
+      context.ground_zone_name = zone.name
+      context.ground_zone_type = zone.zone_type
+    }
+
+    const applyPoint = (x: number, y: number) => {
+      context.clicked_map_x = Math.round(x * 10) / 10
+      context.clicked_map_y = Math.round(y * 10) / 10
+      applyZone(isInsideZone(x, y, soilGroundZones))
+    }
+
+    if (selectedPlant) {
+      context.selected_plant_id = selectedPlant.id
+      applyPoint(selectedPlant.map_x, selectedPlant.map_y)
+      applyZone(soilGroundZones.find((zone) => zone.id === selectedPlant.ground_zone_id))
+    } else if (selectedObject) {
+      context.selected_object_id = selectedObject.id
+      if (selectedObject.map_x != null && selectedObject.map_y != null) {
+        applyPoint(selectedObject.map_x, selectedObject.map_y)
+      }
+    }
+
+    const inspectorResult = sun.inspectorResult
+    if (inspectorResult) {
+      applyPoint(inspectorResult.x, inspectorResult.y)
+      const directSunHours = inspectorResult.sunByMonth[new Date().getMonth()] ?? 0
+      context.direct_sun_hours = directSunHours
+      const inspectorCell = sun.cells.find((cell) =>
+        inspectorResult.x >= cell.x && inspectorResult.x <= cell.x + cell.w &&
+        inspectorResult.y >= cell.y && inspectorResult.y <= cell.y + cell.h
+      )
+      if (inspectorCell) {
+        context.sky_view_factor = inspectorCell.skyOpenness
+        context.light_bucket = bucketFor(directSunHours, inspectorCell.skyOpenness)
+      }
+    } else if (sun.tappedCell) {
+      const cell = sun.tappedCell
+      const x = cell.x + cell.w / 2
+      const y = cell.y + cell.h / 2
+      applyPoint(x, y)
+      context.direct_sun_hours = cell.sunHours
+      context.sky_view_factor = cell.skyOpenness
+      context.light_bucket = bucketFor(cell.sunHours, cell.skyOpenness)
+    }
+
+    setAssistantPageContext(context)
+    return () => setAssistantPageContext(null)
+  }, [
+    selectedObject,
+    selectedPlant,
+    setAssistantPageContext,
+    slug,
+    soilGroundZones,
+    sun.cells,
+    sun.inspectorResult,
+    sun.tappedCell,
+  ])
 
   const attentionCount = useMemo(() => {
     const containedPlants = objects.flatMap((o) => o.contained_plants ?? [])
