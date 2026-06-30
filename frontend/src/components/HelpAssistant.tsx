@@ -157,7 +157,8 @@ export default function HelpAssistant() {
 
   const users = useFloreren((s) => s.users)
   const activeUserId = useFloreren((s) => s.activeUserId)
-  const userName = users.find((u) => u.id === activeUserId)?.name ?? 'user'
+  const activeUser = users.find((u) => u.id === activeUserId)
+  const userName = activeUser?.name ?? 'user'
 
   const pageKey = detectPage(location.pathname)
   const panelConfig = getAssistantPanelConfig({ isMobile, sheetState })
@@ -213,7 +214,10 @@ export default function HelpAssistant() {
         const slug = location.pathname.replace(/^\/map\//, '')
         if (slug) pageContext.map_slug = slug
       }
-      const reply = await sendChatMessage(userMsg, messages, pageContext)
+      const reply = await sendChatMessage(userMsg, messages, pageContext, {
+        activeUserId,
+        language: activeUser?.language,
+      })
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       // "Offline" covers a true browser network failure (TypeError) and the

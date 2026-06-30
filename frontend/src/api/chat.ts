@@ -32,6 +32,7 @@ export async function sendChatMessage(
   message: string,
   history: ChatMessage[],
   pageContext?: PageContext,
+  options?: { activeUserId?: number | null; language?: 'nl' | 'en' },
 ): Promise<string> {
   const token = getToken()
   const resp = await fetch(`${BASE}/chat`, {
@@ -40,7 +41,13 @@ export async function sendChatMessage(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ message, history, page_context: pageContext ?? null }),
+    body: JSON.stringify({
+      message,
+      history,
+      page_context: pageContext ?? null,
+      active_user_id: options?.activeUserId ?? null,
+      language: options?.language ?? null,
+    }),
   })
   if (!resp.ok) throw new ChatRequestError(resp.status)
   const data = await resp.json()
