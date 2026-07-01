@@ -189,8 +189,10 @@ class CareTask(BaseModel):
     plant_name: str
     plant_photo: str | None = None
     location: str | None = None
+    map_name: str | None = None
     map_type: str | None = None
     care_type: str
+    next_due: str | None = None
     days_overdue: int
     last_done_by: str | None = None
     last_done_at: str | None = None
