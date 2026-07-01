@@ -11,7 +11,7 @@ from database import db_dep
 from services.environment import get_rain_data, get_temp_data
 from services.care_task_service import classify_care_tasks, fetch_household_schedule_rows
 from services.garden_biodiversity import compute_for_map
-from services.plant_suggestions import recommend_for_garden
+from services.plant_suggestions import bucket_for, fit_grade, recommend_for_garden, recommend_for_spot
 from services.warnings import compute_plant_warnings
 
 router = APIRouter()
@@ -493,6 +493,223 @@ def _recommendation_to_context(recommendation: Any) -> dict[str, Any]:
     )
 
 
+
+_SUN_LABELS_NL = {
+    "full_sun": "volle zon",
+    "partial_sun": "halfschaduw",
+    "shade": "schaduw",
+    "any": "zon of schaduw",
+}
+
+_LIGHT_BUCKET_LABELS_NL = {
+    "full": "volle zon",
+    "part": "halfschaduw",
+    "bright_shade": "lichte schaduw",
+    "deep_shade": "diepe schaduw",
+}
+
+_SUN_LABELS_EN = {
+    "full_sun": "full sun",
+    "partial_sun": "partial sun",
+    "shade": "shade",
+    "any": "sun or shade",
+}
+
+_LIGHT_BUCKET_LABELS_EN = {
+    "full": "full sun",
+    "part": "partial sun",
+    "bright_shade": "bright shade",
+    "deep_shade": "deep shade",
+}
+
+
+def _label_value(value: str | None, labels: dict[str, str]) -> str:
+    if not value:
+        return "unknown"
+    return labels.get(value, value.replace("_", " "))
+
+
+def _spot_response_guidance(
+    spot_recommendations: dict[str, Any] | None,
+    focused_plant_fit: dict[str, Any] | None,
+    language: str,
+) -> str:
+    parts: list[str] = []
+    if spot_recommendations and spot_recommendations.get("recommendations"):
+        if language == "en":
+            parts.append(
+                "For selected-spot questions, use garden_context.spot_recommendations.recommendations. "
+                "Pick one candidate from this deterministic list, explain the measured light_bucket/direct_sun_hours fit, "
+                "mention any gap_months_covered, and end with one concrete next action. Do not invent species outside this list."
+            )
+        else:
+            parts.append(
+                "Gebruik bij vragen over de geselecteerde plek garden_context.spot_recommendations.recommendations. "
+                "Kies één kandidaat uit deze deterministische lijst, leg de gemeten light_bucket/direct_sun_hours-fit uit, "
+                "noem eventuele gap_months_covered, en eindig met één concrete volgende actie. Verzin geen soorten buiten deze lijst."
+            )
+
+    if focused_plant_fit:
+        if language == "en":
+            parts.append(
+                "For questions about whether the focused plant suits this spot, use garden_context.focused_plant_fit "
+                "and avoid claiming unmeasured spacing or soil facts."
+            )
+        else:
+            parts.append(
+                "Gebruik bij vragen of de gefocuste plant op deze plek past garden_context.focused_plant_fit "
+                "en doe geen stellige uitspraken over niet-gemeten afstands- of bodemgegevens."
+            )
+    return " ".join(parts)
+
+
+async def _fetch_map_for_spot(db, household_id: int, map_slug: str | None) -> dict[str, Any] | None:
+    if not map_slug:
+        return None
+    rows = await db.execute_fetchall(
+        """SELECT id, name, slug, map_type FROM maps
+           WHERE household_id = ? AND slug = ?
+           LIMIT 1""",
+        (household_id, map_slug),
+    )
+    return dict(rows[0]) if rows else None
+
+
+def _selected_spot_context(page_context: PageContext, map_row: dict[str, Any]) -> dict[str, Any]:
+    light_bucket = page_context.light_bucket
+    if not light_bucket and page_context.direct_sun_hours is not None and page_context.sky_view_factor is not None:
+        light_bucket = bucket_for(page_context.direct_sun_hours, page_context.sky_view_factor)
+
+    return _without_none(
+        {
+            "map_id": map_row["id"],
+            "map_slug": map_row.get("slug"),
+            "map_name": map_row.get("name"),
+            "map_x": page_context.clicked_map_x,
+            "map_y": page_context.clicked_map_y,
+            "ground_zone_id": page_context.ground_zone_id,
+            "ground_zone_name": page_context.ground_zone_name,
+            "ground_zone_type": page_context.ground_zone_type,
+            "direct_sun_hours": page_context.direct_sun_hours,
+            "sky_view_factor": page_context.sky_view_factor,
+            "light_bucket": light_bucket,
+        }
+    )
+
+
+async def _fetch_spot_recommendations_packet(
+    db,
+    household_id: int,
+    page_context: PageContext | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Selected spot + deterministic recommendations when measured light is available."""
+    if page_context is None:
+        return None, None
+
+    map_row = await _fetch_map_for_spot(db, household_id, page_context.map_slug)
+    if not map_row:
+        return None, None
+
+    selected_spot = _selected_spot_context(page_context, map_row)
+    if map_row.get("map_type") != "outdoor":
+        return selected_spot, {
+            "applies_to_current_map": False,
+            "reason": "current_map_is_indoor",
+            "recommendations": [],
+        }
+
+    if page_context.direct_sun_hours is None or page_context.sky_view_factor is None:
+        return selected_spot, None
+
+    month = date.today().month
+    base_packet = {
+        "map_id": int(map_row["id"]),
+        "map_slug": map_row.get("slug"),
+        "map_name": map_row.get("name"),
+        "month": month,
+        "light_bucket": selected_spot.get("light_bucket"),
+        "direct_sun_hours": page_context.direct_sun_hours,
+        "sky_view_factor": page_context.sky_view_factor,
+    }
+    try:
+        recs, gap_months = await recommend_for_spot(
+            db,
+            int(map_row["id"]),
+            float(page_context.direct_sun_hours),
+            month,
+            float(page_context.sky_view_factor),
+            limit=5,
+        )
+    except Exception:
+        return selected_spot, {
+            **base_packet,
+            "reason": "spot_recommendations_unavailable",
+            "gap_months": [],
+            "recommendations": [],
+        }
+
+    return selected_spot, {
+        **base_packet,
+        "gap_months": gap_months,
+        "recommendations": [_recommendation_to_context(r) for r in recs],
+    }
+
+
+async def _fetch_focused_plant_fit_packet(
+    db,
+    household_id: int,
+    page_context: PageContext | None,
+    selected_spot: dict[str, Any] | None,
+    language: str,
+) -> dict[str, Any] | None:
+    if page_context is None or selected_spot is None:
+        return None
+    focused_plant_id = page_context.selected_plant_id if page_context.selected_plant_id is not None else page_context.plant_id
+    if focused_plant_id is None:
+        return None
+    light_bucket = selected_spot.get("light_bucket")
+    if not light_bucket:
+        return None
+
+    rows = await db.execute_fetchall(
+        """SELECT id, name, sun_requirement
+           FROM plants
+           WHERE id = ? AND household_id = ? AND is_active = 1
+           LIMIT 1""",
+        (focused_plant_id, household_id),
+    )
+    if not rows:
+        return None
+
+    plant = dict(rows[0])
+    sun_requirement = plant.get("sun_requirement")
+    if not sun_requirement:
+        return None
+
+    grade = fit_grade(sun_requirement, light_bucket)
+    fit = grade or "poor"
+    if grade == "marginal":
+        fit = "poor"
+
+    if language == "en":
+        sun_label = _label_value(sun_requirement, _SUN_LABELS_EN)
+        bucket_label = _label_value(light_bucket, _LIGHT_BUCKET_LABELS_EN)
+        reason = f"{plant['name']} needs {sun_label}, but this spot is {bucket_label}."
+    else:
+        sun_label = _label_value(sun_requirement, _SUN_LABELS_NL)
+        bucket_label = _label_value(light_bucket, _LIGHT_BUCKET_LABELS_NL)
+        reason = f"{plant['name']} heeft {sun_label} nodig, maar deze plek is {bucket_label}."
+
+    return {
+        "plant_id": int(plant["id"]),
+        "plant_name": plant["name"],
+        "sun_requirement": sun_requirement,
+        "current_light_bucket": light_bucket,
+        "fit": fit,
+        "reason": reason,
+    }
+
+
 def _biodiversity_response_guidance(biodiversity: dict[str, Any], language: str) -> str:
     maps = biodiversity.get("maps") or []
     has_suggestions = any(m.get("suggestions") for m in maps)
@@ -719,12 +936,25 @@ async def _build_garden_context(
     )
     care_tasks = await _fetch_care_tasks_packet(db, household_id, language)
     biodiversity, bio_ctx = await _fetch_biodiversity_packet(db, household_id, map_slug)
+    selected_spot, spot_recommendations = await _fetch_spot_recommendations_packet(
+        db,
+        household_id,
+        page_context,
+    )
+    focused_plant_fit = await _fetch_focused_plant_fit_packet(
+        db,
+        household_id,
+        page_context,
+        selected_spot,
+        language,
+    )
     response_guidance = " ".join(
         guidance
         for guidance in (
             _context_scope_guidance(context_summary, language),
             _care_tasks_response_guidance(care_tasks, language),
             _biodiversity_response_guidance(biodiversity, language),
+            _spot_response_guidance(spot_recommendations, focused_plant_fit, language),
         )
         if guidance
     )
@@ -755,6 +985,9 @@ async def _build_garden_context(
             "weather": weather,
             "care_tasks": care_tasks,
             "biodiversity": biodiversity,
+            "selected_spot": selected_spot,
+            "spot_recommendations": spot_recommendations,
+            "focused_plant_fit": focused_plant_fit,
         }
     )
     return garden_context, plants_ctx, maps_ctx, bio_ctx
