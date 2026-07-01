@@ -86,6 +86,10 @@ export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean):
 
 const PX_PER_CM = 0.46
 
+// Plant name label size in SVG units. Kept modest so labels don't dominate the
+// map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
+export const PLANT_LABEL_FONT_SIZE = 8
+
 export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
@@ -167,7 +171,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
             y={lockedLabelY}
             textAnchor="middle"
             fill="#1f2937"
-            fontSize="9"
+            fontSize={PLANT_LABEL_FONT_SIZE}
             fontWeight="500"
             style={{ paintOrder: 'stroke', stroke: 'rgba(255,255,255,0.9)', strokeWidth: 3, strokeLinejoin: 'round', pointerEvents: 'none' }}
           >
@@ -291,7 +295,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
           y={labelY}
           textAnchor="middle"
           fill="#1f2937"
-          fontSize="9"
+          fontSize={PLANT_LABEL_FONT_SIZE}
           fontWeight="500"
           style={{
             pointerEvents: 'none',
