@@ -1,53 +1,70 @@
 import { describe, it, expect } from 'vitest'
-import { pickVisibleLabels, type LabelCandidate } from '../labelDeclutter'
+import { placeLabels, type LabelCandidate } from '../labelDeclutter'
 
 const c = (over: Partial<LabelCandidate> & { id: number }): LabelCandidate => ({
-  cx: 0, topY: 0, width: 20, height: 10, priority: 1, ...over,
+  cx: 0, centerY: 0, iconR: 5, width: 40, priority: 1, ...over,
 })
 
-describe('pickVisibleLabels', () => {
-  it('shows every label when none overlap', () => {
+const OPTS = { font: 7, gap: 1 }
+
+describe('placeLabels', () => {
+  it('places every non-overlapping label below', () => {
     const cands = [
-      c({ id: 1, cx: 0, topY: 0 }),
-      c({ id: 2, cx: 100, topY: 0 }),
-      c({ id: 3, cx: 0, topY: 100 }),
+      c({ id: 1, cx: 0, centerY: 0 }),
+      c({ id: 2, cx: 200, centerY: 0 }),
+      c({ id: 3, cx: 0, centerY: 200 }),
     ]
-    expect(pickVisibleLabels(cands)).toEqual(new Set([1, 2, 3]))
+    const m = placeLabels(cands, OPTS)
+    expect([...m.entries()].sort()).toEqual([[1, 'below'], [2, 'below'], [3, 'below']])
   })
 
-  it('hides the lower-priority label of an overlapping pair', () => {
+  it('flips a horizontally-adjacent neighbour above instead of hiding it', () => {
+    // Two plants side by side: their below-labels would overlap.
     const cands = [
-      c({ id: 1, cx: 0, topY: 0, priority: 0 }),  // higher priority
-      c({ id: 2, cx: 5, topY: 0, priority: 1 }),  // overlaps id 1
+      c({ id: 1, cx: 0, centerY: 0, priority: 0 }),
+      c({ id: 2, cx: 10, centerY: 0, priority: 1 }),
     ]
-    const shown = pickVisibleLabels(cands)
-    expect(shown.has(1)).toBe(true)
-    expect(shown.has(2)).toBe(false)
+    const m = placeLabels(cands, OPTS)
+    expect(m.get(1)).toBe('below')
+    expect(m.get(2)).toBe('above')   // shown, not hidden
   })
 
-  it('always shows a forced label even when it collides', () => {
+  it('hides a label only when both below and above are blocked', () => {
+    // Three stacked so a middle plant has neighbours above and below.
     const cands = [
-      c({ id: 1, cx: 0, topY: 0, priority: 0 }),
-      c({ id: 2, cx: 3, topY: 0, priority: 1, forced: true }),  // overlaps but forced
+      c({ id: 1, cx: 0, centerY: 0, priority: 0 }),
+      c({ id: 2, cx: 6, centerY: 0, priority: 1 }),   // → above
+      c({ id: 3, cx: 3, centerY: 0, priority: 2 }),   // below & above both taken → hidden
     ]
-    const shown = pickVisibleLabels(cands)
-    expect(shown.has(1)).toBe(true)
-    expect(shown.has(2)).toBe(true)
+    const m = placeLabels(cands, OPTS)
+    expect(m.get(1)).toBe('below')
+    expect(m.get(2)).toBe('above')
+    expect(m.has(3)).toBe(false)
   })
 
-  it('breaks ties top-to-bottom so the choice is stable regardless of input order', () => {
-    const top = c({ id: 1, cx: 0, topY: 0 })
-    const bottom = c({ id: 2, cx: 0, topY: 6 })  // overlaps top
-    expect(pickVisibleLabels([bottom, top])).toEqual(new Set([1]))
-    expect(pickVisibleLabels([top, bottom])).toEqual(new Set([1]))
+  it('always shows a forced label — flipping above, or staying even when both slots are blocked', () => {
+    // below taken but above free → forced flips above (still shown)
+    const flip = placeLabels([
+      c({ id: 1, cx: 0, centerY: 0, priority: 0 }),
+      c({ id: 2, cx: 2, centerY: 0, priority: 1, forced: true }),
+    ], OPTS)
+    expect(flip.get(2)).toBe('above')
+
+    // both slots blocked (a neighbour above occupies the above slot) → forced
+    // still shows via the below fallback; a non-forced one would be hidden.
+    const boxed = placeLabels([
+      c({ id: 1, cx: 0, centerY: 0, priority: 0 }),       // takes 2's below slot
+      c({ id: 3, cx: 0, centerY: -26, priority: 0 }),     // its below sits in 2's above slot
+      c({ id: 2, cx: 0, centerY: 0, priority: 1, forced: true }),
+    ], OPTS)
+    expect(boxed.get(2)).toBe('below')
+    expect(boxed.has(2)).toBe(true)
   })
 
-  it('respects the gap padding when deciding overlap', () => {
-    // Boxes are width 20 centred at 0 and 24 → 4px apart edge-to-edge.
-    const near = [c({ id: 1, cx: 0 }), c({ id: 2, cx: 24 })]
-    // gap 0 → no overlap, both show
-    expect(pickVisibleLabels(near, 0)).toEqual(new Set([1, 2]))
-    // gap 3 → padded boxes overlap, second hidden
-    expect(pickVisibleLabels(near, 3)).toEqual(new Set([1]))
+  it('is stable regardless of input order (top plant wins the below slot)', () => {
+    const top = c({ id: 1, cx: 0, centerY: 0 })
+    const bottom = c({ id: 2, cx: 0, centerY: 4 })   // overlaps top's below box
+    expect(placeLabels([bottom, top], OPTS).get(1)).toBe('below')
+    expect(placeLabels([top, bottom], OPTS).get(1)).toBe('below')
   })
 })

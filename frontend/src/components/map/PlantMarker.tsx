@@ -6,6 +6,7 @@ import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { resolveIconUrl } from '../../utils/icons'
 import { getPlantDragHitRadius } from './plantDragPermissions'
+import { LABEL_ABOVE_OFFSET, LABEL_BELOW_OFFSET, type LabelPlacement } from '../../utils/labelDeclutter'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 export const STATUS_COLORS: Record<string, string> = {
@@ -32,6 +33,7 @@ interface Props {
   canDrag?: boolean
   isSelected?: boolean
   showLabel?: boolean
+  labelPlacement?: LabelPlacement
   showWarnings?: boolean
   displayName?: string
   onTap: (plant: MapPlant) => void
@@ -90,7 +92,7 @@ const PX_PER_CM = 0.46
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
 export const PLANT_LABEL_FONT_SIZE = 7
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
   const topBadge = showWarnings ? topMarkerBadge(plant) : null
@@ -128,12 +130,16 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   const r = isDragging ? baseR * 1.3 : baseR
   const iconR = r * 0.85
   const hitR = getPlantDragHitRadius(r, canDrag)
-  const labelY = iconR + 10
+  // Label sits below the icon by default, or above when the declutter flipped
+  // it to avoid a horizontal neighbour. Offsets are shared with the declutter.
+  const labelY = labelPlacement === 'above' ? -(iconR + LABEL_ABOVE_OFFSET) : iconR + LABEL_BELOW_OFFSET
 
   // For locked plants: cap the rendered icon so it never extends off-screen,
   // and keep the badge pinned close to center regardless of display_radius_cm.
   const lockedIconR = Math.min(iconR, 28)
-  const lockedLabelY = lockedIconR + 10
+  const lockedLabelY = labelPlacement === 'above'
+    ? -(lockedIconR + LABEL_ABOVE_OFFSET)
+    : lockedIconR + LABEL_BELOW_OFFSET
   const lockBadgeOffset = lockedIconR * 0.78   // scales with icon but stays small
   const lockHitR = 6
 
@@ -309,9 +315,9 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         </text>
       )}
 
-      {/* Drag pill */}
+      {/* Drag pill — always below the icon, independent of label placement */}
       {isDragging && ringColor && badgeLabel && sunHoursAtPos !== null && (
-        <g transform={`translate(0, ${labelY + 16})`}>
+        <g transform={`translate(0, ${iconR + LABEL_BELOW_OFFSET + 16})`}>
           <rect x={-75} y={-10} width={150} height={20} rx={10} fill={ringColor} opacity={0.92} />
           <text
             textAnchor="middle"
