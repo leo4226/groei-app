@@ -824,7 +824,8 @@ export type Translations = {
     }
     identifying: string  // "Identifying..."
     newPhoto: string     // "📷 Take new photo"
-    enriching: string    // "Looking up..."
+    enriching: string    // title for the loading state after selecting an ID candidate
+    enrichingLede: string // explanatory copy for the same loading state
     results: {
       title: string       // "Possible matches"
       confidence: string  // "confidence"
