@@ -57,7 +57,9 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
         forced: isSel,
       }
     })
-    return pickVisibleLabels(candidates)
+    // Tight gap: only drop a label on a real overlap, so as many names as
+    // possible survive at the current zoom.
+    return pickVisibleLabels(candidates, 1)
   }, [plants, dragPositions, selectedId, showLabels, t.locale])
 
   return (
