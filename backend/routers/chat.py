@@ -465,12 +465,100 @@ async def _fetch_plants_context(db, household_id: int, map_slug: str | None = No
 _MONTH_NL = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"]
 
 
+def _coverage_month_numbers(coverage: list[bool], *, covered: bool) -> list[int]:
+    return [index + 1 for index, value in enumerate(coverage) if bool(value) is covered]
+
+
+def _month_labels(months: list[int]) -> list[str]:
+    return [_MONTH_NL[month - 1] for month in months if 1 <= month <= 12]
+
+
+def _recommendation_to_context(recommendation: Any) -> dict[str, Any]:
+    return _without_none(
+        {
+            "species_id": recommendation.species_id,
+            "dutch_name": recommendation.dutch_name,
+            "latin_name": recommendation.latin_name,
+            "sun_preference": recommendation.sun_preference,
+            "sun_fit": recommendation.sun_fit,
+            "is_native": bool(recommendation.is_native)
+            if recommendation.is_native is not None
+            else None,
+            "pollinator_value": recommendation.pollinator_value,
+            "flowering_months": recommendation.flowering_months,
+            "gap_months_covered": recommendation.gap_months_covered,
+            "reason": recommendation.reason,
+            "caveat": recommendation.caveat,
+        }
+    )
+
+
+def _biodiversity_response_guidance(biodiversity: dict[str, Any], language: str) -> str:
+    maps = biodiversity.get("maps") or []
+    has_suggestions = any(m.get("suggestions") for m in maps)
+
+    if biodiversity.get("reason") == "current_map_is_indoor":
+        if language == "en":
+            return (
+                "The current map is indoor. Garden biodiversity scoring and plant-addition "
+                "recommendations apply to outdoor garden/balcony maps, not this indoor map."
+            )
+        return (
+            "De huidige kaart is binnen. Tuinbiodiversiteitsscores en plantaanbevelingen "
+            "gelden voor buitenkaarten zoals tuin of balkon, niet voor deze binnenkaart."
+        )
+
+    if has_suggestions:
+        if language == "en":
+            return (
+                "For biodiversity questions, use garden_context.biodiversity.maps[].suggestions. "
+                "Pick one candidate from the deterministic list, mention which gap_months_covered "
+                "or pollinator_gap_months it fills, mention one caveat such as sun_preference if "
+                "relevant, and end with one concrete next action. Do not invent species outside this list."
+            )
+        return (
+            "Gebruik bij biodiversiteitsvragen garden_context.biodiversity.maps[].suggestions. "
+            "Kies één kandidaat uit de lijst, noem welke gap_months_covered of pollinator_gap_months "
+            "hij vult, noem indien relevant één aandachtspunt zoals sun_preference, en eindig met "
+            "één concrete volgende actie. Verzin geen soorten buiten deze lijst."
+        )
+
+    if maps:
+        if language == "en":
+            return (
+                "For biodiversity questions, use garden_context.biodiversity for score and gap context. "
+                "If suggestions is empty, do not invent a plant candidate; say Floreren has no deterministic "
+                "recommendation for this map yet."
+            )
+        return (
+            "Gebruik bij biodiversiteitsvragen garden_context.biodiversity voor score en bloeigaten. "
+            "Als suggestions leeg is, verzin geen plantkandidaat; zeg dat Floreren nog geen deterministische "
+            "aanbeveling voor deze kaart heeft."
+        )
+
+    return ""
+
+
 async def _fetch_biodiversity_packet(
     db,
     household_id: int,
     map_slug: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Biodiversity score + top plant suggestions for each outdoor map."""
+    if map_slug:
+        current_maps = await db.execute_fetchall(
+            """SELECT id, name, slug, map_type FROM maps
+               WHERE household_id = ? AND slug = ?
+               LIMIT 1""",
+            (household_id, map_slug),
+        )
+        if current_maps and current_maps[0]["map_type"] != "outdoor":
+            return {
+                "maps": [],
+                "applies_to_current_map": False,
+                "reason": "current_map_is_indoor",
+            }, ""
+
     outdoor_maps = await db.execute_fetchall(
         """SELECT id, name, slug FROM maps
            WHERE household_id = ? AND map_type = 'outdoor'
@@ -489,18 +577,20 @@ async def _fetch_biodiversity_packet(
         map_id, map_name = int(m["id"]), m["name"]
 
         bio = await compute_for_map(db, map_id)
-        covered = [_MONTH_NL[i] for i, v in enumerate(bio.pollinator_coverage_months) if v]
-        gaps = [_MONTH_NL[i] for i, v in enumerate(bio.pollinator_coverage_months) if not v]
+        covered_months = _coverage_month_numbers(bio.pollinator_coverage_months, covered=True)
+        gap_months = _coverage_month_numbers(bio.pollinator_coverage_months, covered=False)
+        covered_labels = _month_labels(covered_months)
+        gap_labels = _month_labels(gap_months)
 
         suggestions_context = []
         lines = [
             f"{map_name}: score {bio.score}/100 | {bio.species_count} soorten "
             f"({bio.native_count} inheems, {bio.invasive_count} invasief)"
         ]
-        if covered:
-            lines.append(f"  Bestuiversbloom: {', '.join(covered)}")
-        if gaps:
-            lines.append(f"  Bloeigat (geen bestuivers): {', '.join(gaps)}")
+        if covered_labels:
+            lines.append(f"  Bestuiversbloom: {', '.join(covered_labels)}")
+        if gap_labels:
+            lines.append(f"  Bloeigat (geen bestuivers): {', '.join(gap_labels)}")
 
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
@@ -513,13 +603,7 @@ async def _fetch_biodiversity_packet(
                     if s.reason:
                         label += f": {s.reason}"
                     sugg_parts.append(label)
-                    suggestions_context.append(
-                        {
-                            "dutch_name": s.dutch_name,
-                            "latin_name": s.latin_name,
-                            "reason": s.reason,
-                        }
-                    )
+                    suggestions_context.append(_recommendation_to_context(s))
                 lines.append(f"  Plantaanbevelingen: {'; '.join(sugg_parts)}")
         except Exception:
             pass
@@ -529,12 +613,18 @@ async def _fetch_biodiversity_packet(
             {
                 "id": map_id,
                 "name": map_name,
+                "slug": m.get("slug"),
                 "score": bio.score,
                 "species_count": bio.species_count,
                 "native_count": bio.native_count,
                 "invasive_count": bio.invasive_count,
-                "pollinator_covered_months": covered,
-                "pollinator_gaps": gaps,
+                "score_components": bio.components,
+                "pollinator_covered_months": covered_months,
+                "pollinator_gap_months": gap_months,
+                "pollinator_covered_month_labels": covered_labels,
+                "pollinator_gap_month_labels": gap_labels,
+                # Backward-compatible legacy key used by the old prose worker rollout.
+                "pollinator_gaps": gap_labels,
                 "suggestions": suggestions_context,
             }
         )
@@ -634,6 +724,7 @@ async def _build_garden_context(
         for guidance in (
             _context_scope_guidance(context_summary, language),
             _care_tasks_response_guidance(care_tasks, language),
+            _biodiversity_response_guidance(biodiversity, language),
         )
         if guidance
     )
