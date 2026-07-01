@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from auth import get_current_account
 from database import db_dep
 from services.environment import get_rain_data, get_temp_data
+from services.care_task_service import classify_care_tasks, fetch_household_schedule_rows
 from services.garden_biodiversity import compute_for_map
 from services.plant_suggestions import recommend_for_garden
 from services.warnings import compute_plant_warnings
@@ -103,6 +104,126 @@ def _care_status_to_context(status: Any) -> dict[str, Any]:
         "days_until_due": status.days_until_due,
         "last_done": _json_safe(status.last_done),
     }
+
+
+_CARE_TYPE_LABELS_NL = {
+    "water": "Water",
+    "fertilize": "Bemesten",
+    "mist": "Sproeien",
+    "rotate": "Draaien",
+    "repot_check": "Verpot-check",
+    "prune": "Snoeien",
+    "protect_cold": "Beschermen tegen kou",
+    "protect_heat": "Beschermen tegen hitte",
+}
+
+_CARE_TYPE_LABELS_EN = {
+    "water": "Watering",
+    "fertilize": "Fertilizing",
+    "mist": "Misting",
+    "rotate": "Rotating",
+    "repot_check": "Repot check",
+    "prune": "Pruning",
+    "protect_cold": "Cold protection",
+    "protect_heat": "Heat protection",
+}
+
+
+def _care_type_label(care_type: str, language: str) -> str:
+    labels = _CARE_TYPE_LABELS_EN if language == "en" else _CARE_TYPE_LABELS_NL
+    return labels.get(care_type, care_type.replace("_", " "))
+
+
+def _care_task_reason(task: Any, bucket: str, language: str) -> str:
+    label = _care_type_label(task.care_type, language)
+    if bucket == "overdue":
+        days = max(1, task.days_overdue)
+        if language == "en":
+            unit = "day" if days == 1 else "days"
+            return f"{label} is {days} {unit} overdue"
+        unit = "dag" if days == 1 else "dagen"
+        return f"{label} is {days} {unit} te laat"
+    if bucket == "due_today":
+        return f"{label} is due today" if language == "en" else f"{label} is vandaag gepland"
+
+    days_until_due = max(1, -task.days_overdue)
+    if language == "en":
+        unit = "day" if days_until_due == 1 else "days"
+        return f"{label} is due in {days_until_due} {unit}"
+    unit = "dag" if days_until_due == 1 else "dagen"
+    return f"{label} staat over {days_until_due} {unit} gepland"
+
+
+def _care_task_to_context(task: Any, bucket: str, language: str) -> dict[str, Any]:
+    days_until_due = None
+    days_overdue = None
+    if bucket == "overdue":
+        days_overdue = task.days_overdue
+    elif bucket == "due_today":
+        days_until_due = 0
+    else:
+        days_until_due = max(1, -task.days_overdue)
+
+    return _without_none(
+        {
+            "plant_id": task.plant_id,
+            "plant_name": task.plant_name,
+            "map_name": getattr(task, "map_name", None),
+            "map_type": task.map_type,
+            "location": task.location,
+            "care_type": task.care_type,
+            "due_bucket": bucket,
+            "days_overdue": days_overdue,
+            "days_until_due": days_until_due,
+            "next_due": getattr(task, "next_due", None),
+            "last_done_at": task.last_done_at,
+            "last_done_by": task.last_done_by,
+            "schedule_id": task.schedule_id,
+            "is_ephemeral": task.is_ephemeral,
+            "reason": _care_task_reason(task, bucket, language),
+        }
+    )
+
+
+async def _fetch_care_tasks_packet(db, household_id: int, language: str) -> dict[str, list[dict[str, Any]]]:
+    rows = await fetch_household_schedule_rows(db, household_id)
+    overdue, due_today, upcoming = classify_care_tasks(rows)
+    return {
+        "overdue": [_care_task_to_context(task, "overdue", language) for task in overdue],
+        "due_today": [_care_task_to_context(task, "due_today", language) for task in due_today],
+        "upcoming_7_days": [
+            _care_task_to_context(task, "upcoming_7_days", language)
+            for task in upcoming
+        ],
+    }
+
+
+def _care_tasks_response_guidance(care_tasks: dict[str, list[dict[str, Any]]], language: str) -> str:
+    has_tasks = any(care_tasks.get(bucket) for bucket in ("overdue", "due_today", "upcoming_7_days"))
+    if language == "en":
+        if has_tasks:
+            return (
+                "For daily-care questions, answer from garden_context.care_tasks. "
+                "Prioritize urgent active_warnings before routine care tasks, then "
+                "care_tasks.overdue before due_today before upcoming_7_days. "
+                "You may summarize multiple tasks, but end with exactly one prioritized next action."
+            )
+        return (
+            "For daily-care questions, garden_context.care_tasks is empty. Do not invent tasks; "
+            "say nothing is due in Floreren and suggest a quick soil/leaves check if useful."
+        )
+
+    if has_tasks:
+        return (
+            "Gebruik bij dagelijkse verzorgingsvragen garden_context.care_tasks. "
+            "Geef urgente active_warnings voorrang boven routine-taken, daarna "
+            "care_tasks.overdue vóór due_today vóór upcoming_7_days. "
+            "Je mag meerdere taken samenvatten, maar eindig met precies één geprioriteerde volgende actie."
+        )
+    return (
+        "Bij dagelijkse verzorgingsvragen is garden_context.care_tasks leeg. Verzin geen verzorgingstaken; "
+        "zeg dat er niets gepland staat in Floreren en stel eventueel een snelle check van potgrond/bladeren voor."
+    )
 
 
 async def _fetch_user_language(
@@ -506,8 +627,16 @@ async def _build_garden_context(
         selected_plant_id=selected_plant_id,
         weather=weather,
     )
+    care_tasks = await _fetch_care_tasks_packet(db, household_id, language)
     biodiversity, bio_ctx = await _fetch_biodiversity_packet(db, household_id, map_slug)
-    response_guidance = _context_scope_guidance(context_summary, language)
+    response_guidance = " ".join(
+        guidance
+        for guidance in (
+            _context_scope_guidance(context_summary, language),
+            _care_tasks_response_guidance(care_tasks, language),
+        )
+        if guidance
+    )
     if response_guidance:
         plants_ctx = (
             "Context scope guidance:\n"
@@ -533,6 +662,7 @@ async def _build_garden_context(
             "maps": maps,
             "plants": plants,
             "weather": weather,
+            "care_tasks": care_tasks,
             "biodiversity": biodiversity,
         }
     )
