@@ -7,6 +7,8 @@ import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
 import Glyph from '../components/ui/Glyph'
+import AppLoadingView from '../components/ui/AppLoadingView'
+import { identifyEnrichmentLoadingCopy } from '../components/identify/identifyLoadingCopy'
 import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
 type ResultsState = {
@@ -191,11 +193,8 @@ export function IdentifyPlantPage() {
   }
 
   if (step.kind === 'enriching') {
-    return (
-      <div className="p-6 max-w-md mx-auto text-center">
-        <p className="text-text-soft">{t.identify.enriching}</p>
-      </div>
-    )
+    const copy = identifyEnrichmentLoadingCopy(t)
+    return <AppLoadingView title={copy.title} lede={copy.lede} />
   }
 
   if (step.kind === 'destination') {

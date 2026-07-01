@@ -850,7 +850,8 @@ export const en: Translations = {
     },
     identifying: 'Identifying...',
     newPhoto: '📷 Take new photo',
-    enriching: 'Looking up...',
+    enriching: 'Preparing your plant…',
+    enrichingLede: 'We are collecting the species details and getting the next screen ready.',
     results: {
       title: 'Possible matches',
       confidence: 'confidence',

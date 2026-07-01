@@ -850,7 +850,8 @@ export const nl: Translations = {
     },
     identifying: 'Identificeren...',
     newPhoto: '📷 Nieuwe foto maken',
-    enriching: 'Bezig met opzoeken...',
+    enriching: 'Plant voorbereiden…',
+    enrichingLede: 'We halen de soortgegevens op en zetten het volgende scherm klaar.',
     results: {
       title: 'Mogelijke matches',
       confidence: 'zekerheid',
