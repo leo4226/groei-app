@@ -12,6 +12,8 @@ from datetime import date, datetime
 
 from models import CareTask
 
+_EXCLUDED_CARE_TASK_TYPES = {"photo"}
+
 
 _SCHEDULE_SELECT_SQL = """
     SELECT
@@ -34,6 +36,7 @@ _SCHEDULE_SELECT_SQL = """
     LEFT JOIN maps m ON p.map_id = m.id
     LEFT JOIN users u ON cs.last_done_by = u.id
     WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
+      AND cs.care_type NOT IN ('photo')
     ORDER BY cs.next_due ASC
 """
 
@@ -96,6 +99,8 @@ def classify_care_tasks(rows, today: date | None = None) -> tuple[list[CareTask]
     upcoming: list[CareTask] = []
 
     for row in rows:
+        if _row_get(row, "care_type") in _EXCLUDED_CARE_TASK_TYPES:
+            continue
         due = _row_get(row, "next_due")
         if isinstance(due, datetime):
             due = due.date()

@@ -125,3 +125,63 @@ async def test_calendar_events_filters_by_range(client, seeded_db, auth_header):
     )
     assert r.status_code == 200
     assert all(e["plant_id"] != plant_id for e in r.json())
+
+
+@pytest.mark.asyncio
+async def test_calendar_events_excludes_photo_reminders_from_care_calendar(client, seeded_db, auth_header):
+    db = seeded_db
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id) VALUES ('Photo Plant', 1)"
+    )
+    plant_id = cur.lastrowid
+    today = date.today()
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'photo', 30, ?, 1)",
+        (plant_id, today.isoformat()),
+    )
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, today.isoformat()),
+    )
+    await db.commit()
+
+    r = await client.get(
+        "/api/calendar/events",
+        params={"from": today.isoformat(), "to": today.isoformat()},
+        headers=auth_header,
+    )
+
+    assert r.status_code == 200
+    assert {event["type"] for event in r.json() if event["plant_id"] == plant_id} == {"water"}
+
+
+@pytest.mark.asyncio
+async def test_calendar_events_enriches_schedule_warning_from_due_schedule(client, seeded_db, auth_header):
+    db = seeded_db
+    today = date.today()
+    next_due = today - timedelta(days=3)
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id, care_profile) VALUES (?, 1, ?)",
+        ('Warning Plant', '{"water":{"active":true}}'),
+    )
+    plant_id = cur.lastrowid
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, next_due.isoformat()),
+    )
+    await db.commit()
+
+    r = await client.get(
+        "/api/calendar/events",
+        params={"from": next_due.isoformat(), "to": next_due.isoformat()},
+        headers=auth_header,
+    )
+
+    assert r.status_code == 200
+    event = next(e for e in r.json() if e["plant_id"] == plant_id and e["type"] == "water")
+    assert event["overdue"] is True
+    assert event["severity"] == "urgent"
+    assert event["icon"] == "💧"

@@ -48,3 +48,19 @@ def test_classify_care_tasks_keeps_canonical_overdue_due_today_and_upcoming_buck
 
 def test_classify_care_tasks_handles_empty_schedule_rows():
     assert classify_care_tasks([], today=dt.date(2026, 7, 1)) == ([], [], [])
+
+
+def test_classify_care_tasks_excludes_photo_reminders_from_care_lists():
+    today = dt.date(2026, 7, 1)
+
+    overdue, due_today, upcoming = classify_care_tasks(
+        [
+            _schedule_row(10, 201, "Monstera", "photo", today - dt.timedelta(days=1)),
+            _schedule_row(11, 202, "Basilicum", "water", today),
+        ],
+        today=today,
+    )
+
+    assert overdue == []
+    assert [task.care_type for task in due_today] == ["water"]
+    assert upcoming == []

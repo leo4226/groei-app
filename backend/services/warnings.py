@@ -521,16 +521,21 @@ def compute_plant_warnings(
     schedule_warnings: list[CareWarning] = []
     by_type: dict[str, dict] = {s["care_type"]: dict(s) for s in schedules}
     for care_type in active_care_types:
-        entry = profile[care_type]
-        if entry.get("active") and entry.get("interval_days") is not None:
-            sched = by_type.get(care_type)
-            if sched and sched.get("next_due"):
-                next_due = _as_date(sched["next_due"])
-                # NB: heating-season boost is honoured by the scheduler that writes next_due,
-                # so we don't recompute next_due here — we trust the stored value.
-                w = _schedule_warning_for_type(care_type, next_due=next_due, today=today)
-                if w is not None:
-                    schedule_warnings.append(w)
+        if care_type not in CARE_TYPES:
+            continue
+        # care_schedules owns next_due/interval data. care_profile only decides
+        # whether this care type is active for the plant/environment; missing
+        # profile interval_days must not hide a due schedule from the map.
+        if CARE_TYPES[care_type].get("is_weather_triggered"):
+            continue
+        sched = by_type.get(care_type)
+        if sched and sched.get("next_due"):
+            next_due = _as_date(sched["next_due"])
+            # NB: heating-season boost is honoured by the scheduler that writes next_due,
+            # so we don't recompute next_due here — we trust the stored value.
+            w = _schedule_warning_for_type(care_type, next_due=next_due, today=today)
+            if w is not None:
+                schedule_warnings.append(w)
 
     # Weather warnings
     temp_data = (weather or {}).get("temp")
