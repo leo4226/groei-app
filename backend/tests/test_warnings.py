@@ -379,6 +379,49 @@ def test_compute_indoor_plant_overdue_water():
     assert state.care_summary["water"].status == "overdue"
 
 
+def test_compute_schedule_warning_does_not_require_profile_interval_days():
+    """The schedule row owns next_due/interval data; profile only opt-in/opt-out.
+
+    Reproduces the map-vs-calendar split where care_profile has {active:true}
+    but no interval_days, so the map used to show no warning while the calendar
+    showed water due from care_schedules.
+    """
+    plant = {
+        "id": 6,
+        "map_type": "indoor",
+        "container_id": 3,
+        "ground_zone_id": None,
+        "care_profile": json.dumps({"water": {"active": True}}),
+        "care_thresholds": None,
+    }
+    schedules = [{"care_type": "water", "next_due": "2026-05-13"}]
+
+    state = compute_plant_warnings(plant, schedules, weather=None, today=date(2026, 5, 16))
+
+    assert state.top_warning is not None
+    assert state.top_warning.care_type == "water"
+    assert state.top_warning.severity == "urgent"
+    assert state.care_summary["water"].status == "overdue"
+
+
+def test_compute_schedule_warning_respects_profile_opt_out_without_interval_days():
+    plant = {
+        "id": 7,
+        "map_type": "indoor",
+        "container_id": 3,
+        "ground_zone_id": None,
+        "care_profile": json.dumps({"water": {"active": False}}),
+        "care_thresholds": None,
+    }
+    schedules = [{"care_type": "water", "next_due": "2026-05-13"}]
+
+    state = compute_plant_warnings(plant, schedules, weather=None, today=date(2026, 5, 16))
+
+    assert state.top_warning is None
+    assert state.warnings == []
+    assert "water" not in state.care_summary
+
+
 def test_compute_outdoor_container_frost_beats_water():
     plant = {
         "id": 2, "map_type": "outdoor", "container_id": 1, "ground_zone_id": None,

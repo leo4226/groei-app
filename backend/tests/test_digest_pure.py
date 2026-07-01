@@ -91,3 +91,14 @@ def test_email_lists_tasks_and_unsubscribe():
     assert "Basilicum" in html
     assert "unsubscribe?token=x" in html
     assert "Leon" in html
+
+
+def test_email_task_line_uses_map_name_when_location_missing():
+    _, html = build_digest_email(
+        "Leon",
+        overdue=[_task(location=None, map_name="Achtertuin", days_overdue=1)],
+        due_today=[],
+        unsubscribe_url="https://api.floreren.app/api/notifications/unsubscribe?token=x",
+    )
+
+    assert "Achtertuin" in html

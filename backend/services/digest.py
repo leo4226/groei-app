@@ -167,7 +167,8 @@ def _task_line(task: CareTask, s: dict) -> str:
     late = ""
     if task.days_overdue > 0:
         late = f' <span style="color:#b3261e;font-size:13px;">({s["days_late"].format(n=task.days_overdue)})</span>'
-    where = f' <span style="color:#999;font-size:13px;">— {task.location}</span>' if task.location else ""
+    place = task.map_name or task.location
+    where = f' <span style="color:#999;font-size:13px;">— {place}</span>' if place else ""
     return (
         f'<li style="margin:0 0 8px;color:#333;font-size:15px;">'
         f'{icon} <strong>{task.plant_name}</strong> · {label}{late}{where}</li>'
