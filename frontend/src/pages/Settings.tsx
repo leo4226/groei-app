@@ -7,7 +7,7 @@ import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
-import { enablePush, disablePush, pushSupported, iosNeedsInstall, isPushSubscribedHere } from '../utils/push'
+import { enablePush, disablePush, pushSupported, pushAvailabilityInfo, isPushSubscribedHere } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
@@ -664,15 +664,16 @@ export default function Settings() {
             <div>
               <div className="font-semibold text-sm">{t.settings.pushToggle}</div>
               <div className="text-xs text-text-muted mt-0.5">
-                {iosNeedsInstall() ? t.settings.pushIosHint
-                  : !pushSupported() ? t.settings.pushUnsupported
+                {pushAvailabilityInfo().state === 'ios-not-standalone' ? t.settings.pushIosHint
+                  : pushAvailabilityInfo().state === 'ios-standalone-unsupported' ? t.settings.pushIosReinstallHint
+                  : pushAvailabilityInfo().state === 'unsupported' ? t.settings.pushUnsupported
                   : t.settings.pushToggleDesc}
               </div>
             </div>
             <button
               onClick={handlePushToggle}
-              disabled={!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()}
-              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${pushOnHere ? 'bg-primary' : 'bg-border'} ${(!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()) ? 'opacity-50' : ''}`}
+              disabled={!digestPrefs || pushBusy || pushAvailabilityInfo().state !== 'supported'}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${pushOnHere ? 'bg-primary' : 'bg-border'} ${(pushAvailabilityInfo().state !== 'supported' || !digestPrefs || pushBusy) ? 'opacity-50' : ''}`}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pushOnHere ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
