@@ -16,7 +16,7 @@ function setWindowProp(name: string, value: unknown) {
 }
 
 function deleteWindowProp(name: string) {
-  delete (window as Record<string, unknown>)[name]
+  delete (window as unknown as Record<string, unknown>)[name]
 }
 
 function setUserAgent(ua: string) {
