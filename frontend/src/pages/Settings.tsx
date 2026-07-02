@@ -664,8 +664,9 @@ export default function Settings() {
             <div>
               <div className="font-semibold text-sm">{t.settings.pushToggle}</div>
               <div className="text-xs text-text-muted mt-0.5">
-                {iosNeedsInstall() ? t.settings.pushIosHint
-                  : !pushSupported() ? t.settings.pushUnsupported
+                {pushAvailabilityInfo().state === 'ios-not-standalone' ? t.settings.pushIosHint
+                  : pushAvailabilityInfo().state === 'ios-standalone-unsupported' ? t.settings.pushIosReinstallHint
+                  : pushAvailabilityInfo().state === 'unsupported' ? t.settings.pushUnsupported
                   : t.settings.pushToggleDesc}
               </div>
             </div>
