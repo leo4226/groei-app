@@ -1394,6 +1394,9 @@ export type Translations = {
     nextRound: string
     endGame: string
     plantHint: string
+    revealAnswer: string
+    hideAnswer: string
+    backToRound: string
     // Leaderboard
     gameOver: string
     finalLeaderboard: string
