@@ -7,6 +7,7 @@ import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
 import Glyph from '../components/ui/Glyph'
+import { QRCodeSVG } from 'qrcode.react'
 
 // The host is also a player (create_game registers them in game_players), so
 // the round view doubles as their play screen: clue + scan, with the answer
@@ -129,6 +130,14 @@ export default function GameHostPage() {
           <p className="text-xs font-mono uppercase tracking-widest text-text-muted">{t.game.joinCode}</p>
           <div className="text-6xl font-black tracking-[0.15em] text-primary">{code}</div>
           <p className="text-text-muted text-sm">{state.session.map_name}</p>
+        </div>
+
+        {/* QR code — guests scan instead of typing the code (#242) */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="bg-white rounded-2xl p-3 border border-border">
+            <QRCodeSVG value={`${window.location.origin}/game?code=${code}`} size={132} marginSize={0} />
+          </div>
+          <p className="text-xs text-text-muted">{t.game.scanToJoin}</p>
         </div>
 
         <button

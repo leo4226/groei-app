@@ -36,12 +36,24 @@ export interface MyAnswer {
   answered_at: string
 }
 
+export interface RoundStat {
+  round_index: number
+  plant_name_nl: string
+  plant_name_en: string | null
+  answered_count: number
+  avg_seconds: number | null
+}
+
 export interface GameState {
   session: GameSession
   players: GamePlayer[]
   current_clue: GameClue | null
   rounds: GameClue[]
   my_answer: MyAnswer | null
+  /** The viewer's own game_players.id — for highlighting their leaderboard row. */
+  my_player_id: number | null
+  /** Host end-screen per-round breakdown; only present when finished. */
+  round_stats: RoundStat[] | null
 }
 
 export interface AnswerResult {

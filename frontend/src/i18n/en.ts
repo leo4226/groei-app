@@ -1431,6 +1431,7 @@ export const en: Translations = {
     shareResults: 'Share results',
     newGame2: 'Start new game',
     roundBreakdown: 'Per round',
+    scanToJoin: 'Scan to join',
     hostedBy: 'Hosted by {name} via Floreren',
     place1: '🥇',
     place2: '🥈',
