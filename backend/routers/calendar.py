@@ -208,6 +208,13 @@ async def list_calendar_events(
                 from_dt,
                 to_dt,
             )
+            # Overdue clamp (audit F7): a schedule due before the window would
+            # otherwise render zero events in a forward-looking window (its past
+            # occurrence precedes it; the next projection may overshoot it), so
+            # outstanding work vanished from agenda-style queries while the map
+            # and digest still showed it. Surface it once at the window start.
+            if next_due < from_dt and from_dt not in occurrences:
+                occurrences.insert(0, from_dt)
             for i, occ in enumerate(occurrences):
                 events.append(CalendarEventOut(
                     id=f"schedule:{r['schedule_id']}:{ct}:{i}",
@@ -217,7 +224,9 @@ async def list_calendar_events(
                     plant_name=r["plant_name"],
                     plant_icon_variant=r["plant_icon_variant"],
                     schedule_id=r["schedule_id"],
-                    overdue=occ < today,
+                    # The clamped occurrence stands in for an already-missed due
+                    # date, so it is overdue even when rendered on today/future.
+                    overdue=occ < today or (occ == from_dt and next_due < from_dt),
                     severity=enrichment.get("severity"),
                     color=enrichment.get("color"),
                     icon=enrichment.get("icon"),

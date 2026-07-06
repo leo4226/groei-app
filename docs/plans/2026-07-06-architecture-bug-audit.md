@@ -94,10 +94,11 @@ interval 7) produces **zero events** in a `[today, today+N]` window — its past
 occurrence is before the window and its next projected one may be after it.
 The month view masks this (it includes past days, where the item shows flagged
 `overdue`), but any "upcoming"/agenda-style query starting today silently
-omits outstanding work — the same divergence class as #420. **Product
-decision needed:** either clamp an overdue schedule's first occurrence to
-`max(next_due, from_dt)` or document that calendar = occurrence dates and
-overdue lives on the map/digest.
+omits outstanding work — the same divergence class as #420.
+**Decision (Leon, 2026-07-06): Option A** — an overdue schedule's first
+rendered occurrence is clamped to the window start, flagged `overdue`, so
+outstanding work always appears. Implemented alongside this audit; the
+guardrail test pins both window shapes.
 
 ## Non-findings (checked, fine)
 - Secrets: env-var based, constant-time compares on shared-secret endpoints,

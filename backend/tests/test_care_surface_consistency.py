@@ -65,11 +65,8 @@ async def test_overdue_task_visible_on_all_surfaces(client, seeded_db, auth_head
     map_types = [w.care_type for w in state.warnings]
     assert "water" in map_types, "map surface lost the overdue task (pre-#420 regression)"
 
-    # 3. Calendar surface (the HTTP endpoint the calendar page calls).
-    #    The calendar renders occurrences on their dates, so the window must
-    #    cover the (past) due date and the event must be flagged overdue.
-    #    NB (audit F7): a window starting *today* omits overdue tasks entirely —
-    #    known gap, tracked separately as a product decision.
+    # 3a. Calendar surface — a window covering the (past) due date shows the
+    #     occurrence on its date, flagged overdue.
     resp = await client.get(
         "/api/calendar/events",
         params={"from": (today - timedelta(days=7)).isoformat(), "to": today.isoformat()},
@@ -78,6 +75,21 @@ async def test_overdue_task_visible_on_all_surfaces(client, seeded_db, auth_head
     assert resp.status_code == 200, resp.text
     water_events = [e for e in resp.json() if e["type"] == "water"]
     assert water_events, "calendar surface lost the overdue task"
+    assert water_events[0]["overdue"] is True
+
+    # 3b. Calendar surface — a FORWARD-looking window must not lose overdue
+    #     work (audit F7, Option A): the overdue schedule is clamped to the
+    #     window start instead of vanishing between its past due date and its
+    #     next projected occurrence.
+    resp = await client.get(
+        "/api/calendar/events",
+        params={"from": today.isoformat(), "to": (today + timedelta(days=1)).isoformat()},
+        headers=auth_header,
+    )
+    assert resp.status_code == 200, resp.text
+    water_events = [e for e in resp.json() if e["type"] == "water"]
+    assert water_events, "forward window dropped the overdue task (F7 regression)"
+    assert water_events[0]["date"] == today.isoformat()
     assert water_events[0]["overdue"] is True
 
 
