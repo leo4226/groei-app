@@ -240,12 +240,19 @@ async def send_due_digests(db) -> dict:
     now = _now()
     today = now.date()
 
+    # Language comes from the user profile that signup creates alongside each
+    # account (same name, same household — see routers/auth.py). Accounts have
+    # no language column of their own (yet); LEFT JOIN so a missing profile
+    # still gets the NL default rather than dropping the digest.
     prefs = await db.execute_fetchall(
         """
         SELECT np.account_id, np.digest_time, np.digest_enabled,
-               np.last_digest_sent_on, a.email, a.name, a.household_id
+               np.last_digest_sent_on, a.email, a.name, a.household_id,
+               u.language AS user_language
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
+        LEFT JOIN users u
+          ON u.household_id = a.household_id AND LOWER(u.name) = LOWER(a.name)
         WHERE np.digest_enabled
         """
     )
@@ -267,7 +274,10 @@ async def send_due_digests(db) -> dict:
 
         token = make_unsubscribe_token(pref["account_id"])
         unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
-        subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
+        lang = "en" if pref["user_language"] == "en" else "nl"
+        subject, html = build_digest_email(
+            pref["name"], overdue, due_today, unsubscribe_url, lang=lang
+        )
         if send_email(pref["email"], subject, html):
             await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
             sent += 1
