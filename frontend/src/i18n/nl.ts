@@ -1431,6 +1431,7 @@ export const nl: Translations = {
     shareResults: 'Deel resultaten',
     newGame2: 'Nieuw spel starten',
     roundBreakdown: 'Per ronde',
+    scanToJoin: 'Scan om mee te doen',
     hostedBy: 'Gehost door {name} via Floreren',
     place1: '🥇',
     place2: '🥈',

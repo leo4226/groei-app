@@ -186,6 +186,45 @@ async def _build_state(db, code: str, account_id: int) -> dict:
         idx = session["current_round"]
         current_clue = next((r for r in rounds if r["round_index"] == idx), None)
 
+    # Per-round stats for the host's end-screen breakdown (#245). Only computed
+    # once the game is finished so the 3s polling loop stays cheap.
+    round_stats = None
+    if session["status"] == "finished" and rounds:
+        ans_rows = await db.execute_fetchall(
+            """SELECT ga.answered_at, gr.started_at, gr.round_index
+               FROM game_answers ga
+               JOIN game_rounds gr ON gr.id = ga.round_id
+               WHERE gr.session_id = ? AND ga.is_correct = TRUE""",
+            (session["id"],),
+        )
+        counts: dict[int, int] = {}
+        times: dict[int, list[float]] = {}
+        for a in ans_rows:
+            a = dict(a)
+            ridx = a["round_index"]
+            counts[ridx] = counts.get(ridx, 0) + 1
+            started, answered = a.get("started_at"), a.get("answered_at")
+            if isinstance(started, str):
+                started = datetime.fromisoformat(started)
+            if isinstance(answered, str):
+                answered = datetime.fromisoformat(answered)
+            if started and answered:
+                times.setdefault(ridx, []).append((answered - started).total_seconds())
+        round_stats = [
+            {
+                "round_index": r["round_index"],
+                "plant_name_nl": r["plant_name_nl"],
+                "plant_name_en": r["plant_name_en"],
+                "answered_count": counts.get(r["round_index"], 0),
+                "avg_seconds": (
+                    round(sum(times[r["round_index"]]) / len(times[r["round_index"]]))
+                    if times.get(r["round_index"])
+                    else None
+                ),
+            }
+            for r in rounds
+        ]
+
     return {
         "session": {
             "id": session["id"],
@@ -203,6 +242,9 @@ async def _build_state(db, code: str, account_id: int) -> dict:
         "current_clue": current_clue,
         "rounds": rounds,
         "my_answer": my_answer,
+        # So the client can highlight the viewer's own leaderboard row (#245).
+        "my_player_id": my_player_id,
+        "round_stats": round_stats,
     }
 
 

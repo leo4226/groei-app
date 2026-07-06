@@ -1406,6 +1406,7 @@ export type Translations = {
     shareResults: string
     newGame2: string
     roundBreakdown: string
+    scanToJoin: string
     hostedBy: string
     place1: string
     place2: string
