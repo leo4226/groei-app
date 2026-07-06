@@ -6,6 +6,7 @@ import { gameApi, type GameState, type AnswerResult } from '../api/game'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
+import GameQuizRound from '../components/game/GameQuizRound'
 import Glyph from '../components/ui/Glyph'
 
 type PlayerStep =
@@ -25,6 +26,7 @@ export default function GamePlayerPage() {
   const [step, setStep] = useState<PlayerStep>('waiting')
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
   const [countdown, setCountdown] = useState(3)
+  const [quizSubmitting, setQuizSubmitting] = useState(false)
   const lastRoundRef = useRef<number>(-1)
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
@@ -63,7 +65,7 @@ export default function GamePlayerPage() {
 
   // Countdown after a correct scan before showing the leaderboard wait screen
   useEffect(() => {
-    if (step !== 'result') return
+    if (step !== 'result' || !scanResult?.is_correct) return
     setCountdown(3)
     const id = setInterval(() => {
       setCountdown((c) => {
@@ -92,6 +94,20 @@ export default function GamePlayerPage() {
       setStep('result')
     } catch {
       setStep('clue')
+    }
+  }
+
+  async function handleQuizPick(plantNameNl: string) {
+    if (!code || quizSubmitting) return
+    setQuizSubmitting(true)
+    try {
+      const result = await gameApi.answer(code, plantNameNl)
+      setScanResult(result)
+      setStep('result')
+    } catch {
+      // answer rejected (e.g. round advanced) — next poll resyncs
+    } finally {
+      setQuizSubmitting(false)
     }
   }
 
@@ -160,6 +176,28 @@ export default function GamePlayerPage() {
   const clue = state.current_clue
   const roundNum = state.session.current_round + 1
   const totalRounds = state.session.total_rounds
+
+  // ── Clue view — logbook quiz: photo↔name matching, one guess ────────────────
+  if (step === 'clue' && state.session.clue_mode === 'logbook' && !state.my_answer?.is_correct) {
+    return (
+      <div className="min-h-screen bg-bg flex flex-col">
+        <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-border">
+          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
+            {t.game.roundTitle} {roundNum} / {totalRounds}
+          </p>
+        </div>
+        <div className="flex-1 p-6 max-w-md mx-auto w-full">
+          <GameQuizRound
+            key={state.session.current_round}
+            state={state}
+            locked={Boolean(state.my_answer)}
+            submitting={quizSubmitting}
+            onPick={handleQuizPick}
+          />
+        </div>
+      </div>
+    )
+  }
 
   // ── Clue view — show plant photo, then tap to scan ───────────────────────────
   if (step === 'clue' && !state.my_answer?.is_correct) {
@@ -251,13 +289,16 @@ export default function GamePlayerPage() {
         {scanResult.is_correct && (
           <p className="text-text-muted text-sm">{t.game.nextRoundSoon.replace('{seconds}', String(countdown))}</p>
         )}
-        {!scanResult.is_correct && (
+        {!scanResult.is_correct && state.session.clue_mode !== 'logbook' && (
           <button
             onClick={() => setStep('clue')}
             className="mt-4 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold"
           >
             {t.game.scanButton}
           </button>
+        )}
+        {!scanResult.is_correct && state.session.clue_mode === 'logbook' && (
+          <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
         )}
       </div>
     )

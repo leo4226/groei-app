@@ -1415,5 +1415,13 @@ export type Translations = {
     clueModePhoto: string
     clueModeName: string
     clueModeSectionLabel: string
+    clueModeLogbook: string
+    selectAll: string
+    deselectAll: string
+    questionCount: string
+    allQuestions: string
+    quizWhichPlant: string
+    quizWhichPhoto: string
+    quizAnswered: string
   }
 }

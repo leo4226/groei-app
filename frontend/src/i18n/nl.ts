@@ -1439,5 +1439,13 @@ export const nl: Translations = {
     clueModePhoto: 'Foto aanwijzing',
     clueModeName: 'Naam aanwijzing',
     clueModeSectionLabel: 'Aanwijzingstype',
+    clueModeLogbook: 'Logboek-quiz',
+    selectAll: 'Selecteer alles',
+    deselectAll: 'Wis selectie',
+    questionCount: 'Aantal vragen',
+    allQuestions: 'Alle',
+    quizWhichPlant: 'Welke plant is dit?',
+    quizWhichPhoto: 'Welke foto is {name}?',
+    quizAnswered: 'Antwoord gegeven',
   },
 }
