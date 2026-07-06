@@ -1439,5 +1439,13 @@ export const en: Translations = {
     clueModePhoto: 'Photo clue',
     clueModeName: 'Name clue',
     clueModeSectionLabel: 'Clue type',
+    clueModeLogbook: 'Logbook quiz',
+    selectAll: 'Select all',
+    deselectAll: 'Clear selection',
+    questionCount: 'Number of questions',
+    allQuestions: 'All',
+    quizWhichPlant: 'Which plant is this?',
+    quizWhichPhoto: 'Which photo is {name}?',
+    quizAnswered: 'Answer submitted',
   },
 }

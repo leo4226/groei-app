@@ -27,7 +27,7 @@ export interface GameSession {
   map_slug: string
   host_account_id: number
   host_name: string
-  clue_mode: 'photo' | 'name'
+  clue_mode: 'photo' | 'name' | 'logbook'
 }
 
 export interface MyAnswer {
@@ -62,8 +62,15 @@ export interface AnswerResult {
 }
 
 export const gameApi = {
-  create: (map_id: number, plant_ids: number[], clue_mode: 'photo' | 'name' = 'photo') =>
-    apiRequest<{ join_code: string }>('POST', '/games', { body: { map_id, plant_ids, clue_mode } }),
+  create: (
+    map_id: number,
+    plant_ids: number[],
+    clue_mode: 'photo' | 'name' | 'logbook' = 'photo',
+    round_count?: number,
+  ) =>
+    apiRequest<{ join_code: string }>('POST', '/games', {
+      body: { map_id, plant_ids, clue_mode, round_count: round_count ?? null },
+    }),
 
   getState: (code: string) =>
     apiRequest<GameState>('GET', `/games/${code}`),

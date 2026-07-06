@@ -6,6 +6,7 @@ import { gameApi, type GameState, type AnswerResult } from '../api/game'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
+import GameQuizRound from '../components/game/GameQuizRound'
 import Glyph from '../components/ui/Glyph'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -25,6 +26,7 @@ export default function GameHostPage() {
   const [copied, setCopied] = useState(false)
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
   const [answerRevealed, setAnswerRevealed] = useState(false)
+  const [quizSubmitting, setQuizSubmitting] = useState(false)
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
     return user?.language === 'en' ? 'en' : 'nl'
@@ -100,6 +102,21 @@ export default function GameHostPage() {
       poll()
     } catch {
       setStep('round')
+    }
+  }
+
+  async function handleQuizPick(plantNameNl: string) {
+    if (!code || quizSubmitting) return
+    setQuizSubmitting(true)
+    try {
+      const result = await gameApi.answer(code, plantNameNl)
+      setScanResult(result)
+      setStep('result')
+      poll()
+    } catch {
+      // answer rejected — next poll resyncs
+    } finally {
+      setQuizSubmitting(false)
     }
   }
 
@@ -210,7 +227,9 @@ export default function GameHostPage() {
   const answeredCount = state.players.filter((p) => p.answered_current_round).length
   const hostAnswered = Boolean(state.my_answer?.is_correct)
   // In name mode the clue IS the plant name, so there's no answer to hide.
-  const photoMode = state.session.clue_mode !== 'name'
+  // In logbook mode the quiz options carry the answer, so no peek either.
+  const photoMode = state.session.clue_mode === 'photo'
+  const logbookMode = state.session.clue_mode === 'logbook'
 
   // Brief own-scan result overlay, then back to the round panel.
   if (step === 'result' && scanResult) {
@@ -231,7 +250,7 @@ export default function GameHostPage() {
           </>
         )}
         <div className="flex flex-col gap-2 w-full max-w-xs mt-4">
-          {!scanResult.is_correct && (
+          {!scanResult.is_correct && !logbookMode && (
             <button
               onClick={() => setStep('camera')}
               className="px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
@@ -259,8 +278,19 @@ export default function GameHostPage() {
         <span className="text-xs text-text-muted">{answeredCount}/{state.players.length} {t.game.answered}</span>
       </div>
 
+      {/* Logbook quiz — the host answers by tapping, like everyone else */}
+      {logbookMode && (
+        <GameQuizRound
+          key={state.session.current_round}
+          state={state}
+          locked={Boolean(state.my_answer)}
+          submitting={quizSubmitting}
+          onPick={handleQuizPick}
+        />
+      )}
+
       {/* Clue — same view the players get, so the host can hunt along */}
-      {clue && (
+      {!logbookMode && clue && (
         photoMode ? (
           clue.clue_photo_url ? (
             <div className="w-full aspect-square max-h-64 rounded-2xl overflow-hidden shadow-lg mx-auto">
@@ -282,8 +312,8 @@ export default function GameHostPage() {
         )
       )}
 
-      {/* Host scan — the host plays too */}
-      {hostAnswered ? (
+      {/* Host scan — the host plays too (scan modes only) */}
+      {logbookMode ? null : hostAnswered ? (
         <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 text-green-600 text-sm font-semibold">
           <Glyph name="check" size={16} strokeWidth={2.4} /> {t.game.correctScan}
         </div>
