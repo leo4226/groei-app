@@ -3,6 +3,7 @@ import { usePlantCareInfo } from '../hooks/usePlantCareInfo'
 import type { PlantNotesData } from '../hooks/usePlantCareInfo'
 import { useRainContext } from '../hooks/useRainContext'
 import { useT } from '../context/LanguageContext'
+import Glyph from '../components/ui/Glyph'
 
 // Amsterdam average precipitation: ~800mm/year
 const AMS_PRECIP = 800
@@ -74,7 +75,7 @@ export default function PlantCareDetail() {
           onClick={handleBack}
           className="w-8 h-8 rounded-full bg-bg flex items-center justify-center text-text shrink-0"
         >
-          ←
+          <Glyph name="arrow-left" size={18} />
         </button>
         <div className="min-w-0 flex-1">
           {care.loading ? (
@@ -98,7 +99,7 @@ export default function PlantCareDetail() {
       {care.data?.image_url ? (
         <img src={care.data.image_url} alt={care.data.common_name ?? ''} className="w-full h-48 object-cover" />
       ) : !care.loading && (
-        <div className="w-full h-28 bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-5xl">🌿</div>
+        <div className="w-full h-28 bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-primary/60"><Glyph name="leaf" size={48} /></div>
       )}
 
       <div className="px-4 pt-5">
@@ -114,7 +115,7 @@ export default function PlantCareDetail() {
           </div>
         ) : care.data?.source === 'not_found' ? (
           <div className="text-center py-12 text-text-muted">
-            <p className="text-3xl mb-3">🌿</p>
+            <div className="flex justify-center mb-3"><Glyph name="leaf" size={30} /></div>
             <p className="text-sm">{t.plantCare.noInfo}</p>
           </div>
         ) : care.error ? (

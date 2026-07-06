@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
+import Glyph from './ui/Glyph'
 import { sendChatMessage, submitBugReport, ChatRequestError, type ChatMessage, type PageContext } from '../api/chat'
 import {
   bugStepFromAnswerCount,
@@ -32,6 +33,14 @@ function detectPage(pathname: string): PageKey | null {
   if (pathname.startsWith('/identify')) return 'identify'
   if (pathname.startsWith('/log')) return 'plants'
   return null
+}
+
+
+function extractPlantIdFromRoute(pathname: string): number | undefined {
+  const match = pathname.match(/^\/(?:plants|log)\/(\d+)(?:\/|$)/)
+  if (!match) return undefined
+  const id = Number(match[1])
+  return Number.isFinite(id) ? id : undefined
 }
 
 function randomBubble(pageKey: PageKey, name: string): string {
@@ -156,7 +165,9 @@ export default function HelpAssistant() {
 
   const users = useFloreren((s) => s.users)
   const activeUserId = useFloreren((s) => s.activeUserId)
-  const userName = users.find((u) => u.id === activeUserId)?.name ?? 'user'
+  const assistantPageContext = useFloreren((s) => s.assistantPageContext)
+  const activeUser = users.find((u) => u.id === activeUserId)
+  const userName = activeUser?.name ?? 'user'
 
   const pageKey = detectPage(location.pathname)
   const panelConfig = getAssistantPanelConfig({ isMobile, sheetState })
@@ -207,12 +218,20 @@ export default function HelpAssistant() {
     setLoading(true)
 
     try {
-      const pageContext: PageContext = { route: location.pathname }
+      const pageContext: PageContext = {
+        ...assistantPageContext,
+        route: location.pathname,
+      }
       if (pageKey === 'map') {
         const slug = location.pathname.replace(/^\/map\//, '')
         if (slug) pageContext.map_slug = slug
       }
-      const reply = await sendChatMessage(userMsg, messages, pageContext)
+      const routePlantId = extractPlantIdFromRoute(location.pathname)
+      if (routePlantId !== undefined) pageContext.plant_id = routePlantId
+      const reply = await sendChatMessage(userMsg, messages, pageContext, {
+        activeUserId,
+        language: activeUser?.language,
+      })
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       // "Offline" covers a true browser network failure (TypeError) and the
@@ -388,7 +407,9 @@ export default function HelpAssistant() {
             }}
           >
             <p style={{ margin: 0, fontSize: isMobile ? 12 : 13, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>
-              {isMobile ? '🌱 Vraag Stekkie' : bubble}
+              {isMobile
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Glyph name="sprout" size={13} style={{ flexShrink: 0 }} />Vraag Stekkie</span>
+                : bubble}
             </p>
             {!isMobile && (
               <div

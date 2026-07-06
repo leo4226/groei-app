@@ -5,6 +5,7 @@ import { maps as mapsApi } from '../../api/client'
 import { gameApi } from '../../api/game'
 import type { MapPlant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   mapId: number
@@ -17,7 +18,8 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
   const navigate = useNavigate()
   const [plants, setPlants] = useState<MapPlant[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [clueMode, setClueMode] = useState<'photo' | 'name'>('photo')
+  const [clueMode, setClueMode] = useState<'photo' | 'name' | 'logbook'>('photo')
+  const [roundCount, setRoundCount] = useState<number | null>(null)  // null = all (capped at 15)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,12 +42,18 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
     })
   }
 
+  function selectAll() {
+    setSelected(new Set(plants.map((p) => p.id)))
+  }
+
   async function handleCreate() {
-    if (selected.size < 3 || selected.size > 10 || creating) return
+    if (selected.size < 3 || creating) return
     setCreating(true)
     setError(null)
     try {
-      const { join_code } = await gameApi.create(mapId, Array.from(selected), clueMode)
+      const { join_code } = await gameApi.create(
+        mapId, Array.from(selected), clueMode, roundCount ?? undefined,
+      )
       navigate(`/game/${join_code}/host`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error)
@@ -53,7 +61,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
     }
   }
 
-  const canCreate = selected.size >= 3 && selected.size <= 10
+  const canCreate = selected.size >= 3 && selected.size <= 50
+  const effectiveRounds = Math.min(roundCount ?? selected.size, 15, selected.size)
+  const countChoices = [5, 10, 15].filter((n) => n < selected.size)
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-black/40" onClick={onClose}>
@@ -68,7 +78,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
             <p className="text-xs text-text-muted mt-0.5">{t.game.setupSubtitle}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-bg text-text-muted hover:text-text">
-            ✕
+            <Glyph name="x" size={16} />
           </button>
         </div>
 
@@ -78,29 +88,54 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
           <div className="flex rounded-xl overflow-hidden border border-border">
             <button
               onClick={() => setClueMode('photo')}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
                 clueMode === 'photo' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
               }`}
             >
-              📸 {t.game.clueModePhoto}
+              <Glyph name="camera" size={15} />
+              {t.game.clueModePhoto}
             </button>
             <button
               onClick={() => setClueMode('name')}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
                 clueMode === 'name' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
               }`}
             >
-              🔤 {t.game.clueModeName}
+              <Glyph name="text" size={15} />
+              {t.game.clueModeName}
+            </button>
+            <button
+              onClick={() => setClueMode('logbook')}
+              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+                clueMode === 'logbook' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+              }`}
+            >
+              <Glyph name="book" size={15} />
+              {t.game.clueModeLogbook}
             </button>
           </div>
         </div>
 
         {/* Notice about photos */}
         <div className="px-5 pb-3 flex-shrink-0">
-          <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-            📸 {t.game.noPhotosWarning}
+          <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 flex items-start gap-1.5">
+            <Glyph name="camera" size={14} className="shrink-0 mt-0.5" />
+            <span>{t.game.noPhotosWarning}</span>
           </p>
         </div>
+
+        {/* Select all / clear */}
+        {!loading && plants.length > 0 && (
+          <div className="px-5 pb-2 flex-shrink-0 flex items-center justify-between">
+            <p className="text-xs text-text-muted">{selected.size}/{plants.length}</p>
+            <button
+              onClick={() => (selected.size === plants.length ? setSelected(new Set()) : selectAll())}
+              className="text-xs font-semibold text-primary"
+            >
+              {selected.size === plants.length ? t.game.deselectAll : t.game.selectAll}
+            </button>
+          </div>
+        )}
 
         {/* Plant list */}
         <div className="overflow-y-auto flex-1 px-5 pb-2">
@@ -124,14 +159,14 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
                     {p.photo_path ? (
                       <img src={p.photo_path} alt={displayName} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-border flex items-center justify-center text-text-muted text-xl flex-shrink-0">🌱</div>
+                      <div className="w-12 h-12 rounded-lg bg-border flex items-center justify-center text-text-muted flex-shrink-0"><Glyph name="sprout" size={22} /></div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${sel ? 'text-primary' : 'text-text'}`}>{displayName}</p>
                       {p.species && <p className="text-xs text-text-muted truncate">{p.species}</p>}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${sel ? 'border-primary bg-primary' : 'border-border'}`}>
-                      {sel && <span className="text-white text-xs">✓</span>}
+                      {sel && <Glyph name="check" size={13} className="text-white" />}
                     </div>
                   </button>
                 )
@@ -143,6 +178,32 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
         {/* Footer */}
         <div className="px-5 pt-3 pb-[max(env(safe-area-inset-bottom,0px),20px)] flex-shrink-0 border-t border-border space-y-3">
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+          {selected.size > 3 && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-text-muted">{t.game.questionCount}</p>
+              <div className="flex gap-1.5">
+                {countChoices.map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setRoundCount(n)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                      roundCount === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setRoundCount(null)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                    roundCount === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'
+                  }`}
+                >
+                  {t.game.allQuestions}
+                </button>
+              </div>
+            </div>
+          )}
           {!canCreate && selected.size > 0 && (
             <p className="text-xs text-text-muted text-center">
               {selected.size < 3 ? t.game.selectMin : t.game.selectMax}
@@ -153,7 +214,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
             disabled={!canCreate || creating}
             className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
           >
-            {creating ? t.game.creating : `${t.game.createGame} (${selected.size})`}
+            {creating ? t.game.creating : `${t.game.createGame} (${effectiveRounds})`}
           </button>
         </div>
       </div>

@@ -14,20 +14,43 @@ export interface CareNeedsGroups {
   goodPlants: PlantWithMeta[]
 }
 
-const CARE_TYPE_ICON: Record<string, string> = {
-  water: '💧',
-  fertilize: '🧪',
-  mist: '🌫️',
-  rotate: '🔄',
-  repot: '🪴',
-  repot_check: '🪴',
-  prune: '✂️',
-  pest_check: '🐛',
-  dust: '🧽',
-  protect_cold: '🧤',
-  protect_heat: '🧴',
-  frost_protect: '❄️',
-  heat_protect: '🔥',
+export interface LocalizedWarningCopy {
+  headline: string
+  reason: string | null
+  action: string | null
+}
+
+export function isWeatherWarning(warning: CareWarningOut | null | undefined): warning is CareWarningOut {
+  return warning?.trigger === 'weather_event'
+}
+
+export function localizedWarningCopy(warning: CareWarningOut, t: Translations): LocalizedWarningCopy {
+  const useEnglish = t.locale.startsWith('en')
+  return {
+    headline: useEnglish ? (warning.message_en || warning.message_nl) : warning.message_nl,
+    reason: useEnglish
+      ? (warning.reason_en ?? warning.reason_nl ?? null)
+      : (warning.reason_nl ?? warning.reason_en ?? null),
+    action: useEnglish
+      ? (warning.action_en ?? warning.action_nl ?? null)
+      : (warning.action_nl ?? warning.action_en ?? null),
+  }
+}
+
+export interface WarningCarrier {
+  warning?: CareWarningOut | null
+  top_warning?: CareWarningOut | null
+}
+
+export function localizedWeatherWarningCopy(
+  carriers: WarningCarrier[],
+  t: Translations,
+): LocalizedWarningCopy | null {
+  const warning = carriers
+    .map((carrier) => carrier.warning ?? carrier.top_warning ?? null)
+    .find(isWeatherWarning)
+
+  return warning ? localizedWarningCopy(warning, t) : null
 }
 
 const CARE_TYPE_LABEL_FALLBACK: Record<string, { nl: string; en: string }> = {
@@ -81,14 +104,11 @@ export function buildCareNeedsGroups(plants: MapPlant[], objects: MapObject[]): 
   return { groups: sortedGroups, goodPlants }
 }
 
-export function getCareTypeDisplay(careType: string, t: Translations): { icon: string; label: string } {
+export function getCareTypeDisplay(careType: string, t: Translations): { label: string } {
   const labelKey = CARE_TYPE_ALIASES[careType] ?? careType
   const translated = (t.care as Record<string, string>)[labelKey]
   const fallback = CARE_TYPE_LABEL_FALLBACK[careType]
   const label = translated ?? (t.locale.startsWith('en') ? fallback?.en : fallback?.nl) ?? careType
 
-  return {
-    icon: CARE_TYPE_ICON[careType] ?? '⚙️',
-    label,
-  }
+  return { label }
 }

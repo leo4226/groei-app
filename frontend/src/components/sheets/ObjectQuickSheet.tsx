@@ -4,6 +4,7 @@ import { STATUS_COLORS } from '../map/PlantMarker'
 import { useState } from 'react'
 import { useT } from '../../context/LanguageContext'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import Glyph, { type GlyphName } from '../ui/Glyph'
 
 interface Props {
   object: MapObject
@@ -29,10 +30,10 @@ const SHAPE_LABELS: Record<string, string> = {
 const MATERIALS = ['terracotta', 'plastic', 'wood', 'corten', 'stone']
 const COLOR_SWATCHES = ['#B7654B', '#888888', '#8B6914', '#A0522D', '#8B5A30', '#5B9A6F', '#333333', '#D4A843']
 
-const CATEGORY_ICONS: Record<string, string> = {
-  container: '\u{1FAB4}',
-  hardscape: '\u{1FAA8}',
-  utility: '\u{1F6E2}️',
+const CATEGORY_GLYPH: Record<string, GlyphName> = {
+  container: 'pot',
+  hardscape: 'rock',
+  utility: 'wrench',
 }
 
 const PRESET_LABELS: Record<string, string> = {
@@ -140,10 +141,10 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
               {/* View mode */}
               <div className="flex items-start gap-3 mb-4">
                 <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+                  className="w-14 h-14 rounded-xl flex items-center justify-center text-text-soft"
                   style={{ backgroundColor: (object.color || '#888') + '22' }}
                 >
-                  {CATEGORY_ICONS[object.category || 'container'] || '\u{1FAB4}'}
+                  <Glyph name={CATEGORY_GLYPH[object.category || 'container'] || 'pot'} size={26} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-semibold text-text truncate">{object.label || object.name}</h3>
@@ -211,7 +212,7 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                           disabled={busy}
                           className="w-full flex items-center gap-2 bg-bg rounded-lg px-3 py-2 text-left hover:bg-border/50 transition-colors"
                         >
-                          <span className="text-sm">🌱</span>
+                          <span className="text-text-soft shrink-0"><Glyph name="sprout" size={15} /></span>
                           <span className="flex-1 text-sm text-text">{plantDisplayName(p, t.locale)}</span>
                         </button>
                       ))}
@@ -225,9 +226,9 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 {isContainer && (
                   <button
                     onClick={() => setShowPlantPicker(!showPlantPicker)}
-                    className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+                    className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform inline-flex items-center justify-center gap-1.5"
                   >
-                    🌱 {showPlantPicker ? t.addObject.hidePlantPicker : t.addObject.addPlant}
+                    <Glyph name="sprout" size={15} /> {showPlantPicker ? t.addObject.hidePlantPicker : t.addObject.addPlant}
                   </button>
                 )}
                 <button
@@ -238,9 +239,9 @@ export default function ObjectQuickSheet({ object, mapPlants, onClose, onAction 
                 </button>
                 <button
                   onClick={handleArchive}
-                  className="flex-1 bg-overdue/10 text-overdue rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform"
+                  className="flex-1 bg-overdue/10 text-overdue rounded-xl py-3 font-medium text-sm active:scale-[0.97] transition-transform inline-flex items-center justify-center gap-1.5"
                 >
-                  🗑 {t.addObject.removeObject}
+                  <Glyph name="trash" size={15} /> {t.addObject.removeObject}
                 </button>
               </div>
             </>

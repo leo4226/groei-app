@@ -70,6 +70,19 @@ export function computeSuitability(
   const description = (isEN && description_en) ? description_en : description_nl
   const actions = (isEN && actions_en?.length) ? actions_en : actions_nl
 
+  // Indoor / no-sun-data: skip sun deficit comparison
+  if (sunHoursAtSpot == null) {
+    return {
+      status: ACTIVE_PHASES.has(phase) ? 'good' : 'dormant',
+      badgeLabel: phaseLabel,
+      detailLabel: description,
+      sunNeeded: sun_hours_needed,
+      sunActual: 0,
+      phaseLabel,
+      actions,
+    }
+  }
+
   if (!ACTIVE_PHASES.has(phase)) {
     return {
       status: 'dormant',

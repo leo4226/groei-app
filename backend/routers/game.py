@@ -104,7 +104,15 @@ def _species_matches(scanned: str, target: str, alt_names: list[str]) -> bool:
 class GameCreateRequest(BaseModel):
     map_id: int
     plant_ids: list[int]
-    clue_mode: str = "photo"  # "photo" | "name"
+    clue_mode: str = "photo"  # "photo" | "name" | "logbook"
+    # How many rounds to play. With "select all" a selection can be large; the
+    # backend randomly samples this many plants (capped at MAX_ROUNDS).
+    round_count: int | None = None
+
+
+# Physical hunts get exhausting past this; also bounds hint/embed work at create.
+MAX_ROUNDS = 15
+MAX_SELECTABLE = 50
 
 
 class AnswerRequest(BaseModel):
@@ -186,6 +194,45 @@ async def _build_state(db, code: str, account_id: int) -> dict:
         idx = session["current_round"]
         current_clue = next((r for r in rounds if r["round_index"] == idx), None)
 
+    # Per-round stats for the host's end-screen breakdown (#245). Only computed
+    # once the game is finished so the 3s polling loop stays cheap.
+    round_stats = None
+    if session["status"] == "finished" and rounds:
+        ans_rows = await db.execute_fetchall(
+            """SELECT ga.answered_at, gr.started_at, gr.round_index
+               FROM game_answers ga
+               JOIN game_rounds gr ON gr.id = ga.round_id
+               WHERE gr.session_id = ? AND ga.is_correct = TRUE""",
+            (session["id"],),
+        )
+        counts: dict[int, int] = {}
+        times: dict[int, list[float]] = {}
+        for a in ans_rows:
+            a = dict(a)
+            ridx = a["round_index"]
+            counts[ridx] = counts.get(ridx, 0) + 1
+            started, answered = a.get("started_at"), a.get("answered_at")
+            if isinstance(started, str):
+                started = datetime.fromisoformat(started)
+            if isinstance(answered, str):
+                answered = datetime.fromisoformat(answered)
+            if started and answered:
+                times.setdefault(ridx, []).append((answered - started).total_seconds())
+        round_stats = [
+            {
+                "round_index": r["round_index"],
+                "plant_name_nl": r["plant_name_nl"],
+                "plant_name_en": r["plant_name_en"],
+                "answered_count": counts.get(r["round_index"], 0),
+                "avg_seconds": (
+                    round(sum(times[r["round_index"]]) / len(times[r["round_index"]]))
+                    if times.get(r["round_index"])
+                    else None
+                ),
+            }
+            for r in rounds
+        ]
+
     return {
         "session": {
             "id": session["id"],
@@ -203,6 +250,9 @@ async def _build_state(db, code: str, account_id: int) -> dict:
         "current_clue": current_clue,
         "rounds": rounds,
         "my_answer": my_answer,
+        # So the client can highlight the viewer's own leaderboard row (#245).
+        "my_player_id": my_player_id,
+        "round_stats": round_stats,
     }
 
 
@@ -216,8 +266,8 @@ async def create_game(
 ):
     if len(body.plant_ids) < 3:
         raise HTTPException(400, "Select at least 3 plants")
-    if len(body.plant_ids) > 10:
-        raise HTTPException(400, "Select at most 10 plants")
+    if len(body.plant_ids) > MAX_SELECTABLE:
+        raise HTTPException(400, f"Select at most {MAX_SELECTABLE} plants")
 
     # Verify map belongs to this household and is outdoor
     map_rows = await db.execute_fetchall(
@@ -240,7 +290,30 @@ async def create_game(
     else:
         raise HTTPException(500, "Could not generate unique join code")
 
-    clue_mode = body.clue_mode if body.clue_mode in ("photo", "name") else "photo"
+    clue_mode = body.clue_mode if body.clue_mode in ("photo", "name", "logbook") else "photo"
+
+    # Validate plants against the map FIRST, then sample down to the requested
+    # round count — sampling before validation could silently shrink the game.
+    valid_plants: list[dict] = []
+    for plant_id in body.plant_ids:
+        plant_rows = await db.execute_fetchall(
+            """SELECT p.id, p.name, p.photo_path,
+                      s.common_name_nl, s.common_name_en, s.latin_name
+               FROM plants p
+               LEFT JOIN plant_species s ON s.id = p.species_id
+               WHERE p.id = ? AND p.map_id = ? AND p.is_active = 1""",
+            (plant_id, body.map_id),
+        )
+        if plant_rows:
+            valid_plants.append(dict(plant_rows[0]))
+
+    if len(valid_plants) < 3:
+        raise HTTPException(400, "Select at least 3 plants")
+
+    k = min(body.round_count or len(valid_plants), MAX_ROUNDS, len(valid_plants))
+    k = max(k, 3)
+    # random.sample also shuffles round order, so hunts don't follow selection order.
+    chosen = random.sample(valid_plants, k)
 
     await db.execute(
         """INSERT INTO game_sessions (join_code, host_account_id, map_id, status, current_round, created_at, clue_mode)
@@ -258,34 +331,37 @@ async def create_game(
         (session_id, account["account_id"]),
     )
 
-    # Verify plants belong to this map and load species data
-    for i, plant_id in enumerate(body.plant_ids):
-        plant_rows = await db.execute_fetchall(
-            """SELECT p.id, p.name, p.photo_path,
-                      s.common_name_nl, s.common_name_en, s.latin_name
-               FROM plants p
-               LEFT JOIN plant_species s ON s.id = p.species_id
-               WHERE p.id = ? AND p.map_id = ? AND p.is_active = 1""",
-            (plant_id, body.map_id),
-        )
-        if not plant_rows:
-            continue
-        p = dict(plant_rows[0])
-
+    for i, p in enumerate(chosen):
         # Build target species string — prefer Latin, fall back to common names
         target = p.get("latin_name") or p.get("common_name_nl") or p["name"]
         name_nl = p.get("common_name_nl") or p["name"]
         name_en = p.get("common_name_en") or p["name"]
 
-        embedding = await _embed_url(p.get("photo_path") or "")
+        clue_photo = p.get("photo_path")
+        if clue_mode == "logbook":
+            # Logbook quiz: the clue is a random progress photo from the plant's
+            # logbook — harder and more personal than the profile shot. Fall
+            # back to the profile photo for plants without logbook entries.
+            photo_rows = await db.execute_fetchall(
+                "SELECT url FROM plant_photos WHERE plant_id = ? ORDER BY RANDOM() LIMIT 1",
+                (p["id"],),
+            )
+            if photo_rows:
+                clue_photo = dict(photo_rows[0])["url"] or clue_photo
+
+        # Embeddings only matter for camera-scan verification; the logbook quiz
+        # is answered by tapping options, so skip the (slow) worker round-trips.
+        embedding = None
+        if clue_mode != "logbook":
+            embedding = await _embed_url(p.get("photo_path") or "")
 
         await db.execute(
             """INSERT INTO game_rounds
                (session_id, round_index, plant_id, plant_name_nl, plant_name_en,
                 target_species, clue_photo_url, target_embedding)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (session_id, i, plant_id, name_nl, name_en, target,
-             p.get("photo_path"), embedding),
+            (session_id, i, p["id"], name_nl, name_en, target,
+             clue_photo, embedding),
         )
 
     await db.commit()
@@ -478,8 +554,11 @@ async def submit_answer(
     if is_correct:
         # Speed bonus: up to 50 extra points within 60 seconds of round start
         points = 100
-        if rnd["started_at"]:
-            elapsed = (_now() - rnd["started_at"]).total_seconds()
+        started = rnd["started_at"]
+        if isinstance(started, str):  # aiosqlite (tests) returns TEXT
+            started = datetime.fromisoformat(started)
+        if started:
+            elapsed = (_now() - started).total_seconds()
             speed_bonus = max(0, int(50 * (1 - elapsed / 60)))
             points += speed_bonus
 

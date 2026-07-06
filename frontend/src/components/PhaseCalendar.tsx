@@ -1,6 +1,7 @@
 import type { Phenology } from '../types'
 import { computeSuitability, PHASE_COLORS } from '../utils/suitability'
 import { useT } from '../context/LanguageContext'
+import Glyph from './ui/Glyph'
 
 const MONTH_LABELS = ['J','F','M','A','M','J','J','A','S','O','N','D']
 
@@ -24,7 +25,7 @@ export default function PhaseCalendar({
 
   // Locale-aware month formatting
   const locale = t.locale || 'nl-NL'
-  const suitability = computeSuitability(phenology, sunHours ?? 0, currentMonth, locale)
+  const suitability = computeSuitability(phenology, sunHours, currentMonth, locale)
   const fmtMonth = (m: number) => {
     return new Intl.DateTimeFormat(locale, { month: 'short' })
       .format(new Date(2026, m - 1, 1))
@@ -112,8 +113,9 @@ export default function PhaseCalendar({
 
       {/* Interesting fact — locale-aware */}
       {fact && (
-        <p className="text-xs text-text-muted italic mt-3 border-t border-border pt-3">
-          💡 {fact}
+        <p className="text-xs text-text-muted italic mt-3 border-t border-border pt-3 flex items-start gap-1.5">
+          <Glyph name="bulb" size={13} className="shrink-0 mt-0.5 not-italic" />
+          <span>{fact}</span>
         </p>
       )}
     </div>

@@ -11,6 +11,16 @@ export interface PageContext {
   route: string
   map_slug?: string
   plant_id?: number
+  selected_plant_id?: number
+  selected_object_id?: number
+  clicked_map_x?: number
+  clicked_map_y?: number
+  ground_zone_id?: string
+  ground_zone_name?: string
+  ground_zone_type?: string
+  light_bucket?: 'full' | 'part' | 'bright_shade' | 'deep_shade'
+  direct_sun_hours?: number
+  sky_view_factor?: number
 }
 
 /**
@@ -32,6 +42,7 @@ export async function sendChatMessage(
   message: string,
   history: ChatMessage[],
   pageContext?: PageContext,
+  options?: { activeUserId?: number | null; language?: 'nl' | 'en' },
 ): Promise<string> {
   const token = getToken()
   const resp = await fetch(`${BASE}/chat`, {
@@ -40,7 +51,13 @@ export async function sendChatMessage(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ message, history, page_context: pageContext ?? null }),
+    body: JSON.stringify({
+      message,
+      history,
+      page_context: pageContext ?? null,
+      active_user_id: options?.activeUserId ?? null,
+      language: options?.language ?? null,
+    }),
   })
   if (!resp.ok) throw new ChatRequestError(resp.status)
   const data = await resp.json()

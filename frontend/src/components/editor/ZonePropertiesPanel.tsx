@@ -1,6 +1,7 @@
 import type { EditorZone, ZoneStyleType, CornerPosition } from '../../types'
 import { ZONE_STYLES, ZONE_TYPE_ORDER } from './EditorDefs'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   zone: EditorZone
@@ -263,10 +264,11 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {/* Corner cut */}
       {(
         <details className="mb-2">
-          <summary className="text-xs text-text-muted cursor-pointer select-none py-0.5">
+          <summary className="text-xs text-text-muted cursor-pointer select-none py-0.5 inline-flex items-center gap-1.5">
+            <Glyph name="scissors" size={12} className="shrink-0" />
             {zone.cornerCut
-              ? `✂ Hoek afgesneden (${zone.cornerCut.corner.toUpperCase()})`
-              : '✂ Hoek afsnijden…'}
+              ? `Hoek afgesneden (${zone.cornerCut.corner.toUpperCase()})`
+              : 'Hoek afsnijden…'}
           </summary>
           <div className="mt-2 space-y-2">
             {/* Corner picker */}

@@ -23,19 +23,54 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'Floreren', body: event.data.text() }
   }
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Floreren', {
-      body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url: data.url || '/dashboard' },
-    })
-  )
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: data.url || '/maps', snooze_url: data.snooze_url || null },
+  }
+  // Care pushes carry a snooze_url → offer "remind me later" action buttons.
+  if (data.snooze_url) {
+    options.actions = [
+      { action: 'snooze-2h', title: '⏰ 2 uur' },
+      { action: 'snooze-1d', title: '🌙 Morgen' },
+    ]
+  }
+  event.waitUntil(self.registration.showNotification(data.title || 'Floreren', options))
 })
+
+// Map a snooze action to (duration param, confirmation copy).
+const SNOOZE_ACTIONS = {
+  'snooze-2h': { for: '2h', body: 'Herinnering over 2 uur ⏰' },
+  'snooze-1d': { for: '1d', body: 'Herinnering morgenochtend 🌙' },
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/dashboard'
+  const data = event.notification.data || {}
+  const snooze = SNOOZE_ACTIONS[event.action]
+
+  // Snooze action: POST to the token-authed endpoint and confirm — do NOT
+  // open the app.
+  if (snooze && data.snooze_url) {
+    event.waitUntil((async () => {
+      try {
+        await fetch(`${data.snooze_url}&for=${snooze.for}`, { method: 'POST', keepalive: true })
+      } catch {
+        // Offline / failed — let the next dispatch re-notify normally.
+      }
+      await self.registration.showNotification('Floreren', {
+        body: snooze.body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: 'snooze-confirm',
+      })
+    })())
+    return
+  }
+
+  // Default click (body or no action) → focus/open the app.
+  const url = data.url || '/maps'
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const client of clients) {

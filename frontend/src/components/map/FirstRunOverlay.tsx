@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   mapId: number
@@ -183,10 +184,10 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId, 
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   border: step.done ? 'none' : '2px solid var(--color-border)',
                   background: step.done ? 'var(--color-primary)' : 'transparent',
-                  fontSize: 11, color: '#fff',
+                  color: '#fff',
                 }}
               >
-                {step.done ? '✓' : ''}
+                {step.done && <Glyph name="check" size={13} />}
               </div>
 
               {/* Label */}

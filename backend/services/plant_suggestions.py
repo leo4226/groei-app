@@ -114,7 +114,7 @@ def template_reason(
     """Generate a short descriptive reason string from ecology facts.
     No LLM — fully deterministic. Returns "" when nothing useful to say."""
     parts: list[str] = []
-    if is_native is True:
+    if is_native:
         parts.append("Inheems in Nederland")
     if (pollinator_value or 0) >= 3:
         parts.append("top bestuiversplant")
@@ -144,7 +144,7 @@ def _score_candidate(
     ecology = 0
     ecology += len(gap_months_covered) * 10    # gap coverage is most important
     ecology += (pollinator_value or 0) * 5     # pollinator value second
-    ecology += 3 if is_native is True else 0   # native preference
+    ecology += 3 if is_native else 0           # native preference
     ecology += 1 if flowers_now else 0         # currently in bloom
     return ecology * _LIGHT_MULT.get(sun_fit, 0.65) + (2 if sun_fit == "perfect" else 0)
 

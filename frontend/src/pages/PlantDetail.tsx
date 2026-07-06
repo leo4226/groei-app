@@ -1,9 +1,10 @@
 import { useT } from '../context/LanguageContext'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import type { Phenology, PlantAlert } from '../types'
 import CareIcon, { type CareIconType } from '../components/ui/CareIcon'
+import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
@@ -102,6 +103,7 @@ export default function PlantDetail() {
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
   const [retryingSpecies, setRetryingSpecies] = useState(false)
+  const [retryFailed, setRetryFailed] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
   const [pendingCareLogId, setPendingCareLogId] = useState<number | null>(null)
   const [carePhotoBusy, setCarePhotoBusy] = useState(false)
@@ -240,13 +242,18 @@ export default function PlantDetail() {
 
   async function handleRetrySpecies() {
     setRetryingSpecies(true)
+    setRetryFailed(false)
     try {
       const updated = await plantsApi.retrySpecies(plantId)
       setPlant(updated)
       // Also refresh the store so other pages see the new data
       await loadPlants()
+      // A 200 doesn't guarantee a usable calendar — the LLM may have come back
+      // empty. Tell the user it didn't land so they can try again later.
+      if (!updated.phenology?.months?.length) setRetryFailed(true)
     } catch (e) {
       console.error('Species retry failed:', e)
+      setRetryFailed(true)
     } finally {
       setRetryingSpecies(false)
     }
@@ -291,19 +298,27 @@ export default function PlantDetail() {
         <img src={resolveIconUrl(plant.icon_key)!} alt={plant.name} className="h-40 w-40 object-contain" />
       </div>
     ) : (
-      <div className={`${frame} bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-7xl`}>🌿</div>
+      <div className={`${frame} bg-gradient-to-br from-primary/5 to-primary/15 flex items-center justify-center text-primary/60`}><Glyph name="leaf" size={64} /></div>
     )
 
-  const potAcquiredLine = (plant.pot_size_cm || plant.acquired_date) && [
-    plant.pot_size_cm ? `🪴 ${plant.pot_size_cm} cm` : null,
-    plant.acquired_date
-      ? `📅 ${new Date(plant.acquired_date).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}`
-      : null,
-  ].filter(Boolean).join(' · ')
+  const potAcquiredParts: ReactNode[] = []
+  if (plant.pot_size_cm) {
+    potAcquiredParts.push(
+      <span key="pot" className="inline-flex items-center gap-1"><Glyph name="pot" size={11} />{plant.pot_size_cm} cm</span>
+    )
+  }
+  if (plant.acquired_date) {
+    potAcquiredParts.push(
+      <span key="acq" className="inline-flex items-center gap-1"><Glyph name="calendar" size={11} />{new Date(plant.acquired_date).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</span>
+    )
+  }
+  const potAcquiredLine = potAcquiredParts.length > 0
+    ? potAcquiredParts.flatMap((part, i) => i === 0 ? [part] : [<span key={`sep${i}`}> · </span>, part])
+    : null
 
   const sunFitBlock = sunFitInfo && (
     <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
-      <span className="text-lg">☀️</span>
+      <Glyph name="sun" size={18} className="text-amber-500 shrink-0" />
       <span className="text-sm text-text-muted flex-1">
         {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
         {' · '}{isEN ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
@@ -317,9 +332,13 @@ export default function PlantDetail() {
     </div>
   )
 
-  const calendarBlock = plant.phenology ? (
+  // A phenology object can exist yet have no month calendar (incomplete LLM
+  // generation) — that still reads as "No species data available", so treat it
+  // the same as missing and offer the fetch button.
+  const hasYearCalendar = (plant.phenology?.months?.length ?? 0) > 0
+  const calendarBlock = hasYearCalendar ? (
     <Section title={t.plantDetail.yearCalendar}>
-      <PhaseCalendar phenology={plant.phenology} sunHours={sunHours} />
+      <PhaseCalendar phenology={plant.phenology!} sunHours={sunHours} />
     </Section>
   ) : (
     <Section title={t.plantDetail.yearCalendar}>
@@ -330,12 +349,19 @@ export default function PlantDetail() {
         <button
           onClick={handleRetrySpecies}
           disabled={retryingSpecies}
-          className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50"
+          className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
         >
           {retryingSpecies
             ? (isEN ? 'Loading...' : 'Bezig...')
-            : (isEN ? '🔄 Fetch species data' : '🔄 Soortgegevens ophalen')}
+            : (<><Glyph name="refresh" size={14} />{isEN ? 'Fetch species data' : 'Soortgegevens ophalen'}</>)}
         </button>
+        {retryFailed && !retryingSpecies && (
+          <p className="text-xs text-text-muted mt-3">
+            {isEN
+              ? "Couldn't fetch species data right now — please try again later."
+              : 'Soortgegevens konden nu niet worden opgehaald — probeer het later opnieuw.'}
+          </p>
+        )}
       </div>
     </Section>
   )
@@ -388,7 +414,7 @@ export default function PlantDetail() {
                 className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
                 title={t.plantDetail.deleteSchedule}
               >
-                ✕
+                <Glyph name="x" size={14} />
               </button>
             </div>
           )
@@ -437,12 +463,12 @@ export default function PlantDetail() {
               disabled={carePhotoBusy}
               onClick={() => openCarePhotoPicker(pendingCareLogId)}
             >
-              📷 {carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}
+              <span className="inline-flex items-center gap-1.5"><Glyph name="camera" size={15} />{carePhotoBusy ? t.photoJournal.uploading : t.photoJournal.addCarePhoto}</span>
             </button>
           )}
           <button className="w-8 h-8 flex items-center justify-center rounded-full bg-surface border border-border text-text-muted"
                   onClick={() => { setPendingCareLogId(null); setUndoInfo(null); if (undoTimer) clearTimeout(undoTimer) }}>
-            ✕
+            <Glyph name="x" size={15} />
           </button>
         </div>
       )}

@@ -11,6 +11,7 @@ import WallElementPropertiesPanel from '../components/editor/WallElementProperti
 import ShadowCasterPropertiesPanel from '../components/editor/ShadowCasterPropertiesPanel'
 import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
 import { useT } from '../context/LanguageContext'
+import Glyph from '../components/ui/Glyph'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
 import { useEditorTour, hasTourBeenSeen } from '../hooks/useEditorTour'
 import EditorTour from '../components/editor/EditorTour'
@@ -288,7 +289,7 @@ export default function LayoutEditorPage() {
             }`}
             title="Toon zon-perimeter"
           >
-            ☀ {showSunPreview ? 'Aan' : 'Uit'}
+            <Glyph name="sun" size={13} className="inline-block align-[-1px] mr-1" />{showSunPreview ? 'Aan' : 'Uit'}
           </button>
         )}
 
@@ -335,7 +336,7 @@ export default function LayoutEditorPage() {
                       onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
                       className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left transition-colors"
                     >
-                      ☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}
+                      <Glyph name="sun" size={13} className="inline-block align-[-1px] mr-1" />{showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}
                     </button>
                   </>
                 )}
@@ -373,9 +374,9 @@ export default function LayoutEditorPage() {
           <button
             onClick={() => handleExit('/maps')}
             aria-label={t.editor.toolbar.back}
-            className="absolute top-3 left-3 z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg"
+            className="absolute top-3 left-3 z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted"
           >
-            ←
+            <Glyph name="arrow-left" size={20} />
           </button>
 
           {/* Cluster — top-right: save status + preview toggle + more menu */}
@@ -392,7 +393,7 @@ export default function LayoutEditorPage() {
                 previewMode ? 'bg-primary text-white border-primary' : 'bg-surface/85 text-text-muted border-border'
               }`}
             >
-              {previewMode ? '✏️' : '👁'}
+              <Glyph name={previewMode ? 'edit' : 'eye'} size={18} />
             </button>
             <div className="relative">
               <button
@@ -416,7 +417,7 @@ export default function LayoutEditorPage() {
                       <>
                         <div className="mx-2 my-1 h-px bg-border" />
                         <button onClick={() => { setShowMoreActions(false); setShowSunPreview((p) => !p) }}
-                          className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left">☀ {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}</button>
+                          className="flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-600 hover:bg-bg/60 w-full text-left"><Glyph name="sun" size={13} className="shrink-0" /> {showSunPreview ? 'Zon-perimeter uit' : 'Toon zon-perimeter'}</button>
                       </>
                     )}
                   </div>
@@ -632,8 +633,8 @@ export default function LayoutEditorPage() {
                         }`}
                       >
                         {/* Type icon */}
-                        <span className="shrink-0 text-[10px]">
-                          {isRect ? '🏢' : '🌳'}
+                        <span className="shrink-0 text-text-muted">
+                          <Glyph name={isRect ? 'home' : 'tree'} size={13} />
                         </span>
                         {/* Name */}
                         <span className={`flex-1 truncate ${isSelected ? 'font-semibold text-text' : 'text-text-muted'}`}>

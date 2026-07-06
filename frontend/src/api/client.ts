@@ -669,8 +669,11 @@ export const household = {
 
 export interface NotificationPrefs {
   digest_enabled: boolean
-  digest_time: string  // "HH:MM" — the send hour for digest AND push (Europe/Amsterdam)
+  digest_time: string  // "HH:MM" — the email digest hour (Europe/Amsterdam)
   push_enabled: boolean
+  quiet_start: string | null   // "HH:MM" — care pushes held inside [start, end); null = default 21:00–08:00
+  quiet_end: string | null
+  muted_care_types: string[]   // care_type keys silenced for push
 }
 
 export interface PlantDiscovery {
@@ -707,4 +710,13 @@ export const notifications = {
     api<{ ok: boolean }>('POST', '/push/subscription', { body: sub }),
   pushUnsubscribe: (endpoint: string) =>
     api<{ ok: boolean }>('DELETE', '/push/subscription', { body: { endpoint } }),
+  pushTest: () => api<PushTestResult>('POST', '/push/test'),
+}
+
+export interface PushTestResult {
+  result: 'ok' | 'no_subscription' | 'vapid_unconfigured' | 'all_gone' | 'all_failed'
+  subscriptions: number
+  delivered: number
+  failed: number
+  pruned: number
 }

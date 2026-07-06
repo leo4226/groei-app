@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CareWarningOut, MapObject, MapPlant } from '../../../types'
 import { en } from '../../../i18n/en'
-import { buildCareNeedsGroups, getCareTypeDisplay } from '../careNeedsListModel'
+import { buildCareNeedsGroups, getCareTypeDisplay, localizedWarningCopy, localizedWeatherWarningCopy } from '../careNeedsListModel'
 
 function warning(careType: string, icon: string): CareWarningOut {
   return {
@@ -75,5 +75,56 @@ describe('CareNeedsList grouping', () => {
   it('uses the active language for care labels', () => {
     expect(getCareTypeDisplay('prune', en).label).toBe('Prune')
     expect(getCareTypeDisplay('heat_protect', en).label).toBe('Heat protect')
+  })
+
+
+  it('extracts localized weather copy from top_warning carriers for aggregate cards', () => {
+    const weatherWarning: CareWarningOut = {
+      care_type: 'frost_protect',
+      severity: 'urgent',
+      trigger: 'weather_event',
+      days_overdue: null,
+      message_nl: 'Vorst vannacht — min -2°C',
+      message_en: 'Frost tonight — min -2°C',
+      reason_nl: 'Minimum -2°C verwacht vannacht (grens 0°C).',
+      reason_en: 'Minimum -2°C expected tonight (threshold 0°C).',
+      action_nl: 'Dek gevoelige planten af of zet potten binnen of beschut.',
+      action_en: 'Cover sensitive plants or move pots inside/sheltered.',
+      icon: '❄️',
+      color: '#2544a0',
+    }
+
+    expect(localizedWeatherWarningCopy([{ top_warning: weatherWarning }], en)).toEqual({
+      headline: 'Frost tonight — min -2°C',
+      reason: 'Minimum -2°C expected tonight (threshold 0°C).',
+      action: 'Cover sensitive plants or move pots inside/sheltered.',
+    })
+  })
+
+  it('does not show schedule warnings as weather explanation copy', () => {
+    expect(localizedWeatherWarningCopy([{ top_warning: warning('water', '💧') }], en)).toBeNull()
+  })
+
+  it('localizes structured weather warning reason and action copy', () => {
+    const weatherWarning: CareWarningOut = {
+      care_type: 'heat_protect',
+      severity: 'urgent',
+      trigger: 'weather_event',
+      days_overdue: null,
+      message_nl: 'Hitte morgen — max 32°C',
+      message_en: 'Heat tomorrow — max 32°C',
+      reason_nl: 'Maximum 32°C verwacht morgen (grens 28°C).',
+      reason_en: 'Maximum 32°C expected tomorrow (threshold 28°C).',
+      action_nl: 'Geef vroeg of laat water; zet potten in de schaduw en controleer bakken eerst.',
+      action_en: 'Water early or late; move pots to shade and check containers first.',
+      icon: '🔥',
+      color: '#e08049',
+    }
+
+    expect(localizedWarningCopy(weatherWarning, en)).toEqual({
+      headline: 'Heat tomorrow — max 32°C',
+      reason: 'Maximum 32°C expected tomorrow (threshold 28°C).',
+      action: 'Water early or late; move pots to shade and check containers first.',
+    })
   })
 })

@@ -175,6 +175,14 @@ def _care_warning_to_dict(w):
         "message_en": w.message_en,
         "icon": w.icon,
         "color": w.color,
+        "reason_nl": w.reason_nl,
+        "reason_en": w.reason_en,
+        "action_nl": w.action_nl,
+        "action_en": w.action_en,
+        "weather_metric": w.weather_metric,
+        "weather_value_c": w.weather_value_c,
+        "forecast_day_label_nl": w.forecast_day_label_nl,
+        "forecast_day_label_en": w.forecast_day_label_en,
     }
 
 

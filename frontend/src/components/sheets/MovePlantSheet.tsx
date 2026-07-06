@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { maps as mapsApi } from '../../api/client'
 import type { MapInfo } from '../../types'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   currentMapId: number
@@ -74,8 +75,8 @@ export default function MovePlantSheet({ currentMapId, currentMapName, error = f
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-bg active:bg-bg/80 transition-colors text-left"
               >
                 {/* Map icon */}
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-lg shrink-0">
-                  {m.map_type === 'indoor' ? '🏠' : '🌳'}
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Glyph name={m.map_type === 'indoor' ? 'home' : 'tree'} size={20} />
                 </div>
                 {/* Map info */}
                 <div className="flex-1 min-w-0">

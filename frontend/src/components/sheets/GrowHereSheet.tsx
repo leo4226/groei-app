@@ -4,6 +4,8 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import type { MapPlant } from '../../types'
 import { getSunFit } from '../../utils/plantSunRequirements'
 import { bucketFor, bucketLabel, bucketColor, type LightBucket } from '../../utils/lightQuality'
+import Glyph from '../ui/Glyph'
+import TileIcon, { type TileIconName } from '../ui/TileIcon'
 import { LOCAL_PLANTS, type LocalPlant } from '../../data/plants-dataset'
 import { garden, type GrowHereResponse, type AISuggestion } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
@@ -30,8 +32,8 @@ interface Props {
 // Emoji + plant-requirement mapping per light bucket. Bucketing itself comes from
 // lightQuality.ts (4h/2h/SVF) — the single source of truth shared with the backend
 // recommender — so the header label always agrees with what gets recommended.
-const BUCKET_EMOJI: Record<LightBucket, string> = {
-  full: '☀️', part: '⛅', bright_shade: '🌤️', deep_shade: '🌿',
+const BUCKET_TILE: Record<LightBucket, TileIconName> = {
+  full: 'light-full', part: 'light-bright', bright_shade: 'light-indirect', deep_shade: 'light-shade',
 }
 const BUCKET_TO_PREF: Record<LightBucket, string> = {
   full: 'full_sun', part: 'partial_sun', bright_shade: 'shade', deep_shade: 'shade',
@@ -69,10 +71,10 @@ function AISuggestionCard({ s, onAdd, loading, disabled, t }: { s: AISuggestion;
       </div>
       <p className="text-xs text-text-muted leading-relaxed">{s.reasoning}</p>
       {s.caveat && (
-        <p className="text-xs text-amber-400/80 leading-relaxed">⚠ {s.caveat}</p>
+        <p className="text-xs text-amber-400/80 leading-relaxed"><Glyph name="alert" size={12} className="inline-block align-[-1px] mr-1" />{s.caveat}</p>
       )}
       {s.companionNote && (
-        <p className="text-xs text-text-muted/70 leading-relaxed">🌿 {s.companionNote}</p>
+        <p className="text-xs text-text-muted/70 leading-relaxed"><Glyph name="leaf" size={12} className="inline-block align-[-1px] mr-1" />{s.companionNote}</p>
       )}
     </div>
   )
@@ -153,7 +155,7 @@ function RecommendationCard({
         <p className="text-xs text-text-muted leading-relaxed">{rec.reason}</p>
       )}
       {rec.caveat && (
-        <p className="text-xs text-amber-500/80 leading-relaxed">⚠ {rec.caveat}</p>
+        <p className="text-xs text-amber-500/80 leading-relaxed"><Glyph name="alert" size={12} className="inline-block align-[-1px] mr-1" />{rec.caveat}</p>
       )}
     </div>
   )
@@ -166,7 +168,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
   const { sunHours } = tappedCell
   const bucket = bucketFor(sunHours, tappedCell.skyOpenness)
   const catLabel = bucketLabel(bucket, t)
-  const catEmoji = BUCKET_EMOJI[bucket]
+  const catTile = BUCKET_TILE[bucket]
   const spotReqId = BUCKET_TO_PREF[bucket]
   const barColor = bucketColor(bucket)
 
@@ -286,8 +288,8 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
         <div className="px-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0 pr-2">
-              <p className="text-xs text-text-muted mb-0.5">
-                {t.calendar.monthsShort[selectedMonth - 1]} · {catEmoji} {catLabel}
+              <p className="text-xs text-text-muted mb-0.5 inline-flex items-center gap-1">
+                {t.calendar.monthsShort[selectedMonth - 1]} · <TileIcon name={catTile} size={14} /> {catLabel}
               </p>
               <h2 className="text-lg font-bold text-text">{t.growHere.title}</h2>
               <p className="text-sm text-text-muted mt-0.5">
@@ -304,7 +306,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
               onClick={onClose}
               className="text-text-muted hover:text-text transition-colors p-1 shrink-0"
             >
-              ✕
+              <Glyph name="x" size={18} />
             </button>
           </div>
 

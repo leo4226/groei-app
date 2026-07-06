@@ -31,6 +31,14 @@ class CareWarningOut(BaseModel):
     message_en: str
     icon: str
     color: str
+    reason_nl: str | None = None
+    reason_en: str | None = None
+    action_nl: str | None = None
+    action_en: str | None = None
+    weather_metric: str | None = None
+    weather_value_c: float | None = None
+    forecast_day_label_nl: str | None = None
+    forecast_day_label_en: str | None = None
 
 
 class CareTypeStatusOut(BaseModel):

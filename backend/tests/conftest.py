@@ -105,7 +105,9 @@ SCHEMA = """
         notes TEXT,
         season_adjust TEXT,
         created_at TEXT,
-        is_ephemeral INTEGER DEFAULT 0
+        is_ephemeral INTEGER DEFAULT 0,
+        notified_for_due DATE,
+        snoozed_until TIMESTAMP
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,
@@ -128,7 +130,10 @@ SCHEMA = """
         quiet_hours TEXT,
         last_digest_sent_on DATE,
         push_enabled INTEGER NOT NULL DEFAULT 0,
-        last_push_sent_on DATE
+        last_push_sent_on DATE,
+        quiet_start TEXT,
+        quiet_end TEXT,
+        muted_care_types TEXT
     );
     CREATE TABLE push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

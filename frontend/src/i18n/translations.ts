@@ -92,7 +92,10 @@ export type Translations = {
     fertilize: string
     mist: string
     rotate: string
+    repot: string
     repot_check: string
+    pest_check: string
+    dust: string
     prune: string
     protect_cold: string
     protect_heat: string
@@ -105,7 +108,10 @@ export type Translations = {
     fertilize: string
     mist: string
     rotate: string
+    repot: string
     repot_check: string
+    pest_check: string
+    dust: string
     prune: string
     protect_cold: string
     protect_heat: string
@@ -124,6 +130,7 @@ export type Translations = {
     mapNameLabel: string
     mapNamePlaceholder: string
     loading: string
+    loadingLede: string
     loadFailed: string
     retry: string
     failedCreate: string
@@ -310,6 +317,10 @@ export type Translations = {
     digestToggleDesc: string
     digestTimeLabel: string
     digestTimeDesc: string
+    quietHoursLabel: string
+    quietHoursDesc: string
+    mutedTypesLabel: string
+    mutedTypesDesc: string
     digestLoadError: string
     digestSaveError: string
     pushToggle: string
@@ -317,6 +328,15 @@ export type Translations = {
     pushDenied: string
     pushUnsupported: string
     pushIosHint: string
+    pushIosReinstallHint: string
+    pushTestButton: string
+    pushTestSending: string
+    pushTestOk: string
+    pushTestNoSub: string
+    pushTestVapid: string
+    pushTestGone: string
+    pushTestFailed: string
+    dataSectionTitle: string
     dataTitle: string
     dataDescription: string
     downloadData: string
@@ -805,12 +825,19 @@ export type Translations = {
     }
     identifying: string  // "Identifying..."
     newPhoto: string     // "📷 Take new photo"
-    enriching: string    // "Looking up..."
+    enriching: string    // title for the loading state after selecting an ID candidate
+    enrichingLede: string // explanatory copy for the same loading state
     results: {
       title: string       // "Possible matches"
       confidence: string  // "confidence"
       poweredBy: string   // "powered by Pl@ntNet"
       choose: string      // "Pick this one"
+      sourceBioclip: string  // "Floreren suggestion"
+      sourcePlantnet: string // "PlantNet second opinion"
+      bestMatch: string      // "Best match"
+      alternativeMatch: string // "Could also be"
+      plantnetCta: string          // "PlantNet second opinion"
+      plantnetProminentCta: string // "Ask PlantNet for a second opinion"
     }
     destination: {
       title: string
@@ -826,6 +853,18 @@ export type Translations = {
     confidence: {
       medium: string       // "Fairly confident" / "Redelijk zeker"
       low: string          // "Not sure — pick one manually or try a better photo"
+      compareCandidates: string // prompt to compare top 2–3 candidates
+      summary: {
+        high: { label: string; body: string }
+        medium: { label: string; body: string }
+        low: { label: string; body: string }
+        no_match: { label: string; body: string }
+      }
+    }
+    guidance: {
+      title: string
+      items: string[]
+      safety: string
     }
     noMatch: {
       title: string           // "No match found"
@@ -872,6 +911,7 @@ export type Translations = {
     notesLabel: string       // "Notes"
     notesPlaceholder: string // "Likes indirect light, water from below..."
     saving: string           // "Saving..."
+    saveFailed: string       // "Couldn't save — please try again."
     databasePrefill: string  // "Filled from plant database — adjust where needed"
     careScheduleTitle: string // "Care schedule"
     careScheduleDesc: string  // "How often does this plant need care?"
@@ -1048,6 +1088,8 @@ export type Translations = {
     labelHide: string         // "Verberg namen"
     warningsShow: string      // "Toon waarschuwingen"
     warningsHide: string      // "Verberg waarschuwingen"
+    weatherWarningBadge: string
+    weatherWarningAction: string
     water: string             // "Bewater" (garden watering button)
     fertilize: string         // "Bemest" (garden fertilize button)
     sun: string               // "Zon"
@@ -1352,6 +1394,9 @@ export type Translations = {
     nextRound: string
     endGame: string
     plantHint: string
+    revealAnswer: string
+    hideAnswer: string
+    backToRound: string
     // Leaderboard
     gameOver: string
     finalLeaderboard: string
@@ -1361,6 +1406,7 @@ export type Translations = {
     shareResults: string
     newGame2: string
     roundBreakdown: string
+    scanToJoin: string
     hostedBy: string
     place1: string
     place2: string
@@ -1369,5 +1415,13 @@ export type Translations = {
     clueModePhoto: string
     clueModeName: string
     clueModeSectionLabel: string
+    clueModeLogbook: string
+    selectAll: string
+    deselectAll: string
+    questionCount: string
+    allQuestions: string
+    quizWhichPlant: string
+    quizWhichPhoto: string
+    quizAnswered: string
   }
 }

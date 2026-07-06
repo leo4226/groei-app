@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { useT } from '../../context/LanguageContext'
 import { WaterStatusIcon } from '../PlantStatusIcon'
+import CareIcon from '../ui/CareIcon'
+import Glyph from '../ui/Glyph'
 import type { GardenWaterStatus } from '../../api/client'
 
 interface Props {
@@ -51,7 +53,7 @@ export default function MapActionCluster({
         <WaterStatusIcon status={waterStatus} size={14} />
       </button>
       <button onClick={onFertilize} title={t.mapPage.fertilize} className={`${iconBtn} text-emerald-600 hover:bg-emerald-500/15`}>
-        <span className="text-sm leading-none">🌿</span>
+        <CareIcon type="fertilize" size={15} />
       </button>
 
       {/* Sun — indoor maps skip */}
@@ -89,7 +91,7 @@ export default function MapActionCluster({
         title={t.mapPage.inspect}
         className={`${iconBtn} ${inspectorMode ? 'bg-orange-500/30 text-orange-600' : 'text-orange-500 hover:bg-orange-500/15'}`}
       >
-        <span className="text-xs font-bold">🔍</span>
+        <Glyph name="search" size={15} />
       </button>
 
       {/* Move mode — intentional repositioning only */}
@@ -113,7 +115,7 @@ export default function MapActionCluster({
           title={t.game.newGame}
           className={`${iconBtn} text-emerald-700 hover:bg-emerald-500/15`}
         >
-          <span className="text-xs">🎮</span>
+          <Glyph name="gamepad" size={15} />
         </button>
       )}
 

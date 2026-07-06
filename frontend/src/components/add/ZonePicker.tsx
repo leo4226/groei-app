@@ -1,3 +1,5 @@
+import Glyph from '../ui/Glyph'
+
 interface Zone {
   id: string
   name: string
@@ -111,7 +113,7 @@ export default function ZonePicker({
 
       {advice && (
         <div className="mt-3 bg-bg rounded-lg p-3 text-xs text-text-soft italic flex gap-2 items-start">
-          <span className="text-base leading-none shrink-0 mt-0.5" style={{ color: 'var(--color-due)' }}>✻</span>
+          <Glyph name="sparkle" size={15} className="shrink-0 mt-0.5" style={{ color: 'var(--color-due)' }} />
           <span>{advice}</span>
         </div>
       )}

@@ -148,3 +148,16 @@ def test_flowers_now_breaks_tie():
     now = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="perfect", flowers_now=True)
     later = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=True, sun_fit="perfect", flowers_now=False)
     assert now > later
+
+def test_sqlite_truthy_native_value_gets_native_reason_and_score():
+    reason = template_reason(
+        is_native=1,
+        pollinator_value=3,
+        gap_months_covered=[9],
+        month_names=MONTH_NL,
+    )
+    assert reason.startswith("Inheems in Nederland · top bestuiversplant")
+
+    sqlite_native = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=1, sun_fit="perfect")
+    non_native = _score_candidate(gap_months_covered=[], pollinator_value=2, is_native=0, sun_fit="perfect")
+    assert sqlite_native > non_native

@@ -119,6 +119,7 @@ async def list_calendar_events(
         JOIN plants p ON p.id = cs.plant_id
         WHERE cs.is_active = 1
           AND p.household_id = ?
+          AND cs.care_type <> 'photo'
           """ + extra_where + """
           AND (
             (cs.is_ephemeral = 0 AND cs.next_due <= ?)
@@ -134,10 +135,16 @@ async def list_calendar_events(
     from collections import defaultdict
     today_date = date.today()
 
-    # Build enrichment cache from ALL raw schedules per plant
+    # Build enrichment cache from ALL raw schedules per plant. The SQL row uses
+    # event-friendly aliases (`type`, `due_date`); normalize back to the shape
+    # compute_plant_warnings expects (`care_type`, `next_due`).
     raw_by_plant: dict[int, list[dict]] = defaultdict(list)
     for r in rows:
-        raw_by_plant[r["plant_id"]].append(dict(r))
+        raw_by_plant[r["plant_id"]].append({
+            "care_type": r["type"],
+            "next_due": r["due_date"],
+            "last_done": r["last_done"],
+        })
 
     enrichment_cache: dict[tuple[int, str], dict] = {}
     for pid, scheds in raw_by_plant.items():

@@ -7,11 +7,14 @@ import type { Location } from '../types'
 import { clearToken } from '../api/auth'
 import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
-import { enablePush, disablePush, pushSupported, iosNeedsInstall } from '../utils/push'
+import { enablePush, disablePush, pushSupported, pushAvailabilityInfo, isPushSubscribedHere } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
+
+// Backend care_type keys a user can mute for scheduled care push reminders.
+const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 // Must match the boot script in index.html, which applies the theme before
@@ -48,6 +51,11 @@ export default function Settings() {
   const [digestPrefs, setDigestPrefs] = useState<NotificationPrefs | null>(null)
   const [digestError, setDigestError] = useState<string | null>(null)
   const [pushBusy, setPushBusy] = useState(false)
+  // Whether *this* device holds a push subscription. Subscriptions are
+  // per-device, so the toggle reflects this rather than the account-wide pref.
+  const [pushOnHere, setPushOnHere] = useState(false)
+  const [pushTestBusy, setPushTestBusy] = useState(false)
+  const [pushTestMsg, setPushTestMsg] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState<'json' | 'csv' | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportReady, setExportReady] = useState(false)
@@ -77,6 +85,11 @@ export default function Settings() {
 
   useEffect(() => {
     icons.catalog().then(setIconCatalog).catch(() => setCatalogError(true))
+  }, [])
+
+  // Reflect whether this specific device is subscribed (not the account pref).
+  useEffect(() => {
+    isPushSubscribedHere().then(setPushOnHere)
   }, [])
 
   async function handleSaveProfile() {
@@ -266,12 +279,15 @@ export default function Settings() {
     setPushBusy(true)
     setDigestError(null)
     try {
-      if (digestPrefs.push_enabled) {
+      // Manage only *this* device's subscription. Delivery is driven by the
+      // presence of push_subscriptions rows, so there's no account-wide flag
+      // to write — unsubscribing here can't silence another device.
+      if (pushOnHere) {
         await disablePush()
-        await saveDigestPrefs({ ...digestPrefs, push_enabled: false })
+        setPushOnHere(false)
       } else {
         await enablePush()
-        await saveDigestPrefs({ ...digestPrefs, push_enabled: true })
+        setPushOnHere(true)
       }
     } catch (e) {
       setDigestError(
@@ -281,6 +297,27 @@ export default function Settings() {
       )
     } finally {
       setPushBusy(false)
+    }
+  }
+
+  async function handleTestPush() {
+    if (pushTestBusy) return
+    setPushTestBusy(true)
+    setPushTestMsg(null)
+    try {
+      const r = await notifications.pushTest()
+      const messages: Record<typeof r.result, string> = {
+        ok: t.settings.pushTestOk,
+        no_subscription: t.settings.pushTestNoSub,
+        vapid_unconfigured: t.settings.pushTestVapid,
+        all_gone: t.settings.pushTestGone,
+        all_failed: t.settings.pushTestFailed,
+      }
+      setPushTestMsg(messages[r.result] ?? t.settings.pushTestFailed)
+    } catch {
+      setPushTestMsg(t.settings.pushTestFailed)
+    } finally {
+      setPushTestBusy(false)
     }
   }
 
@@ -627,20 +664,99 @@ export default function Settings() {
             <div>
               <div className="font-semibold text-sm">{t.settings.pushToggle}</div>
               <div className="text-xs text-text-muted mt-0.5">
-                {iosNeedsInstall() ? t.settings.pushIosHint
-                  : !pushSupported() ? t.settings.pushUnsupported
+                {pushAvailabilityInfo().state === 'ios-not-standalone' ? t.settings.pushIosHint
+                  : pushAvailabilityInfo().state === 'ios-standalone-unsupported' ? t.settings.pushIosReinstallHint
+                  : pushAvailabilityInfo().state === 'unsupported' ? t.settings.pushUnsupported
                   : t.settings.pushToggleDesc}
               </div>
             </div>
             <button
               onClick={handlePushToggle}
-              disabled={!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()}
-              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${digestPrefs?.push_enabled ? 'bg-primary' : 'bg-border'} ${(!digestPrefs || pushBusy || !pushSupported() || iosNeedsInstall()) ? 'opacity-50' : ''}`}
+              disabled={!digestPrefs || pushBusy || pushAvailabilityInfo().state !== 'supported'}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${pushOnHere ? 'bg-primary' : 'bg-border'} ${(pushAvailabilityInfo().state !== 'supported' || !digestPrefs || pushBusy) ? 'opacity-50' : ''}`}
             >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${digestPrefs?.push_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pushOnHere ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-          {digestPrefs && (digestPrefs.digest_enabled || digestPrefs.push_enabled) && (
+          {pushOnHere && pushSupported() && (
+            <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">{t.settings.pushTestButton}</div>
+                {pushTestMsg && <div className="text-xs text-text-muted mt-0.5">{pushTestMsg}</div>}
+              </div>
+              <button
+                onClick={handleTestPush}
+                disabled={pushTestBusy}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-text bg-surface hover:border-primary/50 transition-colors ${pushTestBusy ? 'opacity-50' : ''}`}
+              >
+                {pushTestBusy ? t.settings.pushTestSending : t.settings.pushTestButton}
+              </button>
+            </div>
+          )}
+          {pushOnHere && pushSupported() && digestPrefs && (
+            <>
+              {/* Quiet hours — care pushes are held inside this window */}
+              <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm">{t.settings.quietHoursLabel}</div>
+                  <div className="text-xs text-text-muted mt-0.5">{t.settings.quietHoursDesc}</div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <select
+                    value={`${(digestPrefs.quiet_start ?? '21:00').slice(0, 2)}:00`}
+                    onChange={(e) => saveDigestPrefs({ ...digestPrefs, quiet_start: e.target.value })}
+                    className="bg-surface border border-border rounded-xl px-2.5 py-2 text-sm font-semibold text-text"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const v = `${String(h).padStart(2, '0')}:00`
+                      return <option key={v} value={v}>{v}</option>
+                    })}
+                  </select>
+                  <span className="text-xs text-text-muted">–</span>
+                  <select
+                    value={`${(digestPrefs.quiet_end ?? '08:00').slice(0, 2)}:00`}
+                    onChange={(e) => saveDigestPrefs({ ...digestPrefs, quiet_end: e.target.value })}
+                    className="bg-surface border border-border rounded-xl px-2.5 py-2 text-sm font-semibold text-text"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const v = `${String(h).padStart(2, '0')}:00`
+                      return <option key={v} value={v}>{v}</option>
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {/* Per-care-type mute toggles */}
+              <div className="pt-3 border-t border-border">
+                <div className="font-semibold text-sm">{t.settings.mutedTypesLabel}</div>
+                <div className="text-xs text-text-muted mt-0.5 mb-2">{t.settings.mutedTypesDesc}</div>
+                <div className="flex flex-wrap gap-2">
+                  {PUSH_CARE_TYPES.map((ct) => {
+                    const muted = digestPrefs.muted_care_types.includes(ct)
+                    return (
+                      <button
+                        key={ct}
+                        onClick={() => {
+                          const next = muted
+                            ? digestPrefs.muted_care_types.filter((c) => c !== ct)
+                            : [...digestPrefs.muted_care_types, ct]
+                          saveDigestPrefs({ ...digestPrefs, muted_care_types: next })
+                        }}
+                        className={`font-heading text-sm rounded-full border px-3 py-1.5 transition-colors ${
+                          muted
+                            ? 'bg-paper border-border text-text-muted line-through'
+                            : 'bg-primary/10 border-primary text-primary font-medium'
+                        }`}
+                      >
+                        {t.careTypes[ct as keyof typeof t.careTypes] ?? ct}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+          {digestPrefs?.digest_enabled && (
             <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
               <div>
                 <div className="font-semibold text-sm">{t.settings.digestTimeLabel}</div>
@@ -662,10 +778,18 @@ export default function Settings() {
         </div>
       </section>
 
-            <section className="mb-8">
-        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataTitle}</h2>
-        <div className="card p-4 space-y-3">
-          <p className="text-sm text-text-muted">{t.settings.dataDescription}</p>
+      <section className="mb-8">
+        <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataSectionTitle}</h2>
+        <div className="card p-4 space-y-4 border border-primary/15 bg-gradient-to-br from-primary/5 via-surface to-surface">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Glyph name="check" size={20} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-heading text-lg font-bold text-text">{t.settings.dataTitle}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">{t.settings.dataDescription}</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               onClick={() => handleDownloadExport('json')}

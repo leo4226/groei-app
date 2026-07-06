@@ -1,8 +1,10 @@
+import type { GlyphName } from '../components/ui/Glyph'
+
 export interface PlantSunProfile {
   id: string
   label: string
   labelNl: string
-  emoji: string
+  icon: GlyphName
   minHours: number
   maxHours: number
   color: string
@@ -32,7 +34,7 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     id: 'full_sun',
     label: 'Full sun',
     labelNl: 'Volle zon',
-    emoji: '☀️',
+    icon: 'sun',
     minHours: 6,
     maxHours: 14,
     color: '#f0a020',
@@ -41,7 +43,7 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     id: 'partial_sun',
     label: 'Partial sun',
     labelNl: 'Half zon',
-    emoji: '⛅',
+    icon: 'cloud',
     minHours: 3,
     maxHours: 6,
     color: '#7ab87a',
@@ -50,7 +52,7 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     id: 'shade',
     label: 'Shade',
     labelNl: 'Schaduw',
-    emoji: '🌿',
+    icon: 'leaf',
     minHours: 0,
     maxHours: 3,
     color: '#4a8c9f',

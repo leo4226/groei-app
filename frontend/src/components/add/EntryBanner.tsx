@@ -1,4 +1,5 @@
 import type { PlantIdCandidate } from '../../types'
+import Glyph, { type GlyphName } from '../ui/Glyph'
 
 export interface EntryBannerProps {
   activeRoute: 'database' | 'photo'
@@ -42,7 +43,7 @@ export default function EntryBanner({
     subtitle,
   }: {
     route: 'database' | 'photo'
-    icon: string
+    icon: GlyphName
     label: string
     subtitle: string
   }) => {
@@ -69,7 +70,7 @@ export default function EntryBanner({
               : 'bg-gradient-to-br from-[#FDFAF1] to-[#EDE5D1] border-border-soft text-text-soft',
           ].join(' ')}
         >
-          <span className="text-lg leading-none">{icon}</span>
+          <Glyph name={icon} size={18} />
         </div>
         {/* Text block */}
         <div className="min-w-0">
@@ -104,8 +105,8 @@ export default function EntryBanner({
         <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start p-4 sm:p-6">
           {/* Large species icon */}
           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-primary-dark/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-4xl sm:text-5xl leading-none">
-              {selectedSpeciesIcon || '🌿'}
+            <span className="text-4xl sm:text-5xl leading-none text-primary/70">
+              {selectedSpeciesIcon || <Glyph name="leaf" size={44} />}
             </span>
           </div>
 
@@ -152,8 +153,8 @@ export default function EntryBanner({
     // No species selected yet — prompt to browse
     return (
       <div className="p-4 sm:p-6 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-xl">🔍</span>
+        <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+          <Glyph name="search" size={22} />
         </div>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-0.5">
@@ -270,8 +271,8 @@ export default function EntryBanner({
     // No photo uploaded yet
     return (
       <div className="p-4 sm:p-6 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-xl">📸</span>
+        <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+          <Glyph name="camera" size={22} />
         </div>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-0.5">
@@ -293,13 +294,13 @@ export default function EntryBanner({
         <div className="grid grid-cols-2 border-b border-border">
           <TabButton
             route="database"
-            icon="📚"
+            icon="book"
             label="Uit database"
             subtitle={dbSubtitle}
           />
           <TabButton
             route="photo"
-            icon="📸"
+            icon="camera"
             label="Met foto"
             subtitle={photoSubtitle}
           />

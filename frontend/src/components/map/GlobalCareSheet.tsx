@@ -2,7 +2,13 @@ import { useRef, useState } from 'react'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
 import type { BucketPlantOut } from '../../types'
-import { getCareTypeDisplay } from './careNeedsListModel'
+import {
+  getCareTypeDisplay,
+  isWeatherWarning,
+  localizedWarningCopy,
+  localizedWeatherWarningCopy,
+  type LocalizedWarningCopy,
+} from './careNeedsListModel'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
@@ -265,6 +271,7 @@ function CareCard({
     ? 'var(--color-text-muted)'
     : group.urgent ? 'var(--color-overdue)' : 'var(--color-due)'
   const isSaving = saving === `group_${cardId}`
+  const weatherCopy = localizedWeatherWarningCopy(group.plants, t)
 
   const subtitle = group.gardens.length > 1
     ? `${t.mapPage.sheetPlantCount(group.plants.length)} · ${t.mapPage.sheetGardenCount(group.gardens.length)}`
@@ -292,14 +299,22 @@ function CareCard({
           </span>
           <Chevron open={expanded} />
         </button>
-        <button
-          disabled={isSaving}
-          onClick={onDoneGroup}
-          className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-50"
-        >
-          {t.mapPage.careDoneAll}
-        </button>
+        {weatherCopy ? (
+          <span className="px-2 py-1 rounded-full bg-aqua-glow/10 text-aqua-glow text-[10px] font-semibold uppercase tracking-wide shrink-0">
+            {t.mapPage.weatherWarningBadge}
+          </span>
+        ) : (
+          <button
+            disabled={isSaving}
+            onClick={onDoneGroup}
+            className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-50"
+          >
+            {t.mapPage.careDoneAll}
+          </button>
+        )}
       </div>
+
+      {weatherCopy && <WeatherWarningPanel copy={weatherCopy} t={t} />}
 
       {expanded && (
         <div className="divide-y divide-border/40 border-t border-border/40">
@@ -333,6 +348,9 @@ function PlantRow({ plant, t, currentMapName, saving, onTap, onDone, onSkip }: {
   const isSaving = saving === keyOf(plant)
   const overdue = (plant.days_overdue ?? 0) > 0
   const otherGarden = !!plant.map_name && plant.map_name !== currentMapName
+  const weatherCopy = plant.top_warning && isWeatherWarning(plant.top_warning)
+    ? localizedWarningCopy(plant.top_warning, t)
+    : null
   const meta = [
     overdue ? `+${plant.days_overdue}d` : null,
     otherGarden ? `${plant.map_name} · ${t.mapPage.sheetOtherGardenHint}` : null,
@@ -343,14 +361,21 @@ function PlantRow({ plant, t, currentMapName, saving, onTap, onDone, onSkip }: {
       <button className="flex-1 min-w-0 text-left" onClick={() => onTap?.(plant.plant_id, plant.map_name)}>
         <span className="block text-xs font-medium text-text truncate">{plant.plant_name}</span>
         {meta && <span className="block text-[10px] text-text-muted truncate mt-0.5">{meta}</span>}
+        {weatherCopy && <WeatherWarningInline copy={weatherCopy} t={t} />}
       </button>
-      <CareActions
-        disabled={isSaving}
-        onDone={() => onDone(plant)}
-        onSkip={() => onSkip(plant)}
-        doneLabel={t.mapPage.careDone}
-        skipLabel={t.mapPage.careSkip}
-      />
+      {weatherCopy ? (
+        <span className="text-[10px] font-semibold text-aqua-glow uppercase tracking-wide shrink-0">
+          {t.mapPage.weatherWarningBadge}
+        </span>
+      ) : (
+        <CareActions
+          disabled={isSaving}
+          onDone={() => onDone(plant)}
+          onSkip={() => onSkip(plant)}
+          doneLabel={t.mapPage.careDone}
+          skipLabel={t.mapPage.careSkip}
+        />
+      )}
     </div>
   )
 }
@@ -368,6 +393,34 @@ function LooseRow({ plant, onTap }: {
       <span className="flex-1 min-w-0 text-xs font-medium text-text truncate">{plant.plant_name}</span>
       <span className="text-text-muted text-xs shrink-0">→</span>
     </button>
+  )
+}
+
+function WeatherWarningPanel({ copy, t }: { copy: LocalizedWarningCopy; t: ReturnType<typeof useT> }) {
+  return (
+    <div className="mx-3 mb-2 rounded-lg border border-aqua-glow/20 bg-aqua-glow/8 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-aqua-glow/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-aqua-glow">
+          {t.mapPage.weatherWarningBadge}
+        </span>
+        <span className="text-xs font-semibold text-text">{copy.headline}</span>
+      </div>
+      <WeatherWarningInline copy={copy} t={t} />
+    </div>
+  )
+}
+
+function WeatherWarningInline({ copy, t }: { copy: LocalizedWarningCopy; t: ReturnType<typeof useT> }) {
+  return (
+    <span className="mt-1 block space-y-0.5 text-[10px] leading-snug text-text-muted">
+      {copy.reason && <span className="block">{copy.reason}</span>}
+      {copy.action && (
+        <span className="block">
+          <span className="font-semibold text-text">{t.mapPage.weatherWarningAction}: </span>
+          {copy.action}
+        </span>
+      )}
+    </span>
   )
 }
 

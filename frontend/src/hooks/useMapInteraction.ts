@@ -6,6 +6,7 @@ import type { DropTarget } from '../utils/svgCoords'
 import { useMapSelection } from './useMapSelection'
 import type { MapSelection } from './useMapSelection'
 import { canStartContainerDrag, canStartPlantDrag, resolveDisplayedDragPosition } from '../components/map/plantDragPermissions'
+import { resolvePlantDropPersistenceAction } from '../components/map/plantDropPersistence'
 
 type DragItem = { type: 'plant'; id: number } | { type: 'container'; id: number }
 
@@ -337,22 +338,36 @@ export function useMapInteraction({
     if (pos && didDrag.current) {
       try {
         if (dragging.type === 'plant') {
+          const action = resolvePlantDropPersistenceAction({
+            finalPosition: pos,
+            mapId,
+            objects,
+            soilGroundZones,
+          })
           let updated
-          if (dropTarget?.type === 'container') {
-            updated = await plantsApi.setContainer(dragging.id, dropTarget.target.id)
-          } else if (dropTarget?.type === 'zone') {
-            const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
-            updated = await plantsApi.setGroundZone(dragging.id, dropTarget.target.id, rounded.map_x, rounded.map_y)
+          if (action.type === 'container') {
+            updated = await plantsApi.setContainer(dragging.id, action.containerId)
+          } else if (action.type === 'ground-zone') {
+            updated = await plantsApi.setGroundZone(dragging.id, action.groundZoneId, action.map_x, action.map_y)
           } else {
-            const rounded = { map_x: Math.round(pos.x * 10) / 10, map_y: Math.round(pos.y * 10) / 10 }
-            updated = await plantsApi.setPosition(dragging.id, { map_id: mapId, ...rounded, ground_zone_id: null })
+            updated = await plantsApi.setPosition(dragging.id, {
+              map_id: action.mapId,
+              map_x: action.map_x,
+              map_y: action.map_y,
+              ground_zone_id: action.ground_zone_id,
+            })
           }
           // Reflect the server-recomputed placement (esp. the bare/potted
-          // icon_key) on the marker without a full reload.
+          // icon_key) and final persisted placement fields on the marker
+          // without a full reload.
           if (updated) {
             onPlantUpdated?.(dragging.id, {
               icon_key: updated.icon_key,
               container_id: updated.container_id,
+              ground_zone_id: action.type === 'ground-zone' ? action.groundZoneId : null,
+              ...(action.type !== 'container'
+                ? { map_x: action.map_x, map_y: action.map_y }
+                : {}),
             })
           }
         } else if (dragging.type === 'container') {

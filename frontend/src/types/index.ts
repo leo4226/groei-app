@@ -432,16 +432,16 @@ export interface PlantFactOut {
   species_name: string | null
 }
 
-export const CARE_TYPE_INFO: Record<CareType, { label: string; icon: string; defaultIndoor: number; defaultOutdoor: number }> = {
-  water:       { label: 'Water',       icon: '💧', defaultIndoor: 7,   defaultOutdoor: 3 },
-  fertilize:   { label: 'Fertilize',   icon: '🧪', defaultIndoor: 21,  defaultOutdoor: 14 },
-  mist:        { label: 'Mist',        icon: '🌫️', defaultIndoor: 0,   defaultOutdoor: 0 },
-  rotate:      { label: 'Rotate',      icon: '🔄', defaultIndoor: 14,  defaultOutdoor: 0 },
-  repot_check: { label: 'Repot check', icon: '🪴', defaultIndoor: 180, defaultOutdoor: 365 },
-  prune:        { label: 'Prune',        icon: '✂️', defaultIndoor: 90,  defaultOutdoor: 30 },
-  protect_cold: { label: 'Protect Cold', icon: '🧤', defaultIndoor: 0,   defaultOutdoor: 0 },
-  protect_heat: { label: 'Protect Heat', icon: '🧴', defaultIndoor: 0,   defaultOutdoor: 0 },
-  photo:        { label: 'Progress photo', icon: '📷', defaultIndoor: 30,  defaultOutdoor: 30 },
+export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: number; defaultOutdoor: number }> = {
+  water:       { label: 'Water',       defaultIndoor: 7,   defaultOutdoor: 3 },
+  fertilize:   { label: 'Fertilize',   defaultIndoor: 21,  defaultOutdoor: 14 },
+  mist:        { label: 'Mist',        defaultIndoor: 0,   defaultOutdoor: 0 },
+  rotate:      { label: 'Rotate',      defaultIndoor: 14,  defaultOutdoor: 0 },
+  repot_check: { label: 'Repot check', defaultIndoor: 180, defaultOutdoor: 365 },
+  prune:        { label: 'Prune',        defaultIndoor: 90,  defaultOutdoor: 30 },
+  protect_cold: { label: 'Protect Cold', defaultIndoor: 0,   defaultOutdoor: 0 },
+  protect_heat: { label: 'Protect Heat', defaultIndoor: 0,   defaultOutdoor: 0 },
+  photo:        { label: 'Progress photo', defaultIndoor: 30,  defaultOutdoor: 30 },
 }
 
 /**
@@ -467,6 +467,14 @@ export interface CareWarningOut {
   message_en: string
   icon: string
   color: string
+  reason_nl?: string | null
+  reason_en?: string | null
+  action_nl?: string | null
+  action_en?: string | null
+  weather_metric?: string | null
+  weather_value_c?: number | null
+  forecast_day_label_nl?: string | null
+  forecast_day_label_en?: string | null
 }
 
 export interface CareTypeStatusOut {

@@ -5,6 +5,7 @@ import { compressImage } from '../../utils/compressImage'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { photoViewerControlsClassName } from './photoJournalLayout'
+import Glyph from '../ui/Glyph'
 
 const REMINDER_PRESETS = [14, 30, 90]
 
@@ -73,7 +74,8 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
         disabled={uploading}
         onClick={() => fileRef.current?.click()}
       >
-        📷 {uploading ? t.photoJournal.uploading : t.photoJournal.addPhoto}
+        <Glyph name="camera" size={16} />
+        {uploading ? t.photoJournal.uploading : t.photoJournal.addPhoto}
       </button>
 
       <div className="card p-3 mb-3 flex items-center justify-between gap-3">
@@ -113,7 +115,7 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
                    className="h-full w-full object-cover" />
               {p.care_log_id != null && (
                 <span title={t.photoJournal.careBadgeHint}
-                      className="absolute top-1 right-1 text-[10px] bg-primary/90 text-white rounded px-1">💧</span>
+                      className="absolute top-1 right-1 bg-primary/90 text-white rounded p-0.5 flex"><Glyph name="droplet" size={11} /></span>
               )}
               {p.species_mismatch && (
                 <span title={t.photoJournal.mismatchHint}
@@ -144,7 +146,7 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
             <p>{new Date(photos[viewer].taken_at).toLocaleDateString()}</p>
             {photos[viewer].note && <p className="text-white/80">{photos[viewer].note}</p>}
             {photos[viewer].species_mismatch && (
-              <p className="text-amber-400 text-xs mt-1">⚠ {t.photoJournal.mismatchHint}</p>
+              <p className="text-amber-400 text-xs mt-1 flex items-center gap-1"><Glyph name="alert" size={12} className="shrink-0" /> {t.photoJournal.mismatchHint}</p>
             )}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
               <button disabled={viewer >= photos.length - 1} className="disabled:opacity-40 shrink-0"

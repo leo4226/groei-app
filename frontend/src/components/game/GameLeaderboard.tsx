@@ -1,5 +1,6 @@
 import { useT } from '../../context/LanguageContext'
 import type { GameState } from '../../api/game'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   state: GameState
@@ -8,10 +9,19 @@ interface Props {
   onBackToMap: () => void
 }
 
+function ordinalSuffixEN(n: number): string {
+  if (n % 100 >= 11 && n % 100 <= 13) return 'th'
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th'
+}
+
 export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMap }: Props) {
   const t = useT()
+  const isEN = t.locale?.startsWith('en') ?? false
 
   const sorted = [...state.players].sort((a, b) => b.score - a.score)
+  const myRank = state.my_player_id != null
+    ? sorted.findIndex((p) => p.id === state.my_player_id) + 1
+    : 0
 
   function medal(i: number) {
     if (i === 0) return t.game.place1
@@ -35,34 +45,64 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 max-w-sm mx-auto space-y-6">
       <div className="text-center space-y-1">
-        <div className="text-5xl mb-2">🏆</div>
+        <div className="flex justify-center mb-2 text-amber-500"><Glyph name="trophy" size={44} /></div>
         <h1 className="text-2xl font-bold text-text">{t.game.gameOver}</h1>
         <p className="text-text-muted text-sm">{state.session.map_name}</p>
       </div>
 
       <div className="w-full bg-surface rounded-2xl border border-border overflow-hidden">
-        {sorted.map((p, i) => (
-          <div
-            key={p.account_id}
-            className={`flex items-center justify-between px-4 py-3 ${
-              i < sorted.length - 1 ? 'border-b border-border' : ''
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-lg w-8 text-center">{medal(i)}</span>
-              <span className="text-sm text-text">{p.player_name}</span>
+        {sorted.map((p, i) => {
+          const isMe = state.my_player_id != null && p.id === state.my_player_id
+          return (
+            <div
+              key={p.account_id}
+              className={`flex items-center justify-between px-4 py-3 podium-drop ${
+                i < sorted.length - 1 ? 'border-b border-border' : ''
+              } ${isMe ? 'bg-primary/10' : ''}`}
+              style={{ animationDelay: `${i * 120}ms` }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg w-8 text-center">{medal(i)}</span>
+                <span className={`text-sm ${isMe ? 'font-semibold text-primary' : 'text-text'}`}>{p.player_name}</span>
+              </div>
+              <span className={`font-semibold text-sm ${isMe ? 'text-primary' : 'text-text-muted'}`}>{p.score} pt</span>
             </div>
-            <span className="font-semibold text-sm text-text-muted">{p.score} pt</span>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {myRank > 0 && (
+        <p className="text-sm text-text-muted -mt-2">
+          {isEN
+            ? t.game.yourPosition.replace('{rank}', String(myRank)).replace('{suffix}', ordinalSuffixEN(myRank))
+            : t.game.yourPosition.replace('{rank}', String(myRank))}
+        </p>
+      )}
+
+      {/* Host-only per-round breakdown: which plants were found fast vs. stumped */}
+      {isHost && state.round_stats && state.round_stats.length > 0 && (
+        <div className="w-full bg-surface rounded-2xl border border-border p-4 space-y-2">
+          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">{t.game.roundBreakdown}</p>
+          {state.round_stats.map((r) => (
+            <div key={r.round_index} className="flex items-center justify-between py-0.5 text-sm">
+              <span className="text-text truncate mr-3">
+                {r.round_index + 1}. {isEN && r.plant_name_en ? r.plant_name_en : r.plant_name_nl}
+              </span>
+              <span className="text-text-muted whitespace-nowrap">
+                {r.answered_count}/{state.players.length}
+                {r.avg_seconds != null && ` · Ø ${r.avg_seconds}s`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="w-full space-y-3">
         <button
           onClick={shareText}
           className="w-full py-2.5 rounded-xl border border-border text-sm text-text-muted hover:bg-surface transition-colors flex items-center justify-center gap-2"
         >
-          <span>📋</span> {t.game.shareResults}
+          <Glyph name="clipboard" size={15} /> {t.game.shareResults}
         </button>
         {isHost ? (
           <>

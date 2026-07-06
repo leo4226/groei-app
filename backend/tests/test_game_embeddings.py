@@ -112,17 +112,18 @@ async def test_create_game_stores_best_effort_reference_embeddings(
     )
 
     assert response.status_code == 201
+    # Round order is shuffled at create time (random.sample), so compare as sets.
     rounds = await seeded_db.execute_fetchall(
-        "SELECT plant_id, target_embedding FROM game_rounds ORDER BY round_index"
+        "SELECT plant_id, target_embedding FROM game_rounds ORDER BY plant_id"
     )
     assert [row["plant_id"] for row in rounds] == [101, 102, 103]
     assert rounds[0]["target_embedding"] == "embedded:https://r2.test/plant-101.jpg"
     assert rounds[1]["target_embedding"] == "embedded:https://r2.test/plant-102.jpg"
     assert rounds[2]["target_embedding"] is None
-    assert embedded_urls == [
+    assert sorted(embedded_urls) == [
+        "",
         "https://r2.test/plant-101.jpg",
         "https://r2.test/plant-102.jpg",
-        "",
     ]
 
 

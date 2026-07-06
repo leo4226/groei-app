@@ -6,6 +6,8 @@ import { gameApi, type GameState, type AnswerResult } from '../api/game'
 import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
+import GameQuizRound from '../components/game/GameQuizRound'
+import Glyph from '../components/ui/Glyph'
 
 type PlayerStep =
   | 'waiting'
@@ -24,6 +26,7 @@ export default function GamePlayerPage() {
   const [step, setStep] = useState<PlayerStep>('waiting')
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
   const [countdown, setCountdown] = useState(3)
+  const [quizSubmitting, setQuizSubmitting] = useState(false)
   const lastRoundRef = useRef<number>(-1)
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
@@ -62,7 +65,7 @@ export default function GamePlayerPage() {
 
   // Countdown after a correct scan before showing the leaderboard wait screen
   useEffect(() => {
-    if (step !== 'result') return
+    if (step !== 'result' || !scanResult?.is_correct) return
     setCountdown(3)
     const id = setInterval(() => {
       setCountdown((c) => {
@@ -94,6 +97,20 @@ export default function GamePlayerPage() {
     }
   }
 
+  async function handleQuizPick(plantNameNl: string) {
+    if (!code || quizSubmitting) return
+    setQuizSubmitting(true)
+    try {
+      const result = await gameApi.answer(code, plantNameNl)
+      setScanResult(result)
+      setStep('result')
+    } catch {
+      // answer rejected (e.g. round advanced) — next poll resyncs
+    } finally {
+      setQuizSubmitting(false)
+    }
+  }
+
   if (!state) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -117,7 +134,7 @@ export default function GamePlayerPage() {
   if (step === 'waiting') {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6 text-center">
-        <div className="text-5xl animate-bounce">🌱</div>
+        <div className="animate-bounce text-primary"><Glyph name="sprout" size={44} /></div>
         <div className="space-y-1">
           <p className="font-semibold text-text">{t.game.youAreIn}</p>
           <p className="text-text-muted text-sm">{t.game.waitingForHost}</p>
@@ -160,6 +177,28 @@ export default function GamePlayerPage() {
   const roundNum = state.session.current_round + 1
   const totalRounds = state.session.total_rounds
 
+  // ── Clue view — logbook quiz: photo↔name matching, one guess ────────────────
+  if (step === 'clue' && state.session.clue_mode === 'logbook' && !state.my_answer?.is_correct) {
+    return (
+      <div className="min-h-screen bg-bg flex flex-col">
+        <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-border">
+          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
+            {t.game.roundTitle} {roundNum} / {totalRounds}
+          </p>
+        </div>
+        <div className="flex-1 p-6 max-w-md mx-auto w-full">
+          <GameQuizRound
+            key={state.session.current_round}
+            state={state}
+            locked={Boolean(state.my_answer)}
+            submitting={quizSubmitting}
+            onPick={handleQuizPick}
+          />
+        </div>
+      </div>
+    )
+  }
+
   // ── Clue view — show plant photo, then tap to scan ───────────────────────────
   if (step === 'clue' && !state.my_answer?.is_correct) {
     return (
@@ -173,7 +212,7 @@ export default function GamePlayerPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
           {state.session.clue_mode === 'name' ? (
             <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-6 flex flex-col items-center gap-3 shadow-lg">
-              <span className="text-5xl">🌿</span>
+              <Glyph name="leaf" size={44} className="text-primary" />
               <p className="text-2xl font-bold text-text text-center">{clue?.plant_name_nl}</p>
               {clue?.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
                 <p className="text-sm text-text-muted text-center italic">{clue.plant_name_en}</p>
@@ -188,8 +227,8 @@ export default function GamePlayerPage() {
               />
             </div>
           ) : (
-            <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-5xl border border-border">
-              🌱
+            <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-text-muted border border-border">
+              <Glyph name="sprout" size={44} />
             </div>
           )}
           <p className="text-lg font-semibold text-text text-center">{t.game.findThisPlant}</p>
@@ -211,7 +250,7 @@ export default function GamePlayerPage() {
   if (step === 'answered' || (step === 'clue' && state.my_answer?.is_correct)) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="text-5xl">✅</div>
+        <div className="text-green-500"><Glyph name="check" size={48} strokeWidth={2.4} /></div>
         <p className="font-semibold text-text">{t.game.correctScan}</p>
         <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
         <div className="mt-4 bg-surface rounded-2xl border border-border px-6 py-4">
@@ -235,7 +274,7 @@ export default function GamePlayerPage() {
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
         {scanResult.is_correct ? (
           <>
-            <div className="text-6xl">🎉</div>
+            <div className="text-amber-500"><Glyph name="sparkle" size={52} /></div>
             <p className="text-2xl font-bold text-text">{t.game.correct}</p>
             <p className="text-primary font-semibold text-lg">
               {t.game.pointsEarned.replace('{points}', String(scanResult.points_awarded))}
@@ -243,20 +282,23 @@ export default function GamePlayerPage() {
           </>
         ) : (
           <>
-            <div className="text-5xl">🍂</div>
+            <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
             <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
           </>
         )}
         {scanResult.is_correct && (
           <p className="text-text-muted text-sm">{t.game.nextRoundSoon.replace('{seconds}', String(countdown))}</p>
         )}
-        {!scanResult.is_correct && (
+        {!scanResult.is_correct && state.session.clue_mode !== 'logbook' && (
           <button
             onClick={() => setStep('clue')}
             className="mt-4 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold"
           >
             {t.game.scanButton}
           </button>
+        )}
+        {!scanResult.is_correct && state.session.clue_mode === 'logbook' && (
+          <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
         )}
       </div>
     )

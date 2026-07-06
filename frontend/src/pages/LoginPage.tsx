@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
 import { household } from '../api/client'
 import PageDecor from '../components/PageDecor'
+import Glyph from '../components/ui/Glyph'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>('login')
@@ -132,7 +133,8 @@ export default function LoginPage() {
                   fontFamily: 'inherit',
                 }}
               >
-                ← Back to log in
+                <Glyph name="arrow-left" size={14} className="inline-block align-[-2px] mr-1" />
+                Back to log in
               </button>
             </div>
           ) : (
@@ -163,8 +165,9 @@ export default function LoginPage() {
                       style={inputStyle}
                     />
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '-4px 0 0', lineHeight: 1.4 }}>
-                    ⚠️ Names must be unique across all users. If someone already uses this name, registration will fail.
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '-4px 0 0', lineHeight: 1.4, display: 'flex', gap: 5, alignItems: 'flex-start' }}>
+                    <Glyph name="alert" size={13} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span>Names must be unique across all users. If someone already uses this name, registration will fail.</span>
                   </p>
                 </>
               )}
@@ -301,7 +304,8 @@ export default function LoginPage() {
                     fontFamily: 'inherit',
                   }}
                 >
-                  ← Back to log in
+                  <Glyph name="arrow-left" size={14} className="inline-block align-[-2px] mr-1" />
+                  Back to log in
                 </button>
               )}
             </form>
