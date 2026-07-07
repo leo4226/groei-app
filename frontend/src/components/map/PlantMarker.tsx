@@ -94,7 +94,7 @@ const PX_PER_CM = 0.46
 
 // Plant name label size in SVG units. Kept modest so labels don't dominate the
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
-export const PLANT_LABEL_FONT_SIZE = 7
+export const PLANT_LABEL_FONT_SIZE = 9
 
 export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
