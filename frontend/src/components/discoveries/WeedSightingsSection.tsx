@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { weeds } from '../../api/client'
@@ -7,54 +7,67 @@ import type { WeedSightingOut } from '../../types'
 import Glyph from '../ui/Glyph'
 import { WeedSightingDetailSheet } from './WeedSightingDetailSheet'
 
-const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
-
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
-  return `${d.getDate()} ${MONTH_NL[d.getMonth()]} ${d.getFullYear()}`
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function WeedSightingsSection() {
   const t = useT()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const maps = useFloreren((s) => s.maps)
   const [items, setItems] = useState<WeedSightingOut[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSighting, setSelectedSighting] = useState<WeedSightingOut | null>(null)
 
-  function loadSightings() {
+  const requestedSightingId = Number(searchParams.get('sighting') ?? 0)
+
+  useEffect(() => {
+    let cancelled = false
     setLoading(true)
     weeds.listSightings()
       .then((data) => {
-        // Enrich with map names client-side
+        if (cancelled) return
         const enriched = data.map((s) => {
           const map = maps.find((m) => m.id === s.map_id)
-          return { ...s, map_name: map?.name ?? `Kaart #${s.map_id}` }
+          return { ...s, map_name: map?.name ?? `${t.weeds.sightingsList.mapLabel} #${s.map_id}` }
         })
         setItems(enriched)
       })
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false))
-  }
+      .catch(() => {
+        if (!cancelled) setItems([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [maps, t.weeds.sightingsList.mapLabel])
 
   useEffect(() => {
-    if (maps.length > 0) {
-      loadSightings()
-    }
-  }, [maps.length]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!requestedSightingId || selectedSighting?.id === requestedSightingId) return
+    const matched = items.find((item) => item.id === requestedSightingId)
+    if (matched) setSelectedSighting(matched)
+  }, [items, requestedSightingId, selectedSighting?.id])
 
   async function handleDelete(sightingId: number) {
-    if (!window.confirm(t.weeds.sightingsList.deleteConfirm)) return
-    try {
-      await weeds.deleteSighting(sightingId)
-      setItems((prev) => prev.filter((s) => s.id !== sightingId))
-      if (selectedSighting?.id === sightingId) {
-        setSelectedSighting(null)
-      }
-    } catch {
-      // silently fail
+    await weeds.deleteSighting(sightingId)
+    setItems((prev) => prev.filter((s) => s.id !== sightingId))
+    if (selectedSighting?.id === sightingId) {
+      setSelectedSighting(null)
+      setSearchParams({}, { replace: true })
     }
+  }
+
+  function openSighting(sighting: WeedSightingOut) {
+    setSelectedSighting(sighting)
+    setSearchParams({ sighting: String(sighting.id) }, { replace: true })
+  }
+
+  function closeSighting() {
+    setSelectedSighting(null)
+    if (searchParams.has('sighting')) setSearchParams({}, { replace: true })
   }
 
   if (loading) {
@@ -85,11 +98,11 @@ export default function WeedSightingsSection() {
     <>
       <div style={{ padding: '8px 0' }}>
         {items.map((sighting) => {
-          const mapName = sighting.map_name ?? `Kaart #${sighting.map_id}`
+          const mapName = sighting.map_name ?? `${t.weeds.sightingsList.mapLabel} #${sighting.map_id}`
           return (
             <div
               key={sighting.id}
-              onClick={() => setSelectedSighting(sighting)}
+              onClick={() => openSighting(sighting)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 20px', borderBottom: '1px solid var(--color-border)',
@@ -125,7 +138,7 @@ export default function WeedSightingsSection() {
                 <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>{t.weeds.sightingsList.mapLabel}: {mapName}</span>
                   <span>·</span>
-                  <span>{formatDate(sighting.sighted_at)}</span>
+                  <span>{formatDate(sighting.sighted_at, t.locale)}</span>
                 </p>
               </div>
               <div style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>
@@ -139,12 +152,12 @@ export default function WeedSightingsSection() {
       {selectedSighting && (
         <WeedSightingDetailSheet
           sighting={selectedSighting}
-          onClose={() => setSelectedSighting(null)}
+          onClose={closeSighting}
           onDelete={handleDelete}
           onNavigateToMap={() => {
             const slug = maps.find((m) => m.id === selectedSighting.map_id)?.slug
             if (slug) {
-              setSelectedSighting(null)
+              closeSighting()
               navigate(`/map/${slug}`)
             }
           }}

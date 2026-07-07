@@ -1253,34 +1253,34 @@ export const nl: Translations = {
 
   weeds: {
     identifyCard: {
-      title: 'Onkruid herkennen',
-      subtitle: 'Maak een foto en identificeer onkruid',
+      title: 'Plant buiten herkennen',
+      subtitle: 'Maak een foto en voeg een veldwaarneming toe',
     },
     privacy: {
-      notice: 'Je foto wordt gedeeld met Pl@ntNet voor herkenning. Er worden geen persoonlijke gegevens opgeslagen.',
-      ack: 'Akkoord, verder',
+      notice: 'Dit slaat een locatiepin en eventueel de foto op in je veldjournaal. Gebruik dit alleen voor plekken die je wilt terugvinden.',
+      ack: 'Akkoord, opslaan',
     },
-    identifying: 'Onkruid herkennen...',
+    identifying: 'Plant herkennen...',
     noMatch: {
       retry: 'Opnieuw proberen',
       dismiss: 'Sluiten',
     },
-    knownWeed: 'Bekend onkruid',
-    notAWeed: 'Niet in onkruidcatalogus',
-    logSighting: 'Locatie vastleggen',
+    knownWeed: 'Bekende veldplant',
+    notAWeed: 'Niet in veldgids',
+    logSighting: 'Toevoegen aan veldjournaal',
     sightingSheet: {
-      title: 'Waar zit het?',
-      pickMap: 'Kies een tuin',
-      pinInstruction: 'Tik op de plek in de tuin',
-      confirm: 'Opslaan',
+      title: 'Waar zag je deze plant?',
+      pickMap: 'Kies een tuin of plek',
+      pinInstruction: 'Tik op de plek van de waarneming',
+      confirm: 'Opslaan in veldjournaal',
       cancel: 'Annuleren',
       saved: 'Opgeslagen!',
     },
     errorService: 'Kon de herkenningsdienst niet bereiken.',
     sightingsList: {
-      title: 'Veldwaarnemingen',
-      empty: 'Nog geen onkruidwaarnemingen',
-      emptyHint: 'Ga naar identificeren en log waarnemingen op de kaart',
+      title: 'Veldjournaal',
+      empty: 'Nog geen veldwaarnemingen',
+      emptyHint: 'Identificeer een plant en bewaar de plek in je veldjournaal',
       mapLabel: 'Op kaart',
       deleteConfirm: 'Waarneming verwijderen?',
       detailTitle: 'Waarneming',
@@ -1292,6 +1292,15 @@ export const nl: Translations = {
       deleteSighting: 'Waarneming verwijderen',
       noPhoto: 'Geen foto',
       loading: 'Laden...',
+      loadingDetail: 'Details laden...',
+      fieldGuide: 'Veldgids',
+      funFact: 'Weetje',
+      habitat: 'Habitat',
+      appearance: 'Herkenning',
+      native: 'Inheems',
+      edible: 'Eetbaar',
+      flowering: 'Bloei',
+      removalTip: 'Beheer-tip',
     },
   },
 
@@ -1335,8 +1344,9 @@ export const nl: Translations = {
 
   log: {
     title: '§ Logboek',
-    empty: 'Nog geen verzorgingsacties gelogd.',
+    empty: 'Nog geen verzorging of veldwaarnemingen gelogd.',
     loadMore: 'Meer laden',
+    fieldObservation: 'Veldwaarneming',
   },
 
   common: {
