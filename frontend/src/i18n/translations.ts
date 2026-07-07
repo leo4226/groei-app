@@ -1086,6 +1086,10 @@ export type Translations = {
     mapSettings: string       // "Kaart instellingen" (settings button tooltip)
     labelShow: string         // "Toon namen"
     labelHide: string         // "Verberg namen"
+    labelModeTitle: string    // "Namen" (labels section heading)
+    labelModeOff: string      // "Uit"
+    labelModeSmart: string    // "Slim"
+    labelModeAll: string      // "Alles"
     warningsShow: string      // "Toon waarschuwingen"
     warningsHide: string      // "Verberg waarschuwingen"
     weatherWarningBadge: string
