@@ -44,13 +44,20 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
       const iconR = plant.is_locked ? Math.min(iconR0, 28) : iconR0
       const name = plantDisplayName(plant, t.locale)
       const isSel = selectedId === `plant-${plant.id}`
+      // Priority so the labels that survive a crowded map are the useful ones:
+      // selected plant first, then anything needing care, then everything else.
+      // (No flowering/phenology tier — MapPlant doesn't expose a cheap "is
+      // flowering now" field; phenology.months[].phase is a loose string that
+      // would need a current-month lookup, so it's skipped rather than guessed.)
+      const needsCare = Boolean(plant.top_warning) || Boolean(plant.warnings?.length)
+      const priority = isSel ? 0 : needsCare ? 1 : 2
       return {
         id: plant.id,
         cx: pos.x,
         centerY: pos.y,
         iconR,
         width: Math.max(name.length * PLANT_LABEL_FONT_SIZE * AVG_CHAR_WIDTH_RATIO, PLANT_LABEL_FONT_SIZE * 2),
-        priority: isSel ? 0 : 1,
+        priority,
         forced: isSel,
       }
     })
