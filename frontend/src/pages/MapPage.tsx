@@ -106,7 +106,10 @@ export default function MapPage() {
   // Labels are contextual by default: hidden globally to keep a dense map calm;
   // the selected plant still shows its name (see PlantsLayer), and this toggle
   // flips ALL names on. See docs/plans/2026-06-27-map-density-multiplicity-plan.md
-  const [showLabels, setShowLabels] = useState(false)
+  const [showLabels, setShowLabels] = useState(() => {
+    const stored = localStorage.getItem("floreren-show-labels")
+    return stored !== null ? stored === "true" : false
+  })
   // Per-plant warning badges are capped to one (most-urgent) on the canvas; this
   // toggle hides them entirely. On by default. Full list lives in the sheets.
   const [showWarnings, setShowWarnings] = useState(true)
@@ -537,7 +540,7 @@ export default function MapPage() {
       {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
           unplaced-plants tray (z-20) stacked directly below it */}
       <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
-        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => !v)} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
+        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => { const next = !v; localStorage.setItem('floreren-show-labels', String(next)); return next })} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
       </div>
 
       {/* Left, below the garden pill: unplaced-plants tray */}
