@@ -131,7 +131,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       return m
     },
     {
-      target: svgRef,
+      // Target the container, NOT svgRef: the <svg> is a pointer-events:none
+      // overlay (only its marker children opt back in), so touch events for
+      // empty map area never reach it and pinch would silently do nothing.
+      // Pan/wheel/tap already live on the container, which has touch-action:none.
+      // (The editor keeps target: svgRef because its <svg> IS the event target.)
+      target: containerRef,
       eventOptions: { passive: false },
       scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
       from: () => [zoom, 0],
