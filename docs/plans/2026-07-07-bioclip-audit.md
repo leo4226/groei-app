@@ -1,7 +1,7 @@
 # BioCLIP identification audit (#442)
 
 **Date:** 2026-07-07
-**Status:** audit / findings — no pipeline changes made yet (per the issue: audit before changing).
+**Status:** audit / findings + the top quick-win fix (§3.1, un-gate confirmed retrieval) implemented in this PR. That code change is **pending a worker-side validation run before merge** — the `_IMAGE_MATCH_MIN` floor was picked conservatively without a real-photo calibration.
 **Scope caveat:** This is a **code + prior-eval audit**, not a fresh benchmark. Producing new top-1/top-5 numbers on *Leon's real garden photos* needs the GPU worker box and a labelled photo set neither of which is reachable from a cloud session. Where I assert accuracy, it comes from the existing `2026-05-24-bioclip-eval-baseline.txt`. The single most important follow-up is a real-photo benchmark (see §6).
 
 ---
@@ -74,14 +74,14 @@ The original design (`2026-05-26-bioclip-user-confirmed-retrieval-design.md` §4
 
 ## 3. Improvement roadmap (quick wins first, model swap last)
 
-### 3.1 — Un-gate user-confirmed retrieval **(highest leverage, ~½ day, already 90% built)**
-Turn the confirmation loop back on so your own garden becomes the training set:
-- **Union, not intersection**: let a species with strong image→image similarity enter the candidate list even if BioCLIP's text ranking missed it. This is the rescue path — the whole point.
-- **Drop ≥2 → ≥1 ref** (or make it configurable). With few users, ≥1 is what makes it live at all. Guard pollution differently: cap refs per (species, source_photo) and/or ignore refs below an absolute cosine floor.
-- **Calibrate the two scales separately.** Don't `max()` across scales. Treat an image→image match as its own signal with its own high bar (e.g. surface as a strong candidate when best ref-cosine ≳ 0.80), and give blended results their own confidence mapping so a rescued match doesn't report a text-scale "0.7 = high" artifact.
-- **Re-baseline** pure-text vs blended on the eval set after the change.
+### 3.1 — Un-gate user-confirmed retrieval **✅ implemented in this PR (pending validation)**
+Turned the confirmation loop back on so your own garden becomes the training set. Changes to `_blend_scores` (`routers/plant_id.py`) + `tests/test_blend_scores.py`:
+- **Union, not intersection**: a strong image→image match now surfaces a species even if BioCLIP's text ranking missed it entirely (the rescue path — the whole point).
+- **≥2 → ≥1 ref**: one confirmation is enough for the feature to be live.
+- **Floor-gated, degrades safely**: image→image cosine is only trusted at/above `_IMAGE_MATCH_MIN` (default **0.80**). Below the floor the image signal is ignored, so a weak/wrong confirmation can never hijack a result — worst case, behaviour falls back to pure text.
+- **Pending:** the `_IMAGE_MATCH_MIN` floor is a conservative guess set without real-photo calibration. Validate on the worker before merge (see §6). Also open: a rescued match's raw image cosine currently flows into the displayed confidence, so it reads as "85%" beside text candidates' "30%" — display recalibration is §3.3.
 
-This directly answers your instinct: *yes*, confirming plants should improve scoring — it just isn't allowed to right now.
+This directly answers the "confirming plants should improve scoring" instinct: it now can — it just wasn't allowed to before.
 
 ### 3.2 — Multi-image ensemble (cheap, high value)
 Let identify accept 2–3 angles; average the L2-normed embeddings before matching. Averaging cuts single-shot noise and is a well-known zero-shot booster. Pairs naturally with the "take another photo" UX.
@@ -122,7 +122,8 @@ The current thresholds are honestly derived (see baseline), but (a) they're on G
 
 ## 6. Measurement plan (the real deliverable behind this audit)
 - Assemble a labelled set of **Leon's own garden photos** (the only test set that matters). ~5–10 per species, phone-taken, varied angles/light.
-- Extend `eval_bioclip.py` with a `--no-blend` flag to measure *pure-text* accuracy, and a mode that measures *blended* accuracy after N confirmations — so we can prove §3.1 actually helps.
+- **Note on the existing eval:** `eval_bioclip.py` posts to the worker's `/identify` directly, which returns *text-only* matches — the blend happens backend-side. So the current script already measures **pure text-only** accuracy (the 2026-05-24 baseline's later note implying otherwise is inaccurate). To measure the **blended** path you must either (a) capture the worker's `embedding` field, load `user_confirmed_embeddings`, and apply `_blend_scores` in the eval, or (b) drive the backend `/plants/identify` end-to-end. Either is a small addition; not shipped here because it can't be exercised without the worker + DB.
+- **Validate §3.1 before merge:** run the text-only eval, then seed a few `user_confirmed_embeddings` for evaluated species and measure blended top-1/top-5 with the same photos. Confirm rescues help and that no look-alikes get wrongly rescued at the chosen `_IMAGE_MATCH_MIN`; tune the floor from the observed same-species vs different-species image-cosine distributions.
 - Report top-1/top-5 for: current text-only, text+confirmed (un-gated), +multi-image, +better prompts. One table, same photos.
 
 ## 7. Open items to verify (need the worker / prod DB)
