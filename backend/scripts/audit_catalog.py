@@ -124,6 +124,14 @@ def format_report(s: dict) -> str:
 
 
 async def main(top_genera: int, bloat_threshold: int):
+    # Load backend/.env explicitly (independent of CWD) so DATABASE_URL is set.
+    # Kept inside main() so the pure summarize()/format_report() stay importable
+    # (and unit-testable) without python-dotenv installed.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+    except ImportError:
+        pass
     from database import init_pool, close_pool, get_db  # lazy: keep module import-light
     await init_pool()
     try:
