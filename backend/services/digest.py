@@ -160,10 +160,11 @@ def _api_base() -> str:
     return os.environ.get("API_BASE_URL", "https://api.floreren.app").rstrip("/")
 
 
-def _task_line(task: CareTask, s: dict) -> str:
+def _task_line(task: CareTask, s: dict, lang: str) -> str:
     care = CARE_TYPES.get(task.care_type, {})
     icon = care.get("icon", "🌿")
-    label = care.get("label_nl", task.care_type)
+    label_key = "label_en" if lang == "en" else "label_nl"
+    label = care.get(label_key) or care.get("label_nl", task.care_type)
     late = ""
     if task.days_overdue > 0:
         late = f' <span style="color:#b3261e;font-size:13px;">({s["days_late"].format(n=task.days_overdue)})</span>'
@@ -175,10 +176,10 @@ def _task_line(task: CareTask, s: dict) -> str:
     )
 
 
-def _section(title: str, tasks: list[CareTask], s: dict) -> str:
+def _section(title: str, tasks: list[CareTask], s: dict, lang: str) -> str:
     if not tasks:
         return ""
-    items = "".join(_task_line(t, s) for t in tasks)
+    items = "".join(_task_line(t, s, lang) for t in tasks)
     return (
         f'<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;'
         f'color:#4a7c59;margin:20px 0 8px;">{title}</h2>'
@@ -194,8 +195,9 @@ def build_digest_email(
     lang: str = "nl",
 ) -> tuple[str, str]:
     """Return (subject, html) for the daily digest. Bilingual-ready via `lang`."""
-    s = _STRINGS.get(lang, _STRINGS["nl"])
-    body = _section(s["overdue"], overdue, s) + _section(s["due_today"], due_today, s)
+    lang = "en" if lang == "en" else "nl"
+    s = _STRINGS[lang]
+    body = _section(s["overdue"], overdue, s, lang) + _section(s["due_today"], due_today, s, lang)
     html = f"""\
 <!DOCTYPE html>
 <html lang="{lang}">
