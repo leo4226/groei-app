@@ -34,6 +34,11 @@ router = APIRouter(prefix="/plants", tags=["plant-id"])
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
+# How many candidate species the result screen shows. Kept small so the ranked
+# choices don't get lost under the confidence / source / guidance blocks (#372).
+# PlantNet already capped at 3; this makes BioCLIP consistent.
+_MAX_CANDIDATES = 3
+
 # Confidence calibration thresholds (informed by scripts/eval_bioclip.py output).
 # Tuned 2026-05-24 from 126-photo iNat-only eval (see docs/plans/2026-05-24-bioclip-eval-baseline.txt).
 # Key insight from the eval: top-1 score alone barely discriminates correct from wrong
@@ -430,7 +435,7 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
             deduped.remove(seen[key])
             seen[key] = cand
             deduped.append(cand)
-    out = deduped
+    out = deduped[:_MAX_CANDIDATES]
 
     top1 = matches[0][1]
     top2 = matches[1][1] if len(matches) > 1 else None
@@ -495,9 +500,9 @@ async def identify_endpoint(
             source="plantnet",
         )
 
-    top3 = candidates[:3]
+    top_candidates = candidates[:_MAX_CANDIDATES]
     out: list[CandidateOut] = []
-    for c in top3:
+    for c in top_candidates:
         common_nl, common_en = _split_common_names(c.common_names, lang)
         species_id = await _attach_species_id(db, c.scientific_name)
         out.append(CandidateOut(
