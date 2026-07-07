@@ -1238,6 +1238,23 @@ export type Translations = {
       saved: string
     }
     errorService: string
+
+    sightingsList: {
+      title: string
+      empty: string
+      emptyHint: string
+      mapLabel: string
+      deleteConfirm: string
+      detailTitle: string
+      sightedOn: string
+      location: string
+      removal: string
+      removalDifficulty: string
+      notes: string
+      deleteSighting: string
+      noPhoto: string
+      loading: string
+    }
   }
 
   help: {

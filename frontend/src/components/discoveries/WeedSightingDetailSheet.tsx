@@ -109,7 +109,7 @@ export function WeedSightingDetailSheet({ sighting, onClose, onDelete, onNavigat
 
             {sighting.notes && (
               <div style={{ display: 'flex', gap: 10, fontSize: 14 }}>
-                <Glyph name="file-text" size={16} style={{ color: 'var(--color-text-muted)', marginTop: 2 }} />
+                <Glyph name="book" size={16} style={{ color: 'var(--color-text-muted)', marginTop: 2 }} />
                 <span style={{ color: 'var(--color-text-muted)', minWidth: 90, flexShrink: 0 }}>{s.notes}</span>
                 <span style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{sighting.notes}</span>
               </div>
@@ -125,7 +125,7 @@ export function WeedSightingDetailSheet({ sighting, onClose, onDelete, onNavigat
               opacity: deleting ? 0.5 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              <Glyph name="trash-2" size={16} />
+              <Glyph name="trash" size={16} />
               {deleting ? '...' : s.deleteSighting}
             </button>
           </div>
