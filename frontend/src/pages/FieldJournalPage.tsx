@@ -1,10 +1,13 @@
 import { lazy } from 'react'
+import { useT } from '../context/LanguageContext'
 
 const WeedSightingsSection = lazy(() =>
   import('../components/discoveries/WeedSightingsSection').then(m => ({ default: m.default }))
 )
 
 export default function FieldJournalPage() {
+  const t = useT()
+
   return (
     <div className="page-container">
       <div style={{ padding: '16px 20px 0' }}>
@@ -12,10 +15,10 @@ export default function FieldJournalPage() {
           fontFamily: 'var(--font-heading)', fontWeight: 500,
           fontSize: 24, margin: '0 0 4px', letterSpacing: '-0.01em',
         }}>
-          Veldwaarnemingen
+          {t.weeds.sightingsList.title}
         </h1>
         <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-muted)' }}>
-          Al je gelogde onkruidwaarnemingen
+          {t.weeds.sightingsList.emptyHint}
         </p>
       </div>
       <WeedSightingsSection />

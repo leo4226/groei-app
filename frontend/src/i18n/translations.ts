@@ -1258,6 +1258,15 @@ export type Translations = {
       deleteSighting: string
       noPhoto: string
       loading: string
+      loadingDetail: string
+      fieldGuide: string
+      funFact: string
+      habitat: string
+      appearance: string
+      native: string
+      edible: string
+      flowering: string
+      removalTip: string
     }
   }
 
@@ -1303,6 +1312,7 @@ export type Translations = {
     title: string
     empty: string
     loadMore: string
+    fieldObservation: string
   }
 
   common: {

@@ -10,6 +10,7 @@ import { resolveIconUrl } from '../utils/icons'
 import { plantDisplayName, plantSearchText } from '../utils/plantDisplayName'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
+const WeedSightingsSection = lazy(() => import('../components/discoveries/WeedSightingsSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
 import PlantFactCard from '../components/plants/PlantFactCard'
 
@@ -407,6 +408,10 @@ export default function Plants() {
           {activeTab === 'journal' && (
             <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
               <DiscoveriesSection />
+              <div style={{ marginTop: 20 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>{t.weeds.sightingsList.title}</h3>
+                <WeedSightingsSection />
+              </div>
             </Suspense>
           )}
           {activeTab === 'plants' && alertsOnly && (
@@ -727,6 +732,10 @@ export default function Plants() {
         {activeTab === 'journal' && (
           <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
             <DiscoveriesSection />
+            <div style={{ marginTop: 20 }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>{t.weeds.sightingsList.title}</h3>
+              <WeedSightingsSection />
+            </div>
           </Suspense>
         )}
         {activeTab === 'plants' && alertsOnly && (

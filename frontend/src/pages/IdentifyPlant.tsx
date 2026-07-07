@@ -259,6 +259,7 @@ export function IdentifyPlantPage() {
       <WeedSightingSheet
         weedId={step.weedId}
         weedName={step.weedName}
+        capturedThumbnailUrl={step.from.thumbnail}
         preselectedMapId={routeState?.mapId}
         preselectedMapSlug={routeState?.mapSlug}
         onSaved={handleSightingSaved}
