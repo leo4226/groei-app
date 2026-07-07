@@ -41,9 +41,13 @@ _BATCH_SIZE = 64
 async def get_all_species() -> list[tuple[int, str]]:
     """Fetch all species with Latin names."""
     async with get_db() as db:
+        # id_enabled = FALSE species are pruned from identification (see
+        # scripts/prune_catalog.py + migration 0034); skip them so BioCLIP never
+        # returns the exotic-congener bloat.
         rows = await db.execute_fetchall(
             "SELECT id, latin_name FROM plant_species "
             "WHERE latin_name IS NOT NULL AND latin_name != '' "
+            "  AND id_enabled = TRUE "
             "ORDER BY id"
         )
     result = [(r["id"], r["latin_name"]) for r in rows]
