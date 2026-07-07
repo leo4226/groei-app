@@ -1273,6 +1273,22 @@ export const nl: Translations = {
       saved: 'Opgeslagen!',
     },
     errorService: 'Kon de herkenningsdienst niet bereiken.',
+    sightingsList: {
+      title: 'Veldwaarnemingen',
+      empty: 'Nog geen onkruidwaarnemingen',
+      emptyHint: 'Ga naar identificeren en log waarnemingen op de kaart',
+      mapLabel: 'Op kaart',
+      deleteConfirm: 'Waarneming verwijderen?',
+      detailTitle: 'Waarneming',
+      sightedOn: 'Gezien op',
+      location: 'Locatie',
+      removal: 'Verwijderen',
+      removalDifficulty: 'Moeilijkheidsgraad',
+      notes: 'Notities',
+      deleteSighting: 'Waarneming verwijderen',
+      noPhoto: 'Geen foto',
+      loading: 'Laden...',
+    },
   },
 
   help: {

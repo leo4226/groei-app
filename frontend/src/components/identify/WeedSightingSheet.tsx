@@ -8,6 +8,7 @@ import Glyph from '../ui/Glyph'
 interface Props {
   weedId: number
   weedName: string
+  capturedThumbnailUrl?: string | null
   preselectedMapId?: number
   preselectedMapSlug?: string
   onSaved: (mapSlug: string) => void
@@ -19,7 +20,7 @@ interface Props {
 // in localStorage; subsequent saves don't re-prompt.
 const PRIVACY_ACK_KEY = 'groei.identify.privacy_ack'
 
-export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselectedMapSlug, onSaved, onCancel }: Props) {
+export function WeedSightingSheet({ weedId, weedName, capturedThumbnailUrl, preselectedMapId, preselectedMapSlug, onSaved, onCancel }: Props) {
   const t = useT()
   const maps = useFloreren((s) => s.maps)
   const outdoorMaps = maps.filter((m) => m.map_type === 'outdoor')
@@ -63,6 +64,7 @@ export function WeedSightingSheet({ weedId, weedName, preselectedMapId, preselec
         map_x: pin.x,
         map_y: pin.y,
         sighted_at: new Date().toISOString(),
+        photo_data: capturedThumbnailUrl ?? undefined,
       })
       onSaved(selectedMapSlug)
     } catch {

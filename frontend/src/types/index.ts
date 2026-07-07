@@ -585,6 +585,7 @@ export type WeedSightingCreate = {
   map_y: number
   notes?: string
   sighted_at: string
+  photo_data?: string
 }
 
 export type WeedSightingOut = WeedSightingCreate & {
@@ -593,7 +594,22 @@ export type WeedSightingOut = WeedSightingCreate & {
   weed_slug: string
   latin_name: string
   removal_difficulty: string | null
+  photo_url: string | null
+  map_name?: string
   created_at: string
+}
+
+export type SightingDetailOut = WeedSightingOut & {
+  ecology_data: Record<string, unknown> | null
+  fun_fact_nl: string | null
+  fun_fact_en: string | null
+  removal_json: Record<string, unknown> | null
+  common_name_nl: string | null
+  common_name_en: string | null
+  family: string | null
+  flowering_months: number[]
+  native_status: string | null
+  pollinator_value: string | null
 }
 
 // ── Species ecology ──

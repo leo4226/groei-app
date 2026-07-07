@@ -593,6 +593,7 @@ class WeedSightingCreate(BaseModel):
     map_y: float
     notes: str | None = None
     sighted_at: str | None = None  # date string
+    photo_data: str | None = None  # base64 data URL
 
 
 class WeedSightingOut(BaseModel):
@@ -607,6 +608,7 @@ class WeedSightingOut(BaseModel):
     map_y: float
     notes: str | None = None
     sighted_at: str
+    photo_url: str | None = None
     created_at: datetime | None = None
 
 
