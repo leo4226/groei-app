@@ -34,6 +34,11 @@ router = APIRouter(prefix="/plants", tags=["plant-id"])
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
+# How many candidate species the result screen shows. Kept small so the ranked
+# choices don't get lost under the confidence / source / guidance blocks (#372).
+# PlantNet already capped at 3; this makes BioCLIP consistent.
+_MAX_CANDIDATES = 3
+
 # Confidence calibration thresholds (informed by scripts/eval_bioclip.py output).
 # Tuned 2026-05-24 from 126-photo iNat-only eval (see docs/plans/2026-05-24-bioclip-eval-baseline.txt).
 # Key insight from the eval: top-1 score alone barely discriminates correct from wrong
@@ -64,8 +69,22 @@ def _classify_confidence(top1: float, top2: float | None) -> str:
     return "low"
 
 
-_IMAGE_REF_BOOST = 1.0  # no multiplier — image-to-image is only used when
-                        # the text already found the species AND ≥2 refs back it up
+# Image-to-image cosine (the query photo vs a user-confirmed photo, both through
+# the SAME visual encoder) sits on a higher, different scale than image-to-text
+# cosine (~0.25–0.35). We therefore only trust a confirmed-photo match when it is
+# STRONG (>= _IMAGE_MATCH_MIN). Above the floor it can RESCUE a species the text
+# ranking missed entirely (union), not merely re-rank the text top-K; below the
+# floor the image signal is ignored, so identification degrades gracefully to
+# pure text and a weak/wrong confirmation can't hijack the result.
+#
+# _IMAGE_MATCH_MIN is the key tuning knob and is a CONSERVATIVE default set
+# WITHOUT a real-photo calibration run (see docs/plans/2026-07-07-bioclip-audit.md
+# §3.1/§6). Validate on the worker before relying on it: lower it if genuine
+# repeat photos of a confirmed plant fail to rescue; raise it if look-alikes get
+# rescued wrongly. Note: a rescued match's raw image cosine currently flows
+# straight into the displayed confidence, so it reads as e.g. "85%" beside text
+# candidates' "30%" — that display recalibration is tracked separately (audit §3.3).
+_IMAGE_MATCH_MIN = 0.80
 
 
 def _blend_scores(
@@ -77,29 +96,34 @@ def _blend_scores(
     """Combine text-based top-K matches with image-to-image similarity from
     user-confirmed embeddings, return new top-K.
 
-    Only species already in text_matches are considered (image-only species
-    are discarded), and only if the species has ≥2 user-confirmed refs.
-    Per-species score: combined = max(text_score, max_image_cosine * boost)
+    A confirmed-photo match is used only when it is strong (best ref cosine
+    >= _IMAGE_MATCH_MIN). Such a match can RESCUE a species missing from the
+    text top-K (union), not just re-rank the ones already present, and a single
+    confirmed ref is enough. Weak image matches are ignored, so the result never
+    drops below pure-text behaviour. Per-species score: max(text, strong_image).
     """
     text_score_map: dict[int, float] = {sid: s for sid, s in text_matches}
 
-    image_score_map: dict[int, float] = {}
+    # Best image-to-image cosine per species, kept only if it clears the floor.
+    # A single confirmed ref counts (ref_matrix has ≥1 row by construction).
+    strong_image: dict[int, float] = {}
     for sid, ref_matrix in refs_by_species.items():
-        # ref_matrix: shape (N, 512), each row is unit-norm
-        # require at least 2 confirmed refs before blending
-        if ref_matrix.shape[0] < 2:
+        if ref_matrix.shape[0] < 1:
             continue
-        cos = ref_matrix @ query_embedding  # shape (N,)
-        image_score_map[sid] = float(cos.max())
+        best = float((ref_matrix @ query_embedding).max())  # (N,512)@(512,) -> (N,)
+        if best >= _IMAGE_MATCH_MIN:
+            strong_image[sid] = best
 
-    combined: list[tuple[int, float]] = []
-    for sid in text_score_map:  # only species already in text top-K
-        t = text_score_map[sid]
-        i = image_score_map.get(sid, 0.0) * _IMAGE_REF_BOOST
-        combined.append((sid, max(t, i)))
+    combined: dict[int, float] = {}
+    # Text candidates, boosted only by a strong image match for the same species.
+    for sid, t in text_score_map.items():
+        combined[sid] = max(t, strong_image.get(sid, 0.0))
+    # Rescue: a strong image match for a species the text ranking never surfaced.
+    for sid, i in strong_image.items():
+        combined.setdefault(sid, i)
 
-    combined.sort(key=lambda x: x[1], reverse=True)
-    return combined[:top_k]
+    ranked = sorted(combined.items(), key=lambda x: x[1], reverse=True)
+    return ranked[:top_k]
 
 
 _USER_REFS_CACHE_TTL_S = 300  # 5 min
@@ -411,7 +435,7 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
             deduped.remove(seen[key])
             seen[key] = cand
             deduped.append(cand)
-    out = deduped
+    out = deduped[:_MAX_CANDIDATES]
 
     top1 = matches[0][1]
     top2 = matches[1][1] if len(matches) > 1 else None
@@ -476,9 +500,9 @@ async def identify_endpoint(
             source="plantnet",
         )
 
-    top3 = candidates[:3]
+    top_candidates = candidates[:_MAX_CANDIDATES]
     out: list[CandidateOut] = []
-    for c in top3:
+    for c in top_candidates:
         common_nl, common_en = _split_common_names(c.common_names, lang)
         species_id = await _attach_species_id(db, c.scientific_name)
         out.append(CandidateOut(
