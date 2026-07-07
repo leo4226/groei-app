@@ -5,7 +5,7 @@
  */
 export type GlyphName =
   | 'list' | 'leaf' | 'home' | 'alert'
-  | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down'
+  | 'edit' | 'trash' | 'check' | 'x' | 'chevron-up' | 'chevron-down' | 'chevron-right'
   | 'sun' | 'moon' | 'monitor'
   | 'tree' | 'pot' | 'sprout' | 'rock' | 'wrench' | 'sparkle'
   | 'search' | 'camera' | 'book' | 'arrow-left' | 'flask' | 'pin'
@@ -69,6 +69,7 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   'chevron-up': <path d="M6 15l6-6 6 6" />,
   'chevron-down': <path d="M6 9l6 6 6-6" />,
+  'chevron-right': <path d="M9 6l6 6-6 6" />,
   // tree — canopy + trunk
   tree: (
     <>

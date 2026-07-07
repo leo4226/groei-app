@@ -1273,6 +1273,22 @@ export const en: Translations = {
       saved: 'Saved!',
     },
     errorService: 'Could not reach the identification service.',
+    sightingsList: {
+      title: 'Field Journal',
+      empty: 'No weed sightings yet',
+      emptyHint: 'Go identify plants and log sightings on the map',
+      mapLabel: 'On map',
+      deleteConfirm: 'Delete this sighting?',
+      detailTitle: 'Sighting',
+      sightedOn: 'Seen on',
+      location: 'Location',
+      removal: 'Removal',
+      removalDifficulty: 'Difficulty',
+      notes: 'Notes',
+      deleteSighting: 'Delete sighting',
+      noPhoto: 'No photo',
+      loading: 'Loading...',
+    },
   },
 
   help: {

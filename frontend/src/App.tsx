@@ -36,6 +36,7 @@ const GameJoinPage = lazy(() => import('./pages/GameJoinPage'))
 const GameHostPage = lazy(() => import('./pages/GameHostPage'))
 const GamePlayerPage = lazy(() => import('./pages/GamePlayerPage'))
 const DiscoveryCard = lazy(() => import('./pages/DiscoveryCard'))
+const FieldJournalPage = lazy(() => import('./pages/FieldJournalPage'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -319,6 +320,14 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <SuspenseWrapper><LogboekPage /></SuspenseWrapper>
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/field-journal"
+                element={
+                  <RequireAuth>
+                    <SuspenseWrapper><FieldJournalPage /></SuspenseWrapper>
                   </RequireAuth>
                 }
               />
