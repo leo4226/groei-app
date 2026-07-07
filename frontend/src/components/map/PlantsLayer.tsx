@@ -6,7 +6,7 @@ import { canStartPlantDrag, resolveDisplayedDragPosition } from './plantDragPerm
 import { useT } from '../../context/LanguageContext'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import { PX_PER_CM } from '../../utils/gardenStructures'
-import { placeLabels, type LabelCandidate } from '../../utils/labelDeclutter'
+import { placeLabels, LABEL_BELOW_OFFSET, LABEL_ABOVE_OFFSET, type LabelCandidate } from '../../utils/labelDeclutter'
 
 interface Props {
   plants: MapPlant[]
@@ -18,6 +18,9 @@ interface Props {
   movePlantId?: number | null
   showLabels?: boolean
   showWarnings?: boolean
+  /** Current map zoom — drives semantic zoom (fixed-screen-size text + a
+   *  priority gate that reveals more names as you zoom in). */
+  zoom?: number
   onPlantTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
   heatmapCells?: HeatmapCell[]
@@ -26,8 +29,21 @@ interface Props {
 // Rough average glyph width as a fraction of font size for a 500-weight sans.
 const AVG_CHAR_WIDTH_RATIO = 0.55
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, showWarnings = true, onPlantTap, onPointerDown, heatmapCells }: Props) {
+// Below this zoom only priority ≤ 1 labels (selected + care, from #451) show —
+// a calm overview. At/above it, everything else is allowed to compete for space.
+const LABEL_DETAIL_ZOOM = 1.5
+
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, showWarnings = true, zoom = 1, onPlantTap, onPointerDown, heatmapCells }: Props) {
   const t = useT()
+
+  // Semantic zoom: text is held at a roughly constant on-screen size by
+  // shrinking its SVG-unit font as you zoom in (the viewBox shrinks by `zoom`,
+  // so `/zoom` cancels the magnification). Offsets scale the same way so the
+  // label keeps a constant screen gap from its icon. The declutter boxes below
+  // use these exact same values, so collision geometry matches what's drawn.
+  const effFont = PLANT_LABEL_FONT_SIZE / zoom
+  const effBelowOffset = LABEL_BELOW_OFFSET / zoom
+  const effAboveOffset = LABEL_ABOVE_OFFSET / zoom
 
   // When labels are on, decide which ones render and whether they sit below or
   // above their plant, so neighbours don't overlap into unreadable mush. The
@@ -35,7 +51,12 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
   // off, this stays empty and only the selected plant's contextual label shows.
   const labelPlacements = useMemo(() => {
     if (!showLabels) return new Map<number, 'below' | 'above'>()
-    const candidates: LabelCandidate[] = plants.map((plant) => {
+    // Priority gate: zoomed out we show only the meaningful labels; zoom in to
+    // reveal the rest. Because effective boxes also shrink with zoom, placeLabels
+    // then naturally fits more of the allowed ones.
+    const maxPriority = zoom < LABEL_DETAIL_ZOOM ? 1 : Infinity
+    const candidates: LabelCandidate[] = []
+    for (const plant of plants) {
       const pos = resolveDisplayedDragPosition(
         `plant-${plant.id}`, dragPositions, { x: plant.map_x, y: plant.map_y },
       )
@@ -51,19 +72,20 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
       // would need a current-month lookup, so it's skipped rather than guessed.)
       const needsCare = Boolean(plant.top_warning) || Boolean(plant.warnings?.length)
       const priority = isSel ? 0 : needsCare ? 1 : 2
-      return {
+      if (priority > maxPriority) continue
+      candidates.push({
         id: plant.id,
         cx: pos.x,
         centerY: pos.y,
         iconR,
-        width: Math.max(name.length * PLANT_LABEL_FONT_SIZE * AVG_CHAR_WIDTH_RATIO, PLANT_LABEL_FONT_SIZE * 2),
+        width: Math.max(name.length * effFont * AVG_CHAR_WIDTH_RATIO, effFont * 2),
         priority,
         forced: isSel,
-      }
-    })
+      })
+    }
     // Tight gap: only drop a label when neither below nor above is free.
-    return placeLabels(candidates, { font: PLANT_LABEL_FONT_SIZE, gap: 1 })
-  }, [plants, dragPositions, selectedId, showLabels, t.locale])
+    return placeLabels(candidates, { font: effFont, gap: 1, belowOffset: effBelowOffset, aboveOffset: effAboveOffset })
+  }, [plants, dragPositions, selectedId, showLabels, zoom, effFont, effBelowOffset, effAboveOffset, t.locale])
 
   return (
     <g>
@@ -86,6 +108,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             isSelected={isSelected}
             showLabel={labelPlacements.has(plant.id) || isSelected}
             labelPlacement={labelPlacements.get(plant.id) ?? 'below'}
+            labelFontSize={effFont}
             showWarnings={showWarnings}
             displayName={plantDisplayName(plant, t.locale)}
             onTap={onPlantTap}

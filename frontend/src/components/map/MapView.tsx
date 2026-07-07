@@ -529,6 +529,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             movePlantId={movePlantId}
             showLabels={showLabels}
             showWarnings={showWarnings}
+            zoom={zoom}
             onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
