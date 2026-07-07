@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 import type { MapInfo } from '../../types'
+import type { LabelMode } from './PlantsLayer'
 
 interface Props {
   map: MapInfo
   allMaps: MapInfo[]
-  showLabels: boolean
-  onToggleLabels: () => void
+  labelMode: LabelMode
+  onSetLabelMode: (mode: LabelMode) => void
   showWarnings: boolean
   onToggleWarnings: () => void
 }
 
-export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, showWarnings, onToggleWarnings }: Props) {
+const LABEL_MODES: LabelMode[] = ['off', 'smart', 'all']
+
+export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, showWarnings, onToggleWarnings }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -61,16 +64,27 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
               <div className="h-px bg-border mx-3 my-1" />
             </>
           )}
-          <button
-            onClick={() => { setOpen(false); onToggleLabels() }}
-            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
-          >
-            <Glyph name="edit" size={15} className="text-text-muted shrink-0" />
-            <span className={showLabels ? '' : 'text-text-muted'}>
-              {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
-            </span>
-            {showLabels && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
-          </button>
+          {/* Labels: 3-state segmented control (Off / Smart / All). One tap sets
+              any state directly; the menu stays open so the change is visible. */}
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Glyph name="edit" size={15} className="text-text-muted shrink-0" />
+              <span className="text-sm text-text">{t.mapPage.labelModeTitle}</span>
+            </div>
+            <div className="flex rounded-lg border border-border overflow-hidden" role="radiogroup" aria-label={t.mapPage.labelModeTitle}>
+              {LABEL_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  role="radio"
+                  aria-checked={labelMode === mode}
+                  onClick={() => onSetLabelMode(mode)}
+                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[40px] ${labelMode === mode ? 'bg-primary text-white' : 'text-text-muted hover:bg-bg/60'}`}
+                >
+                  {mode === 'off' ? t.mapPage.labelModeOff : mode === 'smart' ? t.mapPage.labelModeSmart : t.mapPage.labelModeAll}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={() => { setOpen(false); onToggleWarnings() }}
             className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"

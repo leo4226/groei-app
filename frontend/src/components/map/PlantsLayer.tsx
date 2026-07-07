@@ -8,6 +8,12 @@ import { plantDisplayName } from '../../utils/plantDisplayName'
 import { PX_PER_CM } from '../../utils/gardenStructures'
 import { placeLabels, LABEL_BELOW_OFFSET, LABEL_ABOVE_OFFSET, type LabelCandidate } from '../../utils/labelDeclutter'
 
+/** Label display mode (#454). 'off': no persistent labels (selected plant still
+ *  labels on tap). 'smart' (default): #451 priority + #453 zoom gate — only
+ *  meaningful names, more revealed as you zoom in. 'all': every label,
+ *  decluttered, with no zoom priority gate (but still fixed-screen-size text). */
+export type LabelMode = 'off' | 'smart' | 'all'
+
 interface Props {
   plants: MapPlant[]
   mapType: 'outdoor' | 'indoor'
@@ -16,7 +22,7 @@ interface Props {
   selectedId: string | null
   moveMode?: boolean
   movePlantId?: number | null
-  showLabels?: boolean
+  labelMode?: LabelMode
   showWarnings?: boolean
   /** Current map zoom — drives semantic zoom (fixed-screen-size text + a
    *  priority gate that reveals more names as you zoom in). */
@@ -33,8 +39,12 @@ const AVG_CHAR_WIDTH_RATIO = 0.55
 // a calm overview. At/above it, everything else is allowed to compete for space.
 const LABEL_DETAIL_ZOOM = 1.5
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, showLabels = true, showWarnings = true, zoom = 1, onPlantTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, zoom = 1, onPlantTap, onPointerDown, heatmapCells }: Props) {
   const t = useT()
+
+  // 'off' hides persistent labels entirely (selected plant still labels on tap);
+  // 'smart' and 'all' both show labels — they differ only in the priority gate.
+  const showLabels = labelMode !== 'off'
 
   // Semantic zoom: text is held at a roughly constant on-screen size by
   // shrinking its SVG-unit font as you zoom in (the viewBox shrinks by `zoom`,
@@ -51,10 +61,11 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
   // off, this stays empty and only the selected plant's contextual label shows.
   const labelPlacements = useMemo(() => {
     if (!showLabels) return new Map<number, 'below' | 'above'>()
-    // Priority gate: zoomed out we show only the meaningful labels; zoom in to
-    // reveal the rest. Because effective boxes also shrink with zoom, placeLabels
-    // then naturally fits more of the allowed ones.
-    const maxPriority = zoom < LABEL_DETAIL_ZOOM ? 1 : Infinity
+    // Priority gate (mode-dependent): 'all' shows every label (no gate), so all
+    // compete for space; 'smart' gates by zoom — zoomed out shows only meaningful
+    // labels, zoom in reveals the rest. Because effective boxes also shrink with
+    // zoom, placeLabels then naturally fits more of the allowed ones.
+    const maxPriority = labelMode === 'all' ? Infinity : (zoom < LABEL_DETAIL_ZOOM ? 1 : Infinity)
     const candidates: LabelCandidate[] = []
     for (const plant of plants) {
       const pos = resolveDisplayedDragPosition(
@@ -85,7 +96,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
     }
     // Tight gap: only drop a label when neither below nor above is free.
     return placeLabels(candidates, { font: effFont, gap: 1, belowOffset: effBelowOffset, aboveOffset: effAboveOffset })
-  }, [plants, dragPositions, selectedId, showLabels, zoom, effFont, effBelowOffset, effAboveOffset, t.locale])
+  }, [plants, dragPositions, selectedId, labelMode, showLabels, zoom, effFont, effBelowOffset, effAboveOffset, t.locale])
 
   return (
     <g>

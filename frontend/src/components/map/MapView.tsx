@@ -11,7 +11,7 @@ import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
 import { useMapInteraction } from '../../hooks/useMapInteraction'
 import { resolveDisplayedDragPosition, shouldStartMapPan } from './plantDragPermissions'
 import ObjectsLayer from './ObjectsLayer'
-import PlantsLayer from './PlantsLayer'
+import PlantsLayer, { type LabelMode } from './PlantsLayer'
 import SecondaryMarkersLayer from './SecondaryMarkersLayer'
 import PlantResizeOverlay from './PlantResizeOverlay'
 import ShadowLayer from './ShadowLayer'
@@ -36,7 +36,7 @@ interface Props {
   onOpenDetails?: (type: 'plant' | 'object', id: number) => void
   onRemoveItem?: (type: 'plant' | 'object', id: number) => void
   onFixedPlantTap?: (plant: FixedPlant) => void
-  showLabels?: boolean
+  labelMode?: LabelMode
   showWarnings?: boolean
   sunModeActive?: boolean
   shadows?: ShadowPolygon[]
@@ -69,8 +69,11 @@ interface Props {
 // zoom. A tap this close to a plant selects it; a tap farther out deselects.
 const TAP_TARGET_PX = 44
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
+  // Object labels (containers/pots) follow the same on/off split as plant
+  // labels: hidden only in 'off' mode. The smart/all distinction is plant-only.
+  const showLabels = labelMode !== 'off'
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
   const isLandscapeMobile = useLandscapeMobile()
@@ -527,7 +530,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             selectedId={selection.selectedId}
             moveMode={moveMode}
             movePlantId={movePlantId}
-            showLabels={showLabels}
+            labelMode={labelMode}
             showWarnings={showWarnings}
             zoom={zoom}
             onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
