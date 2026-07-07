@@ -16,9 +16,10 @@ from zoneinfo import ZoneInfo
 import pytest
 
 AMS = ZoneInfo("Europe/Amsterdam")
+DIGEST_NOW = datetime(2026, 7, 6, 8, 30, tzinfo=AMS)
 
 
-async def _seed_overdue_water_plant(db):
+async def _seed_overdue_water_plant(db, *, today: date | None = None):
     """Outdoor plant, water schedule 5 days overdue.
 
     care_profile marks water active but deliberately has NO interval_days —
@@ -31,7 +32,8 @@ async def _seed_overdue_water_plant(db):
         """INSERT INTO plants (id, name, is_active, household_id, map_id, care_profile)
            VALUES (30, 'Lavendel', 1, 1, 5, '{"water": {"active": true}}')"""
     )
-    overdue = (date.today() - timedelta(days=5)).isoformat()
+    today = today or date.today()
+    overdue = (today - timedelta(days=5)).isoformat()
     await db.execute(
         "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
         "VALUES (30, 'water', 7, ?, 1)",
@@ -111,7 +113,7 @@ def sent_emails(monkeypatch):
 @pytest.fixture
 def at_digest_hour(monkeypatch):
     import services.digest as digest
-    monkeypatch.setattr(digest, "_now", lambda: datetime(2026, 7, 6, 8, 30, tzinfo=AMS))
+    monkeypatch.setattr(digest, "_now", lambda: DIGEST_NOW)
 
 
 async def test_digest_email_respects_user_language(
@@ -120,7 +122,7 @@ async def test_digest_email_respects_user_language(
     """An English profile gets the EN template — the digest used to be
     hardcoded Dutch because build_digest_email was called without `lang`."""
     monkeypatch.setenv("DIGEST_CRON_SECRET", "s")
-    await _seed_overdue_water_plant(seeded_db)
+    await _seed_overdue_water_plant(seeded_db, today=DIGEST_NOW.date())
     # The signup flow creates a users row mirroring the account (same name +
     # household); that profile carries the language preference.
     await seeded_db.execute(
@@ -139,11 +141,36 @@ async def test_digest_email_respects_user_language(
     assert "Here are today's care tasks" in sent_emails[0]["html"]
 
 
+async def test_digest_language_lookup_does_not_duplicate_matching_profiles(
+    client, seeded_db, auth_header, sent_emails, at_digest_hour, monkeypatch
+):
+    """The account→profile language bridge must not multiply digest rows if
+    legacy/manual data contains two same-name profiles in one household."""
+    monkeypatch.setenv("DIGEST_CRON_SECRET", "s")
+    await _seed_overdue_water_plant(seeded_db, today=DIGEST_NOW.date())
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, language) VALUES (9, 'Test', 1, 'en')"
+    )
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, language) VALUES (10, 'Test', 1, 'nl')"
+    )
+    await seeded_db.execute(
+        "INSERT INTO notification_preferences (account_id, digest_enabled, digest_time) "
+        "VALUES (1, 1, '08:00')"
+    )
+    await seeded_db.commit()
+
+    resp = await client.post("/api/internal/send-digests", headers={"X-Digest-Secret": "s"})
+    assert resp.status_code == 200
+    assert len(sent_emails) == 1
+    assert sent_emails[0]["subject"] == "Your plants need attention today 🌿"
+
+
 async def test_digest_email_defaults_to_dutch_without_profile(
     client, seeded_db, auth_header, sent_emails, at_digest_hour, monkeypatch
 ):
     monkeypatch.setenv("DIGEST_CRON_SECRET", "s")
-    await _seed_overdue_water_plant(seeded_db)
+    await _seed_overdue_water_plant(seeded_db, today=DIGEST_NOW.date())
     await seeded_db.execute(
         "INSERT INTO notification_preferences (account_id, digest_enabled, digest_time) "
         "VALUES (1, 1, '08:00')"

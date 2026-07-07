@@ -244,17 +244,22 @@ async def send_due_digests(db) -> dict:
 
     # Language comes from the user profile that signup creates alongside each
     # account (same name, same household — see routers/auth.py). Accounts have
-    # no language column of their own (yet); LEFT JOIN so a missing profile
-    # still gets the NL default rather than dropping the digest.
+    # no language column of their own (yet); the scalar subquery keeps one
+    # digest row per account, with NULL falling back to NL when no profile exists.
     prefs = await db.execute_fetchall(
         """
         SELECT np.account_id, np.digest_time, np.digest_enabled,
                np.last_digest_sent_on, a.email, a.name, a.household_id,
-               u.language AS user_language
+               (
+                 SELECT u.language
+                 FROM users u
+                 WHERE u.household_id = a.household_id
+                   AND LOWER(u.name) = LOWER(a.name)
+                 ORDER BY u.id
+                 LIMIT 1
+               ) AS user_language
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
-        LEFT JOIN users u
-          ON u.household_id = a.household_id AND LOWER(u.name) = LOWER(a.name)
         WHERE np.digest_enabled
         """
     )
