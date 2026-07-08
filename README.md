@@ -41,6 +41,12 @@ The thing that makes it more than a checklist: it knows **where** your plants ac
 
 <table>
   <tr>
+    <td colspan="2" valign="top">
+      <img src="docs/screenshots/map-editor.png" alt="Layout editor — draw your garden to scale">
+      <p align="center"><em>Draw your garden to scale — zones, structures, fences, and the shadow casters that drive the sun simulation.</em></p>
+    </td>
+  </tr>
+  <tr>
     <td width="50%" valign="top">
       <img src="docs/screenshots/map-sun-heatmap.png" alt="Seasonal sun heatmap">
       <p align="center"><em>Seasonal sun heatmap — full sun → shade, month by month.</em></p>
