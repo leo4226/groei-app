@@ -3,6 +3,7 @@ import base64
 import json
 import time
 from database import db_dep
+from auth import get_current_account
 from models import WeedSightingCreate, WeedSightingOut
 from services.storage import build_storage_from_env, Storage
 
@@ -87,17 +88,25 @@ def _decode_photo_data(photo_data: str) -> bytes | None:
 
 
 @router.get("/weed-sightings", response_model=list[WeedSightingOut])
-async def list_sightings(map_id: int | None = Query(None), db=Depends(db_dep)):
+async def list_sightings(map_id: int | None = Query(None), db=Depends(db_dep), account=Depends(get_current_account)):
+    # Sightings belong to a map — scope to the caller's household via the map join.
+    scope = SIGHTING_JOIN + " JOIN maps m ON ws.map_id = m.id"
     if map_id is not None:
-        cursor = await db.execute(SIGHTING_SELECT + SIGHTING_JOIN + " WHERE ws.map_id = ? ORDER BY ws.created_at DESC", (map_id,))
+        cursor = await db.execute(
+            SIGHTING_SELECT + scope + " WHERE m.household_id = ? AND ws.map_id = ? ORDER BY ws.created_at DESC",
+            (account["household_id"], map_id),
+        )
     else:
-        cursor = await db.execute(SIGHTING_SELECT + SIGHTING_JOIN + " ORDER BY ws.created_at DESC")
+        cursor = await db.execute(
+            SIGHTING_SELECT + scope + " WHERE m.household_id = ? ORDER BY ws.created_at DESC",
+            (account["household_id"],),
+        )
     rows = await cursor.fetchall()
     return [_build_sighting(row) for row in rows]
 
 
 @router.get("/weed-sightings/{sighting_id}", response_model=SightingDetailOut)
-async def get_sighting(sighting_id: int, db=Depends(db_dep)):
+async def get_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
     cursor = await db.execute("""
         SELECT ws.id, ws.weed_id, wsp.common_name_nl as weed_name,
                wsp.slug as weed_slug, wsp.latin_name,
@@ -109,8 +118,9 @@ async def get_sighting(sighting_id: int, db=Depends(db_dep)):
                ws.photo_url, ws.created_at
         FROM weed_sightings ws
         JOIN weed_species wsp ON ws.weed_id = wsp.id
-        WHERE ws.id = ?
-    """, (sighting_id,))
+        JOIN maps m ON ws.map_id = m.id
+        WHERE ws.id = ? AND m.household_id = ?
+    """, (sighting_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Sighting not found")
@@ -151,7 +161,14 @@ async def get_sighting(sighting_id: int, db=Depends(db_dep)):
 
 
 @router.post("/weed-sightings", status_code=201, response_model=WeedSightingOut)
-async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep)):
+async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=Depends(get_current_account)):
+    # Only allow attaching a sighting to a map the caller owns.
+    map_rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+        (body.map_id, account["household_id"]),
+    )
+    if not map_rows:
+        raise HTTPException(status_code=404, detail="Map not found")
     photo_url = None
     if body.photo_data:
         storage = _get_storage()
@@ -176,8 +193,13 @@ async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep)):
 
 
 @router.delete("/weed-sightings/{sighting_id}", status_code=204)
-async def delete_sighting(sighting_id: int, db=Depends(db_dep)):
-    cursor = await db.execute("SELECT photo_url FROM weed_sightings WHERE id = ?", (sighting_id,))
+async def delete_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+    cursor = await db.execute(
+        """SELECT ws.photo_url FROM weed_sightings ws
+           JOIN maps m ON ws.map_id = m.id
+           WHERE ws.id = ? AND m.household_id = ?""",
+        (sighting_id, account["household_id"]),
+    )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Sighting not found")

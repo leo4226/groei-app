@@ -40,8 +40,8 @@ async def list_maps(account = Depends(get_current_account), db = Depends(db_dep)
 @router.get("/maps/{slug}", response_model=MapDetailOut)
 async def get_map(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     row = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE slug = ?",
-        (slug,),
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
     )
     if not row:
         raise HTTPException(404, "Map not found")
@@ -102,7 +102,7 @@ async def get_plant_suggestions(
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
 async def get_map_plants(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     map_row = await db.execute_fetchall(
-        "SELECT id, map_type FROM maps WHERE slug = ?", (slug,)
+        "SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"])
     )
     if not map_row:
         raise HTTPException(404, "Map not found")
@@ -134,7 +134,7 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
 
 @router.get("/maps/{slug}/items", response_model=MapItemsOut)
 async def get_map_items(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
-    map_row = await db.execute_fetchall("SELECT id, map_type FROM maps WHERE slug = ?", (slug,))
+    map_row = await db.execute_fetchall("SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"]))
     if not map_row:
         raise HTTPException(404, "Map not found")
     map_id = map_row[0]["id"]
@@ -213,8 +213,8 @@ def _slugify(name: str) -> str:
 @router.get("/maps/by-id/{map_id}", response_model=MapOut)
 async def get_map_by_id(map_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
-        (map_id,),
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ? AND household_id = ?",
+        (map_id, account["household_id"]),
     )
     if not rows:
         raise HTTPException(404, "Map not found")
@@ -261,7 +261,7 @@ async def create_map(data: MapCreate, account = Depends(get_current_account), db
 
 @router.put("/maps/{map_id}", response_model=MapOut)
 async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current_account), db = Depends(db_dep)):
-    existing = await db.execute_fetchall("SELECT id, slug FROM maps WHERE id = ?", (map_id,))
+    existing = await db.execute_fetchall("SELECT id, slug FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
     if not existing:
         raise HTTPException(404, "Map not found")
     existing_row = dict(existing[0])
@@ -366,7 +366,7 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
 
 @router.delete("/maps/{map_id}")
 async def delete_map(map_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
-    existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = $1", (map_id,))
+    existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
     if not existing:
         raise HTTPException(404, "Map not found")
 

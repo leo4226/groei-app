@@ -1,22 +1,56 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db_dep
+from auth import get_current_account
 from models import ObjectOut, ObjectCreate, ObjectUpdate, ObjectPositionUpdate, MapObjectOut, MapPlantOut
 
 router = APIRouter(tags=["objects"])
 
 
-@router.get("/objects", response_model=list[ObjectOut])
-async def list_objects(db = Depends(db_dep)):
+async def _assert_owned_map(db, map_id: int, household_id: int) -> None:
+    """Raise 404 unless the map belongs to the caller's household."""
     rows = await db.execute_fetchall(
-        "SELECT * FROM objects WHERE is_active = 1 ORDER BY name"
+        "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+        (map_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+
+
+async def _assert_owned_object(db, object_id: int, household_id: int) -> None:
+    """Raise 404 unless the object sits on a map in the caller's household.
+
+    Objects carry no household_id — tenancy is enforced via their parent map,
+    so every by-id object endpoint must join through maps.
+    """
+    rows = await db.execute_fetchall(
+        """SELECT o.id FROM objects o
+           JOIN maps m ON o.map_id = m.id
+           WHERE o.id = ? AND m.household_id = ?""",
+        (object_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Object not found")
+
+
+@router.get("/objects", response_model=list[ObjectOut])
+async def list_objects(db = Depends(db_dep), account = Depends(get_current_account)):
+    rows = await db.execute_fetchall(
+        """SELECT o.* FROM objects o
+           JOIN maps m ON o.map_id = m.id
+           WHERE o.is_active = 1 AND m.household_id = ?
+           ORDER BY o.name""",
+        (account["household_id"],),
     )
     return rows
 
 
 @router.get("/objects/{object_id}", response_model=MapObjectOut)
-async def get_object(object_id: int, db = Depends(db_dep)):
+async def get_object(object_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
-        "SELECT * FROM objects WHERE id = ? AND is_active = 1", (object_id,)
+        """SELECT o.* FROM objects o
+           JOIN maps m ON o.map_id = m.id
+           WHERE o.id = ? AND o.is_active = 1 AND m.household_id = ?""",
+        (object_id, account["household_id"]),
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Object not found")
@@ -69,8 +103,9 @@ async def _get_contained_plants(db, object_id: int) -> list[dict]:
 
 
 @router.post("/objects", response_model=ObjectOut)
-async def create_object(data: ObjectCreate, db = Depends(db_dep)):
-    await db.execute(
+async def create_object(data: ObjectCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_map(db, data.map_id, account["household_id"])
+    cursor = await db.execute(
         """INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm,
            material, color, map_id, map_x, map_y, rotation, notes,
            category, label, preset)
@@ -80,14 +115,16 @@ async def create_object(data: ObjectCreate, db = Depends(db_dep)):
          data.map_id, data.map_x, data.map_y, data.rotation, data.notes,
          data.category, data.label, data.preset),
     )
-    object_id = db.lastrowid
+    object_id = cursor.lastrowid
+    await db.commit()
 
     rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
     return rows[0]
 
 
 @router.put("/objects/{object_id}", response_model=ObjectOut)
-async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep)):
+async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_object(db, object_id, account["household_id"])
     updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -99,6 +136,7 @@ async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep)
         f"UPDATE objects SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1",
         values,
     )
+    await db.commit()
 
     rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
     if not rows:
@@ -107,10 +145,8 @@ async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep)
 
 
 @router.put("/objects/{object_id}/position", response_model=ObjectOut)
-async def update_object_position(object_id: int, data: ObjectPositionUpdate, db = Depends(db_dep)):
-    rows = await db.execute_fetchall("SELECT id FROM objects WHERE id = ? AND is_active = 1", (object_id,))
-    if not rows:
-        raise HTTPException(status_code=404, detail="Object not found")
+async def update_object_position(object_id: int, data: ObjectPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_object(db, object_id, account["household_id"])
 
     if data.rotation is not None:
         await db.execute(
@@ -122,13 +158,15 @@ async def update_object_position(object_id: int, data: ObjectPositionUpdate, db 
             "UPDATE objects SET map_x = ?, map_y = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (data.map_x, data.map_y, object_id),
         )
+    await db.commit()
 
     rows = await db.execute_fetchall("SELECT * FROM objects WHERE id = ?", (object_id,))
     return rows[0]
 
 
 @router.delete("/objects/{object_id}")
-async def archive_object(object_id: int, db = Depends(db_dep)):
+async def archive_object(object_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_object(db, object_id, account["household_id"])
     # Release any contained plants
     await db.execute(
         "UPDATE plants SET container_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE container_id = ?",
@@ -138,11 +176,13 @@ async def archive_object(object_id: int, db = Depends(db_dep)):
         "UPDATE objects SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (object_id,),
     )
+    await db.commit()
     return {"ok": True}
 
 
 @router.patch("/objects/{object_id}/restore")
-async def restore_object(object_id: int, db = Depends(db_dep)):
+async def restore_object(object_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_object(db, object_id, account["household_id"])
     await db.execute(
         "UPDATE objects SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (object_id,),
