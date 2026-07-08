@@ -630,6 +630,7 @@ export type PlantRecommendation = {
   flowering_months: number[] | null
   gap_months_covered: number[]
   reason: string
+  reason_en?: string | null
   caveat: string | null
 }
 

@@ -82,6 +82,7 @@ class PlantRecommendation:
     pollinator_value: int | None = None
     flowering_months: list[int] | None = None
     english_name: str | None = None
+    reason_en: str | None = None
     caveat: str | None = None           # filled by Tier 2 LLM enrichment
 
 
@@ -111,21 +112,26 @@ def template_reason(
     pollinator_value: int | None,
     gap_months_covered: list[int],
     month_names: list[str] = _MONTH_NL_SHORT,
+    lang: str = "nl",
 ) -> str:
     """Generate a short descriptive reason string from ecology facts.
     No LLM — fully deterministic. Returns "" when nothing useful to say."""
     parts: list[str] = []
+    en = (lang == "en")
     if is_native:
-        parts.append("Inheems in Nederland")
+        parts.append("Native to Netherlands" if en else "Inheems in Nederland")
     if (pollinator_value or 0) >= 3:
-        parts.append("top bestuiversplant")
+        parts.append("top pollinator plant" if en else "top bestuiversplant")
     elif (pollinator_value or 0) >= 2:
-        parts.append("goed voor bijen en vlinders")
+        parts.append("good for bees and butterflies" if en else "goed voor bijen en vlinders")
     elif (pollinator_value or 0) == 1:
-        parts.append("enige waarde voor bestuivers")
+        parts.append("some pollinator value" if en else "enige waarde voor bestuivers")
     if gap_months_covered:
         month_str = ", ".join(month_names[m - 1] for m in gap_months_covered[:4])
-        parts.append(f"bloeit in {month_str} (vult je tuinkalender in)")
+        if en:
+            parts.append(f"blooms in {month_str} (fills your garden calendar)")
+        else:
+            parts.append(f"bloeit in {month_str} (vult je tuinkalender in)")
     return " · ".join(parts)
 
 
@@ -241,6 +247,7 @@ async def recommend_for_spot(
             flowering_months=flowering or None,
             gap_months_covered=gap_covered,
             reason=template_reason(row["native_to_nl"], row["pollinator_value"], gap_covered),
+            reason_en=template_reason(row["native_to_nl"], row["pollinator_value"], gap_covered, lang="en"),
         ))
 
     # Sort by composite score
@@ -293,6 +300,7 @@ async def recommend_for_garden(
             flowering_months=flowering or None,
             gap_months_covered=gap_covered,
             reason=template_reason(row["native_to_nl"], row["pollinator_value"], gap_covered),
+            reason_en=template_reason(row["native_to_nl"], row["pollinator_value"], gap_covered, lang="en"),
         ))
 
     candidates.sort(

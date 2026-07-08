@@ -233,7 +233,9 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                       </div>
                     </div>
                     {s.reason && (
-                      <p className="text-xs text-text-muted leading-relaxed">{s.reason}</p>
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        {t.locale.startsWith('en') ? ((s as any).reason_en || s.reason) : s.reason}
+                      </p>
                     )}
                   </div>
                 )
