@@ -88,8 +88,8 @@ async def field_observation_db(seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_list_field_observations_uses_existing_catalog_schema(client, field_observation_db):
-    res = await client.get("/api/weed-sightings")
+async def test_list_field_observations_uses_existing_catalog_schema(client, field_observation_db, auth_header):
+    res = await client.get("/api/weed-sightings", headers=auth_header)
 
     assert res.status_code == 200
     body = res.json()
@@ -113,8 +113,8 @@ async def test_list_field_observations_uses_existing_catalog_schema(client, fiel
 
 
 @pytest.mark.asyncio
-async def test_detail_field_observation_returns_photo_and_field_guide_data(client, field_observation_db):
-    res = await client.get("/api/weed-sightings/11")
+async def test_detail_field_observation_returns_photo_and_field_guide_data(client, field_observation_db, auth_header):
+    res = await client.get("/api/weed-sightings/11", headers=auth_header)
 
     assert res.status_code == 200
     body = res.json()

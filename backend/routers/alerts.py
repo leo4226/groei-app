@@ -4,6 +4,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, HTTPException, Depends
 
 from database import db_dep
+from auth import get_current_account
 from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.alert_service import compute_alerts, _SEVERITY_ORDER
@@ -12,13 +13,13 @@ router = APIRouter(tags=["alerts"])
 
 
 @router.get("/plants/{plant_id}/alerts")
-async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
+async def get_plant_alerts(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
         """SELECT p.care_thresholds, p.container_id, m.map_type
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
-           WHERE p.id = ? AND p.is_active = 1""",
-        (plant_id,),
+           WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
+        (plant_id, account["household_id"]),
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -37,9 +38,10 @@ async def get_plant_alerts(plant_id: int, db = Depends(db_dep)):
 
 
 @router.get("/alerts/summary")
-async def get_alerts_summary(db = Depends(db_dep)):
+async def get_alerts_summary(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
-        "SELECT id, care_thresholds FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1"
+        "SELECT id, care_thresholds FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1 AND household_id = ?",
+        (account["household_id"],),
     )
 
     if not rows:

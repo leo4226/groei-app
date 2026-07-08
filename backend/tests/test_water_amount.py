@@ -42,8 +42,8 @@ async def test_get_latest_water_amount(client, seeded_db, auth_header):
         headers=auth_header,
     )
     assert resp.status_code == 200, resp.text
-    # GET does NOT require auth
-    resp = await client.get(f"{BASE}/garden/water-log/latest")
+    # GET now requires auth (garden endpoints are no longer anonymous)
+    resp = await client.get(f"{BASE}/garden/water-log/latest", headers=auth_header)
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "water_amount" in data

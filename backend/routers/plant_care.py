@@ -76,7 +76,7 @@ class GrowHereRequest(BaseModel):
 
 
 @router.post("/garden/grow-here")
-async def grow_here(req: GrowHereRequest):
+async def grow_here(req: GrowHereRequest, account = Depends(get_current_account)):
     if not LLM_API_KEY:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
@@ -208,7 +208,7 @@ async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), accoun
 
 
 @router.get("/garden/water-log/latest")
-async def latest_garden_watering(db = Depends(db_dep)):
+async def latest_garden_watering(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
         "SELECT watered_at, water_amount FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
     )
@@ -219,7 +219,7 @@ async def latest_garden_watering(db = Depends(db_dep)):
 
 
 @router.get("/garden/water-status")
-async def get_garden_water_status(db = Depends(db_dep)):
+async def get_garden_water_status(db = Depends(db_dep), account = Depends(get_current_account)):
     """Garden-wide water status from 14-day Amsterdam rainfall vs. seasonal ET budget."""
     rain         = await get_rain_data(db=db)
     last_watered = await get_last_garden_watered()
@@ -233,7 +233,7 @@ async def get_garden_water_status(db = Depends(db_dep)):
 
 
 @router.delete("/garden/water-log/latest")
-async def delete_latest_garden_watering(db = Depends(db_dep)):
+async def delete_latest_garden_watering(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
         "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
     )
@@ -251,7 +251,7 @@ class FertilizeLogCreate(BaseModel):
 
 
 @router.post("/garden/fertilize-log")
-async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep)):
+async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     fertilized_at = body.fertilized_at or date.today()
     updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by)
     await db.commit()
@@ -259,7 +259,7 @@ async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep))
 
 
 @router.get("/garden/fertilize-status")
-async def get_garden_fertilize_status(db = Depends(db_dep)):
+async def get_garden_fertilize_status(db = Depends(db_dep), account = Depends(get_current_account)):
     """Return garden-wide fertilize status and count of pending schedules."""
     last = await get_last_garden_fertilized()
     pending = await db.execute_fetchall(
@@ -275,7 +275,7 @@ async def get_garden_fertilize_status(db = Depends(db_dep)):
 
 
 @router.delete("/garden/fertilize-log/latest")
-async def delete_latest_garden_fertilizing(db = Depends(db_dep)):
+async def delete_latest_garden_fertilizing(db = Depends(db_dep), account = Depends(get_current_account)):
     rows = await db.execute_fetchall(
         "SELECT id FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
     )
