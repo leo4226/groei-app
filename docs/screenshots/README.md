@@ -1,16 +1,16 @@
 # Screenshots
 
-Images referenced by the root `README.md`. Drop PNGs (or JPGs) here with these
-exact names and they'll appear automatically:
+Images referenced by the root `README.md`. Add PNGs with these **exact names**
+and they'll appear automatically:
 
-| File | What to capture | Used in README |
+| File | What it shows | Where in the README |
 |---|---|---|
-| `garden-map.png` | The garden map with the **sun / shadow overlay** on — the showpiece hero image. | Hero (top) — **required** |
-| `dashboard.png` | The daily-care dashboard (overdue / due-today / recent log). | Features — optional |
-| `editor.png` | The layout editor mid-draw (a zone or room being placed). | Features — optional |
-| `plant-detail.png` | A single plant's detail view. | Features — optional |
+| `map-sun-live.png` | Garden map in **live sun** mode (plants placed, real-time sun/shadows). | Hero (top) |
+| `map-sun-heatmap.png` | Garden map with the **sun heatmap** overlay (full sun → shade). | "A look inside" gallery |
+| `biodiversity.png` | The **biodiversity** panel (score, natives, pollinator months, suggestions). | "A look inside" gallery |
+| `plants.png` | The **plant list** / collection view. | "A look inside" gallery |
+| `calendar.png` | The **care calendar** (month view + agenda). | "A look inside" gallery |
 
 Tips:
-- A landscape aspect ratio (roughly 16:10) looks best for the hero.
-- Keep files reasonably small (< ~500 KB each); compress before committing.
-- To enable the optional shots, uncomment their lines in `README.md`.
+- Landscape (~16:10) works best for the two map shots; the biodiversity panel is naturally tall — that's fine.
+- Keep each file reasonably small (< ~500 KB); compress before committing.

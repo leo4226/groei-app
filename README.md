@@ -11,9 +11,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white)
 ![Postgres](https://img.shields.io/badge/Postgres-Neon-336791?logo=postgresql&logoColor=white)
 
-<!-- Screenshot: the garden map with the sun/shadow overlay — the showpiece.
-     Drop the image at docs/screenshots/garden-map.png (see docs/screenshots/README.md). -->
-![Garden map with sun overlay](docs/screenshots/garden-map.png)
+![Floreren garden map with live sun and shadows](docs/screenshots/map-sun-live.png)
 
 </div>
 
@@ -39,15 +37,30 @@ The thing that makes it more than a checklist: it knows **where** your plants ac
 - 🐝 **Field observations** — log wild plant/weed sightings on the map.
 - 👨‍👩‍👧 **Households** — JWT auth, invite codes, multiple members per garden.
 
-<div align="center">
+## 📸 A look inside
 
-<!-- Optional secondary screenshots — add the files and uncomment.
-![Daily care dashboard](docs/screenshots/dashboard.png)
-![Layout editor](docs/screenshots/editor.png)
-![Plant detail](docs/screenshots/plant-detail.png)
--->
-
-</div>
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/map-sun-heatmap.png" alt="Seasonal sun heatmap">
+      <p align="center"><em>Seasonal sun heatmap — full sun → shade, month by month.</em></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/biodiversity.png" alt="Garden biodiversity score">
+      <p align="center"><em>A per-garden biodiversity score, with native &amp; pollinator insight.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/plants.png" alt="Plant collection">
+      <p align="center"><em>Your plant collection — filter by location, type, and form.</em></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/calendar.png" alt="Care calendar">
+      <p align="center"><em>A care calendar: what each day asks of your garden.</em></p>
+    </td>
+  </tr>
+</table>
 
 ## 🧱 Tech stack
 
