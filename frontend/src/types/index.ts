@@ -621,6 +621,7 @@ export type SightingDetailOut = WeedSightingOut & {
 export type PlantRecommendation = {
   species_id: number
   dutch_name: string
+  english_name?: string | null
   latin_name: string
   sun_preference: string | null
   sun_fit: 'perfect' | 'acceptable' | 'marginal' | 'tolerated'

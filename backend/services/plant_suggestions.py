@@ -74,13 +74,14 @@ class PlantRecommendation:
     species_id: int
     dutch_name: str
     latin_name: str
-    sun_preference: str | None
     sun_fit: str                        # 'perfect'|'acceptable'|'marginal'|'tolerated'
-    is_native: bool | None
-    pollinator_value: int | None
-    flowering_months: list[int] | None
     gap_months_covered: list[int]
     reason: str                         # template text — may be replaced by LLM (Tier 2)
+    sun_preference: str | None = None
+    is_native: bool | None = None
+    pollinator_value: int | None = None
+    flowering_months: list[int] | None = None
+    english_name: str | None = None
     caveat: str | None = None           # filled by Tier 2 LLM enrichment
 
 
@@ -158,7 +159,7 @@ async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
         exclude_clause = ""
         params = ()
     return await db.execute_fetchall(
-        f"""SELECT id, common_name_nl, latin_name, sun_preference,
+        f"""SELECT id, common_name_nl, common_name_en, latin_name, sun_preference,
                    native_to_nl, pollinator_value, flowering_months
             FROM plant_species
             WHERE ecology_enriched_at IS NOT NULL
@@ -231,6 +232,7 @@ async def recommend_for_spot(
         candidates.append(PlantRecommendation(
             species_id=row["id"],
             dutch_name=row["common_name_nl"] or row["latin_name"],
+            english_name=row.get("common_name_en") or None,
             latin_name=row["latin_name"],
             sun_preference=sp,
             sun_fit=fit,
@@ -282,6 +284,7 @@ async def recommend_for_garden(
         candidates.append(PlantRecommendation(
             species_id=row["id"],
             dutch_name=row["common_name_nl"] or row["latin_name"],
+            english_name=row.get("common_name_en") or None,
             latin_name=row["latin_name"],
             sun_preference=row["sun_preference"],
             sun_fit="acceptable",       # no spot context for garden-level
