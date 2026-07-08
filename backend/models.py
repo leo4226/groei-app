@@ -228,7 +228,9 @@ class PlantFactOut(BaseModel):
     plant_name: str
     icon_key: str | None = None
     fact_nl: str
-    species_name: str | None = None
+    fact_en: str = ""
+    species_name_nl: str | None = None
+    species_name_en: str | None = None
 
 
 class DashboardV2Response(BaseModel):

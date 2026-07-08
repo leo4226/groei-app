@@ -429,7 +429,9 @@ export interface PlantFactOut {
   plant_name: string
   icon_key: string | null
   fact_nl: string
-  species_name: string | null
+  fact_en: string
+  species_name_nl: string | null
+  species_name_en: string | null
 }
 
 export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: number; defaultOutdoor: number }> = {

@@ -186,12 +186,15 @@ async def list_calendar_events(
 
         if r.get("is_ephemeral"):
             # One-shot — only show if in range (already guaranteed by query)
+            plant_info = plant_map.get(pid, {})
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
                 type=ct,
                 plant_id=pid,
                 plant_name=r["plant_name"],
+                species_common_name_nl=plant_info.get("species_common_name_nl"),
+                species_common_name_en=plant_info.get("species_common_name_en"),
                 plant_icon_variant=r["plant_icon_variant"],
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
@@ -208,6 +211,7 @@ async def list_calendar_events(
                 from_dt,
                 to_dt,
             )
+            plant_info = plant_map.get(pid, {})
             for i, occ in enumerate(occurrences):
                 events.append(CalendarEventOut(
                     id=f"schedule:{r['schedule_id']}:{ct}:{i}",
@@ -215,6 +219,8 @@ async def list_calendar_events(
                     type=ct,
                     plant_id=pid,
                     plant_name=r["plant_name"],
+                    species_common_name_nl=plant_info.get("species_common_name_nl"),
+                    species_common_name_en=plant_info.get("species_common_name_en"),
                     plant_icon_variant=r["plant_icon_variant"],
                     schedule_id=r["schedule_id"],
                     overdue=occ < today,
