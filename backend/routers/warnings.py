@@ -96,17 +96,21 @@ class WarningSummaryOut(BaseModel):
     buckets: WarningBucketsOut
 
 
-async def _fetch_weather_safely() -> dict | None:
-    """Fetch cached temperature data, returning a weather dict shaped for
+async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dict | None:
+    """Fetch cached weather data, returning a weather dict shaped for
     `compute_plant_warnings`. Degrades to None on any error so the endpoint
     keeps working when the weather cache is unavailable (e.g. tests, offline).
     """
     try:
-        from services.environment import get_temp_data
-        temp_data = await get_temp_data()
-        if not temp_data:
+        from services.environment import get_rain_data, get_temp_data
+        from services.garden_log import get_last_garden_watered
+
+        temp_data = await get_temp_data(db)
+        rain_data = await get_rain_data(db)
+        last_watered = await get_last_garden_watered(household_id) if household_id is not None else None
+        if not temp_data and not rain_data and not last_watered:
             return None
-        return {"temp": temp_data}
+        return {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
     except Exception:
         return None
 
@@ -141,8 +145,7 @@ async def get_plant_warnings(
     )
     schedules = [dict(r) for r in schedules_rows]
 
-    weather = await _fetch_weather_safely()
-
+    weather = await _fetch_weather_safely(db, account["household_id"])
     state = compute_plant_warnings(plant, schedules, weather=weather, today=today)
 
     return PlantWarningStateOut(
@@ -228,7 +231,7 @@ async def _compute_warning_summary(
         schedules_by_plant.setdefault(d["plant_id"], []).append(d)
 
     # 4. Fetch weather once (shared across all plants)
-    weather = await _fetch_weather_safely()
+    weather = await _fetch_weather_safely(db, household_id)
 
     # 5. Run compute_plant_warnings for each plant
     kpi_acc: dict[str, dict] = {}

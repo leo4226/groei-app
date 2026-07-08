@@ -4,7 +4,7 @@ import json
 from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
 from services.warnings import _schedule_warning_for_type
-from services.warnings import _weather_warnings_for_plant
+from services.warnings import _weather_warnings_for_plant, compute_plant_warnings
 
 
 def test_dataclasses_have_expected_fields():
@@ -468,3 +468,62 @@ def test_compute_weather_only_care_summary_reflects_active_warning():
     state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
     assert state.care_summary["frost_protect"].status == "overdue"
     assert state.care_summary["frost_protect"].last_done is None
+
+
+def test_compute_outdoor_drought_warning_uses_rain_data():
+    plant = {
+        "id": 8,
+        "map_type": "outdoor",
+        "container_id": 4,
+        "ground_zone_id": None,
+        "care_thresholds": '{"drought_mm_per_week": 10}',
+    }
+    weather = {
+        "rain": {"total_7day_mm": 3.0, "total_14day_mm": 8.0},
+        "last_watered": None,
+    }
+
+    state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
+
+    assert state.top_warning is not None
+    assert state.top_warning.care_type == "water"
+    assert state.top_warning.trigger == "weather_event"
+    assert state.top_warning.severity == "urgent"
+    assert state.top_warning.weather_metric == "rain_7day_mm"
+    assert state.top_warning.action_en is not None
+
+
+def test_compute_outdoor_ground_uses_14_day_effective_rainfall():
+    plant = {
+        "id": 9,
+        "map_type": "outdoor",
+        "container_id": None,
+        "ground_zone_id": "bed_1",
+        "care_thresholds": '{"drought_mm_per_week": 10}',
+    }
+    weather = {
+        "rain": {"total_7day_mm": 2.0, "total_14day_mm": 24.0},
+        "last_watered": None,
+    }
+
+    state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
+
+    assert not any(w.care_type == "water" and w.trigger == "weather_event" for w in state.warnings)
+
+
+def test_compute_drought_warning_suppressed_after_recent_manual_watering():
+    plant = {
+        "id": 10,
+        "map_type": "outdoor",
+        "container_id": 4,
+        "ground_zone_id": None,
+        "care_thresholds": '{"drought_mm_per_week": 10}',
+    }
+    weather = {
+        "rain": {"total_7day_mm": 1.0, "total_14day_mm": 2.0},
+        "last_watered": date(2026, 5, 14),
+    }
+
+    state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
+
+    assert not any(w.care_type == "water" and w.trigger == "weather_event" for w in state.warnings)
