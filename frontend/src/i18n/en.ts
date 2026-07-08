@@ -1213,7 +1213,7 @@ export const en: Translations = {
     remove: 'Remove',
     edit: 'Edit',
     editObject: 'Edit object',
-    removeObject: '🗑 Remove',
+    removeObject: 'Delete object',
     saving: 'Saving...',
     save: 'Save',
     cancel: 'Cancel',

@@ -1213,7 +1213,7 @@ export const nl: Translations = {
     remove: 'Verwijderen',
     edit: 'Bewerken',
     editObject: 'Object bewerken',
-    removeObject: '🗑 Verwijderen',
+    removeObject: 'Verwijder object',
     saving: 'Opslaan...',
     save: 'Opslaan',
     cancel: 'Annuleren',

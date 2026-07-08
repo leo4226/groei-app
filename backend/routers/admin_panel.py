@@ -25,6 +25,7 @@ import routers.icons as icons_router
 router = APIRouter(tags=["admin-panel"])
 
 HEALTH_CHECK_TIMEOUT_SECONDS = 3.0
+DATABASE_HEALTH_CHECK_TIMEOUT_SECONDS = 1.0
 _R2_REQUIRED_ENV = (
     "R2_ACCOUNT_ID",
     "R2_ACCESS_KEY_ID",
@@ -43,14 +44,15 @@ def _error_detail(exc: Exception) -> str:
     return message or exc.__class__.__name__
 
 
-async def _run_health_check(check: Callable[[], Awaitable[dict]]) -> dict:
+async def _run_health_check(check: Callable[[], Awaitable[dict]], *, timeout: float | None = None) -> dict:
     started = time.perf_counter()
+    check_timeout = HEALTH_CHECK_TIMEOUT_SECONDS if timeout is None else timeout
     try:
-        result = await asyncio.wait_for(check(), timeout=HEALTH_CHECK_TIMEOUT_SECONDS)
+        result = await asyncio.wait_for(check(), timeout=check_timeout)
     except asyncio.TimeoutError:
         return _health(
             "down",
-            f"Timed out after {HEALTH_CHECK_TIMEOUT_SECONDS:g}s",
+            f"Timed out after {check_timeout:g}s",
             round((time.perf_counter() - started) * 1000),
         )
     except Exception as exc:  # noqa: BLE001 — health checks must isolate failures
@@ -256,15 +258,15 @@ async def admin_me(admin=Depends(require_admin)):
 
 @router.get("/admin-panel/health")
 async def admin_health(admin=Depends(require_admin), db=Depends(db_dep)):
-    checks: dict[str, Callable[[], Awaitable[dict]]] = {
-        "database": lambda: _check_database(db),
-        "bioclip": _check_bioclip_worker,
-        "r2": _check_r2_storage,
-        "llm": _check_llm_config,
-        "email": _check_email_config,
+    checks: dict[str, tuple[Callable[[], Awaitable[dict]], float | None]] = {
+        "database": (lambda: _check_database(db), DATABASE_HEALTH_CHECK_TIMEOUT_SECONDS),
+        "bioclip": (_check_bioclip_worker, None),
+        "r2": (_check_r2_storage, None),
+        "llm": (_check_llm_config, None),
+        "email": (_check_email_config, None),
     }
     results = await asyncio.gather(
-        *(_run_health_check(check) for check in checks.values()),
+        *(_run_health_check(check, timeout=timeout) for check, timeout in checks.values()),
         return_exceptions=True,
     )
 
