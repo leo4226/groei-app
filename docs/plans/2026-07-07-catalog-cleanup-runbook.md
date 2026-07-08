@@ -70,17 +70,16 @@ Goal: cap over-padded genera (≈100 orchids/trees per genus) so BioCLIP stops o
 
 ---
 
-## Phase 2 — Import NL/NW-Europe plants  *(needs building; spec below, then run)*
+## Phase 2 — Import NL/NW-Europe plants  *(importer now built — review checkpoints, then run)*
 
 Goal: fill the coverage gap — add Dutch/NW-European **native & wild flora** and flesh out common cultivated genera, so the plants Leon actually photographs are in the set. This is the "extend it, Europe-focused" step.
 
-### Build `scripts/import_nl_flora.py` (reuse `import_gbif_species.py` helpers)
-- **Source by occurrence, not genus.** Use GBIF to get species that actually occur in NL (and optionally BE/DE): query the occurrence `species` facet with `country=NL` (+ `taxonKey`=Tracheophyta `7707728`), or GBIF's checklist for the Netherlands. Keep species with **≥ an occurrence threshold** (tunable, e.g. ≥50) to avoid vagrants/noise.
-- **Dedup against existing:** skip species whose `gbif_taxon_key` or `slug` is already in `plant_species` (idempotent, like `add_dutch_plants.py`).
-- **Reuse** `species_service.upsert_species_from_gbif`, `fetch_vernacular`, `fetch_media` (CC0/CC-BY only) from `import_gbif_species.py`; set `id_enabled = TRUE`.
-- **Cap per genus** at the same `--cap` used in Phase 1 so we don't re-introduce bloat.
-- After insert, run the existing backfills: `backfill_dutch_names.py`, `backfill_english_names.py`, and `enrich_species_ecology.py` (fills `native_to_nl` for the new rows — needed for the future geographic prior).
-- Flags: `--countries NL,BE,DE`, `--min-occurrences N`, `--cap N`, `--limit N`, `--dry-run` (default).
+### What `scripts/import_nl_flora.py` does (already built)
+- **Sources by occurrence, not genus:** GBIF occurrence `speciesKey` facet with `country=<code>` (+ Tracheophyta `7707728`), summed across the chosen countries and ranked by occurrence count — the plants actually growing here, not global congeners.
+- **Keeps only species ≥ `--min-occurrences`** (skip vagrants/noise), **dedups** against existing `gbif_taxon_key`s (idempotent), and **caps per genus** (`--cap`, default 20) so it can't re-introduce bloat.
+- **Reuses** `import_gbif_species.py` helpers + `species_service.upsert_species_from_gbif` / `insert_species_image` (CC0/CC-BY images); new rows are `id_enabled = TRUE`.
+- **Dry-run by default**; prints the add-count, per-genus breakdown, and a sample before any write. Pure `select_candidates()` is unit-tested (`test_import_nl_flora.py`).
+- Flags: `--countries NL,BE,DE`, `--min-occurrences N`, `--cap N`, `--limit N` (total added), `--max-fetch N`, `--apply`.
 
 🔶 **CHECKPOINTS — ask Leon before running:**
 - Region scope: **NL only**, or **NL + NW-Europe (BE/DE)**? (Wider = more coverage, slightly more look-alikes.)
@@ -89,7 +88,7 @@ Goal: fill the coverage gap — add Dutch/NW-European **native & wild flora** an
 
 ### Run it
 ```bash
-cd backend && python scripts/import_nl_flora.py --dry-run     # show what it would add
+cd backend && python scripts/import_nl_flora.py --countries <agreed> --min-occurrences <agreed>   # dry-run (default): show what it would add
 # 🔶 CHECKPOINT: Leon reviews the count + a sample of names
 python scripts/import_nl_flora.py --countries <agreed> --min-occurrences <agreed> --apply
 python scripts/backfill_dutch_names.py && python scripts/backfill_english_names.py
