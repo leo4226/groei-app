@@ -300,7 +300,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     selectedPlant,
     selectedPlantPos,
     handlePlantPointerDown,
-    handleContainerPointerDown,
     handlePointerMove,
     handlePointerUp,
     handleItemSelect,
@@ -522,8 +521,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             showLabels={showLabels}
             showWarnings={showWarnings}
             heatmapCells={heatmapCells}
-            onObjectTap={(obj) => handleItemSelect('object', obj.id)}
-            onContainerPointerDown={handleContainerPointerDown}
             dragPositions={dragPositions}
           />
           {/* Plants layer on top */}
