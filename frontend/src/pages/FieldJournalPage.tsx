@@ -1,9 +1,7 @@
 import { lazy } from 'react'
 import { useT } from '../context/LanguageContext'
 
-const WeedSightingsSection = lazy(() =>
-  import('../components/discoveries/WeedSightingsSection').then(m => ({ default: m.default }))
-)
+const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 
 export default function FieldJournalPage() {
   const t = useT()
@@ -18,10 +16,10 @@ export default function FieldJournalPage() {
           {t.weeds.sightingsList.title}
         </h1>
         <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--color-text-muted)' }}>
-          {t.weeds.sightingsList.emptyHint}
+          {t.discovery.journalEmptyHint}
         </p>
       </div>
-      <WeedSightingsSection />
+      <DiscoveriesSection />
     </div>
   )
 }

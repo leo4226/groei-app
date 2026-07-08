@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
+import { buildDiscoveryJournalEntry } from '../../utils/discoveryJournal'
 import Glyph from '../ui/Glyph'
 
 const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
@@ -33,6 +34,7 @@ export default function DiscoveriesSection() {
   const [loading, setLoading] = useState(true)
   const [fitMap, setFitMap] = useState<Record<string, FitVerdicts>>({})
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [selected, setSelected] = useState<PlantDiscovery | null>(null)
 
   useEffect(() => {
     discoveriesApi.list()
@@ -51,6 +53,7 @@ export default function DiscoveriesSection() {
     if (!window.confirm(t.discovery.journalDeleteConfirm)) return
     await discoveriesApi.delete(id).catch(() => {})
     setItems((prev) => prev.filter((d) => d.id !== id))
+    setSelected((prev) => prev?.id === id ? null : prev)
   }
 
   async function handleShare(item: PlantDiscovery) {
@@ -81,6 +84,11 @@ export default function DiscoveriesSection() {
     })
   }
 
+  function stopAction(e: MouseEvent, action: () => void) {
+    e.stopPropagation()
+    action()
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-soft)' }}>
@@ -106,93 +114,137 @@ export default function DiscoveriesSection() {
   }
 
   return (
-    <div style={{ padding: '16px 0' }}>
-      {items.map((item) => {
-        const fitColor = bestFitColor(item.species_id != null ? fitMap[String(item.species_id)] : undefined)
-        return (
-          <div
-            key={item.id}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 20px', borderBottom: '1px solid var(--color-border)',
-            }}
-          >
-            {item.thumbnail_url ? (
-              <img
-                src={item.thumbnail_url}
-                alt={item.common_name}
-                style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
-              />
-            ) : (
-              <div style={{
-                width: 52, height: 52, borderRadius: 8, background: 'var(--color-surface)',
-                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--color-text-muted)',
-              }}>
-                <Glyph name="leaf" size={24} />
-              </div>
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {item.common_name}
-              </p>
-              {item.latin_name && (
-                <p style={{ margin: '0 0 2px', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.latin_name}
+    <>
+      <div style={{ padding: '16px 0' }}>
+        {items.map((item) => {
+          const entry = buildDiscoveryJournalEntry(item)
+          const fitColor = bestFitColor(item.species_id != null ? fitMap[String(item.species_id)] : undefined)
+          return (
+            <div
+              key={item.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelected(item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelected(item)
+                }
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 20px', borderBottom: '1px solid var(--color-border)',
+                cursor: 'pointer',
+              }}
+            >
+              {entry.image_url ? (
+                <img
+                  src={entry.image_url}
+                  alt={entry.title}
+                  style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+                />
+              ) : (
+                <div style={{
+                  width: 52, height: 52, borderRadius: 8, background: 'var(--color-surface)',
+                  flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--color-text-muted)',
+                }}>
+                  <Glyph name="leaf" size={24} />
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: '0 0 2px', fontWeight: 600, fontSize: 14, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entry.title}
                 </p>
-              )}
-              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                {fitColor && (
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: fitColor, display: 'inline-block', flexShrink: 0 }} />
+                {entry.subtitle && (
+                  <p style={{ margin: '0 0 2px', fontSize: 12, fontStyle: 'italic', color: 'var(--color-text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {entry.subtitle}
+                  </p>
                 )}
-                {t.discovery.discovered}: {formatDate(item.discovered_at)}
-              </p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  {fitColor && (
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: fitColor, display: 'inline-block', flexShrink: 0 }} />
+                  )}
+                  {t.discovery.discovered}: {formatDate(entry.occurred_at)}
+                </p>
+              </div>
+              <button
+                onClick={(e) => stopAction(e, () => void handleShare(item))}
+                title={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
+                style={{
+                  padding: '6px 8px', borderRadius: 8, border: 'none',
+                  background: 'none', cursor: 'pointer',
+                  color: copiedId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontSize: 18, flexShrink: 0,
+                }}
+                aria-label={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
+              >
+                {copiedId === item.id ? <Glyph name="check" size={16} /> : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                    <polyline points="16 6 12 2 8 6"/>
+                    <line x1="12" y1="2" x2="12" y2="15"/>
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={(e) => stopAction(e, () => handleAddToGarden(item))}
+                title={t.discovery.addToGarden}
+                style={{
+                  padding: '6px 8px', borderRadius: 8, border: 'none',
+                  background: 'none', cursor: 'pointer', color: 'var(--color-primary)',
+                  fontSize: 18, flexShrink: 0,
+                }}
+                aria-label={t.discovery.addToGarden}
+              >
+                +
+              </button>
+              <button
+                onClick={(e) => stopAction(e, () => void handleDelete(item.id))}
+                style={{
+                  padding: '6px 8px', borderRadius: 8, border: 'none',
+                  background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)',
+                  fontSize: 18, flexShrink: 0,
+                }}
+                aria-label="Verwijder"
+              >
+                ×
+              </button>
             </div>
-            <button
-              onClick={() => handleShare(item)}
-              title={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
-              style={{
-                padding: '6px 8px', borderRadius: 8, border: 'none',
-                background: 'none', cursor: 'pointer',
-                color: copiedId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                fontSize: 18, flexShrink: 0,
-              }}
-              aria-label={copiedId === item.id ? t.discovery.shareCopied : t.discovery.share}
-            >
-              {copiedId === item.id ? <Glyph name="check" size={16} /> : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <polyline points="16 6 12 2 8 6"/>
-                  <line x1="12" y1="2" x2="12" y2="15"/>
-                </svg>
-              )}
-            </button>
-            <button
-              onClick={() => handleAddToGarden(item)}
-              title={t.discovery.addToGarden}
-              style={{
-                padding: '6px 8px', borderRadius: 8, border: 'none',
-                background: 'none', cursor: 'pointer', color: 'var(--color-primary)',
-                fontSize: 18, flexShrink: 0,
-              }}
-              aria-label={t.discovery.addToGarden}
-            >
-              +
-            </button>
-            <button
-              onClick={() => handleDelete(item.id)}
-              style={{
-                padding: '6px 8px', borderRadius: 8, border: 'none',
-                background: 'none', cursor: 'pointer', color: 'var(--color-text-muted)',
-                fontSize: 18, flexShrink: 0,
-              }}
-              aria-label="Verwijder"
-            >
-              ×
-            </button>
+          )
+        })}
+      </div>
+
+      {selected && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={selected.common_name}
+          onClick={() => setSelected(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(20,20,16,.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 520, maxHeight: '86vh', overflowY: 'auto', background: 'var(--color-bg)', borderRadius: '24px 24px 0 0', padding: 20, boxShadow: '0 -16px 40px rgba(0,0,0,.18)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-primary)' }}>{t.weeds.sightingsList.title}</span>
+              <button onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', fontSize: 24, cursor: 'pointer' }} aria-label="Sluiten">×</button>
+            </div>
+            {selected.thumbnail_url && (
+              <img src={selected.thumbnail_url} alt={selected.common_name} style={{ width: '100%', maxHeight: 280, objectFit: 'cover', borderRadius: 16, marginBottom: 16 }} />
+            )}
+            <h2 style={{ margin: '0 0 4px', fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 500, color: 'var(--color-text)' }}>{selected.common_name}</h2>
+            {selected.latin_name && <p style={{ margin: '0 0 14px', fontStyle: 'italic', color: 'var(--color-text-soft)' }}>{selected.latin_name}</p>}
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-text-muted)' }}>{t.discovery.discovered}: {formatDate(selected.discovered_at)}</p>
+            {selected.notes && <p style={{ margin: '0 0 18px', lineHeight: 1.5, color: 'var(--color-text)' }}>{selected.notes}</p>}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => handleAddToGarden(selected)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600 }}>{t.discovery.addToGarden}</button>
+              <button onClick={() => void handleShare(selected)} style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>{t.discovery.share}</button>
+            </div>
           </div>
-        )
-      })}
-    </div>
+        </div>
+      )}
+    </>
   )
 }

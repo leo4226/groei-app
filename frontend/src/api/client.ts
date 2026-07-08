@@ -698,6 +698,7 @@ export const discoveries = {
     common_name: string
     latin_name?: string
     thumbnail_url?: string
+    thumbnail_data?: string
     notes?: string
     location_lat?: number
     location_lon?: number

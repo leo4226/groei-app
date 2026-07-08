@@ -4,7 +4,9 @@ POST   /discover          save a new wild discovery
 GET    /discover          list all discoveries for the household
 DELETE /discover/{id}     delete a discovery
 """
+import base64
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,6 +15,7 @@ from pydantic import BaseModel
 
 from auth import get_current_account
 from database import db_dep
+from services.storage import Storage, build_storage_from_env
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/discover", tags=["discoveries"])
@@ -23,6 +26,7 @@ class DiscoveryCreate(BaseModel):
     common_name: str
     latin_name: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    thumbnail_data: Optional[str] = None
     notes: Optional[str] = None
     location_lat: Optional[float] = None
     location_lon: Optional[float] = None
@@ -47,6 +51,9 @@ async def save_discovery(
     db=Depends(db_dep),
 ):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+    thumbnail_url = body.thumbnail_url
+    if not thumbnail_url and body.thumbnail_data:
+        thumbnail_url = _store_thumbnail(body.thumbnail_data)
     rows = await db.execute_fetchall(
         """INSERT INTO plant_discoveries
                (account_id, household_id, species_id, common_name, latin_name,
@@ -60,7 +67,7 @@ async def save_discovery(
             body.species_id,
             body.common_name,
             body.latin_name,
-            body.thumbnail_url,
+            thumbnail_url,
             body.notes,
             body.location_lat,
             body.location_lon,
@@ -103,6 +110,42 @@ async def delete_discovery(
         "DELETE FROM plant_discoveries WHERE id = ?",
         (discovery_id,),
     )
+
+
+def _get_storage() -> Storage | None:
+    try:
+        return build_storage_from_env()
+    except Exception:
+        return None
+
+
+def _decode_photo_data(photo_data: str) -> tuple[bytes, str] | None:
+    if not photo_data:
+        return None
+    content_type = "image/jpeg"
+    if "," in photo_data:
+        header, photo_data = photo_data.split(",", 1)
+        if header.startswith("data:") and ";" in header:
+            content_type = header[5:].split(";", 1)[0] or content_type
+    try:
+        return base64.b64decode(photo_data), content_type
+    except Exception:
+        return None
+
+
+def _store_thumbnail(photo_data: str) -> str | None:
+    storage = _get_storage()
+    decoded = _decode_photo_data(photo_data)
+    if not storage or not decoded:
+        return None
+    data, content_type = decoded
+    extension = "png" if content_type == "image/png" else "jpg"
+    key = f"field-journal/{int(time.time() * 1000)}.{extension}"
+    try:
+        return storage.put(key, data, content_type)
+    except Exception:
+        logger.exception("Failed to store discovery thumbnail")
+        return None
 
 
 def _format(row) -> dict:
