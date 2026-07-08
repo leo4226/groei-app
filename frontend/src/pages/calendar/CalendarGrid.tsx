@@ -1,6 +1,7 @@
 import CalendarDayCell from './CalendarDayCell'
 import type { CalendarEvent } from './calendarTypes'
-import { daysInMonth, dowMon, isoWeek, isoDate } from './dateUtils'
+import { daysInMonth, dowMon, isoWeek, isoDate, DAY_LETTERS_NL, DAY_LETTERS_EN } from './dateUtils'
+import { useT } from '../../context/LanguageContext'
 
 interface Props {
   year: number
@@ -11,19 +12,24 @@ interface Props {
   onSelect(iso: string): void
 }
 
-const WEEKDAY_HEADER = [
-  { label: 'Ma', weekend: false },
-  { label: 'Di', weekend: false },
-  { label: 'Wo', weekend: false },
-  { label: 'Do', weekend: false },
-  { label: 'Vr', weekend: false },
-  { label: 'Za', weekend: true },
-  { label: 'Zo', weekend: true },
-]
+function getWeekdayHeaders(locale: string) {
+  const letters = locale.startsWith('en') ? DAY_LETTERS_EN : DAY_LETTERS_NL
+  return [
+    { label: letters[0], weekend: false },
+    { label: letters[1], weekend: false },
+    { label: letters[2], weekend: false },
+    { label: letters[3], weekend: false },
+    { label: letters[4], weekend: false },
+    { label: letters[5], weekend: true },
+    { label: letters[6], weekend: true },
+  ]
+}
 
 export default function CalendarGrid({
   year, month1, events, todayIso, selectedIso, onSelect,
 }: Props) {
+  const t = useT()
+  const WEEKDAY_HEADER = getWeekdayHeaders(t.locale)
   const dim = daysInMonth(year, month1)
   const firstDow = dowMon(year, month1, 1)
   const lastDow = dowMon(year, month1, dim)

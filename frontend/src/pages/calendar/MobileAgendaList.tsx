@@ -1,8 +1,15 @@
 import { useMemo } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
-import { DAY_LONG_NL, MONTH_SHORT_NL, dowMon } from './dateUtils'
+import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
+
+function agendaPlantName(ev: CalendarEvent, locale: string): string {
+  const localized = locale.startsWith('en')
+    ? (ev.species_common_name_en?.trim() || ev.species_common_name_nl?.trim())
+    : (ev.species_common_name_nl?.trim() || ev.species_common_name_en?.trim())
+  return localized || ev.plant_name || ''
+}
 
 interface Props {
   events: CalendarEvent[]
@@ -39,7 +46,7 @@ export default function MobileAgendaList({ events, todayIso, saving, onDone, onS
               fontFamily: 'Fraunces, serif', fontSize: 18, margin: '0 0 6px',
               color: isToday ? 'var(--color-primary)' : 'var(--color-text)',
             }}>
-              {DAY_LONG_NL[dowMon(y, m, d)]} {d} {MONTH_SHORT_NL[m - 1]}
+              {(t.locale.startsWith('en') ? DAY_LONG_EN : DAY_LONG_NL)[dowMon(y, m, d)]} {d} {(t.locale.startsWith('en') ? MONTH_SHORT_EN : MONTH_SHORT_NL)[m - 1]}
               {isToday && <em style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-secondary)' }}>{t.calendar.today}</em>}
             </h3>
             {list.map(e => {
@@ -53,7 +60,7 @@ export default function MobileAgendaList({ events, todayIso, saving, onDone, onS
                   opacity: saving === e.id ? 0.5 : 1, transition: 'opacity 0.15s',
                 }}>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
-                  <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{e.plant_name ?? '—'}</span>
+                  <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{agendaPlantName(e, t.locale) || '—'}</span>
                   {isActionable(e, todayIso) ? (
                     <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>
                       <button disabled={saving === e.id} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
