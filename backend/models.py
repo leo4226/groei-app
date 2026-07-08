@@ -701,6 +701,8 @@ class CalendarEventOut(BaseModel):
     plant_id: int | None
     plant_name: str | None
     plant_icon_variant: str | None
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
     schedule_id: int | None
     overdue: bool
     # ── warning enrichment ──
@@ -724,15 +726,16 @@ class WaterLogOut(BaseModel):
 class PlantRecommendationOut(BaseModel):
     species_id: int
     dutch_name: str
-    english_name: str | None = None
+    english_name: str | None
     latin_name: str
     sun_preference: str | None
-    sun_fit: str                     # 'perfect' | 'acceptable'
+    sun_fit: str
     is_native: bool | None
     pollinator_value: int | None
     flowering_months: list[int] | None
     gap_months_covered: list[int]
-    reason: str                      # template text initially
+    reason: str                      # template text in Dutch
+    reason_en: str | None            # template text in English
     caveat: str | None
 
 

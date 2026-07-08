@@ -74,7 +74,7 @@ async def list_calendar_events(
     plant_params: tuple = (account["household_id"],)
 
     plants = await db.execute_fetchall(
-        "SELECT p.id, p.name, m.map_type, p.container_id, p.ground_zone_id, "
+        "SELECT p.id, p.name, p.species_id, m.map_type, p.container_id, p.ground_zone_id, "
         "p.care_profile, p.care_thresholds, p.icon_key "
         "FROM plants p LEFT JOIN maps m ON p.map_id = m.id "
         "WHERE p.household_id = ? AND p.is_active = 1",

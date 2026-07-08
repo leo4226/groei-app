@@ -29,7 +29,7 @@ export default function CalendarGrid({
   year, month1, events, todayIso, selectedIso, onSelect,
 }: Props) {
   const t = useT()
-  const WEEKDAY_HEADER = getWeekdayHeaders(t.locale)
+  const weekdayHeaders = getWeekdayHeaders(t.locale)
   const dim = daysInMonth(year, month1)
   const firstDow = dowMon(year, month1, 1)
   const lastDow = dowMon(year, month1, dim)
@@ -104,7 +104,7 @@ export default function CalendarGrid({
     <section className="cal-card">
       <div className="week-header">
         <div className="wh-cell wh-num">wk</div>
-        {WEEKDAY_HEADER.map(h => (
+        {weekdayHeaders.map(h => (
           <div key={h.label} className={`wh-cell ${h.weekend ? 'weekend' : ''}`}>{h.label}</div>
         ))}
       </div>
