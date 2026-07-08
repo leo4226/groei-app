@@ -5,10 +5,10 @@ The garden log captures household-level "I watered the whole garden today" or
 Logging an event also marks every active matching Care schedule as done.
 
 Public API:
-    get_last_garden_watered() -> date | None
-    get_last_garden_fertilized() -> date | None
-    log_garden_water(db, watered_at, watered_by, water_amount) -> int   (schedules updated)
-    log_garden_fertilize(db, fertilized_at, fertilized_by) -> int
+    get_last_garden_watered(household_id) -> date | None
+    get_last_garden_fertilized(household_id) -> date | None
+    log_garden_water(db, watered_at, watered_by, water_amount, household_id) -> int   (schedules updated)
+    log_garden_fertilize(db, fertilized_at, fertilized_by, household_id) -> int
     compute_water_status(rain_14d, rain_7d, days_since_watered) -> dict
 """
 from datetime import date
@@ -26,22 +26,36 @@ from database import get_db
 
 # ── recent-event queries ─────────────────────────────────────────────────────
 
-async def get_last_garden_watered() -> date | None:
-    """Return the most recent garden watering date, or None."""
-    async with get_db() as db:
+async def get_last_garden_watered(household_id: int, db=None) -> date | None:
+    """Return the most recent garden watering date for *household_id*, or None."""
+    if db is None:
+        async with get_db() as conn:
+            rows = await conn.execute_fetchall(
+                "SELECT id, watered_at FROM garden_water_log WHERE household_id = ? ORDER BY watered_at DESC LIMIT 1",
+                (household_id,),
+            )
+    else:
         rows = await db.execute_fetchall(
-            "SELECT id, watered_at FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+            "SELECT id, watered_at FROM garden_water_log WHERE household_id = ? ORDER BY watered_at DESC LIMIT 1",
+            (household_id,),
         )
     if not rows:
         return None
     return _as_date(rows[0]["watered_at"])
 
 
-async def get_last_garden_fertilized() -> date | None:
-    """Return the most recent garden fertilize date, or None."""
-    async with get_db() as db:
+async def get_last_garden_fertilized(household_id: int, db=None) -> date | None:
+    """Return the most recent garden fertilize date for *household_id*, or None."""
+    if db is None:
+        async with get_db() as conn:
+            rows = await conn.execute_fetchall(
+                "SELECT id, fertilized_at FROM garden_fertilize_log WHERE household_id = ? ORDER BY fertilized_at DESC LIMIT 1",
+                (household_id,),
+            )
+    else:
         rows = await db.execute_fetchall(
-            "SELECT id, fertilized_at FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
+            "SELECT id, fertilized_at FROM garden_fertilize_log WHERE household_id = ? ORDER BY fertilized_at DESC LIMIT 1",
+            (household_id,),
         )
     if not rows:
         return None
@@ -50,24 +64,25 @@ async def get_last_garden_fertilized() -> date | None:
 
 # ── event logging (mutates DB) ───────────────────────────────────────────────
 
-async def log_garden_water(db, watered_at: date, watered_by: int | None, water_amount: float | None) -> int:
+async def log_garden_water(db, watered_at: date, watered_by: int | None, water_amount: float | None, household_id: int) -> int:
     """Insert a new garden water log entry and mark all active water schedules as done.
 
     Returns the number of schedules updated. Caller is responsible for commit.
     """
     from services.scheduling import calculate_next_due
 
-    await db.execute("DELETE FROM garden_water_log")
+    await db.execute("DELETE FROM garden_water_log WHERE household_id = ?", (household_id,))
     await db.execute(
-        "INSERT INTO garden_water_log (watered_at, watered_by, water_amount) VALUES (?, ?, ?)",
-        (watered_at, watered_by, water_amount),
+        "INSERT INTO garden_water_log (watered_at, watered_by, water_amount, household_id) VALUES (?, ?, ?, ?)",
+        (watered_at, watered_by, water_amount, household_id),
     )
 
     schedules = await db.execute_fetchall(
         """SELECT cs.id, cs.interval_days, cs.season_adjust
            FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
-           WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1"""
+           WHERE cs.care_type = 'water' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?""",
+        (household_id,),
     )
     updated = 0
     for s in schedules:
@@ -80,24 +95,25 @@ async def log_garden_water(db, watered_at: date, watered_by: int | None, water_a
     return updated
 
 
-async def log_garden_fertilize(db, fertilized_at: date, fertilized_by: int | None) -> int:
+async def log_garden_fertilize(db, fertilized_at: date, fertilized_by: int | None, household_id: int) -> int:
     """Insert a new garden fertilize log entry and mark all active fertilize schedules as done.
 
     Returns the number of schedules updated. Caller is responsible for commit.
     """
     from services.scheduling import calculate_next_due
 
-    await db.execute("DELETE FROM garden_fertilize_log")
+    await db.execute("DELETE FROM garden_fertilize_log WHERE household_id = ?", (household_id,))
     await db.execute(
-        "INSERT INTO garden_fertilize_log (fertilized_at, fertilized_by) VALUES (?, ?)",
-        (fertilized_at, fertilized_by),
+        "INSERT INTO garden_fertilize_log (fertilized_at, fertilized_by, household_id) VALUES (?, ?, ?)",
+        (fertilized_at, fertilized_by, household_id),
     )
 
     schedules = await db.execute_fetchall(
         """SELECT cs.id, cs.interval_days, cs.season_adjust
            FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
-           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1"""
+           WHERE cs.care_type = 'fertilize' AND cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?""",
+        (household_id,),
     )
     updated = 0
     for s in schedules:

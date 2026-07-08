@@ -201,16 +201,19 @@ class WaterLogCreate(BaseModel):
 
 @router.post("/garden/water-log")
 async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+    household_id = account["household_id"]
     watered_at = body.watered_at or date.today()
-    updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount)
+    updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount, household_id)
     await db.commit()
     return {"watered_at": watered_at, "schedules_updated": updated, "water_amount": body.water_amount}
 
 
 @router.get("/garden/water-log/latest")
 async def latest_garden_watering(db = Depends(db_dep), account = Depends(get_current_account)):
+    household_id = account["household_id"]
     rows = await db.execute_fetchall(
-        "SELECT watered_at, water_amount FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+        "SELECT watered_at, water_amount FROM garden_water_log WHERE household_id = ? ORDER BY watered_at DESC LIMIT 1",
+        (household_id,),
     )
     if not rows:
         return {"watered_at": None, "water_amount": None}
@@ -221,8 +224,9 @@ async def latest_garden_watering(db = Depends(db_dep), account = Depends(get_cur
 @router.get("/garden/water-status")
 async def get_garden_water_status(db = Depends(db_dep), account = Depends(get_current_account)):
     """Garden-wide water status from 14-day Amsterdam rainfall vs. seasonal ET budget."""
+    household_id = account["household_id"]
     rain         = await get_rain_data(db=db)
-    last_watered = await get_last_garden_watered()
+    last_watered = await get_last_garden_watered(household_id)
     total_14d    = rain.get("total_14day_mm", 0)
     total_7d     = rain.get("total_7day_mm", 0)
     days_since   = (date.today() - last_watered).days if last_watered else None
@@ -234,8 +238,10 @@ async def get_garden_water_status(db = Depends(db_dep), account = Depends(get_cu
 
 @router.delete("/garden/water-log/latest")
 async def delete_latest_garden_watering(db = Depends(db_dep), account = Depends(get_current_account)):
+    household_id = account["household_id"]
     rows = await db.execute_fetchall(
-        "SELECT id FROM garden_water_log ORDER BY watered_at DESC LIMIT 1"
+        "SELECT id FROM garden_water_log WHERE household_id = ? ORDER BY watered_at DESC LIMIT 1",
+        (household_id,),
     )
     if rows:
         await db.execute("DELETE FROM garden_water_log WHERE id = ?", (rows[0]["id"],))
@@ -252,8 +258,9 @@ class FertilizeLogCreate(BaseModel):
 
 @router.post("/garden/fertilize-log")
 async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+    household_id = account["household_id"]
     fertilized_at = body.fertilized_at or date.today()
-    updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by)
+    updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by, household_id)
     await db.commit()
     return {"fertilized_at": fertilized_at, "schedules_updated": updated}
 
@@ -261,12 +268,14 @@ async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep),
 @router.get("/garden/fertilize-status")
 async def get_garden_fertilize_status(db = Depends(db_dep), account = Depends(get_current_account)):
     """Return garden-wide fertilize status and count of pending schedules."""
-    last = await get_last_garden_fertilized()
+    household_id = account["household_id"]
+    last = await get_last_garden_fertilized(household_id)
     pending = await db.execute_fetchall(
         """SELECT COUNT(*) as cnt FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
            WHERE cs.care_type = 'fertilize' AND cs.is_active = 1
-           AND p.is_active = 1 AND cs.next_due <= CURRENT_DATE"""
+           AND p.is_active = 1 AND p.household_id = ? AND cs.next_due <= CURRENT_DATE""",
+        (household_id,),
     )
     return {
         "fertilized_at": last.isoformat() if last else None,
@@ -276,8 +285,10 @@ async def get_garden_fertilize_status(db = Depends(db_dep), account = Depends(ge
 
 @router.delete("/garden/fertilize-log/latest")
 async def delete_latest_garden_fertilizing(db = Depends(db_dep), account = Depends(get_current_account)):
+    household_id = account["household_id"]
     rows = await db.execute_fetchall(
-        "SELECT id FROM garden_fertilize_log ORDER BY fertilized_at DESC LIMIT 1"
+        "SELECT id FROM garden_fertilize_log WHERE household_id = ? ORDER BY fertilized_at DESC LIMIT 1",
+        (household_id,),
     )
     if rows:
         await db.execute("DELETE FROM garden_fertilize_log WHERE id = ?", (rows[0]["id"],))
