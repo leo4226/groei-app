@@ -1,76 +1,101 @@
-import json
-from datetime import date, datetime
+"""Backward-compatible alert endpoints backed by the unified warning pipeline.
+
+The old alert service independently generated weather/fertilizer messages from
+legacy care_thresholds. That drifted from the canonical care-schedule warning
+pipeline and produced contradictory plant-detail advice. Keep these routes for
+old clients, but derive their payload from `compute_plant_warnings()`.
+"""
+
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, Depends
 
 from database import db_dep
 from auth import get_current_account
 from services.environment import get_rain_data, get_temp_data
-from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
-from services.alert_service import compute_alerts, _SEVERITY_ORDER
+from services.garden_log import get_last_garden_watered
+from services.warnings import compute_plant_warnings
 
 router = APIRouter(tags=["alerts"])
 
+_SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 
-@router.get("/plants/{plant_id}/alerts")
-async def get_plant_alerts(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+
+def _warning_to_legacy_alert(warning):
+    return {
+        "type": warning.care_type,
+        "severity": warning.severity,
+        "message_nl": warning.message_nl,
+        "message_en": warning.message_en,
+        "icon": warning.icon,
+    }
+
+
+async def _warning_weather(db, household_id: int) -> dict:
+    temp_data = await get_temp_data(db)
+    rain_data = await get_rain_data(db)
+    last_watered = await get_last_garden_watered(household_id)
+    return {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
+
+
+async def _plant_warning_state(db, plant_id: int, household_id: int, today: date, weather: dict | None = None):
     rows = await db.execute_fetchall(
-        """SELECT p.care_thresholds, p.container_id, m.map_type
+        """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id,
+                  p.care_thresholds, p.care_profile, m.map_type
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
            WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
-        (plant_id, account["household_id"]),
+        (plant_id, household_id),
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Plant not found")
 
-    raw = rows[0]["care_thresholds"]
-    if not raw:
-        return []
+    schedule_rows = await db.execute_fetchall(
+        """SELECT care_type, next_due, last_done
+           FROM care_schedules
+           WHERE plant_id = ? AND is_active = 1""",
+        (plant_id,),
+    )
+    return compute_plant_warnings(
+        dict(rows[0]),
+        [dict(r) for r in schedule_rows],
+        weather=weather if weather is not None else await _warning_weather(db, household_id),
+        today=today,
+    )
 
-    thresholds = json.loads(raw)
-    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered(account["household_id"])
-    last_fertilized = await get_last_garden_fertilized(account["household_id"])
-    map_type = rows[0]["map_type"] or "outdoor"
-    in_ground = map_type == "outdoor" and rows[0]["container_id"] is None
 
-    return compute_alerts(thresholds, rain, temp, last_watered, last_fertilized, map_type=map_type, in_ground=in_ground)
+@router.get("/plants/{plant_id}/alerts")
+async def get_plant_alerts(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+    state = await _plant_warning_state(db, plant_id, account["household_id"], date.today())
+    return [_warning_to_legacy_alert(w) for w in state.warnings]
 
 
 @router.get("/alerts/summary")
-async def get_alerts_summary(db = Depends(db_dep), account = Depends(get_current_account)):
+async def get_alerts_summary(db=Depends(db_dep), account=Depends(get_current_account)):
     rows = await db.execute_fetchall(
-        "SELECT id, care_thresholds FROM plants WHERE care_thresholds IS NOT NULL AND is_active = 1 AND household_id = ?",
+        "SELECT id FROM plants WHERE is_active = 1 AND household_id = ?",
         (account["household_id"],),
     )
 
     if not rows:
         return {"total_count": 0, "worst_severity": None, "plant_ids_with_alerts": []}
 
-    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered(account["household_id"])
-    last_fertilized = await get_last_garden_fertilized(account["household_id"])
-
+    household_id = account["household_id"]
+    today = date.today()
+    weather = await _warning_weather(db, household_id)
     total_count = 0
     worst_level = -1
     plant_ids_with_alerts = []
 
     for row in rows:
-        try:
-            thresholds = json.loads(row["care_thresholds"])
-        except (json.JSONDecodeError, TypeError):
+        state = await _plant_warning_state(db, row["id"], household_id, today, weather)
+        warnings = [w for w in state.warnings if w.severity in ("warning", "urgent")]
+        if not warnings:
             continue
-
-        plant_alerts = [
-            a for a in compute_alerts(thresholds, rain, temp, last_watered, last_fertilized)
-            if a["severity"] in ("warning", "urgent")
-        ]
-        if plant_alerts:
-            total_count += len(plant_alerts)
-            plant_ids_with_alerts.append(row["id"])
-            for alert in plant_alerts:
-                level = _SEVERITY_ORDER.get(alert["severity"], 0)
-                if level > worst_level:
-                    worst_level = level
+        total_count += len(warnings)
+        plant_ids_with_alerts.append(row["id"])
+        for warning in warnings:
+            worst_level = max(worst_level, _SEVERITY_ORDER.get(warning.severity, 0))
 
     worst_severity = None
     if worst_level == 2:

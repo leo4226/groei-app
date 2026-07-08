@@ -212,8 +212,10 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             schedules_by_plant[pid] = []
         schedules_by_plant[pid].append(r)
 
-    # Build weather dict for the new pipeline (shape: {"temp": {"days": [...]}})
-    weather = {"temp": temp_data} if temp_data else None
+    # Build weather dict for the unified warning pipeline.
+    weather = None
+    if temp_data or rain_data or last_watered:
+        weather = {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
 
     for plant in plants:
         pid = plant["id"]
