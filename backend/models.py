@@ -724,6 +724,7 @@ class WaterLogOut(BaseModel):
 class PlantRecommendationOut(BaseModel):
     species_id: int
     dutch_name: str
+    english_name: str | None = None
     latin_name: str
     sun_preference: str | None
     sun_fit: str                     # 'perfect' | 'acceptable'

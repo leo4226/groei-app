@@ -4,6 +4,7 @@
 export interface LocalPlant {
   id: string
   dutchName: string
+  englishName?: string
   latinName: string
   commonName: string
   iconKey: string | null
@@ -26,6 +27,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'convallaria-majalis',
     dutchName: 'Lelietje-van-dalen',
+    englishName: 'Lily of the Valley',
     latinName: 'Convallaria majalis',
     commonName: 'Lelietje-van-dalen',
     iconKey: 'lilyofthevalley',
@@ -43,6 +45,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'ajuga-reptans',
     dutchName: 'Kruipend zenegroen',
+    englishName: 'Bugleweed',
     latinName: 'Ajuga reptans',
     commonName: 'Ajuga',
     iconKey: 'ajuga',
@@ -60,6 +63,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'liriope-muscari',
     dutchName: 'Liriope',
+    englishName: 'Lilyturf',
     latinName: 'Liriope muscari',
     commonName: 'Liriope',
     iconKey: 'liriope',
@@ -77,6 +81,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'buxus-sempervirens',
     dutchName: 'Buxus',
+    englishName: 'Boxwood',
     latinName: 'Buxus sempervirens',
     commonName: 'Buxus',
     iconKey: 'boxwood',
@@ -94,6 +99,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'ilex-aquifolium',
     dutchName: 'Hulst',
+    englishName: 'Holly',
     latinName: 'Ilex aquifolium',
     commonName: 'Hulst',
     iconKey: 'holly',
@@ -111,6 +117,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hedera-helix',
     dutchName: 'Klimop',
+    englishName: 'Ivy',
     latinName: 'Hedera helix',
     commonName: 'Klimop',
     iconKey: 'ivy',
@@ -128,6 +135,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'dryopteris-filix-mas',
     dutchName: 'Mannetjesvaren',
+    englishName: 'Male Fern',
     latinName: 'Dryopteris filix-mas',
     commonName: 'Varen',
     iconKey: 'malefern',
@@ -147,6 +155,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'epimedium-perralchicum',
     dutchName: 'Elfenbloem',
+    englishName: '',
     latinName: 'Epimedium × perralchicum',
     commonName: 'Epimedium',
     iconKey: null,
@@ -163,6 +172,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'pachysandra-terminalis',
     dutchName: 'Schaduwgroen',
+    englishName: '',
     latinName: 'Pachysandra terminalis',
     commonName: 'Pachysandra',
     iconKey: null,
@@ -179,6 +189,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hosta-sieboldiana',
     dutchName: 'Hartlelie',
+    englishName: 'Hosta',
     latinName: 'Hosta sieboldiana',
     commonName: 'Hosta',
     iconKey: 'hosta',
@@ -195,6 +206,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'helleborus-orientalis',
     dutchName: 'Kerstroos',
+    englishName: '',
     latinName: 'Helleborus orientalis',
     commonName: 'Helleborus',
     iconKey: null,
@@ -211,6 +223,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'fern-athyrium',
     dutchName: 'Wijfjesvaren',
+    englishName: 'Lady Fern',
     latinName: 'Athyrium filix-femina',
     commonName: 'Varen',
     iconKey: 'malefern',
@@ -227,6 +240,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'pulmonaria-officinalis',
     dutchName: 'Longkruid',
+    englishName: '',
     latinName: 'Pulmonaria officinalis',
     commonName: 'Longkruid',
     iconKey: null,
@@ -245,6 +259,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'astrantia-major',
     dutchName: 'Astrantia',
+    englishName: '',
     latinName: 'Astrantia major',
     commonName: 'Astrantia',
     iconKey: null,
@@ -262,6 +277,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'heuchera-sanguinea',
     dutchName: 'Heuchera',
+    englishName: '',
     latinName: 'Heuchera sanguinea',
     commonName: 'Heuchera',
     iconKey: null,
@@ -279,6 +295,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'tiarella-cordifolia',
     dutchName: 'Tiarella',
+    englishName: '',
     latinName: 'Tiarella cordifolia',
     commonName: 'Tiarella',
     iconKey: null,
@@ -296,6 +313,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'camellia-japonica',
     dutchName: 'Camelia',
+    englishName: '',
     latinName: 'Camellia japonica',
     commonName: 'Camellia',
     iconKey: 'camellia',
@@ -313,6 +331,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hydrangea-macrophylla',
     dutchName: 'Hortensia',
+    englishName: '',
     latinName: 'Hydrangea macrophylla',
     commonName: 'Hortensia',
     iconKey: null,
@@ -330,6 +349,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'wisteria-sinensis',
     dutchName: 'Blauweregen',
+    englishName: 'Wisteria',
     latinName: 'Wisteria sinensis',
     commonName: 'Blauweregen',
     iconKey: 'wisteria',
@@ -347,6 +367,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'fuchsia-magellanica',
     dutchName: 'Fuchsia',
+    englishName: 'Fuchsia',
     latinName: 'Fuchsia magellanica',
     commonName: 'Fuchsia',
     iconKey: 'fuchsia',
@@ -364,6 +385,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'rhododendron-hybrid',
     dutchName: 'Rododendron',
+    englishName: '',
     latinName: 'Rhododendron (hybride)',
     commonName: 'Rododendron',
     iconKey: null,
@@ -381,6 +403,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'paeonia-lactiflora',
     dutchName: 'Pioenroos',
+    englishName: 'Peony',
     latinName: 'Paeonia lactiflora',
     commonName: 'Pioenroos',
     iconKey: 'peony',
@@ -398,6 +421,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'anemone-hybrida',
     dutchName: 'Japanse anemoon',
+    englishName: '',
     latinName: 'Anemone hybrida',
     commonName: 'Herfstanemoon',
     iconKey: null,
@@ -417,6 +441,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'astilbe-arendsii',
     dutchName: 'Pluimspirea',
+    englishName: '',
     latinName: 'Astilbe × arendsii',
     commonName: 'Astilbe',
     iconKey: null,
@@ -433,6 +458,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hakonechloa-macra',
     dutchName: 'Japans wuivend gras',
+    englishName: '',
     latinName: 'Hakonechloa macra',
     commonName: 'Hakonechloa',
     iconKey: 'silvergrass',
@@ -449,6 +475,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hydrangea-anomala-petiolaris',
     dutchName: 'Klimhortensia',
+    englishName: 'Climbing Hydrangea',
     latinName: 'Hydrangea anomala subsp. petiolaris',
     commonName: 'Klimhortensia',
     iconKey: 'hydrangea',
@@ -465,6 +492,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'digitalis-purpurea',
     dutchName: 'Vingerhoedskruid',
+    englishName: 'Foxglove',
     latinName: 'Digitalis purpurea',
     commonName: 'Vingerhoedskruid',
     iconKey: 'foxglove',
@@ -481,6 +509,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'geranium-rozanne',
     dutchName: 'Ooievaarsbek',
+    englishName: 'Cranesbill',
     latinName: "Geranium 'Rozanne'",
     commonName: 'Geranium Rozanne',
     iconKey: 'geranium',
@@ -497,6 +526,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'alchemilla-mollis',
     dutchName: 'Vrouwenmantel',
+    englishName: '',
     latinName: 'Alchemilla mollis',
     commonName: 'Vrouwenmantel',
     iconKey: 'alchemilla',
@@ -513,6 +543,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'aquilegia-vulgaris',
     dutchName: 'Akelei',
+    englishName: 'Columbine',
     latinName: 'Aquilegia vulgaris',
     commonName: 'Akelei',
     iconKey: 'columbine',
@@ -529,6 +560,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'persicaria-amplexicaulis',
     dutchName: 'Duizendknoop',
+    englishName: '',
     latinName: 'Persicaria amplexicaulis',
     commonName: 'Persicaria',
     iconKey: null,
@@ -545,6 +577,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'anemone-hupehensis',
     dutchName: 'Herfstanemoon',
+    englishName: '',
     latinName: 'Anemone hupehensis',
     commonName: 'Herfstanemoon',
     iconKey: null,
@@ -561,6 +594,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'rosa-climbing',
     dutchName: 'Klimroos',
+    englishName: 'Climbing Rose',
     latinName: 'Rosa (klimvariëteit)',
     commonName: 'Klimroos',
     iconKey: 'rose',
@@ -577,6 +611,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'clematis-montana',
     dutchName: 'Bergclematis',
+    englishName: 'Clematis',
     latinName: 'Clematis montana',
     commonName: 'Clematis montana',
     iconKey: 'clematis',
@@ -593,6 +628,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'crocosmia-lucifer',
     dutchName: 'Montbretia',
+    englishName: '',
     latinName: "Crocosmia 'Lucifer'",
     commonName: 'Crocosmia',
     iconKey: null,
@@ -609,6 +645,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'phlox-paniculata',
     dutchName: 'Vlambloem',
+    englishName: '',
     latinName: 'Phlox paniculata',
     commonName: 'Phlox',
     iconKey: null,
@@ -625,6 +662,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'thalictrum-delavayi',
     dutchName: 'Ruit',
+    englishName: '',
     latinName: 'Thalictrum delavayi',
     commonName: 'Thalictrum',
     iconKey: null,
@@ -643,6 +681,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'tulipa-hybrid',
     dutchName: 'Tulp',
+    englishName: 'Tulip',
     latinName: 'Tulipa (hybride)',
     commonName: 'Tulp',
     iconKey: 'tulip',
@@ -660,6 +699,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'narcissus-hybrid',
     dutchName: 'Narcis',
+    englishName: 'Daffodil',
     latinName: 'Narcissus (hybride)',
     commonName: 'Narcis',
     iconKey: 'daffodil',
@@ -677,6 +717,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'crocus-vernus',
     dutchName: 'Krokus',
+    englishName: 'Crocus',
     latinName: 'Crocus vernus',
     commonName: 'Krokus',
     iconKey: 'crocus',
@@ -694,6 +735,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hyacinthus-orientalis',
     dutchName: 'Hyacint',
+    englishName: 'Hyacinth',
     latinName: 'Hyacinthus orientalis',
     commonName: 'Hyacint',
     iconKey: 'hyacinth',
@@ -711,6 +753,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'iris-germanica',
     dutchName: 'Iris',
+    englishName: 'Iris',
     latinName: 'Iris germanica',
     commonName: 'Iris',
     iconKey: 'iris',
@@ -728,6 +771,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'dahlia-pinnata',
     dutchName: 'Dahlia',
+    englishName: 'Dahlia',
     latinName: 'Dahlia pinnata',
     commonName: 'Dahlia',
     iconKey: 'dahlia',
@@ -745,6 +789,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'helianthus-annuus',
     dutchName: 'Zonnebloem (eenjarig)',
+    englishName: 'Sunflower (annual)',
     latinName: 'Helianthus annuus',
     commonName: 'Zonnebloem',
     iconKey: 'sunflower',
@@ -762,6 +807,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'tagetes-patula',
     dutchName: 'Afrikaantje',
+    englishName: 'French Marigold',
     latinName: 'Tagetes patula',
     commonName: 'Afrikaantje',
     iconKey: 'marigold',
@@ -779,6 +825,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'centaurea-cyanus',
     dutchName: 'Korenbloem',
+    englishName: 'Cornflower',
     latinName: 'Centaurea cyanus',
     commonName: 'Korenbloem',
     iconKey: 'cornflower',
@@ -796,6 +843,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'petunia-hybrida',
     dutchName: 'Petunia',
+    englishName: 'Petunia',
     latinName: 'Petunia hybrida',
     commonName: 'Petunia',
     iconKey: 'petunia',
@@ -813,6 +861,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'viola-wittrockiana',
     dutchName: 'Viooltje',
+    englishName: 'Violet',
     latinName: 'Viola wittrockiana',
     commonName: 'Viooltje',
     iconKey: 'pansy',
@@ -830,6 +879,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'alcea-rosea',
     dutchName: 'Stokroos',
+    englishName: 'Hollyhock',
     latinName: 'Alcea rosea',
     commonName: 'Stokroos',
     iconKey: 'stokroos',
@@ -847,6 +897,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'oenothera-biennis',
     dutchName: 'Teunisbloem',
+    englishName: 'Evening Primrose',
     latinName: 'Oenothera biennis',
     commonName: 'Teunisbloem',
     iconKey: 'oenothera',
@@ -864,6 +915,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'bellis-perennis',
     dutchName: 'Madeliefje',
+    englishName: 'Daisy',
     latinName: 'Bellis perennis',
     commonName: 'Madeliefje',
     iconKey: 'daisy',
@@ -881,6 +933,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'myosotis-arvensis',
     dutchName: 'Vergeet-mij-niet',
+    englishName: 'Forget-me-not',
     latinName: 'Myosotis arvensis',
     commonName: 'Vergeet-mij-niet',
     iconKey: 'forgetmenot',
@@ -898,6 +951,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'erysimum-cheiri',
     dutchName: 'Muurbloem',
+    englishName: '',
     latinName: 'Erysimum cheiri',
     commonName: 'Muurbloem',
     iconKey: 'wallflower',
@@ -915,6 +969,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'lupinus-polyphyllus',
     dutchName: 'Lupine',
+    englishName: 'Lupine',
     latinName: 'Lupinus polyphyllus',
     commonName: 'Lupine',
     iconKey: 'lupine',
@@ -932,6 +987,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'papaver-orientale',
     dutchName: 'Klaproos (oosterse)',
+    englishName: 'Oriental Poppy',
     latinName: 'Papaver orientale',
     commonName: 'Oosterse klaproos',
     iconKey: 'poppy',
@@ -949,6 +1005,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'calluna-vulgaris',
     dutchName: 'Heide',
+    englishName: 'Heather',
     latinName: 'Calluna vulgaris',
     commonName: 'Heide',
     iconKey: 'heather',
@@ -966,6 +1023,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'laurus-nobilis',
     dutchName: 'Laurier',
+    englishName: 'Bay Laurel',
     latinName: 'Laurus nobilis',
     commonName: 'Laurier',
     iconKey: 'laurel',
@@ -983,6 +1041,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'salvia-rosmarinus',
     dutchName: 'Rozemarijn',
+    englishName: 'Rosemary',
     latinName: 'Salvia rosmarinus',
     commonName: 'Rozemarijn',
     iconKey: 'rosemary',
@@ -1000,6 +1059,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'thymus-vulgaris',
     dutchName: 'Tijm',
+    englishName: 'Thyme',
     latinName: 'Thymus vulgaris',
     commonName: 'Tijm',
     iconKey: 'thyme',
@@ -1017,6 +1077,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'mentha-spicata',
     dutchName: 'Munt',
+    englishName: 'Mint',
     latinName: 'Mentha spicata',
     commonName: 'Munt',
     iconKey: 'mint',
@@ -1034,6 +1095,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'sambucus-nigra',
     dutchName: 'Vlier',
+    englishName: 'Elderberry',
     latinName: 'Sambucus nigra',
     commonName: 'Vlier',
     iconKey: 'elder',
@@ -1051,6 +1113,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'fargesia-murieliae',
     dutchName: 'Bamboe',
+    englishName: 'Bamboo',
     latinName: 'Fargesia murieliae',
     commonName: 'Bamboe',
     iconKey: 'bamboo',
@@ -1068,6 +1131,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'cortaderia-selloana',
     dutchName: 'Pampasgras',
+    englishName: 'Pampas Grass',
     latinName: 'Cortaderia selloana',
     commonName: 'Pampasgras',
     iconKey: 'pampasgras',
@@ -1087,6 +1151,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'salvia-nemorosa',
     dutchName: 'Bossalie',
+    englishName: '',
     latinName: 'Salvia nemorosa',
     commonName: 'Salie',
     iconKey: null,
@@ -1103,6 +1168,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'lavandula-angustifolia',
     dutchName: 'Lavendel',
+    englishName: 'Lavender',
     latinName: 'Lavandula angustifolia',
     commonName: 'Lavendel',
     iconKey: 'lavender',
@@ -1119,6 +1185,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'echinacea-purpurea',
     dutchName: 'Zonnehoed',
+    englishName: '',
     latinName: 'Echinacea purpurea',
     commonName: 'Echinacea',
     iconKey: 'zonnehoed',
@@ -1135,6 +1202,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'rudbeckia-fulgida',
     dutchName: 'Zonnebloem (vaste)',
+    englishName: 'Sunflower (perennial)',
     latinName: 'Rudbeckia fulgida',
     commonName: 'Rudbeckia',
     iconKey: 'sunflower',
@@ -1151,6 +1219,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'agapanthus-africanus',
     dutchName: 'Afrikaanse lelie',
+    englishName: 'African Lily',
     latinName: 'Agapanthus africanus',
     commonName: 'Agapanthus',
     iconKey: 'agapanthus',
@@ -1167,6 +1236,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'verbena-bonariensis',
     dutchName: 'IJzerhard',
+    englishName: '',
     latinName: 'Verbena bonariensis',
     commonName: 'Verbena bonariensis',
     iconKey: null,
@@ -1183,6 +1253,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'pennisetum-alopecuroides',
     dutchName: 'Lampenpoetsersgras',
+    englishName: '',
     latinName: 'Pennisetum alopecuroides',
     commonName: 'Pennisetum',
     iconKey: null,
@@ -1199,6 +1270,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'allium-hollandicum',
     dutchName: 'Sierui',
+    englishName: 'Ornamental Onion',
     latinName: 'Allium hollandicum',
     commonName: 'Allium',
     iconKey: 'allium',
@@ -1215,6 +1287,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'sedum-spectabile',
     dutchName: 'Hemelsleutel',
+    englishName: '',
     latinName: 'Hylotelephium spectabile',
     commonName: 'Sedum',
     iconKey: null,
@@ -1231,6 +1304,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'nepeta-faassenii',
     dutchName: 'Kattenkruid',
+    englishName: '',
     latinName: 'Nepeta × faassenii',
     commonName: 'Nepeta',
     iconKey: null,
@@ -1247,6 +1321,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'kniphofia-uvaria',
     dutchName: 'Vuurpijl',
+    englishName: '',
     latinName: 'Kniphofia uvaria',
     commonName: 'Kniphofia',
     iconKey: null,
@@ -1263,6 +1338,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'buddleja-davidii',
     dutchName: 'Vlinderstruik',
+    englishName: 'Butterfly Bush',
     latinName: 'Buddleja davidii',
     commonName: 'Buddleja',
     iconKey: 'buddleja',
@@ -1279,6 +1355,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'rosa-shrub',
     dutchName: 'Struikroos',
+    englishName: 'Shrub Rose',
     latinName: 'Rosa (struikvariëteit)',
     commonName: 'Struikroos',
     iconKey: 'rose',
@@ -1295,6 +1372,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'stipa-tenuissima',
     dutchName: 'Vedergras',
+    englishName: '',
     latinName: 'Nassella tenuissima',
     commonName: 'Stipa',
     iconKey: null,
@@ -1312,6 +1390,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'monstera-deliciosa',
     dutchName: 'Gatenplant',
+    englishName: 'Swiss Cheese Plant',
     latinName: 'Monstera deliciosa',
     commonName: 'Monstera',
     iconKey: 'monstera',
@@ -1329,6 +1408,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'calathea-orbifolia',
     dutchName: 'Calathea',
+    englishName: 'Calathea',
     latinName: 'Calathea orbifolia',
     commonName: 'Calathea',
     iconKey: 'calathea',
@@ -1346,6 +1426,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'epipremnum-aureum',
     dutchName: 'Scindapsus',
+    englishName: 'Pothos',
     latinName: 'Epipremnum aureum',
     commonName: 'Scindapsus',
     iconKey: 'pothos',
@@ -1363,6 +1444,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'ficus-lyrata',
     dutchName: 'Vioolbladplant',
+    englishName: 'Fiddle Leaf Fig',
     latinName: 'Ficus lyrata',
     commonName: 'Ficus lyrata',
     iconKey: 'fiddle',
@@ -1380,6 +1462,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'dracaena-marginata',
     dutchName: 'Drakenplant',
+    englishName: 'Dragon Tree',
     latinName: 'Dracaena marginata',
     commonName: 'Drakenplant',
     iconKey: 'drakenplant',
@@ -1397,6 +1480,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'crassula-ovata',
     dutchName: 'Geldplant',
+    englishName: 'Jade Plant',
     latinName: 'Crassula ovata',
     commonName: 'Geldplant',
     iconKey: 'jade',
@@ -1414,6 +1498,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'aloe-vera',
     dutchName: 'Aloe vera',
+    englishName: 'Aloe Vera',
     latinName: 'Aloe vera',
     commonName: 'Aloe vera',
     iconKey: 'aloe',
@@ -1431,6 +1516,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'echeveria-elegans',
     dutchName: 'Echeveria',
+    englishName: 'Echeveria',
     latinName: 'Echeveria elegans',
     commonName: 'Echeveria',
     iconKey: 'echeveria',
@@ -1448,6 +1534,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'dracaena-trifasciata',
     dutchName: 'Vrouwentong',
+    englishName: 'Snake Plant',
     latinName: 'Dracaena trifasciata',
     commonName: 'Sansevieria',
     iconKey: 'snake',
@@ -1465,6 +1552,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'phalaenopsis-hybrid',
     dutchName: 'Orchidee',
+    englishName: 'Orchid',
     latinName: 'Phalaenopsis (hybride)',
     commonName: 'Orchidee',
     iconKey: 'orchid',
@@ -1482,6 +1570,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'guzmania-hybrid',
     dutchName: 'Bromelia',
+    englishName: 'Bromeliad',
     latinName: 'Guzmania (hybride)',
     commonName: 'Bromelia',
     iconKey: 'bromeliad',
@@ -1499,6 +1588,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'spathiphyllum-hybrid',
     dutchName: 'Lepelplant',
+    englishName: 'Peace Lily',
     latinName: 'Spathiphyllum (hybride)',
     commonName: 'Lepelplant',
     iconKey: 'peacelily',
@@ -1516,6 +1606,7 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'zamioculcas-zamiifolia',
     dutchName: 'Zamioculcas',
+    englishName: 'ZZ Plant',
     latinName: 'Zamioculcas zamiifolia',
     commonName: 'ZZ-plant',
     iconKey: 'zz',
