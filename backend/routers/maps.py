@@ -125,8 +125,8 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
     today = date.today().isoformat()
     temp_data = await get_temp_data()
     rain_data = await get_rain_data()
-    last_watered = await get_last_garden_watered()
-    last_fertilized = await get_last_garden_fertilized()
+    last_watered = await get_last_garden_watered(account["household_id"])
+    last_fertilized = await get_last_garden_fertilized(account["household_id"])
     return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
 
 
@@ -142,8 +142,8 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
     today = date.today().isoformat()
     temp_data = await get_temp_data()
     rain_data = await get_rain_data()
-    last_watered = await get_last_garden_watered()
-    last_fertilized = await get_last_garden_fertilized()
+    last_watered = await get_last_garden_watered(account["household_id"])
+    last_fertilized = await get_last_garden_fertilized(account["household_id"])
 
     # Free-standing + ground-zone plants (not inside a container)
     plant_rows = await db.execute_fetchall(

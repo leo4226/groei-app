@@ -29,8 +29,8 @@ async def get_plant_alerts(plant_id: int, db = Depends(db_dep), account = Depend
         return []
 
     thresholds = json.loads(raw)
-    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered()
-    last_fertilized = await get_last_garden_fertilized()
+    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered(account["household_id"])
+    last_fertilized = await get_last_garden_fertilized(account["household_id"])
     map_type = rows[0]["map_type"] or "outdoor"
     in_ground = map_type == "outdoor" and rows[0]["container_id"] is None
 
@@ -47,8 +47,8 @@ async def get_alerts_summary(db = Depends(db_dep), account = Depends(get_current
     if not rows:
         return {"total_count": 0, "worst_severity": None, "plant_ids_with_alerts": []}
 
-    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered()
-    last_fertilized = await get_last_garden_fertilized()
+    rain, temp, last_watered = await get_rain_data(), await get_temp_data(), await get_last_garden_watered(account["household_id"])
+    last_fertilized = await get_last_garden_fertilized(account["household_id"])
 
     total_count = 0
     worst_level = -1
