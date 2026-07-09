@@ -180,10 +180,21 @@ export default function Plants() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // ───────────── Mutually exclusive: only one filter active ─────────────
   const hasActiveFilters = filterArea !== 'all' || filterType !== 'all' || filterForm !== 'all' || !!query
+  const activeFilterCount = (filterArea !== 'all' ? 1 : 0) + (filterType !== 'all' ? 1 : 0) + (filterForm !== 'all' ? 1 : 0) + (query ? 1 : 0)
 
   const categoryCount = new Set(plants.map(p => p.plant_type).filter(Boolean)).size
+  const activeTypeLabel = filterType !== 'all' ? PLANT_TYPE_LABELS[filterType] || filterType : null
+  const activeFormLabel = filterForm !== 'all' ? FORM_LABELS[filterForm] || filterForm : null
+  const typeFilterOptions = Object.entries(PLANT_TYPE_LABELS).filter(([key]) => key === filterType || (typeCounts[key] || 0) > 0)
+  const formFilterOptions = Object.entries(FORM_LABELS).filter(([key]) => key === 'all' || key === filterForm || (formCounts[key] || 0) > 0)
+
+  const clearCollectionFilters = () => {
+    setQuery('')
+    setFilterArea('all')
+    setFilterType('all')
+    setFilterForm('all')
+  }
 
   // ──────────────────────── DESKTOP LAYOUT ────────────────────────
   if (!isMobile) {
@@ -262,157 +273,209 @@ export default function Plants() {
           </div>
         </header>
 
-        {/* Search bar */}
-        <div style={{ padding: '20px 24px 0', display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}
-              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-            >
-              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-            </svg>
-            <input id="plant-search" type="text" value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={t.plantsPage.searchPlaceholder}
-              style={{
-                width: '100%', padding: '13px 50px 13px 42px', borderRadius: 100,
-                border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-                color: 'var(--color-text)', fontSize: 15, fontFamily: 'var(--font-heading)',
-                boxShadow: '0 1px 2px rgba(31,42,30,0.04)', boxSizing: 'border-box', outline: 'none',
-              }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(47,93,58,0.12), 0 1px 2px rgba(31,42,30,0.04)'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(31,42,30,0.04)'; }}
-            />
-            <span style={{
-              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-              fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)',
-              background: 'var(--color-bg-warm)', padding: '3px 7px', borderRadius: 5,
-              border: '1px solid var(--color-border)', pointerEvents: 'none',
+        <main style={{ padding: '20px 24px 0' }}>
+          <section aria-label={t.plantsPage.filterButton} style={{
+            border: '1px solid var(--color-border)',
+            borderRadius: 28,
+            background: 'color-mix(in srgb, var(--color-surface) 82%, transparent)',
+            boxShadow: '0 12px 36px rgba(31,42,30,0.05)',
+            padding: 16,
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(320px, 1fr) auto',
+              gap: 16,
+              alignItems: 'center',
             }}>
-              {navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K'}
-            </span>
-          </div>
-          <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
-            fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-            color: 'var(--color-text-soft)', padding: '10px 16px',
-            border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
-            transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            {t.discovery.identifyWild}
-          </button>
-          <button onClick={() => navigate('/plants/add')} style={{
-            fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-            color: 'var(--color-primary)', textDecoration: 'none', padding: '10px 16px',
-            border: '1px solid var(--color-primary)', borderRadius: 100, whiteSpace: 'nowrap',
-            transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-surface)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-          >
-            {t.plantsPage.addButton}
-          </button>
-          {isSelecting ? (
-            <button onClick={clearSelection} style={{
-              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-              color: 'var(--color-text-soft)', padding: '10px 16px',
-              border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
-              transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-            }}>
-              {t.common.cancel}
-            </button>
-          ) : (
-            <button onClick={() => setIsSelecting(true)} style={{
-              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-              color: 'var(--color-text-soft)', padding: '10px 16px',
-              border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
-              transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
-            >
-              {t.plantsPage.select}
-            </button>
-          )}
-        </div>
-
-        {/* Tab toggle — desktop */}
-        <div style={{ padding: '12px 24px 0', display: 'flex', gap: 8 }}>
-          {(['plants', 'journal'] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-              padding: '7px 18px', borderRadius: 100, cursor: 'pointer', border: 'none',
-              background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
-              transition: 'all 0.15s',
-            }}>
-              {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
-            </button>
-          ))}
-        </div>
-
-        {/* Filters — desktop rows */}
-        <div className="plants-filter-strip" style={{ display: activeTab === 'journal' ? 'none' : undefined }}>
-          <div className="filter-row" style={{ padding: '14px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="filter-label" style={{
-              fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
-              letterSpacing: '0.2em', color: 'var(--color-text-muted)', flexShrink: 0, minWidth: 48,
-            }}>{t.plantsPage.filterLocation}</span>
-            <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
-            <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
-            <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
-          </div>
-          <div className="filter-row" style={{ padding: '6px 24px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="filter-label" style={{
-              fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
-              letterSpacing: '0.2em', color: 'var(--color-text-muted)', flexShrink: 0, minWidth: 48,
-            }}>{t.plantsPage.filterType}</span>
-            <FilterChip label={t.plantsPage.filterAll} count={typeCounts.all} active={filterType === 'all'} onClick={() => setFilterType('all')} />
-            {Object.entries(PLANT_TYPE_LABELS).map(([key, label]) => {
-              const count = typeCounts[key] || 0
-              if (count === 0) return null
-              return (
-                <FilterChip key={key} label={label} count={count}
-                  active={filterType === key} onClick={() => setFilterType(filterType === key ? 'all' : key)}
+              <div style={{ position: 'relative' }}>
+                <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                >
+                  <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+                </svg>
+                <input id="plant-search" type="text" value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={t.plantsPage.searchPlaceholder}
+                  style={{
+                    width: '100%', padding: '13px 50px 13px 42px', borderRadius: 100,
+                    border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                    color: 'var(--color-text)', fontSize: 15, fontFamily: 'var(--font-heading)',
+                    boxShadow: '0 1px 2px rgba(31,42,30,0.04)', boxSizing: 'border-box', outline: 'none',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(47,93,58,0.12), 0 1px 2px rgba(31,42,30,0.04)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(31,42,30,0.04)'; }}
                 />
-              )
-            })}
-          </div>
-          <div className="filter-row" style={{ padding: '6px 24px 8px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="filter-label" style={{
-              fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
-              letterSpacing: '0.2em', color: 'var(--color-text-muted)', flexShrink: 0, minWidth: 48,
-            }}>{t.plantsPage.filterForm}</span>
-            {Object.entries(FORM_LABELS).map(([key, label]) => {
-              const count = formCounts[key] || 0
-              const disabled = count === 0 && key !== 'all'
-              return (
-                <FilterChip key={key} label={label} count={count}
-                  active={filterForm === key} onClick={() => setFilterForm(filterForm === key ? 'all' : key)}
-                  disabled={disabled} variant="terra"
-                />
-              )
-            })}
-          </div>
-        </div>
+                <span style={{
+                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                  fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)',
+                  background: 'var(--color-bg-warm)', padding: '3px 7px', borderRadius: 5,
+                  border: '1px solid var(--color-border)', pointerEvents: 'none',
+                }}>
+                  {navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl K'}
+                </span>
+              </div>
 
-        {/* Results & plant grid – shared */}
-        <div style={{ padding: '0 24px' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                  color: 'var(--color-text-soft)', padding: '10px 16px',
+                  border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                  transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  {t.discovery.identifyWild}
+                </button>
+                <button onClick={() => navigate('/plants/add')} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+                  color: 'var(--color-surface)', textDecoration: 'none', padding: '10px 17px',
+                  border: '1px solid var(--color-primary)', borderRadius: 100, whiteSpace: 'nowrap',
+                  transition: 'all 0.15s', flexShrink: 0, background: 'var(--color-primary)', cursor: 'pointer',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  {t.plantsPage.addButton}
+                </button>
+                {isSelecting ? (
+                  <button onClick={clearSelection} style={{
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                    color: 'var(--color-text-soft)', padding: '10px 16px',
+                    border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                    transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                  }}>
+                    {t.common.cancel}
+                  </button>
+                ) : (
+                  <button onClick={() => setIsSelecting(true)} style={{
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                    color: 'var(--color-text-soft)', padding: '10px 16px',
+                    border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                    transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+                  >
+                    {t.plantsPage.select}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: 14,
+              paddingTop: 14,
+              borderTop: '1px solid var(--color-border-soft)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 16, flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {(['plants', 'journal'] as const).map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                    padding: '7px 18px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                    background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
+                    color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
+                    transition: 'all 0.15s',
+                  }}>
+                    {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === 'plants' && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+                    letterSpacing: '0.2em', color: 'var(--color-text-muted)', marginRight: 2,
+                  }}>{t.plantsPage.filterLocation}</span>
+                  <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} compact />
+                  <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} compact />
+                  <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} compact />
+                </div>
+              )}
+            </div>
+
+            {activeTab === 'plants' && (
+              <div style={{
+                marginTop: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 12, flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+                    letterSpacing: '0.2em', color: 'var(--color-text-muted)', marginRight: 2,
+                  }}>{t.plantsPage.filterButton}</span>
+                  <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{
+                    minWidth: 150, padding: '8px 34px 8px 12px', borderRadius: 100,
+                    border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                    color: 'var(--color-text-soft)', fontFamily: 'var(--font-body)', fontSize: 12,
+                    outline: 'none', cursor: 'pointer',
+                  }}>
+                    <option value="all">{t.plantsPage.filterType}: {t.plantsPage.filterAll} ({typeCounts.all})</option>
+                    {typeFilterOptions.map(([key, label]) => (
+                      <option key={key} value={key}>{stripLabelEmoji(label)} ({typeCounts[key] || 0})</option>
+                    ))}
+                  </select>
+                  <select value={filterForm} onChange={e => setFilterForm(e.target.value)} style={{
+                    minWidth: 150, padding: '8px 34px 8px 12px', borderRadius: 100,
+                    border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                    color: 'var(--color-text-soft)', fontFamily: 'var(--font-body)', fontSize: 12,
+                    outline: 'none', cursor: 'pointer',
+                  }}>
+                    {formFilterOptions.map(([key, label]) => (
+                      <option key={key} value={key}>{key === 'all' ? `${t.plantsPage.filterForm}: ${label}` : stripLabelEmoji(label)} ({formCounts[key] || 0})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {hasActiveFilters && (
+                  <button onClick={clearCollectionFilters} style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em',
+                    color: 'var(--color-primary)', border: 'none', background: 'transparent', cursor: 'pointer',
+                    padding: '8px 0',
+                  }}>
+                    {t.plantsPage.alertShowAll}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'plants' && (activeTypeLabel || activeFormLabel) && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+                {activeTypeLabel && (
+                  <FilterChip compact active onClick={() => setFilterType('all')}>
+                    {stripLabelEmoji(activeTypeLabel)} ×
+                  </FilterChip>
+                )}
+                {activeFormLabel && (
+                  <FilterChip compact active variant="terra" onClick={() => setFilterForm('all')}>
+                    {stripLabelEmoji(activeFormLabel)} ×
+                  </FilterChip>
+                )}
+              </div>
+            )}
+          </section>
+
           {activeTab === 'journal' && (
-            <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
-              <DiscoveriesSection />
-            </Suspense>
+            <div style={{ marginTop: 18 }}>
+              <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-soft)' }}>...</div>}>
+                <DiscoveriesSection />
+              </Suspense>
+            </div>
           )}
+
           {activeTab === 'plants' && alertsOnly && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 12px', marginBottom: 12, marginTop: 12,
+              padding: '8px 12px', marginBottom: 12, marginTop: 18,
               background: '#fffac2', borderRadius: 10, border: '1px solid var(--color-due)',
             }}>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
@@ -426,12 +489,30 @@ export default function Plants() {
               </button>
             </div>
           )}
-          {activeTab === 'plants' && !isSelecting && <PlantFactCard />}
-          {activeTab === 'plants' && <ResultsBar />}
-          {activeTab === 'plants' && <LoadingSkeleton />}
-          {activeTab === 'plants' && <EmptyState />}
-          {activeTab === 'plants' && <PlantGrid />}
-          {activeTab === 'plants' && !isSelecting && <RecentCareSection />}
+
+          {activeTab === 'plants' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isSelecting ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(280px, 360px)',
+              gap: 24,
+              alignItems: 'start',
+              marginTop: alertsOnly ? 0 : 18,
+            }}>
+              <section style={{ minWidth: 0 }}>
+                <ResultsBar />
+                <LoadingSkeleton />
+                <EmptyState />
+                <PlantGrid />
+              </section>
+              {!isSelecting && (
+                <aside style={{ position: 'sticky', top: 24 }}>
+                  <PlantFactCard />
+                  <RecentCareSection />
+                </aside>
+              )}
+            </div>
+          )}
+
           {isSelecting && (
             <div style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
@@ -466,7 +547,7 @@ export default function Plants() {
               </div>
             </div>
           )}
-        </div>
+        </main>
       </div>
     )
   }
@@ -602,7 +683,7 @@ export default function Plants() {
                 fontSize: 9, fontWeight: 600, borderRadius: 20,
                 padding: '1px 6px', lineHeight: '16px',
               }}>
-                {(filterArea !== 'all' ? 1 : 0) + (filterType !== 'all' ? 1 : 0) + (filterForm !== 'all' ? 1 : 0)}
+                {activeFilterCount}
               </span>
             )}
           </button>
