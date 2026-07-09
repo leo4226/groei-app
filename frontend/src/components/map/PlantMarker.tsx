@@ -215,9 +215,8 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   return (
     <g
       transform={`translate(${x}, ${y})`}
-      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap(plant) }}
       onPointerDown={(e) => onPointerDown(e, plant)}
-      style={{ cursor: isDragging ? 'grabbing' : canDrag ? 'grab' : 'pointer', touchAction: 'none' }}
+      style={{ pointerEvents: 'all', cursor: isDragging ? 'grabbing' : canDrag ? 'grab' : 'pointer', touchAction: 'none' }}
     >
       {/* Status halo */}
       {haloColor && (
