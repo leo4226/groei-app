@@ -49,9 +49,9 @@ export default function MapBottomSheet({ mode, attentionCount, careContent, sunC
         aria-expanded={expanded}
         className="w-full flex flex-col items-center pt-2 pb-1.5 hover:bg-bg/30 transition-colors"
       >
-        <div className="w-8 h-[3px] rounded-sm bg-border" />
+        <div className="w-8 md:w-10 h-[3px] rounded-sm bg-border" />
         {!expanded && peekLabel && (
-          <span className="text-xs font-medium text-text mt-1.5">{peekLabel}</span>
+          <span className="text-xs md:text-sm font-medium text-text mt-1.5">{peekLabel}</span>
         )}
       </button>
 

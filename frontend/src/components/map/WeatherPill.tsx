@@ -42,7 +42,7 @@ export default function WeatherPill({ lat, lon }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-surface/85 rounded-full border border-border/60 shadow-lg text-sm font-semibold text-text hover:bg-surface transition-colors"
+        className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-surface/85 rounded-full border border-border/60 shadow-lg text-sm md:text-base font-semibold text-text hover:bg-surface transition-colors"
         style={{ backdropFilter: 'blur(10px)' }}
         aria-label={`${weather.currentTemp}° ${conditionLabel}`}
       >

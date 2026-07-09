@@ -556,7 +556,7 @@ export default function MapPage() {
       </div>
 
       {/* Action cluster: top-right in portrait, bottom-center in landscape */}
-      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 landscape-action-bottom">
+      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 md:gap-3 landscape-action-bottom">
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={water.gardenWater?.status ?? 'dry'}
