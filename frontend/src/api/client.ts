@@ -666,6 +666,8 @@ export const household = {
   invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
   join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
+  updateMember:(memberId: number, data: { name: string; avatar: string | null }) =>
+    api<HouseholdMember>('PATCH', `/household/members/${memberId}`, { body: data }),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
   rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
 }

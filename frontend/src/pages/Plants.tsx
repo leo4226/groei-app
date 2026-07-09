@@ -202,7 +202,9 @@ export default function Plants() {
       <div style={{ paddingBottom: 80 }}>
         {/* Header */}
         <header className="plants-header" style={{
-          padding: '40px 24px 20px',
+          maxWidth: 1480,
+          margin: '0 auto',
+          padding: '40px 48px 20px',
           borderBottom: '1px solid var(--color-border)',
           display: 'flex',
           justifyContent: 'space-between',
@@ -273,7 +275,7 @@ export default function Plants() {
           </div>
         </header>
 
-        <main style={{ padding: '20px 24px 0' }}>
+        <main style={{ maxWidth: 1480, margin: '0 auto', padding: '20px 48px 0' }}>
           <section aria-label={t.plantsPage.filterButton} style={{
             border: '1px solid var(--color-border)',
             borderRadius: 28,
@@ -491,26 +493,20 @@ export default function Plants() {
           )}
 
           {activeTab === 'plants' && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isSelecting ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(280px, 360px)',
-              gap: 24,
-              alignItems: 'start',
-              marginTop: alertsOnly ? 0 : 18,
-            }}>
-              <section style={{ minWidth: 0 }}>
+            <>
+              <section style={{ marginTop: alertsOnly ? 0 : 18 }}>
                 <ResultsBar />
                 <LoadingSkeleton />
                 <EmptyState />
                 <PlantGrid />
               </section>
               {!isSelecting && (
-                <aside style={{ position: 'sticky', top: 24 }}>
+                <section style={{ marginTop: 28 }}>
                   <PlantFactCard />
                   <RecentCareSection />
-                </aside>
+                </section>
               )}
-            </div>
+            </>
           )}
 
           {isSelecting && (
