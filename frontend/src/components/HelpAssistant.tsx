@@ -403,10 +403,10 @@ export default function HelpAssistant() {
               borderRadius: isMobile ? 999 : 16,
               padding: isMobile ? '7px 11px' : '10px 16px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              maxWidth: isMobile ? 150 : 200,
+              maxWidth: isMobile ? 150 : 260,
             }}
           >
-            <p style={{ margin: 0, fontSize: isMobile ? 12 : 13, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>
+            <p style={{ margin: 0, fontSize: isMobile ? 12 : 14, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>
               {isMobile
                 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Glyph name="sprout" size={13} style={{ flexShrink: 0 }} />{t.help.askStekkie}</span>
                 : bubble}

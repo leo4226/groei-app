@@ -306,8 +306,8 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
                     strokeDasharray={`${dash} ${c - dash}`}
                     strokeLinecap="round" />
           </svg>
-          <span className="text-xs font-semibold text-text">{data.score}</span>
-          <span className="text-xs text-text-muted">{t.garden.biodiversity.title}</span>
+          <span className="text-xs md:text-sm font-semibold text-text">{data.score}</span>
+          <span className="text-xs md:text-sm text-text-muted">{t.garden.biodiversity.title}</span>
         </button>
         {modalOpen && createPortal(
           <div

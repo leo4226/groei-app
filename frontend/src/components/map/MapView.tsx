@@ -592,15 +592,15 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
           onClick={handleZoomIn}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
+          className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm md:text-base font-bold"
           title="Zoom in">+</button>
         <button
           onClick={handleZoomReset}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-y border-border/50"
+          className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs md:text-sm border-y border-border/50"
           title="Reset zoom">{Math.round(zoom * 100)}%</button>
         <button
           onClick={handleZoomOut}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold"
+          className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm md:text-base font-bold"
           title="Zoom uit">−</button>
       </div>
 

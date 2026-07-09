@@ -3,14 +3,14 @@ import type { WaterStatus, TempStatus } from '../hooks/usePlantStatus'
 // Placeholder SVG icons — swap out the path data for final artwork.
 // Each icon is a 24×24 viewBox SVG rendered inline.
 
-interface WaterIconProps { status: WaterStatus; size?: number }
-interface TempIconProps  { status: TempStatus;  size?: number }
+interface WaterIconProps { status: WaterStatus; size?: number; className?: string }
+interface TempIconProps  { status: TempStatus;  size?: number; className?: string }
 
-export function WaterStatusIcon({ status, size = 24 }: WaterIconProps) {
+export function WaterStatusIcon({ status, size = 24, className }: WaterIconProps) {
   if (status === 'hydrated') {
     // Blooming / happy drop — solid teal drop shape
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Goed bewaterd">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Goed bewaterd" className={className}>
         <path d="M12 3 C12 3 5 11 5 15.5 A7 7 0 0 0 19 15.5 C19 11 12 3 12 3Z" fill="#22c55e" />
         <path d="M9 16 Q12 19 15 16" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
       </svg>
@@ -19,7 +19,7 @@ export function WaterStatusIcon({ status, size = 24 }: WaterIconProps) {
   if (status === 'thirsty') {
     // Drooping drop — amber, slight droop
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Bijna dorstig">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Bijna dorstig" className={className}>
         <path d="M12 3 C12 3 5 11 5 15.5 A7 7 0 0 0 19 15.5 C19 11 12 3 12 3Z" fill="#f59e0b" />
         <path d="M9 17 Q12 15 15 17" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
       </svg>
@@ -27,7 +27,7 @@ export function WaterStatusIcon({ status, size = 24 }: WaterIconProps) {
   }
   // dry — wilted / cracked drop
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Droog">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-label="Droog" className={className}>
       <path d="M12 3 C12 3 5 11 5 15.5 A7 7 0 0 0 19 15.5 C19 11 12 3 12 3Z" fill="#ef4444" opacity="0.85" />
       <path d="M10 13 L12 17 L14 13" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
