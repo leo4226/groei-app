@@ -149,9 +149,9 @@ export default function EditorLegendPanel({
           >
             <Glyph name="brick" size={16} className="shrink-0 text-text-muted" />
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-text leading-tight">Omhein de tuin</div>
+              <div className="text-xs font-semibold text-text leading-tight">{t.editor.fenceGarden}</div>
               <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                {canFenceGarden ? 'Zet automatisch hekken rondom je tuin' : 'Teken eerst een zone'}
+                {canFenceGarden ? t.editor.fenceGardenDesc : t.editor.fenceGardenBlocked}
               </div>
             </div>
           </button>
@@ -232,10 +232,10 @@ export default function EditorLegendPanel({
                 <span className="w-3 h-3 rounded-sm shrink-0 mt-0.5" style={{ backgroundColor: '#6b7280' }} />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    Gebouw
+                    {t.editor.shadowCasterBuilding}
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                    Teken een rechthoek — muur/schuur/burenpand
+                    {t.editor.shadowCasterBuildingDesc}
                   </div>
                 </div>
               </button>
@@ -252,10 +252,10 @@ export default function EditorLegendPanel({
                 <span className="w-3 h-3 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: '#4ade80' }} />
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-text leading-tight">
-                    Boom / Plant
+                    {t.editor.shadowCasterTree}
                   </div>
                   <div className="text-[10px] text-text-muted leading-tight mt-0.5">
-                    Teken een cirkel — boom, hoge haag
+                    {t.editor.shadowCasterTreeDesc}
                   </div>
                 </div>
               </button>
