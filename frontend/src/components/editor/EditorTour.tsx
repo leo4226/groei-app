@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useT } from '../../context/LanguageContext'
 import type { UseEditorTourReturn } from '../../hooks/useEditorTour'
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function EditorTour({ tour, onNavigateToSettings }: Props) {
+  const t = useT()
   const { isActive, currentStep, steps, next, skip } = tour
   const prevTargetRef = useRef<Element | null>(null)
 
@@ -51,13 +53,13 @@ export default function EditorTour({ tour, onNavigateToSettings }: Props) {
       <div className="fixed bottom-4 left-4 right-4 z-[110] mx-auto max-w-lg bg-surface rounded-2xl shadow-2xl border border-border p-5 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-primary">
-            Stap {currentStep + 1} van {total}
+            {t.onboarding.stepLabel(currentStep + 1, total)}
           </span>
           <button
             onClick={skip}
             className="text-xs text-text-muted hover:text-text"
           >
-            Overslaan
+            {t.editor.tour.skip}
           </button>
         </div>
 
@@ -73,13 +75,13 @@ export default function EditorTour({ tour, onNavigateToSettings }: Props) {
                 onClick={skip}
                 className="text-xs px-3 py-1.5 rounded-lg border border-border text-text-muted hover:bg-bg"
               >
-                Nu overslaan
+                {t.editor.tour.skipSettings}
               </button>
               <button
                 onClick={() => { skip(); onNavigateToSettings() }}
                 className="text-xs px-3 py-1.5 rounded-lg bg-primary text-white hover:opacity-90"
               >
-                Ga naar Instellingen →
+                {t.editor.tour.goToSettings}
               </button>
             </>
           ) : (
@@ -87,7 +89,7 @@ export default function EditorTour({ tour, onNavigateToSettings }: Props) {
               onClick={isLast ? skip : next}
               className="text-xs px-3 py-1.5 rounded-lg bg-primary text-white hover:opacity-90"
             >
-              {isLast ? 'Klaar' : 'Volgende →'}
+              {isLast ? t.editor.tour.done : t.editor.tour.next}
             </button>
           )}
         </div>
