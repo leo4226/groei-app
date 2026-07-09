@@ -160,10 +160,11 @@ def _api_base() -> str:
     return os.environ.get("API_BASE_URL", "https://api.floreren.app").rstrip("/")
 
 
-def _task_line(task: CareTask, s: dict) -> str:
+def _task_line(task: CareTask, s: dict, lang: str) -> str:
     care = CARE_TYPES.get(task.care_type, {})
     icon = care.get("icon", "🌿")
-    label = care.get("label_nl", task.care_type)
+    label_key = "label_en" if lang == "en" else "label_nl"
+    label = care.get(label_key) or care.get("label_nl", task.care_type)
     late = ""
     if task.days_overdue > 0:
         late = f' <span style="color:#b3261e;font-size:13px;">({s["days_late"].format(n=task.days_overdue)})</span>'
@@ -175,10 +176,10 @@ def _task_line(task: CareTask, s: dict) -> str:
     )
 
 
-def _section(title: str, tasks: list[CareTask], s: dict) -> str:
+def _section(title: str, tasks: list[CareTask], s: dict, lang: str) -> str:
     if not tasks:
         return ""
-    items = "".join(_task_line(t, s) for t in tasks)
+    items = "".join(_task_line(t, s, lang) for t in tasks)
     return (
         f'<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;'
         f'color:#4a7c59;margin:20px 0 8px;">{title}</h2>'
@@ -194,8 +195,9 @@ def build_digest_email(
     lang: str = "nl",
 ) -> tuple[str, str]:
     """Return (subject, html) for the daily digest. Bilingual-ready via `lang`."""
-    s = _STRINGS.get(lang, _STRINGS["nl"])
-    body = _section(s["overdue"], overdue, s) + _section(s["due_today"], due_today, s)
+    lang = "en" if lang == "en" else "nl"
+    s = _STRINGS[lang]
+    body = _section(s["overdue"], overdue, s, lang) + _section(s["due_today"], due_today, s, lang)
     html = f"""\
 <!DOCTYPE html>
 <html lang="{lang}">
@@ -240,10 +242,22 @@ async def send_due_digests(db) -> dict:
     now = _now()
     today = now.date()
 
+    # Language comes from the user profile that signup creates alongside each
+    # account (same name, same household — see routers/auth.py). Accounts have
+    # no language column of their own (yet); the scalar subquery keeps one
+    # digest row per account, with NULL falling back to NL when no profile exists.
     prefs = await db.execute_fetchall(
         """
         SELECT np.account_id, np.digest_time, np.digest_enabled,
-               np.last_digest_sent_on, a.email, a.name, a.household_id
+               np.last_digest_sent_on, a.email, a.name, a.household_id,
+               (
+                 SELECT u.language
+                 FROM users u
+                 WHERE u.household_id = a.household_id
+                   AND LOWER(u.name) = LOWER(a.name)
+                 ORDER BY u.id
+                 LIMIT 1
+               ) AS user_language
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
         WHERE np.digest_enabled
@@ -267,7 +281,10 @@ async def send_due_digests(db) -> dict:
 
         token = make_unsubscribe_token(pref["account_id"])
         unsubscribe_url = f"{_api_base()}/api/notifications/unsubscribe?token={token}"
-        subject, html = build_digest_email(pref["name"], overdue, due_today, unsubscribe_url)
+        lang = "en" if pref["user_language"] == "en" else "nl"
+        subject, html = build_digest_email(
+            pref["name"], overdue, due_today, unsubscribe_url, lang=lang
+        )
         if send_email(pref["email"], subject, html):
             await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
             sent += 1

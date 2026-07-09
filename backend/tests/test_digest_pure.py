@@ -93,6 +93,20 @@ def test_email_lists_tasks_and_unsubscribe():
     assert "Leon" in html
 
 
+def test_email_uses_english_care_labels_when_lang_en():
+    subject, html = build_digest_email(
+        "Leon",
+        overdue=[],
+        due_today=[_task(plant_name="Basil", care_type="fertilize", days_overdue=0)],
+        unsubscribe_url="https://api.floreren.app/api/notifications/unsubscribe?token=x",
+        lang="en",
+    )
+
+    assert subject == "Your plants need attention today 🌿"
+    assert "Fertilize" in html
+    assert "Mest" not in html
+
+
 def test_email_task_line_uses_map_name_when_location_missing():
     _, html = build_digest_email(
         "Leon",
