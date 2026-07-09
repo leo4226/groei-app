@@ -124,5 +124,4 @@ Licensed under the **GNU Affero General Public License v3.0**: see [LICENSE](./L
 ---
 
 <div align="center">
-<sub>Made in Amsterdam, by Leon &amp; Lisbeth</sub>
 </div>
