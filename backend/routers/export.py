@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -18,6 +19,8 @@ router = APIRouter(tags=["export"])
 def _value(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     return value
 
 
