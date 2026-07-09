@@ -22,6 +22,7 @@ interface FlorerStore {
 
   load: () => Promise<void>
   loadMaps: () => Promise<void>
+  resetForNewSession: () => void
   loadDashboardV2: () => Promise<void>
   loadWarningSummary: (env?: string) => Promise<void>
   loadPlants: () => Promise<void>
@@ -78,6 +79,9 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   showPlantPicker: false,
   careVersions: {},
   profileVersions: {},
+
+  /** Called after login/register to force a fresh data load for the new account. */
+  resetForNewSession: () => set({ hasLoaded: false, isLoading: false, error: null }),
 
   load: async () => {
     set({ isLoading: true, error: null })
