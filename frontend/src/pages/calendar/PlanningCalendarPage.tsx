@@ -12,7 +12,7 @@ function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: Ca
   const t = useT()
   return (
     <div className="standalone-toggle-container" style={{
-      maxWidth: 1480, margin: '0 auto', padding: 'max(clamp(16px, 4vw, 48px), env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 48px) 0',
+      width: 'min(100%, 1800px)', margin: '0 auto', padding: 'max(clamp(16px, 4vw, 48px), env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0',
       display: 'flex', justifyContent: 'flex-end',
     }}>
       <div className="view-toggle">
@@ -33,7 +33,10 @@ export default function PlanningCalendarPage() {
     <div className="cal-page">
       {/* ── Environment filter ── */}
       <div style={{
-        display: 'flex', gap: 10, padding: '16px 24px 8px',
+        width: 'min(100%, 1800px)',
+        margin: '0 auto',
+        display: 'flex', gap: 10,
+        padding: '16px clamp(24px, 3vw, 56px) 8px',
         flexWrap: 'wrap',
       }}>
         {([

@@ -473,9 +473,10 @@ export default function Settings() {
         accent={t.settings.mastheadAccent}
         lede={t.settings.mastheadLede}
       />
-      <div className="px-4 pt-6 md:px-8 md:max-w-[900px] lg:max-w-[1100px] mx-auto">
+      <div className="mx-auto grid max-w-[1380px] grid-cols-1 gap-8 px-4 pt-6 md:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start lg:gap-10">
+        <div className="min-w-0 space-y-8">
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.profile}</h2>
         <div className="card p-4 space-y-4">
           {profileLoadError && (
@@ -536,6 +537,7 @@ export default function Settings() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {/* Save profile button */}
           <button
             onClick={handleSaveProfile}
@@ -552,7 +554,7 @@ export default function Settings() {
           </button>
 
           {/* Change password */}
-          <div className="pt-3 border-t border-border">
+          <div className="border-t border-border pt-3 sm:border-t-0 sm:pt-0">
             <button
               onClick={() => setShowChangePassword(!showChangePassword)}
               className="w-full py-2.5 rounded-xl border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
@@ -596,9 +598,10 @@ export default function Settings() {
             )}
           </div>
         </div>
+        </div>
       </section>
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.display}</h2>
         <div className="card p-4 space-y-4">
           {/* Theme toggle */}
@@ -644,7 +647,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.digestTitle}</h2>
         <div className="card p-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -778,7 +781,10 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
+        </div>
+        <div className="min-w-0 space-y-8">
+
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.dataSectionTitle}</h2>
         <div className="card p-4 space-y-4 border border-primary/15 bg-gradient-to-br from-primary/5 via-surface to-surface">
           <div className="flex items-start gap-3">
@@ -819,7 +825,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.householdTitle}</h2>
         <div className="card p-4 space-y-4">
           {/* Editable household name */}
@@ -970,7 +976,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.language}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(['nl', 'en'] as const).map((lang) => {
@@ -1003,7 +1009,7 @@ export default function Settings() {
 
       
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.locations}</h2>
         <div className="card divide-y divide-border/50">
           {locations.map((loc) => {
@@ -1155,7 +1161,7 @@ export default function Settings() {
       </section>
       )}
 
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.assistantTitle}</h2>
         <div className="card p-4 space-y-3">
           <button
@@ -1176,7 +1182,7 @@ export default function Settings() {
           )}
         </div>
       </section>
-      <section className="mb-8">
+      <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.about}</h2>
         <div className="card p-4">
           <p className="text-sm text-text-muted">
@@ -1188,7 +1194,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="mt-8 mb-4">
+      <section className="mb-4">
         <button
           onClick={() => { clearToken(); navigate('/login') }}
           className="w-full py-3 rounded-xl border border-red-400/30 text-red-400 font-semibold text-sm active:scale-[0.98] transition-transform"
@@ -1207,6 +1213,7 @@ export default function Settings() {
           </a>
         </div>
       )}
+        </div>
       </div>
     </div>
   )
