@@ -1416,7 +1416,7 @@ export const nl: Translations = {
     journalTab: 'Veldboek',
     myPlantsTab: 'Mijn planten',
     journalEmpty: 'Nog geen veldwaarnemingen',
-    journalEmptyHint: 'Fotografeer planten buiten met de camera-knop',
+    journalEmptyHint: 'Gebruik de camera-knop om bijzondere planten die je tegenkomt vast te leggen — ze verschijnen hier in je veldboek',
     journalDeleteConfirm: 'Waarneming verwijderen?',
     discovered: 'Gevonden',
     share: 'Delen',

@@ -102,7 +102,7 @@ export default function DiscoveriesSection() {
   if (loading) {
     return (
       <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-soft)' }}>
-        ...
+        <p style={{ fontSize: 13 }}>{t.discovery.journalEmptyHint}</p>
       </div>
     )
   }

@@ -570,11 +570,12 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
 
     new_cursor = await db.execute(
         """INSERT INTO plants (name, species, species_id, location_id, photo_path, pot_size_cm, notes,
-           map_id, display_radius_cm, sun_requirement, phase, sown_date, is_active, household_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)""",
+           map_id, display_radius_cm, sun_requirement, phase, sown_date, is_active, household_id, icon_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)""",
         (src["name"], src["species"], src.get("species_id"), src["location_id"], src["photo_path"],
          src["pot_size_cm"], src["notes"], src["map_id"], src.get("display_radius_cm"),
-         src.get("sun_requirement"), src.get("phase"), src.get("sown_date"), account["household_id"]),
+         src.get("sun_requirement"), src.get("phase"), src.get("sown_date"), account["household_id"],
+         src.get("icon_key")),
     )
     new_id = new_cursor.lastrowid
 

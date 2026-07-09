@@ -75,7 +75,7 @@ function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: 
               key={i}
               className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-4 ${ALERT_BORDER[w.severity] ?? 'border-l-aqua-glow'} ${ALERT_BG[w.severity] ?? 'bg-aqua-glow/8'}`}
             >
-              <span className="text-lg shrink-0 mt-0.5">{w.icon}</span>
+              <CareIcon type={w.care_type as CareIconType} size={18} />
               <div className="flex-1">
                 <p className="text-sm text-text leading-snug">
                   {t.locale?.startsWith('en') ? w.message_en : w.message_nl}

@@ -1416,7 +1416,7 @@ export const en: Translations = {
     journalTab: 'Field journal',
     myPlantsTab: 'My plants',
     journalEmpty: 'No field observations yet',
-    journalEmptyHint: 'Photograph plants outside using the camera button',
+    journalEmptyHint: 'Use the camera button to capture interesting plants you find along the way — they\'ll show up here in your field journal',
     journalDeleteConfirm: 'Delete observation?',
     discovered: 'Found',
     share: 'Share',
