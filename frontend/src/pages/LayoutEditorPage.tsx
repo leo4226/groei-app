@@ -637,7 +637,7 @@ export default function LayoutEditorPage() {
                         </span>
                         {/* Name */}
                         <span className={`flex-1 truncate ${isSelected ? 'font-semibold text-text' : 'text-text-muted'}`}>
-                          {sc.label || (isRect ? 'Gebouw' : 'Boom')}
+                          {sc.label || (isRect ? t.editor.shadowCasterBuilding : t.editor.shadowCasterTree)}
                         </span>
                         {/* Off-canvas indicator */}
                         {!onCanvas && (

@@ -250,7 +250,12 @@ export type Translations = {
     shadowObject: string  // "Shadow" / "Schaduw"  // { container: "Pot / Tray" / "Pot / Bak", hardscape: "Garden object" / "Tuinobject", utility: "Utility" / "Nutsvoorziening" }
     // Shadow caster properties panel
     shadowCasterBuilding: string   // "Gebouw" / "Building"
+    shadowCasterBuildingDesc: string // "Teken een rechthoek" / "Draw a rectangle"
     shadowCasterTree: string       // "Boom" / "Tree"
+    shadowCasterTreeDesc: string   // "Teken een cirkel" / "Draw a circle"
+    fenceGarden: string            // "Omhein de tuin" / "Fence the garden"
+    fenceGardenDesc: string        // "Zet automatisch hekken" / "Auto-place fences"
+    fenceGardenBlocked: string     // "Teken eerst een zone" / "Draw a zone first"
     shadowCasterName: string       // "Naam" / "Name"
     rectPlaceholder: string        // "bijv. Buurman's huis" / "e.g. Neighbor's house"
     circlePlaceholder: string      // "bijv. Eik, Spar..." / "e.g. Oak, Pine..."
