@@ -1,6 +1,7 @@
 """Field journal plant discoveries."""
 
 import base64
+import json
 
 import pytest
 import pytest_asyncio
@@ -19,6 +20,13 @@ DISCOVERIES_SCHEMA = """
         location_lat REAL,
         location_lon REAL,
         discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE plant_species (
+        id INTEGER PRIMARY KEY,
+        common_name_nl TEXT NOT NULL,
+        common_name_en TEXT,
+        latin_name TEXT,
+        phenology_json TEXT
     );
 """
 
@@ -69,3 +77,52 @@ async def test_save_discovery_uploads_captured_photo_data(client, discoveries_db
     list_res = await client.get("/api/discover", headers=auth_header)
     assert list_res.status_code == 200
     assert list_res.json()[0]["thumbnail_url"] == body["thumbnail_url"]
+
+
+@pytest.mark.asyncio
+async def test_list_discoveries_enriches_species_names_facts_and_location(client, discoveries_db, auth_header):
+    await discoveries_db.execute(
+        """INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json)
+           VALUES (?, ?, ?, ?, ?)""",
+        (
+            123,
+            "Jakobskruiskruid",
+            "Ragwort",
+            "Jacobaea vulgaris",
+            json.dumps({
+                "interesting_facts_nl": "Rupsen van de sint-jacobsvlinder eten deze plant graag.",
+                "interesting_facts_en": "Cinnabar moth caterpillars love this plant.",
+            }),
+        ),
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries
+              (account_id, household_id, species_id, common_name, latin_name, thumbnail_url,
+               notes, location_lat, location_lon)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            1,
+            1,
+            123,
+            "Jakobskruiskruid",
+            "Jacobaea vulgaris",
+            "https://cdn.test/discovery.jpg",
+            "Near the canal",
+            52.3715,
+            4.8499,
+        ),
+    )
+    await discoveries_db.commit()
+
+    res = await client.get("/api/discover", headers=auth_header)
+
+    assert res.status_code == 200
+    item = res.json()[0]
+    assert item["common_name"] == "Jakobskruiskruid"
+    assert item["species_common_name_nl"] == "Jakobskruiskruid"
+    assert item["species_common_name_en"] == "Ragwort"
+    assert item["fun_fact_nl"] == "Rupsen van de sint-jacobsvlinder eten deze plant graag."
+    assert item["fun_fact_en"] == "Cinnabar moth caterpillars love this plant."
+    assert item["notes"] == "Near the canal"
+    assert item["location_lat"] == 52.3715
+    assert item["location_lon"] == 4.8499
