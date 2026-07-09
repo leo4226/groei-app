@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { species as speciesApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
 import type { EcologyOut, EcologyDataSource } from '../types'
-import Glyph from './ui/Glyph'
 
 interface Props {
   speciesId: number
