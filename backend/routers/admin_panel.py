@@ -44,7 +44,11 @@ def _error_detail(exc: Exception) -> str:
     return message or exc.__class__.__name__
 
 
-async def _run_health_check(check: Callable[[], Awaitable[dict]], *, timeout: float | None = None) -> dict:
+async def _run_health_check(
+    check: Callable[[], Awaitable[dict]],
+    *,
+    timeout: float | None = None,
+) -> dict:
     started = time.perf_counter()
     check_timeout = HEALTH_CHECK_TIMEOUT_SECONDS if timeout is None else timeout
     try:
@@ -65,7 +69,6 @@ async def _run_health_check(check: Callable[[], Awaitable[dict]], *, timeout: fl
     if result.get("latency_ms") is None:
         result["latency_ms"] = round((time.perf_counter() - started) * 1000)
     return result
-
 
 async def _check_database(db) -> dict:
     await db.execute_fetchall("SELECT 1 as ok")
