@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
 import { household } from '../api/client'
+import { useFloreren } from '../store/useFloreren'
 import PageDecor from '../components/PageDecor'
 import Glyph from '../components/ui/Glyph'
 
@@ -26,15 +27,18 @@ export default function LoginPage() {
       if (mode === 'login') {
         const res = await login(email, password)
         saveToken(res.token)
+        useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
       } else if (mode === 'register') {
         const hName = householdName.trim() || `${name.trim()}'s Garden`
         const res = await register(email, password, name, hName)
         saveToken(res.token)
+        useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
       } else if (mode === 'join') {
         const res = await household.join({ code: code.toUpperCase().trim(), email, password, name })
         saveToken(res.token)
+        useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
       } else {
         await forgotPassword(email)
