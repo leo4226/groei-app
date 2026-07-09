@@ -51,8 +51,8 @@ function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: 
 
   const currentMonth = new Date().getMonth() + 1
   const monthData = phenology?.months?.find(m => m.month === currentMonth)
-  const rawPhenologyActions: string[] = t.locale?.startsWith('en') && monthData?.actions_en
-    ? monthData.actions_en
+  const rawPhenologyActions: string[] = t.locale?.startsWith('en')
+    ? (monthData?.actions_en ?? [])
     : (monthData?.actions_nl ?? [])
 
   const warnings = warningState?.warnings ?? []
