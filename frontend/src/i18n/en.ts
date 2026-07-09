@@ -1402,6 +1402,9 @@ export const en: Translations = {
     discovered: 'Found',
     share: 'Share',
     shareCopied: 'Copied!',
+    journalNotes: 'Notes',
+    journalLocation: 'Photo location',
+    journalOpenMap: 'Open map',
     saveError: 'Failed to save, please try again',
   },
 

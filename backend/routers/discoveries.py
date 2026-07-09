@@ -5,6 +5,7 @@ GET    /discover          list all discoveries for the household
 DELETE /discover/{id}     delete a discovery
 """
 import base64
+import json
 import logging
 import time
 from datetime import datetime, timezone
@@ -36,11 +37,15 @@ class DiscoveryOut(BaseModel):
     id: int
     species_id: Optional[int]
     common_name: str
+    species_common_name_nl: Optional[str] = None
+    species_common_name_en: Optional[str] = None
     latin_name: Optional[str]
     thumbnail_url: Optional[str]
     notes: Optional[str]
     location_lat: Optional[float]
     location_lon: Optional[float]
+    fun_fact_nl: Optional[str] = None
+    fun_fact_en: Optional[str] = None
     discovered_at: str
 
 
@@ -74,8 +79,8 @@ async def save_discovery(
             now,
         ),
     )
-    row = rows[0]
-    return _format(row)
+    species = await _species_lookup(db, [body.species_id] if body.species_id else [])
+    return _format(rows[0], species.get(body.species_id) if body.species_id else None)
 
 
 @router.get("", response_model=list[DiscoveryOut])
@@ -91,7 +96,9 @@ async def list_discoveries(
            ORDER BY discovered_at DESC""",
         (account["household_id"],),
     )
-    return [_format(r) for r in rows]
+    species_ids = [r["species_id"] for r in rows if r["species_id"] is not None]
+    species = await _species_lookup(db, species_ids)
+    return [_format(r, species.get(r["species_id"])) for r in rows]
 
 
 @router.delete("/{discovery_id}", status_code=204)
@@ -148,20 +155,70 @@ def _store_thumbnail(photo_data: str) -> str | None:
         return None
 
 
-def _format(row) -> dict:
+async def _species_lookup(db, species_ids: list[int]) -> dict[int, dict]:
+    ids = sorted({sid for sid in species_ids if sid is not None})
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    try:
+        rows = await db.execute_fetchall(
+            f"""SELECT id, common_name_nl, common_name_en, phenology_json
+                FROM plant_species
+                WHERE id IN ({placeholders})""",
+            tuple(ids),
+        )
+    except Exception as exc:
+        logger.warning("Discovery species enrichment unavailable: %s", exc)
+        return {}
+    return {r["id"]: _format_species(r) for r in rows}
+
+
+def _format_species(row) -> dict:
+    fact_nl = None
+    fact_en = None
+    raw = _row_get(row, "phenology_json")
+    if raw:
+        try:
+            phenology = json.loads(raw) if isinstance(raw, str) else raw
+        except Exception:
+            phenology = None
+        if isinstance(phenology, dict):
+            fact_nl = phenology.get("interesting_facts_nl")
+            fact_en = phenology.get("interesting_facts_en")
+    return {
+        "common_name_nl": _row_get(row, "common_name_nl"),
+        "common_name_en": _row_get(row, "common_name_en"),
+        "fun_fact_nl": fact_nl,
+        "fun_fact_en": fact_en,
+    }
+
+
+def _row_get(row, key: str, default=None):
+    try:
+        return row[key]
+    except Exception:
+        return default
+
+
+def _format(row, species: dict | None = None) -> dict:
     dt = row["discovered_at"]
     if isinstance(dt, datetime):
         ts = dt.isoformat()
     else:
         ts = str(dt)
+    species = species or {}
     return {
         "id": row["id"],
         "species_id": row["species_id"],
         "common_name": row["common_name"],
+        "species_common_name_nl": species.get("common_name_nl"),
+        "species_common_name_en": species.get("common_name_en"),
         "latin_name": row["latin_name"],
         "thumbnail_url": row["thumbnail_url"],
         "notes": row["notes"],
         "location_lat": row["location_lat"],
         "location_lon": row["location_lon"],
+        "fun_fact_nl": species.get("fun_fact_nl"),
+        "fun_fact_en": species.get("fun_fact_en"),
         "discovered_at": ts,
     }

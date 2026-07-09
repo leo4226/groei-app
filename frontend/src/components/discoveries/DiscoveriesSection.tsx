@@ -2,10 +2,9 @@ import { useState, useEffect, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
-import { buildDiscoveryJournalEntry } from '../../utils/discoveryJournal'
+import { buildDiscoveryJournalEntry, discoveryDisplayName } from '../../utils/discoveryJournal'
 import Glyph from '../ui/Glyph'
 
-const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
 const FIT_RANK: Record<string, number> = { perfect: 4, acceptable: 3, marginal: 2, tolerated: 1 }
 const FIT_COLOR: Record<string, string> = { perfect: '#24e34c', acceptable: '#a3e635', marginal: '#f59e0b', tolerated: '#6b7280' }
@@ -21,10 +20,20 @@ function bestFitColor(verdicts: FitVerdicts | undefined): string | null {
   return best.sun_fit ? (FIT_COLOR[best.sun_fit] ?? null) : null
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
-  return `${d.getDate()} ${MONTH_NL[d.getMonth()]} ${d.getFullYear()}`
+  return new Intl.DateTimeFormat(locale || 'nl-NL', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  }).format(d).replace(/\./g, '')
+}
+
+function formatCoordinate(value: number): string {
+  return value.toFixed(5)
+}
+
+function mapUrl(lat: number, lon: number): string {
+  return `https://www.google.com/maps?q=${lat},${lon}`
 }
 
 export default function DiscoveriesSection() {
@@ -57,9 +66,10 @@ export default function DiscoveriesSection() {
   }
 
   async function handleShare(item: PlantDiscovery) {
-    const text = `${item.common_name}${item.latin_name ? ` (${item.latin_name})` : ''} 🌿 — floreren.app`
+    const title = discoveryDisplayName(item, t.locale)
+    const text = `${title}${item.latin_name ? ` (${item.latin_name})` : ''} 🌿 — floreren.app`
     if (typeof navigator.share === 'function') {
-      await navigator.share({ title: item.common_name, text }).catch(() => {})
+      await navigator.share({ title, text }).catch(() => {})
     } else {
       try {
         await navigator.clipboard.writeText(text)
@@ -75,7 +85,7 @@ export default function DiscoveriesSection() {
     navigate('/plants/add', {
       state: {
         prefill: {
-          name: item.common_name,
+          name: discoveryDisplayName(item, t.locale),
           scientific_name: item.latin_name ?? undefined,
           species_id: item.species_id ?? undefined,
         },
@@ -117,7 +127,7 @@ export default function DiscoveriesSection() {
     <>
       <div style={{ padding: '16px 0' }}>
         {items.map((item) => {
-          const entry = buildDiscoveryJournalEntry(item)
+          const entry = buildDiscoveryJournalEntry(item, t.locale)
           const fitColor = bestFitColor(item.species_id != null ? fitMap[String(item.species_id)] : undefined)
           return (
             <div
@@ -165,7 +175,7 @@ export default function DiscoveriesSection() {
                   {fitColor && (
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: fitColor, display: 'inline-block', flexShrink: 0 }} />
                   )}
-                  {t.discovery.discovered}: {formatDate(entry.occurred_at)}
+                  {t.discovery.discovered}: {formatDate(entry.occurred_at, t.locale)}
                 </p>
               </div>
               <button
@@ -215,36 +225,75 @@ export default function DiscoveriesSection() {
         })}
       </div>
 
-      {selected && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={selected.common_name}
-          onClick={() => setSelected(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(20,20,16,.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-        >
+      {selected && (() => {
+        const entry = buildDiscoveryJournalEntry(selected, t.locale)
+        return (
           <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 520, maxHeight: '86vh', overflowY: 'auto', background: 'var(--color-bg)', borderRadius: '24px 24px 0 0', padding: 20, boxShadow: '0 -16px 40px rgba(0,0,0,.18)' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={entry.title}
+            onClick={() => setSelected(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 80,
+              background: 'rgba(20,20,16,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '16px', boxSizing: 'border-box',
+            }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-primary)' }}>{t.weeds.sightingsList.title}</span>
-              <button onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', fontSize: 24, cursor: 'pointer' }} aria-label="Sluiten">×</button>
-            </div>
-            {selected.thumbnail_url && (
-              <img src={selected.thumbnail_url} alt={selected.common_name} style={{ width: '100%', maxHeight: 280, objectFit: 'cover', borderRadius: 16, marginBottom: 16 }} />
-            )}
-            <h2 style={{ margin: '0 0 4px', fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 500, color: 'var(--color-text)' }}>{selected.common_name}</h2>
-            {selected.latin_name && <p style={{ margin: '0 0 14px', fontStyle: 'italic', color: 'var(--color-text-soft)' }}>{selected.latin_name}</p>}
-            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-text-muted)' }}>{t.discovery.discovered}: {formatDate(selected.discovered_at)}</p>
-            {selected.notes && <p style={{ margin: '0 0 18px', lineHeight: 1.5, color: 'var(--color-text)' }}>{selected.notes}</p>}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => handleAddToGarden(selected)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600 }}>{t.discovery.addToGarden}</button>
-              <button onClick={() => void handleShare(selected)} style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>{t.discovery.share}</button>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: 'min(100%, 520px)', maxHeight: 'min(720px, calc(100dvh - 32px))',
+                overflowY: 'auto', background: 'var(--color-bg)', borderRadius: 24,
+                padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,.22)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--color-primary)' }}>{t.weeds.sightingsList.title}</span>
+                <button onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', fontSize: 24, cursor: 'pointer' }} aria-label="Sluiten">×</button>
+              </div>
+              {entry.image_url && (
+                <img src={entry.image_url} alt={entry.title} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 16, marginBottom: 16 }} />
+              )}
+              <h2 style={{ margin: '0 0 4px', fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 500, color: 'var(--color-text)' }}>{entry.title}</h2>
+              {entry.subtitle && <p style={{ margin: '0 0 14px', fontStyle: 'italic', color: 'var(--color-text-soft)' }}>{entry.subtitle}</p>}
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-text-muted)' }}>{t.discovery.discovered}: {formatDate(entry.occurred_at, t.locale)}</p>
+
+              {entry.fun_fact && (
+                <section style={{ margin: '0 0 14px', padding: '14px 16px', borderRadius: 16, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                  <p style={{ margin: '0 0 6px', fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--color-primary)' }}>{t.discovery.funFact}</p>
+                  <p style={{ margin: 0, lineHeight: 1.5, color: 'var(--color-text)' }}>{entry.fun_fact}</p>
+                </section>
+              )}
+
+              {entry.notes && (
+                <section style={{ margin: '0 0 14px' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)' }}>{t.discovery.journalNotes}</p>
+                  <p style={{ margin: 0, lineHeight: 1.5, color: 'var(--color-text)' }}>{entry.notes}</p>
+                </section>
+              )}
+
+              {entry.location && (
+                <section style={{ margin: '0 0 18px' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)' }}>{t.discovery.journalLocation}</p>
+                  <a
+                    href={mapUrl(entry.location.lat, entry.location.lon)}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                  >
+                    {formatCoordinate(entry.location.lat)}, {formatCoordinate(entry.location.lon)} · {t.discovery.journalOpenMap}
+                  </a>
+                </section>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => handleAddToGarden(selected)} style={{ flex: 1, padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--color-primary)', color: '#fff', fontWeight: 600 }}>{t.discovery.addToGarden}</button>
+                <button onClick={() => void handleShare(selected)} style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>{t.discovery.share}</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </>
   )
 }
