@@ -95,7 +95,7 @@ export default function PhenologyView() {
       </div>
 
       <h2 className="text-base font-semibold text-text mb-3">
-        {MONTH_NAMES_NL[selectedMonth - 1]}
+        {(t.locale.startsWith('en') ? MONTH_NAMES_EN : MONTH_NAMES_NL)[selectedMonth - 1]}
       </h2>
 
       {/* Action items */}
@@ -192,13 +192,18 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
           </span>
         )}
       </div>
-      {(monthData?.actions_nl || monthData?.actions_en) && ((t.locale.startsWith('en') ? (monthData.actions_en || monthData.actions_nl) : (monthData.actions_nl || monthData.actions_en)) ?? []).length > 0 && (
-        <ul className="mt-2 space-y-0.5">
-          {(t.locale.startsWith('en') ? (monthData.actions_en || monthData.actions_nl) : (monthData.actions_nl || monthData.actions_en))!.map((action, i) => (
-            <li key={i} className="text-xs text-text-muted">→ {action}</li>
-          ))}
-        </ul>
-      )}
+      {(() => {
+        const actions = t.locale.startsWith('en')
+          ? (monthData?.actions_en ?? [])
+          : (monthData?.actions_nl ?? [])
+        return actions.length > 0 ? (
+          <ul className="mt-2 space-y-0.5">
+            {actions.map((action, i) => (
+              <li key={i} className="text-xs text-text-muted">→ {action}</li>
+            ))}
+          </ul>
+        ) : null
+      })()}
     </div>
   )
 }

@@ -468,9 +468,12 @@ class MonthPhenology(BaseModel):
     month: int
     phase: str
     phase_label_nl: str
+    phase_label_en: str | None = None
     sun_hours_needed: float
     description_nl: str
+    description_en: str | None = None
     actions_nl: list[str]
+    actions_en: list[str] | None = None
 
 
 class PhenologyData(BaseModel):
@@ -483,6 +486,7 @@ class PhenologyData(BaseModel):
     max_height_cm: int | None = None
     max_spread_cm: int | None = None
     interesting_facts_nl: str
+    interesting_facts_en: str | None = None
     climate_zone: str
 
 
