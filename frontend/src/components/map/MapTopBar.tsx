@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
+import NewMapModal from '../dashboard/NewMapModal'
 import { STORAGE_KEY } from '../../appMapRedirectModel'
 import type { MapInfo } from '../../types'
 import type { LabelMode } from './PlantsLayer'
@@ -21,6 +22,7 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
   const t = useT()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [showNewMap, setShowNewMap] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const [defaultSlug, setDefaultSlug] = useState<string | null>(() => {
     try { return localStorage.getItem(STORAGE_KEY) } catch { return null }
@@ -119,6 +121,16 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
           </button>
           <div className="h-px bg-border mx-3 my-1" />
           <button
+            onClick={() => { setOpen(false); setShowNewMap(true) }}
+            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>{t.maps.newMap}</span>
+          </button>
+          <div className="h-px bg-border mx-3 my-1" />
+          <button
             onClick={() => { setOpen(false); navigate(`/maps/${map.id}/settings`) }}
             className="flex items-center gap-2 px-3 py-3 text-sm text-text-muted hover:bg-bg/60 w-full text-left transition-colors min-h-[44px]"
           >
@@ -130,6 +142,7 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
           </button>
         </div>
       )}
+      <NewMapModal open={showNewMap} onClose={() => setShowNewMap(false)} />
     </div>
   )
 }
