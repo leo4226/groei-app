@@ -482,7 +482,6 @@ export default function LayoutEditorPage() {
           onPlaceWallElement={editor.addWallElement}
           selectedObjectId={selectedObjectId}
           onMoveObject={handleObjectMove}
-          onRotateObject={handleObjectRotate}
           onSelectObject={setSelectedObjectId}
           onObjectCreated={() => {
             if (!mapId) return

@@ -46,7 +46,7 @@ export default function PlantFactCard() {
       <div style={{ padding: '10px 18px 18px', borderTop: '1px solid var(--color-border-soft)', marginTop: 8 }}>
         <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-soft)', margin: '0 0 14px', position: 'relative' }}>
           <span style={{ color: 'var(--color-overdue)', fontSize: 32, lineHeight: 0, position: 'relative', top: 10, marginRight: 3, fontStyle: 'normal' }}>"</span>
-          {plantFact.fact_nl}
+          {t.locale.startsWith('en') ? (plantFact.fact_en || plantFact.fact_nl) : plantFact.fact_nl}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {plantFact.icon_key && (
@@ -56,9 +56,9 @@ export default function PlantFactCard() {
           )}
           <div>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--color-text)' }}>{plantFact.plant_name}</div>
-            {plantFact.species_name && (
+            {(plantFact.species_name_en || plantFact.species_name_nl) && (
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--color-text-muted)' }}>
-                {plantFact.species_name}
+                {t.locale.startsWith('en') ? (plantFact.species_name_en || plantFact.species_name_nl) : (plantFact.species_name_nl || plantFact.species_name_en)}
               </div>
             )}
           </div>

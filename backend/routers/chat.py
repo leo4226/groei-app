@@ -478,6 +478,7 @@ def _recommendation_to_context(recommendation: Any) -> dict[str, Any]:
         {
             "species_id": recommendation.species_id,
             "dutch_name": recommendation.dutch_name,
+            "english_name": recommendation.english_name,
             "latin_name": recommendation.latin_name,
             "sun_preference": recommendation.sun_preference,
             "sun_fit": recommendation.sun_fit,

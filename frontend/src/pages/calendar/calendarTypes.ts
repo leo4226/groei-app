@@ -71,6 +71,8 @@ export interface CalendarEvent {
   type: EventTypeId
   plant_id: number | null
   plant_name: string | null
+  species_common_name_nl?: string | null
+  species_common_name_en?: string | null
   plant_icon_variant: string | null
   schedule_id: number | null
   overdue: boolean

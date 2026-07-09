@@ -74,12 +74,23 @@ async def list_calendar_events(
     plant_params: tuple = (account["household_id"],)
 
     plants = await db.execute_fetchall(
-        "SELECT p.id, p.name, m.map_type, p.container_id, p.ground_zone_id, "
+        "SELECT p.id, p.name, p.species_id, m.map_type, p.container_id, p.ground_zone_id, "
         "p.care_profile, p.care_thresholds, p.icon_key "
         "FROM plants p LEFT JOIN maps m ON p.map_id = m.id "
         "WHERE p.household_id = ? AND p.is_active = 1",
         plant_params,
     )
+
+    # Collect species_ids for later enrichment
+    species_ids = {p.get("species_id") for p in plants if p.get("species_id")}
+    species_names: dict[int, dict[str, str | None]] = {}
+    if species_ids:
+        placeholders = ",".join("?" * len(species_ids))
+        species_rows = await db.execute_fetchall(
+            f"SELECT id, common_name_nl, common_name_en FROM plant_species WHERE id IN ({placeholders})",
+            tuple(species_ids),
+        )
+        species_names = {r["id"]: {"nl": r.get("common_name_nl"), "en": r.get("common_name_en")} for r in species_rows}
 
     # Apply env filter in Python (same logic as warnings/summary)
     if env == 'tuin':
@@ -186,12 +197,15 @@ async def list_calendar_events(
 
         if r.get("is_ephemeral"):
             # One-shot — only show if in range (already guaranteed by query)
+            sp = species_names.get(pid, {})
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
                 type=ct,
                 plant_id=pid,
                 plant_name=r["plant_name"],
+                species_common_name_nl=sp.get("nl"),
+                species_common_name_en=sp.get("en"),
                 plant_icon_variant=r["plant_icon_variant"],
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
@@ -208,6 +222,7 @@ async def list_calendar_events(
                 from_dt,
                 to_dt,
             )
+            sp = species_names.get(pid, {})
             for i, occ in enumerate(occurrences):
                 events.append(CalendarEventOut(
                     id=f"schedule:{r['schedule_id']}:{ct}:{i}",
@@ -215,6 +230,8 @@ async def list_calendar_events(
                     type=ct,
                     plant_id=pid,
                     plant_name=r["plant_name"],
+                    species_common_name_nl=sp.get("nl"),
+                    species_common_name_en=sp.get("en"),
                     plant_icon_variant=r["plant_icon_variant"],
                     schedule_id=r["schedule_id"],
                     overdue=occ < today,

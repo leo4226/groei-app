@@ -67,8 +67,8 @@ export function computeSuitability(
 
   const { phase, phase_label_nl, phase_label_en, sun_hours_needed, description_nl, description_en, actions_nl, actions_en } = monthData
   const phaseLabel = (isEN && phase_label_en) ? phase_label_en : phase_label_nl
-  const description = (isEN && description_en) ? description_en : description_nl
-  const actions = (isEN && actions_en?.length) ? actions_en : actions_nl
+  const description = isEN ? (description_en ?? '') : description_nl
+  const actions = isEN ? (actions_en ?? []) : actions_nl
 
   // Indoor / no-sun-data: skip sun deficit comparison
   if (sunHoursAtSpot == null) {

@@ -212,7 +212,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-medium text-sm text-text">{s.dutch_name}</span>
+                          <span className="font-medium text-sm text-text">{t.locale.startsWith('en') ? (s.english_name || s.dutch_name) : s.dutch_name}</span>
                           {sunLabel && (
                             <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded-full border border-border/50">
                               {sunLabel}
@@ -233,7 +233,9 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                       </div>
                     </div>
                     {s.reason && (
-                      <p className="text-xs text-text-muted leading-relaxed">{s.reason}</p>
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        {t.locale.startsWith('en') ? ((s as any).reason_en || s.reason) : s.reason}
+                      </p>
                     )}
                   </div>
                 )

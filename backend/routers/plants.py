@@ -18,6 +18,22 @@ from threshold_service import generate_thresholds
 router = APIRouter(tags=["plants"])
 
 
+async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
+    """Raise 404 unless the plant belongs to the caller's household.
+
+    Every by-id plant endpoint must gate on this — the JWT carries the
+    household_id, so a plant is only reachable when it is in the caller's
+    household. Without this a user could read/modify/delete another
+    household's plants by guessing integer ids (IDOR).
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE id = ? AND household_id = ?",
+        (plant_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+
 async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
     """Create care_schedules for a plant from its threshold data. Idempotent — skips if schedule exists."""
     try:
@@ -130,8 +146,8 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
         LEFT JOIN plant_species s ON p.species_id = s.id
-        WHERE p.id = ? AND p.is_active = 1
-    """, (plant_id,))
+        WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1
+    """, (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -274,7 +290,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         await db.commit()
 
     # Return the created plant
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 @router.post("/plants/{plant_id}/retry-species", response_model=PlantOut)
@@ -289,8 +305,8 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
     """
     cursor = await db.execute(
         "SELECT id, name, species, species_id, care_thresholds "
-        "FROM plants WHERE id = ? AND is_active = 1",
-        (plant_id,),
+        "FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
+        (plant_id, account["household_id"]),
     )
     row = await cursor.fetchone()
     if not row:
@@ -328,7 +344,7 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
         except Exception as exc:
             print(f"Warning: could not regenerate thresholds for {plant['name']}: {exc}")
 
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)
@@ -338,6 +354,8 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     # directly and raises DataError on ISO strings (#142). create_plant binds
     # dates the same way, and the sqlite test adapter converts date objects too,
     # so this is correct on both Postgres and the test DB.
+    await _assert_owned_plant(db, plant_id, account["household_id"])
+
     updates = dict(data.model_dump(exclude_unset=True))
 
     if "quantity" in updates and updates["quantity"] is not None:
@@ -355,7 +373,7 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     )
     await db.commit()
 
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 # ── Secondary placements: one plant can sit in several spots on a map ──
@@ -444,11 +462,17 @@ async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
 async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key, container_id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    cursor = await db.execute("SELECT id, icon_key, container_id, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=None,
+        ground_zone_id=data.ground_zone_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     try:
         await db.execute(
             """UPDATE plants
@@ -468,16 +492,21 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
             (data.map_id, data.map_x, data.map_y, new_icon, plant_id),
         )
         await db.commit()
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
 async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=data.container_id)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=data.container_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     await db.execute(
         """UPDATE plants
            SET container_id = ?, ground_zone_id = NULL,
@@ -486,16 +515,22 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
         (data.container_id, new_icon, plant_id),
     )
     await db.commit()
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
 async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=None,
+        ground_zone_id=data.ground_zone_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     try:
         await db.execute(
             """UPDATE plants
@@ -515,7 +550,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
             (data.map_x, data.map_y, new_icon, plant_id),
         )
         await db.commit()
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)
 
 
 @router.post("/plants/{plant_id}/duplicate", response_model=PlantOut)
@@ -526,8 +561,8 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
         SELECT p.*, l.name as location_name, l.icon as location_icon
         FROM plants p
         LEFT JOIN locations l ON p.location_id = l.id
-        WHERE p.id = ? AND p.is_active = 1
-    """, (plant_id,))
+        WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1
+    """, (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -558,12 +593,12 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
         )
 
     await db.commit()
-    return await get_plant(new_id, db=db)
+    return await get_plant(new_id, db=db, account=account)
 
 
 @router.patch("/plants/{plant_id}/lock")
 async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    cursor = await db.execute("SELECT id FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Plant not found")
     await db.execute(
@@ -584,16 +619,21 @@ async def bulk_archive_plants(
     if not body.plant_ids:
         return {"ok": True, "count": 0}
     placeholders = ",".join(["?"] * len(body.plant_ids))
-    await db.execute(
-        f"UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id IN ({placeholders})",
-        body.plant_ids,
+    # Scope to the caller's household so a user cannot archive another
+    # household's plants by passing arbitrary ids.
+    cursor = await db.execute(
+        f"UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP "
+        f"WHERE id IN ({placeholders}) AND household_id = ?",
+        list(body.plant_ids) + [account["household_id"]],
     )
     await db.commit()
-    return {"ok": True, "count": len(body.plant_ids)}
+    count = cursor.rowcount if cursor.rowcount is not None and cursor.rowcount >= 0 else len(body.plant_ids)
+    return {"ok": True, "count": count}
 
 
 @router.delete("/plants/{plant_id}")
 async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_plant(db, plant_id, account["household_id"])
     await db.execute(
         "UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
@@ -604,6 +644,7 @@ async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(g
 
 @router.patch("/plants/{plant_id}/restore")
 async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+    await _assert_owned_plant(db, plant_id, account["household_id"])
     await db.execute(
         "UPDATE plants SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         (plant_id,),
@@ -622,4 +663,4 @@ async def upload_photo(plant_id: int, background: BackgroundTasks, file: UploadF
     # defaults must be passed explicitly or Form objects leak into SQL params.
     await upload_plant_photo(plant_id, background, file=file, note=None,
                              taken_at=None, care_log_id=None, db=db, account=account)
-    return await get_plant(plant_id, db=db)
+    return await get_plant(plant_id, db=db, account=account)

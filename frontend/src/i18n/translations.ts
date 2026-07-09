@@ -1371,6 +1371,9 @@ export type Translations = {
     discovered: string         // "Gevonden"
     share: string              // "Delen"
     shareCopied: string        // "Gekopieerd!"
+    journalNotes: string       // "Notes" / "Notities"
+    journalLocation: string    // "Photo location" / "Fotolocatie"
+    journalOpenMap: string     // "Open map" / "Open kaart"
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
   }
 

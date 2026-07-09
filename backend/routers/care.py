@@ -104,10 +104,13 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 
 
 @router.delete("/care/schedules/{schedule_id}")
-async def delete_care_schedule(schedule_id: int, db = Depends(db_dep)):
+async def delete_care_schedule(schedule_id: int, db = Depends(db_dep),
+                               account = Depends(get_current_account)):
     cursor = await db.execute(
-        "SELECT id FROM care_schedules WHERE id = ? AND is_active = 1",
-        (schedule_id,),
+        """SELECT cs.id FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           WHERE cs.id = ? AND cs.is_active = 1 AND p.household_id = ?""",
+        (schedule_id, account["household_id"]),
     )
     row = await cursor.fetchone()
     if not row:
@@ -151,15 +154,17 @@ async def get_household_care_log(
 
 
 @router.get("/care/log/{plant_id}", response_model=list[CareLogOut])
-async def get_care_log(plant_id: int, db = Depends(db_dep)):
+async def get_care_log(plant_id: int, db = Depends(db_dep),
+                       account = Depends(get_current_account)):
     cursor = await db.execute(
         """SELECT cl.*, u.name as done_by_name
            FROM care_log cl
+           JOIN plants p ON cl.plant_id = p.id
            LEFT JOIN users u ON cl.done_by = u.id
-           WHERE cl.plant_id = ?
+           WHERE cl.plant_id = ? AND p.household_id = ?
            ORDER BY cl.done_at DESC
            LIMIT 50""",
-        (plant_id,),
+        (plant_id, account["household_id"]),
     )
     rows = await cursor.fetchall()
     return [dict(row) for row in rows]

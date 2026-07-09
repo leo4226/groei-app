@@ -247,6 +247,11 @@ FROST_ACTION_NL = "Dek gevoelige planten af of zet potten binnen of beschut."
 FROST_ACTION_EN = "Cover sensitive plants or move pots inside/sheltered."
 HEAT_ACTION_NL = "Geef vroeg of laat water; zet potten in de schaduw en controleer bakken eerst."
 HEAT_ACTION_EN = "Water early or late; move pots to shade and check containers first."
+DROUGHT_ACTION_NL = "Controleer de grond; geef extra water als de bovenlaag droog is."
+DROUGHT_ACTION_EN = "Check the soil; water extra if the top layer is dry."
+WATERLOG_ACTION_NL = "Controleer drainage en geef nu geen extra water."
+WATERLOG_ACTION_EN = "Check drainage and do not add extra water right now."
+_MANUAL_WATER_DAYS = 3
 
 
 def _weather_warning(
@@ -291,13 +296,136 @@ def _weather_warning(
     )
 
 
+def _rain_thresholds(profile: dict) -> dict:
+    """Return drought/waterlog thresholds from care_profile or legacy threshold shims."""
+    water = profile.get("water") or {}
+    candidates = [
+        water.get("thresholds") or {},
+        (profile.get("frost_protect") or {}).get("thresholds") or {},
+        (profile.get("heat_protect") or {}).get("thresholds") or {},
+    ]
+    for thresholds in candidates:
+        if thresholds.get("drought_mm_per_week") is not None or thresholds.get("waterlog_mm_per_week") is not None:
+            return thresholds
+    return {}
+
+
+def _as_optional_date(value):
+    if value is None:
+        return None
+    return _as_date(value)
+
+
+def _rain_warnings_for_plant(
+    profile: dict,
+    *,
+    rain_data: dict | None,
+    today: date,
+    last_watered: date | str | None,
+    environment: str,
+) -> list[CareWarning]:
+    """Build outdoor water warnings from recent rainfall.
+
+    Container plants react to the tighter 7-day total. In-ground plants use an
+    effective weekly value from the 14-day total, matching the legacy alert
+    behaviour: established roots can use deeper soil moisture and should not
+    scream drought because one calendar week was dry after a wet fortnight.
+    """
+    warnings: list[CareWarning] = []
+    if environment == "indoor" or not rain_data:
+        return warnings
+
+    water = profile.get("water") or {}
+    if not water.get("active"):
+        return warnings
+
+    thresholds = _rain_thresholds(profile)
+    drought_thresh = thresholds.get("drought_mm_per_week")
+    waterlog_thresh = thresholds.get("waterlog_mm_per_week")
+    if drought_thresh is None and waterlog_thresh is None:
+        return warnings
+
+    is_ground = environment == "outdoor_ground"
+    if is_ground:
+        raw_total = rain_data.get("total_14day_mm", rain_data.get("total_7day_mm", 0.0))
+        total_mm = round((raw_total or 0.0) / 2, 1)
+        metric = "rain_14day_effective_weekly_mm"
+    else:
+        total_mm = round(rain_data.get("total_7day_mm", 0.0) or 0.0, 1)
+        metric = "rain_7day_mm"
+
+    watered = _as_optional_date(last_watered)
+    recently_watered = watered is not None and (today - watered).days < _MANUAL_WATER_DAYS
+
+    if drought_thresh is not None and total_mm < drought_thresh and not recently_watered:
+        urgent = total_mm < drought_thresh * 0.5
+        severity: Severity = "urgent" if urgent else "warning"
+        message_nl = (
+            f"Zeer weinig regen ({total_mm}mm). Controleer of extra water nodig is."
+            if urgent else
+            f"Weinig regen ({total_mm}mm). Let extra op uitdroging."
+        )
+        message_en = (
+            f"Very little rain ({total_mm}mm). Check whether extra watering is needed."
+            if urgent else
+            f"Low rainfall ({total_mm}mm). Watch for drying soil."
+        )
+        warnings.append(CareWarning(
+            care_type="water",
+            severity=severity,
+            trigger="weather_event",
+            days_overdue=None,
+            message_nl=message_nl,
+            message_en=message_en,
+            icon=CARE_TYPES["water"]["icon"],
+            color=SEVERITY_COLORS[severity],
+            reason_nl=f"Regenval {total_mm}mm ligt onder de grens van {drought_thresh}mm per week.",
+            reason_en=f"Rainfall {total_mm}mm is below the {drought_thresh}mm/week threshold.",
+            action_nl=DROUGHT_ACTION_NL,
+            action_en=DROUGHT_ACTION_EN,
+            weather_metric=metric,
+            weather_value_c=total_mm,
+        ))
+
+    if waterlog_thresh is not None and total_mm > waterlog_thresh:
+        severity = "urgent" if total_mm > waterlog_thresh * 2 else "warning"
+        message_nl = (
+            f"Extreem veel regen ({total_mm}mm). Controleer drainage."
+            if severity == "urgent" else
+            f"Veel regen ({total_mm}mm). Let op wateroverlast."
+        )
+        message_en = (
+            f"Extreme rainfall ({total_mm}mm). Check drainage."
+            if severity == "urgent" else
+            f"Heavy rainfall ({total_mm}mm). Watch for waterlogging."
+        )
+        warnings.append(CareWarning(
+            care_type="water",
+            severity=severity,
+            trigger="weather_event",
+            days_overdue=None,
+            message_nl=message_nl,
+            message_en=message_en,
+            icon=CARE_TYPES["water"]["icon"],
+            color=SEVERITY_COLORS[severity],
+            reason_nl=f"Regenval {total_mm}mm ligt boven de grens van {waterlog_thresh}mm per week.",
+            reason_en=f"Rainfall {total_mm}mm is above the {waterlog_thresh}mm/week threshold.",
+            action_nl=WATERLOG_ACTION_NL,
+            action_en=WATERLOG_ACTION_EN,
+            weather_metric=metric,
+            weather_value_c=total_mm,
+        ))
+
+    return warnings
+
+
 def _weather_warnings_for_plant(
     profile: dict, *, temp_data: dict | None, today: date, environment: str = "outdoor_container"
 ) -> list[CareWarning]:
     """Build weather-triggered warnings given profile + temp forecast data.
 
     Uses forecast-aware timing: finds the closest future day triggering a
-    threshold and produces messages like "Vorst vannacht — min -2°C",
+
     "Morgen vorst — min -2°C", "Over 3 dagen vorst — min -2°C".
     If all triggering days are in the past, no warning is generated.
     """
@@ -538,8 +666,18 @@ def compute_plant_warnings(
                 schedule_warnings.append(w)
 
     # Weather warnings
-    temp_data = (weather or {}).get("temp")
+    weather_payload = weather or {}
+    temp_data = weather_payload.get("temp")
+    rain_data = weather_payload.get("rain")
+    last_watered = weather_payload.get("last_watered")
     weather_warnings = _weather_warnings_for_plant(profile, temp_data=temp_data, today=today, environment=environment)
+    weather_warnings.extend(_rain_warnings_for_plant(
+        profile,
+        rain_data=rain_data,
+        today=today,
+        last_watered=last_watered,
+        environment=environment,
+    ))
 
     all_warnings = _sort_warnings(schedule_warnings + weather_warnings)
     top = all_warnings[0] if all_warnings else None

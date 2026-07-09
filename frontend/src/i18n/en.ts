@@ -1213,7 +1213,7 @@ export const en: Translations = {
     remove: 'Remove',
     edit: 'Edit',
     editObject: 'Edit object',
-    removeObject: '🗑 Remove',
+    removeObject: 'Delete object',
     saving: 'Saving...',
     save: 'Save',
     cancel: 'Cancel',
@@ -1402,6 +1402,9 @@ export const en: Translations = {
     discovered: 'Found',
     share: 'Share',
     shareCopied: 'Copied!',
+    journalNotes: 'Notes',
+    journalLocation: 'Photo location',
+    journalOpenMap: 'Open map',
     saveError: 'Failed to save, please try again',
   },
 

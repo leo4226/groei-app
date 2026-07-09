@@ -84,4 +84,21 @@ describe('resolvePlantDropPersistenceAction', () => {
       ground_zone_id: null,
     })
   })
+
+  it('does not snap a near-boundary drop into a soil zone', () => {
+    const action = resolvePlantDropPersistenceAction({
+      finalPosition: { x: 99.96, y: 160 },
+      mapId: 3,
+      objects: [baseContainer],
+      soilGroundZones: [soilZone],
+    })
+
+    expect(action).toEqual({
+      type: 'map-position',
+      mapId: 3,
+      map_x: 100,
+      map_y: 160,
+      ground_zone_id: null,
+    })
+  })
 })

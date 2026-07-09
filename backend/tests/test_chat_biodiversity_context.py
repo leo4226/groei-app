@@ -70,6 +70,7 @@ async def test_biodiversity_context_includes_outdoor_score_gaps_and_full_suggest
     assert suggestion == {
         'species_id': 2,
         'dutch_name': 'Wilde marjolein',
+        'english_name': 'Wild marjoram',
         'latin_name': 'Origanum vulgare',
         'sun_preference': 'full_sun',
         'sun_fit': 'acceptable',

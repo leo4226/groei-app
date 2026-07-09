@@ -58,14 +58,26 @@ async def find_variant(db, icon_key: str | None, target_form: str) -> str | None
     return icon_key
 
 
-async def resolve_placement_icon(db, icon_key: str | None, *, container_id: int | None) -> str | None:
+async def resolve_placement_icon(
+    db,
+    icon_key: str | None,
+    *,
+    container_id: int | None,
+    ground_zone_id: str | None = None,
+    pot_size_cm: int | None = None,
+) -> str | None:
     """Pick the right icon variant for a Plant's placement context.
 
-    Form rule (CONTEXT.md): a Plant inside a Container uses `potted`, otherwise
-    `bare`. Phase and Zone-type-based auto-selection are future work — when added,
-    they belong here as additional kwargs.
+    Form rule (CONTEXT.md): a Plant inside a plant-bed Zone uses `bare`.
+    Otherwise, a Plant with a container object or pot-size setting uses `potted`.
+    Plants with neither remain bare. Phase selection is future work.
     """
-    target_form = "potted" if container_id is not None else "bare"
+    if ground_zone_id is not None:
+        target_form = "bare"
+    elif container_id is not None or pot_size_cm:
+        target_form = "potted"
+    else:
+        target_form = "bare"
     return await find_variant(db, icon_key, target_form)
 
 

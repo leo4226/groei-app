@@ -69,7 +69,7 @@ EXTRA_SCHEMA = """
         skipped BOOLEAN DEFAULT FALSE
     );
 
-    CREATE TABLE garden_fertilize_log (
+    CREATE TABLE IF NOT EXISTS garden_fertilize_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fertilized_at DATE NOT NULL,
         fertilized_by INTEGER,

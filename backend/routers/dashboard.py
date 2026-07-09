@@ -13,7 +13,7 @@ router = APIRouter(tags=["dashboard"])
 
 async def _plant_fact_candidates(db, household_id: int) -> list[PlantFactOut]:
     rows = await db.execute_fetchall("""
-        SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl
+        SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl, ps.common_name_en
         FROM plants p
         JOIN plant_species ps ON p.species_id = ps.id
         WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
@@ -28,15 +28,18 @@ async def _plant_fact_candidates(db, household_id: int) -> list[PlantFactOut]:
             phen = json.loads(phen_str) if isinstance(phen_str, str) else phen_str
         except json.JSONDecodeError:
             continue
-        fact = phen.get("interesting_facts_nl", "").strip()
-        if not fact:
+        fact_nl = phen.get("interesting_facts_nl", "").strip()
+        fact_en = phen.get("interesting_facts_en", "").strip()
+        if not fact_nl and not fact_en:
             continue
         candidates.append(PlantFactOut(
             plant_id=row["id"],
             plant_name=row["name"],
             icon_key=row["icon_key"],
-            fact_nl=fact,
-            species_name=row["common_name_nl"],
+            fact_nl=fact_nl,
+            fact_en=fact_en,
+            species_name_nl=row["common_name_nl"],
+            species_name_en=row.get("common_name_en") or None,
         ))
     return candidates
 

@@ -683,11 +683,15 @@ export interface PlantDiscovery {
   id: number
   species_id: number | null
   common_name: string
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
   latin_name: string | null
   thumbnail_url: string | null
   notes: string | null
   location_lat: number | null
   location_lon: number | null
+  fun_fact_nl: string | null
+  fun_fact_en: string | null
   discovered_at: string
 }
 
@@ -698,6 +702,7 @@ export const discoveries = {
     common_name: string
     latin_name?: string
     thumbnail_url?: string
+    thumbnail_data?: string
     notes?: string
     location_lat?: number
     location_lon?: number

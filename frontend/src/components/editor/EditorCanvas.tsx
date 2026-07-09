@@ -242,7 +242,6 @@ interface Props {
   onSelectShadowCaster: (id: string | null) => void
   selectedObjectId: number | null
   onMoveObject: (objectId: number, x: number, y: number) => void
-  onRotateObject: (objectId: number, rotation: number) => void
   onSelectObject: (id: number | null) => void
   onObjectCreated: () => void
   onPlaceObject: (preset: ObjectPreset, svgX: number, svgY: number) => void
@@ -282,6 +281,14 @@ interface ShadowCasterDragState {
   origY: number  // rect: y, circle: cy
 }
 
+interface ObjectDragState {
+  objectId: number
+  startSvgX: number
+  startSvgY: number
+  origX: number
+  origY: number
+}
+
 export default function EditorCanvas({
   zones, wallElements, shadowCasters, objects,
   selectedZoneId, selectedWallElementId, selectedShadowCasterId,
@@ -289,7 +296,7 @@ export default function EditorCanvas({
   perimeterPolygon,
   onAddZone, onUpdateZone, onUpdateWallElement, onSelectZone, onSelectWallElement, onPlaceWallElement,
   onAddShadowCaster, onUpdateShadowCaster, onSelectShadowCaster,
-  
+  selectedObjectId, onMoveObject, onSelectObject,
   onPlaceObject,
   shadowCasterPreset,
   shadowMode = false,
@@ -300,6 +307,7 @@ export default function EditorCanvas({
   const [resizing, setResizing] = useState<ResizeState | null>(null)
   const [wallElementDragging, setWallElementDragging] = useState<WallElementDragState | null>(null)
   const [shadowCasterDragging, setShadowCasterDragging] = useState<ShadowCasterDragState | null>(null)
+  const [objectDragging, setObjectDragging] = useState<ObjectDragState | null>(null)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
   const isMobile = useIsMobile()
@@ -322,7 +330,7 @@ export default function EditorCanvas({
       if (first) {
         isPinching.current = true
         setDrawing(null); setDragging(null); setResizing(null)
-        setWallElementDragging(null); setShadowCasterDragging(null); setPanning(null)
+        setWallElementDragging(null); setShadowCasterDragging(null); setObjectDragging(null); setPanning(null)
         setSnapLines([])
       }
       const svg = svgRef.current
@@ -509,13 +517,32 @@ export default function EditorCanvas({
     onSelectShadowCaster(casterId)
     onSelectZone(null)
     onSelectWallElement(null)
+    onSelectObject(null)
     if (activeTool === 'select') {
       const caster = shadowCasters.find((sc) => sc.id === casterId)
       if (caster) {
-        ;(e.target as Element).setPointerCapture(e.pointerId)
+        ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
         const origX = caster.type === 'rect' ? caster.x : caster.type === 'circle' ? caster.cx : (caster.points[0]?.[0] ?? 0)
         const origY = caster.type === 'rect' ? caster.y : caster.type === 'circle' ? caster.cy : (caster.points[0]?.[1] ?? 0)
         setShadowCasterDragging({ casterId, startSvgX: pt.x, startSvgY: pt.y, origX, origY })
+      }
+    }
+  }
+
+  function handleObjectPointerDown(e: React.PointerEvent, objectId: number) {
+    if (isPlacingWallElement) return
+    e.stopPropagation()
+    const pt = getSvgPoint(e)
+    if (!pt) return
+    onSelectObject(objectId)
+    onSelectZone(null)
+    onSelectWallElement(null)
+    onSelectShadowCaster(null)
+    if (activeTool === 'select') {
+      const object = objects.find((o) => o.id === objectId)
+      if (object && object.map_x != null && object.map_y != null) {
+        ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+        setObjectDragging({ objectId, startSvgX: pt.x, startSvgY: pt.y, origX: object.map_x, origY: object.map_y })
       }
     }
   }
@@ -524,7 +551,7 @@ export default function EditorCanvas({
     if (!selectedZone) return
     const pt = getSvgPoint(e)
     if (!pt) return
-    ;(e.target as Element).setPointerCapture(e.pointerId)
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     setResizing({
       zoneId: selectedZone.id,
       handle,
@@ -588,6 +615,18 @@ export default function EditorCanvas({
       return
     }
 
+    if (objectDragging) {
+      const object = objects.find((o) => o.id === objectDragging.objectId)
+      if (object) {
+        const dx = pt.x - objectDragging.startSvgX
+        const dy = pt.y - objectDragging.startSvgY
+        const newX = Math.round(objectDragging.origX + dx)
+        const newY = Math.round(objectDragging.origY + dy)
+        onMoveObject(objectDragging.objectId, newX, newY)
+      }
+      return
+    }
+
     if (wallElementDragging) {
       const zone = zones.find((z) => z.id === wallElementDragging.zoneId)
       const el   = wallElements.find((w) => w.id === wallElementDragging.elementId)
@@ -610,8 +649,8 @@ export default function EditorCanvas({
       const dy = pt.y - dragging.startSvgY
       const zone = zones.find((z) => z.id === dragging.zoneId)
       if (zone) {
-        let rawX = Math.max(0, Math.min(CANVAS_W - zone.width,  dragging.origX + dx))
-        let rawY = Math.max(0, Math.min(CANVAS_H - zone.height, dragging.origY + dy))
+        const rawX = Math.max(0, Math.min(CANVAS_W - zone.width,  dragging.origX + dx))
+        const rawY = Math.max(0, Math.min(CANVAS_H - zone.height, dragging.origY + dy))
         // Exclude contained zones so the structure doesn't snap to its own interior rooms
         const excludeIds = new Set([dragging.zoneId, ...(dragging.containedZones?.map(cz => cz.id) ?? [])])
         const snapZones = zones.filter(z => !excludeIds.has(z.id))
@@ -715,6 +754,10 @@ export default function EditorCanvas({
   }
 
   function handlePointerUp() {
+    if (objectDragging) {
+      setObjectDragging(null)
+      return
+    }
     if (drawing) {
       if (activeTool === 'shadow_caster') {
         if (shadowCasterPreset === 'tree' || shadowCasterPreset === 'building') {
@@ -971,15 +1014,34 @@ export default function EditorCanvas({
           })}
 
           {/* Objects — rendered above shadow casters and zones */}
-          {!previewMode && objects.map((obj) => (
-            <ObjectShape
-              key={obj.id}
-              object={obj}
-              x={obj.map_x ?? 0}
-              y={obj.map_y ?? 0}
-              showLabel={true}
-            />
-          ))}
+          {!previewMode && objects.map((obj) => {
+            const isSelected = obj.id === selectedObjectId
+            return (
+              <g key={obj.id}>
+                <ObjectShape
+                  object={obj}
+                  x={obj.map_x ?? 0}
+                  y={obj.map_y ?? 0}
+                  showLabel={true}
+                  isDragging={objectDragging?.objectId === obj.id}
+                  onTap={activeTool === 'select' ? () => onSelectObject(obj.id) : undefined}
+                  onPointerDown={activeTool === 'select' ? (e) => handleObjectPointerDown(e, obj.id) : undefined}
+                />
+                {isSelected && (
+                  <circle
+                    cx={obj.map_x ?? 0}
+                    cy={obj.map_y ?? 0}
+                    r={24}
+                    fill="none"
+                    stroke="var(--color-primary)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    pointerEvents="none"
+                  />
+                )}
+              </g>
+            )
+          })}
 
           {/* Resize overlay on selected zone */}
           {!previewMode && selectedZone && activeTool === 'select' && (

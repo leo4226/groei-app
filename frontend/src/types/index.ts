@@ -429,7 +429,9 @@ export interface PlantFactOut {
   plant_name: string
   icon_key: string | null
   fact_nl: string
-  species_name: string | null
+  fact_en: string
+  species_name_nl: string | null
+  species_name_en: string | null
 }
 
 export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: number; defaultOutdoor: number }> = {
@@ -619,6 +621,7 @@ export type SightingDetailOut = WeedSightingOut & {
 export type PlantRecommendation = {
   species_id: number
   dutch_name: string
+  english_name?: string | null
   latin_name: string
   sun_preference: string | null
   sun_fit: 'perfect' | 'acceptable' | 'marginal' | 'tolerated'
@@ -627,6 +630,7 @@ export type PlantRecommendation = {
   flowering_months: number[] | null
   gap_months_covered: number[]
   reason: string
+  reason_en?: string | null
   caveat: string | null
 }
 

@@ -5,6 +5,10 @@ export const MONTH_LONG_NL = [
 export const MONTH_SHORT_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 export const DAY_LONG_NL = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag']
 export const DAY_LETTERS_NL = ['M','D','W','D','V','Z','Z']
+export const MONTH_LONG_EN = ['January','February','March','April','May','June','July','August','September','October','November','December']
+export const MONTH_SHORT_EN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
+export const DAY_LONG_EN = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+export const DAY_LETTERS_EN = ['M','T','W','T','F','S','S']
 
 export function daysInMonth(year: number, month1: number): number {
   return new Date(year, month1, 0).getDate()

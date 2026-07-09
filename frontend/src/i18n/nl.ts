@@ -1213,7 +1213,7 @@ export const nl: Translations = {
     remove: 'Verwijderen',
     edit: 'Bewerken',
     editObject: 'Object bewerken',
-    removeObject: '🗑 Verwijderen',
+    removeObject: 'Verwijder object',
     saving: 'Opslaan...',
     save: 'Opslaan',
     cancel: 'Annuleren',
@@ -1402,6 +1402,9 @@ export const nl: Translations = {
     discovered: 'Gevonden',
     share: 'Delen',
     shareCopied: 'Gekopieerd!',
+    journalNotes: 'Notities',
+    journalLocation: 'Fotolocatie',
+    journalOpenMap: 'Open kaart',
     saveError: 'Opslaan mislukt, probeer opnieuw',
   },
 
