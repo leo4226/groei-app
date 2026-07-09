@@ -462,11 +462,17 @@ async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
 async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key, container_id FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
+    cursor = await db.execute("SELECT id, icon_key, container_id, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=None,
+        ground_zone_id=data.ground_zone_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     try:
         await db.execute(
             """UPDATE plants
@@ -491,11 +497,16 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
 async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
+    cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=data.container_id)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=data.container_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     await db.execute(
         """UPDATE plants
            SET container_id = ?, ground_zone_id = NULL,
@@ -509,11 +520,17 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
 async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
-    cursor = await db.execute("SELECT id, icon_key FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
+    cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    new_icon = await resolve_placement_icon(db, row["icon_key"], container_id=None)
+    new_icon = await resolve_placement_icon(
+        db,
+        row["icon_key"],
+        container_id=None,
+        ground_zone_id=data.ground_zone_id,
+        pot_size_cm=row["pot_size_cm"],
+    )
     try:
         await db.execute(
             """UPDATE plants
