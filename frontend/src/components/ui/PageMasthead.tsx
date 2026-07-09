@@ -16,6 +16,8 @@ type Props = {
   stats?: MastheadStat[]
   /** Action buttons (pills). Rendered right of the title on mobile, under the stats on desktop. */
   actions?: ReactNode
+  /** Optional desktop shell override for pages that use the wide editorial grid. */
+  className?: string
 }
 
 /**
@@ -23,7 +25,7 @@ type Props = {
  * Visual spec: docs/plans/2026-06-12-design-language-unification.md —
  * the reference implementation is the Plants page header (Plants.tsx).
  */
-export default function PageMasthead({ eyebrow, title, accent, lede, stats, actions }: Props) {
+export default function PageMasthead({ eyebrow, title, accent, lede, stats, actions, className }: Props) {
   // 720px is the editorial-layout boundary used by the reference page (Plants.tsx)
   const isMobile = useIsMobile(720)
 
@@ -52,7 +54,7 @@ export default function PageMasthead({ eyebrow, title, accent, lede, stats, acti
   }
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border px-6 pb-5 pt-10">
+    <header className={`flex flex-wrap items-end justify-between gap-5 border-b border-border px-6 pb-5 pt-10 ${className ?? ''}`}>
       <div className="min-w-0">
         <p className="mb-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
           <span className="h-px w-6 flex-none bg-border" />

@@ -491,8 +491,9 @@ export default function Settings() {
         title={t.settings.mastheadTitle}
         accent={t.settings.mastheadAccent}
         lede={t.settings.mastheadLede}
+        className="mx-auto w-full max-w-[1800px] !px-[clamp(24px,3vw,56px)]"
       />
-      <div className="mx-auto grid max-w-[1480px] grid-cols-1 gap-8 px-4 pt-6 md:px-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start lg:gap-10">
+      <div className="mx-auto grid max-w-[1800px] grid-cols-1 gap-8 px-4 pt-6 md:px-[clamp(24px,3vw,56px)] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start lg:gap-10">
         <div className="min-w-0 space-y-8">
 
       <section>

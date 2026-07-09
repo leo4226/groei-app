@@ -34,12 +34,14 @@
 }
 
 .calendar-environment-filter {
-  max-width: 1480px;
-  margin: 0 auto;
   display: flex;
   gap: 10px;
-  padding: 16px 48px 8px;
   flex-wrap: wrap;
+}
+
+.cal-page .masthead-environment {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* ——— masthead ——— */
@@ -63,8 +65,8 @@
 
 .cal-page .title-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 24px;
   align-items: end;
   margin-top: 28px;
 }
@@ -732,8 +734,8 @@
 }
 .cal-page .alm-line em { color: #E8C658; font-style: italic; }
 
-/* Responsive */
 @media (max-width: 1200px) {
+  .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page main { grid-template-columns: 1fr; }
   .cal-page .col-side { position: static; }
   .cal-page .title-row { grid-template-columns: 1fr; }
@@ -742,7 +744,7 @@
 }
 
 @media (max-width: 720px) {
-  .calendar-environment-filter { padding: 16px 16px 8px; }
+  .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page .standalone-toggle-container {
     padding: 16px 16px 0 !important;
   }

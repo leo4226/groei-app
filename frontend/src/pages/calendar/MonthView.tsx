@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import CalendarMasthead from './CalendarMasthead'
 import CalendarLegend from './CalendarLegend'
 import CalendarGrid from './CalendarGrid'
@@ -19,9 +19,10 @@ interface Props {
   viewMode: CalendarViewMode
   onSetView(v: CalendarViewMode): void
   env: string
+  environmentFilter: ReactNode
 }
 
-export default function MonthView({ viewMode, onSetView, env }: Props) {
+export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
   const t = useT()
   const { markCareDone, skipCare } = useFloreren()
   const now = new Date()
@@ -97,6 +98,7 @@ export default function MonthView({ viewMode, onSetView, env }: Props) {
         year={year} month1={month1} todayDay={now.getDate()} viewMode={viewMode}
         onPrev={prev} onNext={next} onSetView={onSetView}
         taskCount={filtered.length} bloomCount={bloomCount} openCount={openCount}
+        environmentFilter={environmentFilter}
       />
       <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
       {isNarrow ? (
