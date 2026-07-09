@@ -2,7 +2,7 @@ import { useT } from '../context/LanguageContext'
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import type { Phenology, PlantAlert } from '../types'
+import type { Phenology, PlantWarningStateOut } from '../types'
 import CareIcon, { type CareIconType } from '../components/ui/CareIcon'
 import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
@@ -18,6 +18,7 @@ import PhaseCalendar from '../components/PhaseCalendar'
 import { resolveIconUrl } from '../utils/icons'
 import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -28,57 +29,72 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-const ALERT_BORDER: Record<PlantAlert['severity'], string> = {
+const ALERT_BORDER: Record<string, string> = {
   urgent:  'border-l-fiery-red',
   warning: 'border-l-pumpkin-swirl',
   info:    'border-l-aqua-glow',
 }
 
-const ALERT_BG: Record<PlantAlert['severity'], string> = {
+const ALERT_BG: Record<string, string> = {
   urgent:  'bg-fiery-red/8',
   warning: 'bg-pumpkin-swirl/8',
   info:    'bg-aqua-glow/8',
 }
 
-function PlantAlerts({ plantId, phenology }: { plantId: number; phenology: Phenology | null }) {
-  const [alerts, setAlerts] = useState<PlantAlert[]>([])
+function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: Phenology | null }) {
+  const [warningState, setWarningState] = useState<PlantWarningStateOut | null>(null)
   const t = useT()
 
   useEffect(() => {
-    plantsApi.alerts(plantId).then(setAlerts).catch(() => {})
+    plantsApi.warnings(plantId).then(setWarningState).catch(() => {})
   }, [plantId])
-
-  if (alerts.length === 0) return null
 
   const currentMonth = new Date().getMonth() + 1
   const monthData = phenology?.months?.find(m => m.month === currentMonth)
-  const monthActions = t.locale?.startsWith('en') && monthData?.actions_en
-    ? monthData.actions_en
+  const rawPhenologyActions: string[] = t.locale?.startsWith('en')
+    ? (monthData?.actions_en ?? [])
     : (monthData?.actions_nl ?? [])
+
+  const warnings = warningState?.warnings ?? []
+
+  // Merge: warn actions take precedence; duplicate-care-type phenology actions are filtered
+  const displayActions = buildPlantDetailActions(
+    warnings,
+    rawPhenologyActions,
+    t.locale ?? 'nl-NL',
+  )
+
+  if (warnings.length === 0 && displayActions.length === 0) return null
 
   return (
     <Section title={t.plantDetail.weatherAlerts}>
-      <div className="space-y-2">
-        {alerts.map((alert, i) => (
-          <div
-            key={i}
-            className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-4 ${ALERT_BORDER[alert.severity]} ${ALERT_BG[alert.severity]}`}
-          >
-            <span className="text-lg shrink-0 mt-0.5">{alert.icon}</span>
-            {/* Use message_en if available for EN locale */}
-            <p className="text-sm text-text leading-snug">
-              {(t.locale?.startsWith('en') && (alert as any).message_en)
-                ? (alert as any).message_en
-                : (alert as any).message_nl}
-            </p>
-          </div>
-        ))}
-      </div>
-      {monthActions.length > 0 && (
+      {warnings.length > 0 && (
+        <div className="space-y-2">
+          {warnings.map((w, i) => (
+            <div
+              key={i}
+              className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-4 ${ALERT_BORDER[w.severity] ?? 'border-l-aqua-glow'} ${ALERT_BG[w.severity] ?? 'bg-aqua-glow/8'}`}
+            >
+              <span className="text-lg shrink-0 mt-0.5">{w.icon}</span>
+              <div className="flex-1">
+                <p className="text-sm text-text leading-snug">
+                  {t.locale?.startsWith('en') ? w.message_en : w.message_nl}
+                </p>
+                {(w.reason_nl || w.reason_en) && (
+                  <p className="text-xs text-text-muted mt-1">
+                    {t.locale?.startsWith('en') ? w.reason_en : w.reason_nl}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {displayActions.length > 0 && (
         <div className="mt-2 rounded-xl border border-border bg-surface/50 p-3">
           <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">{t.plantDetail.whatCanYouDo}</p>
           <ul className="space-y-1">
-            {monthActions.map((action, i) => (
+            {displayActions.map((action, i) => (
               <li key={i} className="text-sm text-text flex gap-1.5">
                 <span className="text-primary shrink-0">→</span>
                 <span>{action}</span>
@@ -370,7 +386,7 @@ export default function PlantDetail() {
     ? <EcologyCard speciesId={plant.species_id} />
     : null
 
-  const alertsBlock = <PlantAlerts plantId={plantId} phenology={plant.phenology ?? null} />
+  const alertsBlock = <PlantCareSignals plantId={plantId} phenology={plant.phenology ?? null} />
 
   const careBlock = plant.care_schedules.length > 0 && (
     <Section title={t.plantDetail.care}>

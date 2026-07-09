@@ -3,11 +3,16 @@ import { useFloreren } from '../../store/useFloreren'
 import { alerts } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import type { Plant, Phenology, MonthPhenology } from '../../types'
+import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../../components/ui/Glyph'
 
 const MONTH_NAMES_NL = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
   'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December',
+]
+const MONTH_NAMES_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
 const ACTIVE_PHASES = new Set([
@@ -67,7 +72,7 @@ export default function PhenologyView() {
 
       {/* Month selector */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-5 -mx-4 px-4">
-        {MONTH_NAMES_NL.map((name, i) => {
+        {(t.locale.startsWith('en') ? MONTH_NAMES_EN : MONTH_NAMES_NL).map((name, i) => {
           const month = i + 1
           const isSelected = selectedMonth === month
           const isNow = month === currentMonth
@@ -90,7 +95,7 @@ export default function PhenologyView() {
       </div>
 
       <h2 className="text-base font-semibold text-text mb-3">
-        {MONTH_NAMES_NL[selectedMonth - 1]}
+        {(t.locale.startsWith('en') ? MONTH_NAMES_EN : MONTH_NAMES_NL)[selectedMonth - 1]}
       </h2>
 
       {/* Action items */}
@@ -117,12 +122,12 @@ export default function PhenologyView() {
             {grouped.growing.map(plant => (
               <div key={plant.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
                 <span className="text-sm text-text">
-                  {plant.name}
+                  {plantDisplayName(plant, t.locale)}
                   {alertPlantIds.has(plant.id) && (
                     <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-orange-700 bg-orange-100"><Glyph name="alert" size={12} /></span>
                   )}
                 </span>
-                <span className="text-xs text-text-muted">{plant._monthData?.phase_label_nl}</span>
+                <span className="text-xs text-text-muted">{t.locale.startsWith('en') ? (plant._monthData?.phase_label_en || plant._monthData?.phase_label_nl) : plant._monthData?.phase_label_nl}</span>
               </div>
             ))}
           </div>
@@ -138,7 +143,7 @@ export default function PhenologyView() {
           <div className="flex flex-wrap gap-1.5">
             {grouped.dormant.map(plant => (
               <span key={plant.id} className={`text-xs border px-2.5 py-1 rounded-full inline-flex items-center gap-1 ${alertPlantIds.has(plant.id) ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-surface border-border text-text-muted'}`}>
-                {plant.name}{alertPlantIds.has(plant.id) && <Glyph name="alert" size={11} />}
+                {plantDisplayName(plant, t.locale)}{alertPlantIds.has(plant.id) && <Glyph name="alert" size={11} />}
               </span>
             ))}
           </div>
@@ -165,7 +170,7 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
   return (
     <div className="bg-surface border border-border rounded-xl p-3">
       <p className="font-medium text-text text-sm">
-        {plant.name}
+        {plantDisplayName(plant, t.locale)}
         {hasAlert && (
           <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-orange-700 bg-orange-100"><Glyph name="alert" size={12} /></span>
         )}
@@ -187,13 +192,18 @@ function ActionCard({ plant, month, hasAlert }: { plant: PlantWithMonth; month: 
           </span>
         )}
       </div>
-      {monthData?.actions_nl && monthData.actions_nl.length > 0 && (
-        <ul className="mt-2 space-y-0.5">
-          {monthData.actions_nl.map((action, i) => (
-            <li key={i} className="text-xs text-text-muted">→ {action}</li>
-          ))}
-        </ul>
-      )}
+      {(() => {
+        const actions = t.locale.startsWith('en')
+          ? (monthData?.actions_en ?? [])
+          : (monthData?.actions_nl ?? [])
+        return actions.length > 0 ? (
+          <ul className="mt-2 space-y-0.5">
+            {actions.map((action, i) => (
+              <li key={i} className="text-xs text-text-muted">→ {action}</li>
+            ))}
+          </ul>
+        ) : null
+      })()}
     </div>
   )
 }

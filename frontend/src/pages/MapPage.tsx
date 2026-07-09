@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
 import MapView from '../components/map/MapView'
+import type { LabelMode } from '../components/map/PlantsLayer'
 import Glyph from '../components/ui/Glyph'
 import MapTopBar from '../components/map/MapTopBar'
 import MapActionCluster from '../components/map/MapActionCluster'
@@ -103,10 +104,19 @@ export default function MapPage() {
   const [selectedPlant, setSelectedPlant] = useState<MapPlant | null>(null)
   const [selectedObject, setSelectedObject] = useState<MapObject | null>(null)
   const [selectedFixedPlant, setSelectedFixedPlant] = useState<FixedPlant | null>(null)
-  // Labels are contextual by default: hidden globally to keep a dense map calm;
-  // the selected plant still shows its name (see PlantsLayer), and this toggle
-  // flips ALL names on. See docs/plans/2026-06-27-map-density-multiplicity-plan.md
-  const [showLabels, setShowLabels] = useState(false)
+  // Label display mode (#454): 'off' (names only on tap), 'smart' (NEW DEFAULT —
+  // #451 priority + #453 zoom gate reveal meaningful names, more as you zoom),
+  // 'all' (every name, decluttered). Persisted in localStorage; any missing,
+  // legacy, or invalid value falls back to 'smart'. See
+  // docs/plans/2026-06-27-map-density-multiplicity-plan.md
+  const [labelMode, setLabelModeState] = useState<LabelMode>(() => {
+    const stored = localStorage.getItem('floreren-label-mode')
+    return stored === 'off' || stored === 'smart' || stored === 'all' ? stored : 'smart'
+  })
+  const setLabelMode = useCallback((mode: LabelMode) => {
+    localStorage.setItem('floreren-label-mode', mode)
+    setLabelModeState(mode)
+  }, [])
   // Per-plant warning badges are capped to one (most-urgent) on the canvas; this
   // toggle hides them entirely. On by default. Full list lives in the sheets.
   const [showWarnings, setShowWarnings] = useState(true)
@@ -489,7 +499,7 @@ export default function MapPage() {
           onPlacementTap={handlePlacementTap}
           secondaryMarkers={secondaryMarkers}
           onSecondaryMarkerTap={handleSecondaryMarkerTap}
-          showLabels={showLabels}
+          labelMode={labelMode}
           showWarnings={showWarnings}
           sunModeActive={sun.active}
           shadows={sun.shadows}
@@ -537,7 +547,7 @@ export default function MapPage() {
       {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
           unplaced-plants tray (z-20) stacked directly below it */}
       <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
-        <MapTopBar map={map} allMaps={maps} showLabels={showLabels} onToggleLabels={() => setShowLabels((v: boolean) => !v)} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
+        <MapTopBar map={map} allMaps={maps} labelMode={labelMode} onSetLabelMode={setLabelMode} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
       </div>
 
       {/* Left, below the garden pill: unplaced-plants tray */}
@@ -573,14 +583,14 @@ export default function MapPage() {
       </div>
 
       {moveModeActive && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 landscape-mobile-hide rounded-2xl border border-border bg-surface/95 px-3.5 py-2.5 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
-          <span className="font-heading text-xs text-text-soft leading-snug">
+        <div className="absolute bottom-16 left-0 right-0 z-40 landscape-mobile-hide bg-surface/85 backdrop-blur-lg border-t border-border/60 px-4 py-2.5 flex items-center justify-between animate-slide-up">
+          <span className="text-sm font-medium text-text leading-snug">
             {targetedMove ? t.mapPage.moveOnePlantHint : t.mapPage.moveModeHint}
           </span>
           <button
             type="button"
             onClick={() => void endMoveMode()}
-            className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white active:scale-95 transition-transform shrink-0"
+            className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-white active:scale-95 transition-transform shrink-0 min-h-[44px] flex items-center"
           >
             {t.mapPage.moveModeDone}
           </button>

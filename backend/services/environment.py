@@ -24,7 +24,7 @@ OPEN_METEO_TEMP_URL = (
     "https://api.open-meteo.com/v1/forecast"
     "?latitude=52.3715&longitude=4.8499"
     "&daily=temperature_2m_max,temperature_2m_min"
-    "&past_days=7&forecast_days=0"
+    "&past_days=0&forecast_days=7"
     "&timezone=Europe%2FAmsterdam"
 )
 

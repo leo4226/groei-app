@@ -34,6 +34,10 @@ interface Props {
   isSelected?: boolean
   showLabel?: boolean
   labelPlacement?: LabelPlacement
+  /** Effective label font in SVG units (semantic zoom: PLANT_LABEL_FONT_SIZE /
+   *  zoom). Label offsets scale by the same ratio so text and its declutter box
+   *  stay in agreement. Defaults to the base size (zoom = 1). */
+  labelFontSize?: number
   showWarnings?: boolean
   displayName?: string
   onTap: (plant: MapPlant) => void
@@ -90,9 +94,9 @@ const PX_PER_CM = 0.46
 
 // Plant name label size in SVG units. Kept modest so labels don't dominate the
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
-export const PLANT_LABEL_FONT_SIZE = 7
+export const PLANT_LABEL_FONT_SIZE = 9
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
   const topBadge = showWarnings ? topMarkerBadge(plant) : null
@@ -130,16 +134,22 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   const r = isDragging ? baseR * 1.3 : baseR
   const iconR = r * 0.85
   const hitR = getPlantDragHitRadius(r, canDrag)
+  // Semantic zoom: scale the label offsets by the same ratio as the font so the
+  // text keeps a constant screen gap from its icon, and — critically — matches
+  // the offsets placeLabels used to reserve space (else labels overlap/drop).
+  const labelScale = labelFontSize / PLANT_LABEL_FONT_SIZE
+  const belowOffset = LABEL_BELOW_OFFSET * labelScale
+  const aboveOffset = LABEL_ABOVE_OFFSET * labelScale
   // Label sits below the icon by default, or above when the declutter flipped
   // it to avoid a horizontal neighbour. Offsets are shared with the declutter.
-  const labelY = labelPlacement === 'above' ? -(iconR + LABEL_ABOVE_OFFSET) : iconR + LABEL_BELOW_OFFSET
+  const labelY = labelPlacement === 'above' ? -(iconR + aboveOffset) : iconR + belowOffset
 
   // For locked plants: cap the rendered icon so it never extends off-screen,
   // and keep the badge pinned close to center regardless of display_radius_cm.
   const lockedIconR = Math.min(iconR, 28)
   const lockedLabelY = labelPlacement === 'above'
-    ? -(lockedIconR + LABEL_ABOVE_OFFSET)
-    : lockedIconR + LABEL_BELOW_OFFSET
+    ? -(lockedIconR + aboveOffset)
+    : lockedIconR + belowOffset
   const lockBadgeOffset = lockedIconR * 0.78   // scales with icon but stays small
   const lockHitR = 6
 
@@ -177,7 +187,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
             y={lockedLabelY}
             textAnchor="middle"
             fill="#1f2937"
-            fontSize={PLANT_LABEL_FONT_SIZE}
+            fontSize={labelFontSize}
             fontWeight="500"
             style={{ paintOrder: 'stroke', stroke: 'rgba(255,255,255,0.9)', strokeWidth: 3, strokeLinejoin: 'round', pointerEvents: 'none' }}
           >
@@ -301,7 +311,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
           y={labelY}
           textAnchor="middle"
           fill="#1f2937"
-          fontSize={PLANT_LABEL_FONT_SIZE}
+          fontSize={labelFontSize}
           fontWeight="500"
           style={{
             pointerEvents: 'none',

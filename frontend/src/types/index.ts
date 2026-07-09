@@ -429,7 +429,9 @@ export interface PlantFactOut {
   plant_name: string
   icon_key: string | null
   fact_nl: string
-  species_name: string | null
+  fact_en: string
+  species_name_nl: string | null
+  species_name_en: string | null
 }
 
 export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: number; defaultOutdoor: number }> = {
@@ -585,6 +587,7 @@ export type WeedSightingCreate = {
   map_y: number
   notes?: string
   sighted_at: string
+  photo_data?: string
 }
 
 export type WeedSightingOut = WeedSightingCreate & {
@@ -593,7 +596,22 @@ export type WeedSightingOut = WeedSightingCreate & {
   weed_slug: string
   latin_name: string
   removal_difficulty: string | null
+  photo_url: string | null
+  map_name?: string
   created_at: string
+}
+
+export type SightingDetailOut = WeedSightingOut & {
+  ecology_data: Record<string, unknown> | null
+  fun_fact_nl: string | null
+  fun_fact_en: string | null
+  removal_json: Record<string, unknown> | null
+  common_name_nl: string | null
+  common_name_en: string | null
+  family: string | null
+  flowering_months: number[]
+  native_status: string | null
+  pollinator_value: string | null
 }
 
 // ── Species ecology ──
@@ -603,6 +621,7 @@ export type WeedSightingOut = WeedSightingCreate & {
 export type PlantRecommendation = {
   species_id: number
   dutch_name: string
+  english_name?: string | null
   latin_name: string
   sun_preference: string | null
   sun_fit: 'perfect' | 'acceptable' | 'marginal' | 'tolerated'
@@ -611,6 +630,7 @@ export type PlantRecommendation = {
   flowering_months: number[] | null
   gap_months_covered: number[]
   reason: string
+  reason_en?: string | null
   caveat: string | null
 }
 

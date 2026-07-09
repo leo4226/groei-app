@@ -93,10 +93,27 @@ export function IdentifyPlantPage() {
     if (step.kind !== 'destination' || !capturedPhotoDataUrl) return
     const candidate = step.candidate
     setStep({ kind: 'enriching' })
+
+    // Capture geolocation for journal entries so the detail popup can show
+    // where the plant was photographed. Fail silently if unavailable.
+    let location_lat: number | undefined
+    let location_lon: number | undefined
+    if (destination === 'journal' && 'geolocation' in navigator) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 60000 })
+        })
+        location_lat = pos.coords.latitude
+        location_lon = pos.coords.longitude
+      } catch {
+        // permission denied or unavailable — continue without location
+      }
+    }
+
     try {
       const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
       if (destination === 'journal') {
-        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl, destination: 'journal' } })
+        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl, destination: 'journal', location_lat, location_lon } })
       } else {
         navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
       }
@@ -116,6 +133,8 @@ export function IdentifyPlantPage() {
               },
               thumbnail: capturedPhotoDataUrl,
               destination: 'journal',
+              location_lat,
+              location_lon,
             },
           })
         } else {
@@ -259,6 +278,7 @@ export function IdentifyPlantPage() {
       <WeedSightingSheet
         weedId={step.weedId}
         weedName={step.weedName}
+        capturedThumbnailUrl={step.from.thumbnail}
         preselectedMapId={routeState?.mapId}
         preselectedMapSlug={routeState?.mapSlug}
         onSaved={handleSightingSaved}

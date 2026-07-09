@@ -4,7 +4,10 @@ POST   /discover          save a new wild discovery
 GET    /discover          list all discoveries for the household
 DELETE /discover/{id}     delete a discovery
 """
+import base64
+import json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,6 +16,7 @@ from pydantic import BaseModel
 
 from auth import get_current_account
 from database import db_dep
+from services.storage import Storage, build_storage_from_env
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/discover", tags=["discoveries"])
@@ -23,6 +27,7 @@ class DiscoveryCreate(BaseModel):
     common_name: str
     latin_name: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    thumbnail_data: Optional[str] = None
     notes: Optional[str] = None
     location_lat: Optional[float] = None
     location_lon: Optional[float] = None
@@ -32,11 +37,15 @@ class DiscoveryOut(BaseModel):
     id: int
     species_id: Optional[int]
     common_name: str
+    species_common_name_nl: Optional[str] = None
+    species_common_name_en: Optional[str] = None
     latin_name: Optional[str]
     thumbnail_url: Optional[str]
     notes: Optional[str]
     location_lat: Optional[float]
     location_lon: Optional[float]
+    fun_fact_nl: Optional[str] = None
+    fun_fact_en: Optional[str] = None
     discovered_at: str
 
 
@@ -47,6 +56,9 @@ async def save_discovery(
     db=Depends(db_dep),
 ):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+    thumbnail_url = body.thumbnail_url
+    if not thumbnail_url and body.thumbnail_data:
+        thumbnail_url = _store_thumbnail(body.thumbnail_data)
     rows = await db.execute_fetchall(
         """INSERT INTO plant_discoveries
                (account_id, household_id, species_id, common_name, latin_name,
@@ -60,15 +72,15 @@ async def save_discovery(
             body.species_id,
             body.common_name,
             body.latin_name,
-            body.thumbnail_url,
+            thumbnail_url,
             body.notes,
             body.location_lat,
             body.location_lon,
             now,
         ),
     )
-    row = rows[0]
-    return _format(row)
+    species = await _species_lookup(db, [body.species_id] if body.species_id else [])
+    return _format(rows[0], species.get(body.species_id) if body.species_id else None)
 
 
 @router.get("", response_model=list[DiscoveryOut])
@@ -84,7 +96,9 @@ async def list_discoveries(
            ORDER BY discovered_at DESC""",
         (account["household_id"],),
     )
-    return [_format(r) for r in rows]
+    species_ids = [r["species_id"] for r in rows if r["species_id"] is not None]
+    species = await _species_lookup(db, species_ids)
+    return [_format(r, species.get(r["species_id"])) for r in rows]
 
 
 @router.delete("/{discovery_id}", status_code=204)
@@ -105,20 +119,106 @@ async def delete_discovery(
     )
 
 
-def _format(row) -> dict:
+def _get_storage() -> Storage | None:
+    try:
+        return build_storage_from_env()
+    except Exception:
+        return None
+
+
+def _decode_photo_data(photo_data: str) -> tuple[bytes, str] | None:
+    if not photo_data:
+        return None
+    content_type = "image/jpeg"
+    if "," in photo_data:
+        header, photo_data = photo_data.split(",", 1)
+        if header.startswith("data:") and ";" in header:
+            content_type = header[5:].split(";", 1)[0] or content_type
+    try:
+        return base64.b64decode(photo_data), content_type
+    except Exception:
+        return None
+
+
+def _store_thumbnail(photo_data: str) -> str | None:
+    storage = _get_storage()
+    decoded = _decode_photo_data(photo_data)
+    if not storage or not decoded:
+        return None
+    data, content_type = decoded
+    extension = "png" if content_type == "image/png" else "jpg"
+    key = f"field-journal/{int(time.time() * 1000)}.{extension}"
+    try:
+        return storage.put(key, data, content_type)
+    except Exception:
+        logger.exception("Failed to store discovery thumbnail")
+        return None
+
+
+async def _species_lookup(db, species_ids: list[int]) -> dict[int, dict]:
+    ids = sorted({sid for sid in species_ids if sid is not None})
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    try:
+        rows = await db.execute_fetchall(
+            f"""SELECT id, common_name_nl, common_name_en, phenology_json
+                FROM plant_species
+                WHERE id IN ({placeholders})""",
+            tuple(ids),
+        )
+    except Exception as exc:
+        logger.warning("Discovery species enrichment unavailable: %s", exc)
+        return {}
+    return {r["id"]: _format_species(r) for r in rows}
+
+
+def _format_species(row) -> dict:
+    fact_nl = None
+    fact_en = None
+    raw = _row_get(row, "phenology_json")
+    if raw:
+        try:
+            phenology = json.loads(raw) if isinstance(raw, str) else raw
+        except Exception:
+            phenology = None
+        if isinstance(phenology, dict):
+            fact_nl = phenology.get("interesting_facts_nl")
+            fact_en = phenology.get("interesting_facts_en")
+    return {
+        "common_name_nl": _row_get(row, "common_name_nl"),
+        "common_name_en": _row_get(row, "common_name_en"),
+        "fun_fact_nl": fact_nl,
+        "fun_fact_en": fact_en,
+    }
+
+
+def _row_get(row, key: str, default=None):
+    try:
+        return row[key]
+    except Exception:
+        return default
+
+
+def _format(row, species: dict | None = None) -> dict:
     dt = row["discovered_at"]
     if isinstance(dt, datetime):
         ts = dt.isoformat()
     else:
         ts = str(dt)
+    species = species or {}
     return {
         "id": row["id"],
         "species_id": row["species_id"],
         "common_name": row["common_name"],
+        "species_common_name_nl": species.get("common_name_nl"),
+        "species_common_name_en": species.get("common_name_en"),
         "latin_name": row["latin_name"],
         "thumbnail_url": row["thumbnail_url"],
         "notes": row["notes"],
         "location_lat": row["location_lat"],
         "location_lon": row["location_lon"],
+        "fun_fact_nl": species.get("fun_fact_nl"),
+        "fun_fact_en": species.get("fun_fact_en"),
         "discovered_at": ts,
     }

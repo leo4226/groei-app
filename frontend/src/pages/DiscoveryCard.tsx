@@ -13,6 +13,8 @@ type RouteState = {
   candidate: Partial<IdentifyCommitResult> & { scientific_name?: string; common_name?: string; common_name_nl?: string }
   thumbnail: string
   destination?: 'journal' | 'garden'
+  location_lat?: number
+  location_lon?: number
 }
 
 type GardenFit = { map_id: number; map_name: string; sun_fit: string | null; reason: string }
@@ -82,14 +84,16 @@ export default function DiscoveryCard() {
     setSaving(true)
     setSaveError(false)
     try {
-      // Don't store raw camera data URLs — they're multi-MB blobs, not URLs.
-      // Only pass thumbnail_url if it's already a real https:// URL.
       const thumbnail_url = state?.thumbnail?.startsWith('https://') ? state.thumbnail : undefined
+      const thumbnail_data = state?.thumbnail?.startsWith('data:') ? state.thumbnail : undefined
       const result = await discoveries.save({
         species_id: speciesId ?? undefined,
         common_name: displayName,
         latin_name: scientificName || undefined,
         thumbnail_url,
+        thumbnail_data,
+        location_lat: state?.location_lat,
+        location_lon: state?.location_lon,
       })
       setSavedId(result.id)
     } catch {

@@ -14,7 +14,7 @@ EXTRA_SCHEMA = """
         id INTEGER PRIMARY KEY AUTOINCREMENT, plant_id INTEGER,
         care_type TEXT, done_at TEXT, done_by INTEGER, notes TEXT
     );
-    CREATE TABLE garden_fertilize_log (
+    CREATE TABLE IF NOT EXISTS garden_fertilize_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, fertilized_at TEXT, fertilized_by INTEGER
     );
     CREATE TABLE weed_sightings (id INTEGER PRIMARY KEY AUTOINCREMENT, map_id INTEGER);

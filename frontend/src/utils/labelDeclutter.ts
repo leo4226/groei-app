@@ -33,10 +33,10 @@ function intersects(a: Box, b: Box): boolean {
   return !(a.x1 <= b.x0 || a.x0 >= b.x1 || a.y1 <= b.y0 || a.y0 >= b.y1)
 }
 
-function boxFor(c: LabelCandidate, placement: LabelPlacement, font: number, gap: number): Box {
+function boxFor(c: LabelCandidate, placement: LabelPlacement, font: number, gap: number, belowOffset: number, aboveOffset: number): Box {
   const baseline = placement === 'above'
-    ? c.centerY - c.iconR - LABEL_ABOVE_OFFSET
-    : c.centerY + c.iconR + LABEL_BELOW_OFFSET
+    ? c.centerY - c.iconR - aboveOffset
+    : c.centerY + c.iconR + belowOffset
   const top = baseline - font                 // glyph top ≈ baseline − font
   const height = font * 1.2
   return {
@@ -50,13 +50,19 @@ function boxFor(c: LabelCandidate, placement: LabelPlacement, font: number, gap:
 /**
  * Decide which labels render and where. Returns a map of id → placement
  * ('below' | 'above'); ids absent from the map are hidden.
+ *
+ * `belowOffset`/`aboveOffset` default to the module constants but can be
+ * overridden (e.g. scaled by `/zoom` for semantic zoom) — they MUST match the
+ * offsets PlantMarker renders with, or collision boxes and drawn text disagree.
  */
 export function placeLabels(
   candidates: LabelCandidate[],
-  opts: { font: number; gap?: number },
+  opts: { font: number; gap?: number; belowOffset?: number; aboveOffset?: number },
 ): Map<number, LabelPlacement> {
   const font = opts.font
   const gap = opts.gap ?? 1
+  const belowOffset = opts.belowOffset ?? LABEL_BELOW_OFFSET
+  const aboveOffset = opts.aboveOffset ?? LABEL_ABOVE_OFFSET
   const ordered = [...candidates].sort(
     (a, b) => a.priority - b.priority || a.centerY - b.centerY || a.cx - b.cx,
   )
@@ -66,7 +72,7 @@ export function placeLabels(
   for (const c of ordered) {
     let chosen: LabelPlacement | null = null
     for (const placement of ['below', 'above'] as const) {
-      const box = boxFor(c, placement, font, gap)
+      const box = boxFor(c, placement, font, gap, belowOffset, aboveOffset)
       if (!placed.some((p) => intersects(p, box))) {
         chosen = placement
         placed.push(box)
@@ -75,7 +81,7 @@ export function placeLabels(
     }
     if (!chosen && c.forced) {
       chosen = 'below'                          // forced: show anyway, prefer below
-      placed.push(boxFor(c, 'below', font, gap))
+      placed.push(boxFor(c, 'below', font, gap, belowOffset, aboveOffset))
     }
     if (chosen) result.set(c.id, chosen)
   }

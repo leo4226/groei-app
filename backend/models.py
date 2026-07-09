@@ -228,7 +228,9 @@ class PlantFactOut(BaseModel):
     plant_name: str
     icon_key: str | None = None
     fact_nl: str
-    species_name: str | None = None
+    fact_en: str = ""
+    species_name_nl: str | None = None
+    species_name_en: str | None = None
 
 
 class DashboardV2Response(BaseModel):
@@ -466,9 +468,12 @@ class MonthPhenology(BaseModel):
     month: int
     phase: str
     phase_label_nl: str
+    phase_label_en: str | None = None
     sun_hours_needed: float
     description_nl: str
+    description_en: str | None = None
     actions_nl: list[str]
+    actions_en: list[str] | None = None
 
 
 class PhenologyData(BaseModel):
@@ -481,6 +486,7 @@ class PhenologyData(BaseModel):
     max_height_cm: int | None = None
     max_spread_cm: int | None = None
     interesting_facts_nl: str
+    interesting_facts_en: str | None = None
     climate_zone: str
 
 
@@ -593,6 +599,7 @@ class WeedSightingCreate(BaseModel):
     map_y: float
     notes: str | None = None
     sighted_at: str | None = None  # date string
+    photo_data: str | None = None  # base64 data URL
 
 
 class WeedSightingOut(BaseModel):
@@ -607,6 +614,7 @@ class WeedSightingOut(BaseModel):
     map_y: float
     notes: str | None = None
     sighted_at: str
+    photo_url: str | None = None
     created_at: datetime | None = None
 
 
@@ -697,6 +705,8 @@ class CalendarEventOut(BaseModel):
     plant_id: int | None
     plant_name: str | None
     plant_icon_variant: str | None
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
     schedule_id: int | None
     overdue: bool
     # ── warning enrichment ──
@@ -720,14 +730,16 @@ class WaterLogOut(BaseModel):
 class PlantRecommendationOut(BaseModel):
     species_id: int
     dutch_name: str
+    english_name: str | None
     latin_name: str
     sun_preference: str | None
-    sun_fit: str                     # 'perfect' | 'acceptable'
+    sun_fit: str
     is_native: bool | None
     pollinator_value: int | None
     flowering_months: list[int] | None
     gap_months_covered: list[int]
-    reason: str                      # template text initially
+    reason: str                      # template text in Dutch
+    reason_en: str | None            # template text in English
     caveat: str | None
 
 

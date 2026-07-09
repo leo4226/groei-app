@@ -523,6 +523,9 @@ export const icons = {
 }
 
 export const weeds = {
+  listSightings:  (map_id?: number)                                => api<import('../types').WeedSightingOut[]>('GET', '/weed-sightings', { params: map_id ? { map_id: String(map_id) } : {} }),
+  deleteSighting: (sighting_id: number)                            => api<void>('DELETE', `/weed-sightings/${sighting_id}`),
+  getSighting:    (sighting_id: number)                            => api<import('../types').SightingDetailOut>('GET', `/weed-sightings/${sighting_id}`),
   catalog:        ()                                            => api<import('../types').WeedSpeciesListItem[]>('GET', '/weed-catalog'),
   createSighting: (body: import('../types').WeedSightingCreate) => api<import('../types').WeedSightingOut>('POST', '/weed-sightings', { body }),
 }
@@ -680,11 +683,15 @@ export interface PlantDiscovery {
   id: number
   species_id: number | null
   common_name: string
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
   latin_name: string | null
   thumbnail_url: string | null
   notes: string | null
   location_lat: number | null
   location_lon: number | null
+  fun_fact_nl: string | null
+  fun_fact_en: string | null
   discovered_at: string
 }
 
@@ -695,6 +702,7 @@ export const discoveries = {
     common_name: string
     latin_name?: string
     thumbnail_url?: string
+    thumbnail_data?: string
     notes?: string
     location_lat?: number
     location_lon?: number

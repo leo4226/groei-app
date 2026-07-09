@@ -71,20 +71,24 @@ def compute_alerts(
         elif total_mm < drought_thresh * 0.5:
             alerts.append({"type": "drought", "severity": "urgent",
                 "message_nl": f"Zeer weinig regen deze week ({total_mm}mm). Geef direct extra water.",
+                "message_en": f"Very little rain this week ({total_mm}mm). Water immediately.",
                 "icon": "💧"})
         else:
             alerts.append({"type": "drought", "severity": "warning",
                 "message_nl": f"Weinig neerslag deze week ({total_mm}mm). Overweeg extra water te geven.",
+                "message_en": f"Low rainfall this week ({total_mm}mm). Consider extra watering.",
                 "icon": "💧"})
 
     if "waterlog" not in skip and waterlog_thresh and total_mm > waterlog_thresh:
         if total_mm > waterlog_thresh * 2:
             alerts.append({"type": "waterlog", "severity": "urgent",
                 "message_nl": f"Extreem veel regen ({total_mm}mm). Controleer drainage om wortels te beschermen.",
+                "message_en": f"Extreme rainfall ({total_mm}mm). Check drainage to protect roots.",
                 "icon": "🌧️"})
         else:
             alerts.append({"type": "waterlog", "severity": "warning",
                 "message_nl": f"Veel neerslag deze week ({total_mm}mm). Let op wateroverlast.",
+                "message_en": f"Heavy rainfall this week ({total_mm}mm). Watch for waterlogging.",
                 "icon": "🌧️"})
 
     if "cold" not in skip and min_temp is not None and temp_days:
@@ -92,6 +96,7 @@ def compute_alerts(
         if week_min <= min_temp:
             alerts.append({"type": "cold", "severity": "urgent",
                 "message_nl": f"Temperatuur daalde tot {week_min}°C, onder de stressgrens van {min_temp}°C.",
+                "message_en": f"Temperature dropped to {week_min}°C, below stress threshold of {min_temp}°C.",
                 "icon": "❄️"})
 
     if max_temp is not None and temp_days:
@@ -99,6 +104,7 @@ def compute_alerts(
         if week_max >= max_temp:
             alerts.append({"type": "heat", "severity": "urgent",
                 "message_nl": f"Temperatuur bereikte {week_max}°C, boven de stressgrens van {max_temp}°C.",
+                "message_en": f"Temperature reached {week_max}°C, above stress threshold of {max_temp}°C.",
                 "icon": "🌡️"})
 
     if "bring_inside" not in skip and bring_inside is not None and temp_days:
@@ -106,13 +112,16 @@ def compute_alerts(
         if week_min < bring_inside:
             alerts.append({"type": "bring_inside", "severity": "urgent",
                 "message_nl": f"Temperatuur daalde tot {week_min}°C. Zet deze plant naar binnen (grens: {bring_inside}°C).",
+                "message_en": f"Temperature dropped to {week_min}°C. Bring this plant inside (threshold: {bring_inside}°C).",
                 "icon": "🏠"})
 
     if current_month in fertilise_months:
         fertilized_this_month = last_fertilized is not None and last_fertilized.month == current_month and last_fertilized.year == date.today().year
         if not fertilized_this_month:
             tip = fertilise_tip or "Nu is het een goed moment om te bemesten."
-            alerts.append({"type": "fertilise", "severity": "info", "message_nl": tip, "icon": "🌿"})
+            alerts.append({"type": "fertilise", "severity": "info", "message_nl": tip,
+                "message_en": tip,
+                "icon": "🌿"})
 
     return alerts
 

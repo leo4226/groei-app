@@ -1086,6 +1086,10 @@ export type Translations = {
     mapSettings: string       // "Kaart instellingen" (settings button tooltip)
     labelShow: string         // "Toon namen"
     labelHide: string         // "Verberg namen"
+    labelModeTitle: string    // "Namen" (labels section heading)
+    labelModeOff: string      // "Uit"
+    labelModeSmart: string    // "Slim"
+    labelModeAll: string      // "Alles"
     warningsShow: string      // "Toon waarschuwingen"
     warningsHide: string      // "Verberg waarschuwingen"
     weatherWarningBadge: string
@@ -1238,6 +1242,32 @@ export type Translations = {
       saved: string
     }
     errorService: string
+
+    sightingsList: {
+      title: string
+      empty: string
+      emptyHint: string
+      mapLabel: string
+      deleteConfirm: string
+      detailTitle: string
+      sightedOn: string
+      location: string
+      removal: string
+      removalDifficulty: string
+      notes: string
+      deleteSighting: string
+      noPhoto: string
+      loading: string
+      loadingDetail: string
+      fieldGuide: string
+      funFact: string
+      habitat: string
+      appearance: string
+      native: string
+      edible: string
+      flowering: string
+      removalTip: string
+    }
   }
 
   help: {
@@ -1282,6 +1312,7 @@ export type Translations = {
     title: string
     empty: string
     loadMore: string
+    fieldObservation: string
   }
 
   common: {
@@ -1340,6 +1371,9 @@ export type Translations = {
     discovered: string         // "Gevonden"
     share: string              // "Delen"
     shareCopied: string        // "Gekopieerd!"
+    journalNotes: string       // "Notes" / "Notities"
+    journalLocation: string    // "Photo location" / "Fotolocatie"
+    journalOpenMap: string     // "Open map" / "Open kaart"
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
   }
 

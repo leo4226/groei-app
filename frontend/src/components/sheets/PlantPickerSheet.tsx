@@ -143,7 +143,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                     />
                   )}
                   <span className="text-xs font-semibold text-text leading-tight line-clamp-2">
-                    {plant.dutchName}
+                    {t.locale.startsWith('en') ? (plant.englishName || plant.dutchName) : plant.dutchName}
                   </span>
                   <span className="text-[10px] text-text-muted italic leading-tight line-clamp-1">
                     {plant.latinName}

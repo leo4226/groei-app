@@ -8,8 +8,6 @@ interface Props {
   showLabels?: boolean
   showWarnings?: boolean
   heatmapCells?: HeatmapCell[]
-  onObjectTap: (object: MapObject) => void
-  onContainerPointerDown?: (e: React.PointerEvent, object: MapObject) => void
   dragPositions?: Record<string, { x: number; y: number }>
 }
 
@@ -19,8 +17,6 @@ export default function ObjectsLayer({
   showLabels = true,
   showWarnings = true,
   heatmapCells,
-  onObjectTap,
-  onContainerPointerDown,
   dragPositions,
 }: Props) {
   return (
@@ -39,9 +35,6 @@ export default function ObjectsLayer({
             showLabel={showLabels}
             showWarnings={showWarnings}
             heatmapCells={heatmapCells}
-            onTap={onObjectTap}
-            onPointerDown={isContainer ? onContainerPointerDown : undefined}
-            isDragging={!!dragPos}
           />
         )
       })}

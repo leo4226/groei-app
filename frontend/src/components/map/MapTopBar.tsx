@@ -2,22 +2,29 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
+import { STORAGE_KEY } from '../../appMapRedirectModel'
 import type { MapInfo } from '../../types'
+import type { LabelMode } from './PlantsLayer'
 
 interface Props {
   map: MapInfo
   allMaps: MapInfo[]
-  showLabels: boolean
-  onToggleLabels: () => void
+  labelMode: LabelMode
+  onSetLabelMode: (mode: LabelMode) => void
   showWarnings: boolean
   onToggleWarnings: () => void
 }
 
-export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, showWarnings, onToggleWarnings }: Props) {
+const LABEL_MODES: LabelMode[] = ['off', 'smart', 'all']
+
+export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, showWarnings, onToggleWarnings }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const [defaultSlug, setDefaultSlug] = useState<string | null>(() => {
+    try { return localStorage.getItem(STORAGE_KEY) } catch { return null }
+  })
 
   useEffect(() => {
     if (!open) return
@@ -38,6 +45,9 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
         style={{ backdropFilter: 'blur(10px)' }}
       >
         <span className={`text-text-muted text-xs transition-transform inline-block ${open ? 'rotate-180' : ''}`}>⌄</span>
+        {defaultSlug === map.slug && <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>}
         <span className="truncate max-w-[180px]">{map.name}</span>
       </button>
 
@@ -61,16 +71,27 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
               <div className="h-px bg-border mx-3 my-1" />
             </>
           )}
-          <button
-            onClick={() => { setOpen(false); onToggleLabels() }}
-            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
-          >
-            <Glyph name="edit" size={15} className="text-text-muted shrink-0" />
-            <span className={showLabels ? '' : 'text-text-muted'}>
-              {showLabels ? t.mapPage.labelHide : t.mapPage.labelShow}
-            </span>
-            {showLabels && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
-          </button>
+          {/* Labels: 3-state segmented control (Off / Smart / All). One tap sets
+              any state directly; the menu stays open so the change is visible. */}
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Glyph name="edit" size={15} className="text-text-muted shrink-0" />
+              <span className="text-sm text-text">{t.mapPage.labelModeTitle}</span>
+            </div>
+            <div className="flex rounded-lg border border-border overflow-hidden" role="radiogroup" aria-label={t.mapPage.labelModeTitle}>
+              {LABEL_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  role="radio"
+                  aria-checked={labelMode === mode}
+                  onClick={() => onSetLabelMode(mode)}
+                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[40px] ${labelMode === mode ? 'bg-primary text-white' : 'text-text-muted hover:bg-bg/60'}`}
+                >
+                  {mode === 'off' ? t.mapPage.labelModeOff : mode === 'smart' ? t.mapPage.labelModeSmart : t.mapPage.labelModeAll}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={() => { setOpen(false); onToggleWarnings() }}
             className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
@@ -80,6 +101,21 @@ export default function MapTopBar({ map, allMaps, showLabels, onToggleLabels, sh
               {showWarnings ? t.mapPage.warningsHide : t.mapPage.warningsShow}
             </span>
             {showWarnings && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
+          </button>
+          <div className="h-px bg-border mx-3 my-1" />
+          <button
+            onClick={() => {
+              try { localStorage.setItem(STORAGE_KEY, map.slug) } catch {}
+              setDefaultSlug(map.slug)
+              setOpen(false)
+            }}
+            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px]"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <span>{defaultSlug === map.slug ? 'Default map' : 'Set as default'}</span>
+            {defaultSlug === map.slug && <Glyph name="check" size={14} className="ml-auto text-primary shrink-0" />}
           </button>
           <div className="h-px bg-border mx-3 my-1" />
           <button

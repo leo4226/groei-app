@@ -98,4 +98,23 @@ describe('computeSuitability', () => {
     expect(result.detailLabel).not.toContain('sun')
     expect(result.detailLabel).not.toContain('0.0h')
   })
+
+  it('does not fall back to Dutch descriptions or actions in English mode', () => {
+    const phenology = makePhenology({
+      months: [
+        {
+          month: 6,
+          phase: 'growing',
+          phase_label_nl: 'Groeien',
+          sun_hours_needed: 4,
+          description_nl: 'Blijf water geven en bemesten.',
+          actions_nl: ['Geef water als de grond droog is'],
+        },
+      ],
+    })
+
+    const result = computeSuitability(phenology, null, 6, 'en-US')
+    expect(result.detailLabel).toBe('')
+    expect(result.actions).toEqual([])
+  })
 })

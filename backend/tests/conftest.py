@@ -121,6 +121,14 @@ SCHEMA = """
         watered_at DATE NOT NULL,
         watered_by INTEGER,
         water_amount DOUBLE PRECISION,
+        household_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE garden_fertilize_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fertilized_at DATE NOT NULL,
+        fertilized_by INTEGER,
+        household_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE notification_preferences (

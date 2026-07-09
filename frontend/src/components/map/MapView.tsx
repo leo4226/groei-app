@@ -3,14 +3,15 @@ import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData, SecondaryM
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { screenToSVG } from '../../utils/svgCoords'
+import { nearestPlant } from '../../utils/nearestPlant'
 import { usePinch } from '@use-gesture/react'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
 import { useMapInteraction } from '../../hooks/useMapInteraction'
-import { shouldStartMapPan } from './plantDragPermissions'
+import { resolveDisplayedDragPosition, shouldStartMapPan } from './plantDragPermissions'
 import ObjectsLayer from './ObjectsLayer'
-import PlantsLayer from './PlantsLayer'
+import PlantsLayer, { type LabelMode } from './PlantsLayer'
 import SecondaryMarkersLayer from './SecondaryMarkersLayer'
 import PlantResizeOverlay from './PlantResizeOverlay'
 import ShadowLayer from './ShadowLayer'
@@ -35,7 +36,7 @@ interface Props {
   onOpenDetails?: (type: 'plant' | 'object', id: number) => void
   onRemoveItem?: (type: 'plant' | 'object', id: number) => void
   onFixedPlantTap?: (plant: FixedPlant) => void
-  showLabels?: boolean
+  labelMode?: LabelMode
   showWarnings?: boolean
   sunModeActive?: boolean
   shadows?: ShadowPolygon[]
@@ -63,8 +64,16 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, showLabels = true, showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+// Nearest-neighbour tap radius (#452): a fixed on-screen touch target, in CSS
+// pixels, converted to SVG units at tap time so it feels constant regardless of
+// zoom. A tap this close to a plant selects it; a tap farther out deselects.
+const TAP_TARGET_PX = 44
+
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
+  // Object labels (containers/pots) follow the same on/off split as plant
+  // labels: hidden only in 'off' mode. The smart/all distinction is plant-only.
+  const showLabels = labelMode !== 'off'
   const { ref: containerRef, width: cw, height: ch } = useContainerSize()
   const isMobile = useIsMobile()
   const isLandscapeMobile = useLandscapeMobile()
@@ -122,7 +131,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       return m
     },
     {
-      target: svgRef,
+      // Target the container, NOT svgRef: the <svg> is a pointer-events:none
+      // overlay (only its marker children opt back in), so touch events for
+      // empty map area never reach it and pinch would silently do nothing.
+      // Pan/wheel/tap already live on the container, which has touch-action:none.
+      // (The editor keeps target: svgRef because its <svg> IS the event target.)
+      target: containerRef,
       eventOptions: { passive: false },
       scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
       from: () => [zoom, 0],
@@ -286,7 +300,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     selectedPlant,
     selectedPlantPos,
     handlePlantPointerDown,
-    handleContainerPointerDown,
     handlePointerMove,
     handlePointerUp,
     handleItemSelect,
@@ -316,13 +329,48 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
   // A drag-to-pan must not count as a map tap (mouse fires click after a drag;
   // touch usually doesn't, but guard both).
-  const handleContainerClick = useCallback(() => {
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
     if (didPan.current) {
       didPan.current = false
       return
     }
+    // Nearest-neighbour selection (#452): a direct hit on a marker never reaches
+    // here (per-marker onClick calls stopPropagation), so this fires only for
+    // taps that missed every hit circle. Select the closest plant within a
+    // zoom-scaled pick radius so fat-finger taps on a dense phone map still land
+    // on something useful; a tap on clearly-empty ground falls through to
+    // handleMapClick() and deselects.
+    const svg = svgRef.current
+    const pt = svg ? screenToSVG(svg, e.clientX, e.clientY) : null
+    if (svg && pt) {
+      // px → viewBox-units factor, mirroring handlePanPointerDown and the <svg>
+      // preserveAspectRatio prop ("meet" = min, landscape-mobile "slice" = max).
+      const rect = svg.getBoundingClientRect()
+      const visW = baseCenter.vw / zoomRef.current
+      const visH = baseCenter.vh / zoomRef.current
+      const pick = isLandscapeMobile ? Math.max : Math.min
+      const scale = pick(rect.width / visW, rect.height / visH)
+      if (scale && isFinite(scale)) {
+        const maxDist = TAP_TARGET_PX / scale
+        // Locked plants are excluded — they select ONLY via their lock badge, so
+        // proximity must not override that. Positions respect an in-flight drag,
+        // exactly like PlantsLayer renders them.
+        const candidates = plants
+          .filter((p) => !p.is_locked)
+          .map((p) => {
+            const pos = resolveDisplayedDragPosition(`plant-${p.id}`, dragPositions, { x: p.map_x, y: p.map_y })
+            return { id: p.id, x: pos.x, y: pos.y }
+          })
+        // TODO: disambiguation chooser for near-tied plants
+        const nearestId = nearestPlant(pt, candidates, maxDist)
+        if (nearestId !== null) {
+          handleItemSelect('plant', nearestId)
+          return
+        }
+      }
+    }
     handleMapClick()
-  }, [handleMapClick])
+  }, [handleMapClick, handleItemSelect, plants, dragPositions, baseCenter, isLandscapeMobile])
 
   // Derive the profile of the plant being dragged (for the suitability overlay)
   const draggingPlant = dragging?.type === 'plant'
@@ -473,8 +521,6 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             showLabels={showLabels}
             showWarnings={showWarnings}
             heatmapCells={heatmapCells}
-            onObjectTap={(obj) => handleItemSelect('object', obj.id)}
-            onContainerPointerDown={handleContainerPointerDown}
             dragPositions={dragPositions}
           />
           {/* Plants layer on top */}
@@ -486,8 +532,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             selectedId={selection.selectedId}
             moveMode={moveMode}
             movePlantId={movePlantId}
-            showLabels={showLabels}
+            labelMode={labelMode}
             showWarnings={showWarnings}
+            zoom={zoom}
             onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
