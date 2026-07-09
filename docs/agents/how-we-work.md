@@ -246,11 +246,13 @@ cd ../floreren-<n>
 
 # 5. Stage ONLY the files you changed, then commit
 git add path/to/file1 path/to/file2
-git commit -m "fix(scope): what changed (#<n>)"
+git commit -m "fix(scope): what changed (#<n>)
+
+Closes #<n>"
 
 # 6. Push and open a pull request
 git push -u origin HEAD
-gh pr create --fill --base master        # then add "Closes #<n>" to the body
+gh pr create --fill --base master
 
 # 7. Tell Leon it's ready. DO NOT merge it yourself.
 ```
@@ -364,9 +366,11 @@ cd ../frontend && npm run build
 
 # commit, push, PR
 git add <changed files>
-git commit -m "fix(scope): summary (#<n>)"
+git commit -m "fix(scope): summary (#<n>)
+
+Closes #<n>"
 git push -u origin HEAD
-gh pr create --fill --base master         # PR body must contain: Closes #<n>
+gh pr create --fill --base master
 # tell Leon — do not merge yourself
 # (abandoning? gh issue edit <n> --remove-label "in-progress")
 ```
