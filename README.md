@@ -1,8 +1,10 @@
 <div align="center">
 
-# 🌿 Floreren
+<img src="frontend/public/icons/icon-192.png" alt="Floreren" width="96" height="96" style="border-radius: 22px;">
 
-**A mobile-first PWA for tracking plants, logging care, and visualising your garden — sun, shadows and all.**
+# Floreren
+
+**A plant-care app for our garden in Amsterdam — built with friends, AI, and a lot of coffee.**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-4a7c59.svg)](./LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-installable-5a67d8)
@@ -17,27 +19,30 @@
 
 ---
 
-## What is it?
+## What is this?
 
-**Floreren** (Dutch for *"to flourish"*) is a plant-care app built for a household in Amsterdam to keep track of every plant — indoors and out — and never miss a watering again. It started as a two-person family tool and is being built out to support other households with their own gardens.
+Floreren (Dutch for *"to flourish"*) is the app we built to keep track of every plant in our garden and home in Amsterdam. My wife and I kept forgetting to water things, losing track of what we'd planted where, and guessing wrong about which corner gets afternoon sun. So we built something that actually knows.
 
-The thing that makes it more than a checklist: it knows **where** your plants actually stand. Draw your garden to scale, place each plant, and Floreren computes the sun's path and the shadows your fence and shed cast across the seasons — so "this corner gets three hours of afternoon sun in June" becomes something the app can tell you, not something you have to guess.
+Draw your garden to scale, place each plant, and Floreren figures out the sun's path and the shadows your fence casts — so "that corner gets three hours of sun in June" stops being a guess.
 
-## ✨ Features
+It's a **mobile-first PWA** — add it to your phone's home screen and it feels like a native app.
 
-- 🗺️ **Garden & indoor maps** — draw your space to scale in a layout editor (zones, rooms, walls, doors, windows), then place plants and objects on an SVG canvas.
-- ☀️ **Sun & shadow simulation** — real solar position by GPS + date, with heatmap overlays showing how much light each spot receives. Shadow casters (fences, structures) are modelled per map.
-- 💧 **Smart care scheduling** — per-plant watering/fertilising/care schedules with weather-aware adjustments (rain and temperature from Open-Meteo feed into what's actually due).
-- 📋 **Daily dashboard** — what needs care today, overdue counts, and a recent-activity log.
-- 🔍 **Plant identification** — photo-based ID via a self-hosted BioCLIP model on GPU, with a PlantNet fallback.
-- 🧠 **Species knowledge** — care thresholds, phenology, and fun facts generated and cached per species (LLM-assisted).
-- 🌱 **Biodiversity scoring** — a per-garden score with native/invasive/pollinator insights and planting suggestions.
-- 📸 **Photo journal** — a per-plant photo timeline stored in object storage.
-- 🔔 **Notifications** — opt-in daily email digest and web-push reminders (with quiet hours).
-- 🐝 **Field observations** — log wild plant/weed sightings on the map.
-- 👨‍👩‍👧 **Households** — JWT auth, invite codes, multiple members per garden.
+## What it does
 
-## 📸 A look inside
+- **Garden & indoor maps** — draw your space to scale, place plants and objects
+- **Live sun & shadow simulation** — real solar position by GPS + date, with a heatmap showing how much light each spot gets across the seasons
+- **Smart care scheduling** — watering and fertilising schedules that adapt to rain and temperature
+- **Plant identification** — snap a photo, get a species match (BioCLIP on GPU, with PlantNet fallback)
+- **Photo journal** — per-plant photo timeline, stored in the cloud
+- **Daily email digest** — what needs care today, with quiet hours so it doesn't ping at midnight
+
+## How it's built
+
+Floreren is developed with [Hermes](https://hermes-agent.nousresearch.com) — an AI coding agent that switches between models (DeepSeek, Codex, Claude) depending on the task. Issues are triaged in GitHub, PRs are reviewed by a second model, and everything is verified against the real Vite production build before it ships.
+
+The stack is React 19 + TypeScript + Tailwind on the frontend, FastAPI + Python + asyncpg on the backend, PostgreSQL on Neon, and deployments to Vercel (web) and Fly.io (API).
+
+## A look inside
 
 <table>
   <tr>
@@ -49,11 +54,11 @@ The thing that makes it more than a checklist: it knows **where** your plants ac
   <tr>
     <td width="50%" valign="top">
       <img src="docs/screenshots/map-sun-heatmap.png" alt="Seasonal sun heatmap">
-      <p align="center"><em>Seasonal sun heatmap — full sun → shade, month by month.</em></p>
+      <p align="center"><em>Seasonal sun heatmap — full sun to shade, month by month.</em></p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/biodiversity.png" alt="Garden biodiversity score">
-      <p align="center"><em>A per-garden biodiversity score, with native &amp; pollinator insight.</em></p>
+      <p align="center"><em>A per-garden biodiversity score, with native & pollinator insight.</em></p>
     </td>
   </tr>
   <tr>
@@ -68,42 +73,9 @@ The thing that makes it more than a checklist: it knows **where** your plants ac
   </tr>
 </table>
 
-## 🧱 Tech stack
+## Getting started
 
-| Layer | Tech |
-|---|---|
-| **Frontend** | React 19 · TypeScript · Vite · Tailwind CSS · Zustand |
-| **PWA** | `vite-plugin-pwa` (installable, offline-aware) |
-| **Backend** | FastAPI · Python · asyncpg |
-| **Database** | PostgreSQL (Neon) · Alembic migrations |
-| **Sun/geometry** | `suncalc` + custom coordinate/shadow math |
-| **AI** | BioCLIP (image embeddings, self-hosted GPU) · LLM for care/species data · PlantNet fallback |
-| **Infra** | Vercel (web) · Fly.io (API) · Cloudflare (DNS + worker tunnel) · R2 (images) |
-
-## 🏗️ Architecture
-
-```
-┌──────────────┐     HTTPS      ┌──────────────┐     asyncpg     ┌────────────┐
-│  React PWA   │ ─────────────▶ │   FastAPI    │ ──────────────▶ │  Postgres  │
-│  (Vercel)    │   JWT auth     │   (Fly.io)   │                 │   (Neon)   │
-└──────────────┘                └──────┬───────┘                 └────────────┘
-                                       │
-                        image ID       │  offload
-                                       ▼
-                              ┌──────────────────┐
-                              │  BioCLIP worker  │  GPU, exposed via
-                              │  (Cloudflare     │  a Cloudflare Tunnel
-                              │   Tunnel)        │
-                              └──────────────────┘
-```
-
-- **SVG is the source of truth** for map coordinates — the viewBox comes from the DB, and pointer events convert into SVG space (no manual rotation transforms).
-- **Multi-tenant by household** — every data endpoint is scoped to the caller's household via the JWT.
-- **Postgres-only** — the backend requires a `DATABASE_URL`; migrations run automatically on deploy.
-
-## 🚀 Getting started
-
-Requirements: **Node 22**, **Python 3.13**, and a PostgreSQL database (a free [Neon](https://neon.tech) branch works well).
+Requirements: **Node 22**, **Python 3.13**, and a PostgreSQL database (a free [Neon](https://neon.tech) branch works great).
 
 ```bash
 # 1. Backend
@@ -111,7 +83,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env             # then set DATABASE_URL (+ optional API keys)
+cp .env.example .env             # set DATABASE_URL + optional API keys
 alembic upgrade head
 
 # 2. Frontend
@@ -125,13 +97,13 @@ npm run dev                      # frontend on :5173, API on :1415
 
 > Verify frontend changes with `cd frontend && npm run build` — Vite's build is stricter than `tsc` and catches errors `tsc` misses.
 
-## 📁 Project structure
+## Project structure
 
 ```
 frontend/src/
-  pages/          # route-level screens (dashboard, plants, maps, calendar, settings)
+  pages/          # route-level screens
   components/
-    map/          # read-only garden/indoor map view
+    map/          # garden/indoor map view
     editor/       # layout editor (zones, rooms, walls)
     sun/          # sun position + heatmap overlays
     sheets/       # bottom-sheet panels
@@ -145,16 +117,12 @@ backend/
   main.py
 ```
 
-## 🤖 How it's built
-
-Floreren is developed with an AI-assisted workflow using [Claude Code](https://claude.com/claude-code) — issues triaged in GitHub, changes verified against the real Vite build (not just `tsc`), and a backend test suite that runs on an in-memory SQLite seam so it needs no live Postgres. Contributions and ideas are welcome.
-
-## 📄 License
+## License
 
 Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](./LICENSE). You're free to read, learn from, and build on this code; if you run a modified version as a network service, the AGPL asks you to share those changes.
 
 ---
 
 <div align="center">
-<sub>Made with 🌱 in Amsterdam.</sub>
+<sub>Made with 🌱 in Amsterdam — Leon & Lisbeth</sub>
 </div>
