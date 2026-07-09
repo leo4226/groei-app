@@ -34,6 +34,14 @@ describe('plantDisplayName', () => {
     }, 'en-GB')).toBe('Blueberry')
   })
 
+  it('falls back to the user-entered plant name when the localized species name is missing', () => {
+    expect(plantDisplayName({
+      ...basePlant,
+      species_common_name_en: '   ',
+      species_common_name_nl: 'Gatenplant',
+    }, 'en-GB')).toBe('Gatenplant in de hoek')
+  })
+
   it('falls back to the user-entered plant name when no localized or known common name exists', () => {
     expect(plantDisplayName({ ...basePlant, species_common_name_en: '   ' }, 'en-GB')).toBe('Gatenplant in de hoek')
     expect(plantDisplayName({ ...basePlant, species_common_name_nl: null }, 'nl-NL')).toBe('Gatenplant in de hoek')
