@@ -22,7 +22,7 @@ const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
 const THEME_KEY = 'floreren-theme'
 
 export default function Settings() {
-  const { users, locations, activeUserId, setActiveUser, updateUserLanguage: updateUserLanguageFn } = useFloreren()
+  const { users, locations, activeUserId, updateUserLanguage: updateUserLanguageFn } = useFloreren()
   const [groupOutdoor, setGroupOutdoor] = useState(() => localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
   const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>(() => {
     const stored = localStorage.getItem(THEME_KEY)
@@ -78,6 +78,7 @@ export default function Settings() {
   const [householdSaving, setHouseholdSaving] = useState(false)
   const [householdSaved, setHouseholdSaved] = useState(false)
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>([])
+  const [selectedProfileMemberId, setSelectedProfileMemberId] = useState<number | null>(null)
   const [householdLoadError, setHouseholdLoadError] = useState<string | null>(null)
 
   const [iconCatalog, setIconCatalog] = useState<PlantIcon[]>([])
@@ -92,15 +93,29 @@ export default function Settings() {
     isPushSubscribedHere().then(setPushOnHere)
   }, [])
 
+  function selectProfileMember(member: HouseholdMember) {
+    setSelectedProfileMemberId(member.id)
+    setProfileName(member.name)
+    setProfileAvatar(member.avatar ?? '')
+    setProfileEmail(member.email)
+    setProfileSaved(false)
+    setShowEmojiPicker(false)
+  }
+
   async function handleSaveProfile() {
-    if (!activeUserId || !profileName.trim()) return
+    if (!selectedProfileMemberId || !profileName.trim()) return
     setProfileSaving(true)
     setProfileSaved(false)
     try {
-      await usersApi.updateUser(activeUserId, { name: profileName.trim(), avatar: profileAvatar || undefined })
+      const updated = await household.updateMember(selectedProfileMemberId, {
+        name: profileName.trim(),
+        avatar: profileAvatar || null,
+      })
+      setHouseholdMembers((members) => members.map((member) => member.id === updated.id ? updated : member))
+      selectProfileMember(updated)
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 2500)
-      useFloreren.getState().load()
+      void useFloreren.getState().load()
     } catch (e) {
       console.error('Failed to save profile', e)
     } finally {
@@ -216,6 +231,7 @@ export default function Settings() {
   useEffect(() => {
     auth.me()
       .then((me) => {
+        setSelectedProfileMemberId(me.id)
         setProfileName(me.name)
         setProfileAvatar(me.avatar ?? '')
         setProfileEmail(me.email)
@@ -250,7 +266,10 @@ export default function Settings() {
 
   useEffect(() => {
     household.members()
-      .then(setHouseholdMembers)
+      .then((members) => {
+        setHouseholdMembers(members)
+        setSelectedProfileMemberId((selected) => selected ?? members[0]?.id ?? null)
+      })
       .catch(() => setHouseholdLoadError('Failed to load members'))
   }, [])
 
@@ -473,7 +492,7 @@ export default function Settings() {
         accent={t.settings.mastheadAccent}
         lede={t.settings.mastheadLede}
       />
-      <div className="mx-auto grid max-w-[1380px] grid-cols-1 gap-8 px-4 pt-6 md:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start lg:gap-10">
+      <div className="mx-auto grid max-w-[1480px] grid-cols-1 gap-8 px-4 pt-6 md:px-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-start lg:gap-10">
         <div className="min-w-0 space-y-8">
 
       <section>
@@ -854,7 +873,7 @@ export default function Settings() {
                   }
                 }}
                 disabled={householdSaving || !householdName.trim()}
-                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform disabled:opacity-40"
+                className="flex-shrink-0 min-w-[5.5rem] h-9 px-3 flex items-center justify-center rounded-full bg-primary text-white text-sm font-bold active:scale-90 transition-transform disabled:opacity-40"
               >
                 {householdSaving ? (
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -876,39 +895,39 @@ export default function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {householdMembers.length > 0
                 ? householdMembers.map((member) => {
-                    const localUser = users.find((u) => u.name === member.name)
-                    const userId = localUser?.id
+                    const legacyUserId = users.find((u) => u.name === member.name)?.id
+                    const isProfileSelected = member.id === selectedProfileMemberId
                     return (
                       <div key={member.id} className="relative group">
                         <button
-                          onClick={() => userId && setActiveUser(userId)}
+                          onClick={() => selectProfileMember(member)}
                           className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
-                            userId === activeUserId
+                            isProfileSelected
                               ? 'ring-2 ring-primary border-primary/20'
                               : 'hover:border-primary/20'
                           }`}
                         >
-                          <Avatar value={member.avatar || users.find(u => u.name === member.name)?.avatar} size={44} />
-                          <span className={`font-semibold ${userId === activeUserId ? "text-primary" : "text-text"}`}>
+                          <Avatar value={member.avatar} size={44} />
+                          <span className={`font-semibold ${isProfileSelected ? "text-primary" : "text-text"}`}>
                             {member.name}
                           </span>
                           <span className="text-[11px] text-text-muted">{member.email}</span>
                           <span className="text-[10px] text-text-muted">
                             {t.settings.memberJoined} {new Date(member.created_at).toLocaleDateString()}
                           </span>
-                          {userId === activeUserId && (
+                          {isProfileSelected && (
                             <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                               {t.settings.active}
                             </span>
                           )}
                         </button>
-                        {userId && userId !== activeUserId && (
+                        {legacyUserId && legacyUserId !== activeUserId && (
                           <button
                             onClick={async (e) => {
                               e.stopPropagation()
                               if (!window.confirm(t.settings.removeConfirm + ' ' + member.name + '?')) return
                               try {
-                                await household.removeMember(userId)
+                                await household.removeMember(legacyUserId)
                                 useFloreren.getState().load()
                                 setHouseholdMembers(prev => prev.filter(m => m.id !== member.id))
                               } catch (e) {
@@ -924,46 +943,7 @@ export default function Settings() {
                       </div>
                     )
                   })
-                : users.map((user) => (
-                    <div key={user.id} className="relative group">
-                      <button
-                        onClick={() => setActiveUser(user.id)}
-                        className={`card p-4 flex flex-col items-center gap-2 transition-all w-full ${
-                          user.id === activeUserId
-                            ? 'ring-2 ring-primary border-primary/20'
-                            : 'hover:border-primary/20'
-                        }`}
-                      >
-                        <Avatar value={user.avatar} size={44} />
-                        <span className={`font-semibold ${user.id === activeUserId ? "text-primary" : "text-text"}`}>
-                          {user.name}
-                        </span>
-                        {user.id === activeUserId && (
-                          <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                            {t.settings.active}
-                          </span>
-                        )}
-                      </button>
-                      {user.id !== activeUserId && (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            if (!window.confirm(t.settings.removeConfirm + ' ' + user.name + '?')) return
-                            try {
-                              await household.removeMember(user.id)
-                              useFloreren.getState().load()
-                            } catch (e) {
-                              alert(e instanceof Error ? e.message : t.settings.removeError)
-                            }
-                          }}
-                          className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-200 active:scale-90 transition-all text-xs font-bold opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                          title={t.settings.removeMember}
-                        >
-                          {String.fromCharCode(10005)}
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                : <p className="text-sm text-text-muted">{t.common.loading}</p>}
             </div>
           </div>
 

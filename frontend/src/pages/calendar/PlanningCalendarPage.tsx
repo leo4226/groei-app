@@ -32,13 +32,7 @@ export default function PlanningCalendarPage() {
   return (
     <div className="cal-page">
       {/* ── Environment filter ── */}
-      <div style={{
-        width: 'min(100%, 1800px)',
-        margin: '0 auto',
-        display: 'flex', gap: 10,
-        padding: '16px clamp(24px, 3vw, 56px) 8px',
-        flexWrap: 'wrap',
-      }}>
+      <div className="calendar-environment-filter">
         {([
           { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, glyph: 'list' as GlyphName },
           { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, glyph: 'leaf' as GlyphName },

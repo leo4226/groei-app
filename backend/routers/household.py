@@ -7,7 +7,10 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import db_dep
-from models import InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate
+from models import (
+    InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate,
+    HouseholdMemberOut, HouseholdMemberUpdate,
+)
 from auth import hash_password, create_token, get_current_account
 import asyncpg
 
@@ -155,6 +158,66 @@ async def list_members(
         (current["household_id"],),
     )
     return [dict(r) for r in rows]
+
+
+@router.patch("/members/{member_id}", response_model=HouseholdMemberOut)
+async def update_member_profile(
+    member_id: int,
+    body: HouseholdMemberUpdate,
+    current=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Update a household member's account profile and sync care attribution."""
+    household_id = current["household_id"]
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Member name cannot be empty")
+
+    rows = await db.execute_fetchall(
+        """SELECT id, name, email, avatar, created_at
+           FROM accounts WHERE id = ? AND household_id = ?""",
+        (member_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Member not found in your household")
+    member = dict(rows[0])
+
+    conflict = await db.execute_fetchall(
+        "SELECT id FROM accounts WHERE household_id = ? AND name = ? AND id <> ?",
+        (household_id, name, member_id),
+    )
+    if conflict:
+        raise HTTPException(status_code=409, detail="A household member already uses that name")
+
+    avatar = body.avatar.strip() if body.avatar else None
+    await db.execute(
+        "UPDATE accounts SET name = ?, avatar = ? WHERE id = ?",
+        (name, avatar, member_id),
+    )
+
+    legacy_rows = await db.execute_fetchall(
+        "SELECT id FROM users WHERE household_id = ? AND name = ?",
+        (household_id, member["name"]),
+    )
+    if legacy_rows:
+        await db.execute(
+            "UPDATE users SET name = ?, avatar = ? WHERE household_id = ? AND name = ?",
+            (name, avatar, household_id, member["name"]),
+        )
+    else:
+        await db.execute(
+            "INSERT INTO users (name, avatar, household_id, language) VALUES (?, ?, ?, ?)",
+            (name, avatar, household_id, "nl"),
+        )
+    await db.commit()
+
+    return {
+        "id": member_id,
+        "name": name,
+        "email": member["email"],
+        "avatar": avatar,
+        "created_at": member["created_at"],
+    }
 
 
 @router.delete("/members/{user_id}", status_code=204)

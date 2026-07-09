@@ -684,6 +684,20 @@ class HouseholdUpdate(BaseModel):
     name: str
 
 
+class HouseholdMemberUpdate(BaseModel):
+    """Update a household member's visible profile fields."""
+    name: str
+    avatar: str | None = None
+
+
+class HouseholdMemberOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    avatar: str | None = None
+    created_at: datetime
+
+
 class HouseholdUpdate(BaseModel):
     """Rename the household."""
     name: str
