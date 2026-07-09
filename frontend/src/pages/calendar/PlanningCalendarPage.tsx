@@ -8,6 +8,56 @@ import './calendar.css'
 
 export type CalendarViewMode = 'month' | 'agenda'
 
+function EnvironmentFilter({
+  env,
+  onChange,
+  className,
+}: {
+  env: string
+  onChange(env: string): void
+  className?: string
+}) {
+  const t = useT()
+
+  return (
+    <div className={`calendar-environment-filter ${className ?? ''}`}>
+      {([
+        { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, glyph: 'list' as GlyphName },
+        { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, glyph: 'leaf' as GlyphName },
+        { id: 'huis', label: t.common.house, desc: t.calendar.filterDescHouse, glyph: 'home' as GlyphName },
+      ] as const).map(({ id, label, desc, glyph }) => {
+        const active = env === id
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+              gap: 2, cursor: 'pointer', textAlign: 'left',
+              padding: '10px 18px', borderRadius: 14,
+              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+              background: active ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: active ? 'var(--color-surface)' : 'var(--color-text)',
+              transition: 'all 0.15s',
+            }}
+          >
+            <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Glyph name={glyph} size={15} /> {label}
+            </span>
+            <span style={{
+              fontSize: 11, lineHeight: 1.3, fontWeight: 400,
+              color: active ? 'var(--color-surface)' : 'var(--color-text-muted)',
+              opacity: active ? 0.85 : 1,
+            }}>
+              {desc}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
   const t = useT()
   return (
@@ -24,52 +74,19 @@ function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: Ca
 }
 
 export default function PlanningCalendarPage() {
-  const t = useT()
   const isNarrow = useIsNarrow()
   const [view, setView] = useState<CalendarViewMode>(isNarrow ? 'agenda' : 'month')
   const [env, setEnv] = useState('all')
 
   return (
     <div className="cal-page">
-      {/* ── Environment filter ── */}
-      <div className="calendar-environment-filter">
-        {([
-          { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, glyph: 'list' as GlyphName },
-          { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, glyph: 'leaf' as GlyphName },
-          { id: 'huis', label: t.common.house, desc: t.calendar.filterDescHouse, glyph: 'home' as GlyphName },
-        ] as const).map(({ id, label, desc, glyph }) => {
-          const active = env === id
-          return (
-            <button
-              key={id}
-              onClick={() => setEnv(id)}
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                gap: 2, cursor: 'pointer', textAlign: 'left',
-                padding: '10px 18px', borderRadius: 14,
-                border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: active ? 'var(--color-surface)' : 'var(--color-text)',
-                transition: 'all 0.15s',
-              }}
-            >
-              <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Glyph name={glyph} size={15} /> {label}
-              </span>
-              <span style={{
-                fontSize: 11, lineHeight: 1.3, fontWeight: 400,
-                color: active ? 'var(--color-surface)' : 'var(--color-text-muted)',
-                opacity: active ? 0.85 : 1,
-              }}>
-                {desc}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
       {view === 'month' ? (
-        <MonthView viewMode={view} onSetView={setView} env={env} />
+        <MonthView
+          viewMode={view}
+          onSetView={setView}
+          env={env}
+          environmentFilter={<EnvironmentFilter env={env} onChange={setEnv} />}
+        />
       ) : (
         <>
           <StandaloneToggle view={view} onSet={setView} />

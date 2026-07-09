@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { MONTH_LONG_NL, isoWeek } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
 import CalendarMoonMini from './CalendarMoonMini'
@@ -14,11 +15,12 @@ interface Props {
   taskCount: number
   bloomCount: number
   openCount: number
+  environmentFilter: ReactNode
 }
 
 export default function CalendarMasthead({
   year, month1, todayDay, viewMode, onPrev, onNext, onSetView,
-  taskCount, bloomCount, openCount,
+  taskCount, bloomCount, openCount, environmentFilter,
 }: Props) {
   const t = useT()
   const monthName = MONTH_LONG_NL[month1 - 1]
@@ -42,6 +44,10 @@ export default function CalendarMasthead({
           </div>
           <h1>{t.calendar.heading}<em>.</em></h1>
           <p className="lede">{t.calendar.subtitle}</p>
+        </div>
+
+        <div className="masthead-environment">
+          {environmentFilter}
         </div>
 
         <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />

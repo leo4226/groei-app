@@ -202,9 +202,9 @@ export default function Plants() {
       <div style={{ paddingBottom: 80 }}>
         {/* Header */}
         <header className="plants-header" style={{
-          maxWidth: 1480,
+          maxWidth: 1800,
           margin: '0 auto',
-          padding: '40px 48px 20px',
+          padding: '40px clamp(24px, 3vw, 56px) 20px',
           borderBottom: '1px solid var(--color-border)',
           display: 'flex',
           justifyContent: 'space-between',
@@ -275,7 +275,7 @@ export default function Plants() {
           </div>
         </header>
 
-        <main style={{ maxWidth: 1480, margin: '0 auto', padding: '20px 48px 0' }}>
+        <main style={{ maxWidth: 1800, margin: '0 auto', padding: '20px clamp(24px, 3vw, 56px) 0' }}>
           <section aria-label={t.plantsPage.filterButton} style={{
             border: '1px solid var(--color-border)',
             borderRadius: 28,
