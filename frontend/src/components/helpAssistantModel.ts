@@ -1,3 +1,5 @@
+import type { Translations } from '../i18n/translations'
+
 export type AssistantSheetState = 'compact' | 'expanded'
 export type AssistantBackdrop = 'none' | 'soft' | 'scrim'
 
@@ -12,20 +14,9 @@ export interface BugQuestion {
   prompt: string
 }
 
-export const STEKKIE_BUG_QUESTIONS: BugQuestion[] = [
-  {
-    title: 'Waar was je?',
-    prompt: 'Op welke pagina was je en wat probeerde je te doen?',
-  },
-  {
-    title: 'Wat gebeurde er?',
-    prompt: 'Kreeg je een foutmelding, gebeurde er niks, werd de pagina wit, of zag je iets anders dan verwacht?',
-  },
-  {
-    title: 'Wat was de laatste stap?',
-    prompt: 'Bijvoorbeeld: ik tikte op het water-icoontje, of ik opende de plantenlijst.',
-  },
-]
+export function bugQuestions(t: Translations['help']['chat']): BugQuestion[] {
+  return t.bugQuestions
+}
 
 export function getAssistantPanelConfig({
   isMobile,
@@ -57,8 +48,8 @@ export function getAssistantPanelConfig({
   }
 }
 
-export function bugStepFromAnswerCount(answerCount: number) {
-  const total = STEKKIE_BUG_QUESTIONS.length
+export function bugStepFromAnswerCount(answerCount: number, t: Translations['help']['chat']) {
+  const total = bugQuestions(t).length
   const readyToReview = answerCount >= total
   return {
     current: readyToReview ? total : Math.min(answerCount + 1, total),
@@ -67,6 +58,6 @@ export function bugStepFromAnswerCount(answerCount: number) {
   }
 }
 
-export function isBugReportReadyToSubmit(answers: string[]) {
-  return answers.filter(answer => answer.trim().length > 0).length >= STEKKIE_BUG_QUESTIONS.length
+export function isBugReportReadyToSubmit(answers: string[], t: Translations['help']['chat']) {
+  return answers.filter(answer => answer.trim().length > 0).length >= bugQuestions(t).length
 }

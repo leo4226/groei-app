@@ -1313,6 +1313,15 @@ export const nl: Translations = {
     title: 'Hulp? Waarom zou ik helpen',
     close: 'Rot op',
     dismiss: 'Stekkie verbergen',
+    askStekkie: 'Vraag Stekkie',
+    subtitle: (name: string) => `${name}s persoonlijke plantenhulp`,
+    disclaimer: 'Stekkie is een simpel beestje — heb geduld voor een antwoord.',
+    bubbles: [
+      'Wil je hulp bij het kiezen van een nieuwe plant? Vraag het me!',
+      'Benieuwd naar de verzorging van een plant?',
+      'Hulp nodig om je planten gelukkig te houden? Ik help graag!',
+      'Problemen met een plant? Vraag het Stekkie!',
+    ],
     tips: {
       dashboard: 'Kijk je nou naar een leeg scherm? Wat een verrassing.',
       plants: 'Wist je dat je planten kunt toevoegen via de + knop? Of wil je dat ik het voordoe?',
@@ -1344,6 +1353,11 @@ export const nl: Translations = {
       submitting: 'Bezig met versturen…',
       submitted: '✅ Bug gemeld!',
       submitError: 'Fout bij verzenden. Probeer het opnieuw.',
+      bugQuestions: [
+        { title: 'Waar was je?', prompt: 'Op welke pagina was je en wat probeerde je te doen?' },
+        { title: 'Wat gebeurde er?', prompt: 'Kreeg je een foutmelding, gebeurde er niks, werd de pagina wit, of zag je iets anders dan verwacht?' },
+        { title: 'Wat was de laatste stap?', prompt: 'Bijvoorbeeld: ik tikte op het water-icoontje, of ik opende de plantenlijst.' },
+      ],
     },
   },
 

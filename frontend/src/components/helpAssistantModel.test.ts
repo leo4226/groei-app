@@ -3,8 +3,21 @@ import {
   bugStepFromAnswerCount,
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
-  STEKKIE_BUG_QUESTIONS,
+  bugQuestions,
 } from './helpAssistantModel'
+
+const mockChat = {
+  bugQuestions: [
+    { title: 'Waar was je?', prompt: 'Op welke pagina was je?' },
+    { title: 'Wat gebeurde er?', prompt: 'Kreeg je een foutmelding?' },
+    { title: 'Wat was de laatste stap?', prompt: 'Bijvoorbeeld: ik tikte op het water-icoontje.' },
+  ],
+  // minimal stubs for the other required keys
+  inputPlaceholder: '', send: '', thinking: '', error: '', unavailable: '',
+  empty: '', example: '', bugReport: '', bugReportHeader: '', expand: '', collapse: '',
+  next: '', review: '', stepLabel: (c: number, t: number) => `${c}/${t}`,
+  reviewTitle: '', reviewHint: '', submit: '', submitting: '', submitted: '', submitError: '',
+}
 
 describe('HelpAssistant mobile model', () => {
   it('uses a compact non-modal pocket dock on mobile by default', () => {
@@ -32,15 +45,16 @@ describe('HelpAssistant mobile model', () => {
   })
 
   it('turns bug reporting into a three-step wizard with a review state', () => {
-    expect(bugStepFromAnswerCount(0)).toEqual({ current: 1, total: 3, readyToReview: false })
-    expect(bugStepFromAnswerCount(2)).toEqual({ current: 3, total: 3, readyToReview: false })
-    expect(bugStepFromAnswerCount(3)).toEqual({ current: 3, total: 3, readyToReview: true })
-    expect(isBugReportReadyToSubmit(['page', 'thing broke', 'last tap'])).toBe(true)
+    expect(bugStepFromAnswerCount(0, mockChat)).toEqual({ current: 1, total: 3, readyToReview: false })
+    expect(bugStepFromAnswerCount(2, mockChat)).toEqual({ current: 3, total: 3, readyToReview: false })
+    expect(bugStepFromAnswerCount(3, mockChat)).toEqual({ current: 3, total: 3, readyToReview: true })
+    expect(isBugReportReadyToSubmit(['page', 'thing broke', 'last tap'], mockChat)).toBe(true)
   })
 
   it('stores mobile-friendly bug questions without markdown formatting noise', () => {
-    expect(STEKKIE_BUG_QUESTIONS).toHaveLength(3)
-    expect(STEKKIE_BUG_QUESTIONS.join('\n')).not.toContain('**')
-    expect(STEKKIE_BUG_QUESTIONS[0].title).toBe('Waar was je?')
+    const questions = bugQuestions(mockChat)
+    expect(questions).toHaveLength(3)
+    expect(questions.join('\n')).not.toContain('**')
+    expect(questions[0].title).toBe('Waar was je?')
   })
 })

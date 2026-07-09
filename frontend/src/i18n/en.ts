@@ -1313,6 +1313,15 @@ export const en: Translations = {
     title: 'Need help?',
     close: 'Close',
     dismiss: 'Hide Stekkie',
+    askStekkie: 'Ask Stekkie',
+    subtitle: (name: string) => `${name}'s personal plant helper`,
+    disclaimer: 'Stekkie is a simple clanker — please be patient for a response.',
+    bubbles: [
+      'Want help picking a new plant? Ask me!',
+      'Curious about a plant\'s care needs?',
+      'Need tips on keeping your plants happy? I can help!',
+      'Having trouble with a plant? Ask Stekkie!',
+    ],
     tips: {
       dashboard: 'An overview of all your gardens and what needs doing today.  👀',
       plants: 'All your plants in one list. Tap one for details and care.',
@@ -1344,6 +1353,11 @@ export const en: Translations = {
       submitting: 'Submitting…',
       submitted: '✅ Bug reported!',
       submitError: 'Failed to submit. Try again.',
+      bugQuestions: [
+        { title: 'Where were you?', prompt: 'Which page were you on and what were you trying to do?' },
+        { title: 'What happened?', prompt: 'Did you get an error, did nothing happen, did the page go blank, or did you see something unexpected?' },
+        { title: 'What was the last step?', prompt: 'For example: I tapped the water icon, or I opened the plant list.' },
+      ],
     },
   },
 
