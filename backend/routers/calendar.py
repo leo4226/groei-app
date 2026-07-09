@@ -195,9 +195,9 @@ async def list_calendar_events(
         else:
             next_due = due_raw
 
+        sp = species_names.get(pid, {})
         if r.get("is_ephemeral"):
             # One-shot — only show if in range (already guaranteed by query)
-            sp = species_names.get(pid, {})
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
