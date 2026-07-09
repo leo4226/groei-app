@@ -122,7 +122,3 @@ backend/
 Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](./LICENSE). You're free to read, learn from, and build on this code; if you run a modified version as a network service, the AGPL asks you to share those changes.
 
 ---
-
-<div align="center">
-<sub>Made with 🌱 in Amsterdam — Leon & Lisbeth</sub>
-</div>
