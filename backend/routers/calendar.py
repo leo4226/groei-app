@@ -195,9 +195,9 @@ async def list_calendar_events(
         else:
             next_due = due_raw
 
-        sp = species_names.get(pid, {})
         if r.get("is_ephemeral"):
             # One-shot — only show if in range (already guaranteed by query)
+            sp = species_names.get(pid, {})
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
@@ -222,14 +222,19 @@ async def list_calendar_events(
                 from_dt,
                 to_dt,
             )
-            # Overdue clamp (audit F7): a schedule due before the window would
-            # otherwise render zero events in a forward-looking window (its past
-            # occurrence precedes it; the next projection may overshoot it), so
-            # outstanding work vanished from agenda-style queries while the map
-            # and digest still showed it. Surface it once at the window start.
-            if next_due < from_dt and from_dt not in occurrences:
-                occurrences.insert(0, from_dt)
+            # Clamp overdue: if schedule is overdue at window start and no
+            # occurrences fall inside the window, show one at from_dt so
+            # outstanding work is never silently omitted from forward-looking
+            # agenda views (Audit F7, #439).
+            if not occurrences and next_due < from_dt and from_dt <= to_dt:
+                occurrences = [from_dt]
+            sp = species_names.get(pid, {})
             for i, occ in enumerate(occurrences):
+                # overdue if: occurrence is before today, or it's the clamped
+                # first occurrence of an already-overdue schedule
+                is_overdue = occ < today or (
+                    i == 0 and next_due < today and occ == from_dt
+                )
                 events.append(CalendarEventOut(
                     id=f"schedule:{r['schedule_id']}:{ct}:{i}",
                     date=occ.isoformat(),
@@ -240,9 +245,7 @@ async def list_calendar_events(
                     species_common_name_en=sp.get("en"),
                     plant_icon_variant=r["plant_icon_variant"],
                     schedule_id=r["schedule_id"],
-                    # The clamped occurrence stands in for an already-missed due
-                    # date, so it is overdue even when rendered on today/future.
-                    overdue=occ < today or (occ == from_dt and next_due < from_dt),
+                    overdue=is_overdue,
                     severity=enrichment.get("severity"),
                     color=enrichment.get("color"),
                     icon=enrichment.get("icon"),

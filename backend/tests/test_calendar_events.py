@@ -185,3 +185,73 @@ async def test_calendar_events_enriches_schedule_warning_from_due_schedule(clien
     assert event["overdue"] is True
     assert event["severity"] == "urgent"
     assert event["icon"] == "💧"
+
+
+@pytest.mark.asyncio
+async def test_calendar_events_clamps_overdue_into_forward_window(client, seeded_db, auth_header):
+    """Overdue schedule with zero natural occurrences in a forward-looking
+    [today, …] window gets a clamped occurrence at from_dt with overdue=True.
+    (Audit F7, #439 — Option A)."""
+    db = seeded_db
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id) VALUES ('ClampTest', 1)"
+    )
+    plant_id = cur.lastrowid
+    today = date.today()
+    # 5 days overdue, 7-day interval — next projected occurrence at today+2
+    next_due = today - timedelta(days=5)
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, next_due.isoformat()),
+    )
+    await db.commit()
+
+    # Window [today, today+1]: next natural occurrence (today+2) is outside
+    r = await client.get(
+        "/api/calendar/events",
+        params={
+            "from": today.isoformat(),
+            "to": (today + timedelta(days=1)).isoformat(),
+        },
+        headers=auth_header,
+    )
+    assert r.status_code == 200
+    waters = [e for e in r.json() if e["plant_id"] == plant_id]
+    assert len(waters) == 1, "overdue schedule should be clamped into forward window"
+    assert waters[0]["date"] == today.isoformat()
+    assert waters[0]["overdue"] is True
+
+
+@pytest.mark.asyncio
+async def test_calendar_events_no_clamp_when_natural_occurrence_in_window(client, seeded_db, auth_header):
+    """When an overdue schedule's natural occurrence already falls in the window,
+    the clamp does NOT fire — no duplicate/phantom occurrence."""
+    db = seeded_db
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id) VALUES ('NoClamp', 1)"
+    )
+    plant_id = cur.lastrowid
+    today = date.today()
+    # 5 days overdue, 7-day interval — next projected at today+2
+    next_due = today - timedelta(days=5)
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, next_due.isoformat()),
+    )
+    await db.commit()
+
+    # Window [today, today+5]: includes natural occurrence at today+2
+    r = await client.get(
+        "/api/calendar/events",
+        params={
+            "from": today.isoformat(),
+            "to": (today + timedelta(days=5)).isoformat(),
+        },
+        headers=auth_header,
+    )
+    assert r.status_code == 200
+    waters = [e for e in r.json() if e["plant_id"] == plant_id]
+    assert len(waters) == 1, "should have exactly one natural occurrence, no clamp"
+    assert waters[0]["date"] == (today + timedelta(days=2)).isoformat()
