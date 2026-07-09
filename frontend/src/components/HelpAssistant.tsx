@@ -9,7 +9,7 @@ import {
   bugStepFromAnswerCount,
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
-  STEKKIE_BUG_QUESTIONS,
+  bugQuestions,
   type AssistantSheetState,
 } from './helpAssistantModel'
 
@@ -171,9 +171,9 @@ export default function HelpAssistant() {
 
   const pageKey = detectPage(location.pathname)
   const panelConfig = getAssistantPanelConfig({ isMobile, sheetState })
-  const bugStep = bugStepFromAnswerCount(bugAnswers.length)
-  const currentBugQuestion = STEKKIE_BUG_QUESTIONS[bugAnswers.length]
-  const canSubmitBugReport = isBugReportReadyToSubmit(bugAnswers)
+  const bugStep = bugStepFromAnswerCount(bugAnswers.length, t.help.chat)
+  const currentBugQuestion = bugQuestions(t.help.chat)[bugAnswers.length]
+  const canSubmitBugReport = isBugReportReadyToSubmit(bugAnswers, t.help.chat)
 
   // ---------- bubble cycle ----------
   useEffect(() => {
@@ -290,7 +290,7 @@ export default function HelpAssistant() {
 
   function buildBugReportMessages(): ChatMessage[] {
     const reportMessages: ChatMessage[] = []
-    STEKKIE_BUG_QUESTIONS.forEach((question, index) => {
+    bugQuestions(t.help.chat).forEach((question, index) => {
       reportMessages.push({
         role: 'assistant',
         content: `${question.title}\n${question.prompt}`,
@@ -408,7 +408,7 @@ export default function HelpAssistant() {
           >
             <p style={{ margin: 0, fontSize: isMobile ? 12 : 13, color: 'var(--color-text-soft)', lineHeight: 1.35 }}>
               {isMobile
-                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Glyph name="sprout" size={13} style={{ flexShrink: 0 }} />Vraag Stekkie</span>
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Glyph name="sprout" size={13} style={{ flexShrink: 0 }} />{t.help.askStekkie}</span>
                 : bubble}
             </p>
             {!isMobile && (
@@ -491,7 +491,7 @@ export default function HelpAssistant() {
                   {bugReportMode
                     ? t.help.chat.stepLabel(bugStep.current, bugStep.total)
                     : <>
-                        <span className="truncate">— {userName}s persoonlijke plantenhulp</span>
+                        <span className="truncate">— {t.help.subtitle(userName)}</span>
                         {!isMobile && <span className="text-text-muted/40 mx-1">·</span>}
                         {!isMobile && (
                           <button
@@ -552,7 +552,7 @@ export default function HelpAssistant() {
                       <ol className="space-y-2">
                         {bugAnswers.map((answer, index) => (
                           <li key={`${index}-${answer}`} className="rounded-xl bg-surface border border-border-soft px-3 py-2">
-                            <p className="text-[11px] font-semibold text-text-muted mb-1">{STEKKIE_BUG_QUESTIONS[index]?.title}</p>
+                            <p className="text-[11px] font-semibold text-text-muted mb-1">{bugQuestions(t.help.chat)[index]?.title}</p>
                             <p className="text-sm text-text whitespace-pre-wrap break-words">{answer}</p>
                           </li>
                         ))}
@@ -634,7 +634,7 @@ export default function HelpAssistant() {
                       disabled={!bugDraft.trim() || submitting}
                       className="w-full h-11 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 active:scale-[0.98] transition-all text-sm font-semibold"
                     >
-                      {bugAnswers.length + 1 >= STEKKIE_BUG_QUESTIONS.length ? t.help.chat.review : t.help.chat.next}
+                      {bugAnswers.length + 1 >= bugQuestions(t.help.chat).length ? t.help.chat.review : t.help.chat.next}
                     </button>
                   </>
                 )}
@@ -709,7 +709,7 @@ export default function HelpAssistant() {
                 </div>
 
                 <div className="flex items-center justify-between shrink-0 gap-3">
-                  <p className="text-[11px] text-text-muted/50 italic min-w-0">Stekkie is a simple clanker — please be patient for a response.</p>
+                  <p className="text-[11px] text-text-muted/50 italic min-w-0">{t.help.disclaimer}</p>
                   <button
                     onClick={startBugReport}
                     className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all shrink-0"

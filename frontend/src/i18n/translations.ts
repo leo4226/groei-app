@@ -1279,6 +1279,10 @@ export type Translations = {
     title: string
     close: string
     dismiss: string
+    askStekkie: string
+    subtitle: (name: string) => string
+    disclaimer: string
+    bubbles: string[]
     tips: {
       dashboard: string
       plants: string
@@ -1310,6 +1314,7 @@ export type Translations = {
       submitting: string
       submitted: string
       submitError: string
+      bugQuestions: Array<{ title: string; prompt: string }>
     }
   }
 
