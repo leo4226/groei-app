@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/icons/icon-192.png" alt="Floreren" width="96" height="96" style="border-radius: 22px;">
+<img src="https://raw.githubusercontent.com/leo4226/groei-app/master/frontend/public/icons/icon-192.png" alt="Floreren" width="96" height="96" style="border-radius: 22px;">
 
 # Floreren
 
