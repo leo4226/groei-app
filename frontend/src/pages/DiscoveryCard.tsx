@@ -13,6 +13,8 @@ type RouteState = {
   candidate: Partial<IdentifyCommitResult> & { scientific_name?: string; common_name?: string; common_name_nl?: string }
   thumbnail: string
   destination?: 'journal' | 'garden'
+  location_lat?: number
+  location_lon?: number
 }
 
 type GardenFit = { map_id: number; map_name: string; sun_fit: string | null; reason: string }
@@ -90,6 +92,8 @@ export default function DiscoveryCard() {
         latin_name: scientificName || undefined,
         thumbnail_url,
         thumbnail_data,
+        location_lat: state?.location_lat,
+        location_lon: state?.location_lon,
       })
       setSavedId(result.id)
     } catch {
