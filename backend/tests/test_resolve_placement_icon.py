@@ -3,7 +3,7 @@ from routers.icons import resolve_placement_icon
 
 
 @pytest.mark.asyncio
-async def test_uses_generated_variant_for_placement_form(seeded_db):
+async def test_uses_generated_bare_variant(seeded_db):
     await seeded_db.execute("""CREATE TABLE generated_icons (
         id TEXT PRIMARY KEY, name TEXT, sci TEXT, cat TEXT, form TEXT,
         variant_of TEXT, family TEXT, url TEXT, source TEXT, created_at TEXT)""")
