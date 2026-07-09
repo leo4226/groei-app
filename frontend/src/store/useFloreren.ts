@@ -81,7 +81,11 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   profileVersions: {},
 
   /** Called after login/register to force a fresh data load for the new account. */
-  resetForNewSession: () => set({ hasLoaded: false, isLoading: false, error: null }),
+  resetForNewSession: () => set({
+    hasLoaded: false, isLoading: false, error: null,
+    plants: [], maps: [], users: [], locations: [],
+    dashboardV2: null, warningSummary: null, plantFact: null,
+  }),
 
   load: async () => {
     set({ isLoading: true, error: null })

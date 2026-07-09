@@ -92,6 +92,9 @@ async def list_calendar_events(
         )
         species_names = {r["id"]: {"nl": r.get("common_name_nl"), "en": r.get("common_name_en")} for r in species_rows}
 
+    # Build plant_id → species_id map so we can look up species names by plant
+    plant_species_map: dict[int, int | None] = {p["id"]: p.get("species_id") for p in plants}
+
     # Apply env filter in Python (same logic as warnings/summary)
     if env == 'tuin':
         plants = [p for p in plants if p['map_type'] != 'indoor']
@@ -197,7 +200,8 @@ async def list_calendar_events(
 
         if r.get("is_ephemeral"):
             # One-shot — only show if in range (already guaranteed by query)
-            sp = species_names.get(pid, {})
+            sp_id = plant_species_map.get(pid)
+            sp = species_names.get(sp_id, {}) if sp_id else {}
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
@@ -228,7 +232,8 @@ async def list_calendar_events(
             # agenda views (Audit F7, #439).
             if not occurrences and next_due < from_dt and from_dt <= to_dt:
                 occurrences = [from_dt]
-            sp = species_names.get(pid, {})
+            sp_id = plant_species_map.get(pid)
+            sp = species_names.get(sp_id, {}) if sp_id else {}
             for i, occ in enumerate(occurrences):
                 # overdue if: occurrence is before today, or it's the clamped
                 # first occurrence of an already-overdue schedule
