@@ -334,12 +334,10 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       didPan.current = false
       return
     }
-    // Nearest-neighbour selection (#452): a direct hit on a marker never reaches
-    // here (per-marker onClick calls stopPropagation), so this fires only for
-    // taps that missed every hit circle. Select the closest plant within a
-    // zoom-scaled pick radius so fat-finger taps on a dense phone map still land
-    // on something useful; a tap on clearly-empty ground falls through to
-    // handleMapClick() and deselects.
+    // Nearest-neighbour selection (#452): all unlocked-plant clicks bubble to
+    // the container (PlantMarker has no onClick). Select the closest plant
+    // within a zoom-scaled pick radius — even in dense clusters where hit
+    // circles overlap. Tap on empty ground falls through to deselect.
     const svg = svgRef.current
     const pt = svg ? screenToSVG(svg, e.clientX, e.clientY) : null
     if (svg && pt) {
