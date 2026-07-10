@@ -123,7 +123,9 @@ export default function EditPlant() {
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
         setSunRequirement(p.sun_requirement ? (SUN_DB_TO_TILE[p.sun_requirement] ?? p.sun_requirement) : null)
-        setFormType(p.plant_type ?? 'pot')
+        // Form only controls the potted/bare icon variant. Its canonical
+        // value comes from icon_key in the catalog effect below, never plant_type.
+        setFormType('pot')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         setSchedules(buildSchedulesFromPlant(p))
         // Remember original water schedule for change detection
@@ -222,7 +224,6 @@ export default function EditPlant() {
         sunRequirement,
         phase: phase as Plant['phase'],
         sownDateInput,
-        formType,
         quantity,
         randomMapPos,
       }))

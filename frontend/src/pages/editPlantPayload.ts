@@ -30,7 +30,6 @@ export interface BuildEditPlantPayloadInput {
   sunRequirement: string | null
   phase: Plant['phase']
   sownDateInput: string
-  formType: string
   quantity?: number
   randomMapPos: (viewbox: string) => MapPosition
 }
@@ -48,7 +47,6 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
       : null,
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,
-    plant_type: input.formType,
   }
 
   if (input.quantity != null) {
