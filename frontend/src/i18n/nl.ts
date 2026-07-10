@@ -156,7 +156,7 @@ export const nl: Translations = {
 
   maps: {
     title: 'Kaarten',
-    newMap: '+ Nieuwe kaart',
+    newMap: 'Nieuwe kaart',
     mapNameLabel: 'Kaartnaam',
     mapNamePlaceholder: 'bijv. Balkon, Tuin van mama…',
     loading: 'Kaarten laden…',
@@ -1122,8 +1122,8 @@ export const nl: Translations = {
     deleted: (label) => `Verwijderd: ${label}`,
     undo: 'Ongedaan maken',
     soilDefaultName: 'Grond',
-    switchMap: 'Wisselen…',
-    mapSettingsLabel: 'Instellingen…',
+    switchMap: 'Wisselen',
+    mapSettingsLabel: 'Instellingen',
     sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 'en'} ${n === 1 ? 'heeft' : 'hebben'} aandacht`,
     sheetAllGood: 'Alles op schema',
     sheetGlobalAttention: (n) => `${n} plant${n === 1 ? '' : 'en'} in je tuinen ${n === 1 ? 'heeft' : 'hebben'} aandacht`,
