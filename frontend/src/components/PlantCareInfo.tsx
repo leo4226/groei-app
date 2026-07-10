@@ -88,7 +88,7 @@ export default function PlantCareInfo({ plantId }: Props) {
   const noData    = !care.loading && care.data?.source === 'not_found'
 
   return (
-    <div className="mt-4">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">

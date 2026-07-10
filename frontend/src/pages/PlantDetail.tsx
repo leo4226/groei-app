@@ -332,8 +332,8 @@ export default function PlantDetail() {
     ? potAcquiredParts.flatMap((part, i) => i === 0 ? [part] : [<span key={`sep${i}`}> · </span>, part])
     : null
 
-  const sunFitBlock = sunFitInfo && (
-    <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 mb-5 border border-border">
+  const sunFitCard = sunFitInfo && (
+    <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 border border-border">
       <Glyph name="sun" size={18} className="text-amber-500 shrink-0" />
       <span className="text-sm text-text-muted flex-1">
         {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
@@ -347,18 +347,20 @@ export default function PlantDetail() {
       </span>
     </div>
   )
+  const sunFitBlock = sunFitCard && <div className="mb-5">{sunFitCard}</div>
 
   // A phenology object can exist yet have no month calendar (incomplete LLM
   // generation) — that still reads as "No species data available", so treat it
   // the same as missing and offer the fetch button.
   const hasYearCalendar = (plant.phenology?.months?.length ?? 0) > 0
-  const calendarBlock = hasYearCalendar ? (
-    <Section title={t.plantDetail.yearCalendar}>
-      <PhaseCalendar phenology={plant.phenology!} sunHours={sunHours} />
-    </Section>
+  const calendarInner = hasYearCalendar ? (
+    <PhaseCalendar
+      phenology={plant.phenology!}
+      sunHours={sunHours}
+      monthStripHeight={isMobile ? 'h-5' : 'h-9'}
+    />
   ) : (
-    <Section title={t.plantDetail.yearCalendar}>
-      <div className="bg-surface rounded-xl px-4 py-6 text-center border border-border">
+    <div className="bg-surface rounded-xl px-4 py-6 text-center border border-border">
         <p className="text-sm text-text-muted mb-3">
           {isEN ? 'No year calendar available yet' : 'Nog geen jaarkalender beschikbaar'}
         </p>
@@ -379,6 +381,10 @@ export default function PlantDetail() {
           </p>
         )}
       </div>
+  )
+  const calendarBlock = (
+    <Section title={t.plantDetail.yearCalendar}>
+      {calendarInner}
     </Section>
   )
 
@@ -388,24 +394,9 @@ export default function PlantDetail() {
 
   const alertsBlock = <PlantCareSignals plantId={plantId} phenology={plant.phenology ?? null} />
 
-  const careBlock = plant.care_schedules.length > 0 && (
-    <Section title={t.plantDetail.care}>
-      {/* Quick action buttons */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
-        {plant.care_schedules.map((sched) => {
-          return (
-            <button
-              key={sched.id}
-              onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
-            >
-              <CareIcon type={sched.care_type as CareIconType} size={16} strokeWidth={2} /> {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Schedule rows */}
+  // Schedule rows without the quick-action pills — the desktop layout shows
+  // the pills in the hero identity panel instead, so they must not repeat here.
+  const careScheduleRows = plant.care_schedules.length > 0 && (
       <div className="space-y-2">
         {plant.care_schedules.map((sched) => {
           const isOverdue = sched.next_due < today
@@ -436,11 +427,32 @@ export default function PlantDetail() {
           )
         })}
       </div>
+  )
+
+  const careBlock = careScheduleRows && (
+    <Section title={t.plantDetail.care}>
+      {/* Quick action buttons */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
+        {plant.care_schedules.map((sched) => {
+          return (
+            <button
+              key={sched.id}
+              onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
+            >
+              <CareIcon type={sched.care_type as CareIconType} size={16} strokeWidth={2} /> {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
+            </button>
+          )
+        })}
+      </div>
+      {careScheduleRows}
     </Section>
   )
 
+  // mt-4 lived inside PlantCareInfo; hoisted here so the desktop column can
+  // start the card flush with its siblings' section headers.
   const trefleBlock = (
-    <div className="mb-6">
+    <div className="mt-4 mb-6">
       <PlantCareInfo plantId={plantId} />
     </div>
   )
@@ -649,44 +661,58 @@ export default function PlantDetail() {
               {potAcquiredLine && (
                 <p className="font-mono text-[10px] text-text-muted">{potAcquiredLine}</p>
               )}
-              {sunFitBlock}
+              {sunFitCard}
               {quickActionPills}
             </div>
           </div>
         </div>
 
-        {/* ── Content zones — two-row grid ── */}
-        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '32px clamp(24px, 3vw, 56px) 0' }}>
-          {/* Row 1: Care & Alerts  |  Calendar & Ecology */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
-            <div className="min-w-0">
-              {alertsBlock}
-              {careBlock}
+        {/* ── Content zones — passport spread ── */}
+        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '0 clamp(24px, 3vw, 56px)' }}>
+          {/* Year calendar — full-width seasonal timeline */}
+          <section className="border-b border-border pt-9 pb-7">
+            <p className="mb-4 font-mono text-[11px] font-bold uppercase tracking-widest text-text-muted">
+              {t.plantDetail.yearCalendar}
+            </p>
+            {calendarInner}
+          </section>
+
+          {/* Three columns with hairline rules: care | signals | journal */}
+          <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
+            <div className="min-w-0 xl:pr-8">
+              {careScheduleRows && (
+                <Section title={t.plantDetail.care}>
+                  {careScheduleRows}
+                </Section>
+              )}
             </div>
-            <div className="min-w-0">
-              {calendarBlock}
+            <div className="min-w-0 xl:px-8">
+              {alertsBlock}
+              <div className="mb-6">
+                <PlantCareInfo plantId={plantId} />
+              </div>
+            </div>
+            <div className="min-w-0 xl:pl-8">
+              {journalBlock}
               {ecologyBlock}
             </div>
           </div>
 
-          {/* Row 2: Photo Journal  |  Care Info (Trefle) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginTop: 36 }}>
-            <div className="min-w-0">
-              {journalBlock}
+          {/* Full-width: care history */}
+          {historyBlock && (
+            <div className="mt-4 border-t border-border pt-8">
+              {historyBlock}
             </div>
-            <div className="min-w-0">
-              {trefleBlock}
-            </div>
-          </div>
+          )}
 
-          {/* Full-width: Care History */}
-          <div style={{ marginTop: 36 }}>
-            {historyBlock}
-          </div>
-
-          {/* Archive */}
-          <div style={{ marginTop: 24 }}>
-            {archiveButton}
+          {/* Archive, tucked away */}
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleArchive}
+              className="cursor-pointer rounded-full border border-overdue/25 bg-transparent px-4 py-2 text-[13px] text-overdue/70 transition-colors hover:bg-overdue/5"
+            >
+              {t.plantDetail.archivePlant}
+            </button>
           </div>
         </div>
 
