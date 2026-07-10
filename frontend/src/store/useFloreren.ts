@@ -97,7 +97,12 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         plantsApi.list(),
       ])
       const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true }
-      if (!get().activeUserId && users.length > 0) {
+      // Validate stored active user against loaded data — a stale
+      // localStorage entry from a different account/household causes
+      // every PATCH /users/:id/… to 404.
+      const savedId = get().activeUserId
+      const validId = savedId && users.some((u) => u.id === savedId) ? savedId : null
+      if (!validId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))
       }
