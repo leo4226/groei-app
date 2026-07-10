@@ -990,6 +990,90 @@ async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit
     return result
 
 
+@router.post("/admin-panel/plants/{plant_id}/regenerate-icon")
+async def regenerate_plant_icon(
+    plant_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Regenerate the AI icon for a single plant. Looks up the plant's species,
+    calls the configured LLM, composites onto the standard pot/shadow, validates,
+    uploads to R2, and re-matches the plant's icon_key."""
+    storage = build_storage_from_env()
+
+    plants = await db.execute_fetchall(
+        "SELECT id, name, species, icon_key FROM plants WHERE id = ? AND is_active = 1",
+        (plant_id,),
+    )
+    if not plants:
+        raise HTTPException(404, "Plant not found or archived")
+    plant = dict(plants[0])
+
+    species_rows = await db.execute_fetchall(
+        "SELECT common_name_nl, common_name_en, latin_name FROM plant_species WHERE latin_name = ?",
+        (plant["species"],),
+    )
+    if not species_rows:
+        raise HTTPException(404, f"Species '{plant['species']}' not found in catalog")
+    sp = dict(species_rows[0])
+    name_nl = sp["common_name_nl"] or plant["name"] or derive_common_name(sp["latin_name"])
+    latin = sp["latin_name"]
+    base_id = f"gen_{_slug(name_nl)}"
+
+    source = "ai"
+    ai_svgs = None
+    for _attempt in range(3):
+        try:
+            ai = await generate_icon_variants(name=name_nl, sci=latin)
+            plant_svg = ai["plant_svg"]
+            potted = validate_icon_svg(_compose_icon(plant_svg, potted=True))
+            bare = validate_icon_svg(_compose_icon(plant_svg, potted=False))
+            cat = ai.get("cat") or guess_category(latin) or "unknown"
+            ai_svgs = (potted, bare, cat)
+            break
+        except Exception:
+            continue
+
+    if ai_svgs is not None:
+        potted_svg, bare_svg, cat = ai_svgs
+    else:
+        source = "procedural"
+        cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+        potted_svg = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
+        bare_svg = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+
+    try:
+        potted_url = storage.put(f"icons/generated/{base_id}.svg", potted_svg.encode("utf-8"), "image/svg+xml")
+        bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare_svg.encode("utf-8"), "image/svg+xml")
+    except Exception as exc:
+        raise HTTPException(500, f"R2 upload failed: {exc}")
+
+    for icon_id, form, variant_of, url in [
+        (base_id, "potted", None, potted_url),
+        (f"{base_id}_bare", "bare", base_id, bare_url),
+    ]:
+        await db.execute("DELETE FROM generated_icons WHERE id = ?", (icon_id,))
+        await db.execute(
+            "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
+        )
+    await db.commit()
+
+    catalog = await load_catalog(db)
+    valid_ids = {e["id"] for e in catalog}
+    found = await icons_router.sync_match_icon_key(db, plant, catalog=catalog, valid_ids=valid_ids)
+    if found and found in valid_ids and not found.startswith("placeholder"):
+        await db.execute(
+            "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (found, plant_id),
+        )
+        await db.commit()
+
+    await log_admin_action(db, admin, "regenerate_icon", target=f"plant_id={plant_id}", detail={"name": name_nl, "icon_id": base_id, "source": source})
+    return {"plant_id": plant_id, "name": name_nl, "icon_id": base_id, "cat": cat, "source": source, "icon_key": found}
+
+
 async def _sync_from_admin(db):
     """Re-match active plants after admin icon generation.
 

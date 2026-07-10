@@ -1559,6 +1559,9 @@ function ToolsView() {
   const [fpAll, setFpAll] = useState<AdminBackfillFactsPreview | null>(null)
   const [fpInUse, setFpInUse] = useState<AdminBackfillFactsPreview | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
+  const [regenPlantId, setRegenPlantId] = useState('')
+  const [regenBusy, setRegenBusy] = useState(false)
+  const [regenResult, setRegenResult] = useState<string | null>(null)
 
   const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
   const [recentJobs, setRecentJobs] = useState<AdminJob[] | null>(null)
@@ -1642,6 +1645,22 @@ function ToolsView() {
   } as const)
 
   const resultColor = (r: string) => r.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)'
+
+  async function handleRegenIcon() {
+    const id = parseInt(regenPlantId, 10)
+    if (!id || id < 1) { setRegenResult('✗ Invalid plant ID'); return }
+    setRegenBusy(true)
+    setRegenResult(null)
+    try {
+      const r = await adminPanel.regeneratePlantIcon(id)
+      setRegenResult(`✓ Icon regenerated: ${r.name} (${r.icon_id}, ${r.source})`)
+      setIconRefresh(n => n + 1)
+    } catch (e) {
+      setRegenResult(`✗ ${e instanceof Error ? e.message : 'Failed'}`)
+    } finally {
+      setRegenBusy(false)
+    }
+  }
 
   const simpleTool = (kind: string, title: string, desc: string, preview: string) => {
     const j = getJob(kind)
@@ -1769,6 +1788,28 @@ function ToolsView() {
           pp ? `${pp.missing_plant_type} of ${pp.total_active_plants} active plants need a type` : 'Loading…')}
         {factsTool}
         {iconTool}
+        {/* Single-plant icon regeneration */}
+        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px' }}>
+          <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Regenerate plant icon</h3>
+          <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+            Regenerate just one plant's icon via AI. Paste a plant ID from the Plants table.
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              value={regenPlantId}
+              onChange={e => setRegenPlantId(e.target.value)}
+              placeholder="Plant ID"
+              style={{ width: 120, fontFamily: 'var(--font-mono)', fontSize: 13, padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-bg)', color: 'var(--color-text)', boxSizing: 'border-box' }}
+              onKeyDown={e => { if (e.key === 'Enter') handleRegenIcon() }}
+            />
+            <button onClick={handleRegenIcon} disabled={regenBusy} style={btnStyle(regenBusy)}>
+              {regenBusy ? 'Generating…' : 'Regenerate'}
+            </button>
+          </div>
+          {regenResult && (
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: regenResult.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{regenResult}</p>
+          )}
+        </div>
       </div>
       <RecentJobsCard jobs={recentJobs} loading={recentLoading} />
     </div>
