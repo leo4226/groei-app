@@ -109,7 +109,7 @@ An alternative Icon for the same Species, distinguished by `form` and/or `phase`
 _Avoid_: Sub-icon, Alternative icon
 
 **Form** (icon dimension):
-How a plant is visually presented in its Icon: `potted` (shown in a pot), `bare` (no pot, in-ground), `portrait`, or `fruit`. Automatically selected from placement context — a Plant placed inside a Zone of type "plant bed" uses the `bare` form. Additional auto-selection rules may be added later.
+How a plant is visually presented in its Icon: `potted` (shown in a pot), `bare` (no pot, in-ground), `portrait`, or `fruit`. Selected from placement context — a Plant placed inside a Zone of type "plant bed" uses `bare`, a Plant dropped into a container object uses `potted`, and a Plant moved on **open ground keeps its current form** (so an explicit potted/bare choice isn't reset on every move). Additional auto-selection rules may be added later.
 _Avoid_: Style, Type (overloaded)
 
 **Phase** (icon dimension):
