@@ -10,12 +10,15 @@ import {
   clampedPlantNameStyle,
   clampedPlantSpeciesStyle,
   plantQuickSheetBodyStyle,
+  plantQuickSheetStyle,
 } from './plantQuickSheetLayout'
+import { BOTTOM_NAV_CLEARANCE_CLASS, BOTTOM_NAV_HEIGHT_CLASS } from '../bottomNavLayout'
 
 describe('plant quick sheet mobile layout', () => {
-  it('anchors the sheet above the app bottom navigation and safe area', () => {
-    expect(PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS).toContain('4rem')
-    expect(PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS).toContain('env(safe-area-inset-bottom,0px)')
+  it('shares one bottom-nav height token so the sheet docks without a gap', () => {
+    expect(BOTTOM_NAV_HEIGHT_CLASS).toContain('var(--bottom-nav-height)')
+    expect(BOTTOM_NAV_CLEARANCE_CLASS).toContain('var(--bottom-nav-height)')
+    expect(PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS).toBe(BOTTOM_NAV_CLEARANCE_CLASS)
     expect(PLANT_QUICK_SHEET_CLASS).toContain(PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS)
   })
 
@@ -28,6 +31,13 @@ describe('plant quick sheet mobile layout', () => {
     expect(PLANT_QUICK_SHEET_BODY_CLASS).toContain('overflow-y-auto')
     expect(PLANT_QUICK_SHEET_BODY_CLASS).toContain('overscroll-contain')
     expect(plantQuickSheetBodyStyle().paddingBottom).toContain('env(safe-area-inset-bottom,0px)')
+  })
+
+  it('exposes desktop console hooks while keeping the mobile-first sheet height', () => {
+    expect(PLANT_QUICK_SHEET_CLASS).toContain('plant-quick-sheet')
+    expect(PLANT_QUICK_SHEET_BODY_CLASS).toContain('plant-quick-sheet-body')
+    expect(PLANT_QUICK_SHEET_HEADER_CLASS).toContain('plant-quick-sheet-identity')
+    expect(plantQuickSheetStyle().maxHeight).toBe('var(--plant-quick-sheet-max-height)')
   })
 
   it('uses a mobile-first header with actions on a separate two-column grid', () => {

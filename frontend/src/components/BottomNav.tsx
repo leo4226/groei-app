@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
+import { BOTTOM_NAV_HEIGHT_CLASS } from './bottomNavLayout'
 
 export default function BottomNav() {
   const t = useT()
@@ -59,7 +60,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="bg-surface border-t border-border shadow-[0_-1px_3px_rgba(0,0,0,0.04)] flex justify-around items-end min-h-16 pb-[max(env(safe-area-inset-bottom,0px),4px)] shrink-0 z-50">
+    <nav className={`bg-surface border-t border-border shadow-[0_-1px_3px_rgba(0,0,0,0.04)] flex ${BOTTOM_NAV_HEIGHT_CLASS} justify-around items-end pb-[max(env(safe-area-inset-bottom,0px),4px)] shrink-0 z-50`}>
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
