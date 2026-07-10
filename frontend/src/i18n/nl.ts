@@ -939,6 +939,8 @@ export const nl: Translations = {
 
   editPlant: {
     title: 'Plant bewerken',
+    previewEyebrow: 'Live voorbeeld',
+    changePhoto: 'Wijzig foto',
     addPhoto: 'Foto toevoegen',
     plantPhoto: 'Plantfoto',
     tapToChangePhoto: 'Tik om foto te wijzigen',
