@@ -594,6 +594,8 @@ export type Translations = {
     whatCanYouDo: string  // "What can you do now?"
     sunHoursLabel: string  // "Sun hours:"
     sunHoursUnit: string  // "h/day" / "u/dag"
+    speciesProfile: string // desktop passport: species care profile section header
+    gardenWeather: string  // desktop passport: garden weather section header
     fitGood: string  // "✓ Good fit"
     fitPartial: string  // "~ Partial"
     fitInsufficient: string  // "⚠ Insufficient"

@@ -634,6 +634,8 @@ export const en: Translations = {
     whatCanYouDo: 'What can you do now?',
     sunHoursLabel: 'Sun hours:',
     sunHoursUnit: 'h/day',
+    speciesProfile: 'Species profile',
+    gardenWeather: 'Garden weather',
     fitGood: '✓ Good fit',
     fitPartial: '~ Partial',
     fitInsufficient: '⚠ Insufficient',

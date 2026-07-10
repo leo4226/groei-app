@@ -677,9 +677,10 @@ export default function PlantDetail() {
             {calendarInner}
           </section>
 
-          {/* Three columns with hairline rules: care | signals | journal */}
+          {/* Three columns with hairline rules: alerts + care | profile + weather | journal */}
           <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
             <div className="min-w-0 xl:pr-8">
+              {alertsBlock}
               {careScheduleRows && (
                 <Section title={t.plantDetail.care}>
                   {careScheduleRows}
@@ -687,10 +688,7 @@ export default function PlantDetail() {
               )}
             </div>
             <div className="min-w-0 xl:px-8">
-              {alertsBlock}
-              <div className="mb-6">
-                <PlantCareInfo plantId={plantId} />
-              </div>
+              <PlantCareInfo plantId={plantId} layout="split" />
             </div>
             <div className="min-w-0 xl:pl-8">
               {journalBlock}
