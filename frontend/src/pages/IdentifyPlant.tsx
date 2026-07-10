@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
-import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi, maps as mapsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
@@ -39,10 +38,7 @@ export function IdentifyPlantPage() {
   // can preselect the user's current map. From Dashboard the state is absent.
   const routeState = location.state as { mapId?: number; mapSlug?: string; mode?: 'discover' | 'add' } | null
 
-  const activeLang = useFloreren((s) => {
-    const user = s.users.find((u) => u.id === s.activeUserId)
-    return user?.language === 'en' ? 'en' : 'nl'
-  })
+  const activeLang: 'nl' | 'en' = t.locale.startsWith('en') ? 'en' : 'nl'
   // BioCLIP is the primary identifier and runs on our own infrastructure — no
   // upfront third-party consent gate. PlantNet is opt-in via the fallback button
   // on the results screen; the confirm there names the third party explicitly.

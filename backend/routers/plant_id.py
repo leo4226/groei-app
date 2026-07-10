@@ -196,25 +196,85 @@ class IdentifyResponse(BaseModel):
     source: str = "bioclip"
 
 
-def _split_common_names(names: list[str], lang: str) -> tuple[list[str], list[str]]:
-    """Route PlantNet's commonNames into the (nl, en) buckets based on the
-    `lang` we asked PlantNet for. We only request one language per call, so
-    the other bucket is empty — the frontend already falls back across
-    buckets and to scientific_name."""
-    if lang == "nl":
-        return names, []
-    return [], names
+def _clean_common_names(names: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for name in names:
+        text = str(name).strip()
+        key = text.casefold()
+        if text and key not in seen:
+            seen.add(key)
+            out.append(text)
+    return out
 
 
-async def _attach_species_id(db, scientific_name: str) -> int | None:
+async def _local_catalog_candidate_details(db, scientific_name: str) -> dict:
+    """Best-effort local catalog metadata for a PlantNet candidate.
+
+    PlantNet's default identify response usually does not include images. When
+    the returned scientific name exists in our catalog, reuse our localized
+    names and representative species image so the second-opinion cards can be
+    compared visually with BioCLIP results.
+    """
+    details = {
+        "species_id": None,
+        "common_name_nl": None,
+        "common_name_en": None,
+        "thumbnail_url": None,
+    }
     try:
         rows = await db.execute_fetchall(
-            "SELECT id FROM plant_species WHERE latin_name = ? LIMIT 1",
+            "SELECT id, common_name_nl, common_name_en "
+            "FROM plant_species WHERE latin_name = ? LIMIT 1",
             (scientific_name,),
         )
     except Exception:
-        return None
-    return rows[0]["id"] if rows else None
+        return details
+    if not rows:
+        return details
+
+    row = rows[0]
+    species_id = row["id"]
+    details.update({
+        "species_id": species_id,
+        "common_name_nl": _text_or_none(row.get("common_name_nl")),
+        "common_name_en": _text_or_none(row.get("common_name_en")),
+    })
+
+    try:
+        img_rows = await db.execute_fetchall(
+            "SELECT url, thumbnail_url FROM species_images "
+            "WHERE species_id = ? AND COALESCE(NULLIF(thumbnail_url, ''), NULLIF(url, '')) IS NOT NULL "
+            "ORDER BY is_primary DESC, id ASC LIMIT 1",
+            (species_id,),
+        )
+    except Exception:
+        return details
+    if img_rows:
+        img = img_rows[0]
+        details["thumbnail_url"] = _text_or_none(img.get("thumbnail_url")) or _text_or_none(img.get("url"))
+    return details
+
+
+def _plantnet_candidate_common_names(
+    plantnet_names: list[str],
+    lang: str,
+    local_details: dict,
+) -> tuple[list[str], list[str]]:
+    """Populate only the requested language bucket for PlantNet candidates.
+
+    The frontend falls back across buckets, so putting Dutch names in an English
+    response makes English-mode comparisons confusing. Prefer PlantNet's names
+    for the requested language; if PlantNet omitted names, fall back to our
+    local catalog in the same requested language only.
+    """
+    requested_names = _clean_common_names(plantnet_names)
+    if lang == "nl":
+        local_nl = _text_or_none(local_details.get("common_name_nl"))
+        return requested_names or ([local_nl] if local_nl else []), []
+
+    local_en = _text_or_none(local_details.get("common_name_en"))
+    return [], requested_names or ([local_en] if local_en else [])
 
 
 def _text_or_none(value) -> str | None:
@@ -503,15 +563,16 @@ async def identify_endpoint(
     top_candidates = candidates[:_MAX_CANDIDATES]
     out: list[CandidateOut] = []
     for c in top_candidates:
-        common_nl, common_en = _split_common_names(c.common_names, lang)
-        species_id = await _attach_species_id(db, c.scientific_name)
+        local_details = await _local_catalog_candidate_details(db, c.scientific_name)
+        common_nl, common_en = _plantnet_candidate_common_names(c.common_names, lang, local_details)
+        thumbnail_url = c.plantnet_image_url or local_details["thumbnail_url"]
         out.append(CandidateOut(
             scientific_name=c.scientific_name,
             common_names_nl=common_nl,
             common_names_en=common_en,
             confidence=c.confidence,
-            species_id=species_id,
-            thumbnail_url=c.plantnet_image_url,
+            species_id=local_details["species_id"],
+            thumbnail_url=thumbnail_url,
             source="plantnet",
         ))
 
