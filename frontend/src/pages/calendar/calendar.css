@@ -239,7 +239,7 @@
   display: grid;
   grid-template-columns: minmax(760px, 1fr) clamp(330px, 22vw, 380px);
   gap: clamp(20px, 2vw, 32px);
-  align-items: start;
+  align-items: stretch;
 }
 
 /* ——— Month grid ——— */
@@ -427,9 +427,12 @@
 .cal-page .col-side {
   position: sticky;
   top: 18px;
-  align-self: start;
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 18px;
 }
-.cal-page .col-side > section + section { margin-top: 18px; }
+.cal-page .col-side > section + section { margin-top: 0; }
 .cal-page .side-card {
   background: var(--cal-paper);
   border: 1px solid var(--cal-rule);
@@ -689,12 +692,17 @@
   color: var(--cal-paper);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .cal-page .almanac-side .sc-eye { color: rgba(251,247,238,.7); }
 .cal-page .almanac-side .sc-title { color: var(--cal-paper); }
 .cal-page .almanac-side .sc-title em { color: #E8C658; }
 .cal-page .almanac-side .sc-head { border-bottom-color: rgba(255,254,249,.12); }
-.cal-page .almanac-body { padding: 16px 22px 20px; }
+.cal-page .almanac-body {
+  padding: 16px 22px 20px;
+  flex: 1;
+}
 .cal-page .almanac-body .alm-q {
   font-family: 'Fraunces', serif;
   font-style: italic;

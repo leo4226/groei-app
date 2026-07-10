@@ -5,7 +5,6 @@ import CalendarGrid from './CalendarGrid'
 import CalendarAgendaCard from './CalendarAgendaCard'
 import CalendarAlmanac from './CalendarAlmanac'
 import CalendarUpcoming from './CalendarUpcoming'
-import CalendarMoon from './CalendarMoon'
 import MobileAgendaList from './MobileAgendaList'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useIsNarrow } from './useIsNarrow'
@@ -116,7 +115,6 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
             <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
             <CalendarUpcoming todayIso={todayIso} events={filtered} />
             <CalendarAlmanac month1={month1} />
-            <CalendarMoon year={year} month1={month1} todayDay={now.getDate()} />
           </aside>
         </main>
       )}
