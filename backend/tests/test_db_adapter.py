@@ -20,6 +20,20 @@ def test_qm_to_pg_preserves_literal_question_marks_in_strings():
     pass
 
 
+def test_qm_to_pg_collate_nocase():
+    # SQLite COLLATE NOCASE is not supported in PostgreSQL;
+    # migrate to LOWER() wrapping.
+    assert qm_to_pg("ORDER BY p.name COLLATE NOCASE, p.id") == "ORDER BY LOWER(p.name), p.id"
+    assert qm_to_pg("ORDER BY name COLLATE NOCASE, id") == "ORDER BY LOWER(name), id"
+    assert qm_to_pg("ORDER BY o.name COLLATE NOCASE, o.id") == "ORDER BY LOWER(o.name), o.id"
+    assert qm_to_pg("ORDER BY gz.name COLLATE NOCASE, gz.id") == "ORDER BY LOWER(gz.name), gz.id"
+    # Case-insensitive
+    assert qm_to_pg("ORDER BY p.name collate nocase") == "ORDER BY LOWER(p.name)"
+    # Placeholder conversion still works alongside COLLATE
+    assert qm_to_pg("SELECT * FROM t WHERE x = ? ORDER BY name COLLATE NOCASE") == \
+        "SELECT * FROM t WHERE x = $1 ORDER BY LOWER(name)"
+
+
 @pytest.fixture
 async def conn():
     dsn = os.environ["DATABASE_URL"]

@@ -32,6 +32,16 @@ def qm_to_pg(sql: str) -> str:
         lambda m: f"{m.group(1)} = FALSE" if _is_known_boolean(m.group(1)) else m.group(0),
         sql,
     )
+    # Step 3: convert SQLite COLLATE NOCASE → PG LOWER(column)
+    # PostgreSQL does not ship a built-in NOCASE collation;
+    # using COLLATE NOCASE on PG raises:
+    #   UndefinedObjectError: collation "nocase" for encoding "UTF8" does not exist
+    sql = re.sub(
+        r"(\w+(?:\.\w+)?)\s+COLLATE\s+NOCASE",
+        r"LOWER(\1)",
+        sql,
+        flags=re.IGNORECASE,
+    )
     return sql
 
 
