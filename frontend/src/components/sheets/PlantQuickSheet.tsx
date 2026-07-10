@@ -303,7 +303,7 @@ export default function PlantQuickSheet({
             <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
 
             {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
-            <div className="hidden lg:grid grid-cols-3 gap-2.5 mt-2" style={{ width: 'fit-content' }}>
+            <div className="hidden lg:grid grid-cols-3 mt-2" style={{ width: 'fit-content', gap: 10 }}>
               <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
               {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>↔</span></button>)}
               <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⇄</span></button>
