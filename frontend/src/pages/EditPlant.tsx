@@ -138,11 +138,17 @@ export default function EditPlant() {
     iconsApi.catalog().then(setIconCatalog).catch(() => {})
   }, [])
 
-  // Set base icon ref when plant data and catalog are both available
+  // Set base icon ref when plant data and catalog are both available, and align
+  // the Potted/Bare toggle with the icon's ACTUAL form. plant_type can be stale —
+  // map placement updates icon_key but never plant_type — so initialising the
+  // toggle from plant_type would silently flip a bare plant back to potted when
+  // the editor opens (part of the potted/bare drift bug).
   useEffect(() => {
     if (!plant?.icon_key || iconCatalog.length === 0) return
     const entry = iconCatalog.find(e => e.id === plant.icon_key)
     baseIconRef.current = entry?.variant_of ?? plant.icon_key
+    const isBare = entry?.form === 'bare' || /_bare$/.test(plant.icon_key)
+    setFormType(isBare ? 'ground' : 'pot')
   }, [iconCatalog, plant])
 
   // Switch icon variant when form type or catalog changes

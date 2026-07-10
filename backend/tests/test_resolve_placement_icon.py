@@ -20,15 +20,24 @@ async def test_uses_generated_bare_variant(seeded_db):
         ground_zone_id="bed-1",
         pot_size_cm=21,
     ) == "gen_rosa_bare"
+    # Free / open-ground placement PRESERVES the current form — a lingering
+    # pot_size_cm must NOT flip an explicit bare choice back to potted.
     assert await resolve_placement_icon(
         seeded_db,
         "gen_rosa_bare",
         container_id=None,
         ground_zone_id=None,
         pot_size_cm=21,
-    ) == "gen_rosa"
+    ) == "gen_rosa_bare"
     assert await resolve_placement_icon(
         seeded_db,
         "gen_rosa",
+        container_id=None,
+        ground_zone_id=None,
+    ) == "gen_rosa"
+    # A container drop is potted regardless of the incoming variant.
+    assert await resolve_placement_icon(
+        seeded_db,
+        "gen_rosa_bare",
         container_id=5,
     ) == "gen_rosa"

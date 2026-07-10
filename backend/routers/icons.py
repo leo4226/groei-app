@@ -68,16 +68,24 @@ async def resolve_placement_icon(
 ) -> str | None:
     """Pick the right icon variant for a Plant's placement context.
 
-    Form rule (CONTEXT.md): a Plant inside a plant-bed Zone uses `bare`.
-    Otherwise, a Plant with a container object or pot-size setting uses `potted`.
-    Plants with neither remain bare. Phase selection is future work.
+    Form rule (CONTEXT.md):
+      - inside a plant-bed Zone (ground_zone_id) → bare
+      - inside a container object (container_id)  → potted
+      - free / open-ground placement              → PRESERVE the current form
+
+    Free placement deliberately does NOT reset the form. A lingering `pot_size_cm`
+    used to force "potted" here, which silently reverted an explicit bare choice
+    on every open-ground move (the potted/bare drift bug). `pot_size_cm` is still
+    accepted for call-site compatibility but no longer influences the icon.
     """
     if ground_zone_id is not None:
         target_form = "bare"
-    elif container_id is not None or pot_size_cm:
+    elif container_id is not None:
         target_form = "potted"
     else:
-        target_form = "bare"
+        # Neither a bed nor a container: keep whatever the plant already is, so an
+        # explicit bare (or potted) choice survives an open-ground move.
+        return icon_key
     return await find_variant(db, icon_key, target_form)
 
 
