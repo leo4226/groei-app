@@ -62,7 +62,7 @@ const baseInput = {
 }
 
 describe('buildEditPlantPayload', () => {
-  it('omits placement, location, pot and botanical category fields when only ordinary fields change', () => {
+  it('omits placement, location and pot fields when only ordinary fields change', () => {
     const payload = buildEditPlantPayload(baseInput)
 
     expect(payload).toMatchObject({
