@@ -730,6 +730,7 @@ async def admin_plants(
         sort,
         direction,
         {
+            "id": "p.id",
             "name": "p.name",
             "species": "p.species",
             "household": "h.name",

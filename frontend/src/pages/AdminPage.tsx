@@ -930,6 +930,7 @@ function PlantsView() {
         <SectionCard title={`${total} plants`}>
           <AdminTable
             heads={[
+              { label: 'ID', sortKey: 'id' },
               { label: 'Name', sortKey: 'name' },
               { label: 'Species', sortKey: 'species' },
               { label: 'Household', sortKey: 'household' },
@@ -943,6 +944,7 @@ function PlantsView() {
           >
             {rows.map(p => (
               <tr key={p.id}>
+                <Td mono>{p.id}</Td>
                 <Td><strong>{p.name}</strong></Td>
                 <Td>{p.species ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
                 <Td>{p.household_name}</Td>
