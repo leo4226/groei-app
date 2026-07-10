@@ -600,6 +600,8 @@ export const adminPanel = {
     api<{ id: number; common_name_nl: string; latin_name: string | null }>('PATCH', `/admin-panel/species/${id}`, { body }),
   regenerateSpeciesThresholds: (id: number, propagate = false) =>
     api<{ species_id: number; name: string; propagated_to_plants: number }>('POST', `/admin-panel/species/${id}/regenerate-thresholds`, { params: { propagate: String(propagate) } }),
+  regeneratePlantIcon: (plantId: number) =>
+    api<{ plant_id: number; name: string; icon_id: string; cat: string; source: string; icon_key: string | null }>('POST', `/admin-panel/plants/${plantId}/regenerate-icon`),
   regenerateSpeciesFact: (id: number) =>
     api<{ species_id: number; name: string; fact: string; fact_en: string }>('POST', `/admin-panel/species/${id}/regenerate-fact`),
   mergeSpecies: (source_id: number, target_id: number) =>
