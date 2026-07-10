@@ -459,12 +459,24 @@ export default function Plants() {
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <span style={{
-                    fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+                    fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase',
                     letterSpacing: '0.2em', color: 'var(--color-text-muted)', marginRight: 2,
                   }}>{t.plantsPage.filterLocation}</span>
-                  <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} compact />
-                  <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} compact />
-                  <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} compact />
+                  <FilterChip active={filterArea === 'all'} onClick={() => setFilterArea('all')}>
+                    {t.plantsPage.filterAll}<Count>{plants.length}</Count>
+                  </FilterChip>
+                  <FilterChip active={filterArea === 'huis'} onClick={() => setFilterArea('huis')}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Glyph name="home" size={14} strokeWidth={2} />
+                      {t.plantsPage.filterHouse}<Count>{huisCount}</Count>
+                    </span>
+                  </FilterChip>
+                  <FilterChip active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <Glyph name="leaf" size={14} strokeWidth={2} />
+                      {t.plantsPage.filterGarden}<Count>{tuinCount}</Count>
+                    </span>
+                  </FilterChip>
                 </div>
               </div>
             )}
@@ -765,12 +777,21 @@ export default function Plants() {
                     {t.plantsPage.filterLocation}
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <FilterChip label={t.plantsPage.filterAll} count={plants.length}
-                      active={filterArea === 'all'} onClick={() => setFilterArea('all')} />
-                    <FilterChip label={t.plantsPage.filterHouse} count={huisCount}
-                      active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} />
-                    <FilterChip label={t.plantsPage.filterGarden} count={tuinCount}
-                      active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} />
+                    <FilterChip active={filterArea === 'all'} onClick={() => setFilterArea('all')}>
+                      {t.plantsPage.filterAll}<Count>{plants.length}</Count>
+                    </FilterChip>
+                    <FilterChip active={filterArea === 'huis'} onClick={() => setFilterArea('huis')}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <Glyph name="home" size={15} strokeWidth={2} />
+                        {t.plantsPage.filterHouse}<Count>{huisCount}</Count>
+                      </span>
+                    </FilterChip>
+                    <FilterChip active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <Glyph name="leaf" size={15} strokeWidth={2} />
+                        {t.plantsPage.filterGarden}<Count>{tuinCount}</Count>
+                      </span>
+                    </FilterChip>
                   </div>
                 </div>
 
