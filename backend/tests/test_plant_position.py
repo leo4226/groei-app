@@ -121,7 +121,6 @@ async def test_position_update_preserves_form_on_open_ground(client, db_ready, a
     assert rows[0]["ground_zone_id"] is None
     assert rows[0]["container_id"] is None
     assert rows[0]["icon_key"] == "tomato_bare"
-    assert rows[0]["icon_key"] == "tomato"
 
 
 async def test_ground_zone_update_persists_bare_icon_and_zone(client, db_ready, auth_header):
