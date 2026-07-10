@@ -527,7 +527,7 @@ export default function PlantDetail() {
     </button>
   )
 
-  // ── Desktop (≥721px): editorial masthead + two-column layout ──
+  // ── Desktop (≥721px): editorial masthead + zoned layout ──
   if (!isMobile) {
     const eyebrow = [
       t.plantDetail.mastheadEyebrow,
@@ -545,9 +545,25 @@ export default function PlantDetail() {
       stats.push({ value: sunHours.toFixed(1), label: t.plantDetail.statSunHours })
     }
 
+    // Quick-action care pills pulled into the hero panel for immediate access
+    const quickActionPills = plant.care_schedules.length > 0 && (
+      <div className="flex gap-2 flex-wrap">
+        {plant.care_schedules.map((sched) => (
+          <button
+            key={sched.id}
+            onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform cursor-pointer"
+          >
+            <CareIcon type={sched.care_type as CareIconType} size={16} strokeWidth={2} /> {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
+          </button>
+        ))}
+      </div>
+    )
+
     return (
-      <div className="pb-16">
-        <div className="mx-auto max-w-5xl">
+      <div style={{ paddingBottom: 80 }}>
+        {/* ── Masthead — wide rhythm matching Plants / Calendar ── */}
+        <div style={{ maxWidth: 1800, margin: '0 auto' }}>
           <PageMasthead
             eyebrow={eyebrow}
             title={plant.name}
@@ -579,28 +595,101 @@ export default function PlantDetail() {
               </>
             }
           />
-          <div className="grid grid-cols-[1fr_380px] items-start gap-8 px-6 pt-6">
-            <div className="min-w-0">
-              {alertsBlock}
-              {sunFitBlock}
-              {careBlock}
-              {calendarBlock}
-              {historyBlock}
-              {archiveButton}
-            </div>
-            <div className="min-w-0">
-              <div className="mb-3 overflow-hidden rounded-2xl border border-border">
-                {heroMedia('w-full h-64')}
+        </div>
+
+        {/* ── Hero: large photo + identity panel (above the fold) ── */}
+        <div style={{ maxWidth: 1800, margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 380px',
+              padding: '0 clamp(24px, 3vw, 56px)',
+            }}
+          >
+            {/* Photo — fills the left column, rounded-left */}
+            <div
+              style={{
+                borderRadius: '16px 0 0 16px',
+                overflow: 'hidden',
+                border: '1px solid var(--color-border)',
+                borderRight: 0,
+                background: 'var(--color-bg-warm)',
+              }}
+            >
+              <div className="w-full h-[380px]">
+                {heroMedia('w-full h-full')}
               </div>
-              {potAcquiredLine && (
-                <p className="mb-5 font-mono text-[10px] text-text-muted">{potAcquiredLine}</p>
+            </div>
+            {/* Identity panel — right column, rounded-right */}
+            <div
+              style={{
+                borderRadius: '0 16px 16px 0',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                padding: '32px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: 14,
+              }}
+            >
+              {plant.species && (
+                <p
+                  style={{
+                    fontFamily: 'var(--font-heading)',
+                    fontStyle: 'italic',
+                    fontSize: 18,
+                    color: 'var(--color-text-soft)',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {plant.species}
+                </p>
               )}
-              {journalBlock}
-              {ecologyBlock}
-              {trefleBlock}
+              {potAcquiredLine && (
+                <p className="font-mono text-[10px] text-text-muted">{potAcquiredLine}</p>
+              )}
+              {sunFitBlock}
+              {quickActionPills}
             </div>
           </div>
         </div>
+
+        {/* ── Content zones — two-row grid ── */}
+        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '32px clamp(24px, 3vw, 56px) 0' }}>
+          {/* Row 1: Care & Alerts  |  Calendar & Ecology */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+            <div className="min-w-0">
+              {alertsBlock}
+              {careBlock}
+            </div>
+            <div className="min-w-0">
+              {calendarBlock}
+              {ecologyBlock}
+            </div>
+          </div>
+
+          {/* Row 2: Photo Journal  |  Care Info (Trefle) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, marginTop: 36 }}>
+            <div className="min-w-0">
+              {journalBlock}
+            </div>
+            <div className="min-w-0">
+              {trefleBlock}
+            </div>
+          </div>
+
+          {/* Full-width: Care History */}
+          <div style={{ marginTop: 36 }}>
+            {historyBlock}
+          </div>
+
+          {/* Archive */}
+          <div style={{ marginTop: 24 }}>
+            {archiveButton}
+          </div>
+        </div>
+
         {carePhotoUi}
       </div>
     )
