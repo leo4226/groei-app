@@ -97,7 +97,13 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         plantsApi.list(),
       ])
       const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true }
-      if (!get().activeUserId && users.length > 0) {
+      // Always validate the stored active user against loaded data — a stale
+      // localStorage entry (e.g. from a different account or household) would
+      // cause every PATCH /users/:id/… call to 404 because the household_id
+      // in the JWT no longer matches.
+      const savedId = get().activeUserId
+      const validId = savedId && users.some((u) => u.id === savedId) ? savedId : null
+      if (!validId && users.length > 0) {
         state.activeUserId = users[0].id
         localStorage.setItem(STORAGE_KEY, String(users[0].id))
       }
