@@ -348,6 +348,10 @@ def _worker_headers() -> dict:
     return {"X-Worker-Token": _BIOCLIP_WORKER_TOKEN} if _BIOCLIP_WORKER_TOKEN else {}
 
 
+def _elapsed_ms(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000, 1)
+
+
 async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> IdentifyResponse | None:
     """Identify a plant image using BioCLIP worker (remote or local).
 
@@ -357,18 +361,23 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
     """
     import httpx
 
+    total_started = time.perf_counter()
+    engine_ms: float | None = None
+    user_ref_ms = 0.0
     worker_url = _BIOCLIP_WORKER_URL
     matches = None
 
     if worker_url:
         # Remote worker: POST image, get species_id + confidence back
         try:
+            engine_started = time.perf_counter()
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
                     f"{worker_url.rstrip('/')}/identify",
                     files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
                     headers=_worker_headers(),
                 )
+                engine_ms = _elapsed_ms(engine_started)
                 if resp.status_code == 200:
                     data = resp.json()
                     matches = [(m["species_id"], m["confidence"]) for m in data.get("matches", [])]
@@ -378,7 +387,9 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
                         try:
                             query_embedding = np.frombuffer(base64.b64decode(emb_b64), dtype=np.float32)
                             if query_embedding.shape == (512,):
+                                refs_started = time.perf_counter()
                                 matches = await _apply_user_refs(matches, query_embedding, db)
+                                user_ref_ms = _elapsed_ms(refs_started)
                         except Exception as exc:
                             logger.warning("Failed to decode query embedding for blend: %s", exc)
                 elif resp.status_code == 503:
@@ -394,6 +405,7 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
         # Local fallback: load BioCLIP in-process
         from PIL import Image
         from services.bioclip_id import get_service as get_bioclip_service
+        engine_started = time.perf_counter()
         bioclip = get_bioclip_service()
 
         bioclip.load_model()
@@ -407,12 +419,20 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
 
         image_emb = bioclip.embed_image(pil_image)
         matches = bioclip.identify(image_emb, top_k=5)
+        engine_ms = _elapsed_ms(engine_started)
 
     if matches:
         logger.info("BioCLIP top match: species_id=%s confidence=%.4f (all: %s)",
                      matches[0][0], matches[0][1],
                      [(m[0], round(m[1], 4)) for m in matches[:3]])
     if not matches or matches[0][1] < _CONFIDENCE_FLOOR:
+        logger.info(
+            "BioCLIP identify no_match raw_matches=%d engine_ms=%s user_ref_ms=%.1f total_ms=%.1f",
+            len(matches or []),
+            engine_ms,
+            user_ref_ms,
+            _elapsed_ms(total_started),
+        )
         return IdentifyResponse(
             candidates=[],
             confidence="no_match",
@@ -421,6 +441,8 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
         )
 
     out: list[CandidateOut] = []
+    details_started = time.perf_counter()
+    skipped_lazy_enrichment = 0
     for species_id, confidence in matches:
         # Look up species details from DB
         rows = await db.execute_fetchall(
@@ -434,25 +456,17 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
         row = rows[0]
         latin_name = row["latin_name"]
 
-        # Enrich if either localized common name is missing (lazy, one-time LLM call).
-        # English identify used to skip this when Dutch was present, leaving
-        # common_names_en empty and later plant cards falling back to the raw name.
+        # Do NOT repair localized metadata in the initial identify hot path.
+        # That repair calls the LLM via species_service and can make a fast
+        # BioCLIP result wait for minutes when several candidates need backfill.
+        # The frontend already falls back to the scientific name, and the
+        # slower enrichment remains available in /identify/commit and admin
+        # backfills once a user actually chooses a candidate.
         if _needs_localized_species_enrichment(row, latin_name):
-            try:
-                await _enrich_species_if_missing(db, latin_name)
-                # Re-fetch after enrichment
-                rows2 = await db.execute_fetchall(
-                    "SELECT common_name_nl, common_name_en FROM plant_species WHERE id = ?",
-                    (species_id,),
-                )
-                if rows2:
-                    row["common_name_nl"] = rows2[0].get("common_name_nl") or ""
-                    row["common_name_en"] = rows2[0].get("common_name_en")
-            except Exception:
-                pass  # Enrichment is best-effort; don't fail the identify request
+            skipped_lazy_enrichment += 1
 
         # Populate only the requested language's common name bucket,
-        # mirroring how _split_common_names works for PlantNet results.
+        # mirroring how _plantnet_candidate_common_names shapes PlantNet results.
         if lang == "nl":
             nl = row.get("common_name_nl") or ""
             nl_names = [nl] if nl and nl.lower() != latin_name.lower() else []
@@ -500,6 +514,18 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
     top1 = matches[0][1]
     top2 = matches[1][1] if len(matches) > 1 else None
     confidence = _classify_confidence(top1, top2)
+    logger.info(
+        "BioCLIP identify completed raw_matches=%d candidates=%d confidence=%s "
+        "engine_ms=%s user_ref_ms=%.1f details_ms=%.1f total_ms=%.1f skipped_lazy_enrichment=%d",
+        len(matches),
+        len(out),
+        confidence,
+        engine_ms,
+        user_ref_ms,
+        _elapsed_ms(details_started),
+        _elapsed_ms(total_started),
+        skipped_lazy_enrichment,
+    )
     return IdentifyResponse(
         candidates=out,
         confidence=confidence,
