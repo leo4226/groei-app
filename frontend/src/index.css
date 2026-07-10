@@ -54,6 +54,10 @@
     radial-gradient(circle at 90% 100%, rgba(178, 102, 74, 0.06), transparent 40%);
 }
 
+:root {
+  --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--color-bg);

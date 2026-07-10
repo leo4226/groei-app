@@ -13,6 +13,7 @@ import Glyph from '../ui/Glyph'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
+import './plantQuickSheet.css'
 import {
   PLANT_QUICK_SHEET_BODY_CLASS,
   PLANT_QUICK_SHEET_CLASS,
@@ -202,7 +203,7 @@ export default function PlantQuickSheet({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 lg:bg-black/20 z-40" onClick={onClose} />
 
       {/* Sheet */}
       <div
@@ -213,7 +214,7 @@ export default function PlantQuickSheet({
         <button
           onClick={onClose}
           aria-label="Sluiten"
-          className="shrink-0 pt-3 pb-1 flex justify-center w-full group"
+          className="plant-quick-sheet-handle shrink-0 pt-3 pb-1 flex justify-center w-full group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
         </button>
@@ -232,7 +233,7 @@ export default function PlantQuickSheet({
                 onClick={() => photoInputRef.current?.click()}
                 aria-label={t.plantQuickSheet.addPhoto}
                 style={{
-                  position: 'relative', width: 56, height: 56, borderRadius: 12, padding: 0,
+                  position: 'relative', width: 'var(--plant-quick-sheet-photo-size)', height: 'var(--plant-quick-sheet-photo-size)', borderRadius: 12, padding: 0,
                   overflow: 'hidden', flexShrink: 0, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'linear-gradient(145deg,#FDFAF1,#F4EEDB)', border: '1px solid var(--color-border-soft)',
@@ -269,8 +270,8 @@ export default function PlantQuickSheet({
                 </button>
               </div>
 
-              {/* Overflow (⋯) — rare management actions live here */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
+              {/* Overflow (⋯) — rare management actions. Desktop: inline icon row; mobile: dropdown. */}
+                            <div style={{ position: 'relative', flexShrink: 0 }} className="lg:hidden">
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   aria-label={t.plantQuickSheet.menu}
@@ -300,10 +301,20 @@ export default function PlantQuickSheet({
               </div>
             </div>
             <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
+
+            {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
+            <div className="hidden lg:flex items-center gap-1.5 mt-2">
+              <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
+              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>↔</span></button>)}
+              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⇄</span></button>
+              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⧉</span></button>)}
+              <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
+              {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
+            </div>
           </div>
 
           {/* ── Status line + one-tap care chips ── */}
-          <div style={{ marginBottom: 14 }}>
+          <div className="plant-quick-sheet-care" style={{ marginBottom: 14 }}>
             <div style={{ marginBottom: 12, minHeight: 18 }}>
               {urgentSchedules.length > 0 ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 600, color: 'var(--color-overdue)' }}>
@@ -362,6 +373,7 @@ export default function PlantQuickSheet({
             </div>
           </div>
 
+          <div className="plant-quick-sheet-context">
           {/* ── Sun fit ── */}
           {sunFitInfo && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 14 }}>
@@ -441,6 +453,7 @@ export default function PlantQuickSheet({
               </button>
             </div>
           )}
+          </div>
 
         </div>
       </div>
@@ -467,4 +480,12 @@ const menuItemStyle: React.CSSProperties = {
 
 const menuIconStyle: React.CSSProperties = {
   width: 18, textAlign: 'center', flexShrink: 0, fontSize: 14,
+}
+
+const desktopIconStyle: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: 8,
+  border: '1px solid var(--color-border-soft)',
+  background: 'var(--color-bg)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  color: 'var(--color-text-muted)', cursor: 'pointer',
 }

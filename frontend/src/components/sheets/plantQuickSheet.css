@@ -1,0 +1,42 @@
+.plant-quick-sheet {
+  --plant-quick-sheet-max-height: 85dvh;
+  --plant-quick-sheet-photo-size: 56px;
+}
+
+@media (min-width: 1024px) {
+  .plant-quick-sheet {
+    --plant-quick-sheet-max-height: min(42dvh, 380px);
+    --plant-quick-sheet-photo-size: 72px;
+  }
+
+  .plant-quick-sheet-body {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.72fr) minmax(400px, 1.2fr) minmax(320px, 0.92fr);
+    align-items: start;
+    gap: clamp(24px, 2.5vw, 44px);
+    padding-inline: clamp(24px, 3vw, 56px);
+    padding-bottom: 20px !important;
+  }
+
+  .plant-quick-sheet-identity {
+    min-width: 0;
+    padding: 10px clamp(20px, 2vw, 34px) 10px 0;
+    border-right: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  }
+
+  .plant-quick-sheet-care {
+    min-width: 0;
+    padding-block: 10px;
+  }
+
+  .plant-quick-sheet-context {
+    min-width: 0;
+    padding: 10px 0 8px clamp(20px, 2vw, 34px);
+    border-left: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  }
+
+  .plant-quick-sheet .plant-quick-sheet-handle {
+    padding-top: 8px;
+    padding-bottom: 3px;
+  }
+}

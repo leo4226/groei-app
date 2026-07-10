@@ -1,22 +1,22 @@
 import type { CSSProperties } from 'react'
+import { BOTTOM_NAV_CLEARANCE_CLASS } from '../bottomNavLayout'
 
-export const PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS =
-  'bottom-[calc(4rem+max(env(safe-area-inset-bottom,0px),4px))]'
+export const PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS = BOTTOM_NAV_CLEARANCE_CLASS
 
 export const PLANT_QUICK_SHEET_LANDSCAPE_BOTTOM_CLASS =
   '[@media(orientation:landscape)_and_(max-height:500px)]:bottom-0'
 
 export const PLANT_QUICK_SHEET_CLASS = [
-  'fixed left-0 right-0 z-[60] bg-surface rounded-t-2xl animate-slide-up flex flex-col',
+  'plant-quick-sheet fixed left-0 right-0 z-[60] bg-surface border-t border-border/60 rounded-t-2xl shadow-[0_-8px_30px_rgba(31,42,30,0.10)] animate-slide-up flex flex-col',
   PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS,
   PLANT_QUICK_SHEET_LANDSCAPE_BOTTOM_CLASS,
 ].join(' ')
 
 export const PLANT_QUICK_SHEET_BODY_CLASS =
-  'overflow-y-auto overscroll-contain flex-1 px-5'
+  'plant-quick-sheet-body overflow-y-auto overscroll-contain flex-1 px-5'
 
 export const PLANT_QUICK_SHEET_HEADER_CLASS =
-  'flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:gap-3'
+  'plant-quick-sheet-identity flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:gap-3'
 
 export const PLANT_QUICK_SHEET_TITLE_ROW_CLASS =
   'flex items-start gap-3 min-w-0'
@@ -31,7 +31,7 @@ export function plantQuickSheetBodyStyle(): CSSProperties {
 }
 
 export function plantQuickSheetStyle(): CSSProperties {
-  return { maxHeight: '85dvh' }
+  return { maxHeight: 'var(--plant-quick-sheet-max-height)' }
 }
 
 export function clampedPlantNameStyle(): CSSProperties {
