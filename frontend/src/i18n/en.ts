@@ -939,6 +939,8 @@ export const en: Translations = {
 
   editPlant: {
     title: 'Edit plant',
+    previewEyebrow: 'Live preview',
+    changePhoto: 'Change photo',
     addPhoto: 'Add photo',
     plantPhoto: 'Plant photo',
     tapToChangePhoto: 'Tap to change photo',

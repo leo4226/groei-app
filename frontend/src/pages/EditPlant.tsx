@@ -18,6 +18,8 @@ import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { resolveIconUrl } from '../utils/icons'
 
 /** Build initial schedules map from the plant's existing care_schedules. */
 function buildSchedulesFromPlant(plant: Plant): Record<CareType, { enabled: boolean; days: number }> {
@@ -43,6 +45,10 @@ export default function EditPlant() {
   const [plant, setPlant] = useState<Plant | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDetails, setShowDetails] = useState(false)
+  // Below 1024px the form grid is single-column (mobile flow with the
+  // Basis/Details toggle); from lg up all sections show beside the preview rail.
+  const isNarrow = useIsMobile(1023)
+  const expanded = showDetails || !isNarrow
 
   // Build zone list from the user's actual maps
   const zoneList = useMemo(() => maps.map(m => ({
@@ -261,15 +267,45 @@ export default function EditPlant() {
     )
   }
 
+  // ── Desktop preview rail: labels + decorative passport MRZ line ──
+  const previewFormLabel: Record<string, string> = {
+    pot: t.addPlant.formPot,
+    ground: t.addPlant.formGround,
+    seedling: t.addPlant.formSeedling,
+    tree: t.addPlant.formTree,
+  }
+  const previewPhaseLabel: Record<string, string> = {
+    seed: t.addPlant.phaseSeed,
+    sprout: t.addPlant.phaseSprout,
+    seedling: t.addPlant.phaseSeedling,
+    young: t.addPlant.phaseYoung,
+    established: t.addPlant.phaseEstablished,
+  }
+  const previewSunLabel: Record<string, string> = {
+    dark: t.addPlant.lightDark,
+    shade: t.addPlant.lightShade,
+    indirect: t.addPlant.lightIndirect,
+    bright: t.addPlant.lightBright,
+    'full-sun': t.addPlant.lightFullSun,
+  }
+  const previewZone = selectedZoneId ? zoneList.find(z => z.id === selectedZoneId) ?? null : null
+  const previewMrz = `P<FLO<<${name}<<${species}`
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/g, '<')
+    .padEnd(34, '<')
+    .slice(0, 34)
+
 
 
   return (
     <div>
-      {/* ——— Masthead ——— */}
+      {/* ——— Masthead — follows the name/species fields live ——— */}
       <PageMasthead
         eyebrow={t.editPlant.title}
-        title={plant.name}
-        lede={plant.species ?? undefined}
+        title={name || plant.name}
+        accent={species || undefined}
         actions={
           <button
             type="button"
@@ -282,7 +318,8 @@ export default function EditPlant() {
         }
       />
 
-      {/* ——— BASIS / DETAILS Toggle ——— */}
+      {/* ——— BASIS / DETAILS Toggle — mobile only; desktop shows everything ——— */}
+      {isNarrow && (
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
         <div className="flex items-center gap-2">
           <button
@@ -305,15 +342,16 @@ export default function EditPlant() {
           </button>
         </div>
       </div>
+      )}
 
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8">
           {/* LEFT: form content */}
           <div className="space-y-6 min-w-0">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Photo */}
-              <label className="card p-4 flex items-center gap-4 cursor-pointer">
+              {/* Photo — mobile row; on desktop the preview rail owns the photo */}
+              <label className="card p-4 flex items-center gap-4 cursor-pointer lg:hidden">
                 {photoPreview ? (
                   <img src={photoPreview} alt={t.editPlant.previewAlt} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                 ) : (
@@ -429,7 +467,7 @@ export default function EditPlant() {
               </Card>
 
               {/* ——— § II · Placement Card ——— */}
-              {showDetails && (
+              {expanded && (
               <Card
                 eyebrow={t.addPlant.secPlacement}
                 title={t.addPlant.secPlacementTitle}
@@ -487,7 +525,7 @@ export default function EditPlant() {
               <Card
                 eyebrow={t.addPlant.secCare}
                 title={t.addPlant.secCareTitle}
-                subtitle={showDetails ? t.addPlant.secCareSubtitle : undefined}
+                subtitle={expanded ? t.addPlant.secCareSubtitle : undefined}
               >
                 {/* Water gift frequency */}
                 <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
@@ -511,7 +549,7 @@ export default function EditPlant() {
               </Card>
 
               {/* ——— § IV · Album Card ——— */}
-              {showDetails ? (
+              {expanded ? (
                 <Card
                   eyebrow={t.addPlant.secAlbum}
                   title={t.addPlant.secAlbumTitle}
@@ -582,6 +620,102 @@ export default function EditPlant() {
               </div>
             </form>
           </div>
+
+          {/* RIGHT: live passport preview (desktop only) */}
+          <aside className="hidden lg:block min-w-0">
+            <div className="sticky top-6">
+              <p className="mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                <span className="h-px w-6 flex-none bg-border" />
+                {t.editPlant.previewEyebrow}
+                <span className="h-px min-w-[24px] max-w-[80px] flex-1 bg-border" />
+              </p>
+              <div className="overflow-hidden rounded-2xl border border-border bg-paper">
+                {/* Photo — click to change, mirrors the passport hero */}
+                <label className="group relative block cursor-pointer">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt={t.editPlant.previewAlt} className="h-64 w-full object-cover" />
+                  ) : (
+                    <div
+                      className="flex h-64 w-full flex-col items-center justify-center gap-2 text-text-muted"
+                      style={{ background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)' }}
+                    >
+                      <Glyph name="camera" size={28} />
+                      <span className="text-xs">{t.editPlant.addPhoto}</span>
+                    </div>
+                  )}
+                  <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    <Glyph name="camera" size={13} />
+                    {t.editPlant.changePhoto}
+                  </span>
+                  <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                </label>
+
+                <div className="border-t border-border-soft px-5 py-4">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                    {t.plantDetail.mastheadEyebrow} · #{String(plant.id).padStart(3, '0')}
+                  </p>
+                  <div className="mt-1.5 flex items-start justify-between gap-3">
+                    <p className="min-w-0 font-heading text-2xl font-medium leading-tight text-text">
+                      {name || '—'}
+                      {species && <> <em className="font-normal italic text-primary">{species}</em></>}.
+                    </p>
+                    {iconKey && resolveIconUrl(iconKey) && (
+                      <img src={resolveIconUrl(iconKey)!} alt="" className="h-11 w-11 shrink-0 object-contain" />
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {[
+                      previewPhaseLabel[phase],
+                      previewFormLabel[formType],
+                      quantity > 1 ? `× ${quantity}` : null,
+                    ].filter(Boolean).map((chip, i) => (
+                      <span key={i} className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-soft">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3 text-xs text-text-muted">
+                    {previewZone && (
+                      <p className="flex items-center gap-1.5">
+                        <Glyph name="pin" size={12} className="shrink-0" />
+                        {previewZone.name} · {previewZone.description}
+                      </p>
+                    )}
+                    {sunRequirement && previewSunLabel[sunRequirement] && (
+                      <p className="flex items-center gap-1.5">
+                        <Glyph name="sun" size={12} className="shrink-0" />
+                        {previewSunLabel[sunRequirement]}
+                      </p>
+                    )}
+                    {schedules.water?.days != null && (
+                      <p className="flex items-center gap-1.5">
+                        <Glyph name="droplet" size={12} className="shrink-0" />
+                        {t.careTypes.water} · {t.plantDetail.xDays.replace('{n}', String(schedules.water.days))}
+                      </p>
+                    )}
+                    {acquiredDateInput && (
+                      <p className="flex items-center gap-1.5">
+                        <Glyph name="calendar" size={12} className="shrink-0" />
+                        {acquiredDateInput}
+                      </p>
+                    )}
+                  </div>
+
+                  {notes && (
+                    <p className="mt-3 line-clamp-2 font-heading text-[13px] italic leading-snug text-text-soft">
+                      "{notes}"
+                    </p>
+                  )}
+
+                  <p aria-hidden="true" className="mt-4 select-none overflow-hidden whitespace-nowrap font-mono text-[11px] leading-none tracking-[0.24em] text-text-muted/40">
+                    {previewMrz}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </aside>
 
         </div>
       </div>

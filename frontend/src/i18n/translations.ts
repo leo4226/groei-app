@@ -896,6 +896,8 @@ export type Translations = {
 
   editPlant: {
     title: string            // "Edit plant"
+    previewEyebrow: string   // desktop preview rail label
+    changePhoto: string      // desktop preview photo hover pill
     addPhoto: string         // "Add photo"
     plantPhoto: string       // "Plant photo"
     tapToChangePhoto: string // "Tap to change photo"
