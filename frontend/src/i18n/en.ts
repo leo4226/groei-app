@@ -156,7 +156,7 @@ export const en: Translations = {
 
   maps: {
     title: 'Maps',
-    newMap: '+ New map',
+    newMap: 'New map',
     mapNameLabel: 'Map name',
     mapNamePlaceholder: "e.g. Balcony, Mum's garden…",
     loading: 'Loading maps…',
@@ -1122,8 +1122,8 @@ export const en: Translations = {
     deleted: (label) => `Deleted: ${label}`,
     undo: 'Undo',
     soilDefaultName: 'Soil',
-    switchMap: 'Switch map…',
-    mapSettingsLabel: 'Settings…',
+    switchMap: 'Switch map',
+    mapSettingsLabel: 'Settings',
     sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`,
     sheetAllGood: 'All on schedule',
     sheetGlobalAttention: (n) => `${n} plant${n === 1 ? '' : 's'} across your gardens need${n === 1 ? 's' : ''} attention`,

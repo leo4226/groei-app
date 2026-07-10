@@ -46,7 +46,9 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
         className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-surface/85 rounded-full border border-border/60 shadow-lg text-sm md:text-base font-semibold text-text hover:bg-surface transition-colors"
         style={{ backdropFilter: 'blur(10px)' }}
       >
-        <span className={`text-text-muted text-xs transition-transform inline-block ${open ? 'rotate-180' : ''}`}>⌄</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`text-text-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
         {defaultSlug === map.slug && <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>}
