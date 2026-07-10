@@ -270,8 +270,8 @@ export default function PlantQuickSheet({
                 </button>
               </div>
 
-              {/* Overflow (⋯) — rare management actions live here */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
+              {/* Overflow (⋯) — rare management actions. Desktop: inline icon row; mobile: dropdown. */}
+                            <div style={{ position: 'relative', flexShrink: 0 }} className="lg:hidden">
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   aria-label={t.plantQuickSheet.menu}
@@ -301,6 +301,16 @@ export default function PlantQuickSheet({
               </div>
             </div>
             <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
+
+            {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
+            <div className="hidden lg:flex items-center gap-1.5 mt-2">
+              <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
+              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>↔</span></button>)}
+              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⇄</span></button>
+              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⧉</span></button>)}
+              <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
+              {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
+            </div>
           </div>
 
           {/* ── Status line + one-tap care chips ── */}
@@ -470,4 +480,12 @@ const menuItemStyle: React.CSSProperties = {
 
 const menuIconStyle: React.CSSProperties = {
   width: 18, textAlign: 'center', flexShrink: 0, fontSize: 14,
+}
+
+const desktopIconStyle: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: 8,
+  border: '1px solid var(--color-border-soft)',
+  background: 'var(--color-bg)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  color: 'var(--color-text-muted)', cursor: 'pointer',
 }
