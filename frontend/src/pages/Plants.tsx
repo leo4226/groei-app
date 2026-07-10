@@ -276,6 +276,48 @@ export default function Plants() {
         </header>
 
         <main style={{ maxWidth: 1800, margin: '0 auto', padding: '20px clamp(24px, 3vw, 56px) 0' }}>
+
+          {/* ── Primary tab navigation — plants vs. field journal ── */}
+          <nav aria-label="Plant collection" style={{
+            display: 'flex', justifyContent: 'center', gap: 4,
+            marginBottom: 18, padding: 0,
+          }}>
+            <button
+              onClick={() => setActiveTab('plants')}
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 16, fontWeight: activeTab === 'plants' ? 600 : 400,
+                padding: '10px 28px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                background: activeTab === 'plants' ? 'var(--color-primary)' : 'transparent',
+                color: activeTab === 'plants' ? '#fff' : 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}
+              onMouseEnter={e => { if (activeTab !== 'plants') { e.currentTarget.style.color = 'var(--color-text-soft)'; e.currentTarget.style.background = 'var(--color-bg)'; }}}
+              onMouseLeave={e => { if (activeTab !== 'plants') { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}}
+            >
+              <span style={{ fontSize: 18 }}>🌱</span>
+              {t.discovery.myPlantsTab}
+            </button>
+            <button
+              onClick={() => setActiveTab('journal')}
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 16, fontWeight: activeTab === 'journal' ? 600 : 400,
+                padding: '10px 28px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                background: activeTab === 'journal' ? 'var(--color-primary)' : 'transparent',
+                color: activeTab === 'journal' ? '#fff' : 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}
+              onMouseEnter={e => { if (activeTab !== 'journal') { e.currentTarget.style.color = 'var(--color-text-soft)'; e.currentTarget.style.background = 'var(--color-bg)'; }}}
+              onMouseLeave={e => { if (activeTab !== 'journal') { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}}
+            >
+              <span style={{ fontSize: 18 }}>📓</span>
+              {t.discovery.journalTab}
+            </button>
+          </nav>
+
           <section aria-label={t.plantsPage.filterButton} style={{
             border: '1px solid var(--color-border)',
             borderRadius: 28,
@@ -374,23 +416,9 @@ export default function Plants() {
               marginTop: 14,
               paddingTop: 14,
               borderTop: '1px solid var(--color-border-soft)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
               gap: 16, flexWrap: 'wrap',
             }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {(['plants', 'journal'] as const).map((tab) => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                    fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-                    padding: '7px 18px', borderRadius: 100, cursor: 'pointer', border: 'none',
-                    background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
-                    transition: 'all 0.15s',
-                  }}>
-                    {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
-                  </button>
-                ))}
-              </div>
-
               {activeTab === 'plants' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <span style={{
@@ -636,18 +664,21 @@ export default function Plants() {
         </div>
 
         {/* Tab toggle — mobile */}
-        <div style={{ padding: '0 16px 6px', display: 'flex', gap: 6 }}>
-          {(['plants', 'journal'] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
-              padding: '6px 14px', borderRadius: 100, cursor: 'pointer', border: 'none',
-              background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: activeTab === tab ? '#fff' : 'var(--color-text-soft)',
-            }}>
-              {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
-            </button>
-          ))}
-        </div>
+                <nav aria-label="Plant collection" style={{ padding: '4px 16px 8px', display: 'flex', justifyContent: 'center', gap: 6 }}>
+                  {(['plants', 'journal'] as const).map((tab) => (
+                    <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                      fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
+                      padding: '8px 20px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                      background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
+                      color: activeTab === tab ? '#fff' : 'var(--color-text-muted)',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      transition: 'all 0.15s',
+                    }}>
+                      {tab === 'plants' ? <span style={{ fontSize: 16 }}>🌱</span> : <span style={{ fontSize: 16 }}>📓</span>}
+                      {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
+                    </button>
+                  ))}
+                </nav>
 
         {/* Filter button — opens bottom sheet */}
         <div style={{ padding: '0 16px 10px', display: activeTab === 'journal' ? 'none' : undefined }}>
