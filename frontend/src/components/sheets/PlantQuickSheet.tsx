@@ -263,9 +263,9 @@ export default function PlantQuickSheet({
                   </p>
                 )}
                 <button
-                  onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
-                  style={{ marginTop: 4, padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 12, fontWeight: 500, color: 'var(--color-primary)', cursor: 'pointer', display: 'block' }}
-                >
+                                  onClick={() => { onClose(); navigate(`/plants/${plant.id}`) }}
+                                  style={{ marginTop: 4, padding: 0, background: 'none', border: 'none', fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-moreinfo-size, 12px)', fontWeight: 500, color: 'var(--color-primary)', cursor: 'pointer', display: 'block' }}
+                                >
                   {t.plantQuickSheet.moreInfo}
                 </button>
               </div>
@@ -303,7 +303,7 @@ export default function PlantQuickSheet({
             <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelected} style={{ display: 'none' }} />
 
             {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
-            <div className="hidden lg:flex items-center gap-1.5 mt-2">
+            <div className="hidden lg:grid grid-cols-3 gap-1.5 mt-2" style={{ width: 'fit-content' }}>
               <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
               {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>↔</span></button>)}
               <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⇄</span></button>
@@ -317,11 +317,11 @@ export default function PlantQuickSheet({
           <div className="plant-quick-sheet-care" style={{ marginBottom: 14 }}>
             <div style={{ marginBottom: 12, minHeight: 18 }}>
               {urgentSchedules.length > 0 ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 600, color: 'var(--color-overdue)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-status-size, 13px)', fontWeight: 600, color: 'var(--color-overdue)' }}>
                   <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
                 </span>
               ) : detail !== null ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 'var(--pq-status-size, 13px)', color: 'var(--color-text-muted)' }}>
                   <Glyph name="check" size={14} style={{ color: 'var(--color-primary)' }} />{t.mapPage.sheetAllGood}
                 </span>
               ) : null}
@@ -352,7 +352,7 @@ export default function PlantQuickSheet({
                         </span>
                       )}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {careLabelMap[ct] ?? info?.label ?? ct}
                     </span>
                   </button>
@@ -366,7 +366,7 @@ export default function PlantQuickSheet({
                 <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', border: '2px dashed var(--color-border)', color: 'var(--color-text-soft)' }}>
                   {uploadingPhoto ? '…' : <CareIcon type="photo" size={24} />}
                 </span>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 11, color: 'var(--color-text-soft)', textAlign: 'center' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: 'var(--color-text-soft)', textAlign: 'center' }}>
                   {t.plantQuickSheet.photo}
                 </span>
               </button>
@@ -378,7 +378,7 @@ export default function PlantQuickSheet({
           {sunFitInfo && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 14 }}>
               <Glyph name="sun" size={14} style={{ flexShrink: 0, color: '#f0a020' }} />
-              <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-muted)' }}>
+              <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-info-size, 13px)', color: 'var(--color-text-muted)' }}>
                 ~{sunFitInfo.sunHours.toFixed(1)}u{' · '}{t.locale.startsWith('en') ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: SUN_FIT_COLORS[sunFitInfo.fit] + '22', color: SUN_FIT_COLORS[sunFitInfo.fit], flexShrink: 0 }}>
@@ -390,7 +390,7 @@ export default function PlantQuickSheet({
           {/* ── Container / ground zone ── */}
           {container && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 10 }}>
-              <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-muted)' }}>
+              <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-info-size, 13px)', color: 'var(--color-text-muted)' }}>
                 {t.plantQuickSheet.plantedIn} <strong style={{ color: 'var(--color-text)', fontWeight: 500 }}>{container.name}</strong>
               </span>
               <button onClick={handleRemoveFromContainer} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -401,7 +401,7 @@ export default function PlantQuickSheet({
           {groundZone && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 10, background: 'var(--color-bg)', marginBottom: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-info-size, 13px)', color: 'var(--color-text-muted)' }}>
                   {t.plantQuickSheet.plantedIn} <strong style={{ color: 'var(--color-text)', fontWeight: 500 }}>{groundZone.name}</strong>
                 </span>
                 {groundZone.soil_note && <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>{groundZone.soil_note}</p>}
