@@ -26,7 +26,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     created_at: null,
     sown_date: null,
     sun_requirement: 'partial_sun',
-    plant_type: 'pot',
+    plant_type: 'grass',
     icon_key: 'monstera',
     icon_requested: false,
     phase: 'established',
@@ -58,12 +58,11 @@ const baseInput = {
   sunRequirement: 'indirect',
   phase: 'established' as const,
   sownDateInput: '',
-  formType: 'pot',
   randomMapPos: () => ({ x: 99, y: 88 }),
 }
 
 describe('buildEditPlantPayload', () => {
-  it('omits placement, location and pot fields when only ordinary fields change', () => {
+  it('omits placement, location, pot and botanical category fields when only ordinary fields change', () => {
     const payload = buildEditPlantPayload(baseInput)
 
     expect(payload).toMatchObject({
@@ -74,6 +73,9 @@ describe('buildEditPlantPayload', () => {
     })
     expect(payload).not.toHaveProperty('location_id')
     expect(payload).not.toHaveProperty('pot_size_cm')
+    // The edit form's visual potted/bare choice must not overwrite the saved
+    // botanical category (this plant is grass).
+    expect(payload).not.toHaveProperty('plant_type')
     expect(payload).not.toHaveProperty('map_id')
     expect(payload).not.toHaveProperty('map_x')
     expect(payload).not.toHaveProperty('map_y')
