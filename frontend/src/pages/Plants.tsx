@@ -8,6 +8,7 @@ import type { Plant, PlantIcon } from '../types'
 import { alerts, icons } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
 import { plantDisplayName, plantSearchText } from '../utils/plantDisplayName'
+import Glyph from '../components/ui/Glyph'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
@@ -279,43 +280,45 @@ export default function Plants() {
 
           {/* ── Primary tab navigation — plants vs. field journal ── */}
           <nav aria-label="Plant collection" style={{
-            display: 'flex', justifyContent: 'center', gap: 4,
-            marginBottom: 18, padding: 0,
+            display: 'flex', justifyContent: 'center', marginBottom: 18,
           }}>
-            <button
-              onClick={() => setActiveTab('plants')}
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: 16, fontWeight: activeTab === 'plants' ? 600 : 400,
-                padding: '10px 28px', borderRadius: 100, cursor: 'pointer', border: 'none',
-                background: activeTab === 'plants' ? 'var(--color-primary)' : 'transparent',
-                color: activeTab === 'plants' ? '#fff' : 'var(--color-text-muted)',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', gap: 7,
-              }}
-              onMouseEnter={e => { if (activeTab !== 'plants') { e.currentTarget.style.color = 'var(--color-text-soft)'; e.currentTarget.style.background = 'var(--color-bg)'; }}}
-              onMouseLeave={e => { if (activeTab !== 'plants') { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}}
-            >
-              <span style={{ fontSize: 18 }}>🌱</span>
-              {t.discovery.myPlantsTab}
-            </button>
-            <button
-              onClick={() => setActiveTab('journal')}
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: 16, fontWeight: activeTab === 'journal' ? 600 : 400,
-                padding: '10px 28px', borderRadius: 100, cursor: 'pointer', border: 'none',
-                background: activeTab === 'journal' ? 'var(--color-primary)' : 'transparent',
-                color: activeTab === 'journal' ? '#fff' : 'var(--color-text-muted)',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', gap: 7,
-              }}
-              onMouseEnter={e => { if (activeTab !== 'journal') { e.currentTarget.style.color = 'var(--color-text-soft)'; e.currentTarget.style.background = 'var(--color-bg)'; }}}
-              onMouseLeave={e => { if (activeTab !== 'journal') { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}}
-            >
-              <span style={{ fontSize: 18 }}>📓</span>
-              {t.discovery.journalTab}
-            </button>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 2, padding: 3,
+              borderRadius: 100, border: '1px solid var(--color-border)',
+              background: 'color-mix(in srgb, var(--color-bg-warm) 78%, var(--color-surface))',
+              boxShadow: '0 3px 10px rgba(31,42,30,0.04)',
+            }}>
+              <button
+                onClick={() => setActiveTab('plants')}
+                style={{
+                  fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: activeTab === 'plants' ? 600 : 500,
+                  padding: '10px 22px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                  background: activeTab === 'plants' ? 'var(--color-primary)' : 'transparent',
+                  color: activeTab === 'plants' ? '#fff' : 'var(--color-text-soft)',
+                  transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
+                }}
+                onMouseEnter={e => { if (activeTab !== 'plants') e.currentTarget.style.background = 'var(--color-surface)' }}
+                onMouseLeave={e => { if (activeTab !== 'plants') e.currentTarget.style.background = 'transparent' }}
+              >
+                <Glyph name="sprout" size={17} strokeWidth={2} />
+                {t.discovery.myPlantsTab}
+              </button>
+              <button
+                onClick={() => setActiveTab('journal')}
+                style={{
+                  fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: activeTab === 'journal' ? 600 : 500,
+                  padding: '10px 22px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                  background: activeTab === 'journal' ? 'var(--color-primary)' : 'transparent',
+                  color: activeTab === 'journal' ? '#fff' : 'var(--color-text-soft)',
+                  transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
+                }}
+                onMouseEnter={e => { if (activeTab !== 'journal') e.currentTarget.style.background = 'var(--color-surface)' }}
+                onMouseLeave={e => { if (activeTab !== 'journal') e.currentTarget.style.background = 'transparent' }}
+              >
+                <Glyph name="book" size={17} strokeWidth={2} />
+                {t.discovery.journalTab}
+              </button>
+            </div>
           </nav>
 
           <section aria-label={t.plantsPage.filterButton} style={{
@@ -412,31 +415,11 @@ export default function Plants() {
               </div>
             </div>
 
-            <div style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: '1px solid var(--color-border-soft)',
-              display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-              gap: 16, flexWrap: 'wrap',
-            }}>
-              {activeTab === 'plants' && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <span style={{
-                    fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
-                    letterSpacing: '0.2em', color: 'var(--color-text-muted)', marginRight: 2,
-                  }}>{t.plantsPage.filterLocation}</span>
-                  <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} compact />
-                  <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} compact />
-                  <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} compact />
-                </div>
-              )}
-            </div>
-
             {activeTab === 'plants' && (
               <div style={{
-                marginTop: 12,
+                marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--color-border-soft)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 12, flexWrap: 'wrap',
+                gap: 16, flexWrap: 'wrap',
               }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{
@@ -464,17 +447,25 @@ export default function Plants() {
                       <option key={key} value={key}>{key === 'all' ? `${t.plantsPage.filterForm}: ${label}` : stripLabelEmoji(label)} ({formCounts[key] || 0})</option>
                     ))}
                   </select>
+                  {hasActiveFilters && (
+                    <button onClick={clearCollectionFilters} style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em',
+                      color: 'var(--color-primary)', border: 'none', background: 'transparent', cursor: 'pointer', padding: '8px 0',
+                    }}>
+                      {t.plantsPage.alertShowAll}
+                    </button>
+                  )}
                 </div>
 
-                {hasActiveFilters && (
-                  <button onClick={clearCollectionFilters} style={{
-                    fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.16em',
-                    color: 'var(--color-primary)', border: 'none', background: 'transparent', cursor: 'pointer',
-                    padding: '8px 0',
-                  }}>
-                    {t.plantsPage.alertShowAll}
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase',
+                    letterSpacing: '0.2em', color: 'var(--color-text-muted)', marginRight: 2,
+                  }}>{t.plantsPage.filterLocation}</span>
+                  <FilterChip label={t.plantsPage.filterAll} count={plants.length} active={filterArea === 'all'} onClick={() => setFilterArea('all')} compact />
+                  <FilterChip label={t.plantsPage.filterHouse} count={huisCount} active={filterArea === 'huis'} onClick={() => setFilterArea('huis')} compact />
+                  <FilterChip label={t.plantsPage.filterGarden} count={tuinCount} active={filterArea === 'tuin'} onClick={() => setFilterArea('tuin')} compact />
+                </div>
               </div>
             )}
 
@@ -664,20 +655,27 @@ export default function Plants() {
         </div>
 
         {/* Tab toggle — mobile */}
-                <nav aria-label="Plant collection" style={{ padding: '4px 16px 8px', display: 'flex', justifyContent: 'center', gap: 6 }}>
-                  {(['plants', 'journal'] as const).map((tab) => (
-                    <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                      fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
-                      padding: '8px 20px', borderRadius: 100, cursor: 'pointer', border: 'none',
-                      background: activeTab === tab ? 'var(--color-primary)' : 'var(--color-surface)',
-                      color: activeTab === tab ? '#fff' : 'var(--color-text-muted)',
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      transition: 'all 0.15s',
-                    }}>
-                      {tab === 'plants' ? <span style={{ fontSize: 16 }}>🌱</span> : <span style={{ fontSize: 16 }}>📓</span>}
-                      {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
-                    </button>
-                  ))}
+                <nav aria-label="Plant collection" style={{ padding: '4px 16px 8px', display: 'flex', justifyContent: 'center' }}>
+                  <div style={{
+                    display: 'flex', gap: 2, padding: 3, borderRadius: 100,
+                    border: '1px solid var(--color-border)', background: 'var(--color-bg-warm)',
+                  }}>
+                    {(['plants', 'journal'] as const).map((tab) => {
+                      const active = activeTab === tab
+                      return (
+                        <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                          fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: active ? 600 : 500,
+                          padding: '8px 16px', borderRadius: 100, cursor: 'pointer', border: 'none',
+                          background: active ? 'var(--color-primary)' : 'transparent',
+                          color: active ? '#fff' : 'var(--color-text-soft)',
+                          display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+                        }}>
+                          <Glyph name={tab === 'plants' ? 'sprout' : 'book'} size={15} strokeWidth={2} />
+                          {tab === 'plants' ? t.discovery.myPlantsTab : t.discovery.journalTab}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </nav>
 
         {/* Filter button — opens bottom sheet */}
