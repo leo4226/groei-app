@@ -89,7 +89,10 @@ async def test_position_update_lifts_plant_out_of_container(client, db_ready, au
     assert rows[0]["ground_zone_id"] is None
 
 
-async def test_position_update_keeps_potted_icon_for_potted_plant_outside_ground_zone(client, db_ready, auth_header):
+async def test_position_update_preserves_form_on_open_ground(client, db_ready, auth_header):
+    # A move to open ground (no container, no ground zone) PRESERVES the current
+    # icon form. A lingering pot_size_cm must NOT flip an explicit bare choice
+    # back to potted — that was the potted/bare drift bug.
     pid = await _make_plant(client, auth_header)
     await db_ready.execute(
         """UPDATE plants
@@ -109,7 +112,7 @@ async def test_position_update_keeps_potted_icon_for_potted_plant_outside_ground
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["container_id"] is None
-    assert body["icon_key"] == "tomato"
+    assert body["icon_key"] == "tomato_bare"  # preserved, not flipped to potted
 
     rows = await db_ready.execute_fetchall(
         "SELECT ground_zone_id, container_id, icon_key FROM plants WHERE id = ?",
@@ -117,6 +120,7 @@ async def test_position_update_keeps_potted_icon_for_potted_plant_outside_ground
     )
     assert rows[0]["ground_zone_id"] is None
     assert rows[0]["container_id"] is None
+    assert rows[0]["icon_key"] == "tomato_bare"
     assert rows[0]["icon_key"] == "tomato"
 
 
