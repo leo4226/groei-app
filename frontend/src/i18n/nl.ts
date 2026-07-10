@@ -634,6 +634,8 @@ export const nl: Translations = {
     whatCanYouDo: 'Wat kun je nu doen?',
     sunHoursLabel: 'Zonuren:',
     sunHoursUnit: 'u/dag',
+    speciesProfile: 'Soortprofiel',
+    gardenWeather: 'Weer in de tuin',
     fitGood: '✓ Geschikt',
     fitPartial: '~ Deels',
     fitInsufficient: '⚠ Te weinig',

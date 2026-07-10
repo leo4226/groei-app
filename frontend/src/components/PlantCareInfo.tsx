@@ -5,7 +5,15 @@ import { useTemperatureContext } from '../hooks/useTemperatureContext'
 import { useT } from '../context/LanguageContext'
 import Glyph from './ui/Glyph'
 
-interface Props { plantId: number }
+interface Props {
+  plantId: number
+  /**
+   * 'collapsible' (default, mobile): single "Verzorgingsinfo" card with a
+   * More/Less toggle. 'split' (desktop passport): two always-expanded
+   * sections — species profile and garden weather — with mono headers.
+   */
+  layout?: 'collapsible' | 'split'
+}
 
 const LIGHT_LABEL_NL: Record<string, string> = {
   shade: 'Schaduw',
@@ -61,13 +69,17 @@ function SkeletonRow() {
   return <div className="h-3.5 bg-border rounded animate-pulse w-3/4" />
 }
 
-export default function PlantCareInfo({ plantId }: Props) {
+export default function PlantCareInfo({ plantId, layout = 'collapsible' }: Props) {
   const t = useT()
   const isEN = t.locale?.startsWith('en')
   const [expanded, setExpanded] = useState(false)
   const care = usePlantCareInfo(plantId)
   const rain = useRainContext()
   const temp = useTemperatureContext()
+
+  const split = layout === 'split'
+  // In split layout everything is always visible; collapsible keeps the toggle.
+  const showAll = split || expanded
 
   const lightLabel = isEN ? LIGHT_LABEL_EN : LIGHT_LABEL_NL
   const tempBadge = isEN ? TEMP_BADGE_EN : TEMP_BADGE_NL
@@ -87,6 +99,205 @@ export default function PlantCareInfo({ plantId }: Props) {
   const isLoading = care.loading
   const noData    = !care.loading && care.data?.source === 'not_found'
 
+  // ── Species profile rows (light, water needs, bloom, habit, colours) ──
+  const speciesRows = isLoading ? (
+    <><SkeletonRow /><SkeletonRow /><SkeletonRow /></>
+  ) : care.error ? (
+    <p className="text-xs text-text-muted">{isEN ? 'Could not load care info' : 'Kon verzorgingsinfo niet laden'}</p>
+  ) : noData ? (
+    <p className="text-xs text-text-muted">{isEN ? 'No care info available for this species' : 'Geen verzorgingsinfo beschikbaar voor deze soort'}</p>
+  ) : care.data ? (
+    <>
+      {/* Light bar */}
+      {(care.data.light_label != null || care.data.light_raw != null) && (
+        <div className="flex items-center gap-2">
+          <Glyph name="sun" size={16} className="shrink-0 text-amber-500" />
+          {care.data.light_raw != null ? (
+            <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full bg-pumpkin-swirl rounded-full"
+                style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
+              />
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <span className="text-xs text-text-muted shrink-0 w-20 text-right">
+            {lightLabel[care.data.light_label ?? ''] ?? care.data.light_label}
+          </span>
+        </div>
+      )}
+
+      {/* Precipitation */}
+      {(care.data.precip_min_mm != null || care.data.precip_max_mm != null) && (
+        <div className="flex items-start gap-2 text-sm">
+          <Glyph name="droplet" size={16} className="shrink-0 text-sky-500" />
+          <span className="text-text-muted">
+            {care.data.precip_min_mm}–{care.data.precip_max_mm} {isEN ? 'mm/year' : 'mm/jaar'}
+          </span>
+        </div>
+      )}
+
+      {/* Bloom months, duration, flower colours */}
+      {showAll && <>
+        {care.data.bloom_months.length > 0 && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="flower" size={16} className="shrink-0 text-pink-500" />
+            <span className="text-text-muted">
+              {care.data.bloom_months.map(m => monthAbbr[m] ?? m).join(' · ')}
+            </span>
+          </div>
+        )}
+
+        {(care.data.duration || care.data.leaf_retention != null) && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="leaf" size={16} className="shrink-0 text-primary" />
+            <span className="text-text-muted capitalize">
+              {[
+                care.data.duration,
+                care.data.leaf_retention === true
+                  ? (isEN ? 'Evergreen' : 'Groenblijvend')
+                  : null,
+                care.data.leaf_retention === false
+                  ? (isEN ? 'Deciduous' : 'Bladverliezend')
+                  : null,
+              ].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        )}
+
+        {care.data.flower_colors.length > 0 && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="palette" size={16} className="shrink-0 text-text-muted" />
+            <span className="text-text-muted capitalize">
+              {isEN ? 'Flowers: ' : 'Bloemen: '}{care.data.flower_colors.join(', ')}
+            </span>
+          </div>
+        )}
+      </>}
+    </>
+  ) : null
+
+  // ── Rain chart — the backend window is 14 days; bars, total and the
+  // assessment badge all describe that same window (see #559). ──
+  const rainChart = (divider: boolean) => rain.data ? (
+    <div className={divider ? 'pt-3 mt-1 border-t border-border' : ''}>
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
+          <Glyph name="droplet" size={13} className="text-sky-500" />
+          {isEN ? 'Rainfall — 14 days' : 'Neerslag — 14 dagen'}
+        </span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${rainBadge[rain.data.assessment]?.className ?? ''}`}>
+          {rainBadge[rain.data.assessment]?.label ?? rain.data.assessment}
+        </span>
+      </div>
+      <div className="flex items-end gap-1 h-14 mb-1">
+        {rain.data.days.map(day => {
+          const maxMm = Math.max(...rain.data!.days.map(d => d.mm), 1)
+          const barPx = Math.max((day.mm / maxMm) * 44, day.mm > 0 ? 4 : 2)
+          return (
+            <div key={day.date} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+              {day.mm > 0 && (
+                <span className="text-[8px] text-blue-400/80 font-medium leading-none">{day.mm}</span>
+              )}
+              <div className="w-full rounded-sm bg-blue-400/70" style={{ height: `${barPx}px` }} />
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex mb-2">
+        {rain.data.days.map(day => (
+          <span key={day.date} className="flex-1 text-center text-[9px] text-text-muted">
+            {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
+          </span>
+        ))}
+      </div>
+      <p className="text-xs text-text-muted text-right">
+        {isEN ? 'Total: ' : 'Totaal: '}
+        <span className="text-text font-medium">{rain.data.total_14day_mm ?? rain.data.total_7day_mm} mm</span>
+      </p>
+    </div>
+  ) : rain.loading ? (
+    <div className={divider ? 'pt-3 mt-1 border-t border-border' : ''}>
+      <div className="h-3 w-32 bg-border rounded animate-pulse mb-2.5" />
+      <div className="h-12 bg-border/50 rounded animate-pulse" />
+    </div>
+  ) : null
+
+  // ── Temperature chart — 7-day window ──
+  const tempChart = (divider: boolean) => temp.data ? (
+    <div className={divider ? 'pt-3 mt-1 border-t border-border' : ''}>
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
+          <Glyph name="thermometer" size={13} className="text-rose-500" />
+          {isEN ? 'Temperature — 7 days' : 'Temperatuur — 7 dagen'}
+        </span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tempBadge[temp.data.assessment]?.className ?? ''}`}>
+          {tempBadge[temp.data.assessment]?.label ?? temp.data.assessment}
+        </span>
+      </div>
+      <div className="flex gap-1 mb-1">
+        {temp.data.days.map(day => {
+          const CHART_H = 52
+          const fullH  = Math.max(((day.max - tempScale.min) / tempScale.range) * CHART_H, 6)
+          const minH   = Math.max(((day.min - tempScale.min) / tempScale.range) * CHART_H, 0)
+          const rangeH = Math.max(fullH - minH, 4)
+          return (
+            <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
+              <span className="text-[8px] text-amber-500 font-medium leading-none">{day.max}°</span>
+              <div className="w-full flex items-end" style={{ height: `${CHART_H}px` }}>
+                <div className="relative w-full rounded-sm overflow-hidden" style={{ height: `${fullH}px` }}>
+                  <div className="absolute bottom-0 w-full bg-amber-300/30" style={{ height: `${minH}px` }} />
+                  <div className="absolute w-full bg-pumpkin-swirl/75" style={{ bottom: `${minH}px`, height: `${rangeH}px` }} />
+                </div>
+              </div>
+              <span className="text-[8px] text-text-muted/70 font-medium leading-none">{day.min}°</span>
+              <span className="text-[9px] text-text-muted">
+                {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-xs text-text-muted text-right">
+        {isEN ? 'Avg max: ' : 'Gem. max: '}<span className="text-text font-medium">{temp.data.avg_max_7day}°C</span>
+      </p>
+    </div>
+  ) : temp.loading ? (
+    <div className={divider ? 'pt-3 mt-1 border-t border-border' : ''}>
+      <div className="h-3 w-36 bg-border rounded animate-pulse mb-2.5" />
+      <div className="h-14 bg-border/50 rounded animate-pulse" />
+    </div>
+  ) : null
+
+  // ── Split layout (desktop passport): two always-expanded sections. The
+  // weather section is species-independent, so it renders even when the
+  // species profile has no data. ──
+  if (split) {
+    return (
+      <>
+        <section className="mb-6">
+          <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
+            {t.plantDetail.speciesProfile}
+          </p>
+          <div className="card px-4 py-3 space-y-2.5">
+            {speciesRows}
+          </div>
+        </section>
+        <section className="mb-6">
+          <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">
+            {t.plantDetail.gardenWeather}
+          </p>
+          <div className="card px-4 py-3">
+            {rainChart(false)}
+            {tempChart(true)}
+          </div>
+        </section>
+      </>
+    )
+  }
+
+  // ── Collapsible layout (mobile, unchanged) ──
   return (
     <div>
       {/* Header */}
@@ -108,180 +319,9 @@ export default function PlantCareInfo({ plantId }: Props) {
       </div>
 
       <div className="card px-4 py-3 space-y-2.5">
-        {isLoading ? (
-          <><SkeletonRow /><SkeletonRow /><SkeletonRow /></>
-        ) : care.error ? (
-          <p className="text-xs text-text-muted">{isEN ? 'Could not load care info' : 'Kon verzorgingsinfo niet laden'}</p>
-        ) : noData ? (
-          <p className="text-xs text-text-muted">{isEN ? 'No care info available for this species' : 'Geen verzorgingsinfo beschikbaar voor deze soort'}</p>
-        ) : care.data ? (
-          <>
-            {/* Light bar */}
-            {(care.data.light_label != null || care.data.light_raw != null) && (
-              <div className="flex items-center gap-2">
-                <Glyph name="sun" size={16} className="shrink-0 text-amber-500" />
-                {care.data.light_raw != null ? (
-                  <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-pumpkin-swirl rounded-full"
-                      style={{ width: `${(care.data.light_raw / 10) * 100}%` }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1" />
-                )}
-                <span className="text-xs text-text-muted shrink-0 w-20 text-right">
-                  {lightLabel[care.data.light_label ?? ''] ?? care.data.light_label}
-                </span>
-              </div>
-            )}
-
-            {/* Precipitation */}
-            {(care.data.precip_min_mm != null || care.data.precip_max_mm != null) && (
-              <div className="flex items-start gap-2 text-sm">
-                <Glyph name="droplet" size={16} className="shrink-0 text-sky-500" />
-                <span className="text-text-muted">
-                  {care.data.precip_min_mm}–{care.data.precip_max_mm} {isEN ? 'mm/year' : 'mm/jaar'}
-                </span>
-              </div>
-            )}
-
-            {/* Bloom months, duration, flower colours — expanded only */}
-            {expanded && <>
-              {care.data.bloom_months.length > 0 && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Glyph name="flower" size={16} className="shrink-0 text-pink-500" />
-                  <span className="text-text-muted">
-                    {care.data.bloom_months.map(m => monthAbbr[m] ?? m).join(' · ')}
-                  </span>
-                </div>
-              )}
-
-              {(care.data.duration || care.data.leaf_retention != null) && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Glyph name="leaf" size={16} className="shrink-0 text-primary" />
-                  <span className="text-text-muted capitalize">
-                    {[
-                      care.data.duration,
-                      care.data.leaf_retention === true
-                        ? (isEN ? 'Evergreen' : 'Groenblijvend')
-                        : null,
-                      care.data.leaf_retention === false
-                        ? (isEN ? 'Deciduous' : 'Bladverliezend')
-                        : null,
-                    ].filter(Boolean).join(' · ')}
-                  </span>
-                </div>
-              )}
-
-              {care.data.flower_colors.length > 0 && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Glyph name="palette" size={16} className="shrink-0 text-text-muted" />
-                  <span className="text-text-muted capitalize">
-                    {isEN ? 'Flowers: ' : 'Bloemen: '}{care.data.flower_colors.join(', ')}
-                  </span>
-                </div>
-              )}
-            </>}
-          </>
-        ) : null}
-
-        {/* Rain chart — expanded only */}
-        {expanded && rain.data && (
-          <div className="pt-3 mt-1 border-t border-border">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
-                <Glyph name="droplet" size={13} className="text-sky-500" />
-                {isEN ? 'Rainfall — 7 days' : 'Neerslag — 7 dagen'}
-              </span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${rainBadge[rain.data.assessment]?.className ?? ''}`}>
-                {rainBadge[rain.data.assessment]?.label ?? rain.data.assessment}
-              </span>
-            </div>
-            <div className="flex items-end gap-1 h-14 mb-1">
-              {rain.data.days.map(day => {
-                const maxMm = Math.max(...rain.data!.days.map(d => d.mm), 1)
-                const barPx = Math.max((day.mm / maxMm) * 44, day.mm > 0 ? 4 : 2)
-                return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center justify-end gap-0.5">
-                    {day.mm > 0 && (
-                      <span className="text-[8px] text-blue-400/80 font-medium leading-none">{day.mm}</span>
-                    )}
-                    <div className="w-full rounded-sm bg-blue-400/70" style={{ height: `${barPx}px` }} />
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex mb-2">
-              {rain.data.days.map(day => (
-                <span key={day.date} className="flex-1 text-center text-[9px] text-text-muted">
-                  {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-text-muted text-right">
-              {isEN ? 'Total: ' : 'Totaal: '}<span className="text-text font-medium">{rain.data.total_7day_mm} mm</span>
-            </p>
-          </div>
-        )}
-        {expanded && rain.loading && (
-          <div className="pt-3 mt-1 border-t border-border">
-            <div className="h-3 w-32 bg-border rounded animate-pulse mb-2.5" />
-            <div className="h-12 bg-border/50 rounded animate-pulse" />
-          </div>
-        )}
-
-        {/* Temperature chart — expanded only */}
-        {expanded && temp.data && (
-          <div className="pt-3 mt-1 border-t border-border">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-text-muted inline-flex items-center gap-1.5">
-                <Glyph name="thermometer" size={13} className="text-rose-500" />
-                {isEN ? 'Temperature — 7 days' : 'Temperatuur — 7 dagen'}
-              </span>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tempBadge[temp.data.assessment]?.className ?? ''}`}>
-                {tempBadge[temp.data.assessment]?.label ?? temp.data.assessment}
-              </span>
-            </div>
-            <div className="flex gap-1 mb-1">
-              {temp.data.days.map(day => {
-                const CHART_H = 52
-                const fullH  = Math.max(((day.max - tempScale.min) / tempScale.range) * CHART_H, 6)
-                const minH   = Math.max(((day.min - tempScale.min) / tempScale.range) * CHART_H, 0)
-                const rangeH = Math.max(fullH - minH, 4)
-                return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
-                    <span className="text-[8px] text-amber-500 font-medium leading-none">{day.max}°</span>
-                    <div className="w-full flex items-end" style={{ height: `${CHART_H}px` }}>
-                      <div className="relative w-full rounded-sm overflow-hidden" style={{ height: `${fullH}px` }}>
-                        <div className="absolute bottom-0 w-full bg-amber-300/30" style={{ height: `${minH}px` }} />
-                        <div className="absolute w-full bg-pumpkin-swirl/75" style={{ bottom: `${minH}px`, height: `${rangeH}px` }} />
-                      </div>
-                    </div>
-                    <span className="text-[8px] text-text-muted/70 font-medium leading-none">{day.min}°</span>
-                    <span className="text-[9px] text-text-muted">
-                      {new Date(day.date).toLocaleDateString(isEN ? 'en-GB' : 'nl-NL', { weekday: 'narrow' })}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex mb-2">
-              {temp.data.days.map(day => (
-                <span key={day.date} className="flex-1" />
-              ))}
-            </div>
-            <p className="text-xs text-text-muted text-right">
-              {isEN ? 'Avg max: ' : 'Gem. max: '}<span className="text-text font-medium">{temp.data.avg_max_7day}°C</span>
-            </p>
-          </div>
-        )}
-        {expanded && temp.loading && (
-          <div className="pt-3 mt-1 border-t border-border">
-            <div className="h-3 w-36 bg-border rounded animate-pulse mb-2.5" />
-            <div className="h-14 bg-border/50 rounded animate-pulse" />
-          </div>
-        )}
+        {speciesRows}
+        {expanded && rainChart(true)}
+        {expanded && tempChart(true)}
       </div>
     </div>
   )
