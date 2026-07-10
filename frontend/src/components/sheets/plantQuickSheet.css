@@ -12,7 +12,7 @@
   .plant-quick-sheet-body {
     display: grid;
     grid-template-columns: minmax(240px, 0.72fr) minmax(400px, 1.2fr) minmax(320px, 0.92fr);
-    align-items: start;
+    align-items: stretch;
     gap: clamp(24px, 2.5vw, 44px);
     padding-inline: clamp(24px, 3vw, 56px);
     padding-bottom: 20px !important;
@@ -22,17 +22,24 @@
     min-width: 0;
     padding: 10px clamp(20px, 2vw, 34px) 10px 0;
     border-right: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+    --pq-name-size: 20px;
+    --pq-species-size: 14px;
+    --pq-moreinfo-size: 13px;
   }
 
   .plant-quick-sheet-care {
     min-width: 0;
     padding-block: 10px;
+    --pq-status-size: 14px;
+    --pq-chip-label-size: 12px;
   }
 
   .plant-quick-sheet-context {
     min-width: 0;
     padding: 10px 0 8px clamp(20px, 2vw, 34px);
     border-left: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+    --pq-info-size: 14px;
+    --pq-label-size: 11px;
   }
 
   .plant-quick-sheet .plant-quick-sheet-handle {
