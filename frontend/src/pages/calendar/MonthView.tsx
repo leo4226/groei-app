@@ -13,17 +13,19 @@ import { isoDate } from './dateUtils'
 import type { CalendarViewMode } from './PlanningCalendarPage'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
+import { gardenCare } from '../../api/client'
 
 interface Props {
   viewMode: CalendarViewMode
   onSetView(v: CalendarViewMode): void
   env: string
+  groupOutdoor: boolean
   environmentFilter: ReactNode
 }
 
-export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
+export default function MonthView({ viewMode, onSetView, env, groupOutdoor, environmentFilter }: Props) {
   const t = useT()
-  const { markCareDone, skipCare } = useFloreren()
+  const { markCareDone, skipCare, activeUserId } = useFloreren()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -34,11 +36,29 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   )
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState<string | null>(null)
+  const [gardenOperationId, setGardenOperationId] = useState<number | null>(null)
+  const [undoMsg, setUndoMsg] = useState<string | null>(null)
 
-  const { events, loading, error } = useCalendarEvents(year, month1, env)
+  const { events, loading, error } = useCalendarEvents(year, month1, env, groupOutdoor)
   const isNarrow = useIsNarrow(1200)
 
   async function handleDone(event: CalendarEvent) {
+    if (event.grouped && event.group_member_schedule_ids && event.group_member_schedule_ids.length > 0 && activeUserId !== null) {
+      setSaving(event.id)
+      setUndoMsg(null)
+      try {
+        const completedAt = new Date().toISOString().slice(0, 10)
+        const result = await gardenCare.complete(event.type, activeUserId, completedAt)
+        setGardenOperationId(result.operation_id)
+        setDoneIds(prev => new Set([...prev, event.id]))
+        setUndoMsg(t.calendar.completedGroup)
+      } catch (err) {
+        console.error('gardenCare.complete failed:', err)
+      } finally {
+        setSaving(null)
+      }
+      return
+    }
     if (!event.plant_id) return
     setSaving(event.id)
     try {
@@ -46,6 +66,21 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       setDoneIds(prev => new Set([...prev, event.id]))
     } catch (err) {
       console.error('markCareDone failed:', err)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleGardenUndo() {
+    if (!gardenOperationId) return
+    setSaving('undo-garden')
+    try {
+      await gardenCare.undo(gardenOperationId)
+      setGardenOperationId(null)
+      setUndoMsg(null)
+      setDoneIds(new Set())
+    } catch (err) {
+      console.error('gardenCare.undo failed:', err)
     } finally {
       setSaving(null)
     }
@@ -112,7 +147,7 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
             onSelect={setSelectedIso}
           />
           <aside className="col-side">
-            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
+            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} />
             <CalendarUpcoming todayIso={todayIso} events={filtered} />
             <CalendarAlmanac month1={month1} />
           </aside>

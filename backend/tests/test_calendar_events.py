@@ -255,3 +255,33 @@ async def test_calendar_events_no_clamp_when_natural_occurrence_in_window(client
     waters = [e for e in r.json() if e["plant_id"] == plant_id]
     assert len(waters) == 1, "should have exactly one natural occurrence, no clamp"
     assert waters[0]["date"] == (today + timedelta(days=2)).isoformat()
+
+
+@pytest.mark.asyncio
+async def test_calendar_groups_outdoor_care_without_hiding_indoor_events(client, seeded_db, auth_header):
+    db = seeded_db
+    due = date.today()
+    await db.executescript("""
+        INSERT INTO maps (id, name, map_type, household_id) VALUES
+          (1, 'Garden', 'outdoor', 1), (2, 'House', 'indoor', 1);
+        INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES
+          (101, 'Rose', 1, 1, 1), (102, 'Basil', 1, 1, 1), (103, 'Monstera', 1, 2, 1);
+    """)
+    for plant_id in (101, 102, 103):
+        await db.execute(
+            "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) VALUES (?, 'water', 7, ?, 1)",
+            (plant_id, due),
+        )
+    await db.commit()
+
+    response = await client.get(
+        "/api/calendar/events",
+        params={"from": due.isoformat(), "to": due.isoformat(), "group_outdoor": "true"},
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    events = response.json()
+    grouped = next(event for event in events if event["grouped"] and event["type"] == "water")
+    assert grouped["group_count"] == 2
+    assert len(grouped["group_member_schedule_ids"]) == 2
+    assert any(event["plant_id"] == 103 and event["type"] == "water" for event in events)

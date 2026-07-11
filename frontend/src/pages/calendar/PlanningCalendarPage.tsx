@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MonthView from './MonthView'
 import PhenologyView from './PhenologyView'
 import { useT } from '../../context/LanguageContext'
 import { useIsNarrow } from './useIsNarrow'
 import Glyph, { type GlyphName } from '../../components/ui/Glyph'
 import './calendar.css'
+
+const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
+const GROUP_OUTDOOR_EVENT = 'floreren-group-outdoor-changed'
 
 export type CalendarViewMode = 'month' | 'agenda'
 
@@ -77,6 +80,13 @@ export default function PlanningCalendarPage() {
   const isNarrow = useIsNarrow()
   const [view, setView] = useState<CalendarViewMode>(isNarrow ? 'agenda' : 'month')
   const [env, setEnv] = useState('all')
+  const [groupOutdoor, setGroupOutdoor] = useState(() => localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
+
+  useEffect(() => {
+    const handler = () => setGroupOutdoor(localStorage.getItem(GROUP_OUTDOOR_KEY) !== 'false')
+    window.addEventListener(GROUP_OUTDOOR_EVENT, handler)
+    return () => window.removeEventListener(GROUP_OUTDOOR_EVENT, handler)
+  }, [])
 
   return (
     <div className="cal-page">
@@ -85,6 +95,7 @@ export default function PlanningCalendarPage() {
           viewMode={view}
           onSetView={setView}
           env={env}
+          groupOutdoor={groupOutdoor}
           environmentFilter={<EnvironmentFilter env={env} onChange={setEnv} />}
         />
       ) : (

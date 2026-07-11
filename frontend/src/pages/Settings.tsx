@@ -17,6 +17,7 @@ import type { PlantIcon } from '../types'
 const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
 
 const GROUP_OUTDOOR_KEY = 'floreren-group-outdoor-warnings'
+const GROUP_OUTDOOR_EVENT = 'floreren-group-outdoor-changed'
 // Must match the boot script in index.html, which applies the theme before
 // React loads to avoid a flash of the wrong theme.
 const THEME_KEY = 'floreren-theme'
@@ -654,11 +655,12 @@ export default function Settings() {
               <div className="text-xs text-text-muted mt-0.5">{t.settings.groupOutdoorWarningsDesc}</div>
             </div>
             <button
-              onClick={() => {
-                const next = !groupOutdoor
-                setGroupOutdoor(next)
-                localStorage.setItem(GROUP_OUTDOOR_KEY, String(next))
-              }}
+                          onClick={() => {
+                            const next = !groupOutdoor
+                            setGroupOutdoor(next)
+                            localStorage.setItem(GROUP_OUTDOOR_KEY, String(next))
+                            window.dispatchEvent(new CustomEvent(GROUP_OUTDOOR_EVENT, { detail: { enabled: next } }))
+                          }}
               className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${groupOutdoor ? 'bg-primary' : 'bg-border'}`}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${groupOutdoor ? 'translate-x-5' : 'translate-x-0'}`} />

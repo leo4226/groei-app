@@ -504,8 +504,8 @@ export const alerts = {
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 
 export const calendar = {
-  events: (from: string, to: string, env?: string) => {
-    const params: Record<string, string> = { from, to }
+  events: (from: string, to: string, env?: string, groupOutdoor = false) => {
+    const params: Record<string, string> = { from, to, group_outdoor: String(groupOutdoor) }
     if (env && env !== 'all') params.env = env
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
@@ -520,6 +520,14 @@ export const icons = {
   sync:    () => api<IconSyncResult>('POST', '/icon-catalog/sync'),
   gaps:    () => api<IconGapReport>('GET', '/icon-catalog/gaps'),
   request: (plantId: number) => api<{ status: string; plant_id: number }>('PATCH', `/icon-catalog/request/${plantId}`),
+}
+
+export const gardenCare = {
+  complete: (careType: string, userId: number, completedAt?: string) =>
+    api<{ operation_id: number; care_type: string; completed_at: string; affected_count: number }>('POST', '/care/garden/complete', {
+      body: { care_type: careType, user_id: userId, completed_at: completedAt ?? null },
+    }),
+  undo: (operationId: number) => api<{ ok: boolean }>('POST', `/care/garden/${operationId}/undo`),
 }
 
 export const weeds = {
