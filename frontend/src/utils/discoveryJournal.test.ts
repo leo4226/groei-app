@@ -20,6 +20,8 @@ const discovery: PlantDiscovery = {
   notes: 'Near the path',
   location_lat: 52.3715,
   location_lon: 4.8499,
+  place_name: null,
+  country_code: null,
   fun_fact_nl: 'Paardenbloemen zijn belangrijk voor vroege bestuivers.',
   fun_fact_en: 'Dandelions feed early pollinators.',
   discovered_at: '2026-07-08T12:00:00',

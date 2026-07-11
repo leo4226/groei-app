@@ -19,6 +19,8 @@ DISCOVERIES_SCHEMA = """
         notes TEXT,
         location_lat REAL,
         location_lon REAL,
+        place_name TEXT,
+        country_code TEXT,
         discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE plant_species (
@@ -98,8 +100,8 @@ async def test_list_discoveries_enriches_species_names_facts_and_location(client
     await discoveries_db.execute(
         """INSERT INTO plant_discoveries
               (account_id, household_id, species_id, common_name, latin_name, thumbnail_url,
-               notes, location_lat, location_lon)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               notes, location_lat, location_lon, place_name, country_code)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             1,
             1,
@@ -110,6 +112,9 @@ async def test_list_discoveries_enriches_species_names_facts_and_location(client
             "Near the canal",
             52.3715,
             4.8499,
+            # A stored place also keeps the geocode backfill task inert in tests
+            "Amsterdam",
+            "NL",
         ),
     )
     await discoveries_db.commit()
@@ -126,3 +131,5 @@ async def test_list_discoveries_enriches_species_names_facts_and_location(client
     assert item["notes"] == "Near the canal"
     assert item["location_lat"] == 52.3715
     assert item["location_lon"] == 4.8499
+    assert item["place_name"] == "Amsterdam"
+    assert item["country_code"] == "NL"
