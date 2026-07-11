@@ -10,9 +10,11 @@ interface Props {
   saving: string | null
   onDone: (e: CalendarEvent) => void
   onSkip: (e: CalendarEvent) => void
+  undoMsg: string | null
+  onGardenUndo: () => void
 }
 
-export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDone, onSkip }: Props) {
+export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDone, onSkip, undoMsg, onGardenUndo }: Props) {
   const t = useT()
   const locale = t.locale || 'nl-NL'
   const [y, m, d] = selectedIso.split('-').map(Number)
@@ -101,19 +103,31 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
                   <button disabled={busyGroup}
                     onClick={() => handleBatchDone(type, groupEvents)}
                     className="ag-btn ag-btn-done">
-                    {t.dashboard.actions.done}
+                    {groupEvents.some(e => e.grouped) ? (t.calendar.completeAndAlign || 'Complete & align') : t.dashboard.actions.done}
                   </button>
-                  <button disabled={busyGroup}
-                    onClick={() => handleBatchSkip(type, groupEvents)}
-                    className="ag-btn ag-btn-skip">
-                    {t.dashboard.actions.skip}
-                  </button>
+                  {!groupEvents.some(e => e.grouped) && (
+                    <button disabled={busyGroup}
+                      onClick={() => handleBatchSkip(type, groupEvents)}
+                      className="ag-btn ag-btn-skip">
+                      {t.dashboard.actions.skip}
+                    </button>
+                  )}
                 </div>
               ) : null}
             </div>
           )
         })}
       </div>
+      {undoMsg && (
+        <div className="sc-head" style={{ padding: '14px 22px', borderTop: '1px solid var(--color-border)' }}>
+          <p className="sc-sub" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+            {undoMsg}
+          </p>
+          <button onClick={onGardenUndo} className="ag-btn ag-btn-skip" style={{ fontSize: 12 }}>
+            {t.calendar.undoGroup || 'Undo group'}
+          </button>
+        </div>
+      )}
     </section>
   )
 }

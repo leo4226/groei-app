@@ -79,6 +79,10 @@ export interface CalendarEvent {
   severity: string | null
   color: string | null
   icon: string | null
+  grouped: boolean
+  group_count: number | null
+  group_member_schedule_ids: number[] | null
+  weather_triggered: boolean
 }
 
 const CARE_ACTION_TYPES = new Set<EventTypeId>([
@@ -87,5 +91,6 @@ const CARE_ACTION_TYPES = new Set<EventTypeId>([
 ])
 
 export function isActionable(event: CalendarEvent, todayIso: string): boolean {
+  if (event.grouped && event.date <= todayIso) return true
   return event.plant_id !== null && CARE_ACTION_TYPES.has(event.type) && event.date <= todayIso
 }

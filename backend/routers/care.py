@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
-from models import CareAction, CareUndo, CareLogOut, RecentLogEntry
+from models import CareAction, CareUndo, CareLogOut, RecentLogEntry, GardenCareCompleteIn, GardenCareOperationOut
 from services.scheduling import calculate_next_due
+from services.garden_care import complete_outdoor_care, undo_outdoor_care
 from datetime import date, datetime, timedelta
 from auth import get_current_account
 
@@ -101,6 +102,36 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 
     await db.commit()
     return {"ok": True, "next_due": str(next_due)}
+
+
+@router.post("/care/garden/complete", response_model=GardenCareOperationOut)
+async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
+                               account=Depends(get_current_account)):
+    completed_at = body.completed_at or date.today()
+    result = await complete_outdoor_care(
+        db,
+        household_id=account["household_id"],
+        care_type=body.care_type,
+        completed_at=completed_at,
+        user_id=body.user_id,
+    )
+    if result["operation_id"] is None:
+        raise HTTPException(status_code=404, detail="No eligible outdoor schedules found")
+    return GardenCareOperationOut(
+        operation_id=result["operation_id"], care_type=body.care_type,
+        completed_at=completed_at, affected_count=result["affected_count"],
+    )
+
+
+@router.post("/care/garden/{operation_id}/undo")
+async def undo_garden_care(operation_id: int, db=Depends(db_dep),
+                           account=Depends(get_current_account)):
+    restored = await undo_outdoor_care(
+        db, household_id=account["household_id"], operation_id=operation_id,
+    )
+    if not restored:
+        raise HTTPException(status_code=404, detail="Garden care operation not found")
+    return {"ok": True}
 
 
 @router.delete("/care/schedules/{schedule_id}")

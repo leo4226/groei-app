@@ -974,6 +974,9 @@ export type Translations = {
     today: string  // "today"
     overdueLabel: string  // "Overdue"
     editLabel: string  // "Edit"
+    completeAndAlign: string  // "Complete & align"
+    undoGroup: string  // "Undo group"
+    completedGroup: string  // "Watered and aligned"
     // Moon short labels (used in day cells)
     newMoon: string  // "new"
     fullMoon: string  // "full"

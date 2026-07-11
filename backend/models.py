@@ -171,6 +171,21 @@ class CareUndo(BaseModel):
     previous_last_done_by: int | None = None
 
 
+class GardenCareCompleteIn(BaseModel):
+    care_type: Literal['water', 'fertilize', 'prune']
+    completed_at: date | None = None
+    user_id: int
+
+
+class GardenCareOperationOut(BaseModel):
+    operation_id: int
+    care_type: str
+    completed_at: date
+    affected_count: int
+
+
+# --- Care Logs ---
+
 class CareLogOut(BaseModel):
     id: int
     plant_id: int
@@ -727,6 +742,10 @@ class CalendarEventOut(BaseModel):
     severity: str | None = None   # 'urgent' | 'warning' | 'info' | None
     color: str | None = None      # canonical badge color from CareWarning
     icon: str | None = None       # emoji from CareWarning
+    grouped: bool = False
+    group_count: int | None = None
+    group_member_schedule_ids: list[int] | None = None
+    weather_triggered: bool = False
 
 
 # ── Water Log ──

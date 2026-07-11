@@ -48,11 +48,32 @@ def _generate_occurrences(
     return occurrences
 
 
+def _group_outdoor_events(events: list[CalendarEventOut], outdoor_plant_ids: set[int]) -> list[CalendarEventOut]:
+    groupable_types = {"water", "fertilize", "prune"}
+    grouped: dict[tuple[str, str], list[CalendarEventOut]] = {}
+    retained: list[CalendarEventOut] = []
+    for event in events:
+        if event.plant_id in outdoor_plant_ids and event.type in groupable_types and not event.weather_triggered:
+            grouped.setdefault((event.date, event.type), []).append(event)
+        else:
+            retained.append(event)
+    for (event_date, care_type), members in grouped.items():
+        retained.append(CalendarEventOut(
+            id=f"garden:{care_type}:{event_date}", date=event_date, type=care_type,
+            plant_id=None, plant_name=None, plant_icon_variant=None, schedule_id=None,
+            overdue=any(member.overdue for member in members), grouped=True,
+            group_count=len(members),
+            group_member_schedule_ids=[member.schedule_id for member in members if member.schedule_id is not None],
+        ))
+    return retained
+
+
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
 async def list_calendar_events(
     from_: str = Query(..., alias="from"),
     to: str = Query(...),
     env: str | None = Query(None),
+    group_outdoor: bool = Query(False),
     account = Depends(get_current_account),
     db = Depends(db_dep),
 ):
@@ -255,5 +276,9 @@ async def list_calendar_events(
                     color=enrichment.get("color"),
                     icon=enrichment.get("icon"),
                 ))
+
+    if group_outdoor:
+        outdoor_plant_ids = {pid for pid, plant in plant_map.items() if plant.get("map_type") != "indoor"}
+        events = _group_outdoor_events(events, outdoor_plant_ids)
 
     return events
