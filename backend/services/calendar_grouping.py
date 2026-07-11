@@ -65,7 +65,7 @@ async def save_calendar_grouping_preferences(
 
     normalized_types = [care_type for care_type in GROUPABLE_CARE_TYPES if care_type in set(care_types)]
     normalized_map_ids = [item["id"] for item in maps if item["id"] in set(map_ids)]
-    await db.execute(
+    await db.execute_fetchall(
         """INSERT INTO household_calendar_grouping_preferences
            (household_id, care_types, map_ids)
            VALUES (?, ?, ?)
