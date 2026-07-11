@@ -1392,6 +1392,25 @@ export type Translations = {
     journalLocation: string    // "Photo location" / "Fotolocatie"
     journalOpenMap: string     // "Open map" / "Open kaart"
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
+    // ── Veldgids (field guide) page — issue #564 ──
+    guideEyebrow: string
+    guideTitle: string
+    guideAccent: string
+    guideLede: string
+    statFinds: string
+    statSpecies: string
+    statPlaces: string
+    expeditionMap: string
+    mapClickHint: string
+    mapRouteLegend: string
+    filterAll: string
+    filterNative: string
+    entryNoPrefix: string   // "Waarneming nr." — number appended in code
+    notesPlaceholder: string
+    notesEdit: string
+    notesSave: string
+    notesSaving: string
+    bloomShort: string      // "Bloeit" — flowering months appended
   }
 
   game: {

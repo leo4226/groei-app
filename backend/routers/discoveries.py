@@ -101,6 +101,32 @@ async def list_discoveries(
     return [_format(r, species.get(r["species_id"])) for r in rows]
 
 
+class DiscoveryUpdate(BaseModel):
+    notes: Optional[str] = None
+
+
+@router.patch("/{discovery_id}", response_model=DiscoveryOut)
+async def update_discovery(
+    discovery_id: int,
+    body: DiscoveryUpdate,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Update a discovery's field notes (the only mutable part of an entry)."""
+    rows = await db.execute_fetchall(
+        """UPDATE plant_discoveries SET notes = ?
+           WHERE id = ? AND household_id = ?
+           RETURNING id, species_id, common_name, latin_name, thumbnail_url,
+                     notes, location_lat, location_lon, discovered_at""",
+        (body.notes, discovery_id, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Discovery not found")
+    row = rows[0]
+    species = await _species_lookup(db, [row["species_id"]] if row["species_id"] else [])
+    return _format(row, species.get(row["species_id"]) if row["species_id"] else None)
+
+
 @router.delete("/{discovery_id}", status_code=204)
 async def delete_discovery(
     discovery_id: int,
