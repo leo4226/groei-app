@@ -1455,6 +1455,7 @@ export const en: Translations = {
     notesSave: 'Save',
     notesSaving: 'Saving…',
     bloomShort: 'Blooms',
+    exportCsv: 'Export CSV',
   },
 
   game: {

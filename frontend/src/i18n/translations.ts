@@ -1415,6 +1415,7 @@ export type Translations = {
     notesSave: string
     notesSaving: string
     bloomShort: string      // "Bloeit" — flowering months appended
+    exportCsv: string
   }
 
   game: {

@@ -205,6 +205,18 @@ export default function ExpeditionMap({
     return c.ids.length > 1 ? String(c.ids.length) : String(c.indices[0])
   }
 
+  /** Most common reverse-geocoded place among the cluster's finds, if any. */
+  function clusterPlace(c: PinCluster): string | null {
+    const counts = new Map<string, number>()
+    for (const e of entries) {
+      if (e.place && c.ids.includes(e.id)) counts.set(e.place, (counts.get(e.place) ?? 0) + 1)
+    }
+    let best: string | null = null
+    let bestN = 0
+    for (const [place, n] of counts) if (n > bestN) { best = place; bestN = n }
+    return best
+  }
+
   function handlePinActivate(c: PinCluster) {
     if (dragged.current) { dragged.current = false; return }
     if (interactive && c.ids.length > 1) {
@@ -289,6 +301,18 @@ export default function ExpeditionMap({
                 {pinLabel(c)}
               </text>
             )}
+            {!compact && (() => {
+              const place = clusterPlace(c)
+              return place ? (
+                <text
+                  x={c.x + r + 6} y={c.y - r + 4}
+                  fontFamily="var(--font-mono)" fontSize="9" letterSpacing="1.5"
+                  fill="var(--color-text-soft)" style={{ pointerEvents: 'none' }}
+                >
+                  {place.toUpperCase()}
+                </text>
+              ) : null
+            })()}
           </g>
         )
       })}
