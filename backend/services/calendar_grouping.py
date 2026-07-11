@@ -71,7 +71,8 @@ async def save_calendar_grouping_preferences(
            VALUES (?, ?, ?)
            ON CONFLICT (household_id) DO UPDATE SET
              care_types = EXCLUDED.care_types,
-             map_ids = EXCLUDED.map_ids""",
+             map_ids = EXCLUDED.map_ids
+           RETURNING household_id""",
         (household_id, json.dumps(normalized_types), json.dumps(normalized_map_ids)),
     )
     await db.commit()
