@@ -161,6 +161,7 @@ async def list_calendar_events(
         FROM care_schedules cs
         JOIN plants p ON p.id = cs.plant_id
         WHERE cs.is_active = 1
+          AND p.is_active = 1
           AND p.household_id = ?
           AND cs.care_type <> 'photo'
           """ + extra_where + """
@@ -217,6 +218,9 @@ async def list_calendar_events(
 
     for r in rows:
         pid = r["plant_id"]
+        plant = plant_map.get(pid)
+        if not plant:
+            continue
         ct = r["type"]
         enrichment = enrichment_cache.get((pid, ct), {})
 
@@ -240,8 +244,8 @@ async def list_calendar_events(
                 species_common_name_nl=sp.get("nl"),
                 species_common_name_en=sp.get("en"),
                 plant_icon_variant=r["plant_icon_variant"],
-                map_id=plant_map[pid].get("map_id"),
-                map_name=plant_map[pid].get("map_name"),
+                map_id=plant.get("map_id"),
+                map_name=plant.get("map_name"),
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
                 severity=enrichment.get("severity"),
@@ -280,8 +284,8 @@ async def list_calendar_events(
                     species_common_name_nl=sp.get("nl"),
                     species_common_name_en=sp.get("en"),
                     plant_icon_variant=r["plant_icon_variant"],
-                    map_id=plant_map[pid].get("map_id"),
-                    map_name=plant_map[pid].get("map_name"),
+                    map_id=plant.get("map_id"),
+                    map_name=plant.get("map_name"),
                     schedule_id=r["schedule_id"],
                     overdue=is_overdue,
                     severity=enrichment.get("severity"),
