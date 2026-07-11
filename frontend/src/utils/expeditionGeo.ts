@@ -1,0 +1,130 @@
+// Geometry helpers for the field-journal expedition map (issue #564).
+//
+// Projection: local plate carrée — x = lon · cos(midLat), y = −lat — which
+// keeps shapes near the pins' latitude visually undistorted without a real
+// map library. All fitting/clustering happens in screen pixels so pin sizes
+// and strokes stay constant regardless of zoom extent.
+
+export type GeoEntry = {
+  id: number
+  lat: number
+  lon: number
+  /** 1-based chronological number of the discovery (oldest = 1). */
+  index: number
+}
+
+export type ProjectedEntry = GeoEntry & { x: number; y: number }
+
+export type PinCluster = {
+  x: number
+  y: number
+  /** Entry ids, newest last (chronological). */
+  ids: number[]
+  /** Chronological numbers of the clustered entries. */
+  indices: number[]
+}
+
+export type FitTransform = {
+  toScreen: (lon: number, lat: number) => [number, number]
+  /** Visible geographic window (degrees), for graticule generation. */
+  lonMin: number
+  lonMax: number
+  latMin: number
+  latMax: number
+}
+
+const DEG = Math.PI / 180
+
+/**
+ * Compute a transform that fits all entries into a width×height canvas with
+ * padding. A minimum geographic span keeps a single pin (or a tight cluster)
+ * from zooming into a featureless void.
+ */
+export function fitTransform(
+  entries: { lat: number; lon: number }[],
+  width: number,
+  height: number,
+  padding = 48,
+  minSpanDeg = 4,
+): FitTransform {
+  const lats = entries.map(e => e.lat)
+  const lons = entries.map(e => e.lon)
+  const midLat = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : 52
+  const k = Math.max(0.2, Math.cos(midLat * DEG))
+
+  let x0 = Math.min(...lons) * k
+  let x1 = Math.max(...lons) * k
+  let y0 = -Math.max(...lats)
+  let y1 = -Math.min(...lats)
+  if (!entries.length) { x0 = -25 * k; x1 = 45 * k; y0 = -62; y1 = -34 }
+
+  // enforce minimum span, centred
+  const minX = minSpanDeg * k
+  if (x1 - x0 < minX) { const c = (x0 + x1) / 2; x0 = c - minX / 2; x1 = c + minX / 2 }
+  if (y1 - y0 < minSpanDeg) { const c = (y0 + y1) / 2; y0 = c - minSpanDeg / 2; y1 = c + minSpanDeg / 2 }
+
+  const innerW = width - padding * 2
+  const innerH = height - padding * 2
+  const scale = Math.min(innerW / (x1 - x0), innerH / (y1 - y0))
+  const cx = (x0 + x1) / 2
+  const cy = (y0 + y1) / 2
+
+  const toScreen = (lon: number, lat: number): [number, number] => [
+    width / 2 + (lon * k - cx) * scale,
+    height / 2 + (-lat - cy) * scale,
+  ]
+
+  // Visible window (invert the transform at the canvas corners)
+  const lonMin = (cx - (width / 2) / scale) / k
+  const lonMax = (cx + (width / 2) / scale) / k
+  const latMax = -(cy - (height / 2) / scale)
+  const latMin = -(cy + (height / 2) / scale)
+
+  return { toScreen, lonMin, lonMax, latMin, latMax }
+}
+
+/** Pick a graticule step (degrees) that yields a handful of lines. */
+export function graticuleStep(spanDeg: number): number {
+  const steps = [0.5, 1, 2, 5, 10, 15, 30, 45]
+  for (const s of steps) {
+    if (spanDeg / s <= 8) return s
+  }
+  return 45
+}
+
+/**
+ * Greedy screen-space clustering: entries within `epsilonPx` of an existing
+ * cluster centroid join it. Input must be chronological (index ascending) so
+ * cluster ids/indices stay chronological.
+ */
+export function clusterEntries(entries: ProjectedEntry[], epsilonPx = 30): PinCluster[] {
+  const clusters: PinCluster[] = []
+  for (const e of entries) {
+    const hit = clusters.find(c => Math.hypot(c.x - e.x, c.y - e.y) <= epsilonPx)
+    if (hit) {
+      hit.ids.push(e.id)
+      hit.indices.push(e.index)
+      // keep centroid stable-ish: weighted mean
+      const n = hit.ids.length
+      hit.x = hit.x + (e.x - hit.x) / n
+      hit.y = hit.y + (e.y - hit.y) / n
+    } else {
+      clusters.push({ x: e.x, y: e.y, ids: [e.id], indices: [e.index] })
+    }
+  }
+  return clusters
+}
+
+/**
+ * Count distinct "places" by geographic proximity (~0.3° ≈ 25 km at 52°N).
+ * Used for the masthead stat; independent from screen clustering.
+ */
+export function countPlaces(entries: { lat: number; lon: number }[], epsilonDeg = 0.3): number {
+  const centers: { lat: number; lon: number }[] = []
+  for (const e of entries) {
+    if (!centers.some(c => Math.hypot(c.lat - e.lat, (c.lon - e.lon) * Math.cos(e.lat * DEG)) <= epsilonDeg)) {
+      centers.push(e)
+    }
+  }
+  return centers.length
+}

@@ -711,6 +711,8 @@ export const discoveries = {
     location_lat?: number
     location_lon?: number
   }) => api<PlantDiscovery>('POST', '/discover', { body: data }),
+  updateNotes: (id: number, notes: string | null) =>
+    api<PlantDiscovery>('PATCH', `/discover/${id}`, { body: { notes } }),
   delete: (id: number) => api<void>('DELETE', `/discover/${id}`),
 }
 
