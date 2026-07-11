@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import date, datetime
 from typing import Any, Literal
+
+from care_types import normalize_care_type
 
 
 # --- Users ---
@@ -48,6 +50,11 @@ class CareScheduleCreate(BaseModel):
     interval_days: int
     season_adjust: str | None = None  # JSON string
     notes: str | None = None
+
+    @field_validator("care_type", mode="before")
+    @classmethod
+    def canonicalize_care_type(cls, value):
+        return normalize_care_type(value)
 
 
 class PlantCreate(BaseModel):
@@ -162,6 +169,11 @@ class CareAction(BaseModel):
     care_type: str
     user_id: int
     notes: str | None = None
+
+    @field_validator("care_type", mode="before")
+    @classmethod
+    def canonicalize_care_type(cls, value):
+        return normalize_care_type(value)
 
 
 class CareUndo(BaseModel):

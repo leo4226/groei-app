@@ -10,7 +10,7 @@ import type { RecentLogEntry } from '../../types'
 const LOG_TAG: Record<string, { text: string; bg: string; border: string }> = {
   water:       { text: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',     border: 'rgba(47,93,58,.2)' },
   fertilize:   { text: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',     border: 'rgba(47,93,58,.2)' },
-  repot_check: { text: 'var(--color-text-soft)',  bg: 'rgba(74,90,71,.06)',     border: 'var(--color-border)' },
+  repot: { text: 'var(--color-text-soft)',  bg: 'rgba(74,90,71,.06)',     border: 'var(--color-border)' },
   prune:       { text: 'var(--color-text-soft)',  bg: 'rgba(74,90,71,.06)',     border: 'var(--color-border)' },
   mist:        { text: 'var(--color-primary)',    bg: 'rgba(47,93,58,.08)',     border: 'rgba(47,93,58,.2)' },
   rotate:      { text: 'var(--color-text-muted)', bg: 'rgba(138,148,130,.08)', border: 'var(--color-border-soft)' },

@@ -91,9 +91,9 @@ describe('buildInitialSchedules', () => {
     expect(s.water.days).toBe(7) // CARE_TYPE_INFO.water.defaultIndoor
   })
 
-  it('repot_check is disabled by default', () => {
+  it('repot is disabled by default', () => {
     const s = buildInitialSchedules(undefined)
-    expect(s.repot_check.enabled).toBe(false)
+    expect(s.repot.enabled).toBe(false)
   })
 })
 

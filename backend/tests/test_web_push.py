@@ -90,7 +90,7 @@ async def test_prefs_persist_quiet_hours_and_validate_muted(client, seeded_db, a
         json={
             "digest_enabled": False, "digest_time": "08:00", "push_enabled": True,
             "quiet_start": "22:00", "quiet_end": "06:00",
-            "muted_care_types": ["fertilize", "bogus", "water", "repot_check", "water"],
+            "muted_care_types": ["fertilize", "bogus", "water", "repot_check", "protect_cold", "protect_heat", "water"],
         },
         headers=auth_header,
     )
@@ -99,10 +99,10 @@ async def test_prefs_persist_quiet_hours_and_validate_muted(client, seeded_db, a
     assert body["quiet_start"] == "22:00" and body["quiet_end"] == "06:00"
     # 'bogus' is not a real care type → dropped; old frontend alias is
     # normalized; duplicates are removed while preserving first-seen order.
-    assert body["muted_care_types"] == ["fertilize", "water", "repot"]
+    assert body["muted_care_types"] == ["fertilize", "water", "repot", "frost_protect", "heat_protect"]
 
     res = await client.get("/api/settings/notifications", headers=auth_header)
-    assert res.json()["muted_care_types"] == ["fertilize", "water", "repot"]
+    assert res.json()["muted_care_types"] == ["fertilize", "water", "repot", "frost_protect", "heat_protect"]
 
 
 # ── subscription endpoints ───────────────────────────────────────────────
@@ -379,7 +379,7 @@ async def test_frost_alert_creates_ephemeral_task_and_pushes(
     client, seeded_db, cron_secret, sent_pushes, at_send_hour_today, cold_forecast, auth_header
 ):
     # An outdoor plant with a bring-inside threshold + a cold forecast should
-    # materialise an ephemeral protect_cold schedule and push it in real time.
+    # materialise an ephemeral frost_protect schedule and push it in real time.
     await _seed_outdoor_plant_with_threshold(seeded_db, bring_inside=5)
     await client.post("/api/push/subscription", json=SUB, headers=auth_header)
 
@@ -394,14 +394,14 @@ async def test_frost_alert_creates_ephemeral_task_and_pushes(
         "SELECT care_type, is_ephemeral FROM care_schedules WHERE plant_id = 20"
     )
     assert len(rows) == 1
-    assert rows[0]["care_type"] == "protect_cold" and rows[0]["is_ephemeral"] == 1
+    assert rows[0]["care_type"] == "frost_protect" and rows[0]["is_ephemeral"] == 1
 
     assert len(sent_pushes) == 1
     payload_body = sent_pushes[0]["payload"]["body"]
     assert "Avocado" in payload_body
     # Weather care types get a friendly NL label, not the raw key.
     assert "beschermen tegen kou" in payload_body
-    assert "protect_cold" not in payload_body
+    assert "frost_protect" not in payload_body
 
 
 async def test_no_frost_task_when_forecast_mild(

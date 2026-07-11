@@ -113,7 +113,7 @@ export interface DashboardV2Data {
   plant_fact: PlantFactOut | null
 }
 
-export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot_check' | 'prune' | 'protect_cold' | 'protect_heat' | 'photo'
+export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot' | 'prune' | 'frost_protect' | 'heat_protect' | 'photo'
 
 export interface CareScheduleInput {
   care_type: CareType
@@ -439,10 +439,10 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: nu
   fertilize:   { label: 'Fertilize',   defaultIndoor: 21,  defaultOutdoor: 14 },
   mist:        { label: 'Mist',        defaultIndoor: 0,   defaultOutdoor: 0 },
   rotate:      { label: 'Rotate',      defaultIndoor: 14,  defaultOutdoor: 0 },
-  repot_check: { label: 'Repot check', defaultIndoor: 180, defaultOutdoor: 365 },
+  repot: { label: 'Repot check', defaultIndoor: 180, defaultOutdoor: 365 },
   prune:        { label: 'Prune',        defaultIndoor: 90,  defaultOutdoor: 30 },
-  protect_cold: { label: 'Protect Cold', defaultIndoor: 0,   defaultOutdoor: 0 },
-  protect_heat: { label: 'Protect Heat', defaultIndoor: 0,   defaultOutdoor: 0 },
+  frost_protect: { label: 'Protect Cold', defaultIndoor: 0,   defaultOutdoor: 0 },
+  heat_protect: { label: 'Protect Heat', defaultIndoor: 0,   defaultOutdoor: 0 },
   photo:        { label: 'Progress photo', defaultIndoor: 30,  defaultOutdoor: 30 },
 }
 

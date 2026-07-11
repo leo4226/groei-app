@@ -50,7 +50,7 @@ const GLYPHS: Record<CareIconType, React.ReactNode> = {
       <circle cx="12.4" cy="12" r="0.7" fill="currentColor" stroke="none" />
     </>
   ),
-  repot_check: (
+  repot: (
     <>
       <path d="M5 9.5h14" />
       <path d="M6.5 9.5l1 8.7a1.5 1.5 0 0 0 1.5 1.3h6a1.5 1.5 0 0 0 1.5-1.3l1-8.7" />
@@ -59,7 +59,7 @@ const GLYPHS: Record<CareIconType, React.ReactNode> = {
       <path d="M12 6.5C14 6.5 15.4 5.2 15.4 3.3 13.4 3.3 12 4.6 12 6.5z" />
     </>
   ),
-  protect_cold: (
+  frost_protect: (
     <>
       <path d="M12 2.8v18.4" />
       <path d="M4 7.4l16 9.2" />
@@ -68,7 +68,7 @@ const GLYPHS: Record<CareIconType, React.ReactNode> = {
       <path d="M5.6 8.7l.4 2.4M5.6 8.7l2.4.4M18.4 8.7l-.4 2.4M18.4 8.7l-2.4.4M5.6 15.3l2.4-.4M5.6 15.3l.4-2.4M18.4 15.3l-2.4-.4M18.4 15.3l-.4-2.4" />
     </>
   ),
-  protect_heat: (
+  heat_protect: (
     <>
       <path d="M12 4.5a2 2 0 0 0-2 2v7.4a3.5 3.5 0 1 0 4 0V6.5a2 2 0 0 0-2-2z" />
       <circle cx="12" cy="17" r="1.9" fill="currentColor" stroke="none" />

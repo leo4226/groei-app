@@ -59,10 +59,6 @@ const CARE_TYPE_LABEL_FALLBACK: Record<string, { nl: string; en: string }> = {
   dust: { nl: 'Bladeren afnemen', en: 'Wipe leaves' },
 }
 
-const CARE_TYPE_ALIASES: Record<string, string> = {
-  repot: 'repot_check',
-}
-
 function warningsForPlant(plant: MapPlant): CareWarningOut[] {
   if (plant.warnings?.length) return plant.warnings
   return plant.top_warning ? [plant.top_warning] : []
@@ -105,8 +101,7 @@ export function buildCareNeedsGroups(plants: MapPlant[], objects: MapObject[]): 
 }
 
 export function getCareTypeDisplay(careType: string, t: Translations): { label: string } {
-  const labelKey = CARE_TYPE_ALIASES[careType] ?? careType
-  const translated = (t.care as Record<string, string>)[labelKey]
+  const translated = (t.care as Record<string, string>)[careType]
   const fallback = CARE_TYPE_LABEL_FALLBACK[careType]
   const label = translated ?? (t.locale.startsWith('en') ? fallback?.en : fallback?.nl) ?? careType
 

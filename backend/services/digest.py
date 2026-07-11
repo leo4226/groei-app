@@ -335,16 +335,14 @@ def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool
 
 
 
-# Weather-driven ephemeral schedules use their own care_type keys
-# (protect_cold/protect_heat) that aren't in the CARE_TYPES catalog, so give
-# them explicit NL push labels here rather than falling back to the raw key.
 _WEATHER_PUSH_LABELS = {
-    "protect_cold": "beschermen tegen kou",
-    "protect_heat": "beschermen tegen hitte",
+    "frost_protect": "beschermen tegen kou",
+    "heat_protect": "beschermen tegen hitte",
 }
 
 
 def _care_push_label(care_type: str) -> str:
+    """Friendly Dutch label for a care type in push body text."""
     if care_type in _WEATHER_PUSH_LABELS:
         return _WEATHER_PUSH_LABELS[care_type]
     return CARE_TYPES.get(care_type, {}).get("label_nl", care_type).lower()
