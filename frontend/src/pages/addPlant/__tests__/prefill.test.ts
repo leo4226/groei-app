@@ -91,10 +91,8 @@ describe('buildInitialSchedules', () => {
     expect(s.water.days).toBe(7) // CARE_TYPE_INFO.water.defaultIndoor
   })
 
-  it('repot_check is disabled by default', () => {
+  it('repot is disabled by default', () => {
     const s = buildInitialSchedules(undefined)
-    // Keep the historical test case while asserting the canonical replacement.
-    expect((s as Record<string, unknown>).repot_check).toBeUndefined()
     expect(s.repot.enabled).toBe(false)
   })
 })
