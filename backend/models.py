@@ -175,6 +175,7 @@ class GardenCareCompleteIn(BaseModel):
     care_type: Literal['water', 'fertilize', 'prune']
     completed_at: date | None = None
     user_id: int
+    map_id: int
 
 
 class GardenCareOperationOut(BaseModel):
@@ -713,6 +714,20 @@ class HouseholdMemberOut(BaseModel):
     created_at: datetime
 
 
+class OutdoorMapOut(BaseModel):
+    id: int
+    name: str
+
+
+class CalendarGroupingPreferencesIn(BaseModel):
+    care_types: list[Literal['water', 'fertilize', 'prune']]
+    map_ids: list[int]
+
+
+class CalendarGroupingPreferencesOut(CalendarGroupingPreferencesIn):
+    outdoor_maps: list[OutdoorMapOut]
+
+
 class HouseholdUpdate(BaseModel):
     """Rename the household."""
     name: str
@@ -737,6 +752,8 @@ class CalendarEventOut(BaseModel):
     species_common_name_nl: str | None = None
     species_common_name_en: str | None = None
     schedule_id: int | None
+    map_id: int | None = None
+    map_name: str | None = None
     overdue: bool
     # ── warning enrichment ──
     severity: str | None = None   # 'urgent' | 'warning' | 'info' | None

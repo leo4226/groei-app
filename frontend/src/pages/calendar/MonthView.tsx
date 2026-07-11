@@ -19,11 +19,10 @@ interface Props {
   viewMode: CalendarViewMode
   onSetView(v: CalendarViewMode): void
   env: string
-  groupOutdoor: boolean
   environmentFilter: ReactNode
 }
 
-export default function MonthView({ viewMode, onSetView, env, groupOutdoor, environmentFilter }: Props) {
+export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
   const t = useT()
   const { markCareDone, skipCare, activeUserId } = useFloreren()
   const now = new Date()
@@ -39,16 +38,16 @@ export default function MonthView({ viewMode, onSetView, env, groupOutdoor, envi
   const [gardenOperationId, setGardenOperationId] = useState<number | null>(null)
   const [undoMsg, setUndoMsg] = useState<string | null>(null)
 
-  const { events, loading, error } = useCalendarEvents(year, month1, env, groupOutdoor)
+  const { events, loading, error } = useCalendarEvents(year, month1, env)
   const isNarrow = useIsNarrow(1200)
 
   async function handleDone(event: CalendarEvent) {
-    if (event.grouped && event.group_member_schedule_ids && event.group_member_schedule_ids.length > 0 && activeUserId !== null) {
-      setSaving(event.id)
+    if (event.grouped && event.map_id !== null && event.group_member_schedule_ids && event.group_member_schedule_ids.length > 0 && activeUserId !== null) {
+          setSaving(event.id)
       setUndoMsg(null)
       try {
         const completedAt = new Date().toISOString().slice(0, 10)
-        const result = await gardenCare.complete(event.type, activeUserId, completedAt)
+        const result = await gardenCare.complete(event.type, activeUserId, event.map_id, completedAt)
         setGardenOperationId(result.operation_id)
         setDoneIds(prev => new Set([...prev, event.id]))
         setUndoMsg(t.calendar.completedGroup)

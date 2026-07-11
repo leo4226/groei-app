@@ -26,8 +26,9 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
   const groups = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {}
     events.forEach(e => {
-      if (!map[e.type]) map[e.type] = []
-      map[e.type].push(e)
+      const groupId = e.grouped ? `${e.type}:${e.map_id}` : e.type
+      if (!map[groupId]) map[groupId] = []
+      map[groupId].push(e)
     })
     return map
   }, [events])
@@ -81,13 +82,17 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
             {' '}{t.calendar.gardenManagesItself}
           </div>
         )}
-        {Object.entries(groups).map(([type, groupEvents]) => {
+        {Object.entries(groups).map(([groupId, groupEvents]) => {
+          const type = groupEvents[0].type
           const def = EVENT_TYPE_BY_ID[type]
-          const label = t.utility[EVENT_TYPE_UTILITY_KEY[type as EventTypeId]] ?? type
-          const busyGroup = savingType === type
+          const careLabel = t.utility[EVENT_TYPE_UTILITY_KEY[type]] ?? type
+          const label = groupEvents[0].grouped && groupEvents[0].map_name
+            ? `${careLabel} · ${groupEvents[0].map_name}`
+            : careLabel
+          const busyGroup = savingType === groupId
 
           return (
-            <div key={type} className="agenda-item agenda-group" style={{ opacity: busyGroup ? 0.5 : 1 }}>
+            <div key={groupId} className="agenda-item agenda-group" style={{ opacity: busyGroup ? 0.5 : 1 }}>
               <div className={`agenda-icon ag-icon-group ${def?.cssClass ?? ''}`}>
                 <span className="ag-type-letter">{firstLetter(type)}</span>
               </div>
@@ -101,13 +106,13 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
               {groupEvents.some(e => isActionable(e, todayIso)) ? (
                 <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
                   <button disabled={busyGroup}
-                    onClick={() => handleBatchDone(type, groupEvents)}
+                    onClick={() => handleBatchDone(groupId, groupEvents)}
                     className="ag-btn ag-btn-done">
                     {groupEvents.some(e => e.grouped) ? (t.calendar.completeAndAlign || 'Complete & align') : t.dashboard.actions.done}
                   </button>
                   {!groupEvents.some(e => e.grouped) && (
                     <button disabled={busyGroup}
-                      onClick={() => handleBatchSkip(type, groupEvents)}
+                      onClick={() => handleBatchSkip(groupId, groupEvents)}
                       className="ag-btn ag-btn-skip">
                       {t.dashboard.actions.skip}
                     </button>

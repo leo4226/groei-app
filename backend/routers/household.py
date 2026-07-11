@@ -9,7 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from database import db_dep
 from models import (
     InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate,
-    HouseholdMemberOut, HouseholdMemberUpdate,
+    HouseholdMemberOut, HouseholdMemberUpdate, CalendarGroupingPreferencesIn,
+    CalendarGroupingPreferencesOut,
+)
+from services.calendar_grouping import (
+    get_calendar_grouping_preferences, save_calendar_grouping_preferences,
 )
 from auth import hash_password, create_token, get_current_account
 import asyncpg
@@ -141,6 +145,30 @@ async def join_household(
         account_id=account_id,
         household_id=household_id,
         name=body.name.strip(),
+    )
+
+
+@router.get("/calendar-grouping", response_model=CalendarGroupingPreferencesOut)
+async def get_calendar_grouping(
+    current=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Return the shared Calendar grouping configuration for this household."""
+    return await get_calendar_grouping_preferences(db, current["household_id"])
+
+
+@router.put("/calendar-grouping", response_model=CalendarGroupingPreferencesOut)
+async def update_calendar_grouping(
+    body: CalendarGroupingPreferencesIn,
+    current=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Save shared Calendar grouping choices after household/map validation."""
+    return await save_calendar_grouping_preferences(
+        db,
+        household_id=current["household_id"],
+        care_types=body.care_types,
+        map_ids=body.map_ids,
     )
 
 

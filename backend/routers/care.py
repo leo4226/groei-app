@@ -114,6 +114,7 @@ async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
         care_type=body.care_type,
         completed_at=completed_at,
         user_id=body.user_id,
+        map_id=body.map_id,
     )
     if result["operation_id"] is None:
         raise HTTPException(status_code=404, detail="No eligible outdoor schedules found")

@@ -285,3 +285,58 @@ async def test_calendar_groups_outdoor_care_without_hiding_indoor_events(client,
     assert grouped["group_count"] == 2
     assert len(grouped["group_member_schedule_ids"]) == 2
     assert any(event["plant_id"] == 103 and event["type"] == "water" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_calendar_grouping_preferences_scope_groups_to_selected_map_and_care_type(client, seeded_db, auth_header):
+    """Shared preferences group only the selected care type on the selected outdoor map."""
+    db = seeded_db
+    due = date.today()
+    await db.executescript("""
+        INSERT INTO maps (id, name, map_type, household_id) VALUES
+          (1, 'Front garden', 'outdoor', 1),
+          (2, 'Back garden', 'outdoor', 1),
+          (3, 'House', 'indoor', 1);
+        INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES
+          (201, 'Front rose', 1, 1, 1), (202, 'Front mint', 1, 1, 1),
+          (203, 'Back rose', 1, 2, 1), (204, 'Back mint', 1, 2, 1),
+          (205, 'Indoor basil', 1, 3, 1);
+    """)
+    for plant_id in (201, 202, 203, 204, 205):
+        await db.execute(
+            "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) VALUES (?, 'water', 7, ?, 1)",
+            (plant_id, due),
+        )
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) VALUES (203, 'fertilize', 14, ?, 1)",
+        (due,),
+    )
+    await db.commit()
+
+    defaults = await client.get("/api/household/calendar-grouping", headers=auth_header)
+    assert defaults.status_code == 200
+    assert defaults.json()["care_types"] == ["water", "fertilize", "prune"]
+    assert set(defaults.json()["map_ids"]) == {1, 2}
+
+    saved = await client.put(
+        "/api/household/calendar-grouping",
+        json={"care_types": ["water"], "map_ids": [2]},
+        headers=auth_header,
+    )
+    assert saved.status_code == 200
+    assert saved.json()["care_types"] == ["water"]
+    assert saved.json()["map_ids"] == [2]
+
+    response = await client.get(
+        "/api/calendar/events",
+        params={"from": due.isoformat(), "to": due.isoformat()},
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    events = response.json()
+    grouped = next(event for event in events if event["grouped"] and event["type"] == "water")
+    assert grouped["map_id"] == 2
+    assert grouped["map_name"] == "Back garden"
+    assert grouped["group_count"] == 2
+    assert {event["plant_id"] for event in events if event["type"] == "water" and not event["grouped"]} == {201, 202, 205}
+    assert any(event["plant_id"] == 203 and event["type"] == "fertilize" for event in events)
