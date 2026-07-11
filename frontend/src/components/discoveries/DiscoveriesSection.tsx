@@ -47,6 +47,12 @@ function mapUrl(lat: number, lon: number): string {
   return `https://www.google.com/maps?q=${lat},${lon}`
 }
 
+/** "Amsterdam, NL" when reverse-geocoded, else null (callers fall back to coords). */
+function placeLabel(d: PlantDiscovery): string | null {
+  if (!d.place_name) return null
+  return d.country_code ? `${d.place_name}, ${d.country_code}` : d.place_name
+}
+
 /** Decorative machine-readable zone, mirroring the Plant Passport hero. */
 function mrz(common: string, latin: string | null): string {
   return `V<FLO<<${common}<<${latin ?? ''}`
@@ -135,7 +141,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const geoEntries: GeoEntry[] = useMemo(() =>
     [...items]
       .filter(d => d.location_lat != null && d.location_lon != null)
-      .map(d => ({ id: d.id, lat: d.location_lat!, lon: d.location_lon!, index: orderIndex.get(d.id) ?? 0 }))
+      .map(d => ({ id: d.id, lat: d.location_lat!, lon: d.location_lon!, index: orderIndex.get(d.id) ?? 0, place: d.place_name ?? undefined }))
       .sort((a, b) => a.index - b.index),
     [items, orderIndex])
 
@@ -244,6 +250,30 @@ export default function DiscoveriesSection({ onStats }: Props) {
     action()
   }
 
+  function exportCsv() {
+    const esc = (v: unknown) => {
+      const str = v == null ? '' : String(v)
+      return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str
+    }
+    const header = ['nr', 'date', 'name', 'latin_name', 'place', 'country', 'lat', 'lon', 'notes']
+    const rows = [...items]
+      .sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0))
+      .map(d => [
+        orderIndex.get(d.id), d.discovered_at.slice(0, 10), discoveryDisplayName(d, t.locale),
+        d.latin_name ?? '', d.place_name ?? '', d.country_code ?? '',
+        d.location_lat ?? '', d.location_lon ?? '', d.notes ?? '',
+      ])
+    const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\n')
+    // BOM so Excel opens UTF-8 (place names, notes) correctly
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'veldgids-floreren.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) {
     return (
       <div className="px-6 py-10 text-center">
@@ -311,12 +341,30 @@ export default function DiscoveriesSection({ onStats }: Props) {
               {f.label}
             </button>
           ))}
+          <button
+            onClick={exportCsv}
+            className="cursor-pointer rounded-full border border-dashed border-border bg-transparent px-3.5 py-1.5 text-xs font-medium text-text-muted transition-colors hover:border-primary hover:text-primary"
+          >
+            ↓ {t.discovery.exportCsv}
+          </button>
         </div>
       </div>
 
-      {/* ── Specimen card grid ── */}
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
-        {visible.map(item => {
+      {/* ── Specimen card grid, grouped per year on the "Alles" filter ── */}
+      {(filter === 'all' && years.length > 1 ? years : [null]).map(year => {
+        const group = year == null ? visible : visible.filter(d => new Date(d.discovered_at).getFullYear() === year)
+        if (group.length === 0) return null
+        return (
+        <div key={year ?? 'all'} className="mb-6">
+          {year != null && (
+            <p className="mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+              <span className="h-px w-6 flex-none bg-border" />
+              {year}
+              <span className="h-px min-w-[24px] max-w-[80px] flex-1 bg-border" />
+            </p>
+          )}
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+        {group.map(item => {
           const entry = buildDiscoveryJournalEntry(item, t.locale)
           const nr = orderIndex.get(item.id)
           return (
@@ -349,14 +397,19 @@ export default function DiscoveriesSection({ onStats }: Props) {
                 )}
                 <p className="m-0 truncate font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
                   {formatDate(entry.occurred_at, t.locale)}
-                  {entry.location && <> · {formatCoords(entry.location.lat, entry.location.lon, isEN)}</>}
+                  {placeLabel(item)
+                    ? <> · {placeLabel(item)}</>
+                    : entry.location && <> · {formatCoords(entry.location.lat, entry.location.lon, isEN)}</>}
                 </p>
                 <EcologyChips chips={chipsFor(item)} max={2} />
               </div>
             </div>
           )
         })}
-      </div>
+          </div>
+        </div>
+        )
+      })}
 
       {/* ── Field-guide detail ── */}
       {selected && (() => {
@@ -403,7 +456,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                       target="_blank" rel="noreferrer"
                       className="block border-t border-dashed border-border px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-primary no-underline hover:underline"
                     >
-                      {formatCoords(entry.location.lat, entry.location.lon, isEN)} → {t.discovery.journalOpenMap}
+                      {placeLabel(selected) ? `${placeLabel(selected)} · ` : ''}{formatCoords(entry.location.lat, entry.location.lon, isEN)} → {t.discovery.journalOpenMap}
                     </a>
                   </div>
                 )}

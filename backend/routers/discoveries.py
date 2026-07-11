@@ -11,11 +11,12 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from pydantic import BaseModel
 
 from auth import get_current_account
 from database import db_dep
+from services.geocode import reverse_geocode
 from services.storage import Storage, build_storage_from_env
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,8 @@ class DiscoveryOut(BaseModel):
     notes: Optional[str]
     location_lat: Optional[float]
     location_lon: Optional[float]
+    place_name: Optional[str] = None
+    country_code: Optional[str] = None
     fun_fact_nl: Optional[str] = None
     fun_fact_en: Optional[str] = None
     discovered_at: str
@@ -59,13 +62,21 @@ async def save_discovery(
     thumbnail_url = body.thumbnail_url
     if not thumbnail_url and body.thumbnail_data:
         thumbnail_url = _store_thumbnail(body.thumbnail_data)
+    place_name = None
+    country_code = None
+    if body.location_lat is not None and body.location_lon is not None:
+        geocoded = await reverse_geocode(body.location_lat, body.location_lon)
+        if geocoded:
+            place_name, country_code = geocoded
     rows = await db.execute_fetchall(
         """INSERT INTO plant_discoveries
                (account_id, household_id, species_id, common_name, latin_name,
-                thumbnail_url, notes, location_lat, location_lon, discovered_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                thumbnail_url, notes, location_lat, location_lon,
+                place_name, country_code, discovered_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            RETURNING id, species_id, common_name, latin_name, thumbnail_url,
-                     notes, location_lat, location_lon, discovered_at""",
+                     notes, location_lat, location_lon, place_name, country_code,
+                     discovered_at""",
         (
             account["account_id"],
             account["household_id"],
@@ -76,6 +87,8 @@ async def save_discovery(
             body.notes,
             body.location_lat,
             body.location_lon,
+            place_name,
+            country_code,
             now,
         ),
     )
@@ -85,20 +98,53 @@ async def save_discovery(
 
 @router.get("", response_model=list[DiscoveryOut])
 async def list_discoveries(
+    background: BackgroundTasks,
     account=Depends(get_current_account),
     db=Depends(db_dep),
 ):
     rows = await db.execute_fetchall(
         """SELECT id, species_id, common_name, latin_name, thumbnail_url,
-                  notes, location_lat, location_lon, discovered_at
+                  notes, location_lat, location_lon, place_name, country_code,
+                  discovered_at
            FROM plant_discoveries
            WHERE household_id = ?
            ORDER BY discovered_at DESC""",
         (account["household_id"],),
     )
+    # Rows saved before the place columns existed backfill in the background
+    # (Nominatim policy: 1 req/s, so the task sleeps between lookups).
+    missing = [
+        (r["id"], r["location_lat"], r["location_lon"])
+        for r in rows
+        if r["location_lat"] is not None and r["location_lon"] is not None
+        and _row_get(r, "place_name") is None
+    ]
+    if missing:
+        background.add_task(_backfill_places, missing[:5])
     species_ids = [r["species_id"] for r in rows if r["species_id"] is not None]
     species = await _species_lookup(db, species_ids)
     return [_format(r, species.get(r["species_id"])) for r in rows]
+
+
+async def _backfill_places(rows: list[tuple[int, float, float]]) -> None:
+    import asyncio
+
+    from database import get_db
+
+    for discovery_id, lat, lon in rows:
+        geocoded = await reverse_geocode(lat, lon)
+        if geocoded:
+            place_name, country_code = geocoded
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "UPDATE plant_discoveries SET place_name = ?, country_code = ? WHERE id = ?",
+                        (place_name, country_code, discovery_id),
+                    )
+                    await db.commit()
+            except Exception:
+                logger.exception("Failed to persist geocoded place for discovery %s", discovery_id)
+        await asyncio.sleep(1.1)
 
 
 class DiscoveryUpdate(BaseModel):
@@ -117,7 +163,8 @@ async def update_discovery(
         """UPDATE plant_discoveries SET notes = ?
            WHERE id = ? AND household_id = ?
            RETURNING id, species_id, common_name, latin_name, thumbnail_url,
-                     notes, location_lat, location_lon, discovered_at""",
+                     notes, location_lat, location_lon, place_name, country_code,
+                     discovered_at""",
         (body.notes, discovery_id, account["household_id"]),
     )
     if not rows:
@@ -244,6 +291,8 @@ def _format(row, species: dict | None = None) -> dict:
         "notes": row["notes"],
         "location_lat": row["location_lat"],
         "location_lon": row["location_lon"],
+        "place_name": _row_get(row, "place_name"),
+        "country_code": _row_get(row, "country_code"),
         "fun_fact_nl": species.get("fun_fact_nl"),
         "fun_fact_en": species.get("fun_fact_en"),
         "discovered_at": ts,

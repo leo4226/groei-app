@@ -11,6 +11,8 @@ export type GeoEntry = {
   lon: number
   /** 1-based chronological number of the discovery (oldest = 1). */
   index: number
+  /** Reverse-geocoded place name, shown as a pin label when known. */
+  place?: string
 }
 
 export type ProjectedEntry = GeoEntry & { x: number; y: number }

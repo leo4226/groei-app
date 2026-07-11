@@ -711,6 +711,8 @@ export interface PlantDiscovery {
   notes: string | null
   location_lat: number | null
   location_lon: number | null
+  place_name: string | null
+  country_code: string | null
   fun_fact_nl: string | null
   fun_fact_en: string | null
   discovered_at: string
