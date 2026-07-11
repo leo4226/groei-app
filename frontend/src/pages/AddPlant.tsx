@@ -332,7 +332,7 @@ export default function AddPlant() {
   useEffect(() => {
     setSchedules(prev => ({
       ...prev,
-      repot_check: { ...prev.repot_check, enabled: potSize.trim() !== '' },
+      repot: { ...prev.repot, enabled: potSize.trim() !== '' },
     }))
   }, [potSize])
 

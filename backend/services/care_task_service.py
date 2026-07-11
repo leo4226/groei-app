@@ -11,6 +11,7 @@ Public API:
 from datetime import date, datetime
 
 from models import CareTask
+from care_types import normalize_care_type
 
 _EXCLUDED_CARE_TASK_TYPES = {"photo"}
 
@@ -77,7 +78,7 @@ def _row_to_task(row, days_overdue: int) -> CareTask:
         location=_row_get(row, "location"),
         map_name=_row_get(row, "map_name"),
         map_type=_row_get(row, "map_type"),
-        care_type=_row_get(row, "care_type"),
+        care_type=normalize_care_type(_row_get(row, "care_type")),
         next_due=_date_to_iso(_row_get(row, "next_due")),
         days_overdue=days_overdue,
         last_done_by=_row_get(row, "last_done_by_name"),
@@ -99,7 +100,7 @@ def classify_care_tasks(rows, today: date | None = None) -> tuple[list[CareTask]
     upcoming: list[CareTask] = []
 
     for row in rows:
-        if _row_get(row, "care_type") in _EXCLUDED_CARE_TASK_TYPES:
+        if normalize_care_type(_row_get(row, "care_type")) in _EXCLUDED_CARE_TASK_TYPES:
             continue
         due = _row_get(row, "next_due")
         if isinstance(due, datetime):

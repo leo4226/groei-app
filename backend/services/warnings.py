@@ -4,7 +4,6 @@ Single source of truth for what warnings a plant has *right now*, given its
 care profile, schedules, and current weather. All UI surfaces consume the
 output of `compute_plant_warnings()` — no consumer re-derives priority.
 """
-import json
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Literal
@@ -16,6 +15,11 @@ def _as_date(val):
     return date.fromisoformat(val)
 
 
+from services.care_profile import (
+    environment_for_plant as _environment_for_plant,
+    load_care_profile as _load_care_profile,
+)
+
 from care_types import (
     CARE_TYPES,
     Environment,
@@ -25,8 +29,8 @@ from care_types import (
     WEATHER_COLDHEAT_COLORS,
     Severity,
     Trigger,
-    is_care_type_valid_for_env,
     priority_bucket,
+    normalize_care_type,
 )
 
 
@@ -69,101 +73,6 @@ class PlantWarningState:
     warnings: list[CareWarning] = field(default_factory=list)
     top_warning: CareWarning | None = None
     care_summary: dict[str, CareTypeStatus] = field(default_factory=dict)
-
-
-def _environment_for_plant(plant: dict) -> Environment:
-    """Determine environment from map_type + container_id + ground_zone_id."""
-    map_type = plant.get("map_type")
-    if map_type == "indoor":
-        return "indoor"
-    # outdoor or unknown — distinguish container vs ground
-    if plant.get("container_id") is not None:
-        return "outdoor_container"
-    return "outdoor_ground"
-
-
-def _load_care_profile(
-    care_profile_json: str | None,
-    care_thresholds_json: str | None,
-    environment: Environment,
-) -> dict:
-    """Read care_profile from the new JSON column, with fallback to legacy care_thresholds.
-
-    Phase B: reads plants.care_profile directly.
-    Phase A fallback: if care_profile is null/empty, falls back to the old shim
-    that built a profile from care_thresholds + CARE_TYPES defaults.
-    """
-    if care_profile_json:
-        try:
-            profile = json.loads(care_profile_json)
-            if isinstance(profile, dict):
-                # Ensure all care types have at least an 'active' key
-                for care_type in CARE_TYPES:
-                    if care_type not in profile:
-                        profile[care_type] = {"active": False}
-
-                # Environment override: force inactive only for care types
-                # that are not valid in this environment. A care type can be
-                # valid-but-not-default (e.g. indoor mist): existing/custom
-                # profiles should keep that explicit opt-in.
-                for care_type in CARE_TYPES:
-                    if not is_care_type_valid_for_env(care_type, environment):
-                        profile[care_type] = {"active": False}
-
-                return profile
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # Fallback: legacy shim from care_thresholds
-    return _load_care_profile_legacy(care_thresholds_json, environment)
-
-
-def _load_care_profile_legacy(care_thresholds_json: str | None, environment: Environment) -> dict:
-    """Translate the legacy care_thresholds JSON into the care-profile shape.
-
-    Phase A fallback — will be removed in Phase D cleanup.
-    """
-    legacy: dict = {}
-    if care_thresholds_json:
-        try:
-            legacy = json.loads(care_thresholds_json) or {}
-        except (json.JSONDecodeError, TypeError):
-            legacy = {}
-
-    profile: dict = {}
-    for care_type, ct_def in CARE_TYPES.items():
-        default_interval = ct_def["default_intervals"].get(environment)
-        active = default_interval is not None or ct_def.get("is_weather_triggered", False)
-
-        # Weather-triggered types are only active outdoor.
-        if ct_def.get("is_weather_triggered") and environment == "indoor":
-            active = False
-
-        entry: dict = {"active": active}
-        if default_interval is not None:
-            entry["interval_days"] = default_interval
-        if ct_def.get("is_weather_triggered"):
-            entry["thresholds"] = {
-                "min_temp_c": legacy.get("min_temp_c"),
-                "max_temp_c": legacy.get("max_temp_c"),
-                "bring_inside_below_c": legacy.get("bring_inside_below_c"),
-                "drought_mm_per_week": legacy.get("drought_mm_per_week"),
-                "waterlog_mm_per_week": legacy.get("waterlog_mm_per_week"),
-            }
-        profile[care_type] = entry
-
-    # Heating-season boost for indoor water + mist (will be honoured in compute step).
-    if environment == "indoor":
-        if "water" in profile:
-            profile["water"]["heating_season_boost"] = 1.5
-        if "mist" in profile:
-            profile["mist"]["heating_season_boost"] = 2.0
-
-    # Rainfall override on outdoor water (used in compute step).
-    if environment in ("outdoor_ground", "outdoor_container"):
-        profile["water"]["rainfall_override"] = True
-
-    return profile
 
 
 def _schedule_warning_for_type(
@@ -647,7 +556,9 @@ def compute_plant_warnings(
 
     # Schedule warnings
     schedule_warnings: list[CareWarning] = []
-    by_type: dict[str, dict] = {s["care_type"]: dict(s) for s in schedules}
+    by_type: dict[str, dict] = {
+        normalize_care_type(s["care_type"]): dict(s) for s in schedules
+    }
     for care_type in active_care_types:
         if care_type not in CARE_TYPES:
             continue

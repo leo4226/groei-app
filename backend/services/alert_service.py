@@ -14,7 +14,7 @@ _GROUND_SKIP = {"bring_inside", "cold"}
 
 _CARE_ICON = {
     "water": "💧", "fertilize": "🧪", "mist": "🌫️", "rotate": "🔄",
-    "repot_check": "🪴", "prune": "✂️", "protect_cold": "🧤", "protect_heat": "🧴",
+    "repot": "🪴", "prune": "✂️", "frost_protect": "🧤", "heat_protect": "🧴",
 }
 
 # Tiebreaker: at the same severity, temperature alerts beat weather alerts beat schedule alerts
@@ -154,14 +154,14 @@ def _collect_alerts(
             thresholds = json.loads(care_thresholds_json)
         except (json.JSONDecodeError, TypeError):
             thresholds = {}
-        has_protect_cold = most_urgent_care_type == "protect_cold" and care_status in ("overdue", "due_today")
-        has_protect_heat = most_urgent_care_type == "protect_heat" and care_status in ("overdue", "due_today")
+        has_frost_protect = most_urgent_care_type == "frost_protect" and care_status in ("overdue", "due_today")
+        has_heat_protect = most_urgent_care_type == "heat_protect" and care_status in ("overdue", "due_today")
         fertilize_handled = care_status == "good" or (most_urgent_care_type is not None and most_urgent_care_type != "fertilize")
         for a in compute_alerts(thresholds, rain, temp, last_watered, last_fertilized, map_type, in_ground=in_ground):
             # Suppress weather cold/heat when an ephemeral protect schedule already covers it
-            if has_protect_cold and a["type"] == "cold":
+            if has_frost_protect and a["type"] == "cold":
                 continue
-            if has_protect_heat and a["type"] == "heat":
+            if has_heat_protect and a["type"] == "heat":
                 continue
             # Suppress monthly fertilise tip when plant has more urgent tasks
             if fertilize_handled and a["type"] == "fertilise":

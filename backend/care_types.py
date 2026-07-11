@@ -151,12 +151,22 @@ WEATHER_COLDHEAT_COLORS = {
 }
 
 
-CARE_TYPE_ALIASES = {
-    # The frontend historically called this scheduled care type `repot_check`,
-    # while the backend stores schedules as `repot`. Accept the old key so a
-    # stale client cannot silently fail to mute repot reminders.
+CARE_TYPE_ALIASES: dict[str, str] = {
+    # Compatibility during the canonical care-type rollout (#577). Persisted
+    # rows and API responses use the values on the right; stale clients may
+    # still send the historical keys on the left.
     "repot_check": "repot",
+    "protect_cold": "frost_protect",
+    "protect_heat": "heat_protect",
 }
+
+
+def normalize_care_type(care_type: str) -> str:
+    """Return the canonical persisted/API key for a care type."""
+    if not isinstance(care_type, str):
+        return care_type
+    normalized = care_type.strip()
+    return CARE_TYPE_ALIASES.get(normalized, normalized)
 
 
 def parse_muted_care_types(value) -> list[str]:
@@ -170,7 +180,7 @@ def parse_muted_care_types(value) -> list[str]:
     muted: list[str] = []
     seen: set[str] = set()
     for raw in str(value).split(","):
-        care_type = CARE_TYPE_ALIASES.get(raw.strip(), raw.strip())
+        care_type = normalize_care_type(raw)
         if care_type in CARE_TYPES and care_type not in seen:
             muted.append(care_type)
             seen.add(care_type)

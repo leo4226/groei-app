@@ -93,14 +93,11 @@ export type Translations = {
     mist: string
     rotate: string
     repot: string
-    repot_check: string
     pest_check: string
     dust: string
     prune: string
-    protect_cold: string
-    protect_heat: string
-    frost_protect: string     // "Frost protect" / "Vorst-bescherming"
-    heat_protect: string      // "Heat protect" / "Hitte-bescherming"
+    frost_protect: string
+    heat_protect: string
   }
 
   careTypes: {
@@ -109,12 +106,11 @@ export type Translations = {
     mist: string
     rotate: string
     repot: string
-    repot_check: string
     pest_check: string
     dust: string
     prune: string
-    protect_cold: string
-    protect_heat: string
+    frost_protect: string
+    heat_protect: string
     photo: string
   }
 

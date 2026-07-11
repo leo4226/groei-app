@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from database import db_dep
 from auth import get_current_account
 from services.warnings import compute_plant_warnings
-from care_types import CARE_TYPES
+from services.care_profile import canonicalize_care_profile
+from care_types import CARE_TYPES, normalize_care_type
 
 
 class CareProfileEntryIn(BaseModel):
@@ -355,13 +356,14 @@ async def patch_care_profile(
 
     import json
     raw = plant_rows[0]["care_profile"]
-    profile = json.loads(raw) if raw else {}
+    profile = canonicalize_care_profile(json.loads(raw)) if raw else {}
 
-    for care_type, entry in body.care_types.items():
+    for raw_care_type, entry in body.care_types.items():
+        care_type = normalize_care_type(raw_care_type)
         if care_type not in CARE_TYPES:
             raise HTTPException(
                 status_code=422,
-                detail=f"Unknown care_type '{care_type}'. Valid: {', '.join(CARE_TYPES.keys())}",
+                detail=f"Unknown care_type '{raw_care_type}'. Valid: {', '.join(CARE_TYPES.keys())}",
             )
         if care_type not in profile:
             profile[care_type] = {}

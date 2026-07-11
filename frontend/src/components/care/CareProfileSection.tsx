@@ -61,8 +61,8 @@ export function CareProfileSection({ plantId }: Props) {
   // Combine active care_types with care_summary keys to get all known types
   const allTypes = [...new Set([...state.active_care_types, ...Object.keys(state.care_summary)])]
 
-  // Sort: active first, by priority (water > fertilize > mist > rotate > repot_check > prune)
-  const PRIORITY: Record<string, number> = { water: 0, fertilize: 1, mist: 2, rotate: 3, repot_check: 4, prune: 5, protect_cold: 6, protect_heat: 7 }
+  // Sort: active first, by priority (water > fertilize > mist > rotate > repot > prune)
+  const PRIORITY: Record<string, number> = { water: 0, fertilize: 1, mist: 2, rotate: 3, repot: 4, prune: 5, frost_protect: 6, heat_protect: 7 }
   allTypes.sort((a, b) => {
     const aActive = state.active_care_types.includes(a) ? 0 : 1
     const bActive = state.active_care_types.includes(b) ? 0 : 1

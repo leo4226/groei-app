@@ -6,6 +6,8 @@ from models import CalendarEventOut
 from services.warnings import compute_plant_warnings, CareWarning
 from services.scheduling import calculate_effective_interval
 from services.calendar_grouping import get_calendar_grouping_preferences
+from services.weather_task_service import sync_ephemeral_schedules
+from care_types import CARE_TYPES, normalize_care_type
 
 router = APIRouter(tags=["calendar"])
 
@@ -99,6 +101,14 @@ async def list_calendar_events(
     if env and env not in ('tuin', 'huis'):
         raise HTTPException(400, "env must be 'tuin' or 'huis'")
 
+    # Refresh weather-driven one-shot tasks on the Calendar path itself. This is
+    # best-effort: cached-weather or sync failures must never turn Calendar into
+    # a 500 or hide ordinary scheduled care.
+    try:
+        await sync_ephemeral_schedules(db)
+    except Exception:
+        pass
+
     # 1. Fetch all plants in the household, optionally filtered by env
     plant_params: tuple = (account["household_id"],)
 
@@ -185,7 +195,7 @@ async def list_calendar_events(
     raw_by_plant: dict[int, list[dict]] = defaultdict(list)
     for r in rows:
         raw_by_plant[r["plant_id"]].append({
-            "care_type": r["type"],
+            "care_type": normalize_care_type(r["type"]),
             "next_due": r["due_date"],
             "last_done": r["last_done"],
         })
@@ -221,7 +231,7 @@ async def list_calendar_events(
         plant = plant_map.get(pid)
         if not plant:
             continue
-        ct = r["type"]
+        ct = normalize_care_type(r["type"])
         enrichment = enrichment_cache.get((pid, ct), {})
 
         # Normalise: asyncpg returns datetime.date; aiosqlite returns str
@@ -251,6 +261,7 @@ async def list_calendar_events(
                 severity=enrichment.get("severity"),
                 color=enrichment.get("color"),
                 icon=enrichment.get("icon"),
+                weather_triggered=bool(CARE_TYPES.get(ct, {}).get("is_weather_triggered")),
             ))
         else:
             # Recurring — generate all occurrences in [from_dt, to_dt]

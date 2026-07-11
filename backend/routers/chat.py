@@ -111,10 +111,10 @@ _CARE_TYPE_LABELS_NL = {
     "fertilize": "Bemesten",
     "mist": "Sproeien",
     "rotate": "Draaien",
-    "repot_check": "Verpot-check",
+    "repot": "Verpot-check",
     "prune": "Snoeien",
-    "protect_cold": "Beschermen tegen kou",
-    "protect_heat": "Beschermen tegen hitte",
+    "frost_protect": "Beschermen tegen kou",
+    "heat_protect": "Beschermen tegen hitte",
 }
 
 _CARE_TYPE_LABELS_EN = {
@@ -122,10 +122,10 @@ _CARE_TYPE_LABELS_EN = {
     "fertilize": "Fertilizing",
     "mist": "Misting",
     "rotate": "Rotating",
-    "repot_check": "Repot check",
+    "repot": "Repot check",
     "prune": "Pruning",
-    "protect_cold": "Cold protection",
-    "protect_heat": "Heat protection",
+    "frost_protect": "Cold protection",
+    "heat_protect": "Heat protection",
 }
 
 

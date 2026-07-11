@@ -119,11 +119,11 @@ export default function PlantQuickSheet({
     water: t.plantQuickSheet.careWater,
     fertilize: t.plantQuickSheet.careFertilize,
     prune: t.plantQuickSheet.carePrune,
-    repot_check: t.plantQuickSheet.careRepot,
+    repot: t.plantQuickSheet.careRepot,
     mist: t.plantQuickSheet.careMist,
     rotate: t.plantQuickSheet.careRotate,
-    protect_cold: t.plantQuickSheet.careProtectCold,
-    protect_heat: t.plantQuickSheet.careProtectHeat,
+    frost_protect: t.plantQuickSheet.careProtectCold,
+    heat_protect: t.plantQuickSheet.careProtectHeat,
   }
 
   // Days-until-due per scheduled care type (negative = overdue, 0 = today).
@@ -134,7 +134,7 @@ export default function PlantQuickSheet({
     if (prev === undefined || days < prev) dueByType.set(s.care_type, days)
   }
   // Quick-log chips: water + feed always, plus any other scheduled care type.
-  const CARE_ORDER = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot_check', 'protect_cold', 'protect_heat']
+  const CARE_ORDER = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'frost_protect', 'heat_protect']
   const careChipTypes = CARE_ORDER.filter((ct) => ct === 'water' || ct === 'fertilize' || dueByType.has(ct))
 
   const handleCare = async (careType: string) => {
