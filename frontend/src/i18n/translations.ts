@@ -317,6 +317,10 @@ export type Translations = {
     display: string
     groupOutdoorWarnings: string
     groupOutdoorWarningsDesc: string
+    calendarGroupingCareTypes: string
+    calendarGroupingMaps: string
+    calendarGroupingShared: string
+    calendarGroupingSaveError: string
     digestTitle: string
     digestToggle: string
     digestToggleDesc: string

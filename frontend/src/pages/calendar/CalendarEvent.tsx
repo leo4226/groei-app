@@ -4,6 +4,7 @@ import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 
 function calendarPlantName(ev: Ev, locale: string): string {
+  if (ev.grouped) return ev.map_name || ''
   const localized = locale.startsWith('en')
     ? (ev.species_common_name_en?.trim() || ev.species_common_name_nl?.trim())
     : (ev.species_common_name_nl?.trim() || ev.species_common_name_en?.trim())

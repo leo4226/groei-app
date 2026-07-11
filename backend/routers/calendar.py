@@ -5,6 +5,7 @@ from auth import get_current_account
 from models import CalendarEventOut
 from services.warnings import compute_plant_warnings, CareWarning
 from services.scheduling import calculate_effective_interval
+from services.calendar_grouping import get_calendar_grouping_preferences
 
 router = APIRouter(tags=["calendar"])
 
@@ -48,19 +49,26 @@ def _generate_occurrences(
     return occurrences
 
 
-def _group_outdoor_events(events: list[CalendarEventOut], outdoor_plant_ids: set[int]) -> list[CalendarEventOut]:
-    groupable_types = {"water", "fertilize", "prune"}
-    grouped: dict[tuple[str, str], list[CalendarEventOut]] = {}
+def _group_outdoor_events(
+    events: list[CalendarEventOut], *, care_types: set[str], map_ids: set[int],
+) -> list[CalendarEventOut]:
+    grouped: dict[tuple[str, str, int], list[CalendarEventOut]] = {}
     retained: list[CalendarEventOut] = []
     for event in events:
-        if event.plant_id in outdoor_plant_ids and event.type in groupable_types and not event.weather_triggered:
-            grouped.setdefault((event.date, event.type), []).append(event)
+        if (
+            event.map_id in map_ids
+            and event.type in care_types
+            and not event.weather_triggered
+        ):
+            grouped.setdefault((event.date, event.type, event.map_id), []).append(event)
         else:
             retained.append(event)
-    for (event_date, care_type), members in grouped.items():
+    for (event_date, care_type, map_id), members in grouped.items():
+        first = members[0]
         retained.append(CalendarEventOut(
-            id=f"garden:{care_type}:{event_date}", date=event_date, type=care_type,
+            id=f"garden:{map_id}:{care_type}:{event_date}", date=event_date, type=care_type,
             plant_id=None, plant_name=None, plant_icon_variant=None, schedule_id=None,
+            map_id=map_id, map_name=first.map_name,
             overdue=any(member.overdue for member in members), grouped=True,
             group_count=len(members),
             group_member_schedule_ids=[member.schedule_id for member in members if member.schedule_id is not None],
@@ -95,7 +103,7 @@ async def list_calendar_events(
     plant_params: tuple = (account["household_id"],)
 
     plants = await db.execute_fetchall(
-        "SELECT p.id, p.name, p.species_id, m.map_type, p.container_id, p.ground_zone_id, "
+        "SELECT p.id, p.name, p.species_id, p.map_id, m.name AS map_name, m.map_type, p.container_id, p.ground_zone_id, "
         "p.care_profile, p.care_thresholds, p.icon_key "
         "FROM plants p LEFT JOIN maps m ON p.map_id = m.id "
         "WHERE p.household_id = ? AND p.is_active = 1",
@@ -232,6 +240,8 @@ async def list_calendar_events(
                 species_common_name_nl=sp.get("nl"),
                 species_common_name_en=sp.get("en"),
                 plant_icon_variant=r["plant_icon_variant"],
+                map_id=plant_map[pid].get("map_id"),
+                map_name=plant_map[pid].get("map_name"),
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
                 severity=enrichment.get("severity"),
@@ -270,6 +280,8 @@ async def list_calendar_events(
                     species_common_name_nl=sp.get("nl"),
                     species_common_name_en=sp.get("en"),
                     plant_icon_variant=r["plant_icon_variant"],
+                    map_id=plant_map[pid].get("map_id"),
+                    map_name=plant_map[pid].get("map_name"),
                     schedule_id=r["schedule_id"],
                     overdue=is_overdue,
                     severity=enrichment.get("severity"),
@@ -277,8 +289,12 @@ async def list_calendar_events(
                     icon=enrichment.get("icon"),
                 ))
 
-    if group_outdoor:
-        outdoor_plant_ids = {pid for pid, plant in plant_map.items() if plant.get("map_type") != "indoor"}
-        events = _group_outdoor_events(events, outdoor_plant_ids)
+    # Shared household preferences supersede the legacy browser-local query flag.
+    preferences = await get_calendar_grouping_preferences(db, account["household_id"])
+    events = _group_outdoor_events(
+        events,
+        care_types=set(preferences["care_types"]),
+        map_ids=set(preferences["map_ids"]),
+    )
 
     return events

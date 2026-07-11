@@ -164,6 +164,11 @@ SCHEMA = """
         map_type TEXT,
         household_id INTEGER
     );
+    CREATE TABLE household_calendar_grouping_preferences (
+        household_id INTEGER PRIMARY KEY,
+        care_types TEXT NOT NULL,
+        map_ids TEXT NOT NULL
+    );
     CREATE TABLE plantnet_quota (
         account_id INTEGER NOT NULL,
         date TEXT NOT NULL,

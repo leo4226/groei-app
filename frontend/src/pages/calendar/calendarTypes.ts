@@ -75,6 +75,8 @@ export interface CalendarEvent {
   species_common_name_en?: string | null
   plant_icon_variant: string | null
   schedule_id: number | null
+  map_id: number | null
+  map_name: string | null
   overdue: boolean
   severity: string | null
   color: string | null

@@ -5,6 +5,7 @@ import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from
 import { useT } from '../../context/LanguageContext'
 
 function agendaPlantName(ev: CalendarEvent, locale: string): string {
+  if (ev.grouped) return ev.map_name || ''
   const localized = locale.startsWith('en')
     ? (ev.species_common_name_en?.trim() || ev.species_common_name_nl?.trim())
     : (ev.species_common_name_nl?.trim() || ev.species_common_name_en?.trim())

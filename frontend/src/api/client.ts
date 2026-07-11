@@ -504,8 +504,8 @@ export const alerts = {
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 
 export const calendar = {
-  events: (from: string, to: string, env?: string, groupOutdoor = false) => {
-    const params: Record<string, string> = { from, to, group_outdoor: String(groupOutdoor) }
+  events: (from: string, to: string, env?: string) => {
+    const params: Record<string, string> = { from, to }
     if (env && env !== 'all') params.env = env
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
@@ -523,9 +523,9 @@ export const icons = {
 }
 
 export const gardenCare = {
-  complete: (careType: string, userId: number, completedAt?: string) =>
-    api<{ operation_id: number; care_type: string; completed_at: string; affected_count: number }>('POST', '/care/garden/complete', {
-      body: { care_type: careType, user_id: userId, completed_at: completedAt ?? null },
+  complete: (careType: string, userId: number, mapId: number, completedAt?: string) =>
+      api<{ operation_id: number; care_type: string; completed_at: string; affected_count: number }>('POST', '/care/garden/complete', {
+        body: { care_type: careType, user_id: userId, map_id: mapId, completed_at: completedAt ?? null },
     }),
   undo: (operationId: number) => api<{ ok: boolean }>('POST', `/care/garden/${operationId}/undo`),
 }
@@ -672,6 +672,12 @@ export interface HouseholdMember {
   created_at: string
 }
 
+export interface CalendarGroupingPreferences {
+  care_types: Array<'water' | 'fertilize' | 'prune'>
+  map_ids: number[]
+  outdoor_maps: Array<{ id: number; name: string }>
+}
+
 export const household = {
   invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
   join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
@@ -680,6 +686,9 @@ export const household = {
     api<HouseholdMember>('PATCH', `/household/members/${memberId}`, { body: data }),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
   rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
+  calendarGrouping: ()                         => api<CalendarGroupingPreferences>('GET', '/household/calendar-grouping'),
+  updateCalendarGrouping: (data: Pick<CalendarGroupingPreferences, 'care_types' | 'map_ids'>) =>
+    api<CalendarGroupingPreferences>('PUT', '/household/calendar-grouping', { body: data }),
 }
 
 export interface NotificationPrefs {
