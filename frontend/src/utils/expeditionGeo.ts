@@ -36,17 +36,24 @@ export type FitTransform = {
 const DEG = Math.PI / 180
 
 /**
- * Compute a transform that fits all entries into a width×height canvas with
+ * An explicit camera over the projected plane: `cx`/`cy` are the projected
+ * centre (x = lon·k, y = −lat), `scale` is px per projected unit, and `k` is
+ * the latitude correction frozen at fit time so panning doesn't reshape land.
+ */
+export type MapView = { k: number; cx: number; cy: number; scale: number }
+
+/**
+ * Compute the camera that fits all entries into a width×height canvas with
  * padding. A minimum geographic span keeps a single pin (or a tight cluster)
  * from zooming into a featureless void.
  */
-export function fitTransform(
+export function fitView(
   entries: { lat: number; lon: number }[],
   width: number,
   height: number,
   padding = 48,
   minSpanDeg = 4,
-): FitTransform {
+): MapView {
   const lats = entries.map(e => e.lat)
   const lons = entries.map(e => e.lon)
   const midLat = lats.length ? (Math.min(...lats) + Math.max(...lats)) / 2 : 52
@@ -66,21 +73,34 @@ export function fitTransform(
   const innerW = width - padding * 2
   const innerH = height - padding * 2
   const scale = Math.min(innerW / (x1 - x0), innerH / (y1 - y0))
-  const cx = (x0 + x1) / 2
-  const cy = (y0 + y1) / 2
+  return { k, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale }
+}
 
+/** Materialise a camera into a lon/lat → px transform + visible window. */
+export function viewToTransform(view: MapView, width: number, height: number): FitTransform {
+  const { k, cx, cy, scale } = view
   const toScreen = (lon: number, lat: number): [number, number] => [
     width / 2 + (lon * k - cx) * scale,
     height / 2 + (-lat - cy) * scale,
   ]
+  return {
+    toScreen,
+    lonMin: (cx - (width / 2) / scale) / k,
+    lonMax: (cx + (width / 2) / scale) / k,
+    latMax: -(cy - (height / 2) / scale),
+    latMin: -(cy + (height / 2) / scale),
+  }
+}
 
-  // Visible window (invert the transform at the canvas corners)
-  const lonMin = (cx - (width / 2) / scale) / k
-  const lonMax = (cx + (width / 2) / scale) / k
-  const latMax = -(cy - (height / 2) / scale)
-  const latMin = -(cy + (height / 2) / scale)
-
-  return { toScreen, lonMin, lonMax, latMin, latMax }
+/** Fit + materialise in one step (kept for callers/tests of the static map). */
+export function fitTransform(
+  entries: { lat: number; lon: number }[],
+  width: number,
+  height: number,
+  padding = 48,
+  minSpanDeg = 4,
+): FitTransform {
+  return viewToTransform(fitView(entries, width, height, padding, minSpanDeg), width, height)
 }
 
 /** Pick a graticule step (degrees) that yields a handful of lines. */

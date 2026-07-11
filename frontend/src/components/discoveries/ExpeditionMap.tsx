@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { WORLD_LAND_RINGS } from '../../utils/worldLand'
 import {
-  fitTransform, graticuleStep, clusterEntries,
-  type GeoEntry, type ProjectedEntry, type PinCluster,
+  fitView, viewToTransform, graticuleStep, clusterEntries,
+  type GeoEntry, type ProjectedEntry, type PinCluster, type MapView,
 } from '../../utils/expeditionGeo'
+import Glyph from '../ui/Glyph'
 
 interface Props {
   /** Entries with coordinates, chronological (index ascending). */
@@ -13,19 +14,23 @@ interface Props {
   /** Canvas size; the SVG scales responsively to its container. */
   width?: number
   height?: number
-  /** Compact variant for the detail mini-map: no route, no numbers. */
+  /** Compact variant for the detail mini-map: static, no route, no numbers. */
   compact?: boolean
-  /** East/west + north/south letters, e.g. ['N','Z','O','W'] for NL. */
+  /** North/south + east/west letters, e.g. ['N','Z','O','W'] for NL. */
   compass?: [string, string, string, string]
 }
 
 const INK_MUTED = 'var(--color-text-muted)'
 const TERRA = 'var(--color-secondary)'
+// A cluster whose finds all sit within ~200 m can't be separated by zooming.
+const SPLITTABLE_SPAN_DEG = 0.002
 
 /**
  * Expedition map — paper-toned SVG with real (simplified) coastlines that
  * auto-zooms to the discovery pins, clusters nearby finds, and draws a
- * dashed route through them in order of discovery.
+ * dashed route through them in order of discovery. Interactive unless
+ * `compact`: drag to pan, wheel/pinch/buttons to zoom; clusters recompute
+ * per zoom level and clicking a splittable cluster zooms into it.
  */
 export default function ExpeditionMap({
   entries,
@@ -36,9 +41,113 @@ export default function ExpeditionMap({
   compass = ['N', 'Z', 'O', 'W'],
 }: Props) {
   const pad = compact ? 34 : 52
+  const interactive = !compact
+
+  const baseView = useMemo(
+    () => fitView(entries, width, height, pad, compact ? 2 : 4),
+    [entries, width, height, pad, compact],
+  )
+  const [override, setOverride] = useState<MapView | null>(null)
+  const view = override ?? baseView
+
+  // New data (or a resize) invalidates a hand-adjusted camera.
+  useEffect(() => { setOverride(null) }, [baseView])
+
+  const minScale = baseView.scale * 0.4
+  const maxScale = (height - pad) / 0.02 // ≈2 km of latitude across the canvas
+
+  const svgRef = useRef<SVGSVGElement>(null)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const dragged = useRef(false)
+
+  function clampView(v: MapView): MapView {
+    return { ...v, scale: Math.min(maxScale, Math.max(minScale, v.scale)) }
+  }
+
+  function zoomAt(px: number, py: number, factor: number) {
+    setOverride(prev => {
+      const cur = prev ?? baseView
+      const scale = Math.min(maxScale, Math.max(minScale, cur.scale * factor))
+      if (scale === cur.scale) return prev
+      // keep the projected point under the cursor fixed
+      const ux = cur.cx + (px - width / 2) / cur.scale
+      const uy = cur.cy + (py - height / 2) / cur.scale
+      return { ...cur, scale, cx: ux - (px - width / 2) / scale, cy: uy - (py - height / 2) / scale }
+    })
+  }
+
+  // Wheel zoom needs a non-passive listener to stop the page from scrolling.
+  useEffect(() => {
+    if (!interactive) return
+    const svg = svgRef.current
+    if (!svg) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = svg.getBoundingClientRect()
+      const px = (e.clientX - rect.left) * (width / rect.width)
+      const py = (e.clientY - rect.top) * (height / rect.height)
+      zoomAt(px, py, e.deltaY < 0 ? 1.25 : 0.8)
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+    // zoomAt reads state through the setter, so this effect only depends on geometry
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactive, width, height, baseView, minScale, maxScale])
+
+  function svgPoint(e: { clientX: number; clientY: number }): { x: number; y: number } {
+    const rect = svgRef.current!.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) * (width / rect.width),
+      y: (e.clientY - rect.top) * (height / rect.height),
+    }
+  }
+
+  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (!interactive) return
+    // Don't capture yet: capturing retargets the compatibility `click` to the
+    // svg, which would make the pins unclickable. Capture starts on real drag.
+    pointers.current.set(e.pointerId, svgPoint(e))
+    if (pointers.current.size === 1) dragged.current = false
+  }
+
+  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (!interactive || !pointers.current.has(e.pointerId)) return
+    const prev = pointers.current.get(e.pointerId)!
+    const cur = svgPoint(e)
+    pointers.current.set(e.pointerId, cur)
+
+    if (pointers.current.size === 1) {
+      const dx = cur.x - prev.x
+      const dy = cur.y - prev.y
+      if (!dragged.current && Math.hypot(dx, dy) <= 1.5) return
+      if (!dragged.current) {
+        dragged.current = true
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }
+      setOverride(p => {
+        const v = p ?? baseView
+        return { ...v, cx: v.cx - dx / v.scale, cy: v.cy - dy / v.scale }
+      })
+    } else if (pointers.current.size === 2) {
+      // pinch: scale by the distance ratio around the midpoint, pan with it
+      dragged.current = true
+      const pts = [...pointers.current.values()]
+      const other = pts.find(p => p !== cur) ?? pts[0]
+      const dPrev = Math.hypot(prev.x - other.x, prev.y - other.y)
+      const dCur = Math.hypot(cur.x - other.x, cur.y - other.y)
+      if (dPrev > 0 && dCur > 0) {
+        const mid = { x: (cur.x + other.x) / 2, y: (cur.y + other.y) / 2 }
+        zoomAt(mid.x, mid.y, dCur / dPrev)
+      }
+    }
+  }
+
+  function onPointerEnd(e: React.PointerEvent<SVGSVGElement>) {
+    pointers.current.delete(e.pointerId)
+  }
 
   const { landPaths, latLines, lonLines, clusters, routeD, newestClusterIdx } = useMemo(() => {
-    const t = fitTransform(entries, width, height, pad, compact ? 2 : 4)
+    const t = viewToTransform(view, width, height)
 
     // Land — only rings that intersect the visible window (cheap bbox test)
     const landPaths: string[] = []
@@ -64,15 +173,15 @@ export default function ExpeditionMap({
     const latLines: { y: number; label: string }[] = []
     for (let lat = Math.ceil(t.latMin / step) * step; lat <= t.latMax; lat += step) {
       const [, y] = t.toScreen(t.lonMin, lat)
-      latLines.push({ y, label: `${Math.abs(lat)}°${lat >= 0 ? compass[0] : compass[1]}` })
+      latLines.push({ y, label: `${Math.abs(Math.round(lat * 10) / 10)}°${lat >= 0 ? compass[0] : compass[1]}` })
     }
     const lonLines: { x: number; label: string }[] = []
     for (let lon = Math.ceil(t.lonMin / step) * step; lon <= t.lonMax; lon += step) {
       const [x] = t.toScreen(lon, t.latMin)
-      lonLines.push({ x, label: `${Math.abs(lon)}°${lon >= 0 ? compass[2] : compass[3]}` })
+      lonLines.push({ x, label: `${Math.abs(Math.round(lon * 10) / 10)}°${lon >= 0 ? compass[2] : compass[3]}` })
     }
 
-    // Pins → clusters (input chronological)
+    // Pins → clusters (input chronological); clusters split as scale grows
     const projected: ProjectedEntry[] = entries.map(e => {
       const [x, y] = t.toScreen(e.lon, e.lat)
       return { ...e, x, y }
@@ -90,17 +199,39 @@ export default function ExpeditionMap({
     const newestClusterIdx = clusters.findIndex(c => c.indices.includes(maxIndex))
 
     return { landPaths, latLines, lonLines, clusters, routeD, newestClusterIdx }
-  }, [entries, width, height, pad, compact, compass])
+  }, [entries, view, width, height, compact, compass])
 
   function pinLabel(c: PinCluster): string {
     return c.ids.length > 1 ? String(c.ids.length) : String(c.indices[0])
   }
 
-  return (
+  function handlePinActivate(c: PinCluster) {
+    if (dragged.current) { dragged.current = false; return }
+    if (interactive && c.ids.length > 1) {
+      const members = entries.filter(e => c.ids.includes(e.id))
+      const latSpan = Math.max(...members.map(m => m.lat)) - Math.min(...members.map(m => m.lat))
+      const lonSpan = (Math.max(...members.map(m => m.lon)) - Math.min(...members.map(m => m.lon))) * view.k
+      if (Math.max(latSpan, lonSpan) > SPLITTABLE_SPAN_DEG) {
+        // zoom into the cluster so it splits instead of opening one entry
+        setOverride(clampView(fitView(members, width, height, pad, 0.02)))
+        return
+      }
+    }
+    onSelect?.(c.ids)
+  }
+
+  const svg = (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
-      className="block w-full h-auto"
+      className="block w-full h-auto select-none"
       role="img"
+      style={interactive ? { touchAction: 'none', cursor: 'grab' } : undefined}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      onDoubleClick={interactive ? (e) => { const p = svgPoint(e); zoomAt(p.x, p.y, 1.6) } : undefined}
     >
       <rect width={width} height={height} fill="var(--color-surface)" />
 
@@ -138,9 +269,9 @@ export default function ExpeditionMap({
             role={onSelect ? 'button' : undefined}
             tabIndex={onSelect ? 0 : undefined}
             style={onSelect ? { cursor: 'pointer' } : undefined}
-            onClick={onSelect ? () => onSelect(c.ids) : undefined}
+            onClick={onSelect || interactive ? () => handlePinActivate(c) : undefined}
             onKeyDown={onSelect ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(c.ids) }
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handlePinActivate(c) }
             } : undefined}
           >
             {isNewest && <circle cx={c.x} cy={c.y} r={r + 8} fill={isCluster ? 'rgba(47,93,58,.10)' : 'rgba(178,102,74,.16)'} />}
@@ -162,5 +293,31 @@ export default function ExpeditionMap({
         )
       })}
     </svg>
+  )
+
+  if (!interactive) return svg
+
+  const zoomBtn = 'flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-paper/90 text-text-soft shadow-sm transition-colors hover:border-primary hover:text-primary'
+
+  return (
+    <div className="relative">
+      {svg}
+      <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+        <button type="button" aria-label="Zoom in" className={zoomBtn}
+                onClick={() => zoomAt(width / 2, height / 2, 1.5)}>
+          <span className="text-base leading-none">+</span>
+        </button>
+        <button type="button" aria-label="Zoom out" className={zoomBtn}
+                onClick={() => zoomAt(width / 2, height / 2, 1 / 1.5)}>
+          <span className="text-base leading-none">−</span>
+        </button>
+        {override && (
+          <button type="button" aria-label="Reset" className={zoomBtn}
+                  onClick={() => setOverride(null)}>
+            <Glyph name="refresh" size={13} />
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
