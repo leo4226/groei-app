@@ -104,6 +104,32 @@ async def test_calendar_events_excludes_inactive(client, seeded_db, auth_header)
 
 
 @pytest.mark.asyncio
+async def test_calendar_events_excludes_schedules_for_archived_plants(client, seeded_db, auth_header):
+    """Archiving a plant hides its care work without deleting schedule history."""
+    db = seeded_db
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id, is_active) VALUES ('Archived', 1, 0)"
+    )
+    plant_id = cur.lastrowid
+    today = date.today()
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, today.isoformat()),
+    )
+    await db.commit()
+
+    response = await client.get(
+        "/api/calendar/events",
+        params={"from": today.isoformat(), "to": today.isoformat()},
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    assert all(event["plant_id"] != plant_id for event in response.json())
+
+
+@pytest.mark.asyncio
 async def test_calendar_events_filters_by_range(client, seeded_db, auth_header):
     """A schedule with next_due outside the requested range is excluded."""
     db = seeded_db
