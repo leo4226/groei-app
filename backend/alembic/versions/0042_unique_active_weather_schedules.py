@@ -1,12 +1,12 @@
 """enforce one active ephemeral weather schedule per plant and care type
 
-Revision ID: 0040
-Revises: 0039
+Revision ID: 0042
+Revises: 0041
 """
 from alembic import op
 
-revision = "0040"
-down_revision = "0039"
+revision = "0042"
+down_revision = "0041"
 branch_labels = None
 depends_on = None
 
