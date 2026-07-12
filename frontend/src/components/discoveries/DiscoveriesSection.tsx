@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type MouseEvent } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense, Component, type MouseEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
@@ -6,6 +6,16 @@ import { buildDiscoveryJournalEntry, discoveryDisplayName } from '../../utils/di
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
 import type { EcologyOut } from '../../types'
 import ExpeditionMap from './ExpeditionMap'
+
+// The GL map (maplibre + tiles) is its own lazy chunk; the bundled SVG map is
+// both the loading state and the fallback when the chunk or WebGL fails.
+const ExpeditionMapGL = lazy(() => import('./ExpeditionMapGL'))
+
+class MapErrorBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() { return this.state.failed ? this.props.fallback : this.props.children }
+}
 import { useIsMobile } from '../../hooks/useIsMobile'
 import Glyph from '../ui/Glyph'
 
@@ -303,13 +313,24 @@ export default function DiscoveriesSection({ onStats }: Props) {
             {t.discovery.expeditionMap}
           </p>
           <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-            <ExpeditionMap
-              entries={geoEntries}
-              onSelect={handleMapSelect}
-              compass={compass}
-              width={isNarrow ? 380 : 760}
-              height={isNarrow ? 250 : 400}
-            />
+            {(() => {
+              const svgFallback = (
+                <ExpeditionMap
+                  entries={geoEntries}
+                  onSelect={handleMapSelect}
+                  compass={compass}
+                  width={isNarrow ? 380 : 760}
+                  height={isNarrow ? 250 : 400}
+                />
+              )
+              return (
+                <MapErrorBoundary fallback={svgFallback}>
+                  <Suspense fallback={svgFallback}>
+                    <ExpeditionMapGL entries={geoEntries} onSelect={handleMapSelect} compass={compass} />
+                  </Suspense>
+                </MapErrorBoundary>
+              )
+            })()}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
               <span>{t.discovery.mapClickHint}</span>
               <span className="text-secondary">— — {t.discovery.mapRouteLegend}</span>
