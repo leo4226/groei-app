@@ -50,6 +50,7 @@ SCHEMA = """
         password_hash TEXT NOT NULL,
         avatar TEXT,
         is_admin INTEGER NOT NULL DEFAULT 0,
+        language TEXT DEFAULT 'nl',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE plants (

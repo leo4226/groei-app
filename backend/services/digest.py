@@ -336,35 +336,56 @@ def _in_quiet_hours(now, quiet_start: str | None, quiet_end: str | None) -> bool
 
 
 _WEATHER_PUSH_LABELS = {
-    "frost_protect": "beschermen tegen kou",
-    "heat_protect": "beschermen tegen hitte",
+    "nl": {"frost_protect": "beschermen tegen kou", "heat_protect": "beschermen tegen hitte"},
+    "en": {"frost_protect": "protect from cold", "heat_protect": "protect from heat"},
 }
 
 
-def _care_push_label(care_type: str) -> str:
-    """Friendly Dutch label for a care type in push body text."""
-    if care_type in _WEATHER_PUSH_LABELS:
-        return _WEATHER_PUSH_LABELS[care_type]
-    return CARE_TYPES.get(care_type, {}).get("label_nl", care_type).lower()
+def _care_push_label(care_type: str, language: str = "nl") -> str:
+    """Friendly label for a care type in push body text."""
+    labels = _WEATHER_PUSH_LABELS.get(language, _WEATHER_PUSH_LABELS["nl"])
+    if care_type in labels:
+        return labels[care_type]
+    key = "label_en" if language == "en" else "label_nl"
+    return CARE_TYPES.get(care_type, {}).get(key, care_type).lower()
 
 
-def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = None) -> dict:
+def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = None, language: str = "nl") -> dict:
     """One push summarising the newly-due tasks for an account.
 
     due_rows: dicts with plant_name + care_type. When `snooze_token` is given,
     the payload carries a `snooze_url` the service worker uses for its "remind
-    me later" action buttons.
+    me later" action buttons. `language` controls UI strings ('nl' or 'en').
     """
     n = len(due_rows)
     if n == 1:
         row = due_rows[0]
-        label = _care_push_label(row["care_type"])
-        body = f"{row['plant_name']} heeft aandacht nodig — {label}"
+        label = _care_push_label(row["care_type"], language)
+        body = f"{row['plant_name']} {'needs attention —' if language == 'en' else 'heeft aandacht nodig —'} {label}"
     else:
-        body = f"{n} planten hebben verzorging nodig"
+        body = f"{n} {'plants need care' if language == 'en' else 'planten hebben verzorging nodig'}"
     payload = {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}
     if snooze_token:
         payload["snooze_url"] = f"{_api_base()}/api/notifications/snooze?token={snooze_token}"
+        # Localized snooze action buttons — sw.js uses these instead of hardcoded NL
+        if language == "en":
+            payload["actions"] = [
+                {"action": "snooze-2h", "title": "⏰ 2 hours"},
+                {"action": "snooze-1d", "title": "🌙 Tomorrow morning"},
+            ]
+            payload["snooze_confirm"] = {
+                "snooze-2h": "Reminder in 2 hours ⏰",
+                "snooze-1d": "Reminder tomorrow morning 🌙",
+            }
+        else:
+            payload["actions"] = [
+                {"action": "snooze-2h", "title": "⏰ 2 uur"},
+                {"action": "snooze-1d", "title": "🌙 Morgen"},
+            ]
+            payload["snooze_confirm"] = {
+                "snooze-2h": "Herinnering over 2 uur ⏰",
+                "snooze-1d": "Herinnering morgenochtend 🌙",
+            }
     return payload
 
 
@@ -388,7 +409,7 @@ async def send_due_care_pushes(db) -> dict:
 
     accounts = await db.execute_fetchall(
         """
-        SELECT DISTINCT ps.account_id, a.household_id,
+        SELECT DISTINCT ps.account_id, a.household_id, a.language,
                np.quiet_start, np.quiet_end, np.muted_care_types
         FROM push_subscriptions ps
         JOIN accounts a ON a.id = ps.account_id
@@ -434,6 +455,7 @@ async def send_due_care_pushes(db) -> dict:
         payload = build_care_push_payload(
             [dict(r) for r in due_rows],
             snooze_token=make_snooze_token(acc["household_id"]),
+            language=acc.get("language") or "nl",
         )
         delivered = False
         for sub in subs:
