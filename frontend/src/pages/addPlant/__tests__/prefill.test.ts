@@ -33,6 +33,7 @@ const dbPlant: LocalPlant = {
 
 const identifyPrefill: IdentifyCommitResult = {
   species_id: 42,
+  name_suggested: 'Gatenplant',
   name_nl_suggested: 'Gatenplant',
   scientific_name: 'Monstera deliciosa',
   icon_key: 'monstera',

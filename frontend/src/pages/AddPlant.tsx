@@ -569,16 +569,21 @@ export default function AddPlant() {
           photoPreview={photoPreview}
           identifyResult={
             isFromIdentify && isIdentifyPrefill(prefill)
-              ? {
-                  topMatch: {
-                    scientific_name: (prefill as import('../types').IdentifyCommitResult).scientific_name,
-                    common_names_nl: [(prefill as import('../types').IdentifyCommitResult).name_nl_suggested],
-                    common_names_en: [],
-                    confidence: 1,
-                    species_id: (prefill as import('../types').IdentifyCommitResult).species_id,
-                    thumbnail_url: null,
-                  },
-                }
+              ? (() => {
+                  const commit = prefill as import('../types').IdentifyCommitResult
+                  const suggested = commit.name_suggested ?? commit.name_nl_suggested
+                  const isEnglish = t.locale.toLowerCase().startsWith('en')
+                  return {
+                    topMatch: {
+                      scientific_name: commit.scientific_name,
+                      common_names_nl: isEnglish ? [] : [suggested],
+                      common_names_en: isEnglish ? [suggested] : [],
+                      confidence: 1,
+                      species_id: commit.species_id,
+                      thumbnail_url: null,
+                    },
+                  }
+                })()
               : undefined
           }
         />

@@ -107,14 +107,16 @@ export function IdentifyPlantPage() {
     }
 
     try {
-      const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl)
+      const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl, activeLang)
       if (destination === 'journal') {
         navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl, destination: 'journal', location_lat, location_lon } })
       } else {
         navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
       }
     } catch (e) {
-      const isNotFound = e instanceof Error && e.message.toLowerCase().includes('niet gevonden')
+      // 404 = species not found; the api client attaches the HTTP status so we
+      // don't have to string-match the (localized) error message.
+      const isNotFound = e instanceof Error && (e as Error & { status?: number }).status === 404
       if (isNotFound) {
         const commonName = activeLang === 'en'
           ? candidate.common_names_en?.[0] ?? candidate.common_names_nl?.[0] ?? candidate.scientific_name

@@ -25,7 +25,10 @@ async def reverse_geocode(lat: float, lon: float) -> tuple[str, str | None] | No
                     "lon": lon,
                     "format": "jsonv2",
                     "zoom": 10,  # city / district level
-                    "accept-language": "nl",
+                    # No accept-language: the place's own (endonym) name is
+                    # language-neutral — "Köln", not "Keulen"/"Cologne" — which
+                    # matters because one stored place_name is shown to both
+                    # Dutch and English readers (journal + public share page).
                 },
                 headers={"User-Agent": USER_AGENT},
             )

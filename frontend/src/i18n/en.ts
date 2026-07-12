@@ -1437,6 +1437,8 @@ export const en: Translations = {
     journalLocation: 'Photo location',
     journalOpenMap: 'Open map',
     saveError: 'Failed to save, please try again',
+    noPlantData: 'No plant data available.',
+    back: 'Back',
     // ── Veldgids (field guide) page — issue #564 ──
     guideEyebrow: 'Field journal · all over the world',
     guideTitle: 'Your',
