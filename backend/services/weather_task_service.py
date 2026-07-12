@@ -62,29 +62,47 @@ async def _sync_weather_type(
         return 0, len(rows)
 
     if not rows:
-        await db.execute(
+        inserted = await db.execute_fetchall(
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
-               VALUES (?, ?, 1, ?, 1, ?)""",
+               VALUES (?, ?, 1, ?, 1, ?)
+               ON CONFLICT DO NOTHING
+               RETURNING id""",
             (plant_id, canonical_type, today, notes),
         )
-        return 1, 0
+        if inserted:
+            return 1, 0
 
-    keeper = rows[0]
-    # Canonicalize rolling-deploy leftovers in place and keep the one-shot due
-    # today so opening Calendar always reflects current conditions.
+        # Another sync inserted the row after our initial read. Refresh that
+        # winner instead of creating a duplicate or surfacing a conflict.
+        await db.execute(
+            """UPDATE care_schedules
+               SET next_due = ?, notes = ?
+               WHERE plant_id = ? AND care_type = ?
+                 AND is_ephemeral = 1 AND is_active = 1""",
+            (today, notes, plant_id, canonical_type),
+        )
+        return 0, 0
+
+    keeper = next(
+        (row for row in rows if row["care_type"] == canonical_type),
+        rows[0],
+    )
+    duplicates = [row for row in rows if row["id"] != keeper["id"]]
+    # Deactivate aliases before canonicalizing the keeper so an existing
+    # canonical row can never collide with the partial unique index.
+    for duplicate in duplicates:
+        await db.execute(
+            "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+            (duplicate["id"],),
+        )
     await db.execute(
         """UPDATE care_schedules
            SET care_type = ?, next_due = ?, notes = ?
            WHERE id = ?""",
         (canonical_type, today, notes, keeper["id"]),
     )
-    for duplicate in rows[1:]:
-        await db.execute(
-            "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
-            (duplicate["id"],),
-        )
-    return 0, max(0, len(rows) - 1)
+    return 0, len(duplicates)
 
 
 async def _sync_ephemeral_schedules(db) -> dict:
