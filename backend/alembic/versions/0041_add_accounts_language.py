@@ -1,12 +1,15 @@
 """add language column to accounts
 
 Revision ID: 0041
-Revises: 0040
+Revises: 0039
 """
 from alembic import op
 
 revision = "0041"
-down_revision = "0040"
+# Originally revised 0040; that id was renumbered away while untangling the
+# duplicate-revision incident (#593/#594), so this now chains directly off 0039.
+# Only DBs sitting exactly at the removed id would notice; prod is past this.
+down_revision = "0039"
 branch_labels = None
 depends_on = None
 
