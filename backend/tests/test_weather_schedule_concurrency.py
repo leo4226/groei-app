@@ -2,11 +2,13 @@
 import asyncio
 import importlib.util
 import sqlite3
+from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
 import pytest
 
+import services.weather_task_service as weather_tasks
 from services.weather_task_service import _sync_weather_type
 
 
@@ -38,6 +40,59 @@ class SelectBarrierDb:
 
     async def execute(self, sql, params=()):
         return await self._db.execute(sql, params)
+
+
+class CanonicalInsertRaceDb:
+    """Insert a canonical winner after the service reads a legacy row."""
+
+    def __init__(self, db):
+        self._db = db
+        self._inserted = False
+
+    async def _insert_winner(self):
+        if self._inserted:
+            return
+        self._inserted = True
+        await self._db.execute(
+            """INSERT INTO care_schedules
+               (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
+               VALUES (86, 'heat_protect', 1, '2026-07-12', 1, 'concurrent')"""
+        )
+
+    async def execute_fetchall(self, sql, params=()):
+        if "INSERT INTO care_schedules" in sql:
+            await self._insert_winner()
+        return await self._db.execute_fetchall(sql, params)
+
+    async def execute(self, sql, params=()):
+        if "SET care_type = ?" in sql:
+            await self._insert_winner()
+        return await self._db.execute(sql, params)
+
+
+async def test_full_sync_uses_database_transaction(monkeypatch):
+    events = []
+
+    class TransactionDb:
+        @asynccontextmanager
+        async def transaction(self):
+            events.append("begin")
+            try:
+                yield
+            except RuntimeError:
+                events.append("rollback")
+                raise
+
+    async def failing_sync(db):
+        events.append("sync")
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(weather_tasks, "_sync_ephemeral_schedules", failing_sync)
+
+    with pytest.raises(RuntimeError, match="stop"):
+        await weather_tasks._sync_transactionally(TransactionDb())
+
+    assert events == ["begin", "sync", "rollback"]
 
 
 async def test_concurrent_weather_sync_keeps_one_active_schedule(seeded_db):
@@ -117,6 +172,34 @@ async def test_sync_keeps_canonical_row_when_newer_legacy_alias_exists(seeded_db
             "next_due": "2026-07-11",
             "notes": "legacy",
         },
+    ]
+
+
+async def test_sync_reconciles_legacy_row_with_concurrent_canonical_insert(seeded_db):
+    await seeded_db.execute(INDEX_SQL)
+    await seeded_db.execute(
+        """INSERT INTO care_schedules
+           (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
+           VALUES (86, 'protect_heat', 1, '2026-07-11', 1, 'legacy')"""
+    )
+
+    result = await _sync_weather_type(
+        CanonicalInsertRaceDb(seeded_db),
+        plant_id=86,
+        canonical_type="heat_protect",
+        legacy_type="protect_heat",
+        triggered=True,
+        today=date(2026, 7, 12),
+        notes="refreshed",
+    )
+
+    assert result == (0, 1)
+    rows = await seeded_db.execute_fetchall(
+        """SELECT care_type, is_active, notes
+           FROM care_schedules WHERE plant_id = 86 ORDER BY id"""
+    )
+    assert rows == [
+        {"care_type": "heat_protect", "is_active": 1, "notes": "refreshed"},
     ]
 
 
