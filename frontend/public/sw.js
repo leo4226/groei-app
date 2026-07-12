@@ -30,8 +30,9 @@ self.addEventListener('push', (event) => {
     data: { url: data.url || '/maps', snooze_url: data.snooze_url || null },
   }
   // Care pushes carry a snooze_url → offer "remind me later" action buttons.
+  // Use localized titles from the server payload; fall back to NL for legacy pushes.
   if (data.snooze_url) {
-    options.actions = [
+    options.actions = data.actions || [
       { action: 'snooze-2h', title: '⏰ 2 uur' },
       { action: 'snooze-1d', title: '🌙 Morgen' },
     ]
@@ -43,6 +44,14 @@ self.addEventListener('push', (event) => {
 const SNOOZE_ACTIONS = {
   'snooze-2h': { for: '2h', body: 'Herinnering over 2 uur ⏰' },
   'snooze-1d': { for: '1d', body: 'Herinnering morgenochtend 🌙' },
+}
+
+function getSnoozeBody(action, data) {
+  // Use localized confirmation from payload if available
+  if (data && data.snooze_confirm && data.snooze_confirm[action]) {
+    return data.snooze_confirm[action];
+  }
+  return SNOOZE_ACTIONS[action]?.body || '';
 }
 
 self.addEventListener('notificationclick', (event) => {
@@ -60,7 +69,7 @@ self.addEventListener('notificationclick', (event) => {
         // Offline / failed — let the next dispatch re-notify normally.
       }
       await self.registration.showNotification('Floreren', {
-        body: snooze.body,
+        body: getSnoozeBody(event.action, data),
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
         tag: 'snooze-confirm',
