@@ -208,9 +208,9 @@ def test_migration_repairs_duplicates_and_enforces_weather_uniqueness():
         Path(__file__).parents[1]
         / "alembic"
         / "versions"
-        / "0040_unique_active_weather_schedules.py"
+        / "0042_unique_active_weather_schedules.py"
     )
-    spec = importlib.util.spec_from_file_location("migration_0040", migration_path)
+    spec = importlib.util.spec_from_file_location("migration_0042", migration_path)
     migration = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(migration)
