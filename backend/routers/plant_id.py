@@ -284,6 +284,24 @@ def _text_or_none(value) -> str | None:
     return text or None
 
 
+def _msg(lang: str, nl: str, en: str) -> str:
+    """User-facing error text in the requester's UI language. The frontend
+    surfaces HTTPException `detail` strings verbatim, so they must match the
+    language the identify flow was asked for."""
+    return en if lang == "en" else nl
+
+
+def _localized_suggested_name(row: dict, lang: str, scientific_name: str) -> str:
+    """Display name in the requested language, falling back across the other
+    language before the latin name — mirrors the frontend bucket fallback."""
+    order = ("common_name_en", "common_name_nl") if lang == "en" else ("common_name_nl", "common_name_en")
+    for key in order:
+        name = _text_or_none(row.get(key))
+        if name:
+            return name
+    return scientific_name
+
+
 def _localized_name_missing(value, latin_name: str | None) -> bool:
     text = _text_or_none(value)
     if text is None:
@@ -299,7 +317,7 @@ def _needs_localized_species_enrichment(row, latin_name: str | None) -> bool:
     )
 
 
-async def _check_quota(db, account: dict) -> str | None:
+async def _check_quota(db, account: dict, lang: str = "nl") -> str | None:
     """Check daily Pl@ntNet quota.
 
     Returns the account email if admin (unlimited), None otherwise.
@@ -324,7 +342,11 @@ async def _check_quota(db, account: dict) -> str | None:
     if used >= _DAILY_QUOTA:
         raise HTTPException(
             status_code=429,
-            detail=f"Je hebt vandaag al {_DAILY_QUOTA} identificaties gebruikt. Morgen weer!",
+            detail=_msg(
+                lang,
+                nl=f"Je hebt vandaag al {_DAILY_QUOTA} identificaties gebruikt. Morgen weer!",
+                en=f"You've already used {_DAILY_QUOTA} identifications today. Try again tomorrow!",
+            ),
         )
     return None
 
@@ -415,7 +437,10 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
         try:
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         except Exception:
-            raise HTTPException(status_code=400, detail="Kon afbeelding niet verwerken")
+            raise HTTPException(
+                status_code=400,
+                detail=_msg(lang, nl="Kon afbeelding niet verwerken", en="Could not process image"),
+            )
 
         image_emb = bioclip.embed_image(pil_image)
         matches = bioclip.identify(image_emb, top_k=5)
@@ -549,9 +574,15 @@ async def identify_endpoint(
     # 1. Validate image
     image_bytes = await image.read()
     if len(image_bytes) > _MAX_IMAGE_BYTES:
-        raise HTTPException(status_code=400, detail="Afbeelding te groot (max 5 MB)")
+        raise HTTPException(
+            status_code=400,
+            detail=_msg(lang, nl="Afbeelding te groot (max 5 MB)", en="Image too large (max 5 MB)"),
+        )
     if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
-        raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
+        raise HTTPException(
+            status_code=400,
+            detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
+        )
 
     # 2. Try BioCLIP first (self-hosted, no quota) — unless user explicitly chose PlantNet
     if engine != "plantnet":
@@ -563,17 +594,27 @@ async def identify_endpoint(
             logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
 
     # 3. Fallback: Pl@ntNet API
-    await _check_quota(db, account)
+    await _check_quota(db, account, lang)
 
     try:
         candidates = await identify(image_bytes, lang=lang)
     except PlantIdQuotaExceeded:
         raise HTTPException(
-            status_code=503, detail="Identificatie tijdelijk niet beschikbaar"
+            status_code=503,
+            detail=_msg(
+                lang,
+                nl="Identificatie tijdelijk niet beschikbaar",
+                en="Identification temporarily unavailable",
+            ),
         )
     except PlantIdServiceError:
         raise HTTPException(
-            status_code=502, detail="Kon niet verbinden met identificatieservice"
+            status_code=502,
+            detail=_msg(
+                lang,
+                nl="Kon niet verbinden met identificatieservice",
+                en="Could not reach the identification service",
+            ),
         )
 
     await _increment_quota(db, account["account_id"])
@@ -620,6 +661,11 @@ class IdentifyCommitRequest(BaseModel):
 
 class IdentifyCommitResponse(BaseModel):
     species_id: int
+    # Suggested display name in the language the commit was requested with
+    # (?lang=). This is what the journal/garden flows should show and save.
+    name_suggested: str
+    # DEPRECATED: Dutch-preferred name kept for older clients; new code reads
+    # name_suggested. (It also still drives the isIdentifyPrefill duck-typing.)
     name_nl_suggested: str
     scientific_name: str
     icon_key: str | None
@@ -680,9 +726,11 @@ def _save_identify_photo(image_bytes: bytes) -> str:
 @router.post("/identify/commit", response_model=IdentifyCommitResponse)
 async def identify_commit(
     body: IdentifyCommitRequest,
+    lang: str = Query("nl"),
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
+    lang = "en" if lang == "en" else "nl"
     try:
         rows = await db.execute_fetchall(
             "SELECT id, common_name_nl, common_name_en, care_thresholds "
@@ -707,26 +755,31 @@ async def identify_commit(
                     row = dict(refreshed[0])
             except Exception:
                 pass
-        name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
-        thresholds_raw = row["care_thresholds"]
-        thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
     else:
         species_id = await _enrich_species_if_missing(db, body.scientific_name)
         if species_id is None:
-            raise HTTPException(status_code=404, detail="Soort niet gevonden")
+            raise HTTPException(
+                status_code=404,
+                detail=_msg(lang, nl="Soort niet gevonden", en="Species not found"),
+            )
         re_rows = await db.execute_fetchall(
             "SELECT common_name_nl, common_name_en, care_thresholds FROM plant_species WHERE id = ?",
             (species_id,),
         )
         row = dict(re_rows[0])
-        name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
-        thresholds_raw = row["care_thresholds"]
-        thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
+
+    name_suggested = _localized_suggested_name(row, lang, body.scientific_name)
+    name_nl = row["common_name_nl"] or row["common_name_en"] or body.scientific_name
+    thresholds_raw = row["care_thresholds"]
+    thresholds = json.loads(thresholds_raw) if thresholds_raw else {}
 
     try:
         image_bytes = base64.b64decode(_strip_data_url(body.photo_base64))
     except Exception:
-        raise HTTPException(status_code=400, detail="Onbekend afbeeldingsformaat")
+        raise HTTPException(
+            status_code=400,
+            detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
+        )
     photo_path = _save_identify_photo(image_bytes)
 
     # Best-effort: capture the image embedding for the user-confirmed retrieval
@@ -760,6 +813,7 @@ async def identify_commit(
 
     return IdentifyCommitResponse(
         species_id=species_id,
+        name_suggested=name_suggested,
         name_nl_suggested=name_nl,
         scientific_name=body.scientific_name,
         icon_key=_match_icon_key(body.scientific_name),

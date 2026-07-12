@@ -1437,6 +1437,8 @@ export const nl: Translations = {
     journalLocation: 'Fotolocatie',
     journalOpenMap: 'Open kaart',
     saveError: 'Opslaan mislukt, probeer opnieuw',
+    noPlantData: 'Geen plantdata beschikbaar.',
+    back: 'Terug',
     // ── Veldgids (field guide) page — issue #564 ──
     guideEyebrow: 'Veldjournaal · overal ter wereld',
     guideTitle: 'Jouw',

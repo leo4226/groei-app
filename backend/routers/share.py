@@ -22,20 +22,51 @@ from database import db_dep
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["share"])
 
-_MONTHS_NL = [
-    "januari", "februari", "maart", "april", "mei", "juni",
-    "juli", "augustus", "september", "oktober", "november", "december",
-]
+# The page renders in the SHARER's account language (the viewer is anonymous,
+# so the owner's language is the only sensible choice — it also matches the
+# name/fact they saw when they hit Share).
+_L10N = {
+    "nl": {
+        "months": [
+            "januari", "februari", "maart", "april", "mei", "juni",
+            "juli", "augustus", "september", "oktober", "november", "december",
+        ],
+        "found_on": "Gevonden op",
+        "found_in": "in",
+        "did_you_know": "Wist je dat &hellip;",
+        "masthead": "Floreren &middot; Veldgids",
+        "title_suffix": "Floreren veldgids",
+        "cta_line": "Gedeeld uit een persoonlijke veldgids &mdash; wilde planten herkennen, loggen en verzamelen.",
+        "cta_button": "Ontdek Floreren",
+    },
+    "en": {
+        "months": [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        ],
+        "found_on": "Found on",
+        "found_in": "in",
+        "did_you_know": "Did you know &hellip;",
+        "masthead": "Floreren &middot; Field Guide",
+        "title_suffix": "Floreren field guide",
+        "cta_line": "Shared from a personal field guide &mdash; identify, log and collect wild plants.",
+        "cta_button": "Discover Floreren",
+    },
+}
 
 
-def _date_nl(value) -> str:
+def _norm_lang(value) -> str:
+    return "en" if str(value or "").strip().lower().startswith("en") else "nl"
+
+
+def _date_label(value, lang: str) -> str:
     dt = value
     if not isinstance(dt, datetime):
         try:
             dt = datetime.fromisoformat(str(value))
         except ValueError:
             return str(value)[:10]
-    return f"{dt.day} {_MONTHS_NL[dt.month - 1]} {dt.year}"
+    return f"{dt.day} {_L10N[lang]['months'][dt.month - 1]} {dt.year}"
 
 
 def _mrz(common: str, latin: str | None) -> str:
@@ -48,8 +79,9 @@ def _mrz(common: str, latin: str | None) -> str:
     return raw.ljust(36, "<")[:36]
 
 
-def _fact_from(row) -> str | None:
-    for key in ("fun_fact_nl", "fun_fact_en"):
+def _fact_from(row, lang: str) -> str | None:
+    other = "en" if lang == "nl" else "nl"
+    for key in (f"fun_fact_{lang}", f"fun_fact_{other}"):
         value = _get(row, key)
         if value and str(value).strip():
             return str(value).strip()
@@ -60,7 +92,7 @@ def _fact_from(row) -> str | None:
         except Exception:
             phenology = None
         if isinstance(phenology, dict):
-            for key in ("interesting_facts_nl", "interesting_facts_en"):
+            for key in (f"interesting_facts_{lang}", f"interesting_facts_{other}"):
                 value = phenology.get(key)
                 if value and str(value).strip():
                     return str(value).strip()
@@ -74,17 +106,19 @@ def _get(row, key, default=None):
         return default
 
 
+# The 404 page has no owner to borrow a language from, so it is bilingual.
 _NOT_FOUND_HTML = """<!doctype html>
 <html lang="nl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Niet gevonden — Floreren</title>
+<title>Niet gevonden / Not found — Floreren</title>
 <style>body{margin:0;display:grid;place-items:center;min-height:100vh;background:#F5F0E3;
 font-family:Fraunces,Georgia,'Times New Roman',serif;color:#2A3326;text-align:center;padding:24px}
 a{color:#2F5D3A}</style></head>
 <body><div><p style="font-size:44px;margin:0">&#127811;</p>
 <h1 style="font-weight:500">Deze vondst bestaat niet (meer).</h1>
-<p style="font-style:italic;color:#5C6B55">De link is misschien ingetrokken of verkeerd overgetypt.</p>
+<p style="font-style:italic;color:#5C6B55">De link is misschien ingetrokken of verkeerd overgetypt.<br>
+<span lang="en">This find doesn't exist (anymore) — the link may have been revoked or mistyped.</span></p>
 <p><a href="https://floreren.app">floreren.app</a></p></div></body></html>"""
 
 
@@ -93,9 +127,12 @@ async def shared_discovery_page(token: str, db=Depends(db_dep)):
     rows = await db.execute_fetchall(
         """SELECT d.common_name, d.latin_name, d.thumbnail_url, d.place_name,
                   d.country_code, d.discovered_at, d.species_id,
-                  s.common_name_nl, s.fun_fact_nl, s.fun_fact_en, s.phenology_json
+                  s.common_name_nl, s.common_name_en,
+                  s.fun_fact_nl, s.fun_fact_en, s.phenology_json,
+                  a.language AS owner_language
            FROM plant_discoveries d
            LEFT JOIN plant_species s ON s.id = d.species_id
+           LEFT JOIN accounts a ON a.id = d.account_id
            WHERE d.share_token = ?""",
         (token,),
     )
@@ -103,17 +140,29 @@ async def shared_discovery_page(token: str, db=Depends(db_dep)):
         return HTMLResponse(_NOT_FOUND_HTML, status_code=404)
     row = rows[0]
 
-    name = (_get(row, "common_name_nl") or "").strip() or row["common_name"]
+    lang = _norm_lang(_get(row, "owner_language"))
+    l10n = _L10N[lang]
+    other = "en" if lang == "nl" else "nl"
+    # The name the owner logged (and saw when they pressed Share) wins; the
+    # catalog name in their language is only a fallback for empty snapshots.
+    name = (
+        (_get(row, "common_name") or "").strip()
+        or (_get(row, f"common_name_{lang}") or "").strip()
+        or (_get(row, f"common_name_{other}") or "").strip()
+        or (row["latin_name"] or "")
+    )
     latin = row["latin_name"]
     photo = row["thumbnail_url"]
-    date_label = _date_nl(row["discovered_at"])
+    date_label = _date_label(row["discovered_at"], lang)
     place = _get(row, "place_name")
     place_label = f"{place}, {_get(row, 'country_code')}" if place and _get(row, "country_code") else place
-    fact = _fact_from(row)
+    fact = _fact_from(row, lang)
 
     base = os.environ.get("PUBLIC_APP_URL", "https://floreren.app").rstrip("/")
     page_url = f"{base}/s/{token}"
-    found_line = f"Gevonden op {date_label}" + (f" in {place_label}" if place_label else "")
+    found_line = f"{l10n['found_on']} {date_label}" + (
+        f" {l10n['found_in']} {place_label}" if place_label else ""
+    )
     description = f"{found_line}." + (f" {fact}" if fact else "")
     if len(description) > 240:
         description = description[:237].rstrip() + "…"
@@ -130,16 +179,16 @@ async def shared_discovery_page(token: str, db=Depends(db_dep)):
     )
     latin_html = f' <em>{e(latin)}</em>' if latin else ""
     fact_html = (
-        f'<p class="label">Wist je dat &hellip;</p>\n<p class="fact">{e(fact)}</p>'
+        f'<p class="label">{l10n["did_you_know"]}</p>\n<p class="fact">{e(fact)}</p>'
         if fact else ""
     )
 
     page = f"""<!doctype html>
-<html lang="nl">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{e(title)} — Floreren veldgids</title>
+<title>{e(title)} — {l10n["title_suffix"]}</title>
 <meta name="description" content="{e(description, quote=True)}">
 <meta name="robots" content="noindex">
 <meta property="og:type" content="article">
@@ -211,7 +260,7 @@ async def shared_discovery_page(token: str, db=Depends(db_dep)):
 </style>
 </head>
 <body>
-  <p class="masthead">Floreren &middot; Veldgids</p>
+  <p class="masthead">{l10n["masthead"]}</p>
   <article class="card">
     {photo_html}
     <div class="body">
@@ -222,8 +271,8 @@ async def shared_discovery_page(token: str, db=Depends(db_dep)):
     </div>
   </article>
   <div class="cta">
-    <p>Gedeeld uit een persoonlijke veldgids &mdash; wilde planten herkennen, loggen en verzamelen.</p>
-    <a href="https://floreren.app">Ontdek Floreren</a>
+    <p>{l10n["cta_line"]}</p>
+    <a href="https://floreren.app">{l10n["cta_button"]}</a>
   </div>
 </body>
 </html>"""

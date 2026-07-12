@@ -202,10 +202,15 @@ async def test_public_share_page_renders_specimen_card(client, discoveries_db, a
     res = await client.get("/s/tok_abc123")
     assert res.status_code == 200
     page = res.text
-    # Species NL name wins over the (attacker-controlled) free-text common_name
-    assert "<h1>Oleander <em>Nerium oleander</em>.</h1>" in page
-    assert "<script>alert(1)</script>" not in page  # escaped, never raw
+    # The name the owner logged wins (it may be localized to their language);
+    # free text is always HTML-escaped, never raw
+    assert "Oleander &lt;script&gt;alert(1)&lt;/script&gt;" in page
+    assert "<script>alert(1)</script>" not in page
+    assert "<em>Nerium oleander</em>" in page
+    # Sharer account language is nl (default) → Dutch boilerplate + NL fact
+    assert 'lang="nl"' in page
     assert "Alle delen zijn giftig." in page
+    assert "Gevonden op" in page and "Wist je dat" in page
     assert "Noordwijk, NL" in page and "11 juli 2026" in page
     assert 'property="og:image" content="https://cdn.test/oleander.jpg"' in page
     assert 'property="og:title"' in page
@@ -215,3 +220,36 @@ async def test_public_share_page_renders_specimen_card(client, discoveries_db, a
     # Unknown token → 404
     res404 = await client.get("/s/nope")
     assert res404.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_share_page_renders_in_sharers_language(client, discoveries_db, auth_header):
+    """An English-account owner shares → English boilerplate, EN fact, EN month,
+    and the name they logged (not the Dutch catalog name). Issue: share pages
+    were hardcoded Dutch regardless of the sharer's language."""
+    await discoveries_db.execute("UPDATE accounts SET language = 'en' WHERE id = 1")
+    await discoveries_db.execute(
+        """INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, fun_fact_nl, fun_fact_en)
+           VALUES (8, 'Mahonie', 'Oregon grape', 'Mahonia aquifolium',
+                   'De bessen zijn eetbaar.', 'The berries are edible.')""",
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries
+              (id, account_id, household_id, species_id, common_name, latin_name,
+               place_name, country_code, share_token, discovered_at)
+           VALUES (2, 1, 1, 8, 'Oregon grape', 'Mahonia aquifolium',
+                   'Amsterdam', 'NL', 'tok_en_456', '2026-07-11 14:00:00')""",
+    )
+    await discoveries_db.commit()
+
+    res = await client.get("/s/tok_en_456")
+    assert res.status_code == 200
+    page = res.text
+    assert 'lang="en"' in page
+    assert "Oregon grape" in page and "Mahonie" not in page
+    assert "The berries are edible." in page and "De bessen zijn eetbaar." not in page
+    assert "Found on 11 July 2026 in Amsterdam, NL" in page
+    assert "Did you know" in page and "Wist je dat" not in page
+    assert "Shared from a personal field guide" in page
+    assert "Gedeeld uit een persoonlijke veldgids" not in page
+    assert "Discover Floreren" in page

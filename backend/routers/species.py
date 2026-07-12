@@ -199,31 +199,42 @@ async def get_species_fun_fact(species_id: int, db=Depends(db_dep)):
     r = row[0]
     fallback = _phenology_fun_fact(r.get("phenology_json"))
 
+    cached_nl = cached_en = ""
     try:
         cached_rows = await db.execute_fetchall(
             "SELECT fun_fact_nl, fun_fact_en FROM plant_species WHERE id = ?",
             (species_id,),
         )
         if cached_rows:
-            cached = _normalise_fun_fact(cached_rows[0].get("fun_fact_nl"), cached_rows[0].get("fun_fact_en"))
-            if cached:
-                return cached
+            cached_nl = str(cached_rows[0].get("fun_fact_nl") or "").strip()
+            cached_en = str(cached_rows[0].get("fun_fact_en") or "").strip()
+            # Only a cache with BOTH languages short-circuits. A half-filled
+            # cache used to be cross-filled silently, which is how English
+            # users ended up reading Dutch facts — generate the missing
+            # language instead (keeping whichever fact already exists).
+            if cached_nl and cached_en:
+                return {"fun_fact_nl": cached_nl, "fun_fact_en": cached_en}
     except Exception as exc:
         logger.warning("Fun fact cache unavailable for species %s: %s", species_id, exc)
         if fallback:
             return fallback
 
     fact_nl, fact_en = await _generate_fun_fact(r["latin_name"], r["common_name_nl"])
-    generated = _normalise_fun_fact(fact_nl, fact_en)
+    merged_nl = cached_nl or str(fact_nl or "").strip()
+    merged_en = cached_en or str(fact_en or "").strip()
+    generated = _normalise_fun_fact(merged_nl, merged_en)
 
     if generated:
-        try:
-            await db.execute(
-                "UPDATE plant_species SET fun_fact_nl = ?, fun_fact_en = ? WHERE id = ?",
-                (generated["fun_fact_nl"], generated["fun_fact_en"], species_id),
-            )
-        except Exception as exc:
-            logger.warning("Could not cache fun fact for species %s: %s", species_id, exc)
+        # Persist only when each language holds a genuine fact in that language;
+        # caching a cross-filled response would permanently mask the gap.
+        if merged_nl and merged_en:
+            try:
+                await db.execute(
+                    "UPDATE plant_species SET fun_fact_nl = ?, fun_fact_en = ? WHERE id = ?",
+                    (merged_nl, merged_en, species_id),
+                )
+            except Exception as exc:
+                logger.warning("Could not cache fun fact for species %s: %s", species_id, exc)
         return generated
 
     if fallback:

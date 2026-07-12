@@ -202,7 +202,7 @@ export default function EntryBanner({
               § Match
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-medium leading-[1.05] tracking-[-0.015em] text-text m-0 mb-1">
-              {topMatch.common_names_nl?.[0] || topMatch.scientific_name}
+              {topMatch.common_names_nl?.[0] || topMatch.common_names_en?.[0] || topMatch.scientific_name}
             </h2>
             <div className="font-heading italic text-base sm:text-lg text-text-soft mb-3">
               {topMatch.scientific_name}

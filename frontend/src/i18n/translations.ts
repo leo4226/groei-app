@@ -1397,6 +1397,8 @@ export type Translations = {
     journalLocation: string    // "Photo location" / "Fotolocatie"
     journalOpenMap: string     // "Open map" / "Open kaart"
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
+    noPlantData: string        // "Geen plantdata beschikbaar."
+    back: string               // "Terug"
     // ── Veldgids (field guide) page — issue #564 ──
     guideEyebrow: string
     guideTitle: string

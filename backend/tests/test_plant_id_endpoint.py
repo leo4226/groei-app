@@ -86,7 +86,7 @@ async def test_identify_endpoint_no_match_when_top_below_threshold(client, seede
 
 @pytest.mark.asyncio
 async def test_identify_endpoint_503_on_quota_exceeded(client, seeded_db, auth_header):
-    """PlantIdQuotaExceeded → HTTP 503 with Dutch detail."""
+    """PlantIdQuotaExceeded → HTTP 503, detail localized to ?lang= (default en)."""
     with patch("routers.plant_id.identify", new=AsyncMock(side_effect=PlantIdQuotaExceeded())):
         resp = await client.post(
             "/api/plants/identify",
@@ -94,7 +94,16 @@ async def test_identify_endpoint_503_on_quota_exceeded(client, seeded_db, auth_h
             headers=auth_header,
         )
     assert resp.status_code == 503
-    assert "Identificatie tijdelijk" in resp.json()["detail"]
+    assert "Identification temporarily" in resp.json()["detail"]
+
+    with patch("routers.plant_id.identify", new=AsyncMock(side_effect=PlantIdQuotaExceeded())):
+        resp_nl = await client.post(
+            "/api/plants/identify?lang=nl",
+            files={"image": ("plant.jpg", b"img", "image/jpeg")},
+            headers=auth_header,
+        )
+    assert resp_nl.status_code == 503
+    assert "Identificatie tijdelijk" in resp_nl.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -154,12 +163,40 @@ async def test_commit_returns_prefill_for_known_species(client, seeded_db, auth_
     assert resp.status_code == 200
     body = resp.json()
     assert body["species_id"] == 7
+    assert body["name_suggested"] == "Gatenplant"  # default lang=nl
     assert body["name_nl_suggested"] == "Gatenplant"
     assert body["scientific_name"] == "Monstera deliciosa"
     assert body["care_thresholds"] == {"min_temp_c": 10}
     # Photo storage is patched out (it goes to R2 in production); the endpoint
     # returns whatever path the storage layer produced.
     assert body["photo_path"] == "photos/test.jpg"
+
+
+@pytest.mark.asyncio
+async def test_commit_suggests_english_name_for_english_ui(client, seeded_db, auth_header, monkeypatch):
+    """?lang=en → name_suggested is the English catalog name, so English users
+    no longer get Dutch names saved into their journal/garden (language audit)."""
+    monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
+
+    await seeded_db.execute(
+        "CREATE TABLE IF NOT EXISTS plant_species (id INTEGER PRIMARY KEY, latin_name TEXT, common_name_nl TEXT, common_name_en TEXT, care_thresholds TEXT)"
+    )
+    await seeded_db.execute(
+        "INSERT INTO plant_species (id, latin_name, common_name_nl, common_name_en) "
+        "VALUES (7, 'Mahonia aquifolium', 'Mahonie', 'Oregon grape')"
+    )
+    await seeded_db.commit()
+
+    fake_photo = base64.b64encode(b"\xff\xd8\xff\xe0fake-jpeg-bytes").decode("ascii")
+    resp = await client.post(
+        "/api/plants/identify/commit?lang=en",
+        json={"scientific_name": "Mahonia aquifolium", "photo_base64": fake_photo},
+        headers=auth_header,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name_suggested"] == "Oregon grape"
+    assert body["name_nl_suggested"] == "Mahonie"  # deprecated field keeps old shape
 
 
 @pytest.mark.asyncio

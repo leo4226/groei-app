@@ -204,7 +204,9 @@ export function normalizePrefill(
   if (isIdentifyPrefill(prefill)) {
     return {
       kind: 'identify',
-      name: prefill.name_nl_suggested,
+      // name_suggested is localized to the language the identify commit was
+      // made with; name_nl_suggested only remains for stale route state.
+      name: prefill.name_suggested ?? prefill.name_nl_suggested,
       species: prefill.scientific_name,
       notes: '',
       sunRequirement: null, // filled lazily from the species ecology profile

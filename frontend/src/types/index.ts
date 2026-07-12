@@ -561,6 +561,9 @@ export type IdentifyResponse = {
 
 export type IdentifyCommitResult = {
   species_id: number
+  /** Suggested display name in the language the commit was requested with (?lang=). */
+  name_suggested: string
+  /** DEPRECATED: Dutch-preferred name; read name_suggested instead. */
   name_nl_suggested: string
   scientific_name: string
   icon_key: string | null

@@ -7,7 +7,10 @@ import { resolveIconUrl } from '../utils/icons'
 import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
 
-const MONTH_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+const MONTH_ABBR: Record<'nl' | 'en', string[]> = {
+  nl: ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+}
 
 type RouteState = {
   candidate: Partial<IdentifyCommitResult> & { scientific_name?: string; common_name?: string; common_name_nl?: string }
@@ -51,9 +54,13 @@ export default function DiscoveryCard() {
   const speciesId = state?.candidate?.species_id ?? null
   const scientificName = state?.candidate?.scientific_name ?? ''
   const hideAddToGarden = state?.destination === 'journal'
-  const displayName = state?.candidate?.name_nl_suggested
-    ?? state?.candidate?.common_name_nl
+  // name_suggested is already in the user's language (the commit was made with
+  // ?lang=); common_name is the localized pick from the no-species fallback
+  // path. The Dutch-preferring fields only remain as legacy fallbacks.
+  const displayName = state?.candidate?.name_suggested
     ?? state?.candidate?.common_name
+    ?? state?.candidate?.name_nl_suggested
+    ?? state?.candidate?.common_name_nl
     ?? scientificName
 
   useEffect(() => {
@@ -124,9 +131,9 @@ export default function DiscoveryCard() {
   if (!state) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-text-soft)' }}>Geen plantdata beschikbaar.</p>
+        <p style={{ color: 'var(--color-text-soft)' }}>{t.discovery.noPlantData}</p>
         <button onClick={() => navigate(-1)} style={{ marginTop: 16, padding: '8px 16px', borderRadius: 8, background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          Terug
+          {t.discovery.back}
         </button>
       </div>
     )
@@ -231,7 +238,7 @@ export default function DiscoveryCard() {
               {ecology.flowering_months && ecology.flowering_months.length > 0 && (
                 <Badge
                   color="#6366f1"
-                  label={`${t.discovery.floweringMonths}: ${ecology.flowering_months.map(m => MONTH_NL[m - 1]).join(', ')}`}
+                  label={`${t.discovery.floweringMonths}: ${ecology.flowering_months.map(m => MONTH_ABBR[activeLang][m - 1]).join(', ')}`}
                 />
               )}
             </div>

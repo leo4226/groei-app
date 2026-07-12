@@ -19,7 +19,9 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
     const body = await res.json()
     if (body.detail) msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
   } catch { /* keep fallback */ }
-  throw new Error(msg)
+  // Carry the HTTP status so callers can branch on it instead of matching
+  // (language-dependent) detail strings.
+  throw Object.assign(new Error(msg), { status: res.status })
 }
 
 function buildUrl(path: string, params?: Record<string, string>) {
@@ -408,7 +410,7 @@ export const plants = {
   fact:              ()                                            => api<PlantFactOut>('GET', '/plant-fact'),
   identify:          async (imageBlob: Blob, lang: 'nl' | 'en' = 'nl')  => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?lang=${lang}`, { form: f }) },
   identifyPlantnet:  async (imageBlob: Blob, lang: 'nl' | 'en' = 'en')  => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?engine=plantnet&lang=${lang}`, { form: f }) },
-  commitIdentify:    (scientificName: string, photoBase64: string) => api<import('../types').IdentifyCommitResult>('POST', '/plants/identify/commit', { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
+  commitIdentify:    (scientificName: string, photoBase64: string, lang: 'nl' | 'en' = 'nl') => api<import('../types').IdentifyCommitResult>('POST', `/plants/identify/commit?lang=${lang}`, { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
 }
 
 export const photos = {
