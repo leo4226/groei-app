@@ -1018,6 +1018,7 @@ export const en: Translations = {
     completeAndAlign: 'Complete & align',
     undoGroup: 'Undo group',
     completedGroup: 'Garden done',
+    affectedPlants: (n) => n === 1 ? '1 plant' : `${n} plants`,
     newMoon: 'new',
     fullMoon: 'full',
     quarterMoon: 'quarter',
