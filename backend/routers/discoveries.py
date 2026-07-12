@@ -7,6 +7,8 @@ DELETE /discover/{id}     delete a discovery
 import base64
 import json
 import logging
+import os
+import secrets
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -174,6 +176,40 @@ async def update_discovery(
     return _format(row, species.get(row["species_id"]) if row["species_id"] else None)
 
 
+class ShareOut(BaseModel):
+    share_url: str
+
+
+@router.post("/{discovery_id}/share", response_model=ShareOut)
+async def share_discovery(
+    discovery_id: int,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Mint (or return) the public share link for a find.
+
+    Sharing is opt-in per discovery: nothing is publicly reachable until this
+    endpoint has been called. The token is unguessable and stable, so the same
+    find always shares to the same URL.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id, share_token FROM plant_discoveries WHERE id = ? AND household_id = ?",
+        (discovery_id, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Discovery not found")
+    token = _row_get(rows[0], "share_token")
+    if not token:
+        token = secrets.token_urlsafe(9)
+        await db.execute(
+            "UPDATE plant_discoveries SET share_token = ? WHERE id = ?",
+            (token, discovery_id),
+        )
+        await db.commit()
+    base = os.environ.get("PUBLIC_APP_URL", "https://floreren.app").rstrip("/")
+    return {"share_url": f"{base}/s/{token}"}
+
+
 @router.delete("/{discovery_id}", status_code=204)
 async def delete_discovery(
     discovery_id: int,
@@ -235,7 +271,8 @@ async def _species_lookup(db, species_ids: list[int]) -> dict[int, dict]:
     placeholders = ",".join("?" for _ in ids)
     try:
         rows = await db.execute_fetchall(
-            f"""SELECT id, common_name_nl, common_name_en, phenology_json
+            f"""SELECT id, common_name_nl, common_name_en, phenology_json,
+                       fun_fact_nl, fun_fact_en
                 FROM plant_species
                 WHERE id IN ({placeholders})""",
             tuple(ids),
@@ -247,23 +284,34 @@ async def _species_lookup(db, species_ids: list[int]) -> dict[int, dict]:
 
 
 def _format_species(row) -> dict:
-    fact_nl = None
-    fact_en = None
-    raw = _row_get(row, "phenology_json")
-    if raw:
-        try:
-            phenology = json.loads(raw) if isinstance(raw, str) else raw
-        except Exception:
-            phenology = None
+    # Species created by the identify flow (GBIF upsert) have no phenology at
+    # all, but DO get a cached fact in the dedicated fun_fact_* columns when the
+    # DiscoveryCard generates one — prefer those, fall back to phenology facts
+    # (the only source that existed before the columns were added).
+    fact_nl = _clean(_row_get(row, "fun_fact_nl"))
+    fact_en = _clean(_row_get(row, "fun_fact_en"))
+    if not fact_nl or not fact_en:
+        raw = _row_get(row, "phenology_json")
+        phenology = None
+        if raw:
+            try:
+                phenology = json.loads(raw) if isinstance(raw, str) else raw
+            except Exception:
+                phenology = None
         if isinstance(phenology, dict):
-            fact_nl = phenology.get("interesting_facts_nl")
-            fact_en = phenology.get("interesting_facts_en")
+            fact_nl = fact_nl or _clean(phenology.get("interesting_facts_nl"))
+            fact_en = fact_en or _clean(phenology.get("interesting_facts_en"))
     return {
         "common_name_nl": _row_get(row, "common_name_nl"),
         "common_name_en": _row_get(row, "common_name_en"),
         "fun_fact_nl": fact_nl,
         "fun_fact_en": fact_en,
     }
+
+
+def _clean(value) -> str | None:
+    text = str(value).strip() if value else ""
+    return text or None
 
 
 def _row_get(row, key: str, default=None):

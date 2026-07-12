@@ -35,6 +35,7 @@ from routers import watchdog as watchdog_router
 from routers import export as export_router
 from routers import game as game_router
 from routers import discoveries as discoveries_router
+from routers import share as share_router
 
 
 @asynccontextmanager
@@ -135,6 +136,8 @@ app.include_router(watchdog_router.router, prefix="/api")
 app.include_router(export_router.router, prefix="/api")
 app.include_router(game_router.router, prefix="/api")
 app.include_router(discoveries_router.router, prefix="/api")
+# Public share pages live at the root (floreren.app/s/* rewrites here), not /api.
+app.include_router(share_router.router)
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

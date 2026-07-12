@@ -732,6 +732,7 @@ export const discoveries = {
   }) => api<PlantDiscovery>('POST', '/discover', { body: data }),
   updateNotes: (id: number, notes: string | null) =>
     api<PlantDiscovery>('PATCH', `/discover/${id}`, { body: { notes } }),
+  share: (id: number) => api<{ share_url: string }>('POST', `/discover/${id}/share`),
   delete: (id: number) => api<void>('DELETE', `/discover/${id}`),
 }
 

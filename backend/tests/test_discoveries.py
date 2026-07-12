@@ -21,6 +21,7 @@ DISCOVERIES_SCHEMA = """
         location_lon REAL,
         place_name TEXT,
         country_code TEXT,
+        share_token TEXT,
         discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE plant_species (
@@ -28,7 +29,9 @@ DISCOVERIES_SCHEMA = """
         common_name_nl TEXT NOT NULL,
         common_name_en TEXT,
         latin_name TEXT,
-        phenology_json TEXT
+        phenology_json TEXT,
+        fun_fact_nl TEXT,
+        fun_fact_en TEXT
     );
 """
 
@@ -133,3 +136,82 @@ async def test_list_discoveries_enriches_species_names_facts_and_location(client
     assert item["location_lon"] == 4.8499
     assert item["place_name"] == "Amsterdam"
     assert item["country_code"] == "NL"
+
+@pytest.mark.asyncio
+async def test_list_prefers_cached_fun_fact_columns_over_empty_phenology(client, discoveries_db, auth_header):
+    """Species created by the identify flow have NO phenology_json, but the
+    DiscoveryCard caches a generated fact in the fun_fact_* columns — the
+    journal must read those (the Oleander/Peer no-fun-fact bug, #589)."""
+    await discoveries_db.execute(
+        """INSERT INTO plant_species (id, common_name_nl, latin_name, phenology_json, fun_fact_nl, fun_fact_en)
+           VALUES (7, 'Oleander', 'Nerium oleander', NULL, 'Alle delen zijn giftig.', 'All parts are poisonous.')""",
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries (account_id, household_id, species_id, common_name, place_name, country_code)
+           VALUES (1, 1, 7, 'Oleander', 'Noordwijk', 'NL')""",
+    )
+    await discoveries_db.commit()
+
+    res = await client.get("/api/discover", headers=auth_header)
+    assert res.status_code == 200
+    item = res.json()[0]
+    assert item["fun_fact_nl"] == "Alle delen zijn giftig."
+    assert item["fun_fact_en"] == "All parts are poisonous."
+
+
+@pytest.mark.asyncio
+async def test_share_mints_stable_token_and_scopes_to_household(client, discoveries_db, auth_header):
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries (id, account_id, household_id, common_name)
+           VALUES (1, 1, 1, 'Peer'), (2, 9, 999, 'Andermans vondst')""",
+    )
+    await discoveries_db.commit()
+
+    res = await client.post("/api/discover/1/share", headers=auth_header)
+    assert res.status_code == 200
+    url = res.json()["share_url"]
+    assert url.startswith("https://floreren.app/s/")
+    token = url.rsplit("/", 1)[1]
+    assert len(token) >= 10
+
+    # Second share reuses the same token
+    res2 = await client.post("/api/discover/1/share", headers=auth_header)
+    assert res2.json()["share_url"] == url
+
+    # Another household's discovery is invisible
+    res3 = await client.post("/api/discover/2/share", headers=auth_header)
+    assert res3.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_share_page_renders_specimen_card(client, discoveries_db, auth_header):
+    await discoveries_db.execute(
+        """INSERT INTO plant_species (id, common_name_nl, latin_name, fun_fact_nl)
+           VALUES (7, 'Oleander', 'Nerium oleander', 'Alle delen zijn giftig.')""",
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries
+              (id, account_id, household_id, species_id, common_name, latin_name,
+               thumbnail_url, notes, place_name, country_code, share_token, discovered_at)
+           VALUES (1, 1, 1, 7, 'Oleander <script>alert(1)</script>', 'Nerium oleander',
+                   'https://cdn.test/oleander.jpg', 'geheim veldnotitie', 'Noordwijk', 'NL',
+                   'tok_abc123', '2026-07-11 14:00:00')""",
+    )
+    await discoveries_db.commit()
+
+    res = await client.get("/s/tok_abc123")
+    assert res.status_code == 200
+    page = res.text
+    # Species NL name wins over the (attacker-controlled) free-text common_name
+    assert "<h1>Oleander <em>Nerium oleander</em>.</h1>" in page
+    assert "<script>alert(1)</script>" not in page  # escaped, never raw
+    assert "Alle delen zijn giftig." in page
+    assert "Noordwijk, NL" in page and "11 juli 2026" in page
+    assert 'property="og:image" content="https://cdn.test/oleander.jpg"' in page
+    assert 'property="og:title"' in page
+    # Private parts stay private: no notes, no exact coordinates
+    assert "geheim veldnotitie" not in page
+
+    # Unknown token → 404
+    res404 = await client.get("/s/nope")
+    assert res404.status_code == 404
