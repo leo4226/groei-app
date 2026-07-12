@@ -84,6 +84,7 @@ async def list_calendar_events(
     to: str = Query(...),
     env: str | None = Query(None),
     group_outdoor: bool = Query(False),
+    pin_overdue: bool = Query(False),
     account = Depends(get_current_account),
     db = Depends(db_dep),
 ):
@@ -272,12 +273,11 @@ async def list_calendar_events(
                 from_dt,
                 to_dt,
             )
-            # Clamp overdue: if schedule is overdue at window start and no
-            # occurrences fall inside the window, show one at from_dt so
-            # outstanding work is never silently omitted from forward-looking
-            # agenda views (Audit F7, #439).
-            if not occurrences and next_due < from_dt and from_dt <= to_dt:
-                occurrences = [from_dt]
+            # Pin the real outstanding job at the start of agenda windows.
+            # Month keeps the legacy behavior unless the opt-in flag is set.
+            should_clamp = next_due < from_dt and (pin_overdue or not occurrences)
+            if should_clamp and from_dt <= to_dt and from_dt not in occurrences:
+                occurrences.insert(0, from_dt)
             sp_id = plant_species_map.get(pid)
             sp = species_names.get(sp_id, {}) if sp_id else {}
             for i, occ in enumerate(occurrences):

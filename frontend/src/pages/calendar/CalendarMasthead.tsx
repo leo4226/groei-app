@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { MONTH_LONG_NL, isoWeek } from './dateUtils'
-import type { CalendarViewMode } from './PlanningCalendarPage'
+import type { CalendarViewMode } from './calendarViewModel'
 import CalendarMoonMini from './CalendarMoonMini'
+import CalendarViewToggle from './CalendarViewToggle'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
@@ -68,10 +69,7 @@ export default function CalendarMasthead({
             </div>
           </div>
           <div className="ms-row">
-            <div className="view-toggle">
-              <button className={viewMode === 'month' ? 'on' : ''} onClick={() => onSetView('month')}>{t.calendar.month}</button>
-              <button className={viewMode === 'agenda' ? 'on' : ''} onClick={() => onSetView('agenda')}>{t.calendar.agenda}</button>
-            </div>
+            <CalendarViewToggle view={viewMode} onSet={onSetView} />
           </div>
           <div className="ms-meta">
             <span>{t.calendar.thisMonth} <span className="v">{taskCount} <em>{t.calendar.tasks}</em></span></span>
