@@ -7,13 +7,12 @@ import CalendarAlmanac from './CalendarAlmanac'
 import CalendarUpcoming from './CalendarUpcoming'
 import MobileAgendaList from './MobileAgendaList'
 import { useCalendarEvents } from './useCalendarEvents'
+import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
-import { EVENT_TYPES, type CalendarEvent, type EventTypeId } from './calendarTypes'
+import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
-import type { CalendarViewMode } from './PlanningCalendarPage'
+import type { CalendarViewMode } from './calendarViewModel'
 import { useT } from '../../context/LanguageContext'
-import { useFloreren } from '../../store/useFloreren'
-import { gardenCare } from '../../api/client'
 
 interface Props {
   viewMode: CalendarViewMode
@@ -24,7 +23,6 @@ interface Props {
 
 export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
   const t = useT()
-  const { markCareDone, skipCare, activeUserId } = useFloreren()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -33,78 +31,18 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   const [activeTypes, setActiveTypes] = useState<Set<EventTypeId>>(
     () => new Set(EVENT_TYPES.map(t => t.id)),
   )
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
-  const [saving, setSaving] = useState<string | null>(null)
-  const [gardenOperationId, setGardenOperationId] = useState<number | null>(null)
-  const [undoMsg, setUndoMsg] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
-
   const { events, loading, error } = useCalendarEvents(year, month1, env)
+  const {
+    actionError,
+    doneIds,
+    handleDone,
+    handleGardenUndo,
+    handleSkip,
+    saving,
+    undoMsg,
+  } = useCalendarActions(events)
+
   const isNarrow = useIsNarrow(1200)
-
-  async function handleDone(event: CalendarEvent) {
-    setActionError(null)
-    if (event.grouped && event.map_id !== null && event.group_member_schedule_ids && event.group_member_schedule_ids.length > 0 && activeUserId !== null) {
-      setSaving(event.id)
-      setUndoMsg(null)
-      try {
-        const completedAt = new Date().toISOString().slice(0, 10)
-        const result = await gardenCare.complete(event.type, activeUserId, event.map_id, completedAt)
-        setGardenOperationId(result.operation_id)
-        setDoneIds(prev => new Set([...prev, event.id]))
-        setUndoMsg(t.calendar.completedGroup)
-      } catch (err) {
-        console.error('gardenCare.complete failed:', err)
-        setActionError(t.common.error)
-      } finally {
-        setSaving(null)
-      }
-      return
-    }
-    if (!event.plant_id) return
-    setSaving(event.id)
-    try {
-      await markCareDone(event.plant_id, event.type)
-      setDoneIds(prev => new Set([...prev, event.id]))
-    } catch (err) {
-      console.error('markCareDone failed:', err)
-      setActionError(t.common.error)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  async function handleGardenUndo() {
-    if (!gardenOperationId) return
-    setActionError(null)
-    setSaving('undo-garden')
-    try {
-      await gardenCare.undo(gardenOperationId)
-      setGardenOperationId(null)
-      setUndoMsg(null)
-      setDoneIds(new Set())
-    } catch (err) {
-      console.error('gardenCare.undo failed:', err)
-      setActionError(t.common.error)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  async function handleSkip(event: CalendarEvent) {
-    if (!event.plant_id) return
-    setActionError(null)
-    setSaving(event.id)
-    try {
-      await skipCare(event.plant_id, event.type)
-      setDoneIds(prev => new Set([...prev, event.id]))
-    } catch (err) {
-      console.error('skipCare failed:', err)
-      setActionError(t.common.error)
-    } finally {
-      setSaving(null)
-    }
-  }
 
   const filtered = useMemo(
     () => events.filter(e => activeTypes.has(e.type) && !doneIds.has(e.id)),

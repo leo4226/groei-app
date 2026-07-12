@@ -504,9 +504,10 @@ export const alerts = {
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 
 export const calendar = {
-  events: (from: string, to: string, env?: string) => {
+  events: (from: string, to: string, env?: string, pinOverdue = false) => {
     const params: Record<string, string> = { from, to }
     if (env && env !== 'all') params.env = env
+    if (pinOverdue) params.pin_overdue = 'true'
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
 }

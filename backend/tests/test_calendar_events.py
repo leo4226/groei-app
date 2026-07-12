@@ -284,6 +284,42 @@ async def test_calendar_events_no_clamp_when_natural_occurrence_in_window(client
 
 
 @pytest.mark.asyncio
+async def test_calendar_events_can_pin_overdue_before_natural_occurrence(client, seeded_db, auth_header):
+    """Work Agenda can request the real outstanding job without changing Month."""
+    db = seeded_db
+    cur = await db.execute(
+        "INSERT INTO plants (name, household_id) VALUES ('PinnedOverdue', 1)"
+    )
+    plant_id = cur.lastrowid
+    today = date.today()
+    next_due = today - timedelta(days=5)
+    await db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active) "
+        "VALUES (?, 'water', 7, ?, 1)",
+        (plant_id, next_due.isoformat()),
+    )
+    await db.commit()
+
+    response = await client.get(
+        "/api/calendar/events",
+        params={
+            "from": today.isoformat(),
+            "to": (today + timedelta(days=5)).isoformat(),
+            "pin_overdue": "true",
+        },
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    waters = [event for event in response.json() if event["plant_id"] == plant_id]
+    assert [event["date"] for event in waters] == [
+        today.isoformat(),
+        (today + timedelta(days=2)).isoformat(),
+    ]
+    assert [event["overdue"] for event in waters] == [True, False]
+
+
+@pytest.mark.asyncio
 async def test_calendar_groups_outdoor_care_without_hiding_indoor_events(client, seeded_db, auth_header):
     db = seeded_db
     due = date.today()

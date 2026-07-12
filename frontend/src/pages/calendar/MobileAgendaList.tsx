@@ -1,16 +1,9 @@
 import { useMemo } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
+import { agendaPlantName } from './workAgendaModel'
 import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
-
-function agendaPlantName(ev: CalendarEvent, locale: string): string {
-  if (ev.grouped) return ev.map_name || ''
-  const localized = locale.startsWith('en')
-    ? (ev.species_common_name_en?.trim() || ev.species_common_name_nl?.trim())
-    : (ev.species_common_name_nl?.trim() || ev.species_common_name_en?.trim())
-  return localized || ev.plant_name || ''
-}
 
 interface Props {
   events: CalendarEvent[]
@@ -102,9 +95,11 @@ export default function MobileAgendaList({
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{agendaPlantName(e, t.locale) || '—'}</span>
-                    {e.grouped && (
-                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                        {t.calendar.affectedPlants(groupCount)}
+                    {(e.grouped || e.overdue) && (
+                      <span style={{ fontSize: 11, color: e.overdue ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
+                        {e.grouped && t.calendar.affectedPlants(groupCount)}
+                        {e.grouped && e.overdue && ' · '}
+                        {e.overdue && t.calendar.overdueLabel}
                       </span>
                     )}
                   </span>
@@ -119,8 +114,6 @@ export default function MobileAgendaList({
                         </button>
                       )}
                     </div>
-                  ) : e.overdue ? (
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-secondary)' }}>{t.calendar.overdueLabel}</span>
                   ) : null}
                 </div>
               )

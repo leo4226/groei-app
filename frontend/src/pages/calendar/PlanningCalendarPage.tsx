@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import Glyph, { type GlyphName } from '../../components/ui/Glyph'
+import { useT } from '../../context/LanguageContext'
 import MonthView from './MonthView'
 import PhenologyView from './PhenologyView'
-import { useT } from '../../context/LanguageContext'
+import WorkAgendaView from './WorkAgendaView'
+import CalendarViewToggle from './CalendarViewToggle'
+import { defaultCalendarView, type CalendarViewMode } from './calendarViewModel'
 import { useIsNarrow } from './useIsNarrow'
-import Glyph, { type GlyphName } from '../../components/ui/Glyph'
 import './calendar.css'
-
-export type CalendarViewMode = 'month' | 'agenda'
 
 function EnvironmentFilter({
   env,
@@ -30,6 +31,8 @@ function EnvironmentFilter({
         return (
           <button
             key={id}
+            type="button"
+            aria-pressed={active}
             onClick={() => onChange(id)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
@@ -59,24 +62,21 @@ function EnvironmentFilter({
 }
 
 function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
-  const t = useT()
   return (
     <div className="standalone-toggle-container" style={{
       width: 'min(100%, 1800px)', margin: '0 auto', padding: 'max(clamp(16px, 4vw, 48px), env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0',
       display: 'flex', justifyContent: 'flex-end',
     }}>
-      <div className="view-toggle">
-        <button className={view === 'month' ? 'on' : ''} onClick={() => onSet('month')}>{t.calendar.month}</button>
-        <button className={view === 'agenda' ? 'on' : ''} onClick={() => onSet('agenda')}>{t.calendar.agenda}</button>
-      </div>
+      <CalendarViewToggle view={view} onSet={onSet} />
     </div>
   )
 }
 
 export default function PlanningCalendarPage() {
   const isNarrow = useIsNarrow()
-  const [view, setView] = useState<CalendarViewMode>(isNarrow ? 'agenda' : 'month')
+  const [view, setView] = useState<CalendarViewMode>(() => defaultCalendarView(isNarrow))
   const [env, setEnv] = useState('all')
+  const environmentFilter = <EnvironmentFilter env={env} onChange={setEnv} />
 
   return (
     <div className="cal-page">
@@ -85,12 +85,16 @@ export default function PlanningCalendarPage() {
           viewMode={view}
           onSetView={setView}
           env={env}
-          environmentFilter={<EnvironmentFilter env={env} onChange={setEnv} />}
+          environmentFilter={environmentFilter}
         />
       ) : (
         <>
           <StandaloneToggle view={view} onSet={setView} />
-          <PhenologyView />
+          {view === 'work' ? (
+            <WorkAgendaView env={env} environmentFilter={environmentFilter} />
+          ) : (
+            <PhenologyView />
+          )}
         </>
       )}
     </div>

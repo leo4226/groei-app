@@ -68,7 +68,7 @@ export default function PhenologyView() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold text-text mb-4">{t.phenology.title}</h1>
+      <h1 className="text-xl font-bold text-text mb-4">{t.calendar.gardenYear}</h1>
 
       {/* Month selector */}
       <div className="flex gap-1 overflow-x-auto pb-2 mb-5 -mx-4 px-4">

@@ -949,7 +949,11 @@ export type Translations = {
     week: string
     month: string
     agenda: string
-    thisMonth: string  // "This month"
+    workAgendaHeading: string
+    workAgendaSubtitle: string
+    workAgendaLoadFailed: string
+    retry: string
+    thisMonth: string
     previousMonth: string
     nextMonth: string
     tasks: string  // "tasks"

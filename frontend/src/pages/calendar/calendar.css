@@ -742,6 +742,47 @@
 }
 .cal-page .alm-line em { color: #E8C658; font-style: italic; }
 
+.cal-page .work-agenda-view {
+  width: min(100%, 900px);
+  margin: 0 auto;
+  padding: 32px clamp(16px, 3vw, 40px) 56px;
+}
+.cal-page .work-agenda-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--cal-rule);
+}
+.cal-page .work-agenda-head h1 {
+  margin: 4px 0 6px;
+  font-family: 'Fraunces', serif;
+  font-size: clamp(32px, 5vw, 48px);
+  color: var(--cal-ink);
+}
+.cal-page .work-agenda-head h1 em { color: var(--cal-accent-2); }
+.cal-page .work-agenda-head p {
+  margin: 0;
+  color: var(--cal-ink-soft);
+  font-size: 14px;
+}
+.cal-page .work-agenda-status {
+  margin: 24px 12px;
+  padding: 18px;
+  text-align: center;
+  color: var(--cal-ink-soft);
+}
+.cal-page .work-agenda-status button {
+  margin-top: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--cal-rule);
+  border-radius: 99px;
+  background: var(--cal-accent);
+  color: var(--cal-paper);
+  cursor: pointer;
+}
+
 @media (max-width: 1200px) {
   .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page main { grid-template-columns: 1fr; }
@@ -755,6 +796,17 @@
   .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page .standalone-toggle-container {
     padding: 16px 16px 0 !important;
+  }
+  .cal-page .view-toggle { width: 100%; }
+  .cal-page .view-toggle button {
+    flex: 1;
+    padding: 7px 8px;
+    letter-spacing: 0.08em;
+  }
+  .cal-page .work-agenda-view { padding-top: 20px; }
+  .cal-page .work-agenda-head {
+    flex-direction: column;
+    align-items: stretch;
   }
   .cal-page .masthead {
     padding: 24px 16px 12px;
