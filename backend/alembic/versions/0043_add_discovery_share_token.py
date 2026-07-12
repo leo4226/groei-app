@@ -1,12 +1,12 @@
 """add share_token to plant_discoveries for public specimen-card links
 
-Revision ID: 0042
-Revises: 0041
+Revision ID: 0043
+Revises: 0042
 """
 from alembic import op
 
-revision = "0042"
-down_revision = "0041"
+revision = "0043"
+down_revision = "0042"
 branch_labels = None
 depends_on = None
 
