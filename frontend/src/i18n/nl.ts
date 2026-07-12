@@ -1018,6 +1018,7 @@ export const nl: Translations = {
     completeAndAlign: 'Voltooi & aligneer',
     undoGroup: 'Zet groep terug',
     completedGroup: 'Tuin klaar',
+    affectedPlants: (n) => n === 1 ? '1 plant' : `${n} planten`,
     newMoon: 'nieuw',
     fullMoon: 'vol',
     quarterMoon: 'kwart',

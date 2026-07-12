@@ -18,9 +18,21 @@ interface Props {
   saving: string | null
   onDone: (e: CalendarEvent) => void
   onSkip: (e: CalendarEvent) => void
+  undoMsg: string | null
+  onGardenUndo: () => void
+  actionError: string | null
 }
 
-export default function MobileAgendaList({ events, todayIso, saving, onDone, onSkip }: Props) {
+export default function MobileAgendaList({
+  events,
+  todayIso,
+  saving,
+  onDone,
+  onSkip,
+  undoMsg,
+  onGardenUndo,
+  actionError,
+}: Props) {
   const t = useT()
   const grouped = useMemo(() => {
     const m = new Map<string, CalendarEvent[]>()
@@ -32,12 +44,37 @@ export default function MobileAgendaList({ events, todayIso, saving, onDone, onS
     return [...m.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [events])
 
-  if (grouped.length === 0) {
-    return <p style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t.calendar.noTasksRest}</p>
-  }
-
   return (
     <div style={{ padding: '0 12px 32px' }}>
+      {actionError && (
+        <p role="alert" style={{ padding: '12px', color: 'crimson', margin: '12px 0 0' }}>
+          {actionError}
+        </p>
+      )}
+      {undoMsg && (
+        <div role="status" aria-live="polite" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          padding: '12px', marginTop: 12, background: 'var(--color-paper)',
+          border: '1px solid var(--color-border)', borderRadius: 4,
+        }}>
+          <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{undoMsg}</span>
+          <button
+            disabled={saving === 'undo-garden'}
+            onClick={onGardenUndo}
+            aria-busy={saving === 'undo-garden'}
+            style={{
+              padding: '5px 10px', borderRadius: 99, background: 'transparent',
+              color: 'var(--color-text-muted)', border: '1px solid var(--color-border)',
+              fontFamily: 'Fraunces, serif', fontSize: 11, cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            {saving === 'undo-garden' ? t.common.loading : t.calendar.undoGroup}
+          </button>
+        </div>
+      )}
+      {grouped.length === 0 && (
+        <p style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t.calendar.noTasksRest}</p>
+      )}
       {grouped.map(([iso, list]) => {
         const [y, m, d] = iso.split('-').map(Number)
         const isToday = iso === todayIso
@@ -52,24 +89,35 @@ export default function MobileAgendaList({ events, todayIso, saving, onDone, onS
             </h3>
             {list.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
+              const busy = saving === e.id
+              const groupCount = e.group_count ?? e.group_member_schedule_ids?.length ?? 0
               return (
                 <div key={e.id} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '10px 12px', background: 'var(--color-paper)',
                   borderLeft: `3px solid ${def?.color ?? 'var(--color-primary)'}`,
                   borderRadius: 4, marginBottom: 6,
-                  opacity: saving === e.id ? 0.5 : 1, transition: 'opacity 0.15s',
-                }}>
+                  opacity: busy ? 0.5 : 1, transition: 'opacity 0.15s',
+                }} aria-busy={busy || undefined}>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
-                  <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{agendaPlantName(e, t.locale) || '—'}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{agendaPlantName(e, t.locale) || '—'}</span>
+                    {e.grouped && (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {t.calendar.affectedPlants(groupCount)}
+                      </span>
+                    )}
+                  </span>
                   {isActionable(e, todayIso) ? (
                     <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>
-                      <button disabled={saving === e.id} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
-                        {t.dashboard.actions.done}
+                      <button disabled={busy} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
+                        {busy ? t.common.loading : e.grouped ? t.calendar.completeAndAlign : t.dashboard.actions.done}
                       </button>
-                      <button disabled={saving === e.id} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: 'pointer' }}>
-                        {t.dashboard.actions.skip}
-                      </button>
+                      {!e.grouped && (
+                        <button disabled={busy} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: 'pointer' }}>
+                          {t.dashboard.actions.skip}
+                        </button>
+                      )}
                     </div>
                   ) : e.overdue ? (
                     <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-secondary)' }}>{t.calendar.overdueLabel}</span>

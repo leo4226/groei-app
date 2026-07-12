@@ -37,13 +37,15 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   const [saving, setSaving] = useState<string | null>(null)
   const [gardenOperationId, setGardenOperationId] = useState<number | null>(null)
   const [undoMsg, setUndoMsg] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const { events, loading, error } = useCalendarEvents(year, month1, env)
   const isNarrow = useIsNarrow(1200)
 
   async function handleDone(event: CalendarEvent) {
+    setActionError(null)
     if (event.grouped && event.map_id !== null && event.group_member_schedule_ids && event.group_member_schedule_ids.length > 0 && activeUserId !== null) {
-          setSaving(event.id)
+      setSaving(event.id)
       setUndoMsg(null)
       try {
         const completedAt = new Date().toISOString().slice(0, 10)
@@ -53,6 +55,7 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
         setUndoMsg(t.calendar.completedGroup)
       } catch (err) {
         console.error('gardenCare.complete failed:', err)
+        setActionError(t.common.error)
       } finally {
         setSaving(null)
       }
@@ -65,6 +68,7 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       setDoneIds(prev => new Set([...prev, event.id]))
     } catch (err) {
       console.error('markCareDone failed:', err)
+      setActionError(t.common.error)
     } finally {
       setSaving(null)
     }
@@ -72,6 +76,7 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
 
   async function handleGardenUndo() {
     if (!gardenOperationId) return
+    setActionError(null)
     setSaving('undo-garden')
     try {
       await gardenCare.undo(gardenOperationId)
@@ -80,6 +85,7 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       setDoneIds(new Set())
     } catch (err) {
       console.error('gardenCare.undo failed:', err)
+      setActionError(t.common.error)
     } finally {
       setSaving(null)
     }
@@ -87,12 +93,14 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
 
   async function handleSkip(event: CalendarEvent) {
     if (!event.plant_id) return
+    setActionError(null)
     setSaving(event.id)
     try {
       await skipCare(event.plant_id, event.type)
       setDoneIds(prev => new Set([...prev, event.id]))
     } catch (err) {
       console.error('skipCare failed:', err)
+      setActionError(t.common.error)
     } finally {
       setSaving(null)
     }
@@ -135,7 +143,16 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       />
       <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
       {isNarrow ? (
-        <MobileAgendaList events={filtered} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} />
+        <MobileAgendaList
+          events={filtered}
+          todayIso={todayIso}
+          saving={saving}
+          onDone={handleDone}
+          onSkip={handleSkip}
+          undoMsg={undoMsg}
+          onGardenUndo={handleGardenUndo}
+          actionError={actionError}
+        />
       ) : (
         <main>
           <CalendarGrid

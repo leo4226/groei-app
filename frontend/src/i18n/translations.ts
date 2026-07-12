@@ -977,6 +977,7 @@ export type Translations = {
     completeAndAlign: string  // "Complete & align"
     undoGroup: string  // "Undo group"
     completedGroup: string  // "Watered and aligned"
+    affectedPlants: (n: number) => string  // "3 affected plants"
     // Moon short labels (used in day cells)
     newMoon: string  // "new"
     fullMoon: string  // "full"
