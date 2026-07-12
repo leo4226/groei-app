@@ -116,6 +116,32 @@ def _exact_ai_generated_match(catalog: list[dict], name: str, species: str | Non
     return None
 
 
+def _form_of(icon_key: str | None, catalog: list[dict]) -> str | None:
+    """Form ('bare'/'potted'/…) of a plant's current icon: from its catalog entry
+    when the key still resolves, else from the key's form suffix (dangling keys)."""
+    if not icon_key:
+        return None
+    for entry in catalog:
+        if entry["id"] == icon_key:
+            return entry.get("form")
+    match = _FORM_SUFFIXES.search(icon_key)
+    return match.group(1) if match else None
+
+
+async def _with_preserved_form(db, catalog: list[dict], new_key: str, current_key: str | None) -> str:
+    """Re-apply the plant's current bare/potted form to a newly assigned icon.
+
+    Sync matching always lands on a base icon, and for generated icons the base
+    IS the potted drawing — assigning it verbatim would flip an explicit bare
+    choice back to potted (the recurring pot-comes-back bug). find_variant falls
+    back to the base when the target form doesn't exist for the new icon.
+    """
+    form = _form_of(current_key, catalog)
+    if form in ("bare", "potted"):
+        return await find_variant(db, new_key, form)
+    return new_key
+
+
 async def sync_match_icon_key(
     db,
     plant: dict,
@@ -129,16 +155,26 @@ async def sync_match_icon_key(
     when the current icon is otherwise valid but generic/shared.
     Priority 2: preserve legacy sync behaviour for requested/missing/placeholder/
     dangling icons by falling back to best-effort catalog matching.
+
+    Both paths are form-preserving: a plant already on a form variant of its
+    exact icon (e.g. wallflower_bare vs wallflower) is NOT "upgraded" to the
+    base, and any newly assigned icon keeps the plant's current bare/potted form.
     """
     catalog = catalog if catalog is not None else await load_catalog(db)
     valid_ids = valid_ids if valid_ids is not None else {e["id"] for e in catalog}
 
-    exact_generated = _exact_ai_generated_match(catalog, plant["name"], plant.get("species"))
-    if exact_generated and exact_generated != plant.get("icon_key"):
-        return exact_generated
+    current_key = plant.get("icon_key")
+    current_base = _FORM_SUFFIXES.sub("", current_key) if current_key else None
 
-    if plant.get("icon_requested") or _needs_real_icon(plant.get("icon_key"), valid_ids):
-        return await match_icon_key(db, plant["name"], plant.get("species"))
+    exact_generated = _exact_ai_generated_match(catalog, plant["name"], plant.get("species"))
+    if exact_generated and exact_generated not in (current_key, current_base):
+        return await _with_preserved_form(db, catalog, exact_generated, current_key)
+
+    if plant.get("icon_requested") or _needs_real_icon(current_key, valid_ids):
+        matched = await match_icon_key(db, plant["name"], plant.get("species"))
+        if matched:
+            return await _with_preserved_form(db, catalog, matched, current_key)
+        return matched
 
     return None
 

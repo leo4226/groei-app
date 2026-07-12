@@ -17,3 +17,71 @@ async def test_sync_is_match_only_no_new_icons(client, seeded_db):
     row = (await seeded_db.execute_fetchall("SELECT icon_key, icon_requested FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "monstera"
     assert not row["icon_requested"]
+
+
+async def _seed_generated_icons(db):
+    """AI-generated catalog entries: base = potted drawing, _bare = variant."""
+    await db.execute(
+        """CREATE TABLE generated_icons (
+            id TEXT PRIMARY KEY, name TEXT, sci TEXT, cat TEXT, form TEXT,
+            variant_of TEXT, family TEXT, url TEXT, source TEXT, created_at TEXT)""")
+    for icon_id, name, sci, form, variant_of in [
+        ("gen_muurbloem", "Muurbloem", "Erysimum cheiri", "potted", None),
+        ("gen_muurbloem_bare", "Muurbloem", "Erysimum cheiri", "bare", "gen_muurbloem"),
+        ("gen_roos", "Roos", "Rosa", "potted", None),
+        ("gen_roos_bare", "Roos", "Rosa", "bare", "gen_roos"),
+    ]:
+        await db.execute(
+            "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,url,source) "
+            "VALUES (?,?,?,'flower',?,?,?,'ai')",
+            (icon_id, name, sci, form, variant_of, f"https://r2/{icon_id}.svg"))
+
+
+@pytest.mark.asyncio
+async def test_sync_leaves_bare_variant_of_exact_icon_alone(client, seeded_db):
+    """Regression: a plant already on the _bare variant of its own exact AI icon
+    must NOT be 'upgraded' to the base (= potted) icon by sync — that was the
+    pot-comes-back bug triggered on every plant creation."""
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await _seed_generated_icons(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Muurbloem','gen_muurbloem_bare',0,1,1)")
+    await seeded_db.commit()
+    resp = await client.post("/api/icon-catalog/sync")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["matched_plants"] == 0
+    row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
+    assert row["icon_key"] == "gen_muurbloem_bare"
+
+
+@pytest.mark.asyncio
+async def test_sync_upgrade_preserves_bare_form(client, seeded_db):
+    """When sync legitimately upgrades to an exact AI icon, the plant's current
+    bare form carries over to the new icon's _bare variant."""
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await _seed_generated_icons(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Muurbloem','gen_roos_bare',0,1,1)")
+    await seeded_db.commit()
+    resp = await client.post("/api/icon-catalog/sync")
+    assert resp.status_code == 200, resp.text
+    row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
+    assert row["icon_key"] == "gen_muurbloem_bare"
+
+
+@pytest.mark.asyncio
+async def test_sync_dangling_bare_key_keeps_form(client, seeded_db):
+    """A dangling icon_key with a _bare suffix re-matches to the new icon's
+    _bare variant, not the potted base."""
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await _seed_generated_icons(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Muurbloem','verdwenen_icoon_bare',0,1,1)")
+    await seeded_db.commit()
+    resp = await client.post("/api/icon-catalog/sync")
+    assert resp.status_code == 200, resp.text
+    row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
+    assert row["icon_key"] == "gen_muurbloem_bare"
