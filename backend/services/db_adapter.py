@@ -2,6 +2,7 @@
 """asyncpg adapter preserving the legacy aiosqlite call surface used by routers."""
 
 import re
+from contextlib import asynccontextmanager
 
 import asyncpg
 
@@ -117,6 +118,12 @@ class DbAdapter:
 
     async def fetchone(self) -> dict | None:
         return self._last_result[0] if self._last_result else None
+
+    @asynccontextmanager
+    async def transaction(self):
+        """Run a group of adapter statements in one asyncpg transaction."""
+        async with self._conn.transaction():
+            yield self
 
     async def commit(self) -> None:
         # asyncpg auto-commits outside an explicit transaction. No-op here.

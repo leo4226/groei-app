@@ -30,8 +30,17 @@ async def sync_ephemeral_schedules(db=None) -> dict:
     """
     if db is None:
         async with get_db() as own_db:
-            return await _sync_ephemeral_schedules(own_db)
-    return await _sync_ephemeral_schedules(db)
+            return await _sync_transactionally(own_db)
+    return await _sync_transactionally(db)
+
+
+async def _sync_transactionally(db) -> dict:
+    """Use one transaction in production; SQLite-style test doubles stay valid."""
+    transaction = getattr(db, "transaction", None)
+    if transaction is None:
+        return await _sync_ephemeral_schedules(db)
+    async with transaction():
+        return await _sync_ephemeral_schedules(db)
 
 
 async def _sync_weather_type(
@@ -54,37 +63,57 @@ async def _sync_weather_type(
     )
 
     if not triggered:
-        for row in rows:
+        if rows:
             await db.execute(
-                "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
-                (row["id"],),
+                """UPDATE care_schedules SET is_active = FALSE
+                   WHERE plant_id = ? AND care_type IN (?, ?)
+                     AND is_ephemeral = 1 AND is_active = 1""",
+                (plant_id, canonical_type, legacy_type),
             )
         return 0, len(rows)
 
-    if not rows:
-        await db.execute(
-            """INSERT INTO care_schedules
-               (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
-               VALUES (?, ?, 1, ?, 1, ?)""",
-            (plant_id, canonical_type, today, notes),
-        )
-        return 1, 0
-
-    keeper = rows[0]
-    # Canonicalize rolling-deploy leftovers in place and keep the one-shot due
-    # today so opening Calendar always reflects current conditions.
-    await db.execute(
-        """UPDATE care_schedules
-           SET care_type = ?, next_due = ?, notes = ?
-           WHERE id = ?""",
-        (canonical_type, today, notes, keeper["id"]),
+    # Always establish the canonical winner before touching a legacy alias.
+    # A concurrent sync can insert the same winner after our read; the partial
+    # unique index and ON CONFLICT turn that race into an idempotent no-op.
+    inserted = await db.execute_fetchall(
+        """INSERT INTO care_schedules
+           (plant_id, care_type, interval_days, next_due, is_ephemeral, notes)
+           VALUES (?, ?, 1, ?, 1, ?)
+           ON CONFLICT DO NOTHING
+           RETURNING id""",
+        (plant_id, canonical_type, today, notes),
     )
-    for duplicate in rows[1:]:
+    if not inserted:
         await db.execute(
-            "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
-            (duplicate["id"],),
+            """UPDATE care_schedules
+               SET next_due = ?, notes = ?
+               WHERE plant_id = ? AND care_type = ?
+                 AND is_ephemeral = 1 AND is_active = 1""",
+            (today, notes, plant_id, canonical_type),
         )
-    return 0, max(0, len(rows) - 1)
+
+    canonical_rows = [row for row in rows if row["care_type"] == canonical_type]
+    legacy_rows = [row for row in rows if row["care_type"] == legacy_type]
+    if legacy_rows:
+        if canonical_rows:
+            await db.execute(
+                """UPDATE care_schedules SET is_active = FALSE
+                   WHERE plant_id = ? AND care_type = ?
+                     AND is_ephemeral = 1 AND is_active = 1""",
+                (plant_id, legacy_type),
+            )
+        else:
+            # The canonical insert replaces a lone legacy task. Removing the
+            # superseded ephemeral row preserves the one-row canonical shape.
+            await db.execute(
+                """DELETE FROM care_schedules
+                   WHERE plant_id = ? AND care_type = ?
+                     AND is_ephemeral = 1 AND is_active = 1""",
+                (plant_id, legacy_type),
+            )
+
+    created = int(bool(inserted) and not rows)
+    return created, len(legacy_rows)
 
 
 async def _sync_ephemeral_schedules(db) -> dict:
