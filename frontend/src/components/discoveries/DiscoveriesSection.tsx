@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense, Component, type MouseEven
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
-import { buildDiscoveryJournalEntry, discoveryDisplayName } from '../../utils/discoveryJournal'
+import { buildDiscoveryJournalEntry, discoveryDisplayName, discoveryFunFact } from '../../utils/discoveryJournal'
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
 import type { EcologyOut } from '../../types'
 import ExpeditionMap from './ExpeditionMap'
@@ -196,6 +196,27 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
   const selected = selectedId != null ? items.find(d => d.id === selectedId) ?? null : null
 
+  // Self-healing fun facts: entries whose species predates the journal's
+  // fun-fact columns (or whose fact generation failed at identify time) fetch
+  // one on open — the endpoint generates via the LLM and caches on the species.
+  useEffect(() => {
+    const item = selectedId != null ? items.find(d => d.id === selectedId) : undefined
+    if (!item || item.species_id == null) return
+    if (item.fun_fact_nl || item.fun_fact_en) return
+    let cancelled = false
+    const speciesId = item.species_id
+    speciesApi.funFact(speciesId)
+      .then(r => {
+        if (cancelled || (!r.fun_fact_nl && !r.fun_fact_en)) return
+        setItems(prev => prev.map(d => d.species_id === speciesId
+          ? { ...d, fun_fact_nl: r.fun_fact_nl || d.fun_fact_nl, fun_fact_en: r.fun_fact_en || d.fun_fact_en }
+          : d))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
   function openEntry(id: number) {
     setSelectedId(id)
     setEditingNotes(false)
@@ -215,12 +236,21 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
   async function handleShare(item: PlantDiscovery) {
     const title = discoveryDisplayName(item, t.locale)
-    const text = `${title}${item.latin_name ? ` (${item.latin_name})` : ''} 🌿 — floreren.app`
+    const fact = discoveryFunFact(item, t.locale)
+    // Mint (or reuse) the public specimen-card link — the page carries OG tags,
+    // so chat apps render a rich preview (photo + name + fact). If the request
+    // fails (offline), fall back to sharing text only.
+    let url: string | undefined
+    try {
+      url = (await discoveriesApi.share(item.id)).share_url
+    } catch { /* text-only share below */ }
+    const text = [`${title}${item.latin_name ? ` (${item.latin_name})` : ''} 🌿`, fact]
+      .filter(Boolean).join(' — ')
     if (typeof navigator.share === 'function') {
-      await navigator.share({ title, text }).catch(() => {})
+      await navigator.share(url ? { title, text, url } : { title, text }).catch(() => {})
     } else {
       try {
-        await navigator.clipboard.writeText(text)
+        await navigator.clipboard.writeText(url ? `${text}\n${url}` : text)
         setCopiedId(item.id)
         setTimeout(() => setCopiedId(null), 2000)
       } catch {

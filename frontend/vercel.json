@@ -5,7 +5,11 @@
       "destination": "https://floreren-api.fly.dev/api/$1"
     },
     {
-      "source": "/((?!api/|assets/|icons/|sw\\.js).*)",
+      "source": "/s/(.*)",
+      "destination": "https://floreren-api.fly.dev/s/$1"
+    },
+    {
+      "source": "/((?!api/|s/|assets/|icons/|sw\\.js).*)",
       "destination": "/index.html"
     }
   ],
