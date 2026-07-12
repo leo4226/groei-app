@@ -200,12 +200,22 @@ async def share_discovery(
         raise HTTPException(status_code=404, detail="Discovery not found")
     token = _row_get(rows[0], "share_token")
     if not token:
-        token = secrets.token_urlsafe(9)
+        # Make token minting idempotent under concurrent/double-tap shares: only
+        # the first request fills the empty token; later contenders re-read and
+        # return the persisted URL instead of briefly handing out a stale link.
+        candidate = secrets.token_urlsafe(9)
         await db.execute(
-            "UPDATE plant_discoveries SET share_token = ? WHERE id = ?",
-            (token, discovery_id),
+            """UPDATE plant_discoveries
+               SET share_token = ?
+               WHERE id = ? AND household_id = ? AND share_token IS NULL""",
+            (candidate, discovery_id, account["household_id"]),
         )
         await db.commit()
+        refreshed = await db.execute_fetchall(
+            "SELECT share_token FROM plant_discoveries WHERE id = ? AND household_id = ?",
+            (discovery_id, account["household_id"]),
+        )
+        token = _row_get(refreshed[0], "share_token") if refreshed else candidate
     base = os.environ.get("PUBLIC_APP_URL", "https://floreren.app").rstrip("/")
     return {"share_url": f"{base}/s/{token}"}
 
