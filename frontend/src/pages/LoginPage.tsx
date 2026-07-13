@@ -7,35 +7,32 @@ import PageDecor from '../components/PageDecor'
 import Glyph from '../components/ui/Glyph'
 import { resolveIconUrl } from '../utils/icons'
 
-// This page is shown BEFORE there is an account language, so it is
-// deliberately bilingual: Dutch brand voice with an English echo for foreign
-// visitors (see CLAUDE.md § Languages — LoginPage is the documented exception
-// to the translation-catalog rule).
+// This page is shown BEFORE there is an account language. It renders in
+// English (the default for new visitors; Dutch is a Settings option), with
+// only the brand name carrying the Dutch flavour (see CLAUDE.md § Languages —
+// LoginPage is the documented exception to the translation-catalog rule).
 const FEATURES = [
   {
     no: '01',
     icon: 'daisy',
-    nl: 'Herken',
-    en: 'Identify',
-    text: 'Photograph any plant in the wild — the field scanner names it in seconds.',
+    title: 'Identify',
+    text: 'Photograph any plant in the wild and the field scanner names it in seconds.',
   },
   {
     no: '02',
     icon: 'rosemary',
-    nl: 'Verzorg',
-    en: 'Care',
+    title: 'Care',
     text: 'Watering, feeding and pruning reminders tuned to your own garden.',
   },
   {
     no: '03',
     icon: 'oak',
-    nl: 'Verzamel',
-    en: 'Collect',
+    title: 'Collect',
     text: 'Every find becomes a numbered specimen card in your personal field guide.',
   },
 ] as const
 
-const MRZ_LINE = 'V<FLO<<VELDGIDS<<PLANT<CARE<<AMSTERDAM<<<<<<'
+const MRZ_LINE = 'V<FLO<<FIELD<GUIDE<<PLANT<CARE<<<<<<<<<<<<'
 
 /** Faded circular herbarium stamp, echoing the specimen-card motif. */
 function HerbariumStamp({ className }: { className?: string }) {
@@ -50,8 +47,8 @@ function HerbariumStamp({ className }: { className?: string }) {
       </defs>
       <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
-      <text fontSize="13" letterSpacing="3.5" fill="currentColor" style={{ fontFamily: 'var(--font-mono)' }}>
-        <textPath href="#stamp-ring">FLOREREN · VELDGIDS · PLANTVERZORGING · AMSTERDAM ·</textPath>
+      <text fontSize="13" letterSpacing="5.5" fill="currentColor" style={{ fontFamily: 'var(--font-mono)' }}>
+        <textPath href="#stamp-ring">FLOREREN · FIELD GUIDE · PLANT CARE ·</textPath>
       </text>
     </svg>
   )
@@ -67,7 +64,7 @@ function SpecimenEntry({ f, compact }: { f: (typeof FEATURES)[number]; compact?:
       </div>
       <div className="min-w-0 pt-0.5">
         <p className="m-0 font-mono text-[9.5px] uppercase tracking-[0.2em] text-text-muted">
-          № {f.no} — <span className="text-primary">{f.nl}</span> · {f.en}
+          № {f.no} · <span className="text-primary">{f.title}</span>
         </p>
         <p className={`m-0 mt-1 leading-[1.45] text-text-soft ${compact ? 'text-[12.5px]' : 'text-[13.5px]'}`}>
           {f.text}
@@ -159,17 +156,17 @@ export default function LoginPage() {
 
           <p className="relative m-0 mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
             <span className="h-px w-7 flex-none bg-border" />
-            Veldgids &amp; plantverzorging · Amsterdam
+            Field guide &amp; plant care
             <span className="h-px min-w-[24px] max-w-[70px] flex-1 bg-border" />
           </p>
 
-          <h1 className="relative m-0 font-heading text-[clamp(44px,5.5vw,64px)] font-medium leading-[0.98] tracking-[-0.02em] text-text">
-            Laat je tuin <em className="font-normal italic text-primary">floreren</em>.
+          <h1 className="relative m-0 font-heading text-[clamp(52px,6.5vw,76px)] font-medium leading-[0.98] tracking-[-0.02em] text-primary">
+            Floreren<span className="text-text">.</span>
           </h1>
 
           <p className="relative mt-4 max-w-[440px] font-heading text-[16px] italic leading-[1.55] text-text-soft">
-            A field journal &amp; plant-care companion — identify wild plants, log
-            every find, and keep your garden thriving. In Dutch and English.
+            A field journal and plant-care companion. Identify wild plants, log
+            every find, and keep your garden thriving.
           </p>
 
           <div className="relative mt-9 flex flex-col gap-5">
@@ -194,17 +191,17 @@ export default function LoginPage() {
               Floreren
             </h1>
             <p className="m-0 mt-2 font-heading text-[15px] italic text-text-soft">
-              Laat je tuin floreren
+              Let your garden flourish
             </p>
-            <p className="m-0 mt-1 text-[12.5px] text-text-muted">
-              Let your garden flourish — field journal &amp; plant care
+            <p className="m-0 mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+              Field guide &amp; plant care
             </p>
           </div>
 
           <div className="rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
             <p className="m-0 mb-5 flex items-center gap-2.5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-text-muted">
               <span className="h-px flex-1 bg-border" />
-              Aanmelden · Sign in
+              Sign in
               <span className="h-px flex-1 bg-border" />
             </p>
 
@@ -241,7 +238,7 @@ export default function LoginPage() {
               /* Success state — no form */
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
                 <p style={{ color: 'var(--color-text)', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 20px' }}>
-                  Check your inbox — if that email is registered, a reset link is on its way.
+                  Check your inbox. If that email is registered, a reset link is on its way.
                 </p>
                 <button
                   type="button"

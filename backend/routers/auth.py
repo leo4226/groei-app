@@ -38,16 +38,19 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     household_id = cur.lastrowid
 
     pw_hash = hash_password(body.password)
+    # New accounts default to English; Dutch is a Settings option. (The
+    # accounts.language column default is 'nl' for the original household,
+    # so set it explicitly here.)
     cur2 = await db.execute(
-        "INSERT INTO accounts (household_id, email, name, password_hash) VALUES (?, ?, ?, ?)",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash),
+        "INSERT INTO accounts (household_id, email, name, password_hash, language) VALUES (?, ?, ?, ?, ?)",
+        (household_id, body.email.lower(), body.name.strip(), pw_hash, "en"),
     )
     account_id = cur2.lastrowid
 
     # Create a user entry for this account so the language endpoint works
     cur3 = await db.execute(
         "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-        (body.name.strip(), household_id, "nl"),
+        (body.name.strip(), household_id, "en"),
     )
     user_id = cur3.lastrowid
 
