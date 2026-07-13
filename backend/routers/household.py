@@ -108,12 +108,13 @@ async def join_household(
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # 3. Create the account
+    # 3. Create the account (new accounts default to English; Dutch is a
+    # Settings option — the column default 'nl' is for the original household)
     pw_hash = hash_password(body.password)
     cur = await db.execute(
-        """INSERT INTO accounts (household_id, email, name, password_hash)
-           VALUES (?, ?, ?, ?)""",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash),
+        """INSERT INTO accounts (household_id, email, name, password_hash, language)
+           VALUES (?, ?, ?, ?, ?)""",
+        (household_id, body.email.lower(), body.name.strip(), pw_hash, "en"),
     )
     account_id = cur.lastrowid
 
@@ -121,7 +122,7 @@ async def join_household(
     try:
         await db.execute(
             "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-            (body.name.strip(), household_id, "nl"),
+            (body.name.strip(), household_id, "en"),
         )
     except asyncpg.exceptions.UniqueViolationError:
         # Roll back the account we just created
