@@ -75,6 +75,8 @@ export default [
       'src/pages/GameJoinPage.tsx',
       'src/pages/GamePlayerPage.tsx',
       'src/pages/LayoutEditorPage.tsx',
+      // LoginPage is pre-auth (no account language exists yet) and is
+      // deliberately bilingual NL+EN by design — permanent exemption.
       'src/pages/LoginPage.tsx',
       'src/pages/MapPage.tsx',
       'src/pages/MapSettingsPage.tsx',
