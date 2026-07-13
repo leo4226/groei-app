@@ -7,6 +7,7 @@ interface Props {
   year: number
   month1: number
   events: CalendarEvent[]
+  loadByDate: ReadonlyMap<string, number>
   todayIso: string
   selectedIso: string
   onSelect(iso: string): void
@@ -26,7 +27,7 @@ function getWeekdayHeaders(locale: string) {
 }
 
 export default function CalendarGrid({
-  year, month1, events, todayIso, selectedIso, onSelect,
+  year, month1, events, loadByDate, todayIso, selectedIso, onSelect,
 }: Props) {
   const t = useT()
   const weekdayHeaders = getWeekdayHeaders(t.locale)
@@ -93,6 +94,7 @@ export default function CalendarGrid({
           isToday={isToday}
           isSelected={isSelected}
           events={otherMonth ? [] : dayEvents}
+          load={otherMonth ? 0 : (loadByDate.get(iso) ?? 0)}
           maxVisible={maxVisible}
           onClick={() => { if (!otherMonth) onSelect(iso) }}
         />,

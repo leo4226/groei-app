@@ -4,6 +4,9 @@ import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calend
 import { agendaPlantName } from './workAgendaModel'
 import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
+import CalendarEventLink from './CalendarEventLink'
+
+const EMPTY_MAP_SLUGS = new Map<number, string>()
 
 interface Props {
   events: CalendarEvent[]
@@ -14,6 +17,7 @@ interface Props {
   undoMsg: string | null
   onGardenUndo: () => void
   actionError: string | null
+  mapSlugs?: ReadonlyMap<number, string>
 }
 
 export default function MobileAgendaList({
@@ -25,6 +29,7 @@ export default function MobileAgendaList({
   undoMsg,
   onGardenUndo,
   actionError,
+  mapSlugs = EMPTY_MAP_SLUGS,
 }: Props) {
   const t = useT()
   const grouped = useMemo(() => {
@@ -94,7 +99,13 @@ export default function MobileAgendaList({
                 }} aria-busy={busy || undefined}>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                    <span style={{ fontFamily: 'Fraunces, serif', fontSize: 14 }}>{agendaPlantName(e, t.locale) || '—'}</span>
+                    <CalendarEventLink
+                      event={e}
+                      mapSlugs={mapSlugs}
+                      className="mobile-agenda-identity"
+                    >
+                      {agendaPlantName(e, t.locale) || '—'}
+                    </CalendarEventLink>
                     {(e.grouped || e.overdue) && (
                       <span style={{ fontSize: 11, color: e.overdue ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
                         {e.grouped && t.calendar.affectedPlants(groupCount)}

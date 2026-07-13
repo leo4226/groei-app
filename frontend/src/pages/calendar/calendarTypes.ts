@@ -92,7 +92,10 @@ const CARE_ACTION_TYPES = new Set<EventTypeId>([
   'pest_check', 'dust', 'repot', 'sow', 'harvest', 'scan',
 ])
 
+export function isCareSession(event: CalendarEvent): boolean {
+  return CARE_ACTION_TYPES.has(event.type) && (event.grouped || event.plant_id !== null)
+}
+
 export function isActionable(event: CalendarEvent, todayIso: string): boolean {
-  if (event.grouped && event.date <= todayIso) return true
-  return event.plant_id !== null && CARE_ACTION_TYPES.has(event.type) && event.date <= todayIso
+  return isCareSession(event) && event.date <= todayIso
 }

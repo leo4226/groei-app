@@ -6,13 +6,15 @@ import CalendarAgendaCard from './CalendarAgendaCard'
 import CalendarAlmanac from './CalendarAlmanac'
 import CalendarUpcoming from './CalendarUpcoming'
 import MobileAgendaList from './MobileAgendaList'
+import MonthLoadState from './MonthLoadState'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
 import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
+import { moveCalendarMonth, summarizeMonthWorkload } from './monthWorkloadModel'
 import type { CalendarViewMode } from './calendarViewModel'
-import { useT } from '../../context/LanguageContext'
+import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
   viewMode: CalendarViewMode
@@ -22,7 +24,6 @@ interface Props {
 }
 
 export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
-  const t = useT()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -31,7 +32,12 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   const [activeTypes, setActiveTypes] = useState<Set<EventTypeId>>(
     () => new Set(EVENT_TYPES.map(t => t.id)),
   )
-  const { events, loading, error } = useCalendarEvents(year, month1, env)
+  const maps = useFloreren(state => state.maps)
+  const mapSlugs = useMemo(
+    () => new Map(maps.map(map => [map.id, map.slug] as const)),
+    [maps],
+  )
+  const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
   const {
     actionError,
     doneIds,
@@ -52,17 +58,16 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
     () => filtered.filter(e => e.date === selectedIso),
     [filtered, selectedIso],
   )
-  const bloomCount = filtered.filter(e => e.type === 'bloom').length
-  const openCount = filtered.filter(e => e.overdue).length
+  const workload = useMemo(() => summarizeMonthWorkload(filtered), [filtered])
 
-  function prev() {
-    if (month1 === 1) { setYear(y => y - 1); setMonth1(12) }
-    else setMonth1(m => m - 1)
+  function moveMonth(delta: -1 | 1) {
+    const target = moveCalendarMonth(year, month1, selectedIso, delta)
+    setYear(target.year)
+    setMonth1(target.month1)
+    setSelectedIso(target.selectedIso)
   }
-  function next() {
-    if (month1 === 12) { setYear(y => y + 1); setMonth1(1) }
-    else setMonth1(m => m + 1)
-  }
+  function prev() { moveMonth(-1) }
+  function next() { moveMonth(1) }
   function toggle(id: EventTypeId) {
     setActiveTypes(curr => {
       const n = new Set(curr)
@@ -76,39 +81,45 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       <CalendarMasthead
         year={year} month1={month1} todayDay={now.getDate()} viewMode={viewMode}
         onPrev={prev} onNext={next} onSetView={onSetView}
-        taskCount={filtered.length} bloomCount={bloomCount} openCount={openCount}
+        plannedCount={workload.planned} openCount={workload.open}
         environmentFilter={environmentFilter}
       />
-      <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
-      {isNarrow ? (
-        <MobileAgendaList
-          events={filtered}
-          todayIso={todayIso}
-          saving={saving}
-          onDone={handleDone}
-          onSkip={handleSkip}
-          undoMsg={undoMsg}
-          onGardenUndo={handleGardenUndo}
-          actionError={actionError}
-        />
+      {loading || error ? (
+        <MonthLoadState loading={loading} error={error} onRetry={retry} />
       ) : (
-        <main>
-          <CalendarGrid
-            year={year} month1={month1}
-            events={filtered}
-            todayIso={todayIso}
-            selectedIso={selectedIso}
-            onSelect={setSelectedIso}
-          />
-          <aside className="col-side">
-            <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} />
-            <CalendarUpcoming todayIso={todayIso} events={filtered} />
-            <CalendarAlmanac month1={month1} />
-          </aside>
-        </main>
+        <>
+          <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
+          {isNarrow ? (
+            <MobileAgendaList
+              events={filtered}
+              todayIso={todayIso}
+              saving={saving}
+              onDone={handleDone}
+              onSkip={handleSkip}
+              undoMsg={undoMsg}
+              onGardenUndo={handleGardenUndo}
+              actionError={actionError}
+              mapSlugs={mapSlugs}
+            />
+          ) : (
+            <main>
+              <CalendarGrid
+                year={year} month1={month1}
+                events={filtered}
+                loadByDate={workload.byDate}
+                todayIso={todayIso}
+                selectedIso={selectedIso}
+                onSelect={setSelectedIso}
+              />
+              <aside className="col-side">
+                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                <CalendarUpcoming todayIso={todayIso} events={filtered} />
+                <CalendarAlmanac month1={month1} />
+              </aside>
+            </main>
+          )}
+        </>
       )}
-      {loading && <div style={{ padding: 16, opacity: 0.6 }}>{t.common.loading}</div>}
-      {error && <div style={{ padding: 16, color: 'crimson' }}>{t.common.error}: {error}</div>}
     </>
   )
 }

@@ -12,12 +12,13 @@ export default function CalendarLegend({ events, activeTypes, onToggle }: Props)
   const t = useT()
   const counts: Record<string, number> = {}
   events.forEach(e => { counts[e.type] = (counts[e.type] || 0) + 1 })
+  const presentTypes = EVENT_TYPES.filter(type => (counts[type.id] ?? 0) > 0)
 
   return (
     <section className="legend-strip">
       <div className="legend-inner">
         <span className="legend-label">{t.calendar.filter}</span>
-        {EVENT_TYPES.map(tp => (
+        {presentTypes.map(tp => (
           <span
             key={tp.id}
             className={`legend-chip ${activeTypes.has(tp.id) ? '' : 'off'}`}

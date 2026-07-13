@@ -952,8 +952,10 @@ export type Translations = {
     workAgendaHeading: string
     workAgendaSubtitle: string
     workAgendaLoadFailed: string
+    monthLoadFailed: string
     retry: string
     thisMonth: string
+    planned: string
     previousMonth: string
     nextMonth: string
     tasks: string  // "tasks"
@@ -982,7 +984,8 @@ export type Translations = {
     undoGroup: string  // "Undo group"
     completedGroup: string  // "Watered and aligned"
     affectedPlants: (n: number) => string  // "3 affected plants"
-    // Moon short labels (used in day cells)
+    sessionLoad: (n: number) => string  // "3 sessions"
+    // Moon short labels
     newMoon: string  // "new"
     fullMoon: string  // "full"
     quarterMoon: string  // "quarter"

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import type { CalendarEvent, EventTypeId } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calendarTypes'
 import { useT } from '../../context/LanguageContext'
+import { agendaPlantName } from './workAgendaModel'
+import CalendarEventLink from './CalendarEventLink'
 
 interface Props {
   selectedIso: string
@@ -12,9 +14,19 @@ interface Props {
   onSkip: (e: CalendarEvent) => void
   undoMsg: string | null
   onGardenUndo: () => void
+  mapSlugs: ReadonlyMap<number, string>
 }
 
-export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDone, onSkip, undoMsg, onGardenUndo }: Props) {
+export default function CalendarAgendaCard({
+  selectedIso,
+  events,
+  todayIso,
+  onDone,
+  onSkip,
+  undoMsg,
+  onGardenUndo,
+  mapSlugs,
+}: Props) {
   const t = useT()
   const locale = t.locale || 'nl-NL'
   const [y, m, d] = selectedIso.split('-').map(Number)
@@ -26,7 +38,7 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
   const groups = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {}
     events.forEach(e => {
-      const groupId = e.grouped ? `${e.type}:${e.map_id}` : e.type
+      const groupId = e.grouped ? `${e.type}:${e.map_id}` : `event:${e.id}`
       if (!map[groupId]) map[groupId] = []
       map[groupId].push(e)
     })
@@ -83,12 +95,17 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
           </div>
         )}
         {Object.entries(groups).map(([groupId, groupEvents]) => {
-          const type = groupEvents[0].type
+          const firstEvent = groupEvents[0]
+          const type = firstEvent.type
           const def = EVENT_TYPE_BY_ID[type]
           const careLabel = t.utility[EVENT_TYPE_UTILITY_KEY[type]] ?? type
-          const label = groupEvents[0].grouped && groupEvents[0].map_name
-            ? `${careLabel} · ${groupEvents[0].map_name}`
-            : careLabel
+          const identity = firstEvent.grouped
+            ? firstEvent.map_name
+            : agendaPlantName(firstEvent, t.locale)
+          const label = identity ? `${careLabel} · ${identity}` : careLabel
+          const affectedCount = firstEvent.group_count
+            ?? firstEvent.group_member_schedule_ids?.length
+            ?? 0
           const busyGroup = savingType === groupId
 
           return (
@@ -97,20 +114,30 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
                 <span className="ag-type-letter">{firstLetter(type)}</span>
               </div>
               <div className="agenda-meta">
-                <p className="what">{label}</p>
+                <p className="what">
+                  <CalendarEventLink
+                    event={firstEvent}
+                    mapSlugs={mapSlugs}
+                    className="agenda-identity-link"
+                  >
+                    {label}
+                  </CalendarEventLink>
+                </p>
                 {groupEvents.some(e => e.overdue) && (
                   <p className="who">{t.calendar.overdueLabel}</p>
                 )}
               </div>
-              <span className="ag-group-badge">{groupEvents.length}</span>
+              {firstEvent.grouped && affectedCount > 0 && (
+                <span className="ag-group-badge">{affectedCount}</span>
+              )}
               {groupEvents.some(e => isActionable(e, todayIso)) ? (
                 <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
                   <button disabled={busyGroup}
                     onClick={() => handleBatchDone(groupId, groupEvents)}
                     className="ag-btn ag-btn-done">
-                    {groupEvents.some(e => e.grouped) ? (t.calendar.completeAndAlign || 'Complete & align') : t.dashboard.actions.done}
+                    {firstEvent.grouped ? t.calendar.completeAndAlign : t.dashboard.actions.done}
                   </button>
-                  {!groupEvents.some(e => e.grouped) && (
+                  {!firstEvent.grouped && (
                     <button disabled={busyGroup}
                       onClick={() => handleBatchSkip(groupId, groupEvents)}
                       className="ag-btn ag-btn-skip">
@@ -129,7 +156,7 @@ export default function CalendarAgendaCard({ selectedIso, events, todayIso, onDo
             {undoMsg}
           </p>
           <button onClick={onGardenUndo} className="ag-btn ag-btn-skip" style={{ fontSize: 12 }}>
-            {t.calendar.undoGroup || 'Undo group'}
+            {t.calendar.undoGroup}
           </button>
         </div>
       )}
