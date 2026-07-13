@@ -129,3 +129,64 @@ async def test_sync_rejects_environment_invalid_type_without_writes(
         "SELECT id FROM care_schedules WHERE plant_id = 2"
     )
     assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_sync_rolls_back_every_write_when_reconciliation_fails(
+    client, schedule_sync_db, auth_header,
+):
+    await schedule_sync_db.execute("""
+        CREATE TRIGGER fail_prune_disable
+        BEFORE UPDATE OF is_active ON care_schedules
+        WHEN OLD.care_type = 'prune'
+        BEGIN
+            SELECT RAISE(ABORT, 'forced reconciliation failure');
+        END
+    """)
+    await schedule_sync_db.commit()
+
+    with pytest.raises(Exception, match="forced reconciliation failure"):
+        await client.put(
+            "/api/plants/1/care-schedules",
+            headers=auth_header,
+            json={"schedules": [
+                {"care_type": "water", "interval_days": 14},
+                {"care_type": "pest_check", "interval_days": 30},
+            ]},
+        )
+
+    rows = await schedule_sync_db.execute_fetchall(
+        "SELECT care_type, interval_days, next_due, is_active "
+        "FROM care_schedules WHERE plant_id = 1 ORDER BY id"
+    )
+    by_type = {row["care_type"]: row for row in rows}
+    assert by_type["water"]["interval_days"] == 7
+    assert by_type["water"]["next_due"] == "2026-07-08"
+    assert by_type["prune"]["is_active"] == 1
+    assert "pest_check" not in by_type
+
+
+@pytest.mark.asyncio
+async def test_sync_disables_all_persisted_alias_and_canonical_duplicates(
+    client, schedule_sync_db, auth_header,
+):
+    await schedule_sync_db.execute(
+        """INSERT INTO care_schedules
+           (plant_id, care_type, interval_days, next_due, is_active, is_ephemeral)
+           VALUES (1, 'repot', 540, '2027-01-01', 1, 0),
+                  (1, 'repot_check', 365, '2026-12-01', 1, 0)"""
+    )
+    await schedule_sync_db.commit()
+
+    response = await client.put(
+        "/api/plants/1/care-schedules",
+        headers=auth_header,
+        json={"schedules": []},
+    )
+
+    assert response.status_code == 200
+    rows = await schedule_sync_db.execute_fetchall(
+        "SELECT care_type, is_active FROM care_schedules "
+        "WHERE plant_id = 1 AND care_type IN ('repot', 'repot_check') ORDER BY id"
+    )
+    assert [row["is_active"] for row in rows] == [0, 0]

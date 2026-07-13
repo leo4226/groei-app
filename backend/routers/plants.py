@@ -1,5 +1,6 @@
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException, Depends
@@ -396,20 +397,20 @@ def _care_schedule_anchor(last_done) -> _date | None:
     return None
 
 
-@router.put("/plants/{plant_id}/care-schedules", response_model=PlantOut)
-async def sync_care_schedules(
+async def _sync_care_schedules_in_transaction(
     plant_id: int,
     data: CareScheduleSyncInput,
-    db = Depends(db_dep),
-    account = Depends(get_current_account),
-):
-    """Atomically reconcile a plant's user-managed recurring care schedules."""
+    db,
+    household_id: int,
+) -> None:
+    """Reconcile recurring schedules inside the caller's open transaction."""
+    lock_clause = " FOR UPDATE" if hasattr(db, "transaction") else ""
     cursor = await db.execute(
         """SELECT p.id, p.container_id, m.map_type
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
-           WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
-        (plant_id, account["household_id"]),
+           WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""" + lock_clause,
+        (plant_id, household_id),
     )
     plant = await cursor.fetchone()
     if not plant:
@@ -443,7 +444,7 @@ async def sync_care_schedules(
            ORDER BY is_active DESC, id DESC""",
         (plant_id,),
     )
-    existing_by_type: dict[str, dict] = {}
+    existing_by_type: dict[str, list[dict]] = {}
     for raw_row in rows:
         row = dict(raw_row)
         care_type = normalize_care_type(row["care_type"])
@@ -451,10 +452,11 @@ async def sync_care_schedules(
             continue
         if CARE_TYPES[care_type].get("is_weather_triggered"):
             continue
-        existing_by_type.setdefault(care_type, row)
+        existing_by_type.setdefault(care_type, []).append(row)
 
     for care_type, schedule in submitted.items():
-        row = existing_by_type.get(care_type)
+        candidates = existing_by_type.get(care_type, [])
+        row = candidates[0] if candidates else None
         if row is None:
             next_due = calculate_next_due(None, schedule.interval_days, schedule.season_adjust)
             await db.execute(
@@ -495,16 +497,55 @@ async def sync_care_schedules(
             (care_type, schedule.interval_days, season_adjust, notes,
              next_due, row["id"]),
         )
+        for duplicate in candidates[1:]:
+            if bool(duplicate["is_active"]):
+                await db.execute(
+                    "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                    (duplicate["id"],),
+                )
 
     enabled_types = set(submitted)
-    for care_type, row in existing_by_type.items():
-        if bool(row["is_active"]) and care_type not in enabled_types:
-            await db.execute(
-                "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
-                (row["id"],),
-            )
+    for care_type, existing_rows in existing_by_type.items():
+        if care_type in enabled_types:
+            continue
+        for row in existing_rows:
+            if bool(row["is_active"]):
+                await db.execute(
+                    "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                    (row["id"],),
+                )
 
-    await db.commit()
+
+@asynccontextmanager
+async def _care_schedule_transaction(db):
+    """Use asyncpg transactions in production and a real SQLite transaction in tests."""
+    if hasattr(db, "transaction"):
+        async with db.transaction():
+            yield
+        return
+    await db.execute("BEGIN")
+    try:
+        yield
+    except Exception:
+        await db.rollback()
+        raise
+    else:
+        await db.commit()
+
+
+@router.put("/plants/{plant_id}/care-schedules", response_model=PlantOut)
+async def sync_care_schedules(
+    plant_id: int,
+    data: CareScheduleSyncInput,
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
+    """Atomically reconcile a plant's user-managed recurring care schedules."""
+    async with _care_schedule_transaction(db):
+        await _sync_care_schedules_in_transaction(
+            plant_id, data, db, account["household_id"],
+        )
+
     return await get_plant(plant_id, db=db, account=account)
 
 

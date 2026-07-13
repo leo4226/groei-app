@@ -83,6 +83,7 @@ export default function EditPlant() {
   // Icon catalog for potted/bare variant switching
   const [iconCatalog, setIconCatalog] = useState<{ id: string; form?: string; variant_of?: string }[]>([])
   const baseIconRef = useRef<string | null>(null)
+  const schedulePlantIdRef = useRef<number | null>(null)
   const iconLookup = useMemo(() => {
     const bareBases = new Set<string>()
     const pottedVariants = new Map<string, string>()
@@ -115,8 +116,6 @@ export default function EditPlant() {
         // value comes from icon_key in the catalog effect below, never plant_type.
         setFormType('pot')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
-        const initialMap = maps.find(map => map.id === p.map_id)
-        setSchedules(buildScheduleEditorState(p, careEnvironmentForPlant(p, initialMap)))
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -125,7 +124,21 @@ export default function EditPlant() {
       }
     }
     load()
-  }, [plantId, navigate, maps])
+  }, [plantId, navigate])
+
+  // Maps can arrive after the plant. Initialise schedule state once both sides
+  // are available, without refetching/resetting the rest of the edit form when
+  // the maps store refreshes.
+  useEffect(() => {
+    if (!plant || schedulePlantIdRef.current === plant.id) return
+    const initialMap = maps.find(map => map.id === plant.map_id)
+    if (plant.map_id != null && !initialMap) return
+    setSchedules(buildScheduleEditorState(
+      plant,
+      careEnvironmentForPlant(plant, initialMap),
+    ))
+    schedulePlantIdRef.current = plant.id
+  }, [plant, maps])
 
   // Load icon catalog once for potted/bare switching
   useEffect(() => {
@@ -199,7 +212,7 @@ export default function EditPlant() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !plant) return
+    if (!name.trim() || !plant || !schedules) return
 
     setSubmitting(true)
     setSaveError(null)
@@ -591,7 +604,7 @@ export default function EditPlant() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !name.trim()}
+                  disabled={submitting || !name.trim() || !schedules}
                   className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm max-w-[260px] truncate"
                 >
                   {submitting ? (
