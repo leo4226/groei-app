@@ -1,15 +1,16 @@
 import json
 import os
-from datetime import date as _date, timedelta as _timedelta
+from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException, Depends
 
 from database import db_dep
 from auth import get_current_account
-from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput, PlacementCreate, PlacementUpdate, SecondaryMarkerOut
+from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, CareScheduleSyncInput, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput, PlacementCreate, PlacementUpdate, SecondaryMarkerOut
 from routers.icons import resolve_placement_icon, match_icon_key
 from routers.icon_generator import guess_category
-from care_types import is_care_type_valid_for_env
+from care_types import CARE_TYPES, is_care_type_valid_for_env, normalize_care_type
+from services.care_profile import environment_for_plant
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from species_service import get_or_create_species, regenerate_species_phenology
@@ -373,6 +374,127 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     )
     await db.commit()
 
+    return await get_plant(plant_id, db=db, account=account)
+
+
+def _care_schedule_anchor(last_done) -> _date | None:
+    """Normalize Postgres/SQLite schedule history to a date for due calculation."""
+    if last_done is None:
+        return None
+    if isinstance(last_done, _datetime):
+        return last_done.date()
+    if isinstance(last_done, _date):
+        return last_done
+    if isinstance(last_done, str):
+        try:
+            return _datetime.fromisoformat(last_done).date()
+        except ValueError:
+            try:
+                return _date.fromisoformat(last_done)
+            except ValueError:
+                return None
+    return None
+
+
+@router.put("/plants/{plant_id}/care-schedules", response_model=PlantOut)
+async def sync_care_schedules(
+    plant_id: int,
+    data: CareScheduleSyncInput,
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
+    """Atomically reconcile a plant's user-managed recurring care schedules."""
+    cursor = await db.execute(
+        """SELECT p.id, p.container_id, m.map_type
+           FROM plants p
+           LEFT JOIN maps m ON p.map_id = m.id
+           WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
+        (plant_id, account["household_id"]),
+    )
+    plant = await cursor.fetchone()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    environment = environment_for_plant(dict(plant))
+    submitted: dict[str, object] = {}
+    for schedule in data.schedules:
+        care_type = normalize_care_type(schedule.care_type)
+        care_def = CARE_TYPES.get(care_type)
+        if care_type in submitted:
+            raise HTTPException(status_code=422, detail=f"Duplicate care type: {care_type}")
+        if schedule.interval_days < 1:
+            raise HTTPException(status_code=422, detail="interval_days must be a positive integer")
+        if care_def is None:
+            raise HTTPException(status_code=422, detail=f"Unknown care type: {care_type}")
+        if care_def.get("is_weather_triggered"):
+            raise HTTPException(status_code=422, detail=f"Weather care type is automatic: {care_type}")
+        if not is_care_type_valid_for_env(care_type, environment):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Care type {care_type} is not valid for {environment}",
+            )
+        submitted[care_type] = schedule
+
+    rows = await db.execute_fetchall(
+        """SELECT id, care_type, interval_days, season_adjust, notes,
+                  next_due, last_done, is_active, is_ephemeral
+           FROM care_schedules
+           WHERE plant_id = ?
+           ORDER BY is_active DESC, id DESC""",
+        (plant_id,),
+    )
+    existing_by_type: dict[str, dict] = {}
+    for raw_row in rows:
+        row = dict(raw_row)
+        care_type = normalize_care_type(row["care_type"])
+        if row.get("is_ephemeral") or care_type not in CARE_TYPES:
+            continue
+        if CARE_TYPES[care_type].get("is_weather_triggered"):
+            continue
+        existing_by_type.setdefault(care_type, row)
+
+    for care_type, schedule in submitted.items():
+        row = existing_by_type.get(care_type)
+        if row is None:
+            next_due = calculate_next_due(None, schedule.interval_days, schedule.season_adjust)
+            await db.execute(
+                """INSERT INTO care_schedules
+                   (plant_id, care_type, interval_days, season_adjust, next_due, notes, is_active)
+                   VALUES (?, ?, ?, ?, ?, ?, TRUE)""",
+                (plant_id, care_type, schedule.interval_days, schedule.season_adjust,
+                 next_due, schedule.notes),
+            )
+            continue
+
+        interval_changed = row["interval_days"] != schedule.interval_days
+        reactivated = not bool(row["is_active"])
+        schedule_adjust_changed = row.get("season_adjust") != schedule.season_adjust
+        if interval_changed or reactivated or schedule_adjust_changed:
+            next_due = calculate_next_due(
+                _care_schedule_anchor(row.get("last_done")),
+                schedule.interval_days,
+                schedule.season_adjust,
+            )
+        else:
+            next_due = row["next_due"]
+        await db.execute(
+            """UPDATE care_schedules
+               SET care_type = ?, interval_days = ?, season_adjust = ?, notes = ?,
+                   next_due = ?, is_active = TRUE
+               WHERE id = ?""",
+            (care_type, schedule.interval_days, schedule.season_adjust, schedule.notes,
+             next_due, row["id"]),
+        )
+
+    enabled_types = set(submitted)
+    for care_type, row in existing_by_type.items():
+        if bool(row["is_active"]) and care_type not in enabled_types:
+            await db.execute(
+                "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                (row["id"],),
+            )
+
+    await db.commit()
     return await get_plant(plant_id, db=db, account=account)
 
 
