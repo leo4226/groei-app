@@ -48,6 +48,7 @@ def _db_cache():
                 name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
                 avatar TEXT,
+                language TEXT DEFAULT 'nl',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE plant_species (
