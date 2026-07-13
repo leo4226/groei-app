@@ -1,7 +1,7 @@
 # Plant Care Schedule Editor Design
 
-**Issue:** #606  
-**Date:** 2026-07-13  
+**Issue:** #606
+**Date:** 2026-07-13
 **Status:** Approved
 
 ## Problem
