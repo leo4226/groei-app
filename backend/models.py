@@ -57,6 +57,10 @@ class CareScheduleCreate(BaseModel):
         return normalize_care_type(value)
 
 
+class CareScheduleSyncInput(BaseModel):
+    schedules: list[CareScheduleCreate]
+
+
 class PlantCreate(BaseModel):
     name: str
     species: str | None = None

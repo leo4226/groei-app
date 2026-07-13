@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi, care as careApi, icons as iconsApi } from '../api/client'
-import type { Plant, CareType } from '../types'
-import { CARE_TYPE_INFO } from '../types'
+import type { Plant } from '../types'
 import Glyph from '../components/ui/Glyph'
 import { isoToDisplay } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
@@ -15,25 +14,17 @@ import TileGrid from '../components/ui/TileGrid'
 import TileIcon from '../components/ui/TileIcon'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
-import FrequencySlider from '../components/add/FrequencySlider'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { resolveIconUrl } from '../utils/icons'
-
-/** Build initial schedules map from the plant's existing care_schedules. */
-function buildSchedulesFromPlant(plant: Plant): Record<CareType, { enabled: boolean; days: number }> {
-  const initial: Record<string, { enabled: boolean; days: number }> = {}
-  for (const [type, info] of Object.entries(CARE_TYPE_INFO)) {
-    if (type === 'photo') continue // photo reminder managed from PlantDetail (groeidagboek)
-    const cs = plant.care_schedules?.find(s => s.care_type === type && s.is_active)
-    initial[type] = {
-      enabled: !!cs,
-      days: cs?.interval_days ?? info.defaultIndoor,
-    }
-  }
-  return initial as Record<CareType, { enabled: boolean; days: number }>
-}
+import CareScheduleEditor from '../components/plant/CareScheduleEditor'
+import {
+  buildCareScheduleSyncPayload,
+  buildScheduleEditorState,
+  careEnvironmentForPlant,
+} from './editPlantCareSchedules'
+import type { EditableCareType, ScheduleEditorState } from './editPlantCareSchedules'
 
 export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
@@ -76,9 +67,7 @@ export default function EditPlant() {
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
 
   // Care
-  const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
-    {} as Record<CareType, { enabled: boolean; days: number }>
-  )
+  const [schedules, setSchedules] = useState<ScheduleEditorState | null>(null)
 
   // Album
   const [iconKey, setIconKey] = useState<string | null>(null)
@@ -90,11 +79,11 @@ export default function EditPlant() {
 
   const [submitting, setSubmitting] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const origWaterSchedule = useRef<{id: number; days: number} | null>(null)
 
   // Icon catalog for potted/bare variant switching
   const [iconCatalog, setIconCatalog] = useState<{ id: string; form?: string; variant_of?: string }[]>([])
   const baseIconRef = useRef<string | null>(null)
+  const schedulePlantIdRef = useRef<number | null>(null)
   const iconLookup = useMemo(() => {
     const bareBases = new Set<string>()
     const pottedVariants = new Map<string, string>()
@@ -127,10 +116,6 @@ export default function EditPlant() {
         // value comes from icon_key in the catalog effect below, never plant_type.
         setFormType('pot')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
-        setSchedules(buildSchedulesFromPlant(p))
-        // Remember original water schedule for change detection
-        const waterSched = p.care_schedules?.find(s => s.care_type === 'water' && s.is_active)
-        if (waterSched) origWaterSchedule.current = { id: waterSched.id, days: waterSched.interval_days }
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
         navigate('/plants')
@@ -140,6 +125,20 @@ export default function EditPlant() {
     }
     load()
   }, [plantId, navigate])
+
+  // Maps can arrive after the plant. Initialise schedule state once both sides
+  // are available, without refetching/resetting the rest of the edit form when
+  // the maps store refreshes.
+  useEffect(() => {
+    if (!plant || schedulePlantIdRef.current === plant.id) return
+    const initialMap = maps.find(map => map.id === plant.map_id)
+    if (plant.map_id != null && !initialMap) return
+    setSchedules(buildScheduleEditorState(
+      plant,
+      careEnvironmentForPlant(plant, initialMap),
+    ))
+    schedulePlantIdRef.current = plant.id
+  }, [plant, maps])
 
   // Load icon catalog once for potted/bare switching
   useEffect(() => {
@@ -204,9 +203,16 @@ export default function EditPlant() {
     setIconKey(key)
   }
 
+  const selectedCareMap = selectedZoneId
+    ? maps.find(map => String(map.id) === selectedZoneId)
+    : undefined
+  const careEnvironment = plant
+    ? careEnvironmentForPlant(plant, selectedCareMap)
+    : 'outdoor_ground'
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !plant) return
+    if (!name.trim() || !plant || !schedules) return
 
     setSubmitting(true)
     setSaveError(null)
@@ -228,10 +234,11 @@ export default function EditPlant() {
         randomMapPos,
       }))
 
-      // PATCH water schedule interval if changed
-      const newWaterDays = schedules.water?.days
-      if (origWaterSchedule.current && newWaterDays && newWaterDays !== origWaterSchedule.current.days) {
-        await careApi.updateScheduleInterval(origWaterSchedule.current.id, newWaterDays)
+      if (schedules) {
+        await careApi.syncSchedules(
+          plantId,
+          buildCareScheduleSyncPayload(schedules, careEnvironment),
+        )
       }
 
       if (photoFile) {
@@ -528,25 +535,16 @@ export default function EditPlant() {
                 title={t.addPlant.secCareTitle}
                 subtitle={expanded ? t.addPlant.secCareSubtitle : undefined}
               >
-                {/* Water gift frequency */}
-                <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
-                    <FrequencySlider
-                      label={t.addPlant.labelWatering}
-                      value={schedules.water?.days ?? CARE_TYPE_INFO.water.defaultIndoor}
-                      onChange={(v) => {
-                        setSchedules(prev => ({
-                          ...prev,
-                          water: { ...prev.water, days: v },
-                        }))
-                      }}
-                      presets={[
-                        { label: t.addPlant.presetSeldom, value: 14 },
-                        { label: t.addPlant.presetWeekly, value: 7 },
-                        { label: t.addPlant.presetBiweekly, value: 3 },
-                        { label: t.addPlant.presetDaily, value: 1 },
-                      ]}
-                    />
-                  </FormRow>
+                {schedules && (
+                  <CareScheduleEditor
+                    environment={careEnvironment}
+                    intervalLabel={t.editPlant.everyLabel}
+                    daysLabel={t.editPlant.daysLabel}
+                    labels={t.careTypes as Record<EditableCareType, string>}
+                    state={schedules}
+                    onChange={setSchedules}
+                  />
+                )}
               </Card>
 
               {/* ——— § IV · Album Card ——— */}
@@ -606,7 +604,7 @@ export default function EditPlant() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !name.trim()}
+                  disabled={submitting || !name.trim() || !schedules}
                   className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm max-w-[260px] truncate"
                 >
                   {submitting ? (
@@ -690,7 +688,7 @@ export default function EditPlant() {
                         {previewSunLabel[sunRequirement]}
                       </p>
                     )}
-                    {schedules.water?.days != null && (
+                    {schedules?.water.enabled && (
                       <p className="flex items-center gap-1.5">
                         <Glyph name="droplet" size={12} className="shrink-0" />
                         {t.careTypes.water} · {t.plantDetail.xDays.replace('{n}', String(schedules.water.days))}

@@ -59,6 +59,20 @@ const GLYPHS: Record<CareIconType, React.ReactNode> = {
       <path d="M12 6.5C14 6.5 15.4 5.2 15.4 3.3 13.4 3.3 12 4.6 12 6.5z" />
     </>
   ),
+  pest_check: (
+    <>
+      <circle cx="12" cy="13" r="5" />
+      <path d="M9 8.5 7 6M15 8.5l2-2M7 13H3M21 13h-4M8 17l-3 2M16 17l3 2M12 8V5" />
+      <path d="M9.5 13h5M12 10.5v5" />
+    </>
+  ),
+  dust: (
+    <>
+      <path d="M5 15.5c4.5-1 7.5-4.5 9-10 3 2 4.5 5 4 9-4.5 4-9 4.5-13 1z" />
+      <path d="M5 20c3.5-4.5 7-7.5 11-10" />
+      <path d="M17.5 4.5v-2M20.5 7.5h2M19.5 5.5l1.5-1.5" />
+    </>
+  ),
   frost_protect: (
     <>
       <path d="M12 2.8v18.4" />

@@ -81,6 +81,12 @@ describe('normalizePrefill', () => {
 })
 
 describe('buildInitialSchedules', () => {
+  it('does not silently add newly editable optional schedules during plant creation', () => {
+    const schedules = buildInitialSchedules(null)
+    expect(schedules.pest_check.enabled).toBe(false)
+    expect(schedules.dust.enabled).toBe(false)
+  })
+
   it('database waterNeeds maps to the water interval', () => {
     const s = buildInitialSchedules(dbPlant) // gemiddeld -> 7
     expect(s.water.days).toBe(7)
