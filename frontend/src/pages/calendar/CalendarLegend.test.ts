@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CalendarLegend from './CalendarLegend'
-import type { CalendarEvent } from './calendarTypes'
+import type { CalendarEvent, EventTypeId } from './calendarTypes'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -49,7 +49,7 @@ describe('CalendarLegend', () => {
   it('shows controls only for event types present in the Month dataset', () => {
     act(() => root.render(createElement(CalendarLegend, {
       events: [event()],
-      activeTypes: new Set(['water']),
+      activeTypes: new Set<EventTypeId>(['water']),
       onToggle: vi.fn(),
     })))
 
