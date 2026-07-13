@@ -9,6 +9,7 @@ import { alerts, icons } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
 import { plantDisplayName, plantSearchText } from '../utils/plantDisplayName'
 import Glyph from '../components/ui/Glyph'
+import PageDecor from '../components/PageDecor'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
@@ -943,15 +944,21 @@ export default function Plants() {
 
   function EmptyState() {
     return !isLoading && filtered.length === 0 ? (
-      <div style={{ textAlign: 'center', padding: isMobile ? '40px 20px' : '80px 20px' }}>
+      <div style={{
+        position: 'relative', overflow: 'hidden', textAlign: 'center',
+        padding: isMobile ? '40px 20px' : '80px 20px', minHeight: isMobile ? 260 : 340,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <PageDecor variant="sparse" />
         <p style={{
+          position: 'relative',
           fontFamily: 'var(--font-heading)', fontStyle: 'italic',
           fontSize: isMobile ? 14 : 16, color: 'var(--color-text-soft)',
           margin: '0 0 6px',
         }}>
           {query ? t.plantsPage.emptySearch : t.plantsPage.emptyNoPlants}
         </p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+        <p style={{ position: 'relative', fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
           {query ? t.plantsPage.emptySearchHint : t.plantsPage.emptyNoPlantsHint}
         </p>
       </div>
