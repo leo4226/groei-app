@@ -14,6 +14,7 @@
 // emoji, brand names), add it to `words.exclude` — do NOT sprinkle
 // eslint-disable comments unless the whole file is intentionally exempt.
 import i18next from 'eslint-plugin-i18next'
+import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
 
 export default [
@@ -39,6 +40,9 @@ export default [
       // its strings and DELETE it from this list — the list must only shrink.
       // (AdminPage, the layout editor panels, and the debug overlays are
       // admin/dev-facing and may reasonably stay Dutch — decide per file.)
+      // ErrorBoundary shows static bilingual NL+EN text on purpose: it must
+      // render even when the app (incl. the language provider) has crashed —
+      // permanent exemption.
       'src/components/ErrorBoundary.tsx',
       'src/components/GardenBiodiversityCard.tsx',
       'src/components/IconPicker.tsx',
@@ -46,7 +50,6 @@ export default [
       'src/components/PhaseCalendar.tsx',
       'src/components/PlantCareInfo.tsx',
       'src/components/add/EntryBanner.tsx',
-      'src/components/discoveries/DiscoveriesSection.tsx',
       'src/components/discoveries/ExpeditionMap.tsx',
       'src/components/discoveries/ExpeditionMapGL.tsx',
       'src/components/editor/DimensionArrows.tsx',
@@ -87,7 +90,9 @@ export default [
       'src/pages/calendar/CalendarAlmanac.tsx',
       'src/pages/calendar/CalendarGrid.tsx',
     ],
-    plugins: { i18next },
+    // react-hooks is registered (rules off) only so files with inline
+    // eslint-disable comments for its rules don't error in this config.
+    plugins: { i18next, 'react-hooks': reactHooks },
     rules: {
       'i18next/no-literal-string': [
         'error',
@@ -101,6 +106,9 @@ export default [
             exclude: [
               '[0-9!-/:-@[-`{-~]+',
               '[A-Z_-]+',
+              // Pure decorative glyph runs beside translated expressions,
+              // e.g. "— — {t.x}", "↓ {t.y}", "… → {t.z}"
+              '[—–·×→↓↑←\\s]+',
               'Floreren',
               'floreren.app',
               'BioCLIP',

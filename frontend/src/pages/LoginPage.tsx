@@ -146,7 +146,7 @@ export default function LoginPage() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: 'radial-gradient(ellipse 75% 60% at 50% 42%, var(--color-bg) 30%, transparent 78%)' }}
+        style={{ background: 'radial-gradient(ellipse 60% 44% at 50% 50%, var(--color-bg) 12%, transparent 72%)' }}
       />
 
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">

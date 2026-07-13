@@ -34,7 +34,9 @@ function plantConfig(name: string) {
   return PLANT_POOL[1] // fallback: flowers
 }
 
-function generateDecor(count: number, bottomWeighted = false): DecorIcon[] {
+export type DecorVariant = 'scatter' | 'landing' | 'sparse'
+
+function generateDecor(count: number, variant: DecorVariant = 'scatter'): DecorIcon[] {
   const rand = mulberry32(Date.now())
   const icons: DecorIcon[] = []
   let nextId = 0
@@ -77,17 +79,22 @@ function generateDecor(count: number, bottomWeighted = false): DecorIcon[] {
     let left = 0, top = 0
     let placed_ok = false
 
-    // Landing variant: bias placement towards the bottom of the viewport so the
-    // icons read as a garden bed the page grows out of, not uniform wallpaper.
-    const randTop = () => bottomWeighted
-      ? (1 - Math.pow(rand(), 2.4)) * 97 - 2
+    // Landing: a mixture — ~30% of icons scatter uniformly (so the top half
+    // never goes empty), the rest lean towards the bottom like a garden bed.
+    // Sparse: uniform, but the central content zone is rejected so the few
+    // icons hug the margins of the empty-state / error card.
+    const randTop = () => variant === 'landing' && rand() >= 0.3
+      ? (1 - Math.pow(rand(), 2.0)) * 97 - 2
       : rand() * 97 - 2
+    const inSparseKeepOut = (l: number, t: number) =>
+      variant === 'sparse' && l > 15 && l < 82 && t > 12 && t < 84
 
     for (let attempt = 0; attempt < 30; attempt++) {
       left = rand() * 97 - 2
       top = randTop()
       // Keep away from extreme edges
       if (top < -radiusPct || top > 98 - radiusPct) continue
+      if (inSparseKeepOut(left, top)) continue
       if (!overlaps(left, top, radiusPct)) {
         placed_ok = true
         break
@@ -101,11 +108,13 @@ function generateDecor(count: number, bottomWeighted = false): DecorIcon[] {
     }
 
     const clampedTop = Math.max(0, Math.min(98, top))
-    // In the garden-bed variant icons near the bottom are noticeably more
-    // present, fading out as they climb towards the content.
-    const opacity = bottomWeighted
-      ? Math.min(0.13, c.opacity * (0.5 + 1.7 * (clampedTop / 100)))
-      : c.opacity
+    // Garden-bed variant: icons near the bottom are more present, fading only
+    // gently towards the top so the upper half stays visibly planted.
+    const opacity = variant === 'landing'
+      ? Math.min(0.13, c.opacity * (0.75 + 0.9 * (clampedTop / 100)))
+      : variant === 'sparse'
+        ? Math.min(0.09, c.opacity * 1.2)
+        : c.opacity
 
     placed.push({ left, top, radiusPct })
     icons.push({
@@ -122,12 +131,11 @@ function generateDecor(count: number, bottomWeighted = false): DecorIcon[] {
 }
 
 const PAGE_DECOR = generateDecor(100)
-let landingDecor: DecorIcon[] | null = null
+const VARIANT_COUNT: Record<DecorVariant, number> = { scatter: 100, landing: 110, sparse: 14 }
+const decorCache: Partial<Record<DecorVariant, DecorIcon[]>> = { scatter: PAGE_DECOR }
 
-export default function PageDecor({ variant = 'scatter' }: { variant?: 'scatter' | 'landing' }) {
-  const icons = variant === 'landing'
-    ? (landingDecor ??= generateDecor(110, true))
-    : PAGE_DECOR
+export default function PageDecor({ variant = 'scatter' }: { variant?: DecorVariant }) {
+  const icons = decorCache[variant] ??= generateDecor(VARIANT_COUNT[variant], variant)
   return (
     <div aria-hidden="true" style={{
       position: 'absolute',

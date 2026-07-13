@@ -18,6 +18,7 @@ class MapErrorBoundary extends Component<{ fallback: ReactNode; children: ReactN
 }
 import { useIsMobile } from '../../hooks/useIsMobile'
 import Glyph from '../ui/Glyph'
+import PageDecor from '../PageDecor'
 
 export type DiscoveryStats = { finds: number; species: number; places: number }
 
@@ -324,10 +325,11 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
   if (items.length === 0) {
     return (
-      <div className="px-6 py-14 text-center">
-        <div className="mb-3 text-text-muted"><Glyph name="leaf" size={40} /></div>
-        <p className="m-0 font-heading text-lg italic text-text-soft">{t.discovery.journalEmpty}</p>
-        <p className="mx-auto mt-1.5 max-w-[380px] text-[13px] text-text-muted">{t.discovery.journalEmptyHint}</p>
+      <div className="relative overflow-hidden px-6 py-14 text-center min-h-[340px] flex flex-col items-center justify-center">
+        <PageDecor variant="sparse" />
+        <div className="relative mb-3 text-text-muted"><Glyph name="leaf" size={40} /></div>
+        <p className="relative m-0 font-heading text-lg italic text-text-soft">{t.discovery.journalEmpty}</p>
+        <p className="relative mx-auto mt-1.5 max-w-[380px] text-[13px] text-text-muted">{t.discovery.journalEmptyHint}</p>
       </div>
     )
   }
