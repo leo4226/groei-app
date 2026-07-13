@@ -22,7 +22,10 @@ jobs:
       (github.event.pull_request.merged == true &&
        github.event.pull_request.base.ref == 'master')
     runs-on: ubuntu-latest
-    concurrency: deploy-group
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-group
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
         with:
