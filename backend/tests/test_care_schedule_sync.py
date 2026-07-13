@@ -23,14 +23,14 @@ async def schedule_sync_db(seeded_db):
             (2, 'Rose', 2, 1, 1),
             (3, 'Foreign plant', 2, 2, 1);
         INSERT INTO care_schedules
-            (id, plant_id, care_type, interval_days, next_due, last_done, is_active, is_ephemeral)
+            (id, plant_id, care_type, interval_days, next_due, last_done, notes, season_adjust, is_active, is_ephemeral)
         VALUES
-            (1, 1, 'water', 7, '2026-07-08', '2026-07-01T09:30:00', 1, 0),
-            (2, 1, 'fertilize', 30, '2026-08-01', NULL, 0, 0),
-            (3, 1, 'prune', 90, '2026-09-01', NULL, 1, 0),
-            (4, 1, 'photo', 30, '2026-08-01', NULL, 1, 0),
-            (5, 1, 'heat_protect', 1, '2026-07-13', NULL, 1, 1),
-            (6, 3, 'water', 7, '2026-07-20', NULL, 1, 0);
+            (1, 1, 'water', 7, '2026-07-08', '2026-07-01T09:30:00', 'keep me', '{"summer": 1}', 1, 0),
+            (2, 1, 'fertilize', 30, '2026-08-01', NULL, NULL, NULL, 0, 0),
+            (3, 1, 'prune', 90, '2026-09-01', NULL, NULL, NULL, 1, 0),
+            (4, 1, 'photo', 30, '2026-08-01', NULL, NULL, NULL, 1, 0),
+            (5, 1, 'heat_protect', 1, '2026-07-13', NULL, NULL, NULL, 1, 1),
+            (6, 3, 'water', 7, '2026-07-20', NULL, NULL, NULL, 1, 0);
     """)
     await seeded_db.commit()
     return seeded_db
@@ -55,6 +55,8 @@ async def test_sync_creates_updates_reactivates_and_disables_atomically(
     assert set(returned) == {"water", "fertilize", "pest_check", "photo", "heat_protect"}
     assert returned["water"]["interval_days"] == 14
     assert returned["water"]["next_due"] == "2026-07-15"
+    assert returned["water"]["notes"] == "keep me"
+    assert returned["water"]["season_adjust"] == '{"summer": 1}'
     assert returned["fertilize"]["next_due"] == str(date.today() + timedelta(days=21))
     assert returned["pest_check"]["next_due"] == str(date.today() + timedelta(days=30))
 

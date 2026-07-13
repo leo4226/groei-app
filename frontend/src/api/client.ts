@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 import { indexIconUrls } from '../utils/icons'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -474,6 +474,7 @@ export const care = {
   undo:           (careLogId: number, previousNextDue: string | null, previousLastDone: string | null, previousLastDoneBy: number | null) => api<{ ok: boolean }>('POST', '/care/undo', { body: { care_log_id: careLogId, previous_next_due: previousNextDue, previous_last_done: previousLastDone, previous_last_done_by: previousLastDoneBy } }),
   deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),
   updateScheduleInterval: (scheduleId: number, intervalDays: number)                    => api<{ ok: boolean; schedule_id: number; interval_days: number }>('PATCH', `/care/schedules/${scheduleId}`, { body: { interval_days: intervalDays } }),
+  syncSchedules: (plantId: number, schedules: CareScheduleInput[])                       => api<Plant>('PUT', `/plants/${plantId}/care-schedules`, { body: { schedules } }),
   log:            (plantId: number)                                                     => api<CareLogEntry[]>('GET', `/care/log/${plantId}`),
   householdLog:   (limit = 50, offset = 0)                                              => api<RecentLogEntry[]>('GET', '/care/log', { params: { limit: String(limit), offset: String(offset) } }),
 }

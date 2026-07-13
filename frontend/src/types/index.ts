@@ -113,7 +113,7 @@ export interface DashboardV2Data {
   plant_fact: PlantFactOut | null
 }
 
-export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot' | 'prune' | 'frost_protect' | 'heat_protect' | 'photo'
+export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot' | 'prune' | 'pest_check' | 'dust' | 'frost_protect' | 'heat_protect' | 'photo'
 
 export interface CareScheduleInput {
   care_type: CareType
@@ -441,6 +441,8 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: nu
   rotate:      { label: 'Rotate',      defaultIndoor: 14,  defaultOutdoor: 0 },
   repot: { label: 'Repot check', defaultIndoor: 180, defaultOutdoor: 365 },
   prune:        { label: 'Prune',        defaultIndoor: 90,  defaultOutdoor: 30 },
+  pest_check:   { label: 'Pest check',   defaultIndoor: 30,  defaultOutdoor: 30 },
+  dust:         { label: 'Wipe leaves',  defaultIndoor: 30,  defaultOutdoor: 0 },
   frost_protect: { label: 'Protect Cold', defaultIndoor: 0,   defaultOutdoor: 0 },
   heat_protect: { label: 'Protect Heat', defaultIndoor: 0,   defaultOutdoor: 0 },
   photo:        { label: 'Progress photo', defaultIndoor: 30,  defaultOutdoor: 30 },
@@ -451,7 +453,7 @@ export const CARE_TYPE_INFO: Record<CareType, { label: string; defaultIndoor: nu
  * `is_care_type_valid_for_env` rule — outdoor plants (in the ground or in
  * outdoor containers) never rotate for even light or get misted.
  */
-export const INDOOR_ONLY_CARE_TYPES: CareType[] = ['rotate', 'mist']
+export const INDOOR_ONLY_CARE_TYPES: CareType[] = ['rotate', 'mist', 'dust']
 
 /** Whether a care type applies in the given environment. */
 export function isCareTypeValidForEnv(careType: CareType, isIndoor: boolean): boolean {

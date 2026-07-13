@@ -118,7 +118,8 @@ export function buildInitialSchedules(prefill: unknown): ScheduleMap {
     ) {
       days = WATER_NEEDS_TO_DAYS[(prefill as LocalPlant).waterNeeds] ?? days
     }
-    initial[type] = { enabled: type === 'repot' ? false : days > 0, days }
+    const optionalInCreate = type === 'repot' || type === 'pest_check' || type === 'dust'
+    initial[type] = { enabled: optionalInCreate ? false : days > 0, days }
   }
   return initial as ScheduleMap
 }

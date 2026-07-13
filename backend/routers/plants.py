@@ -466,14 +466,24 @@ async def sync_care_schedules(
             )
             continue
 
+        season_adjust = (
+            schedule.season_adjust
+            if "season_adjust" in schedule.model_fields_set
+            else row.get("season_adjust")
+        )
+        notes = (
+            schedule.notes
+            if "notes" in schedule.model_fields_set
+            else row.get("notes")
+        )
         interval_changed = row["interval_days"] != schedule.interval_days
         reactivated = not bool(row["is_active"])
-        schedule_adjust_changed = row.get("season_adjust") != schedule.season_adjust
+        schedule_adjust_changed = row.get("season_adjust") != season_adjust
         if interval_changed or reactivated or schedule_adjust_changed:
             next_due = calculate_next_due(
                 _care_schedule_anchor(row.get("last_done")),
                 schedule.interval_days,
-                schedule.season_adjust,
+                season_adjust,
             )
         else:
             next_due = row["next_due"]
@@ -482,7 +492,7 @@ async def sync_care_schedules(
                SET care_type = ?, interval_days = ?, season_adjust = ?, notes = ?,
                    next_due = ?, is_active = TRUE
                WHERE id = ?""",
-            (care_type, schedule.interval_days, schedule.season_adjust, schedule.notes,
+            (care_type, schedule.interval_days, season_adjust, notes,
              next_due, row["id"]),
         )
 
