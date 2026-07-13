@@ -8,6 +8,7 @@ import CalendarUpcoming from './CalendarUpcoming'
 import MobileAgendaList from './MobileAgendaList'
 import MonthLoadState from './MonthLoadState'
 import MonthSeasonalPanel from './MonthSeasonalPanel'
+import CalendarCompletionNotice from './CalendarCompletionNotice'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
@@ -47,13 +48,15 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
   const {
     actionError,
+    clearCompletion,
+    completion,
     doneIds,
     handleDone,
     handleGardenUndo,
     handleSkip,
     saving,
     undoMsg,
-  } = useCalendarActions(events)
+  } = useCalendarActions(events, undefined, `${year}-${month1}|${env}|${selectedIso}`)
 
   const isNarrow = useIsNarrow(1200)
 
@@ -96,6 +99,11 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
       ) : (
         <>
           <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
+          <CalendarCompletionNotice
+            completion={completion}
+            mapSlugs={mapSlugs}
+            onDismiss={clearCompletion}
+          />
           {isNarrow ? (
             <>
               <MobileAgendaList

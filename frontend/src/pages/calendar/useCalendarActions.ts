@@ -3,10 +3,16 @@ import { gardenCare } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import type { CalendarEvent } from './calendarTypes'
+import { agendaPlantName } from './workAgendaModel'
+
+export type CalendarCompletion =
+  | { kind: 'plant'; plantId: number; plantName: string | null; careLogId: number | null }
+  | { kind: 'map'; mapId: number; mapName: string | null }
 
 export function useCalendarActions(
   events: CalendarEvent[],
   onGroupChange?: () => void,
+  navigationKey?: string,
 ) {
   const t = useT()
   const { markCareDone, skipCare, activeUserId } = useFloreren()
@@ -15,13 +21,19 @@ export function useCalendarActions(
   const [gardenOperationId, setGardenOperationId] = useState<number | null>(null)
   const [undoMsg, setUndoMsg] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [completion, setCompletion] = useState<CalendarCompletion | null>(null)
 
   useEffect(() => {
     setDoneIds(new Set())
   }, [events])
 
+  useEffect(() => {
+    setCompletion(null)
+  }, [navigationKey])
+
   async function handleDone(event: CalendarEvent) {
     setActionError(null)
+    setCompletion(null)
     if (
       event.grouped
       && event.map_id !== null
@@ -42,6 +54,7 @@ export function useCalendarActions(
         setGardenOperationId(result.operation_id)
         setDoneIds(previous => new Set([...previous, event.id]))
         setUndoMsg(t.calendar.completedGroup)
+        setCompletion({ kind: 'map', mapId: event.map_id, mapName: event.map_name })
         onGroupChange?.()
       } catch (error) {
         console.error('gardenCare.complete failed:', error)
@@ -54,8 +67,14 @@ export function useCalendarActions(
     if (!event.plant_id) return
     setSaving(event.id)
     try {
-      await markCareDone(event.plant_id, event.type)
+      const result = await markCareDone(event.plant_id, event.type)
       setDoneIds(previous => new Set([...previous, event.id]))
+      setCompletion({
+        kind: 'plant',
+        plantId: event.plant_id,
+        plantName: agendaPlantName(event, t.locale),
+        careLogId: result?.care_log_id ?? null,
+      })
     } catch (error) {
       console.error('markCareDone failed:', error)
       setActionError(t.common.error)
@@ -72,6 +91,7 @@ export function useCalendarActions(
       await gardenCare.undo(gardenOperationId)
       setGardenOperationId(null)
       setUndoMsg(null)
+      setCompletion(null)
       setDoneIds(new Set())
       onGroupChange?.()
     } catch (error) {
@@ -85,6 +105,7 @@ export function useCalendarActions(
   async function handleSkip(event: CalendarEvent) {
     if (!event.plant_id) return
     setActionError(null)
+    setCompletion(null)
     setSaving(event.id)
     try {
       await skipCare(event.plant_id, event.type)
@@ -99,6 +120,8 @@ export function useCalendarActions(
 
   return {
     actionError,
+    clearCompletion: () => setCompletion(null),
+    completion,
     doneIds,
     handleDone,
     handleGardenUndo,

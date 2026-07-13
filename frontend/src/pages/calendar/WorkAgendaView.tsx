@@ -5,6 +5,8 @@ import { isoDate } from './dateUtils'
 import { useCalendarActions } from './useCalendarActions'
 import { useCalendarEventRange } from './useCalendarEvents'
 import { buildWorkAgenda } from './workAgendaModel'
+import CalendarCompletionNotice from './CalendarCompletionNotice'
+import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
   env: string
@@ -17,6 +19,11 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
   const todayIso = isoDate(today)
   const horizon = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)
   const horizonIso = isoDate(horizon)
+  const maps = useFloreren(state => state.maps)
+  const mapSlugs = useMemo(
+    () => new Map(maps.map(map => [map.id, map.slug] as const)),
+    [maps],
+  )
   const { events, loading, error, retry } = useCalendarEventRange(
     todayIso,
     horizonIso,
@@ -25,13 +32,15 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
   )
   const {
     actionError,
+    clearCompletion,
+    completion,
     doneIds,
     handleDone,
     handleGardenUndo,
     handleSkip,
     saving,
     undoMsg,
-  } = useCalendarActions(events, retry)
+  } = useCalendarActions(events, retry, env)
   const agenda = useMemo(
     () => buildWorkAgenda(events.filter(event => !doneIds.has(event.id)), todayIso),
     [doneIds, events, todayIso],
@@ -47,6 +56,12 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
         </div>
         {environmentFilter}
       </header>
+
+      <CalendarCompletionNotice
+        completion={completion}
+        mapSlugs={mapSlugs}
+        onDismiss={clearCompletion}
+      />
 
       {loading ? (
         <p className="work-agenda-status">{t.common.loading}</p>

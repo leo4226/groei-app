@@ -22,6 +22,14 @@ def _care_warning_to_dict(w: CareWarning) -> dict:
         "severity": w.severity,
         "color": w.color,
         "icon": w.icon,
+        "reason_nl": w.reason_nl,
+        "reason_en": w.reason_en,
+        "action_nl": w.action_nl,
+        "action_en": w.action_en,
+        "weather_metric": w.weather_metric,
+        "weather_value_c": w.weather_value_c,
+        "forecast_day_label_nl": w.forecast_day_label_nl,
+        "forecast_day_label_en": w.forecast_day_label_en,
     }
 
 
@@ -105,8 +113,10 @@ async def list_calendar_events(
     # Refresh weather-driven one-shot tasks on the Calendar path itself. This is
     # best-effort: cached-weather or sync failures must never turn Calendar into
     # a 500 or hide ordinary scheduled care.
+    warning_weather = None
     try:
-        await sync_ephemeral_schedules(db)
+        sync_result = await sync_ephemeral_schedules(db)
+        warning_weather = sync_result.get("warning_weather")
     except Exception:
         pass
 
@@ -216,7 +226,7 @@ async def list_calendar_events(
         }
         try:
             state = compute_plant_warnings(
-                warn_plant, scheds, weather=None, today=today_date
+                warn_plant, scheds, weather=warning_weather, today=today_date
             )
             for w in state.warnings:
                 enrichment_cache[(pid, w.care_type)] = _care_warning_to_dict(w)
@@ -259,9 +269,7 @@ async def list_calendar_events(
                 map_name=plant.get("map_name"),
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
-                severity=enrichment.get("severity"),
-                color=enrichment.get("color"),
-                icon=enrichment.get("icon"),
+                **enrichment,
                 weather_triggered=bool(CARE_TYPES.get(ct, {}).get("is_weather_triggered")),
             ))
         else:
@@ -299,9 +307,7 @@ async def list_calendar_events(
                     map_name=plant.get("map_name"),
                     schedule_id=r["schedule_id"],
                     overdue=is_overdue,
-                    severity=enrichment.get("severity"),
-                    color=enrichment.get("color"),
-                    icon=enrichment.get("icon"),
+                    **enrichment,
                 ))
 
     # Shared household preferences supersede the legacy browser-local query flag.

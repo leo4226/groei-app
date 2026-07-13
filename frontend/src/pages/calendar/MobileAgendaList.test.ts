@@ -157,4 +157,32 @@ describe('MobileAgendaList care controls', () => {
     expect(button?.disabled).toBe(true)
     expect(button?.textContent).toBe('Laden…')
   })
+
+  it('renders localized weather guidance without completion controls', () => {
+    const weatherEvent = event({
+      id: 'schedule:9:heat_protect',
+      type: 'heat_protect',
+      weather_triggered: true,
+      reason_nl: 'Maximum 31°C verwacht vandaag (grens 25°C).',
+      reason_en: 'Maximum 31°C expected today (threshold 25°C).',
+      action_nl: 'Zet potten in de schaduw.',
+      action_en: 'Move pots to shade.',
+    })
+
+    act(() => root.render(createElement(MobileAgendaList, {
+      events: [weatherEvent],
+      todayIso: TODAY,
+      saving: null,
+      onDone: vi.fn(),
+      onSkip: vi.fn(),
+      undoMsg: null,
+      onGardenUndo: vi.fn(),
+      actionError: null,
+    })))
+
+    expect(container.textContent).toContain('Maximum 31°C verwacht vandaag')
+    expect(container.textContent).toContain('Zet potten in de schaduw.')
+    expect(container.textContent).not.toContain('Maximum 31°C expected today')
+    expect(container.querySelector('button')).toBeNull()
+  })
 })

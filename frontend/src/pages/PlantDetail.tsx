@@ -19,10 +19,11 @@ import { resolveIconUrl } from '../utils/icons'
 import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
+import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-6">
+    <section id={id} className="mb-6 scroll-mt-24">
       <p className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-3">{title}</p>
       {children}
     </section>
@@ -96,7 +97,7 @@ function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: 
           <ul className="space-y-1">
             {displayActions.map((action, i) => (
               <li key={i} className="text-sm text-text flex gap-1.5">
-                <span className="text-primary shrink-0">→</span>
+                <span className="text-primary shrink-0"><Glyph name="chevron-right" size={14} aria-hidden /></span>
                 <span>{action}</span>
               </li>
             ))}
@@ -137,6 +138,14 @@ export default function PlantDetail() {
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
+
+  useEffect(() => {
+    if (loading || !plant) return
+    const frame = window.requestAnimationFrame(() => {
+      resolvePlantPassportAnchor(window.location.hash)?.scrollIntoView({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [careLog.data, loading, plant?.id])
 
   const mapInfo = plant?.map_id ? (maps.find(m => m.id === plant.map_id) ?? null) : null
   const sunCoord = useMemo(
@@ -458,7 +467,7 @@ export default function PlantDetail() {
   )
 
   const journalBlock = (
-    <Section title={t.plantDetail.photoJournal}>
+    <Section id={PLANT_PASSPORT_ANCHORS.photoJournal} title={t.plantDetail.photoJournal}>
       <PhotoJournal
         plantId={plant.id}
         refreshKey={journalRefresh}
@@ -482,7 +491,7 @@ export default function PlantDetail() {
               className="flex-1 py-2 rounded-full bg-surface border border-border text-text font-semibold text-sm active:scale-[0.98] transition-transform"
               onClick={handleUndo}
             >
-              ↩ {t.plantDetail.undo}
+              <Glyph name="refresh" size={14} aria-hidden /> {t.plantDetail.undo}
             </button>
           )}
           {pendingCareLogId != null && (
@@ -504,11 +513,11 @@ export default function PlantDetail() {
   )
 
   const historyBlock = careLog.data && careLog.data.length > 0 && (
-    <Section title={t.plantDetail.careHistory}>
+    <Section id={PLANT_PASSPORT_ANCHORS.careHistory} title={t.plantDetail.careHistory}>
       <div className="card divide-y divide-border/50">
         {careLog.data.map((entry) => {
           return (
-            <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={entry.id} id={careLogAnchor(entry.id)} className="flex items-center gap-3 px-4 py-3 scroll-mt-24">
               <span className="shrink-0 text-text-soft"><CareIcon type={entry.care_type as CareIconType} size={20} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm">
@@ -589,7 +598,7 @@ export default function PlantDetail() {
                   title={t.common.back}
                   className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
                 >
-                  ←
+                  <Glyph name="arrow-left" size={18} aria-hidden />
                 </button>
                 <button
                   onClick={handleDuplicate}
@@ -730,7 +739,7 @@ export default function PlantDetail() {
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text"
         >
-          ←
+          <Glyph name="arrow-left" size={18} aria-hidden />
         </button>
 
         <div className="absolute top-4 right-4 flex gap-1.5">

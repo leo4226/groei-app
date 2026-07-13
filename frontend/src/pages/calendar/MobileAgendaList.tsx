@@ -5,6 +5,7 @@ import { agendaPlantName } from './workAgendaModel'
 import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
 import CalendarEventLink from './CalendarEventLink'
+import CalendarWeatherContext from './CalendarWeatherContext'
 
 const EMPTY_MAP_SLUGS = new Map<number, string>()
 
@@ -113,6 +114,7 @@ export default function MobileAgendaList({
                         {e.overdue && t.calendar.overdueLabel}
                       </span>
                     )}
+                    <CalendarWeatherContext event={e} />
                   </span>
                   {isActionable(e, todayIso) ? (
                     <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>

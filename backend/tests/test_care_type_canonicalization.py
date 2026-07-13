@@ -162,9 +162,12 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
     )
     await seeded_db.commit()
 
-    weather = {"days": [{"min": 10.0, "max": 31.0}]}
+    weather = {"days": [{"date": date.today().isoformat(), "min": 10.0, "max": 31.0}]}
+    weather_calls = 0
 
     async def fake_temp_data(*args, **kwargs):
+        nonlocal weather_calls
+        weather_calls += 1
         return weather
 
     monkeypatch.setattr("services.environment.get_temp_data", fake_temp_data)
@@ -178,20 +181,46 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
     assert hot.status_code == 200, hot.text
     heat_events = [event for event in hot.json() if event["type"] == "heat_protect"]
     assert len(heat_events) == 1
+    assert weather_calls == 1
     assert heat_events[0]["weather_triggered"] is True
+    assert heat_events[0]["reason_en"] == "Maximum 31°C expected today (threshold 25°C)."
+    assert heat_events[0]["action_en"] == "Water early or late; move pots to shade and check containers first."
+    assert heat_events[0]["weather_metric"] == "max_temp_c"
+    assert heat_events[0]["weather_value_c"] == 31.0
+    assert heat_events[0]["forecast_day_label_en"] == "today"
 
-    weather["days"] = [{"min": 10.0, "max": 20.0}]
+    weather["days"] = [{"date": date.today().isoformat(), "min": -2.0, "max": 20.0}]
+    cold = await client.get(
+        "/api/calendar/events",
+        params={"from": today, "to": today},
+        headers=auth_header,
+    )
+    assert cold.status_code == 200, cold.text
+    frost_events = [event for event in cold.json() if event["type"] == "frost_protect"]
+    assert len(frost_events) == 1
+    assert weather_calls == 2
+    assert frost_events[0]["reason_en"] == "Minimum -2°C expected tonight (threshold 2°C)."
+    assert frost_events[0]["action_en"] == "Cover sensitive plants or move pots inside/sheltered."
+    assert frost_events[0]["weather_metric"] == "min_temp_c"
+    assert frost_events[0]["weather_value_c"] == -2.0
+    assert frost_events[0]["forecast_day_label_en"] == "tonight"
+
+    weather["days"] = [{"date": date.today().isoformat(), "min": 10.0, "max": 20.0}]
     mild = await client.get(
         "/api/calendar/events",
         params={"from": today, "to": today},
         headers=auth_header,
     )
     assert mild.status_code == 200, mild.text
-    assert not [event for event in mild.json() if event["type"] == "heat_protect"]
+    assert weather_calls == 3
+    assert not [event for event in mild.json() if event["type"] in {"heat_protect", "frost_protect"}]
     rows = await seeded_db.execute_fetchall(
-        "SELECT care_type, is_active FROM care_schedules WHERE plant_id = 42"
+        "SELECT care_type, is_active FROM care_schedules WHERE plant_id = 42 ORDER BY care_type"
     )
-    assert rows == [{"care_type": "heat_protect", "is_active": 0}]
+    assert rows == [
+        {"care_type": "frost_protect", "is_active": 0},
+        {"care_type": "heat_protect", "is_active": 0},
+    ]
 
 
 async def test_calendar_weather_refresh_fails_open(
