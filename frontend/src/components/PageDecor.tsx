@@ -34,7 +34,7 @@ function plantConfig(name: string) {
   return PLANT_POOL[1] // fallback: flowers
 }
 
-function generateDecor(count: number): DecorIcon[] {
+function generateDecor(count: number, bottomWeighted = false): DecorIcon[] {
   const rand = mulberry32(Date.now())
   const icons: DecorIcon[] = []
   let nextId = 0
@@ -77,9 +77,15 @@ function generateDecor(count: number): DecorIcon[] {
     let left = 0, top = 0
     let placed_ok = false
 
+    // Landing variant: bias placement towards the bottom of the viewport so the
+    // icons read as a garden bed the page grows out of, not uniform wallpaper.
+    const randTop = () => bottomWeighted
+      ? (1 - Math.pow(rand(), 2.4)) * 97 - 2
+      : rand() * 97 - 2
+
     for (let attempt = 0; attempt < 30; attempt++) {
       left = rand() * 97 - 2
-      top = rand() * 97 - 2
+      top = randTop()
       // Keep away from extreme edges
       if (top < -radiusPct || top > 98 - radiusPct) continue
       if (!overlaps(left, top, radiusPct)) {
@@ -91,17 +97,24 @@ function generateDecor(count: number): DecorIcon[] {
     if (!placed_ok) {
       // Last resort: just place it somewhere
       left = rand() * 97 - 2
-      top = rand() * 97 - 2
+      top = randTop()
     }
+
+    const clampedTop = Math.max(0, Math.min(98, top))
+    // In the garden-bed variant icons near the bottom are noticeably more
+    // present, fading out as they climb towards the content.
+    const opacity = bottomWeighted
+      ? Math.min(0.13, c.opacity * (0.5 + 1.7 * (clampedTop / 100)))
+      : c.opacity
 
     placed.push({ left, top, radiusPct })
     icons.push({
       id: nextId++, name: c.name,
       left: `${left.toFixed(1)}%`,
-      top: `${Math.max(0, Math.min(98, top)).toFixed(1)}%`,
+      top: `${clampedTop.toFixed(1)}%`,
       size: c.size,
       rotate: Math.round((rand() - 0.5) * 50),
-      opacity: c.opacity,
+      opacity: parseFloat(opacity.toFixed(3)),
     })
   }
 
@@ -109,8 +122,12 @@ function generateDecor(count: number): DecorIcon[] {
 }
 
 const PAGE_DECOR = generateDecor(100)
+let landingDecor: DecorIcon[] | null = null
 
-export default function PageDecor() {
+export default function PageDecor({ variant = 'scatter' }: { variant?: 'scatter' | 'landing' }) {
+  const icons = variant === 'landing'
+    ? (landingDecor ??= generateDecor(110, true))
+    : PAGE_DECOR
   return (
     <div aria-hidden="true" style={{
       position: 'absolute',
@@ -119,7 +136,7 @@ export default function PageDecor() {
       pointerEvents: 'none',
       zIndex: 0,
     }}>
-      {PAGE_DECOR.map((d) => (
+      {icons.map((d) => (
         <img
           key={d.id}
           src={resolveIconUrl(d.name)!}
