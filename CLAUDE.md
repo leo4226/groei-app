@@ -116,6 +116,17 @@ Indoor maps only need a name and dimensions.
 
 JWT-based auth (`jose` library, `sub=account_id`). Accounts belong to one Household. Leon's garden: Amsterdam, 52.3715°N 4.8499°E.
 
+## Languages (NL/EN)
+
+The app is fully bilingual Dutch/English; `accounts.language` ('nl'|'en') drives the UI. Rules for **every** user-facing feature (2026-07 language audit — a big NL/EN-mixing cleanup — is the origin of all of these):
+
+- **Frontend strings go through the typed catalog** — `useT()` + `src/i18n/{translations,en,nl}.ts`. The `Translations` type forces en/nl parity. Never hardcode user-facing text in JSX: CI runs an i18n guard (`npm run lint:i18n`, `frontend/eslint.i18n.config.js`). Pre-existing offenders are baselined in that config's ignore list — when you touch a baselined file, translate its strings and remove it from the list; the list must only shrink.
+- **Backend never invents Dutch sentences.** User-facing `HTTPException` details must be localized to the request's `?lang=` (see `_msg()` in `routers/plant_id.py`); long-term prefer machine-readable error codes translated client-side. The frontend must branch on HTTP status (the api client attaches `.status` to thrown errors), never on message text.
+- **Bilingual data is written bilingual.** Species/content columns come in `*_nl`/`*_en` pairs; LLM generation must always produce both languages in one call. Never cross-fill languages silently at read time — generate the missing language instead, and only persist genuinely bilingual pairs (see `get_species_fun_fact`).
+- **Language flows explicitly**: `/plants/identify` and `/plants/identify/commit` take `?lang=`; commit returns localized `name_suggested` (`name_nl_suggested` is deprecated). The public share page (`/s/{token}`) renders in the **sharer's** account language.
+- **Place names are endonyms** (reverse geocode without `accept-language`): one stored `place_name` serves both languages.
+- **Verify new UI in English too.** Development is Dutch-first, so English-mode bugs are invisible unless you flip your account language to `en` and click through the feature once.
+
 ## Deployment
 
 **Stack:** frontend → **Vercel** (`floreren.app`), backend → **Fly.io** (`api.floreren.app`). Cloudflare is **DNS + the bioclip tunnel only** — there is **no Cloudflare Workers/Pages** build for this repo. (If a "Workers Builds" check ever reappears on a PR, a Cloudflare Git integration got reconnected by accident — disconnect it in Cloudflare → Workers & Pages, don't add a wrangler config.)
