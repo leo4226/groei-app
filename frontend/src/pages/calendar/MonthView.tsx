@@ -7,12 +7,14 @@ import CalendarAlmanac from './CalendarAlmanac'
 import CalendarUpcoming from './CalendarUpcoming'
 import MobileAgendaList from './MobileAgendaList'
 import MonthLoadState from './MonthLoadState'
+import MonthSeasonalPanel from './MonthSeasonalPanel'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
 import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
 import { moveCalendarMonth, summarizeMonthWorkload } from './monthWorkloadModel'
+import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
 import type { CalendarViewMode } from './calendarViewModel'
 import { useFloreren } from '../../store/useFloreren'
 
@@ -33,9 +35,14 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
     () => new Set(EVENT_TYPES.map(t => t.id)),
   )
   const maps = useFloreren(state => state.maps)
+  const plants = useFloreren(state => state.plants)
   const mapSlugs = useMemo(
     () => new Map(maps.map(map => [map.id, map.slug] as const)),
     [maps],
+  )
+  const seasonalPlants = useMemo(
+    () => filterSeasonalPlantsByEnvironment(plants, maps, env),
+    [plants, maps, env],
   )
   const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
   const {
@@ -90,17 +97,26 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
         <>
           <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
           {isNarrow ? (
-            <MobileAgendaList
-              events={filtered}
-              todayIso={todayIso}
-              saving={saving}
-              onDone={handleDone}
-              onSkip={handleSkip}
-              undoMsg={undoMsg}
-              onGardenUndo={handleGardenUndo}
-              actionError={actionError}
-              mapSlugs={mapSlugs}
-            />
+            <>
+              <MobileAgendaList
+                events={filtered}
+                todayIso={todayIso}
+                saving={saving}
+                onDone={handleDone}
+                onSkip={handleSkip}
+                undoMsg={undoMsg}
+                onGardenUndo={handleGardenUndo}
+                actionError={actionError}
+                mapSlugs={mapSlugs}
+              />
+              <div className="seasonal-mobile-wrap">
+                <MonthSeasonalPanel
+                  month1={month1}
+                  plants={seasonalPlants}
+                  onOpenGardenYear={() => onSetView('year')}
+                />
+              </div>
+            </>
           ) : (
             <main>
               <CalendarGrid
@@ -113,6 +129,11 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
               />
               <aside className="col-side">
                 <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                <MonthSeasonalPanel
+                  month1={month1}
+                  plants={seasonalPlants}
+                  onOpenGardenYear={() => onSetView('year')}
+                />
                 <CalendarUpcoming todayIso={todayIso} events={filtered} />
                 <CalendarAlmanac month1={month1} />
               </aside>
