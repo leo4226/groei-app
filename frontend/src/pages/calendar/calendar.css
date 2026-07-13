@@ -331,6 +331,17 @@
   background: color-mix(in srgb, var(--color-secondary) 5%, transparent);
   z-index: 1;
 }
+.cal-page .day.load-low::before,
+.cal-page .day.load-medium::before,
+.cal-page .day.load-high::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+}
+.cal-page .day.load-low::before { background: var(--cal-sky); }
+.cal-page .day.load-medium::before { background: var(--cal-gold); }
+.cal-page .day.load-high::before { background: var(--cal-terra); }
 .cal-page .day-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 6px;
@@ -347,7 +358,7 @@
   color: var(--cal-accent);
 }
 .cal-page .day.today .day-num::after {
-  content: 'vandaag';
+  content: attr(data-today-label);
   display: block;
   margin-top: 4px;
   font-family: 'JetBrains Mono', monospace;
@@ -372,6 +383,19 @@
   border-radius: 50%;
   vertical-align: middle;
   margin-left: 4px;
+}
+
+.cal-page .day-load {
+  align-self: flex-start;
+  padding: 2px 5px;
+  border: 1px solid var(--cal-rule-soft);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  color: var(--cal-ink-soft);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 
 .cal-page .ev-list {
@@ -569,6 +593,18 @@
   line-height: 1.25;
 }
 .cal-page .agenda-meta .what em { color: var(--cal-accent); font-style: italic; }
+.cal-page .agenda-identity-link,
+.cal-page .mobile-agenda-identity {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+.cal-page .agenda-identity-link:hover,
+.cal-page .mobile-agenda-identity:hover { text-decoration-color: currentColor; }
+.cal-page .mobile-agenda-identity {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+}
 .cal-page .agenda-meta .who {
   font-family: 'Fraunces', serif;
   font-style: italic;
@@ -767,13 +803,16 @@
   color: var(--cal-ink-soft);
   font-size: 14px;
 }
-.cal-page .work-agenda-status {
-  margin: 24px 12px;
+.cal-page .work-agenda-status,
+.cal-page .month-load-state {
+  margin: 24px auto;
+  max-width: 900px;
   padding: 18px;
   text-align: center;
   color: var(--cal-ink-soft);
 }
-.cal-page .work-agenda-status button {
+.cal-page .work-agenda-status button,
+.cal-page .month-load-state button {
   margin-top: 10px;
   padding: 7px 14px;
   border: 1px solid var(--cal-rule);

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { MONTH_LONG_NL, isoWeek } from './dateUtils'
+import { MONTH_LONG_EN, MONTH_LONG_NL, isoWeek } from './dateUtils'
 import type { CalendarViewMode } from './calendarViewModel'
 import CalendarMoonMini from './CalendarMoonMini'
 import CalendarViewToggle from './CalendarViewToggle'
@@ -13,18 +13,17 @@ interface Props {
   onPrev(): void
   onNext(): void
   onSetView(v: CalendarViewMode): void
-  taskCount: number
-  bloomCount: number
+  plannedCount: number
   openCount: number
   environmentFilter: ReactNode
 }
 
 export default function CalendarMasthead({
   year, month1, todayDay, viewMode, onPrev, onNext, onSetView,
-  taskCount, bloomCount, openCount, environmentFilter,
+  plannedCount, openCount, environmentFilter,
 }: Props) {
   const t = useT()
-  const monthName = MONTH_LONG_NL[month1 - 1]
+  const monthName = (t.locale.startsWith('en') ? MONTH_LONG_EN : MONTH_LONG_NL)[month1 - 1]
   const wkFirst = isoWeek(year, month1, 1)
   const wkLast = isoWeek(year, month1, new Date(year, month1, 0).getDate())
 
@@ -72,8 +71,7 @@ export default function CalendarMasthead({
             <CalendarViewToggle view={viewMode} onSet={onSetView} />
           </div>
           <div className="ms-meta">
-            <span>{t.calendar.thisMonth} <span className="v">{taskCount} <em>{t.calendar.tasks}</em></span></span>
-            <span>{t.calendar.bloom} <span className="v">{bloomCount}</span></span>
+            <span>{t.calendar.planned} <span className="v">{plannedCount}</span></span>
             <span>{t.calendar.open} <span className="v">{openCount}</span></span>
           </div>
         </div>
