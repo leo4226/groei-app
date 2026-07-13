@@ -25,6 +25,14 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
   const [compare, setCompare] = useState(false)               // before/after split view
   const [reminderOn, setReminderOn] = useState(reminder?.enabled ?? false)
   const [reminderDays, setReminderDays] = useState(reminder?.intervalDays ?? 30)
+
+  // Sync local state from prop after the store refreshes (e.g. after loadPlants()),
+  // so the toggle always reflects the persisted backend state.
+  useEffect(() => {
+    setReminderOn(reminder?.enabled ?? false)
+    setReminderDays(reminder?.intervalDays ?? 30)
+  }, [reminder])
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
