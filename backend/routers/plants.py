@@ -397,6 +397,11 @@ def _care_schedule_anchor(last_done) -> _date | None:
     return None
 
 
+def _care_schedule_lock_clause(db) -> str:
+    """Lock only the plant row; the optional map side of the join may be null."""
+    return " FOR UPDATE OF p" if hasattr(db, "transaction") else ""
+
+
 async def _sync_care_schedules_in_transaction(
     plant_id: int,
     data: CareScheduleSyncInput,
@@ -404,7 +409,7 @@ async def _sync_care_schedules_in_transaction(
     household_id: int,
 ) -> None:
     """Reconcile recurring schedules inside the caller's open transaction."""
-    lock_clause = " FOR UPDATE" if hasattr(db, "transaction") else ""
+    lock_clause = _care_schedule_lock_clause(db)
     cursor = await db.execute(
         """SELECT p.id, p.container_id, m.map_type
            FROM plants p

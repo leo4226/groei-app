@@ -4,6 +4,16 @@ from datetime import date, timedelta
 import pytest
 import pytest_asyncio
 
+from routers.plants import _care_schedule_lock_clause
+
+
+def test_postgres_row_lock_targets_only_the_owned_plant_table():
+    class ProductionAdapter:
+        transaction = object()
+
+    assert _care_schedule_lock_clause(ProductionAdapter()) == " FOR UPDATE OF p"
+    assert _care_schedule_lock_clause(object()) == ""
+
 
 @pytest_asyncio.fixture
 async def schedule_sync_db(seeded_db):
