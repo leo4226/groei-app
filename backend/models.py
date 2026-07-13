@@ -775,6 +775,14 @@ class CalendarEventOut(BaseModel):
     severity: str | None = None   # 'urgent' | 'warning' | 'info' | None
     color: str | None = None      # canonical badge color from CareWarning
     icon: str | None = None       # emoji from CareWarning
+    reason_nl: str | None = None
+    reason_en: str | None = None
+    action_nl: str | None = None
+    action_en: str | None = None
+    weather_metric: str | None = None
+    weather_value_c: float | None = None
+    forecast_day_label_nl: str | None = None
+    forecast_day_label_en: str | None = None
     grouped: bool = False
     group_count: int | None = None
     group_member_schedule_ids: list[int] | None = None

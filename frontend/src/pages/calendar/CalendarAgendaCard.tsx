@@ -4,6 +4,7 @@ import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY, isActionable } from './calend
 import { useT } from '../../context/LanguageContext'
 import { agendaPlantName } from './workAgendaModel'
 import CalendarEventLink from './CalendarEventLink'
+import CalendarWeatherContext from './CalendarWeatherContext'
 
 interface Props {
   selectedIso: string
@@ -126,6 +127,7 @@ export default function CalendarAgendaCard({
                 {groupEvents.some(e => e.overdue) && (
                   <p className="who">{t.calendar.overdueLabel}</p>
                 )}
+                <CalendarWeatherContext event={firstEvent} />
               </div>
               {firstEvent.grouped && affectedCount > 0 && (
                 <span className="ag-group-badge">{affectedCount}</span>

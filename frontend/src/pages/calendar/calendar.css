@@ -671,6 +671,79 @@
   font-family: 'Fraunces', serif;
   font-size: 14px;
 }
+.cal-page .calendar-weather-context {
+  margin-top: 6px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--cal-gold);
+  background: color-mix(in srgb, var(--cal-gold-pale) 65%, transparent);
+}
+.cal-page .calendar-weather-kicker {
+  margin: 0 0 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--cal-ink-soft);
+}
+.cal-page .calendar-weather-reason,
+.cal-page .calendar-weather-action {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--cal-ink);
+}
+.cal-page .calendar-weather-action { margin-top: 3px; }
+.cal-page .calendar-completion {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 12px clamp(12px, 2vw, 28px) 0;
+  padding: 13px 48px 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--cal-green) 35%, var(--cal-line));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--cal-green-pale) 70%, var(--cal-paper));
+}
+.cal-page .calendar-completion-copy { flex: 1; min-width: 0; }
+.cal-page .calendar-completion-copy p {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  color: var(--cal-ink-soft);
+}
+.cal-page .calendar-completion-copy .calendar-completion-title {
+  font-weight: 700;
+  color: var(--cal-green);
+}
+.cal-page .calendar-completion-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-page .calendar-completion-actions a {
+  padding: 6px 11px;
+  border: 1px solid var(--cal-green);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--cal-green);
+  text-decoration: none;
+}
+.cal-page .calendar-completion-dismiss {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--cal-ink-soft);
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .cal-page .calendar-completion { align-items: flex-start; flex-direction: column; gap: 9px; }
+}
 .cal-page .agenda-meta .who {
   font-family: 'Fraunces', serif;
   font-style: italic;

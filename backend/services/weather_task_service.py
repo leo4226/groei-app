@@ -125,7 +125,7 @@ async def _sync_ephemeral_schedules(db) -> dict:
     min_24h = weather["min_24h"]
     max_24h = weather["max_24h"]
     if min_24h is None and max_24h is None:
-        return {"created": 0, "deleted": 0}
+        return {"created": 0, "deleted": 0, "warning_weather": None}
 
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.container_id, p.ground_zone_id,
@@ -214,4 +214,8 @@ async def _sync_ephemeral_schedules(db) -> dict:
         deleted += 1
 
     await db.commit()
-    return {"created": created, "deleted": deleted}
+    return {
+        "created": created,
+        "deleted": deleted,
+        "warning_weather": {"temp": {"days": weather["temp_days"]}},
+    }

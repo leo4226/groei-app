@@ -967,6 +967,16 @@ export type Translations = {
     seasonalScope: string
     seasonalMissing: (n: number) => string
     seasonalGardenYear: string
+    weatherContext: string
+    weatherRecommendedAction: string
+    weatherExplanationUnavailable: string
+    completionConfirmed: string
+    completionPlant: (name: string | null) => string
+    completionMap: (name: string | null) => string
+    reviewHistory: string
+    addPhoto: string
+    viewMap: string
+    dismissCompletion: string
     filter: string
     heading: string  // "Calendar"
     filterDescAll: string      // "alle planten" / "all plants"

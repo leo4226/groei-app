@@ -83,4 +83,30 @@ describe('CalendarAgendaCard handoffs', () => {
     expect(container.textContent).toContain('Monstera')
     expect(container.textContent).toContain('4')
   })
+
+  it('renders weather reason and recommendation in the desktop agenda', () => {
+    const weatherEvent = event({
+      id: 'schedule:9:frost_protect',
+      type: 'frost_protect',
+      weather_triggered: true,
+      reason_nl: 'Minimum -2°C verwacht vannacht (grens 0°C).',
+      action_nl: 'Zet kwetsbare potten binnen.',
+    })
+    const card = createElement(CalendarAgendaCard, {
+      selectedIso: TODAY,
+      events: [weatherEvent],
+      todayIso: TODAY,
+      saving: null,
+      onDone: vi.fn(),
+      onSkip: vi.fn(),
+      undoMsg: null,
+      onGardenUndo: vi.fn(),
+      mapSlugs: new Map([[10, 'back-garden']]),
+    })
+    act(() => root.render(createElement(MemoryRouter, null, card)))
+
+    expect(container.textContent).toContain('Minimum -2°C verwacht vannacht')
+    expect(container.textContent).toContain('Zet kwetsbare potten binnen.')
+    expect(container.querySelector('button')).toBeNull()
+  })
 })

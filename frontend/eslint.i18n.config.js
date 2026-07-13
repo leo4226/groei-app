@@ -82,7 +82,6 @@ export default [
       'src/pages/MapSettingsPage.tsx',
       'src/pages/MapsListPage.tsx',
       'src/pages/PlantCareDetail.tsx',
-      'src/pages/PlantDetail.tsx',
       'src/pages/ResetPasswordPage.tsx',
       'src/pages/Settings.tsx',
       'src/pages/calendar/CalendarAlmanac.tsx',
