@@ -149,8 +149,19 @@ async def test_photo_reminder_rejects_nonpositive_interval(client, photo_db, aut
 
 
 @pytest.mark.asyncio
-async def test_photo_reminder_toggle_creates_and_deactivates_schedule(client, photo_db, auth_header):
+async def test_photo_reminder_toggle_creates_and_deactivates_schedule(
+    client, photo_db, auth_header, monkeypatch
+):
     db, _ = photo_db
+    executed_sql: list[str] = []
+    original_execute = db.execute
+
+    async def capture_execute(sql, params=()):
+        executed_sql.append(" ".join(sql.split()))
+        return await original_execute(sql, params)
+
+    monkeypatch.setattr(db, "execute", capture_execute)
+
     res = await client.put(
         "/api/plants/1/photo-reminder",
         json={"enabled": True, "interval_days": 30},
@@ -161,6 +172,8 @@ async def test_photo_reminder_toggle_creates_and_deactivates_schedule(client, ph
         "SELECT interval_days, is_active FROM care_schedules WHERE plant_id = 1 AND care_type = 'photo'"
     )
     assert rows[0]["interval_days"] == 30 and rows[0]["is_active"] == 1
+    insert_sql = next(sql for sql in executed_sql if sql.startswith("INSERT INTO care_schedules"))
+    assert "VALUES (?, 'photo', ?, ?, TRUE)" in insert_sql
 
     res = await client.put(
         "/api/plants/1/photo-reminder", json={"enabled": False}, headers=auth_header
@@ -170,6 +183,8 @@ async def test_photo_reminder_toggle_creates_and_deactivates_schedule(client, ph
         "SELECT is_active FROM care_schedules WHERE plant_id = 1 AND care_type = 'photo'"
     )
     assert rows[0]["is_active"] == 0
+    deactivate_sql = next(sql for sql in executed_sql if "SET is_active" in sql)
+    assert "SET is_active = FALSE" in deactivate_sql
 
 
 @pytest.mark.asyncio

@@ -175,18 +175,18 @@ async def toggle_photo_reminder(plant_id: int, body: PhotoReminderToggle,
         next_due = date.today() + timedelta(days=body.interval_days)
         if rows:
             await db.execute(
-                "UPDATE care_schedules SET is_active = 1, interval_days = ?, next_due = ? WHERE id = ?",
+                "UPDATE care_schedules SET is_active = TRUE, interval_days = ?, next_due = ? WHERE id = ?",
                 (body.interval_days, next_due, rows[0]["id"]),
             )
         else:
             await db.execute(
                 """INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
-                   VALUES (?, 'photo', ?, ?, 1)""",
+                   VALUES (?, 'photo', ?, ?, TRUE)""",
                 (plant_id, body.interval_days, next_due),
             )
     elif rows:
         await db.execute(
-            "UPDATE care_schedules SET is_active = 0 WHERE id = ?", (rows[0]["id"],)
+            "UPDATE care_schedules SET is_active = FALSE WHERE id = ?", (rows[0]["id"],)
         )
     await db.commit()
     return {"ok": True}
