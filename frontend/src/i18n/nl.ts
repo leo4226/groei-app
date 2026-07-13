@@ -543,6 +543,7 @@ export const nl: Translations = {
     dormant: (n) => `${n} in rust`,
     noPlants: 'Geen planten met een verzorgingsschema',
     noData: 'Geen fenologie data',
+    labelUnavailable: 'Faselabel niet beschikbaar',
     badgeSow: 'Zaaien',
     badgeTransplant: 'Verplanten',
     badgeHarvest: 'Oogsten',
@@ -1003,6 +1004,12 @@ export const nl: Translations = {
     taskSingular: 'taak',
     bloom: 'Bloei',
     open: 'Open',
+    seasonalThisMonth: 'Seizoen deze maand',
+    seasonalScope: 'Maandvensters, geen exacte datums.',
+    seasonalMissing: (n) => n === 1
+      ? '1 plant heeft deze maand geen seizoensgegevens'
+      : `${n} planten hebben deze maand geen seizoensgegevens`,
+    seasonalGardenYear: 'Open Tuinjaar',
     filter: 'Filter',
     heading: 'Kalender',
     filterDescAll: 'alle planten',

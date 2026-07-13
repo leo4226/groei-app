@@ -503,7 +503,8 @@ export type Translations = {
     dormant: (n: number) => string         // "{n} dormant" / "{n} in rust"
     noPlants: string         // "No plants with a care schedule" / "Geen planten met een verzorgingsschema"
     noData: string           // "No phenology data" / "Geen fenologie data"
-    badgeSow: string         // "Sow" / "Zaaien"
+    labelUnavailable: string // "Label unavailable" / "Label niet beschikbaar"
+    badgeSow: string
     badgeTransplant: string  // "Transplant" / "Verplanten"
     badgeHarvest: string     // "Harvest" / "Oogsten"
   }
@@ -962,6 +963,10 @@ export type Translations = {
     taskSingular: string  // "task"
     bloom: string  // "Bloom"
     open: string  // "Open"
+    seasonalThisMonth: string
+    seasonalScope: string
+    seasonalMissing: (n: number) => string
+    seasonalGardenYear: string
     filter: string
     heading: string  // "Calendar"
     filterDescAll: string      // "alle planten" / "all plants"

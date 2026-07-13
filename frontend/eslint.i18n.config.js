@@ -87,7 +87,6 @@ export default [
       'src/pages/Settings.tsx',
       'src/pages/calendar/CalendarAlmanac.tsx',
       'src/pages/calendar/CalendarGrid.tsx',
-      'src/pages/calendar/PhenologyView.tsx',
     ],
     plugins: { i18next },
     rules: {
