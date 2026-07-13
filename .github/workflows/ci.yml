@@ -28,6 +28,12 @@ jobs:
       - run: npm ci
       - name: Type-check (tsc)
         run: npx tsc -b --force
+      - name: i18n guard (no hardcoded UI strings)
+        # Flags user-facing string literals that bypass the typed translation
+        # catalog (src/i18n) — the root cause of the 2026-07 NL/EN mixing bugs.
+        # Pre-existing offenders are baselined in eslint.i18n.config.js; that
+        # list must only shrink. See CLAUDE.md § Languages.
+        run: npm run lint:i18n
       - name: Build (vite)
         # tsc is lenient about JSX nesting that Vite's rolldown parser rejects, so
         # tsc can pass while the production build fails (see PR #91 / issue #102).
