@@ -45,7 +45,7 @@ The Edit Plant care card becomes a reusable schedule list. Each valid recurring 
 - its translated care label and icon;
 - a day-frequency control visible while enabled.
 
-Initial state comes from the plant's active schedules. Disabled types use the canonical environment default until enabled. Saving first updates ordinary plant fields and then sends the complete enabled schedule set to the dedicated endpoint. API errors stay on the edit page through the existing save-error treatment.
+Initial state comes from the plant's active schedules. Disabled types use the canonical environment default until enabled; an optional valid type with no catalog default, such as indoor misting, starts at seven days. Saving first updates ordinary plant fields and then sends the complete enabled schedule set to the dedicated endpoint. API errors stay on the edit page through the existing save-error treatment.
 
 The frontend care-type union and metadata will include `pest_check` and `dust`, which already exist in the backend catalog and translations. Environment filtering must mirror the backend: mist, rotate, and dust are indoor-only; repot is not offered for outdoor-ground plants; weather and photo types are excluded from this editor.
 
