@@ -276,4 +276,24 @@ describe('MapView move pointer-down routing', () => {
     expect(mocks.handlePlantPointerDown).toHaveBeenCalledTimes(1)
     expect(mocks.handlePlantPointerDown.mock.calls[0][1].id).toBe(2)
   })
+
+  it('does not start a plant drag through a descendant map control', async () => {
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [plant(2, false, 8, 0)],
+        objects: [],
+        moveMode: true,
+      }))
+    })
+
+    const zoomButton = host.querySelector<HTMLButtonElement>('button[title="Zoom in"]')
+    expect(zoomButton).not.toBeNull()
+    await act(async () => {
+      zoomButton!.dispatchEvent(pointerDown(8, 0))
+    })
+
+    expect(mocks.handlePlantPointerDown).not.toHaveBeenCalled()
+  })
 })

@@ -405,6 +405,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   const handleContainerPointerDownCapture = useCallback((e: React.PointerEvent) => {
     recordPointerType(e)
     if (placingPlantId != null || (!moveMode && movePlantId === null)) return
+    if (e.target instanceof Element && e.target.closest('button, [role="dialog"]')) return
     if (!e.isPrimary) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
 
