@@ -35,6 +35,7 @@ import { dispatchPlantHit } from './plantHitDispatch'
 import PlantHitChooser from './PlantHitChooser'
 import {
   filterMovablePlantHitCandidates,
+  markMovePointerEventHandled,
   resolveMovablePlantHit,
 } from './plantMoveHitTarget'
 
@@ -406,12 +407,16 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     recordPointerType(e)
     if (placingPlantId != null || (!moveMode && movePlantId === null)) return
     if (e.target instanceof Element && e.target.closest('button, [role="dialog"]')) return
+    // Do not stop propagation before resolution: empty-space pointerdown must
+    // still reach use-gesture's container listener so pinch can begin. Mark the
+    // event so PlantMarker cannot later replace the centralized winner through
+    // its DOM-order pointer handler; a resolved drag stops propagation below.
+    markMovePointerEventHandled(e.nativeEvent)
     if (!e.isPrimary) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
 
     // Move mode is resolved here, before an overlapping marker's DOM hit circle
     // or the background pan handler can choose a different interaction target.
-    e.stopPropagation()
     if (isPinching.current) return
     const svg = svgRef.current
     const matrix = svg?.getScreenCTM()

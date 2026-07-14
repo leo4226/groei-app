@@ -8,6 +8,7 @@ import { resolveIconUrl } from '../../utils/icons'
 import { PX_PER_CM } from '../../utils/gardenStructures'
 import { getPlantDragHitRadius } from './plantDragPermissions'
 import { topLevelPlantIconRadius } from './plantMarkerGeometry'
+import { isMovePointerEventHandled } from './plantMoveHitTarget'
 import { LABEL_ABOVE_OFFSET, LABEL_BELOW_OFFSET, type LabelPlacement } from '../../utils/labelDeclutter'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
@@ -217,7 +218,10 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
     <g
       data-map-plant-id={plant.id}
       transform={`translate(${x}, ${y})`}
-      onPointerDown={(e) => onPointerDown(e, plant, e.currentTarget)}
+      onPointerDown={(e) => {
+        if (isMovePointerEventHandled(e.nativeEvent)) return
+        onPointerDown(e, plant)
+      }}
       style={{ pointerEvents: 'none' }}
     >
       {/* Status halo */}

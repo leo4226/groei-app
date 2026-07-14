@@ -296,4 +296,49 @@ describe('MapView move pointer-down routing', () => {
 
     expect(mocks.handlePlantPointerDown).not.toHaveBeenCalled()
   })
+
+  it('preserves native container pointer propagation on empty space for pinch recognition', async () => {
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [],
+        objects: [],
+        moveMode: true,
+      }))
+    })
+
+    const container = host.firstElementChild!
+    const nativePointerDown = vi.fn()
+    container.addEventListener('pointerdown', nativePointerDown)
+    await act(async () => {
+      container.dispatchEvent(pointerDown(8, 0))
+    })
+
+    expect(mocks.handlePlantPointerDown).not.toHaveBeenCalled()
+    expect(nativePointerDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not let the marker bubble handler overwrite the centrally resolved plant', async () => {
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [plant(2, false, 8, 0), plant(1, false, 30, 0)],
+        objects: [],
+        moveMode: true,
+      }))
+    })
+
+    const domTopmostHitCircle = host.querySelector<SVGCircleElement>(
+      '[data-map-plant-id="1"] > circle[fill="transparent"]',
+    )
+    expect(domTopmostHitCircle).not.toBeNull()
+    await act(async () => {
+      domTopmostHitCircle!.dispatchEvent(pointerDown(8, 0))
+    })
+
+    expect(mocks.handlePlantPointerDown).toHaveBeenCalledTimes(1)
+    expect(mocks.handlePlantPointerDown.mock.calls[0][1].id).toBe(2)
+  })
 })

@@ -1,5 +1,15 @@
 import type { PlantHitCandidate } from '../../utils/plantHitTesting'
 
+const handledMovePointerEvents = new WeakSet<Event>()
+
+export function markMovePointerEventHandled(event: Event): void {
+  handledMovePointerEvents.add(event)
+}
+
+export function isMovePointerEventHandled(event: Event): boolean {
+  return handledMovePointerEvents.has(event)
+}
+
 export function filterMovablePlantHitCandidates<T extends PlantHitCandidate>(
   candidates: readonly T[],
   movePlantId: number | null,
