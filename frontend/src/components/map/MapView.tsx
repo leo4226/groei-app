@@ -366,7 +366,9 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       )
       if (result.type === 'selected') {
         dispatchPlantHit(result.candidate, {
-          onPlantTap: (plant) => handleItemSelect('plant', plant.id),
+          onPlantTap: result.candidate.kind === 'contained'
+            ? (plant) => onPlantTap?.(plant)
+            : (plant) => handleItemSelect('plant', plant.id),
           onSecondaryMarkerTap,
           onFixedPlantTap,
         })
@@ -377,7 +379,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       if (result.type === 'ambiguous') return
     }
     handleMapClick()
-  }, [handleMapClick, handleItemSelect, plantHitCandidates, onSecondaryMarkerTap, onFixedPlantTap])
+  }, [handleMapClick, handleItemSelect, plantHitCandidates, onPlantTap, onSecondaryMarkerTap, onFixedPlantTap])
 
   // Derive the profile of the plant being dragged (for the suitability overlay)
   const draggingPlant = dragging?.type === 'plant'
