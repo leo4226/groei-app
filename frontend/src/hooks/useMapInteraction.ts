@@ -89,6 +89,7 @@ export function useMapInteraction({
   const rafThrottleRef = useRef<number | null>(null)
   const dragPositionsRef = useRef<Record<string, { x: number; y: number }>>({})
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const activeDragPointerIdRef = useRef<number | null>(null)
   const ptrMoveRef = useRef<((e: React.PointerEvent) => void) | null>(null)
   const ptrUpRef = useRef<((e: React.PointerEvent) => void) | null>(null)
 
@@ -109,11 +110,20 @@ export function useMapInteraction({
   // Stable document-level listeners — attach during drag, remove on pointer-up.
   // Always call through ptrMoveRef/ptrUpRef to avoid stale closures.
   const onDocMove = useCallback((e: PointerEvent) => {
+    if (activeDragPointerIdRef.current === null || e.pointerId !== activeDragPointerIdRef.current) return
     e.preventDefault()
     ptrMoveRef.current?.(e as unknown as React.PointerEvent<SVGSVGElement>)
   }, [])
 
   const onDocUp = useCallback((e: PointerEvent) => {
+    const activePointerId = activeDragPointerIdRef.current
+    if (activePointerId === null) {
+      document.removeEventListener('pointermove', onDocMove)
+      document.removeEventListener('pointerup', onDocUp)
+      document.removeEventListener('pointercancel', onDocUp)
+      return
+    }
+    if (e.pointerId !== activePointerId) return
     document.removeEventListener('pointermove', onDocMove)
     document.removeEventListener('pointerup', onDocUp)
     document.removeEventListener('pointercancel', onDocUp)
@@ -177,6 +187,7 @@ export function useMapInteraction({
     if (selection.mode === 'resizing') return
     if (!canStartPlantDrag(plant, { moveMode, movePlantId })) return
     e.stopPropagation()
+    activeDragPointerIdRef.current = e.pointerId
     // Register the SVG <g> element for imperative DOM transform during drag
     dragElementRef.current = dragElementOverride === undefined
       ? e.currentTarget as SVGGElement | null
@@ -200,6 +211,7 @@ export function useMapInteraction({
   const handleContainerPointerDown = useCallback((e: React.PointerEvent, obj: MapObject) => {
     if (!canStartContainerDrag({ moveMode, movePlantId })) return
     e.stopPropagation()
+    activeDragPointerIdRef.current = e.pointerId
     // Register the SVG element for imperative DOM transform during drag
     dragElementRef.current = e.currentTarget as SVGGElement | null
     // Document-level listeners instead of setPointerCapture
@@ -243,6 +255,7 @@ export function useMapInteraction({
     }
 
     // Drag logic
+    if (activeDragPointerIdRef.current === null || e.pointerId !== activeDragPointerIdRef.current) return
     if (!dragging) return
     const pt = screenToSVG(svgRef.current, e.clientX, e.clientY)
     if (!pt) return
@@ -304,7 +317,13 @@ export function useMapInteraction({
     }
   }, [dragging, selection.mode, objects, soilGroundZones, isMobile, canvasData, isHouseMap, gardenBounds, svgRef])
 
-  const handlePointerUp = useCallback(async () => {
+  const handlePointerUp = useCallback(async (e?: React.PointerEvent) => {
+    if (selection.mode !== 'resizing') {
+      const activePointerId = activeDragPointerIdRef.current
+      if (activePointerId === null) return
+      if (e && e.pointerId !== activePointerId) return
+      activeDragPointerIdRef.current = null
+    }
     // Cancel any pending throttle frame
     if (rafThrottleRef.current !== null) {
       cancelAnimationFrame(rafThrottleRef.current)
