@@ -1186,6 +1186,8 @@ export const nl: Translations = {
     moveOnePlantHint: 'Sleep deze plant naar zijn nieuwe plek.',
     placeSpotHint: (name: string) => `Tik op de kaart om nog een plek voor ${name} te plaatsen.`,
     sunNoGpsHint: 'Stel eerst de locatie van je tuin in om de zon te gebruiken',
+    plantHitChooserTitle: 'Welke plant?',
+    plantHitChooserClose: 'Plantkiezer sluiten',
   },
 
   garden: {

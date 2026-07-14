@@ -8,6 +8,7 @@ import {
   projectPlantHitCandidates,
   resolvePlantHit,
   type PlantPointerType,
+  type ScreenPlantHitCandidate,
 } from '../../utils/plantHitTesting'
 import { usePinch } from '@use-gesture/react'
 import { useContainerSize } from '../../hooks/useContainerSize'
@@ -31,6 +32,15 @@ import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRe
 import { FIXED_PLANTS, type FixedPlant } from '../../constants/fixedPlants'
 import type { HeatmapLayer } from '../../utils/lightQuality'
 import { dispatchPlantHit } from './plantHitDispatch'
+import PlantHitChooser from './PlantHitChooser'
+
+const EMPTY_SECONDARY_MARKERS: SecondaryMarker[] = []
+
+interface PlantHitChooserState {
+  candidates: ScreenPlantHitCandidate[]
+  point: { x: number; y: number }
+  isMobile: boolean
+}
 
 interface Props {
   map: MapDetail
@@ -71,7 +81,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const t = useT()
   // Object labels (containers/pots) follow the same on/off split as plant
@@ -93,6 +103,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   // --- Pan + Pinch-zoom state ---
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const isPinching = useRef(false)
+  const [plantHitChooser, setPlantHitChooser] = useState<PlantHitChooserState | null>(null)
+  const [hoveredPlantHitKey, setHoveredPlantHitKey] = useState<string | null>(null)
 
   const baseViewBox = useMemo(() => {
     return isHouseMap ? map.viewbox : gardenViewBox || map.viewbox || '0 0 680 680'
@@ -208,6 +220,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     const dyPx = e.clientY - s.startY
     if (!didPan.current && Math.hypot(dxPx, dyPx) < 5) return
     didPan.current = true
+    setHoveredPlantHitKey(null)
     // Clamp so the view center stays within the map bounds — the map can
     // never be flung fully off-screen.
     const maxPanX = baseCenterRef.current.vw / 2
@@ -232,6 +245,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     if (isPinching.current) return
     const svg = svgRef.current
     if (!svg) return
+    setHoveredPlantHitKey(null)
     const rect = svg.getBoundingClientRect()
     const visW = baseCenter.vw / zoomRef.current
     const visH = baseCenter.vh / zoomRef.current
@@ -346,6 +360,73 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     locale: t.locale,
   }), [plants, objects, secondaryMarkers, dragPositions, t.locale])
 
+  const plantHitCandidatesByKey = useMemo(
+    () => new Map(plantHitCandidates.map((candidate) => [candidate.key, candidate])),
+    [plantHitCandidates],
+  )
+  const hoveredPlantHit = hoveredPlantHitKey
+    ? plantHitCandidatesByKey.get(hoveredPlantHitKey) ?? null
+    : null
+
+  useEffect(() => {
+    setPlantHitChooser(null)
+    setHoveredPlantHitKey(null)
+  }, [plants, objects, secondaryMarkers, dragPositions, t.locale, map.id])
+
+  useEffect(() => {
+    if (dragging || placingPlantId != null || plantHitChooser) {
+      setHoveredPlantHitKey(null)
+    }
+  }, [dragging, placingPlantId, plantHitChooser])
+
+  const dispatchResolvedPlantHit = useCallback((candidate: ScreenPlantHitCandidate) => {
+    dispatchPlantHit(candidate, {
+      onPlantTap: candidate.kind === 'contained'
+        ? (plant) => onPlantTap?.(plant)
+        : (plant) => handleItemSelect('plant', plant.id),
+      onSecondaryMarkerTap,
+      onFixedPlantTap,
+    })
+  }, [handleItemSelect, onPlantTap, onSecondaryMarkerTap, onFixedPlantTap])
+
+  const handlePlantHitChoose = useCallback((candidate: ScreenPlantHitCandidate) => {
+    setPlantHitChooser(null)
+    dispatchResolvedPlantHit(candidate)
+  }, [dispatchResolvedPlantHit])
+
+  const handlePlantHitChooserClose = useCallback(() => {
+    setPlantHitChooser(null)
+  }, [])
+
+  const handleHoverPointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse') {
+      setHoveredPlantHitKey(null)
+      return
+    }
+    if (
+      panSession.current
+      || isPinching.current
+      || dragging
+      || placingPlantId != null
+      || plantHitChooser
+    ) {
+      setHoveredPlantHitKey(null)
+      return
+    }
+    const matrix = svgRef.current?.getScreenCTM()
+    if (!matrix) {
+      setHoveredPlantHitKey(null)
+      return
+    }
+    const result = resolvePlantHit(
+      { x: e.clientX, y: e.clientY },
+      projectPlantHitCandidates(plantHitCandidates, matrix),
+      'mouse',
+    )
+    const nextKey = result.type === 'selected' ? result.candidate.key : null
+    setHoveredPlantHitKey((currentKey) => currentKey === nextKey ? currentKey : nextKey)
+  }, [dragging, placingPlantId, plantHitChooser, plantHitCandidates])
+
   // A drag-to-pan must not count as a map tap (mouse fires click after a drag;
   // touch usually doesn't, but guard both).
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
@@ -365,21 +446,23 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         pointerType,
       )
       if (result.type === 'selected') {
-        dispatchPlantHit(result.candidate, {
-          onPlantTap: result.candidate.kind === 'contained'
-            ? (plant) => onPlantTap?.(plant)
-            : (plant) => handleItemSelect('plant', plant.id),
-          onSecondaryMarkerTap,
-          onFixedPlantTap,
+        setPlantHitChooser(null)
+        dispatchResolvedPlantHit(result.candidate)
+        return
+      }
+      if (result.type === 'ambiguous') {
+        setHoveredPlantHitKey(null)
+        setPlantHitChooser({
+          candidates: result.candidates,
+          point: { x: e.clientX, y: e.clientY },
+          isMobile: isMobile || pointerType !== 'mouse',
         })
         return
       }
-      // The chooser UI is a later task. Do not pick an arbitrary marker or
-      // deselect the current one while the resolver reports an ambiguity.
-      if (result.type === 'ambiguous') return
     }
+    setPlantHitChooser(null)
     handleMapClick()
-  }, [handleMapClick, handleItemSelect, plantHitCandidates, onPlantTap, onSecondaryMarkerTap, onFixedPlantTap])
+  }, [dispatchResolvedPlantHit, handleMapClick, isMobile, plantHitCandidates])
 
   // Derive the profile of the plant being dragged (for the suitability overlay)
   const draggingPlant = dragging?.type === 'plant'
@@ -411,6 +494,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       onClick={handleContainerClick}
       onPointerDownCapture={recordPointerType}
       onPointerDown={handlePanPointerDown}
+      onPointerMove={handleHoverPointerMove}
+      onPointerLeave={() => setHoveredPlantHitKey(null)}
     >
       {/* Tap-to-place capture: when placing a secondary spot, the next map tap
           reports SVG coords and nothing else (no pan/select/move). */}
@@ -552,6 +637,21 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           {/* Secondary placements (extra spots) as light dots */}
           <SecondaryMarkersLayer markers={secondaryMarkers} />
 
+          {hoveredPlantHit && (
+            <circle
+              data-plant-hit-hover={hoveredPlantHit.key}
+              cx={hoveredPlantHit.x}
+              cy={hoveredPlantHit.y}
+              r={hoveredPlantHit.radius + 4}
+              fill="none"
+              stroke="var(--color-primary, #2f5d3a)"
+              strokeWidth={2}
+              opacity={0.8}
+              vectorEffect="non-scaling-stroke"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
+
           {/* Plant resize overlay */}
           {selectedPlant && selectedPlantPos && (
             <PlantResizeOverlay
@@ -619,6 +719,15 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       </div>
 
       </div>
+      )}
+      {plantHitChooser && (
+        <PlantHitChooser
+          candidates={plantHitChooser.candidates}
+          point={plantHitChooser.point}
+          isMobile={plantHitChooser.isMobile}
+          onChoose={handlePlantHitChoose}
+          onClose={handlePlantHitChooserClose}
+        />
       )}
     </div>
   )
