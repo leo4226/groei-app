@@ -15,6 +15,7 @@ import { chooserLayout, chooserOptions, placeChooserPopover } from '../plantHitC
 const mapViewMocks = vi.hoisted(() => ({
   dragPositions: {},
   dragging: null as { type: 'plant'; id: number } | null,
+  handlePlantPointerDown: vi.fn(),
   handleItemSelect: vi.fn(),
   handleMapClick: vi.fn(),
   isMobile: false,
@@ -55,7 +56,7 @@ vi.mock('../../../hooks/useMapInteraction', () => ({
     activeResizeHandle: null,
     selectedPlant: null,
     selectedPlantPos: null,
-    handlePlantPointerDown: vi.fn(),
+    handlePlantPointerDown: mapViewMocks.handlePlantPointerDown,
     handlePointerMove: vi.fn(),
     handlePointerUp: vi.fn(),
     handleItemSelect: mapViewMocks.handleItemSelect,
@@ -215,6 +216,7 @@ describe('PlantHitChooser', () => {
   beforeEach(() => {
     mapViewMocks.handleItemSelect.mockReset()
     mapViewMocks.handleMapClick.mockReset()
+    mapViewMocks.handlePlantPointerDown.mockReset()
     mapViewMocks.dragging = null
     mapViewMocks.isMobile = false
     mapViewMocks.pinchHandler = null
@@ -540,6 +542,43 @@ describe('MapView plant hit chooser and hover', () => {
     })
     expect(host.querySelector('[data-plant-hit-chooser-backdrop]')).not.toBeNull()
     expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true')
+  })
+
+  it('dismisses the mobile backdrop in move mode without dragging an underlying plant', async () => {
+    const overlappingPlants = [mapPlant(43, 100, 100), mapPlant(44, 100, 100)]
+    const objects: MapObject[] = []
+    mapViewMocks.isMobile = true
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants: overlappingPlants, objects }))
+    })
+    const mapTarget = host.firstElementChild!
+    await act(async () => {
+      mapTarget.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+        detail: 1,
+      }))
+    })
+    expect(host.querySelector('[data-plant-hit-chooser-backdrop]')).not.toBeNull()
+
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: overlappingPlants,
+        objects,
+        moveMode: true,
+      }))
+    })
+    const backdrop = host.querySelector<HTMLElement>('[data-plant-hit-chooser-backdrop]')
+    expect(backdrop).not.toBeNull()
+    await act(async () => {
+      backdrop!.dispatchEvent(pointerDown('touch', 100, 100))
+      backdrop!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(mapViewMocks.handlePlantPointerDown).not.toHaveBeenCalled()
+    expect(host.querySelector('[data-plant-hit-chooser-backdrop]')).toBeNull()
   })
 
   it('suppresses mouse hover during active drag and placement', async () => {

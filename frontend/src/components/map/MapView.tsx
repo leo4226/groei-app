@@ -405,7 +405,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
   const handleContainerPointerDownCapture = useCallback((e: React.PointerEvent) => {
     recordPointerType(e)
-    if (placingPlantId != null || (!moveMode && movePlantId === null)) return
+    if (placingPlantId != null || plantHitChooser || (!moveMode && movePlantId === null)) return
     if (e.target instanceof Element && e.target.closest('button, [role="dialog"]')) return
     // Do not stop propagation before resolution: empty-space pointerdown must
     // still reach use-gesture's container listener so pinch can begin. Mark the
@@ -447,6 +447,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     moveMode,
     movePlantId,
     placingPlantId,
+    plantHitChooser,
     plantHitCandidates,
     recordPointerType,
   ])
