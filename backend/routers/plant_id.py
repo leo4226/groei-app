@@ -18,6 +18,9 @@ import numpy as np
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+
+from services.deferred import fire_and_forget
 
 from database import db_dep
 from auth import get_current_account
@@ -723,6 +726,38 @@ def _save_identify_photo(image_bytes: bytes) -> str:
     return storage.put(key, image_bytes, content_type="image/jpeg")
 
 
+async def _capture_confirmed_embedding(
+    species_id: int, image_bytes: bytes, account_id: int, photo_path: str
+) -> None:
+    """Deferred: embed the confirmed photo on the GPU worker and store it for
+    the user-confirmed retrieval layer. Runs after the commit response."""
+    import httpx
+
+    from database import get_db
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        emb_resp = await client.post(
+            f"{_BIOCLIP_WORKER_URL.rstrip('/')}/embed-image",
+            files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+            headers=_worker_headers(),
+        )
+    if emb_resp.status_code == 200 and len(emb_resp.content) == 2048:
+        async with get_db() as db:
+            await db.execute(
+                """INSERT INTO user_confirmed_embeddings
+                     (species_id, embedding, source_account_id, source_photo_url)
+                   VALUES (?, ?, ?, ?)""",
+                (species_id, emb_resp.content, account_id, photo_path),
+            )
+            await db.commit()
+        logger.info("Captured user-confirmed embedding for species_id=%s", species_id)
+    else:
+        logger.warning(
+            "Worker /embed-image returned status=%s size=%s — skipping capture",
+            emb_resp.status_code, len(emb_resp.content),
+        )
+
+
 @router.post("/identify/commit", response_model=IdentifyCommitResponse)
 async def identify_commit(
     body: IdentifyCommitRequest,
@@ -780,36 +815,20 @@ async def identify_commit(
             status_code=400,
             detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
         )
-    photo_path = _save_identify_photo(image_bytes)
+    # boto3 is synchronous — run the R2 upload in a worker thread so it can't
+    # block the event loop (a single stalled upload used to freeze every
+    # concurrent request on this one small machine).
+    photo_path = await run_in_threadpool(_save_identify_photo, image_bytes)
 
     # Best-effort: capture the image embedding for the user-confirmed retrieval
-    # layer. Failure here must NEVER break the commit flow — log and move on.
-    try:
-        if _BIOCLIP_WORKER_URL:
-            import httpx
-            async with httpx.AsyncClient(timeout=20) as client:
-                emb_resp = await client.post(
-                    f"{_BIOCLIP_WORKER_URL.rstrip('/')}/embed-image",
-                    files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
-                    headers=_worker_headers(),
-                )
-            if emb_resp.status_code == 200 and len(emb_resp.content) == 2048:
-                await db.execute(
-                    """INSERT INTO user_confirmed_embeddings
-                         (species_id, embedding, source_account_id, source_photo_url)
-                       VALUES (?, ?, ?, ?)""",
-                    (species_id, emb_resp.content, account["account_id"], photo_path),
-                )
-                await db.commit()
-                logger.info("Captured user-confirmed embedding for species_id=%s", species_id)
-            else:
-                logger.warning(
-                    "Worker /embed-image returned status=%s size=%s — skipping capture",
-                    emb_resp.status_code, len(emb_resp.content),
-                )
-    except Exception as exc:
-        logger.warning("User-ref embedding capture failed for species %s: %s",
-                       species_id, exc)
+    # layer AFTER the response — it's a GPU worker round trip the user never
+    # needs to wait for, and failure must never break the commit flow.
+    if _BIOCLIP_WORKER_URL:
+        account_id = account["account_id"]
+        fire_and_forget(
+            lambda: _capture_confirmed_embedding(species_id, image_bytes, account_id, photo_path),
+            f"embed-capture species={species_id}",
+        )
 
     return IdentifyCommitResponse(
         species_id=species_id,

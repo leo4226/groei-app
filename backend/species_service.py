@@ -1,10 +1,14 @@
 import asyncio
 import json
+import logging
 import re
 
 import httpx
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+from services.deferred import fire_and_forget
+
+logger = logging.getLogger(__name__)
 
 _token_usage = {"input": 0, "output": 0}
 
@@ -65,6 +69,53 @@ Let op:
 - interesting_facts_nl: schrijf 1-2 interessante zinnen specifiek voor Nederlandse tuiniers
 - interesting_facts_en: write 1-2 interesting sentences specifically for Dutch gardeners
 """
+
+
+# Small, fast call for the identify/commit hot path: the user is waiting and
+# only needs display names. The full phenology calendar (_SPECIES_PROMPT,
+# thousands of output tokens, 10-40s) runs as a deferred background job.
+_NAMES_PROMPT = """\
+Geef de gangbare Nederlandse en Engelse tuiniersnaam voor de plant "{plant_name}".
+Antwoord ALLEEN met een geldig JSON-object, geen uitleg, geen markdown:
+{{"slug": "lowercase-latijnse-naam", "latin_name": "Latijnse naam", "common_name_nl": "Nederlandse naam", "common_name_en": "English name"}}
+Als er geen gangbare naam bestaat in een taal, gebruik daar de latijnse naam."""
+
+
+async def _generate_names(plant_name: str) -> dict:
+    """Names-only LLM call (~50 output tokens instead of ~5000)."""
+    prompt = _NAMES_PROMPT.format(plant_name=plant_name)
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            LLM_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {LLM_API_KEY}",
+                "content-type": "application/json",
+            },
+            json={
+                "model": LLM_MODEL,
+                "max_tokens": 300,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        usage = body.get("usage", {})
+        _token_usage["input"] += usage.get("prompt_tokens", 0)
+        _token_usage["output"] += usage.get("completion_tokens", 0)
+        raw = body["choices"][0]["message"]["content"].strip()
+    raw = re.sub(r"^```json\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    return json.loads(raw)
+
+
+def schedule_phenology_enrichment(species_id: int, name_hint: str) -> None:
+    """Generate the full phenology calendar in the background (own DB conn)."""
+    async def _job():
+        from database import get_db
+        async with get_db() as bg_db:
+            await ensure_phenology(bg_db, species_id, name_hint)
+
+    fire_and_forget(_job, f"phenology-enrichment species={species_id}")
 
 
 async def _generate_species(plant_name: str) -> dict:
@@ -238,7 +289,15 @@ async def ensure_species_localized_names(
     if not lookup_name:
         return False
 
-    data = await _generate_species(lookup_name)
+    # Missing phenology is repaired OUT of the request path — the full
+    # calendar generation takes 10-40s and the user only needs names now.
+    if missing_phenology:
+        schedule_phenology_enrichment(species_id, lookup_name)
+
+    if not (missing_nl or missing_en or latin_name is None):
+        return False
+
+    data = await _generate_names(lookup_name)
     updates: list[str] = []
     params: list = []
     generated_latin = _text_or_none(data.get("latin_name"))
@@ -259,12 +318,6 @@ async def ensure_species_localized_names(
         if en_name and not _localized_name_missing(en_name, canonical_latin):
             updates.append("common_name_en = ?")
             params.append(en_name)
-
-    if missing_phenology:
-        phenology = data.get("phenology") or data
-        if isinstance(phenology, dict) and phenology.get("months"):
-            updates.append("phenology_json = ?")
-            params.append(json.dumps(phenology, ensure_ascii=False))
 
     if not updates:
         return False
@@ -302,9 +355,11 @@ async def get_or_create_species(db, plant_name: str) -> int:
             pass
         return species_id
 
-    data = await _generate_species(plant_name)
+    # New species: create the row from a fast names-only call so the user
+    # flow (identify commit / plant create) returns in seconds; the full
+    # phenology calendar is generated right after, in the background.
+    data = await _generate_names(plant_name)
     slug = data.get("slug") or plant_name.lower().replace(" ", "-")
-    phenology_json = json.dumps(data.get("phenology", {}), ensure_ascii=False)
 
     cursor = await db.execute(
         """INSERT INTO plant_species (slug, common_name_nl, common_name_en, latin_name, phenology_json, climate_zone)
@@ -321,12 +376,14 @@ async def get_or_create_species(db, plant_name: str) -> int:
             _text_or_none(data.get("common_name_nl")) or plant_name,
             _text_or_none(data.get("common_name_en")),
             _text_or_none(data.get("latin_name")),
-            phenology_json,
+            None,
             data.get("climate_zone", "temperate"),
         ),
     )
     await db.commit()
-    return cursor.lastrowid
+    species_id = cursor.lastrowid
+    schedule_phenology_enrichment(species_id, _text_or_none(data.get("latin_name")) or plant_name)
+    return species_id
 
 
 async def get_species_by_id(db, species_id: int) -> dict | None:

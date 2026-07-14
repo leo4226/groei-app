@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
-import { species as speciesApi, discoveries } from '../api/client'
+import { species as speciesApi, plants as plantsApi, discoveries } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
 import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
@@ -18,6 +18,10 @@ type RouteState = {
   destination?: 'journal' | 'garden'
   location_lat?: number
   location_lon?: number
+  /** Set by the identify flow: the card lands instantly with candidate data
+   * and runs the identify commit itself, filling species details as they
+   * arrive instead of holding the user on a wait screen. */
+  pendingCommit?: boolean
 }
 
 type GardenFit = { map_id: number; map_name: string; sun_fit: string | null; reason: string }
@@ -50,17 +54,45 @@ export default function DiscoveryCard() {
   const [shared, setShared] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [ecologyLoading, setEcologyLoading] = useState(false)
+  const [commitResult, setCommitResult] = useState<IdentifyCommitResult | null>(null)
+  const [committing, setCommitting] = useState(!!state?.pendingCommit)
+  const [geo, setGeo] = useState<{ lat?: number; lon?: number }>({
+    lat: state?.location_lat,
+    lon: state?.location_lon,
+  })
 
-  const speciesId = state?.candidate?.species_id ?? null
-  const scientificName = state?.candidate?.scientific_name ?? ''
+  // Optimistic flow: the identify page navigated here immediately; run the
+  // commit (species link, localized name, photo upload) and the geolocation
+  // capture in parallel while the card is already on screen.
+  useEffect(() => {
+    if (!state?.pendingCommit || !state.candidate.scientific_name) return
+    let cancelled = false
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { if (!cancelled) setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude }) },
+        () => { /* denied or unavailable — save without location */ },
+        { timeout: 5000, maximumAge: 60000 },
+      )
+    }
+    plantsApi.commitIdentify(state.candidate.scientific_name, state.thumbnail, activeLang)
+      .then((r) => { if (!cancelled) setCommitResult(r) })
+      .catch(() => { /* species not found / offline: candidate data still works */ })
+      .finally(() => { if (!cancelled) setCommitting(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const candidate = { ...state?.candidate, ...(commitResult ?? {}) }
+  const speciesId = candidate.species_id ?? null
+  const scientificName = candidate.scientific_name ?? ''
   const hideAddToGarden = state?.destination === 'journal'
   // name_suggested is already in the user's language (the commit was made with
   // ?lang=); common_name is the localized pick from the no-species fallback
   // path. The Dutch-preferring fields only remain as legacy fallbacks.
-  const displayName = state?.candidate?.name_suggested
-    ?? state?.candidate?.common_name
-    ?? state?.candidate?.name_nl_suggested
-    ?? state?.candidate?.common_name_nl
+  const displayName = candidate.name_suggested
+    ?? candidate.common_name
+    ?? candidate.name_nl_suggested
+    ?? candidate.common_name_nl
     ?? scientificName
 
   useEffect(() => {
@@ -99,8 +131,8 @@ export default function DiscoveryCard() {
         latin_name: scientificName || undefined,
         thumbnail_url,
         thumbnail_data,
-        location_lat: state?.location_lat,
-        location_lon: state?.location_lon,
+        location_lat: geo.lat,
+        location_lon: geo.lon,
       })
       setSavedId(result.id)
     } catch {
@@ -125,7 +157,7 @@ export default function DiscoveryCard() {
   }
 
   function handleAddToGarden() {
-    navigate('/plants/add', { state: { prefill: state?.candidate, from: 'identify' } })
+    navigate('/plants/add', { state: { prefill: candidate, from: 'identify' } })
   }
 
   if (!state) {
@@ -163,7 +195,7 @@ export default function DiscoveryCard() {
           <Glyph name="arrow-left" size={18} />
         </button>
 
-        {state.candidate?.icon_key && (
+        {candidate.icon_key && (
           <div style={{
             position: 'absolute', bottom: -24, right: 20,
             width: 56, height: 56, borderRadius: '50%',
@@ -171,13 +203,13 @@ export default function DiscoveryCard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             overflow: 'hidden',
           }}>
-            <img src={resolveIconUrl(state.candidate.icon_key)!} alt="" style={{ width: 44, height: 44 }} />
+            <img src={resolveIconUrl(candidate.icon_key)!} alt="" style={{ width: 44, height: 44 }} />
           </div>
         )}
       </div>
 
       {/* Name block */}
-      <div style={{ padding: state.candidate?.icon_key ? '36px 20px 0' : '20px 20px 0' }}>
+      <div style={{ padding: candidate.icon_key ? '36px 20px 0' : '20px 20px 0' }}>
         <h1 style={{
           fontFamily: 'var(--font-heading)',
           fontWeight: 500,
@@ -200,7 +232,7 @@ export default function DiscoveryCard() {
         <p style={{ margin: '0 0 6px', fontSize: 11, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)' }}>
           {t.discovery.funFact}
         </p>
-        {funFactLoading ? (
+        {funFactLoading || committing ? (
           <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>{t.discovery.funFactLoading}</p>
         ) : funFact ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--color-text)' }}>{funFact}</p>
@@ -297,16 +329,16 @@ export default function DiscoveryCard() {
       <div style={{ margin: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <button
           onClick={handleSave}
-          disabled={saving || !!savedId}
+          disabled={saving || !!savedId || committing}
           style={{
             padding: '14px 24px', borderRadius: 12, border: '2px solid var(--color-primary)',
             background: savedId ? 'var(--color-primary)' : 'transparent',
             color: savedId ? '#fff' : 'var(--color-primary)',
             fontSize: 15, fontWeight: 600, cursor: savedId ? 'default' : 'pointer',
-            opacity: saving ? 0.6 : 1,
+            opacity: saving || committing ? 0.6 : 1,
           }}
         >
-          {savedId ? t.discovery.savedToJournal : saving ? '...' : t.discovery.saveToJournal}
+          {savedId ? t.discovery.savedToJournal : (saving || committing) ? '...' : t.discovery.saveToJournal}
         </button>
         {saveError && (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-overdue)', textAlign: 'center' }}>
