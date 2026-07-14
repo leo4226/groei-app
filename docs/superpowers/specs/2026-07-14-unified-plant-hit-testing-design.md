@@ -1,7 +1,7 @@
 # Unified Plant Map Hit-Testing Design
 
-**Issue:** #620  
-**Date:** 2026-07-14  
+**Issue:** #620
+**Date:** 2026-07-14
 **Status:** Approved in conversation
 
 ## Problem
@@ -188,4 +188,3 @@ Component/model tests must cover:
 Final verification is the complete frontend test suite and production Vite build.
 The repository-required backend suite also runs before publication even though
 this issue has no backend changes.
-
