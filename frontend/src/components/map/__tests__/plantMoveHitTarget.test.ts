@@ -21,6 +21,8 @@ import MapView from '../MapView'
 const mocks = vi.hoisted(() => ({
   handlePlantPointerDown: vi.fn(),
   handlePlantResizeDown: vi.fn(),
+  setRemoveTarget: vi.fn(),
+  removeTarget: null as { type: 'plant'; id: number; x: number; y: number } | null,
   selectedPlant: null as MapPlant | null,
   selectedPlantPos: null as { x: number; y: number } | null,
 }))
@@ -43,8 +45,8 @@ vi.mock('../../../hooks/useMapInteraction', () => ({
     dragKey: null,
     hoveredContainerId: null,
     hoveredZoneName: null,
-    removeTarget: null,
-    setRemoveTarget: vi.fn(),
+    removeTarget: mocks.removeTarget,
+    setRemoveTarget: mocks.setRemoveTarget,
     plantResizeRadius: null,
     isResizing: false,
     activeResizeHandle: null,
@@ -209,6 +211,8 @@ describe('MapView move pointer-down routing', () => {
   beforeEach(() => {
     mocks.handlePlantPointerDown.mockReset()
     mocks.handlePlantResizeDown.mockReset()
+    mocks.setRemoveTarget.mockReset()
+    mocks.removeTarget = null
     mocks.selectedPlant = null
     mocks.selectedPlantPos = null
     root = null
@@ -380,5 +384,61 @@ describe('MapView move pointer-down routing', () => {
     })
     expect(host.querySelector('g[style*="ns-resize"]')).toBeNull()
     expect(host.querySelector('g[style*="ew-resize"]')).toBeNull()
+  })
+
+  it('lets the browse Remove control own pointerdown and click', async () => {
+    const onRemoveItem = vi.fn()
+    const plants = [plant(5, false, 100, 100)]
+    mocks.removeTarget = { type: 'plant', id: 5, x: 100, y: 100 }
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [], onRemoveItem }))
+    })
+
+    const removeControl = host.querySelector<SVGRectElement>('rect[fill="#ea0706"]')
+    const svg = host.querySelector<SVGSVGElement>('svg')
+    expect(removeControl).not.toBeNull()
+    expect(svg).not.toBeNull()
+    vi.spyOn(svg!, 'getBoundingClientRect').mockReturnValue({
+      width: 200,
+      height: 200,
+    } as DOMRect)
+    const browseViewBox = svg!.getAttribute('viewBox')
+    await act(async () => {
+      removeControl!.dispatchEvent(pointerDown(100, 84))
+      document.dispatchEvent(new MouseEvent('pointermove', {
+        bubbles: true,
+        clientX: 120,
+        clientY: 84,
+      }))
+      document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+      removeControl!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(svg!.getAttribute('viewBox')).toBe(browseViewBox)
+    expect(mocks.handlePlantPointerDown).not.toHaveBeenCalled()
+    expect(onRemoveItem).toHaveBeenCalledOnce()
+    expect(onRemoveItem).toHaveBeenCalledWith('plant', 5)
+    expect(mocks.setRemoveTarget).toHaveBeenCalledWith(null)
+  })
+
+  it.each([
+    ['global', { moveMode: true }],
+    ['targeted', { movePlantId: 5 }],
+  ])('hides and clears a browse Remove target after entering %s move mode', async (_mode, modeProps) => {
+    const plants = [plant(5, false, 100, 100)]
+    mocks.removeTarget = { type: 'plant', id: 5, x: 100, y: 100 }
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [] }))
+    })
+    expect(host.querySelector('rect[fill="#ea0706"]')).not.toBeNull()
+
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [], ...modeProps }))
+    })
+
+    expect(host.querySelector('rect[fill="#ea0706"]')).toBeNull()
+    expect(mocks.setRemoveTarget).toHaveBeenCalledWith(null)
   })
 })

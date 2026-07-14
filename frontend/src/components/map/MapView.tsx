@@ -356,6 +356,14 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     onMapTap,
   })
 
+  useEffect(() => {
+    if ((moveMode || movePlantId !== null) && removeTarget) {
+      setRemoveTarget(null)
+    }
+  }, [moveMode, movePlantId, removeTarget, setRemoveTarget])
+
+  const visibleRemoveTarget = !moveMode && movePlantId === null ? removeTarget : null
+
   const plantHitCandidates = useMemo(() => buildPlantHitCandidates({
     plants,
     objects,
@@ -719,21 +727,22 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           )}
 
           {/* Red outline on remove target + floating Remove button */}
-          {removeTarget && (
+          {visibleRemoveTarget && (
             <circle
-              cx={removeTarget.x} cy={removeTarget.y} r={24}
+              cx={visibleRemoveTarget.x} cy={visibleRemoveTarget.y} r={24}
               fill="none" stroke="#ea0706" strokeWidth={2} strokeDasharray="4 2" opacity={0.7}
             />
           )}
-          {removeTarget && (
-            <g transform={`translate(${removeTarget.x}, ${removeTarget.y - 28})`}>
+          {visibleRemoveTarget && (
+            <g transform={`translate(${visibleRemoveTarget.x}, ${visibleRemoveTarget.y - 28})`}>
               <rect
                 x={-32} y={-12} width={64} height={24} rx={12}
                 fill="#ea0706" opacity={0.95}
                 style={{ cursor: 'pointer' }}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onRemoveItem?.(removeTarget.type, removeTarget.id)
+                  onRemoveItem?.(visibleRemoveTarget.type, visibleRemoveTarget.id)
                   setRemoveTarget(null)
                 }}
               />
