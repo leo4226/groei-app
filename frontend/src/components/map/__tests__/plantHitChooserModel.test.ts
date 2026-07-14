@@ -7,22 +7,29 @@ import type { MapDetail, MapObject, MapPlant } from '../../../types'
 import type { PlantHitCandidate } from '../../../utils/plantHitTesting'
 import MapView from '../MapView'
 import PlantHitChooser from '../PlantHitChooser'
-import { chooserLayout, chooserOptions } from '../plantHitChooserModel'
+import { chooserLayout, chooserOptions, placeChooserPopover } from '../plantHitChooserModel'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true
 
 const mapViewMocks = vi.hoisted(() => ({
   dragPositions: {},
+  dragging: null as { type: 'plant'; id: number } | null,
   handleItemSelect: vi.fn(),
   handleMapClick: vi.fn(),
+  isMobile: false,
+  pinchHandler: null as ((event: Record<string, unknown>) => unknown) | null,
 }))
 
-vi.mock('@use-gesture/react', () => ({ usePinch: vi.fn() }))
+vi.mock('@use-gesture/react', () => ({
+  usePinch: (handler: (event: Record<string, unknown>) => unknown) => {
+    mapViewMocks.pinchHandler = handler
+  },
+}))
 vi.mock('../../../hooks/useContainerSize', () => ({
   useContainerSize: () => ({ ref: { current: null }, width: 200, height: 200 }),
 }))
-vi.mock('../../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+vi.mock('../../../hooks/useIsMobile', () => ({ useIsMobile: () => mapViewMocks.isMobile }))
 vi.mock('../../../hooks/useLandscapeMobile', () => ({ useLandscapeMobile: () => false }))
 vi.mock('../../../context/LanguageContext', () => ({
   useT: () => ({
@@ -36,7 +43,7 @@ vi.mock('../../../context/LanguageContext', () => ({
 vi.mock('../../../hooks/useMapInteraction', () => ({
   useMapInteraction: () => ({
     selection: { selectedId: null, mode: 'idle' },
-    dragging: null,
+    dragging: mapViewMocks.dragging,
     dragPositions: mapViewMocks.dragPositions,
     dragKey: null,
     hoveredContainerId: null,
@@ -154,6 +161,20 @@ function pointerMove(pointerType: string, x: number, y: number): MouseEvent {
   return event
 }
 
+function pointerDown(pointerType: string, x: number, y: number): MouseEvent {
+  const event = new MouseEvent('pointerdown', {
+    bubbles: true,
+    button: 0,
+    clientX: x,
+    clientY: y,
+  })
+  Object.defineProperties(event, {
+    pointerType: { value: pointerType },
+    isPrimary: { value: true },
+  })
+  return event
+}
+
 describe('plant hit chooser model', () => {
   it('uses a pointer-anchored popover on desktop and a sheet on mobile', () => {
     expect(chooserLayout(false)).toBe('popover')
@@ -169,6 +190,22 @@ describe('plant hit chooser model', () => {
     ])
     expect(options[1].candidate).toBe(candidates[1])
   })
+
+  it('clamps a desktop popover inside the right and top viewport edges', () => {
+    expect(placeChooserPopover(
+      { x: 390, y: 2 },
+      { width: 272, height: 180 },
+      { width: 400, height: 300 },
+    )).toEqual({ left: 120, top: 14 })
+  })
+
+  it('places a bottom-edge desktop popover above its pointer', () => {
+    expect(placeChooserPopover(
+      { x: 100, y: 290 },
+      { width: 272, height: 180 },
+      { width: 400, height: 300 },
+    )).toEqual({ left: 112, top: 98 })
+  })
 })
 
 describe('PlantHitChooser', () => {
@@ -178,12 +215,27 @@ describe('PlantHitChooser', () => {
   beforeEach(() => {
     mapViewMocks.handleItemSelect.mockReset()
     mapViewMocks.handleMapClick.mockReset()
+    mapViewMocks.dragging = null
+    mapViewMocks.isMobile = false
+    mapViewMocks.pinchHandler = null
     host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)
     Object.defineProperty(SVGSVGElement.prototype, 'getScreenCTM', {
       configurable: true,
-      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, inverse: () => ({}) }),
+    })
+    Object.defineProperty(SVGSVGElement.prototype, 'createSVGPoint', {
+      configurable: true,
+      value: () => ({
+        x: 0,
+        y: 0,
+        matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y } },
+      }),
+    })
+    Object.defineProperty(SVGSVGElement.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 200, height: 200, left: 0, top: 0, right: 200, bottom: 200 }),
     })
   })
 
@@ -222,6 +274,9 @@ describe('PlantHitChooser', () => {
 
   it('closes on Escape and a mobile backdrop click', async () => {
     const onClose = vi.fn()
+    const trigger = document.createElement('button')
+    document.body.insertBefore(trigger, host)
+    trigger.focus()
 
     await act(async () => {
       root!.render(createElement(PlantHitChooser, {
@@ -237,13 +292,121 @@ describe('PlantHitChooser', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(onClose).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(trigger)
 
     const backdrop = host.querySelector('[data-plant-hit-chooser-backdrop]')
     expect(backdrop).not.toBeNull()
+    host.querySelector<HTMLButtonElement>('[data-plant-hit-option]')!.focus()
     await act(async () => {
       backdrop!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(onClose).toHaveBeenCalledTimes(2)
+    expect(document.activeElement).toBe(trigger)
+    trigger.remove()
+  })
+
+  it('keeps forward and backward Tab focus inside the modal chooser', async () => {
+    await act(async () => {
+      root!.render(createElement(PlantHitChooser, {
+        candidates,
+        point: { x: 100, y: 120 },
+        isMobile: true,
+        onChoose: vi.fn(),
+        onClose: vi.fn(),
+      }))
+    })
+
+    const dialog = host.querySelector('[role="dialog"]')!
+    const focusable = dialog.querySelectorAll<HTMLButtonElement>('button')
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    last.focus()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    })
+    expect(document.activeElement).toBe(first)
+
+    first.focus()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true }))
+    })
+    expect(document.activeElement).toBe(last)
+  })
+
+  it('restores focus for close, selection, and unmount and isolates modal background', async () => {
+    const trigger = document.createElement('button')
+    document.body.insertBefore(trigger, host)
+    trigger.focus()
+    const onChoose = vi.fn()
+
+    await act(async () => {
+      root!.render(createElement(PlantHitChooser, {
+        candidates,
+        point: { x: 100, y: 120 },
+        isMobile: true,
+        onChoose,
+        onClose: vi.fn(),
+      }))
+    })
+    expect(trigger.inert).toBe(true)
+
+    const close = host.querySelector<HTMLButtonElement>('[aria-label="Close chooser"]')!
+    close.focus()
+    await act(async () => close.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(document.activeElement).toBe(trigger)
+
+    const option = host.querySelector<HTMLButtonElement>('[data-plant-hit-option]')!
+    option.focus()
+    await act(async () => option.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(onChoose).toHaveBeenCalledWith(candidates[0])
+    expect(document.activeElement).toBe(trigger)
+
+    option.focus()
+    await act(async () => {
+      root?.unmount()
+      root = null
+    })
+    expect(trigger.inert).toBe(false)
+    expect(document.activeElement).toBe(trigger)
+    trigger.remove()
+  })
+
+  it('keeps long desktop and mobile option lists inside a scrollable viewport-safe panel', async () => {
+    const manyCandidates = Array.from({ length: 20 }, (_, index) => (
+      candidate(`plant-${index + 1}`, 'plant', `Plant ${index + 1}`)
+    ))
+    await act(async () => {
+      root!.render(createElement(PlantHitChooser, {
+        candidates: manyCandidates,
+        point: { x: 100, y: 120 },
+        isMobile: true,
+        onChoose: vi.fn(),
+        onClose: vi.fn(),
+      }))
+    })
+
+    const dialog = host.querySelector<HTMLElement>('[role="dialog"]')!
+    const optionRegion = host.querySelector<HTMLElement>('[data-plant-hit-options]')
+    expect(dialog.style.maxHeight).toContain('100dvh')
+    expect(dialog.style.maxHeight).toContain('safe-area-inset-top')
+    expect(optionRegion?.className).toContain('overflow-y-auto')
+    expect(optionRegion?.className).toContain('min-h-0')
+
+    await act(async () => {
+      root!.render(createElement(PlantHitChooser, {
+        candidates: manyCandidates,
+        point: { x: 390, y: 290 },
+        isMobile: false,
+        onChoose: vi.fn(),
+        onClose: vi.fn(),
+      }))
+    })
+    expect(host.querySelector<HTMLElement>('[role="dialog"]')!.style.maxHeight).toBe(
+      'calc(100dvh - 16px)',
+    )
+    expect(host.querySelector<HTMLElement>('[data-plant-hit-options]')?.className).toContain(
+      'overflow-y-auto',
+    )
   })
 })
 
@@ -254,12 +417,27 @@ describe('MapView plant hit chooser and hover', () => {
   beforeEach(() => {
     mapViewMocks.handleItemSelect.mockReset()
     mapViewMocks.handleMapClick.mockReset()
+    mapViewMocks.dragging = null
+    mapViewMocks.isMobile = false
+    mapViewMocks.pinchHandler = null
     host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)
     Object.defineProperty(SVGSVGElement.prototype, 'getScreenCTM', {
       configurable: true,
-      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, inverse: () => ({}) }),
+    })
+    Object.defineProperty(SVGSVGElement.prototype, 'createSVGPoint', {
+      configurable: true,
+      value: () => ({
+        x: 0,
+        y: 0,
+        matrixTransform(this: { x: number; y: number }) { return { x: this.x, y: this.y } },
+      }),
+    })
+    Object.defineProperty(SVGSVGElement.prototype, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 200, height: 200, left: 0, top: 0, right: 200, bottom: 200 }),
     })
   })
 
@@ -306,7 +484,7 @@ describe('MapView plant hit chooser and hover', () => {
     expect(mapViewMocks.handleItemSelect).not.toHaveBeenCalled()
   })
 
-  it('previews only a clear mouse winner and clears the preview for touch', async () => {
+  it('previews only a clear mouse winner and never keeps touch or pen hover', async () => {
     const clearPlant = mapPlant(11, 40, 50)
     await act(async () => {
       root!.render(createElement(MapView, { map, plants: [clearPlant], objects: [] }))
@@ -318,11 +496,122 @@ describe('MapView plant hit chooser and hover', () => {
     })
     expect(host.querySelector('[data-plant-hit-hover="plant-11"]')).not.toBeNull()
 
+    for (const pointerType of ['touch', 'pen']) {
+      await act(async () => {
+        mapTarget.dispatchEvent(pointerMove('mouse', 40, 50))
+        mapTarget.dispatchEvent(pointerMove(pointerType, 40, 50))
+      })
+      expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
+    }
+    expect(mapViewMocks.handleItemSelect).not.toHaveBeenCalled()
+  })
+
+  it('does not preview an ambiguous mouse resolver result', async () => {
     await act(async () => {
-      mapTarget.dispatchEvent(pointerMove('touch', 40, 50))
+      root!.render(createElement(MapView, {
+        map,
+        plants: [mapPlant(31, 70, 70), mapPlant(32, 70, 70)],
+        objects: [],
+      }))
+    })
+    await act(async () => {
+      host.firstElementChild!.dispatchEvent(pointerMove('mouse', 70, 70))
     })
     expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
-    expect(mapViewMocks.handleItemSelect).not.toHaveBeenCalled()
+  })
+
+  it.each(['touch', 'pen'])('opens an ambiguous %s click as a modal mobile sheet', async (pointerType) => {
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [mapPlant(41, 90, 90), mapPlant(42, 90, 90)],
+        objects: [],
+      }))
+    })
+    const mapTarget = host.firstElementChild!
+    await act(async () => {
+      mapTarget.dispatchEvent(pointerDown(pointerType, 90, 90))
+      mapTarget.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        clientX: 90,
+        clientY: 90,
+        detail: 1,
+      }))
+    })
+    expect(host.querySelector('[data-plant-hit-chooser-backdrop]')).not.toBeNull()
+    expect(host.querySelector('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true')
+  })
+
+  it('suppresses mouse hover during active drag and placement', async () => {
+    const clearPlant = mapPlant(51, 40, 50)
+    mapViewMocks.dragging = { type: 'plant', id: 51 }
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants: [clearPlant], objects: [] }))
+    })
+    await act(async () => host.firstElementChild!.dispatchEvent(pointerMove('mouse', 40, 50)))
+    expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
+
+    mapViewMocks.dragging = null
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [clearPlant],
+        objects: [],
+        placingPlantId: 51,
+      }))
+    })
+    await act(async () => host.firstElementChild!.dispatchEvent(pointerMove('mouse', 40, 50)))
+    expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
+  })
+
+  it('suppresses mouse hover during active pan and pinch', async () => {
+    const clearPlant = mapPlant(61, 40, 50)
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants: [clearPlant], objects: [] }))
+    })
+    const mapTarget = host.firstElementChild!
+    await act(async () => {
+      mapTarget.dispatchEvent(pointerDown('mouse', 10, 10))
+      mapTarget.dispatchEvent(pointerMove('mouse', 40, 50))
+    })
+    expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
+    await act(async () => document.dispatchEvent(pointerMove('mouse', 20, 20)))
+    document.dispatchEvent(new MouseEvent('pointerup', { bubbles: true }))
+
+    expect(mapViewMocks.pinchHandler).not.toBeNull()
+    await act(async () => {
+      mapViewMocks.pinchHandler!({
+        origin: [40, 50],
+        offset: [1],
+        memo: null,
+        first: true,
+        last: false,
+      })
+      mapTarget.dispatchEvent(pointerMove('mouse', 40, 50))
+    })
+    expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
+  })
+
+  it('suppresses mouse hover while an ambiguity chooser is open', async () => {
+    await act(async () => {
+      root!.render(createElement(MapView, {
+        map,
+        plants: [mapPlant(71, 100, 100), mapPlant(72, 100, 100), mapPlant(73, 40, 50)],
+        objects: [],
+      }))
+    })
+    const mapTarget = host.firstElementChild!
+    await act(async () => {
+      mapTarget.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+        detail: 1,
+      }))
+    })
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull()
+    await act(async () => mapTarget.dispatchEvent(pointerMove('mouse', 40, 50)))
+    expect(host.querySelector('[data-plant-hit-hover]')).toBeNull()
   })
 
   it('clears an open chooser when its backing map data changes', async () => {
