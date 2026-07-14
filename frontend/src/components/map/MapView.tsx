@@ -707,7 +707,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           )}
 
           {/* Plant resize overlay */}
-          {selectedPlant && selectedPlantPos && (
+          {selectedPlant && selectedPlantPos && !moveMode && movePlantId === null && (
             <PlantResizeOverlay
               x={selectedPlantPos.x}
               y={selectedPlantPos.y}

@@ -20,6 +20,9 @@ import MapView from '../MapView'
 
 const mocks = vi.hoisted(() => ({
   handlePlantPointerDown: vi.fn(),
+  handlePlantResizeDown: vi.fn(),
+  selectedPlant: null as MapPlant | null,
+  selectedPlantPos: null as { x: number; y: number } | null,
 }))
 
 vi.mock('@use-gesture/react', () => ({ usePinch: vi.fn() }))
@@ -31,7 +34,10 @@ vi.mock('../../../hooks/useLandscapeMobile', () => ({ useLandscapeMobile: () => 
 vi.mock('../../../context/LanguageContext', () => ({ useT: () => ({ locale: 'nl' }) }))
 vi.mock('../../../hooks/useMapInteraction', () => ({
   useMapInteraction: () => ({
-    selection: { selectedId: null, mode: 'idle' },
+    selection: {
+      selectedId: mocks.selectedPlant ? `plant-${mocks.selectedPlant.id}` : null,
+      mode: 'idle',
+    },
     dragging: null,
     dragPositions: {},
     dragKey: null,
@@ -42,14 +48,14 @@ vi.mock('../../../hooks/useMapInteraction', () => ({
     plantResizeRadius: null,
     isResizing: false,
     activeResizeHandle: null,
-    selectedPlant: null,
-    selectedPlantPos: null,
+    selectedPlant: mocks.selectedPlant,
+    selectedPlantPos: mocks.selectedPlantPos,
     handlePlantPointerDown: mocks.handlePlantPointerDown,
     handlePointerMove: vi.fn(),
     handlePointerUp: vi.fn(),
     handleItemSelect: vi.fn(),
     handleMapClick: vi.fn(),
-    handlePlantResizeDown: vi.fn(),
+    handlePlantResizeDown: mocks.handlePlantResizeDown,
   }),
 }))
 
@@ -202,6 +208,9 @@ describe('MapView move pointer-down routing', () => {
 
   beforeEach(() => {
     mocks.handlePlantPointerDown.mockReset()
+    mocks.handlePlantResizeDown.mockReset()
+    mocks.selectedPlant = null
+    mocks.selectedPlantPos = null
     root = null
     host = document.createElement('div')
     document.body.appendChild(host)
@@ -340,5 +349,36 @@ describe('MapView move pointer-down routing', () => {
 
     expect(mocks.handlePlantPointerDown).toHaveBeenCalledTimes(1)
     expect(mocks.handlePlantPointerDown.mock.calls[0][1].id).toBe(2)
+  })
+
+  it('keeps browse resize pointerdown but hides the overlay after entering move mode', async () => {
+    const selected = plant(5, false, 100, 100)
+    const plants = [selected]
+    mocks.selectedPlant = selected
+    mocks.selectedPlantPos = { x: 100, y: 100 }
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [] }))
+    })
+
+    const browseHandle = host.querySelector<SVGGElement>('g[style*="ns-resize"]')
+    expect(browseHandle).not.toBeNull()
+    await act(async () => {
+      browseHandle!.dispatchEvent(pointerDown(100, 86.2))
+    })
+    expect(mocks.handlePlantResizeDown).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [], moveMode: true }))
+    })
+
+    expect(host.querySelector('g[style*="ns-resize"]')).toBeNull()
+    expect(host.querySelector('g[style*="ew-resize"]')).toBeNull()
+
+    await act(async () => {
+      root!.render(createElement(MapView, { map, plants, objects: [], movePlantId: 5 }))
+    })
+    expect(host.querySelector('g[style*="ns-resize"]')).toBeNull()
+    expect(host.querySelector('g[style*="ew-resize"]')).toBeNull()
   })
 })
