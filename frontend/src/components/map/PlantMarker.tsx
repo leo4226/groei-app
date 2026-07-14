@@ -42,7 +42,6 @@ interface Props {
   labelFontSize?: number
   showWarnings?: boolean
   displayName?: string
-  onTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
   heatmapCells?: HeatmapCell[]
 }
@@ -96,7 +95,7 @@ export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean):
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
 export const PLANT_LABEL_FONT_SIZE = 9
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, displayName = plant.name, onTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, displayName = plant.name, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
   const topBadge = showWarnings ? topMarkerBadge(plant) : null
@@ -155,9 +154,13 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   const lockHitR = 6
 
   if (plant.is_locked) {
-    // ── Locked plant: capped icon, tiny top-right lock badge as sole tap target ──
+    // ── Locked plant: capped icon, selectable centrally but never draggable ──
     return (
-      <g transform={`translate(${x}, ${y})`} style={{ pointerEvents: 'none' }}>
+      <g
+        data-map-plant-id={plant.id}
+        transform={`translate(${x}, ${y})`}
+        style={{ pointerEvents: 'none' }}
+      >
         {/* Status halo */}
         {haloColor && (
           <>
@@ -196,11 +199,8 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
           </text>
         )}
 
-        {/* Lock badge — top-right of icon, sole interactive tap target */}
-        <g
-          style={{ pointerEvents: 'all', cursor: 'pointer' }}
-          onClick={(e) => { e.stopPropagation(); onTap(plant) }}
-        >
+        {/* Lock badge — visual only; MapView resolves the whole marker target. */}
+        <g style={{ pointerEvents: 'none' }}>
           <circle cx={lockBadgeOffset} cy={-lockBadgeOffset} r={lockHitR} fill="rgba(30,30,30,0.65)" />
           <g transform={`translate(${lockBadgeOffset}, ${-lockBadgeOffset})`} style={{ pointerEvents: 'none' }}>
             <rect x={-2.3} y={-0.4} width={4.6} height={3.4} rx={0.8} fill="#fff" />
@@ -215,9 +215,10 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
   // ── Unlocked plant: normal interactive rendering ──
   return (
     <g
+      data-map-plant-id={plant.id}
       transform={`translate(${x}, ${y})`}
       onPointerDown={(e) => onPointerDown(e, plant)}
-      style={{ pointerEvents: 'all', cursor: isDragging ? 'grabbing' : canDrag ? 'grab' : 'pointer', touchAction: 'none' }}
+      style={{ pointerEvents: 'none' }}
     >
       {/* Status halo */}
       {haloColor && (
@@ -233,7 +234,15 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
       )}
 
       {/* Transparent hit area for mobile tap targets */}
-      <circle r={hitR} fill="transparent" />
+      <circle
+        r={hitR}
+        fill="transparent"
+        style={{
+          pointerEvents: 'all',
+          cursor: isDragging ? 'grabbing' : canDrag ? 'grab' : 'pointer',
+          touchAction: 'none',
+        }}
+      />
 
       {/* Sun-fit ring */}
       {ringColor && (

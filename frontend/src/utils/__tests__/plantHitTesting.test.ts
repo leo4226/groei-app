@@ -282,6 +282,28 @@ describe('resolvePlantHit', () => {
     }
   })
 
+  it('selects the visible red contained target over the overlapping yellow marker independent of render order', () => {
+    const built = buildPlantHitCandidates({
+      plants: [plant(70, { map_x: 100, map_y: 100 })],
+      objects: [object(80, [plant(81, { container_id: 80 })], { map_x: 110, map_y: 100 })],
+      secondaryMarkers: [],
+      fixedPlants: [],
+      dragPositions: {},
+      locale: 'nl',
+    })
+    const yellow = built.find((item) => item.key === 'plant-70')
+    const red = built.find((item) => item.key === 'contained-81-in-80')
+    expect(yellow).toBeDefined()
+    expect(red).toBeDefined()
+
+    for (const candidates of [[yellow!, red!], [red!, yellow!]]) {
+      expect(resolvePlantHit({ x: 110, y: 100 }, candidates, 'mouse')).toMatchObject({
+        type: 'selected',
+        candidate: { key: 'contained-81-in-80', kind: 'contained' },
+      })
+    }
+  })
+
   it('returns mouse candidates within the inclusive eight-pixel ambiguity delta', () => {
     const result = resolvePlantHit(
       { x: 0, y: 0 },

@@ -1,11 +1,6 @@
 import { FIXED_PLANTS } from '../../constants/fixedPlants'
-import type { FixedPlant } from '../../constants/fixedPlants'
 
 const PX_PER_CM = 0.46
-
-interface Props {
-  onTap: (plant: FixedPlant) => void
-}
 
 function LockIcon({ r }: { r: number }) {
   // Positioned at bottom-right of the marker circle
@@ -31,7 +26,7 @@ function LockIcon({ r }: { r: number }) {
   )
 }
 
-export default function FixedPlantsLayer({ onTap }: Props) {
+export default function FixedPlantsLayer() {
   return (
     <g>
       {FIXED_PLANTS.map((plant) => {
@@ -44,9 +39,9 @@ export default function FixedPlantsLayer({ onTap }: Props) {
         return (
           <g
             key={plant.id}
+            data-map-plant-id={plant.id}
             transform={`translate(${plant.x}, ${plant.y})`}
-            onClick={(e) => { e.stopPropagation(); onTap(plant) }}
-            style={{ cursor: 'pointer', touchAction: 'none' }}
+            style={{ pointerEvents: 'none' }}
           >
             {/* Transparent hit area */}
             <circle r={hitR} fill="transparent" />

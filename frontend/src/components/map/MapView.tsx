@@ -3,13 +3,19 @@ import type { MapDetail, MapPlant, MapObject, GroundZone, CanvasData, SecondaryM
 import type { SunPosition } from '../../utils/sunCalc'
 import type { ShadowPolygon } from '../../utils/shadowGeometry'
 import { screenToSVG } from '../../utils/svgCoords'
-import { nearestPlant } from '../../utils/nearestPlant'
+import {
+  buildPlantHitCandidates,
+  projectPlantHitCandidates,
+  resolvePlantHit,
+  type PlantPointerType,
+} from '../../utils/plantHitTesting'
 import { usePinch } from '@use-gesture/react'
 import { useContainerSize } from '../../hooks/useContainerSize'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLandscapeMobile } from '../../hooks/useLandscapeMobile'
 import { useMapInteraction } from '../../hooks/useMapInteraction'
-import { resolveDisplayedDragPosition, shouldStartMapPan } from './plantDragPermissions'
+import { shouldStartMapPan } from './plantDragPermissions'
+import { useT } from '../../context/LanguageContext'
 import ObjectsLayer from './ObjectsLayer'
 import PlantsLayer, { type LabelMode } from './PlantsLayer'
 import SecondaryMarkersLayer from './SecondaryMarkersLayer'
@@ -22,8 +28,9 @@ import FixedPlantsLayer from './FixedPlantsLayer'
 import CanvasZonesLayer from './CanvasZonesLayer'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
-import type { FixedPlant } from '../../constants/fixedPlants'
+import { FIXED_PLANTS, type FixedPlant } from '../../constants/fixedPlants'
 import type { HeatmapLayer } from '../../utils/lightQuality'
+import { dispatchPlantHit } from './plantHitDispatch'
 
 interface Props {
   map: MapDetail
@@ -64,13 +71,9 @@ interface Props {
   gardenViewBox?: string
 }
 
-// Nearest-neighbour tap radius (#452): a fixed on-screen touch target, in CSS
-// pixels, converted to SVG units at tap time so it feels constant regardless of
-// zoom. A tap this close to a plant selects it; a tap farther out deselects.
-const TAP_TARGET_PX = 44
-
 export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = [], onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
+  const t = useT()
   // Object labels (containers/pots) follow the same on/off split as plant
   // labels: hidden only in 'off' mode. The smart/all distinction is plant-only.
   const showLabels = labelMode !== 'off'
@@ -179,8 +182,15 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   // background. A 5px threshold keeps taps (select/deselect) working.
   const panSession = useRef<{ startX: number; startY: number; startPan: { x: number; y: number }; unitsPerPx: number } | null>(null)
   const didPan = useRef(false)
+  const pointerTypeRef = useRef<PlantPointerType | null>(null)
   const baseCenterRef = useRef(baseCenter)
   baseCenterRef.current = baseCenter
+
+  const recordPointerType = useCallback((e: React.PointerEvent) => {
+    pointerTypeRef.current = e.pointerType === 'touch' || e.pointerType === 'pen'
+      ? e.pointerType
+      : 'mouse'
+  }, [])
 
   // Document-level move/up listeners (attached for the duration of a pan) so
   // the pan survives the pointer leaving the container — same pattern as the
@@ -327,48 +337,47 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     onMapTap,
   })
 
+  const plantHitCandidates = useMemo(() => buildPlantHitCandidates({
+    plants,
+    objects,
+    secondaryMarkers,
+    fixedPlants: FIXED_PLANTS,
+    dragPositions,
+    locale: t.locale,
+  }), [plants, objects, secondaryMarkers, dragPositions, t.locale])
+
   // A drag-to-pan must not count as a map tap (mouse fires click after a drag;
   // touch usually doesn't, but guard both).
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // Keyboard/programmatic clicks have detail 0 and no matching pointer-down.
+    const pointerType = e.detail === 0 ? 'mouse' : pointerTypeRef.current ?? 'mouse'
+    pointerTypeRef.current = null
     if (didPan.current) {
       didPan.current = false
       return
     }
-    // Nearest-neighbour selection (#452): all unlocked-plant clicks bubble to
-    // the container (PlantMarker has no onClick). Select the closest plant
-    // within a zoom-scaled pick radius — even in dense clusters where hit
-    // circles overlap. Tap on empty ground falls through to deselect.
     const svg = svgRef.current
-    const pt = svg ? screenToSVG(svg, e.clientX, e.clientY) : null
-    if (svg && pt) {
-      // px → viewBox-units factor, mirroring handlePanPointerDown and the <svg>
-      // preserveAspectRatio prop ("meet" = min, landscape-mobile "slice" = max).
-      const rect = svg.getBoundingClientRect()
-      const visW = baseCenter.vw / zoomRef.current
-      const visH = baseCenter.vh / zoomRef.current
-      const pick = isLandscapeMobile ? Math.max : Math.min
-      const scale = pick(rect.width / visW, rect.height / visH)
-      if (scale && isFinite(scale)) {
-        const maxDist = TAP_TARGET_PX / scale
-        // Locked plants are excluded — they select ONLY via their lock badge, so
-        // proximity must not override that. Positions respect an in-flight drag,
-        // exactly like PlantsLayer renders them.
-        const candidates = plants
-          .filter((p) => !p.is_locked)
-          .map((p) => {
-            const pos = resolveDisplayedDragPosition(`plant-${p.id}`, dragPositions, { x: p.map_x, y: p.map_y })
-            return { id: p.id, x: pos.x, y: pos.y }
-          })
-        // TODO: disambiguation chooser for near-tied plants
-        const nearestId = nearestPlant(pt, candidates, maxDist)
-        if (nearestId !== null) {
-          handleItemSelect('plant', nearestId)
-          return
-        }
+    const matrix = svg?.getScreenCTM()
+    if (matrix) {
+      const result = resolvePlantHit(
+        { x: e.clientX, y: e.clientY },
+        projectPlantHitCandidates(plantHitCandidates, matrix),
+        pointerType,
+      )
+      if (result.type === 'selected') {
+        dispatchPlantHit(result.candidate, {
+          onPlantTap: (plant) => handleItemSelect('plant', plant.id),
+          onSecondaryMarkerTap,
+          onFixedPlantTap,
+        })
+        return
       }
+      // The chooser UI is a later task. Do not pick an arbitrary marker or
+      // deselect the current one while the resolver reports an ambiguity.
+      if (result.type === 'ambiguous') return
     }
     handleMapClick()
-  }, [handleMapClick, handleItemSelect, plants, dragPositions, baseCenter, isLandscapeMobile])
+  }, [handleMapClick, handleItemSelect, plantHitCandidates, onSecondaryMarkerTap, onFixedPlantTap])
 
   // Derive the profile of the plant being dragged (for the suitability overlay)
   const draggingPlant = dragging?.type === 'plant'
@@ -398,6 +407,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       className="relative w-full h-full"
       style={{ touchAction: 'none' }}
       onClick={handleContainerClick}
+      onPointerDownCapture={recordPointerType}
       onPointerDown={handlePanPointerDown}
     >
       {/* Tap-to-place capture: when placing a secondary spot, the next map tap
@@ -510,7 +520,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
           )}
 
           {/* Fixed plants (e.g. neighbour's tree) — permanent, not draggable */}
-          <FixedPlantsLayer onTap={(plant) => onFixedPlantTap?.(plant)} />
+          <FixedPlantsLayer />
 
           {/* Objects layer behind plants */}
           <ObjectsLayer
@@ -533,13 +543,12 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             labelMode={labelMode}
             showWarnings={showWarnings}
             zoom={zoom}
-            onPlantTap={(plant) => handleItemSelect('plant', plant.id)}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
           />
 
           {/* Secondary placements (extra spots) as light dots */}
-          <SecondaryMarkersLayer markers={secondaryMarkers} onTap={onSecondaryMarkerTap} />
+          <SecondaryMarkersLayer markers={secondaryMarkers} />
 
           {/* Plant resize overlay */}
           {selectedPlant && selectedPlantPos && (
@@ -591,15 +600,18 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       {/* Zoom controls --- always visible */}
       <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
-          onClick={handleZoomIn}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); handleZoomIn() }}
           className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm md:text-base font-bold"
           title="Zoom in">+</button>
         <button
-          onClick={handleZoomReset}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); handleZoomReset() }}
           className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs md:text-sm border-y border-border/50"
           title="Reset zoom">{Math.round(zoom * 100)}%</button>
         <button
-          onClick={handleZoomOut}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); handleZoomOut() }}
           className="w-7 h-7 md:w-9 md:h-9 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm md:text-base font-bold"
           title="Zoom uit">−</button>
       </div>
