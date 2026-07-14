@@ -1534,4 +1534,10 @@ export const en: Translations = {
     quizWhichPhoto: 'Which photo is {name}?',
     quizAnswered: 'Answer submitted',
   },
+
+  appUpdate: {
+    available: 'New version available',
+    action: 'Refresh',
+    dismiss: 'Close',
+  },
 }

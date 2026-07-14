@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
+import { useFloreren } from '../store/useFloreren'
 import { care, weeds } from '../api/client'
 import type { RecentLogEntry, WeedSightingOut } from '../types'
 import { resolveIconUrl } from '../utils/icons'
@@ -43,7 +44,9 @@ export default function LogboekPage() {
     }
   }, [])
 
-  useEffect(() => { fetchLog(0, true) }, [fetchLog])
+  // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh
+  const refreshTick = useFloreren((s) => s.refreshTick)
+  useEffect(() => { fetchLog(0, true) }, [fetchLog, refreshTick])
 
   const entries = combineLogbookTimeline(careEntries, fieldObservations)
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
@@ -8,6 +8,8 @@ import HelpAssistant from './components/HelpAssistant'
 import PlantPickerSheet from './components/sheets/PlantPickerSheet'
 import NewMapModal from './components/dashboard/NewMapModal'
 import AppLoadingView from './components/ui/AppLoadingView'
+import PullToRefresh from './components/ui/PullToRefresh'
+import UpdateToast from './components/ui/UpdateToast'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { icons } from './api/client'
@@ -153,8 +155,13 @@ function MapRedirect() {
   )
 }
 
+// Pull-to-refresh is enabled only on the scrollable list pages. The map has
+// its own pan/zoom gestures, and detail/editor pages load their own data.
+const PULL_REFRESH_ROUTES = new Set(['/plants', '/field-journal', '/calendar', '/log'])
+
 export default function App() {
   const load = useFloreren((s) => s.load)
+  const refreshAll = useFloreren((s) => s.refreshAll)
   const isLoading = useFloreren((s) => s.isLoading)
   const hasLoaded = useFloreren((s) => s.hasLoaded)
   const error = useFloreren((s) => s.error)
@@ -184,6 +191,24 @@ export default function App() {
   // Prime the icon URL index once so generated (R2) icons resolve app-wide.
   useEffect(() => { icons.catalog().catch(() => {}) }, [])
 
+  // Foreground refetch: a PWA instance can stay alive for days, so when the
+  // app becomes visible again and the shared data is older than a few
+  // minutes, quietly refresh it (the mechanism most native apps use).
+  useEffect(() => {
+    const STALE_MS = 3 * 60 * 1000
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      const s = useFloreren.getState()
+      if (!getToken() || !s.hasLoaded) return
+      if (Date.now() - s.lastRefreshAt > STALE_MS) s.refreshAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
+  const mainRef = useRef<HTMLElement>(null)
+  const pullRefreshEnabled = PULL_REFRESH_ROUTES.has(location.pathname)
+
   const handleSelectPlant = (plant: LocalPlant) => {
     setShowPlantPicker(false)
     navigate('/plants/add', { state: { prefill: plant } })
@@ -204,7 +229,8 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto overscroll-contain">
+      <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-contain">
+        <PullToRefresh scrollRef={mainRef} enabled={pullRefreshEnabled} onRefresh={refreshAll}>
         <ErrorBoundary>
           <SuspenseWrapper>
             <Routes>
@@ -367,6 +393,7 @@ export default function App() {
             </Routes>
           </SuspenseWrapper>
         </ErrorBoundary>
+        </PullToRefresh>
       </main>
 
       {!isLoginPage && !isAdminPage && !isEditorPage && (
@@ -376,6 +403,8 @@ export default function App() {
       )}
 
       {!isLoginPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
+
+      {!isLoginPage && <UpdateToast />}
 
       {showPlantPicker && (
         <PlantPickerSheet
