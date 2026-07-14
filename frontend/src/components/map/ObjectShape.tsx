@@ -3,10 +3,10 @@ import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import { resolveIconUrl } from '../../utils/icons'
+import { PX_PER_CM } from '../../utils/gardenStructures'
 import { containedPlantHaloColor, topMarkerBadge } from './PlantMarker'
+import { containedPlantLayout, objectShapeBound } from './plantMarkerGeometry'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
-
-const PX_PER_CM = 0.46 // 46px per meter = 0.46px per cm
 
 interface Props {
   object: MapObject
@@ -135,18 +135,13 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
     const plants = object.contained_plants
     if (!plants || plants.length === 0) return null
 
-    const bound = getShapeBound(object)
-    const count = plants.length
-    // Circles can be filled more aggressively; rectangles/squares must stay within bounds
-    const singleMultiplier = object.shape === 'circle' ? 1.00 : 0.65
-    const iconHalf = count === 1
-      ? bound * singleMultiplier
-      : bound / (count <= 2 ? 2.4 : count <= 4 ? 3.2 : 4.2)
-    const dotR = iconHalf * 0.35
-    const positions = getContainedPositions(count, bound * (count === 1 ? 0 : 0.55))
+    const bound = objectShapeBound(object)
+    const layout = containedPlantLayout(plants.length, bound, object.shape)
 
     return plants.map((plant, i) => {
-      const pos = positions[i]
+      const pos = layout[i]
+      const iconHalf = pos.radius
+      const dotR = iconHalf * 0.35
       const dotColor = getCareDisplay(plant).badgeColor
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
@@ -280,7 +275,7 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
       {showLabel && object.category === 'container' && (
         <g transform={`rotate(${-effectiveRotation})`}>
           <text
-            y={getShapeBound(object) + 12}
+            y={objectShapeBound(object) + 12}
             textAnchor="middle"
             fill="#1f2937"
             fontSize="9"
@@ -300,31 +295,4 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
 
     </g>
   )
-}
-
-function getShapeBound(object: MapObject): number {
-  switch (object.shape) {
-    case 'circle':
-      return ((object.diameter_cm || 30) * PX_PER_CM) / 2
-    case 'square':
-      return ((object.width_cm || 30) * PX_PER_CM) / 2
-    case 'rectangle':
-      return ((object.depth_cm || 40) * PX_PER_CM) / 2
-  }
-}
-
-function getContainedPositions(count: number, spread: number): { x: number; y: number }[] {
-  if (count === 1) return [{ x: 0, y: 0 }]
-  if (count === 2) return [{ x: -spread * 0.5, y: 0 }, { x: spread * 0.5, y: 0 }]
-  if (count === 3) return [{ x: -spread * 0.45, y: -spread * 0.3 }, { x: spread * 0.45, y: -spread * 0.3 }, { x: 0, y: spread * 0.4 }]
-  // 4+ in a 2xN grid
-  const positions: { x: number; y: number }[] = []
-  const cols = 2
-  const gap = spread * 0.7
-  for (let i = 0; i < count; i++) {
-    const col = i % cols
-    const row = Math.floor(i / cols)
-    positions.push({ x: (col - 0.5) * gap, y: (row - (Math.ceil(count / cols) - 1) / 2) * gap })
-  }
-  return positions
 }

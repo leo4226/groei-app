@@ -5,7 +5,9 @@ import { computeSuitability } from '../../utils/suitability'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
 import { resolveIconUrl } from '../../utils/icons'
+import { PX_PER_CM } from '../../utils/gardenStructures'
 import { getPlantDragHitRadius } from './plantDragPermissions'
+import { topLevelPlantIconRadius } from './plantMarkerGeometry'
 import { LABEL_ABOVE_OFFSET, LABEL_BELOW_OFFSET, type LabelPlacement } from '../../utils/labelDeclutter'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
@@ -90,8 +92,6 @@ export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean):
   return showWarnings ? getHaloColor(plant) : null
 }
 
-const PX_PER_CM = 0.46
-
 // Plant name label size in SVG units. Kept modest so labels don't dominate the
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
 export const PLANT_LABEL_FONT_SIZE = 9
@@ -132,7 +132,8 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
 
   const baseR = plant.display_radius_cm ? plant.display_radius_cm * PX_PER_CM : 14
   const r = isDragging ? baseR * 1.3 : baseR
-  const iconR = r * 0.85
+  const renderedIconR = topLevelPlantIconRadius(plant)
+  const iconR = renderedIconR * (isDragging ? 1.3 : 1)
   const hitR = getPlantDragHitRadius(r, canDrag)
   // Semantic zoom: scale the label offsets by the same ratio as the font so the
   // text keeps a constant screen gap from its icon, and — critically — matches
@@ -146,7 +147,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
 
   // For locked plants: cap the rendered icon so it never extends off-screen,
   // and keep the badge pinned close to center regardless of display_radius_cm.
-  const lockedIconR = Math.min(iconR, 28)
+  const lockedIconR = renderedIconR
   const lockedLabelY = labelPlacement === 'above'
     ? -(lockedIconR + aboveOffset)
     : lockedIconR + belowOffset

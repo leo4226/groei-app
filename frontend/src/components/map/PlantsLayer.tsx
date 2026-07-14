@@ -5,8 +5,8 @@ import PlantMarker, { PLANT_LABEL_FONT_SIZE } from './PlantMarker'
 import { canStartPlantDrag, resolveDisplayedDragPosition } from './plantDragPermissions'
 import { useT } from '../../context/LanguageContext'
 import { plantDisplayName } from '../../utils/plantDisplayName'
-import { PX_PER_CM } from '../../utils/gardenStructures'
 import { placeLabels, LABEL_BELOW_OFFSET, LABEL_ABOVE_OFFSET, type LabelCandidate } from '../../utils/labelDeclutter'
+import { topLevelPlantIconRadius } from './plantMarkerGeometry'
 
 /** Label display mode (#454). 'off': no persistent labels (selected plant still
  *  labels on tap). 'smart' (default): #451 priority + #453 zoom gate — only
@@ -71,9 +71,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
       const pos = resolveDisplayedDragPosition(
         `plant-${plant.id}`, dragPositions, { x: plant.map_x, y: plant.map_y },
       )
-      const baseR = plant.display_radius_cm ? plant.display_radius_cm * PX_PER_CM : 14
-      const iconR0 = baseR * 0.85
-      const iconR = plant.is_locked ? Math.min(iconR0, 28) : iconR0
+      const iconR = topLevelPlantIconRadius(plant)
       const name = plantDisplayName(plant, t.locale)
       const isSel = selectedId === `plant-${plant.id}`
       // Priority so the labels that survive a crowded map are the useful ones:
