@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, lazy, Suspense, Component, type MouseEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
+import { useFloreren } from '../../store/useFloreren'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
 import { buildDiscoveryJournalEntry, discoveryDisplayName, discoveryFunFact } from '../../utils/discoveryJournal'
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
@@ -107,6 +108,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const t = useT()
   const navigate = useNavigate()
   const isEN = (t.locale ?? 'nl-NL').toLowerCase().startsWith('en')
+  const refreshTick = useFloreren((s) => s.refreshTick)
   // Smaller SVG canvas on phones so pins keep a tappable on-screen size.
   const isNarrow = useIsMobile(720)
   const [items, setItems] = useState<PlantDiscovery[]>([])
@@ -120,12 +122,14 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const [notesDraft, setNotesDraft] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
 
+  // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh. Only
+  // the initial run shows the loading state; refreshes swap data in place.
   useEffect(() => {
     discoveriesApi.list()
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshTick])
 
   useEffect(() => {
     const ids = [...new Set(items.flatMap(i => i.species_id != null ? [i.species_id] : []))]

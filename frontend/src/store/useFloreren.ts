@@ -19,8 +19,14 @@ interface FlorerStore {
   showPlantPicker: boolean
   careVersions: Record<number, number>
   profileVersions: Record<number, number>
+  /** Bumped by refreshAll() — pages that own their data (field journal,
+   * calendar, logbook) include this in their fetch-effect deps so a
+   * pull-to-refresh / foreground refresh reaches them too. */
+  refreshTick: number
+  lastRefreshAt: number
 
   load: () => Promise<void>
+  refreshAll: () => Promise<void>
   loadMaps: () => Promise<void>
   resetForNewSession: () => void
   loadDashboardV2: () => Promise<void>
@@ -79,6 +85,8 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   showPlantPicker: false,
   careVersions: {},
   profileVersions: {},
+  refreshTick: 0,
+  lastRefreshAt: 0,
 
   /** Called after login/register to force a fresh data load for the new account. */
   resetForNewSession: () => set({
@@ -96,7 +104,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
         mapsApi.list(),
         plantsApi.list(),
       ])
-      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true }
+      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
       // Validate stored active user against loaded data — a stale
       // localStorage entry from a different account/household causes
       // every PATCH /users/:id/… to 404.
@@ -110,6 +118,19 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false, hasLoaded: true })
     }
+  },
+
+  /** Quiet re-fetch of the shared data (pull-to-refresh / app foregrounded).
+   * Deliberately does NOT toggle isLoading, so pages keep showing their
+   * current content while fresh data streams in. */
+  refreshAll: async () => {
+    set((s) => ({ refreshTick: s.refreshTick + 1, lastRefreshAt: Date.now() }))
+    await Promise.allSettled([
+      get().loadPlants(),
+      get().loadMaps(),
+      get().loadDashboardV2(),
+      get().loadWarningSummary(),
+    ])
   },
 
   loadMaps: async () => {

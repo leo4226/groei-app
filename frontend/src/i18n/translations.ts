@@ -1520,4 +1520,10 @@ export type Translations = {
     quizWhichPhoto: string
     quizAnswered: string
   }
+
+  appUpdate: {
+    available: string  // "Nieuwe versie beschikbaar"
+    action: string     // "Vernieuwen"
+    dismiss: string    // "Sluiten"
+  }
 }

@@ -1554,4 +1554,10 @@ export const nl: Translations = {
     quizWhichPhoto: 'Welke foto is {name}?',
     quizAnswered: 'Antwoord gegeven',
   },
+
+  appUpdate: {
+    available: 'Nieuwe versie beschikbaar',
+    action: 'Vernieuwen',
+    dismiss: 'Sluiten',
+  },
 }

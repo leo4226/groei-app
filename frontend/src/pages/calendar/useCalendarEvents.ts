@@ -16,6 +16,8 @@ export function useCalendarEventRange(
   const [reloadVersion, setReloadVersion] = useState(0)
 
   const careVersions = useFloreren(s => s.careVersions)
+  // Pull-to-refresh / app-foreground refreshes bump refreshTick app-wide.
+  const refreshTick = useFloreren(s => s.refreshTick)
   const careVersionsSum = useMemo(
     () => Object.values(careVersions).reduce((a, b) => a + b, 0),
     [careVersions],
@@ -40,7 +42,7 @@ export function useCalendarEventRange(
         }
       })
     return () => { cancelled = true }
-  }, [from, to, env, pinOverdue, careVersionsSum, reloadVersion])
+  }, [from, to, env, pinOverdue, careVersionsSum, reloadVersion, refreshTick])
 
   return { events, loading, error, retry }
 }
