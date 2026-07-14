@@ -42,7 +42,7 @@ interface Props {
   labelFontSize?: number
   showWarnings?: boolean
   displayName?: string
-  onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
+  onPointerDown: (e: React.PointerEvent, plant: MapPlant, dragElementOverride?: SVGGElement | null) => void
   heatmapCells?: HeatmapCell[]
 }
 
@@ -217,7 +217,7 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
     <g
       data-map-plant-id={plant.id}
       transform={`translate(${x}, ${y})`}
-      onPointerDown={(e) => onPointerDown(e, plant)}
+      onPointerDown={(e) => onPointerDown(e, plant, e.currentTarget)}
       style={{ pointerEvents: 'none' }}
     >
       {/* Status halo */}

@@ -49,7 +49,7 @@ export interface MapInteraction {
   activeResizeHandle: string | null
   selectedPlant: MapPlant | null
   selectedPlantPos: { x: number; y: number } | null
-  handlePlantPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
+  handlePlantPointerDown: (e: React.PointerEvent, plant: MapPlant, dragElementOverride?: SVGGElement | null) => void
   handleContainerPointerDown: (e: React.PointerEvent, obj: MapObject) => void
   handlePointerMove: (e: React.PointerEvent) => void
   handlePointerUp: () => Promise<void>
@@ -173,12 +173,14 @@ export function useMapInteraction({
     pendingTapRef.current = setTimeout(openDetails, 280)
   }, [selection.selectedId, dispatch, onOpenDetails, onPlantTap, onObjectTap, plants, objects])
 
-  const handlePlantPointerDown = useCallback((e: React.PointerEvent, plant: MapPlant) => {
+  const handlePlantPointerDown = useCallback((e: React.PointerEvent, plant: MapPlant, dragElementOverride?: SVGGElement | null) => {
     if (selection.mode === 'resizing') return
     if (!canStartPlantDrag(plant, { moveMode, movePlantId })) return
     e.stopPropagation()
     // Register the SVG <g> element for imperative DOM transform during drag
-    dragElementRef.current = e.currentTarget as SVGGElement | null
+    dragElementRef.current = dragElementOverride === undefined
+      ? e.currentTarget as SVGGElement | null
+      : dragElementOverride
     // Document-level listeners instead of setPointerCapture (unreliable on SVG <g>
     // elements with CSS transforms on mobile browsers).
     document.addEventListener('pointermove', onDocMove, { passive: false })

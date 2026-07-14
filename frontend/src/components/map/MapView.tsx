@@ -33,6 +33,10 @@ import { FIXED_PLANTS, type FixedPlant } from '../../constants/fixedPlants'
 import type { HeatmapLayer } from '../../utils/lightQuality'
 import { dispatchPlantHit } from './plantHitDispatch'
 import PlantHitChooser from './PlantHitChooser'
+import {
+  filterMovablePlantHitCandidates,
+  resolveMovablePlantHit,
+} from './plantMoveHitTarget'
 
 const EMPTY_SECONDARY_MARKERS: SecondaryMarker[] = []
 
@@ -398,6 +402,49 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     setPlantHitChooser(null)
   }, [])
 
+  const handleContainerPointerDownCapture = useCallback((e: React.PointerEvent) => {
+    recordPointerType(e)
+    if (placingPlantId != null || (!moveMode && movePlantId === null)) return
+    if (!e.isPrimary) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+
+    // Move mode is resolved here, before an overlapping marker's DOM hit circle
+    // or the background pan handler can choose a different interaction target.
+    e.stopPropagation()
+    if (isPinching.current) return
+    const svg = svgRef.current
+    const matrix = svg?.getScreenCTM()
+    if (!svg || !matrix) return
+
+    const result = resolvePlantHit(
+      { x: e.clientX, y: e.clientY },
+      filterMovablePlantHitCandidates(
+        projectPlantHitCandidates(plantHitCandidates, matrix),
+        movePlantId,
+      ),
+      e.pointerType === 'touch' || e.pointerType === 'pen' ? e.pointerType : 'mouse',
+    )
+    const resultCandidates = result.type === 'none'
+      ? []
+      : result.type === 'selected'
+        ? [result.candidate]
+        : result.candidates
+    const candidate = resolveMovablePlantHit(resultCandidates, movePlantId)
+    if (!candidate || candidate.kind !== 'plant') return
+
+    const dragElement = svg.querySelector<SVGGElement>(
+      `[data-map-plant-id="${candidate.plantId}"]`,
+    )
+    handlePlantPointerDown(e, candidate.payload, dragElement)
+  }, [
+    handlePlantPointerDown,
+    moveMode,
+    movePlantId,
+    placingPlantId,
+    plantHitCandidates,
+    recordPointerType,
+  ])
+
   const handleHoverPointerMove = useCallback((e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse') {
       setHoveredPlantHitKey(null)
@@ -492,7 +539,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       className="relative w-full h-full"
       style={{ touchAction: 'none' }}
       onClick={handleContainerClick}
-      onPointerDownCapture={recordPointerType}
+      onPointerDownCapture={handleContainerPointerDownCapture}
       onPointerDown={handlePanPointerDown}
       onPointerMove={handleHoverPointerMove}
       onPointerLeave={() => setHoveredPlantHitKey(null)}
