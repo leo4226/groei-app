@@ -278,15 +278,16 @@ async def test_commit_backfills_missing_english_name_for_known_species(
     )
     await seeded_db.commit()
 
-    async def fake_generate(name):
+    async def fake_names(name):
         return {
             "common_name_nl": "Blauwe bes",
             "common_name_en": "Blueberry",
             "latin_name": "Vaccinium corymbosum",
-            "phenology": {"months": [{"month": 1, "phase": "dormant"}]},
         }
 
-    monkeypatch.setattr("species_service._generate_species", fake_generate)
+    # The commit hot path uses the fast names-only call; the heavy phenology
+    # generation is deferred (no-op under pytest).
+    monkeypatch.setattr("species_service._generate_names", fake_names)
 
     fake_photo = base64.b64encode(b"\xff\xd8\xff\xe0jpg").decode("ascii")
     resp = await client.post(

@@ -104,6 +104,15 @@ async def health():
     return {"status": "ok"}
 
 
+# Prewarm target: the frontend fires this (fire-and-forget, unauthenticated)
+# when the identify camera opens, so a sleeping Fly machine (~9s cold start,
+# min_machines_running=0) is awake by the time the photo is taken. No DB
+# touch — waking the process is the whole point.
+@app.get("/api/ping")
+async def ping():
+    return {"ok": True}
+
+
 # Mount routers
 app.include_router(users.router, prefix="/api")
 app.include_router(locations.router, prefix="/api")

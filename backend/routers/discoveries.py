@@ -57,6 +57,7 @@ class DiscoveryOut(BaseModel):
 @router.post("", response_model=DiscoveryOut, status_code=201)
 async def save_discovery(
     body: DiscoveryCreate,
+    background: BackgroundTasks,
     account=Depends(get_current_account),
     db=Depends(db_dep),
 ):
@@ -64,12 +65,11 @@ async def save_discovery(
     thumbnail_url = body.thumbnail_url
     if not thumbnail_url and body.thumbnail_data:
         thumbnail_url = _store_thumbnail(body.thumbnail_data)
+    # Reverse geocoding (Nominatim, up to 8s) happens AFTER the response —
+    # the save must feel instant. The list endpoint's backfill also catches
+    # any row the task missed.
     place_name = None
     country_code = None
-    if body.location_lat is not None and body.location_lon is not None:
-        geocoded = await reverse_geocode(body.location_lat, body.location_lon)
-        if geocoded:
-            place_name, country_code = geocoded
     rows = await db.execute_fetchall(
         """INSERT INTO plant_discoveries
                (account_id, household_id, species_id, common_name, latin_name,
@@ -94,6 +94,10 @@ async def save_discovery(
             now,
         ),
     )
+    if body.location_lat is not None and body.location_lon is not None:
+        background.add_task(
+            _backfill_places, [(rows[0]["id"], body.location_lat, body.location_lon)]
+        )
     species = await _species_lookup(db, [body.species_id] if body.species_id else [])
     return _format(rows[0], species.get(body.species_id) if body.species_id else None)
 

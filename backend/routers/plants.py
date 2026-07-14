@@ -14,8 +14,37 @@ from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
 from species_service import get_or_create_species, regenerate_species_phenology
 from threshold_service import generate_thresholds
+from services.deferred import fire_and_forget
 
 router = APIRouter(tags=["plants"])
+
+
+async def _generate_thresholds_deferred(
+    plant_id: int, species_id: int | None, name: str, species: str | None
+) -> None:
+    """Generate care thresholds after the create response has been sent.
+
+    Opens its own DB connection (the request's is gone) and re-uses the same
+    persistence + schedule-seeding logic the inline path used to run.
+    """
+    from database import get_db
+
+    thresholds = await generate_thresholds(name, species)
+    thresholds_json = json.dumps(thresholds)
+    async with get_db() as db:
+        await db.execute(
+            "UPDATE plants SET care_thresholds = ? WHERE id = ?",
+            (thresholds_json, plant_id),
+        )
+        if species_id:
+            # Cache thresholds on species for future plants
+            await db.execute(
+                "UPDATE plant_species SET care_thresholds = ? WHERE id = ?",
+                (thresholds_json, species_id),
+            )
+        await db.commit()
+        await _seed_care_schedules(db, plant_id, thresholds_json)
+        await db.commit()
 
 
 async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
@@ -256,21 +285,13 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             # both vocabularies in sync or this dedup silently breaks.
             await _seed_care_schedules(db, plant_id, cached)
         else:
-            thresholds = await generate_thresholds(data.name, data.species)
-            thresholds_json = json.dumps(thresholds)
-            await db.execute(
-                "UPDATE plants SET care_thresholds = ? WHERE id = ?",
-                (thresholds_json, plant_id),
+            # No cached thresholds: generating them is an LLM call the user
+            # shouldn't wait for. The default water schedule seeded below
+            # keeps the plant actionable until the job lands.
+            fire_and_forget(
+                lambda: _generate_thresholds_deferred(plant_id, species_id, data.name, data.species),
+                f"care-thresholds plant={plant_id}",
             )
-            await db.commit()
-            # Cache thresholds on species for future plants
-            if species_id:
-                await db.execute(
-                    "UPDATE plant_species SET care_thresholds = ? WHERE id = ?",
-                    (thresholds_json, species_id),
-                )
-                await db.commit()
-            await _seed_care_schedules(db, plant_id, thresholds_json)
     except Exception as exc:
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
-import { plants as plantsApi, maps as mapsApi } from '../api/client'
+import { plants as plantsApi, maps as mapsApi, apiRequest } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
@@ -51,6 +51,11 @@ export function IdentifyPlantPage() {
       .catch(() => {})
   }, [mapSlug])
 
+  // Prewarm: the Fly machine sleeps at idle (~9s cold start). Firing a
+  // throwaway ping when the camera opens means the backend is awake by the
+  // time the user has framed their photo.
+  useEffect(() => { apiRequest('GET', '/ping').catch(() => {}) }, [])
+
   useEffect(() => {
     if (!navigator.onLine) {
       setStep({ kind: 'error', message: t.identify.errorOffline, thumbnail: null })
@@ -88,61 +93,44 @@ export function IdentifyPlantPage() {
   async function handleDestination(destination: ScanDestination) {
     if (step.kind !== 'destination' || !capturedPhotoDataUrl) return
     const candidate = step.candidate
-    setStep({ kind: 'enriching' })
+    const commonName = activeLang === 'en'
+      ? candidate.common_names_en?.[0] ?? candidate.common_names_nl?.[0] ?? candidate.scientific_name
+      : candidate.common_names_nl?.[0] ?? candidate.common_names_en?.[0] ?? candidate.scientific_name
 
-    // Capture geolocation for journal entries so the detail popup can show
-    // where the plant was photographed. Fail silently if unavailable.
-    let location_lat: number | undefined
-    let location_lon: number | undefined
-    if (destination === 'journal' && 'geolocation' in navigator) {
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 60000 })
-        })
-        location_lat = pos.coords.latitude
-        location_lon = pos.coords.longitude
-      } catch {
-        // permission denied or unavailable — continue without location
-      }
+    if (destination === 'journal') {
+      // Optimistic: land on the discovery card immediately with the candidate
+      // data; the card runs the commit (and geolocation) itself and fills in
+      // species details as they arrive. No 'enriching' wait screen.
+      navigate('/plants/discovery', {
+        state: {
+          candidate: {
+            scientific_name: candidate.scientific_name,
+            common_name: commonName,
+            common_name_nl: candidate.common_names_nl?.[0] ?? commonName,
+          },
+          thumbnail: capturedPhotoDataUrl,
+          destination: 'journal',
+          pendingCommit: true,
+        },
+      })
+      return
     }
 
+    setStep({ kind: 'enriching' })
     try {
       const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl, activeLang)
-      if (destination === 'journal') {
-        navigate('/plants/discovery', { state: { candidate: commitResult, thumbnail: capturedPhotoDataUrl, destination: 'journal', location_lat, location_lon } })
-      } else {
-        navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
-      }
+      navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
     } catch (e) {
       // 404 = species not found; the api client attaches the HTTP status so we
       // don't have to string-match the (localized) error message.
       const isNotFound = e instanceof Error && (e as Error & { status?: number }).status === 404
       if (isNotFound) {
-        const commonName = activeLang === 'en'
-          ? candidate.common_names_en?.[0] ?? candidate.common_names_nl?.[0] ?? candidate.scientific_name
-          : candidate.common_names_nl?.[0] ?? candidate.common_names_en?.[0] ?? candidate.scientific_name
-        if (destination === 'journal') {
-          navigate('/plants/discovery', {
-            state: {
-              candidate: {
-                scientific_name: candidate.scientific_name,
-                common_name: commonName,
-                common_name_nl: candidate.common_names_nl?.[0] ?? commonName,
-              },
-              thumbnail: capturedPhotoDataUrl,
-              destination: 'journal',
-              location_lat,
-              location_lon,
-            },
-          })
-        } else {
-          navigate('/plants/add', {
-            state: {
-              prefill: { name: commonName, scientific_name: candidate.scientific_name },
-              from: 'identify',
-            },
-          })
-        }
+        navigate('/plants/add', {
+          state: {
+            prefill: { name: commonName, scientific_name: candidate.scientific_name },
+            from: 'identify',
+          },
+        })
         return
       }
       setStep({

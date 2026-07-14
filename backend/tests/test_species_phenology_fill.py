@@ -7,7 +7,7 @@ import pytest
 PS_SCHEMA = """
 CREATE TABLE plant_species (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT, common_name_nl TEXT, common_name_en TEXT, latin_name TEXT,
+    slug TEXT UNIQUE, common_name_nl TEXT, common_name_en TEXT, latin_name TEXT,
     phenology_json TEXT, climate_zone TEXT, care_thresholds TEXT,
     gbif_taxon_key BIGINT,
     native_to_nl INTEGER, invasive_nl INTEGER, flowering_months TEXT,
@@ -26,7 +26,37 @@ async def _db():
 
 
 @pytest.mark.asyncio
-async def test_get_or_create_fills_missing_phenology(monkeypatch):
+async def test_get_or_create_schedules_missing_phenology_in_background(monkeypatch):
+    """Missing phenology no longer blocks the user flow: get_or_create schedules
+    a deferred enrichment instead of generating the full calendar inline."""
+    import species_service
+    db = await _db()
+    await db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name) "
+        "VALUES (1,'Passiebloem','Passionflower','Passiflora caerulea')")
+    await db.commit()
+
+    scheduled = []
+    monkeypatch.setattr(
+        species_service, "schedule_phenology_enrichment",
+        lambda sid, name: scheduled.append((sid, name)),
+    )
+
+    async def boom(name):
+        raise AssertionError("full species generation must not run inline")
+
+    monkeypatch.setattr(species_service, "_generate_species", boom)
+    monkeypatch.setattr(species_service, "_generate_names", boom)
+
+    sid = await species_service.get_or_create_species(db, "Passiebloem")
+    assert sid == 1
+    assert scheduled == [(1, "Passiflora caerulea")]
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_ensure_phenology_fills_and_caches(monkeypatch):
+    """The deferred job itself (ensure_phenology) fills phenology once."""
     import species_service
     db = await _db()
     await db.execute(
@@ -43,11 +73,48 @@ async def test_get_or_create_fills_missing_phenology(monkeypatch):
 
     monkeypatch.setattr(species_service, "_generate_species", fake_generate)
 
-    sid = await species_service.get_or_create_species(db, "Passiebloem")
-    assert sid == 1
+    await species_service.ensure_phenology(db, 1, "Passiflora caerulea")
     row = (await db.execute_fetchall("SELECT phenology_json FROM plant_species WHERE id=1"))[0]
     assert row["phenology_json"] and "months" in row["phenology_json"]
-    assert calls["n"] == 1  # generated exactly once, then cached
+    assert calls["n"] == 1
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_new_species_uses_fast_names_call(monkeypatch):
+    """Creating an unknown species uses the small names-only LLM call and
+    schedules the heavy phenology generation for later."""
+    import species_service
+    db = await _db()
+
+    scheduled = []
+    monkeypatch.setattr(
+        species_service, "schedule_phenology_enrichment",
+        lambda sid, name: scheduled.append((sid, name)),
+    )
+
+    async def fake_names(name):
+        return {
+            "slug": "mahonia-aquifolium",
+            "latin_name": "Mahonia aquifolium",
+            "common_name_nl": "Mahonie",
+            "common_name_en": "Oregon grape",
+        }
+
+    async def boom(name):
+        raise AssertionError("full species generation must not run inline")
+
+    monkeypatch.setattr(species_service, "_generate_names", fake_names)
+    monkeypatch.setattr(species_service, "_generate_species", boom)
+
+    sid = await species_service.get_or_create_species(db, "Mahonia aquifolium")
+    row = (await db.execute_fetchall(
+        "SELECT common_name_nl, common_name_en, phenology_json FROM plant_species WHERE id = ?",
+        (sid,)))[0]
+    assert row["common_name_nl"] == "Mahonie"
+    assert row["common_name_en"] == "Oregon grape"
+    assert row["phenology_json"] is None  # filled by the deferred job
+    assert scheduled == [(sid, "Mahonia aquifolium")]
     await db.close()
 
 
@@ -60,15 +127,14 @@ async def test_get_or_create_fills_missing_english_common_name(monkeypatch):
         "VALUES (1,'Blauwe bes','Vaccinium corymbosum','{\"months\":[]}')")
     await db.commit()
 
-    async def fake_generate(name):
+    async def fake_names(name):
         return {
             "common_name_nl": "Blauwe bes",
             "common_name_en": "Blueberry",
             "latin_name": "Vaccinium corymbosum",
-            "phenology": {"months": []},
         }
 
-    monkeypatch.setattr(species_service, "_generate_species", fake_generate)
+    monkeypatch.setattr(species_service, "_generate_names", fake_names)
 
     sid = await species_service.get_or_create_species(db, "Blauwe bes")
     assert sid == 1
@@ -91,6 +157,7 @@ async def test_get_or_create_matches_existing_english_common_name(monkeypatch):
         raise AssertionError("LLM must not run when English name already matches")
 
     monkeypatch.setattr(species_service, "_generate_species", boom)
+    monkeypatch.setattr(species_service, "_generate_names", boom)
 
     sid = await species_service.get_or_create_species(db, "Blueberry")
     assert sid == 1
@@ -111,52 +178,6 @@ async def test_get_or_create_existing_with_phenology_skips_llm(monkeypatch):
 
     monkeypatch.setattr(species_service, "_generate_species", boom)
     sid = await species_service.get_or_create_species(db, "Roos")
-    assert sid == 1
-    await db.close()
-
-
-@pytest.mark.asyncio
-async def test_get_or_create_fills_missing_english_common_name(monkeypatch):
-    import species_service
-    db = await _db()
-    await db.execute(
-        "INSERT INTO plant_species (id, common_name_nl, latin_name, phenology_json) "
-        "VALUES (1,'Blauwe bes','Vaccinium corymbosum','{\"months\":[]}')")
-    await db.commit()
-
-    async def fake_generate(name):
-        return {
-            "common_name_nl": "Blauwe bes",
-            "common_name_en": "Blueberry",
-            "latin_name": "Vaccinium corymbosum",
-            "phenology": {"months": []},
-        }
-
-    monkeypatch.setattr(species_service, "_generate_species", fake_generate)
-
-    sid = await species_service.get_or_create_species(db, "Blauwe bes")
-    assert sid == 1
-    row = (await db.execute_fetchall(
-        "SELECT common_name_en FROM plant_species WHERE id=1"))[0]
-    assert row["common_name_en"] == "Blueberry"
-    await db.close()
-
-
-@pytest.mark.asyncio
-async def test_get_or_create_matches_existing_english_common_name(monkeypatch):
-    import species_service
-    db = await _db()
-    await db.execute(
-        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json) "
-        "VALUES (1,'Blauwe bes','Blueberry','Vaccinium corymbosum','{\"months\":[]}')")
-    await db.commit()
-
-    async def boom(name):
-        raise AssertionError("LLM must not run when English name already matches")
-
-    monkeypatch.setattr(species_service, "_generate_species", boom)
-
-    sid = await species_service.get_or_create_species(db, "Blueberry")
     assert sid == 1
     await db.close()
 
