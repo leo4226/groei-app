@@ -691,43 +691,7 @@ export default function Plants() {
                   </div>
                 </nav>
 
-        {/* Filter button — opens bottom sheet */}
-        <div style={{ padding: '0 16px 10px', display: activeTab === 'journal' ? 'none' : undefined }}>
-          <button
-            onClick={() => setShowFilterSheet(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 100,
-              border: '1px solid var(--color-border)',
-              background: hasActiveFilters ? 'var(--color-primary)' : 'transparent',
-              color: hasActiveFilters ? 'var(--color-surface)' : 'var(--color-text-soft)',
-              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', whiteSpace: 'nowrap',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-            >
-              <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
-              <circle cx="4" cy="14" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="20" cy="16" r="2" />
-            </svg>
-            {t.plantsPage.filterButton}
-            {hasActiveFilters && (
-              <span style={{
-                background: 'var(--color-surface)', color: 'var(--color-primary)',
-                fontSize: 9, fontWeight: 600, borderRadius: 20,
-                padding: '1px 6px', lineHeight: '16px',
-              }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Filter bottom sheet */}
+        {/* Filter bottom sheet (the trigger lives inline in ResultsBar) */}
         {showFilterSheet && (
           <>
             {/* Overlay */}
@@ -890,7 +854,7 @@ export default function Plants() {
   function ResultsBar() {
     return !isLoading && (
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '12px 0 14px',
         borderBottom: '1px solid var(--color-border)',
         marginBottom: 14,
@@ -904,7 +868,42 @@ export default function Plants() {
             : t.plantsPage.showAll(filtered.length)
           }
         </p>
-        {!isMobile && (
+        {isMobile ? (
+          // Filter trigger sits beside the count on mobile (no longer floating
+          // above the fun-fact card). Font tuned to sit level with the italic
+          // count text next to it.
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 12px', borderRadius: 100,
+              border: '1px solid var(--color-border)',
+              background: hasActiveFilters ? 'var(--color-primary)' : 'transparent',
+              color: hasActiveFilters ? 'var(--color-surface)' : 'var(--color-text-soft)',
+              fontFamily: 'var(--font-heading)', fontSize: 13, fontWeight: 500,
+              cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            >
+              <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+              <circle cx="4" cy="14" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="20" cy="16" r="2" />
+            </svg>
+            {t.plantsPage.filterButton}
+            {hasActiveFilters && (
+              <span style={{
+                background: 'var(--color-surface)', color: 'var(--color-primary)',
+                fontSize: 9, fontWeight: 600, borderRadius: 20,
+                padding: '1px 6px', lineHeight: '16px',
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        ) : (
           <span style={{
             fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase',
             letterSpacing: '0.2em', color: 'var(--color-text-muted)',
