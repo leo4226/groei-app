@@ -93,4 +93,27 @@ describe('MonthSeasonalPanel', () => {
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     expect(onOpenGardenYear).toHaveBeenCalledOnce()
   })
+
+  it('limits long seasonal groups and reports the remaining plant count', () => {
+    const plants = Array.from({ length: 5 }, (_, index) =>
+      plant(index + 1, `Blooming plant ${index + 1}`, phenology()),
+    )
+
+    act(() => root.render(
+      createElement(LanguageProvider, null,
+        createElement(MemoryRouter, null,
+          createElement(MonthSeasonalPanel, { month1: 7, plants }),
+        ),
+      ),
+    ))
+
+    const bloomGroup = Array.from(container.querySelectorAll('.seasonal-group'))
+      .find(group => group.querySelector('h3')?.textContent === 'Bloom')
+
+    expect(bloomGroup?.querySelectorAll('a.seasonal-plant-link')).toHaveLength(3)
+    expect(bloomGroup?.textContent).toContain('+2 more')
+    expect(bloomGroup?.textContent).not.toContain('Blooming plant 4')
+    expect(bloomGroup?.querySelector('.seasonal-more')?.getAttribute('aria-label'))
+      .toBe('Bloom +2 more')
+  })
 })

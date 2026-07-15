@@ -451,9 +451,10 @@
 .cal-page .col-side {
   position: sticky;
   top: 18px;
-  align-self: stretch;
+  align-self: start;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: start;
   gap: 18px;
 }
 .cal-page .col-side > section + section { margin-top: 0; }
@@ -518,6 +519,120 @@
   color: var(--cal-ink-faint);
 }
 .cal-page .seasonal-plant-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-page .seasonal-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--cal-accent);
+  white-space: nowrap;
+}
+
+/* Desktop monthly field note */
+.cal-page .masthead-context {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.cal-page .calendar-field-note { position: relative; }
+.cal-page .calendar-field-note summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 210px;
+  padding: 6px 10px;
+  border: 1px solid var(--cal-rule);
+  border-radius: 99px;
+  background: var(--cal-paper);
+  color: var(--cal-ink-soft);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.cal-page .calendar-field-note summary::-webkit-details-marker { display: none; }
+.cal-page .calendar-field-note summary:hover,
+.cal-page .calendar-field-note[open] summary {
+  border-color: var(--cal-accent);
+  color: var(--cal-accent-dk);
+  background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-paper));
+}
+.cal-page .calendar-field-note summary:focus-visible {
+  outline: 2px solid var(--cal-accent);
+  outline-offset: 3px;
+}
+.cal-page .calendar-field-note-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cal-accent);
+}
+.cal-page .calendar-field-note-title {
+  overflow: hidden;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.cal-page .calendar-field-note-title em {
+  color: var(--cal-accent);
+  font-style: italic;
+}
+.cal-page .calendar-field-note-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 300px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--cal-accent) 72%, var(--cal-rule));
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-due) 15%, transparent), transparent 50%),
+    linear-gradient(160deg, var(--cal-accent) 0%, var(--cal-accent-dk) 100%);
+  box-shadow: 0 18px 45px color-mix(in srgb, var(--cal-ink) 20%, transparent);
+  color: var(--cal-paper);
+}
+.cal-page .calendar-field-note-month {
+  margin: 0 0 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(251,247,238,.7);
+}
+.cal-page .calendar-field-note-quote {
+  margin: 0 0 14px;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.cal-page .calendar-field-note-popover dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-top: 11px;
+  border-top: 1px dashed rgba(255,254,249,.22);
+}
+.cal-page .calendar-field-note-popover dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+}
+.cal-page .calendar-field-note-popover dt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(251,247,238,.62);
+}
+.cal-page .calendar-field-note-popover dd { margin: 0; text-align: right; }
 .cal-page .seasonal-plant-link {
   padding: 3px 8px;
   border: 1px solid var(--cal-rule-soft);
@@ -859,64 +974,6 @@
   white-space: nowrap;
 }
 
-/* Seasonal almanac block */
-.cal-page .almanac-side {
-  background:
-    radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-due) 15%, transparent), transparent 50%),
-    linear-gradient(160deg, var(--cal-accent) 0%, var(--cal-accent-dk) 100%);
-  color: var(--cal-paper);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.cal-page .almanac-side .sc-eye { color: rgba(251,247,238,.7); }
-.cal-page .almanac-side .sc-title { color: var(--cal-paper); }
-.cal-page .almanac-side .sc-title em { color: #E8C658; }
-.cal-page .almanac-side .sc-head { border-bottom-color: rgba(255,254,249,.12); }
-.cal-page .almanac-body {
-  padding: 16px 22px 20px;
-  flex: 1;
-}
-.cal-page .almanac-body .alm-q {
-  font-family: 'Fraunces', serif;
-  font-style: italic;
-  font-size: 15px;
-  line-height: 1.5;
-  color: rgba(251,247,238,.92);
-  margin: 0 0 16px;
-  text-wrap: pretty;
-}
-.cal-page .almanac-body .alm-q::before {
-  content: '"';
-  font-size: 28px;
-  color: #E8C658;
-  line-height: 0;
-  position: relative;
-  top: 10px;
-  margin-right: 3px;
-}
-.cal-page .almanac-rows {
-  display: grid;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(255,254,249,.18);
-}
-.cal-page .alm-line {
-  display: flex; justify-content: space-between; gap: 12px;
-  font-family: 'Fraunces', serif;
-  font-size: 13px;
-  color: rgba(251,247,238,.88);
-}
-.cal-page .alm-line .k {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: rgba(251,247,238,.55);
-}
-.cal-page .alm-line em { color: #E8C658; font-style: italic; }
-
 .cal-page .work-agenda-view {
   width: min(100%, 900px);
   margin: 0 auto;
@@ -966,6 +1023,7 @@
   .cal-page main { grid-template-columns: 1fr; }
   .cal-page .col-side { position: static; }
   .cal-page .title-row { grid-template-columns: 1fr; }
+  .cal-page .masthead-context { display: none; }
   .cal-page .moon-mini { display: none; }
   .cal-page .month-switch { border-left: 0; padding-left: 0; border-top: 1px solid var(--cal-rule); padding-top: 18px; }
 }

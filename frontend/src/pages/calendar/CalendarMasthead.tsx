@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { MONTH_LONG_EN, MONTH_LONG_NL, isoWeek } from './dateUtils'
 import type { CalendarViewMode } from './calendarViewModel'
 import CalendarMoonMini from './CalendarMoonMini'
+import CalendarFieldNote from './CalendarFieldNote'
 import CalendarViewToggle from './CalendarViewToggle'
 import { useT } from '../../context/LanguageContext'
 
@@ -50,7 +51,10 @@ export default function CalendarMasthead({
           {environmentFilter}
         </div>
 
-        <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />
+        <div className="masthead-context">
+          <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />
+          <CalendarFieldNote month1={month1} />
+        </div>
 
         <div className="month-switch">
           <div className="ms-row">

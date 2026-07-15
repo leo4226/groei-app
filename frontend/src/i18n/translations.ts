@@ -975,7 +975,9 @@ export type Translations = {
     seasonalThisMonth: string
     seasonalScope: string
     seasonalMissing: (n: number) => string
+    seasonalMore: (n: number) => string
     seasonalGardenYear: string
+    fieldNote: string
     weatherContext: string
     weatherRecommendedAction: string
     weatherExplanationUnavailable: string
@@ -991,11 +993,6 @@ export type Translations = {
     filterDescAll: string      // "alle planten" / "all plants"
     filterDescGarden: string    // "buitenplanten" / "outdoor plants"
     filterDescHouse: string     // "kamerplanten" / "indoor plants"
-    upcoming: string  // "Upcoming"
-    upcomingSubtitle: string  // "The coming days - sorted by date."
-    upcomingTitlePrefix: string  // "What" / "Wat " — text before the italic word
-    upcomingTitleEm: string     // "'s coming" / "komt" — the italic word
-    silence: string  // "— silence —"
     moonPhase: string  // "Moon phase"
     agendaSelectedDay: string  // "Agenda — selected day"
     noTasksRest: string  // "No tasks — rest."
