@@ -858,11 +858,12 @@ export const en: Translations = {
       noAccess: 'No camera access',
     },
     identifying: 'Identifying...',
-    newPhoto: '📷 Take new photo',
+    newPhoto: 'New photo',
     enriching: 'Preparing your plant…',
     enrichingLede: 'We are collecting the species details and getting the next screen ready.',
     results: {
       title: 'Possible matches',
+      sheetTitle: 'Determination',
       confidence: 'confidence',
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Pick this one',
@@ -870,6 +871,7 @@ export const en: Translations = {
       sourcePlantnet: 'PlantNet second opinion',
       bestMatch: 'Best match',
       alternativeMatch: 'Could also be',
+      noneOfThese: 'None of these? Enter manually',
       plantnetCta: 'PlantNet second opinion',
       plantnetProminentCta: 'Ask PlantNet for a second opinion',
     },
@@ -888,6 +890,12 @@ export const en: Translations = {
       medium: 'Fairly confident',
       low: 'Not sure — pick one manually or try a better photo',
       compareCandidates: 'Compare the top 2–3 matches before choosing one.',
+      chip: {
+        high: 'Likely correct',
+        medium: 'Compare carefully',
+        low: 'Uncertain',
+        no_match: 'No match',
+      },
       summary: {
         high: {
           label: 'Likely match',

@@ -858,11 +858,12 @@ export const nl: Translations = {
       noAccess: 'Geen toegang tot camera',
     },
     identifying: 'Identificeren...',
-    newPhoto: '📷 Nieuwe foto maken',
+    newPhoto: 'Nieuwe foto',
     enriching: 'Plant voorbereiden…',
     enrichingLede: 'We halen de soortgegevens op en zetten het volgende scherm klaar.',
     results: {
       title: 'Mogelijke matches',
+      sheetTitle: 'Determinatie',
       confidence: 'zekerheid',
       poweredBy: 'powered by Pl@ntNet',
       choose: 'Kies deze',
@@ -870,6 +871,7 @@ export const nl: Translations = {
       sourcePlantnet: 'PlantNet second opinion',
       bestMatch: 'Beste match',
       alternativeMatch: 'Kan ook zijn',
+      noneOfThese: 'Geen van deze? Vul handmatig in',
       plantnetCta: 'PlantNet second opinion',
       plantnetProminentCta: 'Vraag PlantNet om een second opinion',
     },
@@ -888,6 +890,12 @@ export const nl: Translations = {
       medium: 'Redelijk zeker',
       low: 'Niet zeker — kies handmatig of probeer een betere foto',
       compareCandidates: 'Vergelijk vooral de bovenste 2–3 matches voordat je er één kiest.',
+      chip: {
+        high: 'Waarschijnlijk juist',
+        medium: 'Vergelijk goed',
+        low: 'Onzeker',
+        no_match: 'Geen match',
+      },
       summary: {
         high: {
           label: 'Waarschijnlijk deze plant',

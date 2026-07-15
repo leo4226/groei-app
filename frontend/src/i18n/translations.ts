@@ -837,6 +837,7 @@ export type Translations = {
     enrichingLede: string // explanatory copy for the same loading state
     results: {
       title: string       // "Possible matches"
+      sheetTitle: string  // "Determination" — Fraunces heading on the results sheet
       confidence: string  // "confidence"
       poweredBy: string   // "powered by Pl@ntNet"
       choose: string      // "Pick this one"
@@ -844,6 +845,7 @@ export type Translations = {
       sourcePlantnet: string // "PlantNet second opinion"
       bestMatch: string      // "Best match"
       alternativeMatch: string // "Could also be"
+      noneOfThese: string    // "None of these? Enter manually"
       plantnetCta: string          // "PlantNet second opinion"
       plantnetProminentCta: string // "Ask PlantNet for a second opinion"
     }
@@ -862,6 +864,13 @@ export type Translations = {
       medium: string       // "Fairly confident" / "Redelijk zeker"
       low: string          // "Not sure — pick one manually or try a better photo"
       compareCandidates: string // prompt to compare top 2–3 candidates
+      // Short chip labels next to the confidence dot on the results sheet
+      chip: {
+        high: string     // "Likely correct"
+        medium: string   // "Compare carefully"
+        low: string      // "Uncertain"
+        no_match: string // "No match"
+      }
       summary: {
         high: { label: string; body: string }
         medium: { label: string; body: string }

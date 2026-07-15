@@ -18,6 +18,18 @@ type Props = {
   onLogSighting: (weedId: number, weedName: string) => void
 }
 
+// Confidence dot/label colors: primary green when trustworthy, warm ochre and
+// terracotta (the herbarium accent tones) as certainty drops.
+const CHIP_COLOR: Record<IdentifyConfidence, string> = {
+  high: 'var(--color-primary)',
+  medium: '#A8763E',
+  low: '#B2664A',
+  no_match: '#B2664A',
+}
+
+/** The "determination sheet": your photo + confidence at the top, three slim
+ * candidate rows to compare against it, verification aids below, and one row
+ * of actions. Sized to fit a phone viewport without scrolling. */
 export function IdentifyResults({
   candidates, confidence, capturedThumbnailUrl, source, lang,
   onChoose, onRetry, onManualFallback, onTryPlantnet, onLogSighting,
@@ -26,21 +38,15 @@ export function IdentifyResults({
   const tone = confidenceTone(confidence)
   const fromBioclip = source !== 'plantnet'
   const confidenceSummary = t.identify.confidence.summary[confidence]
+  const chipColor = CHIP_COLOR[confidence]
   const sourceLabel = fromBioclip
     ? t.identify.results.sourceBioclip
     : t.identify.results.sourcePlantnet
-  // Compare-candidates nudge is folded into the single confidence line.
-  const showCompareNudge = tone.showCompareCandidates && candidates.length > 1
   // "How to verify" guidance only matters when we're not confident; on a high
   // match it stays hidden so it can't push the choices down.
   const showGuidance = confidence !== 'high'
-  const plantnetCtaLabel = tone.plantnetCtaProminent
-    ? t.identify.results.plantnetProminentCta
-    : t.identify.results.plantnetCta
-  const plantnetCtaClass = tone.plantnetCtaProminent
-    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-    : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
 
+  const [photoOpen, setPhotoOpen] = useState(false)
   const [weedCatalog, setWeedCatalog] = useState<WeedSpeciesListItem[] | null>(null)
   useEffect(() => {
     weeds.catalog().then(setWeedCatalog).catch(() => setWeedCatalog([]))
@@ -57,68 +63,94 @@ export function IdentifyResults({
     return weedCatalog.find((w) => w.latin_name.toLowerCase() === lower) ?? null
   }
 
-  const confidenceClass = confidence === 'high'
-    ? 'bg-green-50 border-green-200 text-green-900'
-    : confidence === 'medium'
-      ? 'bg-amber-50 border-amber-200 text-amber-900'
-      : 'bg-yellow-50 border-yellow-300 text-yellow-950'
-
-  const sourcePill = (
-    <div className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-      <Glyph name={fromBioclip ? 'sparkle' : 'flask'} size={13} />
-      {sourceLabel}
-    </div>
-  )
-
-  // ONE consolidated confidence element — replaces the old separate confidence
-  // box + low-confidence banner + compare-candidates box (all overlapping).
-  const confidenceLine = (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${confidenceClass}`}>
-      <div className="flex items-start gap-2">
-        <Glyph name={confidence === 'high' ? 'check' : 'alert'} size={16} className="mt-0.5 shrink-0" />
-        <div>
-          <span className="font-semibold">{confidenceSummary.label}</span>{' '}
-          <span className="opacity-90">{confidenceSummary.body}</span>
-          {showCompareNudge && (
-            <div className="mt-0.5 text-xs opacity-90">{t.identify.confidence.compareCandidates}</div>
-          )}
+  // Header: the photo you just took (tap to inspect full screen) beside the
+  // sheet title and a compact confidence chip. Replaces the old separate
+  // source pill + multi-line banner.
+  const header = (
+    <div className="mb-1.5 flex items-start gap-3.5">
+      {capturedThumbnailUrl && (
+        <button
+          onClick={() => setPhotoOpen(true)}
+          className="relative h-[76px] w-[76px] flex-none cursor-pointer overflow-hidden rounded-xl border border-border bg-surface p-0"
+        >
+          <img src={capturedThumbnailUrl} alt="" className="h-full w-full object-cover" />
+          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/45 text-white">
+            <Glyph name="search" size={11} />
+          </span>
+        </button>
+      )}
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="m-0 mb-1 flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.18em] text-text-muted">
+          <span className="h-px w-4 flex-none bg-border" />
+          <span className="truncate">{sourceLabel}</span>
+        </p>
+        <h2 className="m-0 font-heading text-[26px] font-medium leading-none tracking-[-0.01em] text-text">
+          {t.identify.results.sheetTitle}<span className="text-primary">.</span>
+        </h2>
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: chipColor }} />
+          <span className="text-[12.5px] font-semibold leading-none" style={{ color: chipColor }}>
+            {t.identify.confidence.chip[confidence]}
+          </span>
         </div>
       </div>
     </div>
   )
 
-  // Verification aids live BELOW the choices: guidance as a collapsed disclosure
-  // (only when we're not confident), safety as a compact one-liner. This keeps
-  // #372's trust content without burying the candidates.
+  const photoLightbox = photoOpen && capturedThumbnailUrl ? (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+      onClick={() => setPhotoOpen(false)}
+    >
+      <img src={capturedThumbnailUrl} alt="" className="max-h-[85vh] max-w-[94vw] rounded-xl object-contain" />
+    </div>
+  ) : null
+
+  // Verification aids: collapsed disclosure (only when not confident) plus the
+  // safety one-liner, both small so they never crowd the candidates.
   const verifyAndSafety = (
-    <div className="mt-4 flex flex-col gap-2 text-left">
+    <div className="mt-3 flex flex-col gap-1.5 text-left">
       {showGuidance && (
-        <details className="rounded-lg border border-gray-200 bg-gray-50 text-sm">
-          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 font-medium text-gray-700">
-            <Glyph name="search" size={15} />
+        <details className="rounded-lg border border-border bg-surface text-[13px]">
+          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 font-medium text-text-soft">
+            <Glyph name="search" size={14} />
             {t.identify.guidance.title}
           </summary>
-          <ul className="list-disc space-y-1 px-3 pb-3 pl-8 text-gray-600">
+          <ul className="m-0 list-disc space-y-1 px-3 pb-2.5 pl-8 text-text-soft">
             {t.identify.guidance.items.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
         </details>
       )}
-      <p className="flex items-start gap-1.5 px-1 text-xs text-gray-400">
-        <Glyph name="alert" size={12} className="mt-0.5 shrink-0" />
+      <p className="m-0 flex items-start gap-1.5 px-1 text-[11px] leading-snug text-text-muted">
+        <Glyph name="alert" size={11} className="mt-0.5 shrink-0" />
         <span>{t.identify.guidance.safety}</span>
       </p>
     </div>
   )
 
+  const retakeButton = (
+    <button
+      onClick={onRetry}
+      className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2.5 text-[13.5px] font-medium text-text"
+    >
+      <Glyph name="camera" size={15} />
+      {t.identify.newPhoto}
+    </button>
+  )
+
   const plantnetButton = fromBioclip ? (
     <button
       onClick={onTryPlantnet}
-      className={`px-4 py-3 rounded text-sm font-medium flex items-center justify-center gap-2 ${plantnetCtaClass}`}
+      className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-[13.5px] font-medium ${
+        tone.plantnetCtaProminent
+          ? 'border-none bg-primary text-white'
+          : 'border border-primary/40 bg-transparent text-primary'
+      }`}
     >
       <Glyph name="flask" size={15} />
-      {plantnetCtaLabel}
+      {t.identify.results.plantnetCta}
     </button>
   ) : null
 
@@ -127,42 +159,36 @@ export function IdentifyResults({
       ? t.identify.noMatch.bodyDetailed
       : t.identify.noMatch.body
     return (
-      <div className="p-6 max-w-md mx-auto text-center">
-        <h2 className="text-xl font-semibold mb-2">{t.identify.noMatch.title}</h2>
-        <div className="mb-3">{sourcePill}</div>
-        <div className="mb-4 text-left">{confidenceLine}</div>
-        <p className="text-gray-600 mb-6">{bodyText}</p>
-        {capturedThumbnailUrl && (
-          <img src={capturedThumbnailUrl} alt="" className="w-32 h-32 object-cover rounded mx-auto mb-4 opacity-75" />
-        )}
+      <div className="mx-auto max-w-md p-4">
+        {header}
+        <p className="mb-1 mt-3 font-heading text-[17px] font-medium text-text">{t.identify.noMatch.title}</p>
+        <p className="m-0 text-[13.5px] leading-snug text-text-soft">{bodyText}</p>
         {verifyAndSafety}
-        <div className="mt-6 flex flex-col gap-3">
-          <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded">
-            {t.identify.newPhoto}
-          </button>
+        <div className="mt-5 flex gap-2.5">
+          {retakeButton}
           {plantnetButton}
-          <button onClick={onManualFallback} className="text-gray-700 px-4 py-3 rounded border">
-            {t.identify.noMatch.manualFallback}
-          </button>
         </div>
+        <button
+          onClick={onManualFallback}
+          className="mt-3 w-full cursor-pointer border-none bg-transparent text-center text-[12.5px] font-medium text-primary"
+        >
+          {t.identify.noMatch.manualFallback}
+        </button>
+        {photoLightbox}
       </div>
     )
   }
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      {/* Header: title + source, then ONE compact confidence line. */}
-      <div className="mb-4 flex flex-col gap-3">
-        <div>
-          <h2 className="text-xl font-semibold mb-2">{t.identify.results.title}</h2>
-          {sourcePill}
-        </div>
-        {confidenceLine}
-      </div>
+    <div className="mx-auto max-w-md p-4">
+      {header}
 
-      {/* Candidates first — slimmed cards (no raw-% bar; the % was misleading
-          raw cosine, see #442 §3.3). */}
-      <div className="flex flex-col gap-3">
+      {/* One short line of context under the chip, replacing the old banner. */}
+      <p className="mb-3 mt-1 text-[12px] leading-snug text-text-soft">{confidenceSummary.body}</p>
+
+      {/* Candidates: slim numbered rows, field-guide style. Position conveys
+          rank (no per-card status pills, no raw-% — see #442 §3.3). */}
+      <div className="flex flex-col gap-2">
         {candidates.map((c, idx) => {
           const commonName = lang === 'nl'
             ? c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
@@ -170,41 +196,46 @@ export function IdentifyResults({
           const isTop = idx === 0
           const weed = matchWeed(c.scientific_name)
           return (
-            <div key={c.scientific_name} className="flex flex-col gap-2">
+            <div key={c.scientific_name} className="flex flex-col gap-1.5">
               <button
                 onClick={() => onChoose(c)}
-                className={`flex items-center gap-3 p-3 border rounded-lg text-left active:bg-gray-50 ${isTop ? 'bg-green-50/60 border-green-200' : 'bg-white'}`}
+                className={`flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left active:opacity-80 ${
+                  isTop ? 'border-primary/40 bg-primary/[0.06]' : 'border-border bg-surface'
+                }`}
               >
+                <span className={`w-6 flex-none text-center font-mono text-[10px] tracking-[0.08em] ${isTop ? 'font-bold text-primary' : 'text-text-muted'}`}>
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
                 {c.thumbnail_url ? (
-                  <img src={c.thumbnail_url} alt="" className="w-16 h-16 object-cover rounded" />
+                  <img src={c.thumbnail_url} alt="" className="h-12 w-12 flex-none rounded-lg border border-border object-cover" />
                 ) : (
-                  <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-400"><Glyph name="leaf" size={28} /></div>
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg border border-border bg-bg text-text-muted">
+                    <Glyph name="leaf" size={22} />
+                  </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isTop ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                      {isTop ? t.identify.results.bestMatch : t.identify.results.alternativeMatch}
-                    </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-[15px] font-medium text-text">{commonName}</span>
                     {weed && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium shrink-0 inline-flex items-center gap-1">
-                        <Glyph name="alert" size={12} />
+                      <span className="inline-flex flex-none items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10.5px] font-medium text-red-700">
+                        <Glyph name="alert" size={10} />
                         {t.weeds.knownWeed}
                       </span>
                     )}
                   </div>
-                  <div className="font-medium truncate">{commonName}</div>
-                  <div className="text-xs italic text-gray-500 truncate">{c.scientific_name}</div>
+                  <div className="truncate text-[12px] italic text-text-muted">{c.scientific_name}</div>
                 </div>
+                <Glyph name="chevron-right" size={16} className="flex-none text-text-muted" />
               </button>
               {weed && (
-                <div className="ml-3 mr-3 -mt-1 px-3 py-2 bg-red-50 border-l-2 border-red-300 rounded-r flex items-center justify-between gap-2">
-                  <div className="text-xs text-text-muted min-w-0">
+                <div className="mx-3 -mt-0.5 flex items-center justify-between gap-2 rounded-r border-l-2 border-red-300 bg-red-50 px-3 py-2">
+                  <div className="min-w-0 text-xs text-text-muted">
                     <span className="font-medium text-text">{weed.common_name_nl}</span>
                     {weed.places.length > 0 && <span className="truncate"> · {weed.places.join(', ')}</span>}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); onLogSighting(weed.id, weed.common_name_nl) }}
-                    className="text-xs px-3 py-1.5 rounded-full bg-primary text-white font-medium hover:opacity-90 shrink-0 inline-flex items-center gap-1.5"
+                    className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-full border-none bg-primary px-3 py-1.5 text-xs font-medium text-white"
                   >
                     <Glyph name="pin" size={13} />
                     {t.weeds.logSighting}
@@ -216,27 +247,27 @@ export function IdentifyResults({
         })}
       </div>
 
-      {/* Verification + safety, below the choices. */}
+      {/* Escape hatch straight to manual entry. */}
+      <button
+        onClick={onManualFallback}
+        className="mt-2 w-full cursor-pointer border-none bg-transparent py-1 text-center text-[12.5px] font-medium text-primary"
+      >
+        {t.identify.results.noneOfThese}
+      </button>
+
       {verifyAndSafety}
 
-      {/* Actions. */}
-      {!fromBioclip ? (
-        <>
-          <div className="text-center mt-6">
-            <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded text-sm">
-              {t.identify.newPhoto}
-            </button>
-          </div>
-          <div className="text-center text-xs text-gray-400 mt-6">{t.identify.results.poweredBy}</div>
-        </>
-      ) : (
-        <div className="text-center mt-4 flex flex-col gap-3">
-          <button onClick={onRetry} className="bg-green-700 text-white px-4 py-3 rounded text-sm">
-            {t.identify.newPhoto}
-          </button>
-          {plantnetButton}
-        </div>
+      {/* Actions side by side; powered-by credit as a quiet mono caption. */}
+      <div className="mt-4 flex gap-2.5">
+        {retakeButton}
+        {plantnetButton}
+      </div>
+      {!fromBioclip && (
+        <p className="m-0 mt-2.5 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+          {t.identify.results.poweredBy}
+        </p>
       )}
+      {photoLightbox}
     </div>
   )
 }
