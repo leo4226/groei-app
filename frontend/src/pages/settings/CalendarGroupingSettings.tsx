@@ -94,12 +94,21 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
     <div className="card p-4">
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
           <div>
-            <div className="font-semibold text-sm">{t.settings.carePlanningTitle}</div>
-            <div className="text-xs text-text-muted mt-0.5 max-w-2xl">
+            <h3
+              className="font-heading text-base font-medium text-text"
+              data-calendar-grouping-title
+            >
+              {t.settings.carePlanningTitle}
+            </h3>
+            <div className="mt-1 max-w-2xl text-xs leading-relaxed text-text-muted">
               {t.settings.carePlanningDescription}
             </div>
           </div>
-          <span className="self-start rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-mono font-semibold uppercase tracking-wide text-primary">
+          <span
+            className="inline-flex self-start items-center gap-1.5 text-xs font-medium text-primary"
+            data-calendar-sharing-status
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
             {t.settings.calendarGroupingShared}
           </span>
         </div>
@@ -127,14 +136,20 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 break-words font-heading font-semibold text-base text-text">{map.name}</div>
-                    <span className="shrink-0 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    <span
+                      className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
+                      data-calendar-map-type
+                    >
                       {map.map_type === 'indoor'
                         ? t.settings.calendarGroupingIndoor
                         : t.settings.calendarGroupingOutdoor}
                     </span>
                   </div>
 
-                  <div className="mt-3 text-[10px] font-mono font-semibold uppercase tracking-wide text-text-muted">
+                  <div
+                    className="mt-3 text-xs font-medium text-text-muted"
+                    data-calendar-quick-setup
+                  >
                     {t.settings.calendarGroupingQuickSetup}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1.5">

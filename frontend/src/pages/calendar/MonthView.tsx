@@ -19,13 +19,12 @@ import type { CalendarViewMode } from './calendarViewModel'
 import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
-  viewMode: CalendarViewMode
   onSetView(v: CalendarViewMode): void
   env: string
   environmentFilter: ReactNode
 }
 
-export default function MonthView({ viewMode, onSetView, env, environmentFilter }: Props) {
+export default function MonthView({ onSetView, env, environmentFilter }: Props) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
@@ -91,8 +90,8 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   return (
     <>
       <CalendarMasthead
-        year={year} month1={month1} todayDay={now.getDate()} viewMode={viewMode}
-        onPrev={prev} onNext={next} onSetView={onSetView}
+        year={year} month1={month1} todayDay={now.getDate()}
+        onPrev={prev} onNext={next}
         plannedCount={workload.planned} openCount={workload.open}
         environmentFilter={environmentFilter}
       />

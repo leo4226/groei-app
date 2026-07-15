@@ -61,14 +61,15 @@ function EnvironmentFilter({
   )
 }
 
-function StandaloneToggle({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
+function CalendarViewNavigation({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
+  const t = useT()
+
   return (
-    <div className="standalone-toggle-container" style={{
-      width: 'min(100%, 1800px)', margin: '0 auto', padding: 'max(clamp(16px, 4vw, 48px), env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0',
-      display: 'flex', justifyContent: 'flex-end',
-    }}>
-      <CalendarViewToggle view={view} onSet={onSet} />
-    </div>
+    <nav className="calendar-view-navigation" data-calendar-view-navigation aria-label={t.calendar.heading}>
+      <div className="calendar-view-navigation-inner">
+        <CalendarViewToggle view={view} onSet={onSet} />
+      </div>
+    </nav>
   )
 }
 
@@ -80,22 +81,19 @@ export default function PlanningCalendarPage() {
 
   return (
     <div className="cal-page">
+      <CalendarViewNavigation view={view} onSet={setView} />
       {view === 'month' ? (
         <MonthView
-          viewMode={view}
           onSetView={setView}
           env={env}
           environmentFilter={environmentFilter}
         />
       ) : (
-        <>
-          <StandaloneToggle view={view} onSet={setView} />
-          {view === 'work' ? (
-            <WorkAgendaView env={env} environmentFilter={environmentFilter} />
-          ) : (
-            <PhenologyView />
-          )}
-        </>
+        view === 'work' ? (
+          <WorkAgendaView env={env} environmentFilter={environmentFilter} />
+        ) : (
+          <PhenologyView />
+        )
       )}
     </div>
   )
