@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LanguageProvider } from '../../context/LanguageContext'
-import { careRhythm } from '../../api/client'
+import { careRhythm, type CareRhythmPreview } from '../../api/client'
 import CareRhythmSettings from './CareRhythmSettings'
 
 vi.mock('../../api/client', () => ({
@@ -31,7 +31,7 @@ const settings = {
   ],
 }
 
-function makePreview(hash: string) {
+function makePreview(hash: string): CareRhythmPreview {
   return {
     config: structuredClone(settings.config),
     preview_hash: hash,
@@ -241,5 +241,60 @@ describe('CareRhythmSettings', () => {
     for (const map of maps) {
       expect(buttonWithText(map as HTMLElement, 'Override').disabled).toBe(true)
     }
+  })
+
+  it('distinguishes schedules already aligned with a preferred day from schedules without a routine', async () => {
+    const preview = makePreview('hash-labels')
+    preview.items = [
+      {
+        ...preview.items[0],
+        schedule_id: 12,
+        plant_name: 'Aligned rose',
+        old_date: '2026-07-20',
+        new_date: '2026-07-20',
+        movement_days: 0,
+        status: 'unchanged',
+        reason: 'aligned',
+      },
+      {
+        ...preview.items[1],
+        schedule_id: 13,
+        plant_name: 'Unscheduled fern',
+        status: 'exception',
+        reason: 'no_routine',
+      },
+    ]
+    vi.mocked(careRhythm.preview).mockResolvedValue(preview)
+
+    await renderSettings()
+    await act(async () => {
+      buttonWithText(container, 'Organize watering').click()
+      await flush()
+    })
+
+    expect(container.textContent).toContain('Already on a preferred day')
+    expect(container.textContent).toContain('No routine selected')
+  })
+
+  it('renders the aligned reason in Dutch', async () => {
+    localStorage.setItem('floreren_lang', 'nl')
+    const preview = makePreview('hash-aligned-nl')
+    preview.items = [{
+      ...preview.items[0],
+      old_date: '2026-07-20',
+      new_date: '2026-07-20',
+      movement_days: 0,
+      status: 'unchanged',
+      reason: 'aligned',
+    }]
+    vi.mocked(careRhythm.preview).mockResolvedValue(preview)
+
+    await renderSettings()
+    await act(async () => {
+      buttonWithText(container, 'Water geven organiseren').click()
+      await flush()
+    })
+
+    expect(container.textContent).toContain('Valt al op een voorkeursdag')
   })
 })

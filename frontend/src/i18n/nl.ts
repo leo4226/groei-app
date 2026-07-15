@@ -413,6 +413,7 @@ export const nl: Translations = {
     careRhythmUndoConflict: 'Ongedaan maken is niet meer veilig omdat een schema later is gewijzigd.',
     careRhythmClose: 'Sluiten',
     careRhythmReasonMoved: 'Eén dag eerder',
+    careRhythmReasonAligned: 'Valt al op een voorkeursdag',
     careRhythmReasonOutside: 'Buiten het venster van één dag',
     careRhythmReasonOptedOut: 'Gebruikt een eigen schema',
     careRhythmReasonNotFuture: 'Vandaag nodig of achterstallig',

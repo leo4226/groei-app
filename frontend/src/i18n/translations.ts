@@ -359,6 +359,7 @@ export type Translations = {
     careRhythmUndoConflict: string
     careRhythmClose: string
     careRhythmReasonMoved: string
+    careRhythmReasonAligned: string
     careRhythmReasonOutside: string
     careRhythmReasonOptedOut: string
     careRhythmReasonNotFuture: string
