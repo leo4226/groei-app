@@ -11,7 +11,7 @@ import { resolvePlantDropPersistenceAction } from '../components/map/plantDropPe
 type DragItem = { type: 'plant'; id: number } | { type: 'container'; id: number }
 
 export interface UseMapInteractionConfig {
-  svgRef: React.RefObject<SVGSVGElement>
+  svgRef: React.RefObject<SVGSVGElement | null>
   plants: MapPlant[]
   objects: MapObject[]
   soilGroundZones: GroundZone[]
