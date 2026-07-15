@@ -1,12 +1,40 @@
-"""Server-side grouped outdoor care operations with reversible schedule snapshots."""
+"""Server-side grouped map care operations with reversible schedule snapshots."""
 from datetime import date, datetime
 
+from services.calendar_grouping import get_calendar_grouping_preferences
+from services.db_transactions import database_transaction, for_update_clause
 from services.scheduling import calculate_next_due
+
+
+class GardenCareUndoConflict(Exception):
+    """The grouped operation no longer owns the schedules it would restore."""
+
+
+def _comparable_db_value(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat(sep=" ")
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
 
 
 async def complete_outdoor_care(
     db, *, household_id: int, care_type: str, completed_at: date, user_id: int, map_id: int,
 ) -> dict:
+    preferences = await get_calendar_grouping_preferences(db, household_id)
+    configured_types = next(
+        (
+            set(rule["care_types"])
+            for rule in preferences["rules"]
+            if rule["map_id"] == map_id
+        ),
+        set(),
+    )
+    if care_type not in configured_types:
+        return {"operation_id": None, "affected_count": 0}
+
     user_rows = await db.execute_fetchall(
         "SELECT id FROM users WHERE id = ? AND household_id = ?",
         (user_id, household_id),
@@ -14,20 +42,20 @@ async def complete_outdoor_care(
     if not user_rows:
         return {"operation_id": None, "affected_count": 0}
 
-    schedules = await db.execute_fetchall(
-        """SELECT cs.id, cs.plant_id, cs.interval_days, cs.season_adjust,
-                  cs.next_due, cs.last_done, cs.last_done_by
-           FROM care_schedules cs
-           JOIN plants p ON p.id = cs.plant_id
-           JOIN maps m ON m.id = p.map_id
-           WHERE p.household_id = ? AND p.is_active = 1 AND cs.is_active = 1
-             AND cs.care_type = ? AND m.id = ? AND COALESCE(m.map_type, 'outdoor') <> 'indoor'""",
-        (household_id, care_type, map_id),
-    )
-    if not schedules:
-        return {"operation_id": None, "affected_count": 0}
+    async with database_transaction(db):
+        schedules = await db.execute_fetchall(
+            """SELECT cs.id, cs.plant_id, cs.interval_days, cs.season_adjust,
+                      cs.next_due, cs.last_done, cs.last_done_by
+               FROM care_schedules cs
+               JOIN plants p ON p.id = cs.plant_id
+               JOIN maps m ON m.id = p.map_id
+               WHERE p.household_id = ? AND p.is_active = 1 AND cs.is_active = 1
+                 AND cs.care_type = ? AND m.id = ?""" + for_update_clause(db),
+            (household_id, care_type, map_id),
+        )
+        if not schedules:
+            return {"operation_id": None, "affected_count": 0}
 
-    try:
         operation = await db.execute_fetchall(
             """INSERT INTO garden_care_operations
                (household_id, care_type, map_id, completed_at, completed_by)
@@ -49,11 +77,13 @@ async def complete_outdoor_care(
             await db.execute(
                 """INSERT INTO garden_care_operation_members
                    (operation_id, schedule_id, previous_next_due, previous_last_done,
-                    previous_last_done_by, care_log_id)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                    previous_last_done_by, care_log_id, applied_next_due,
+                    applied_last_done)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     operation_id, schedule["id"], schedule["next_due"],
                     schedule.get("last_done"), schedule.get("last_done_by"), log[0]["id"],
+                    next_due, done_at,
                 ),
             )
             await db.execute(
@@ -61,42 +91,72 @@ async def complete_outdoor_care(
                    WHERE id = ?""",
                 (done_at, user_id, next_due, schedule["id"]),
             )
-        await db.commit()
-    except Exception:
-        await db.rollback()
-        raise
 
     return {"operation_id": operation_id, "affected_count": len(schedules)}
 
 
 async def undo_outdoor_care(db, *, household_id: int, operation_id: int) -> bool:
-    operations = await db.execute_fetchall(
-        """SELECT id FROM garden_care_operations
-           WHERE id = ? AND household_id = ? AND undone_at IS NULL""",
-        (operation_id, household_id),
-    )
-    if not operations:
-        return False
-    members = await db.execute_fetchall(
-        """SELECT schedule_id, previous_next_due, previous_last_done,
-                  previous_last_done_by, care_log_id
-           FROM garden_care_operation_members WHERE operation_id = ?""",
-        (operation_id,),
-    )
-    for member in members:
-        await db.execute(
-            """UPDATE care_schedules SET next_due = ?, last_done = ?, last_done_by = ?
-               WHERE id = ?""",
-            (
-                member["previous_next_due"], member.get("previous_last_done"),
-                member.get("previous_last_done_by"), member["schedule_id"],
-            ),
+    async with database_transaction(db):
+        operations = await db.execute_fetchall(
+            """SELECT id, completed_by FROM garden_care_operations
+               WHERE id = ? AND household_id = ? AND undone_at IS NULL"""
+            + for_update_clause(db),
+            (operation_id, household_id),
         )
-        if member.get("care_log_id"):
-            await db.execute("DELETE FROM care_log WHERE id = ?", (member["care_log_id"],))
-    await db.execute(
-        "UPDATE garden_care_operations SET undone_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (operation_id,),
-    )
-    await db.commit()
+        if not operations:
+            return False
+        members = await db.execute_fetchall(
+            """SELECT gom.schedule_id, gom.previous_next_due,
+                      gom.previous_last_done, gom.previous_last_done_by,
+                      gom.care_log_id, gom.applied_next_due,
+                      gom.applied_last_done, cs.next_due AS current_next_due,
+                      cs.last_done AS current_last_done,
+                      cs.last_done_by AS current_last_done_by,
+                      cs.plant_id, cs.care_type
+               FROM garden_care_operation_members gom
+               JOIN care_schedules cs ON cs.id = gom.schedule_id
+               WHERE gom.operation_id = ?""" + for_update_clause(db),
+            (operation_id,),
+        )
+
+        completed_by = operations[0]["completed_by"]
+        for member in members:
+            newer_logs = await db.execute_fetchall(
+                """SELECT id FROM care_log
+                   WHERE plant_id = ? AND care_type = ? AND id > ?
+                   ORDER BY id LIMIT 1""" + for_update_clause(db),
+                (member["plant_id"], member["care_type"], member["care_log_id"]),
+            )
+            applied_matches = (
+                member.get("applied_next_due") is not None
+                and member.get("applied_last_done") is not None
+                and _comparable_db_value(member["current_next_due"])
+                == _comparable_db_value(member["applied_next_due"])
+                and _comparable_db_value(member["current_last_done"])
+                == _comparable_db_value(member["applied_last_done"])
+                and member.get("current_last_done_by") == completed_by
+            )
+            if newer_logs or not applied_matches:
+                raise GardenCareUndoConflict
+
+        for member in members:
+            await db.execute(
+                """UPDATE care_schedules SET next_due = ?, last_done = ?, last_done_by = ?
+                   WHERE id = ?""",
+                (
+                    member["previous_next_due"], member.get("previous_last_done"),
+                    member.get("previous_last_done_by"), member["schedule_id"],
+                ),
+            )
+            if member.get("care_log_id"):
+                await db.execute(
+                    """UPDATE garden_care_operation_members SET care_log_id = NULL
+                       WHERE operation_id = ? AND schedule_id = ?""",
+                    (operation_id, member["schedule_id"]),
+                )
+                await db.execute("DELETE FROM care_log WHERE id = ?", (member["care_log_id"],))
+        await db.execute(
+            "UPDATE garden_care_operations SET undone_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (operation_id,),
+        )
     return True

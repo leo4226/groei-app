@@ -168,6 +168,7 @@ async def update_calendar_grouping(
     return await save_calendar_grouping_preferences(
         db,
         household_id=current["household_id"],
+        rules=[rule.model_dump() for rule in body.rules] if body.rules is not None else None,
         care_types=body.care_types,
         map_ids=body.map_ids,
     )

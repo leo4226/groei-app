@@ -60,14 +60,15 @@ def _generate_occurrences(
 
 
 def _group_outdoor_events(
-    events: list[CalendarEventOut], *, care_types: set[str], map_ids: set[int],
+    events: list[CalendarEventOut], *, rules: dict[int, set[str]],
 ) -> list[CalendarEventOut]:
+    """Group configured map care; the legacy name is retained for compatibility."""
     grouped: dict[tuple[str, str, int], list[CalendarEventOut]] = {}
     retained: list[CalendarEventOut] = []
     for event in events:
         if (
-            event.map_id in map_ids
-            and event.type in care_types
+            event.map_id is not None
+            and event.type in rules.get(event.map_id, set())
             and not event.weather_triggered
         ):
             grouped.setdefault((event.date, event.type, event.map_id), []).append(event)
@@ -314,8 +315,10 @@ async def list_calendar_events(
     preferences = await get_calendar_grouping_preferences(db, account["household_id"])
     events = _group_outdoor_events(
         events,
-        care_types=set(preferences["care_types"]),
-        map_ids=set(preferences["map_ids"]),
+        rules={
+            rule["map_id"]: set(rule["care_types"])
+            for rule in preferences["rules"]
+        },
     )
 
     return events

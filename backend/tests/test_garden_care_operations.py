@@ -14,7 +14,9 @@ CREATE TABLE garden_care_operations (
 );
 CREATE TABLE garden_care_operation_members (
     operation_id INTEGER, schedule_id INTEGER, previous_next_due DATE,
-    previous_last_done TEXT, previous_last_done_by INTEGER, care_log_id INTEGER,
+    previous_last_done TEXT, previous_last_done_by INTEGER,
+    care_log_id INTEGER REFERENCES care_log(id),
+    applied_next_due DATE, applied_last_done TEXT,
     PRIMARY KEY (operation_id, schedule_id)
 );
 """
@@ -23,6 +25,7 @@ CREATE TABLE garden_care_operation_members (
 @pytest.mark.asyncio
 async def test_complete_and_undo_garden_care_only_changes_outdoor_schedules(client, seeded_db, auth_header):
     db = seeded_db
+    await db.execute('PRAGMA foreign_keys = ON')
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
         INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);

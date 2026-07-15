@@ -676,8 +676,33 @@ export interface HouseholdMember {
   created_at: string
 }
 
+export type CalendarGroupingCareType =
+  | 'water'
+  | 'fertilize'
+  | 'prune'
+  | 'repot'
+  | 'mist'
+  | 'rotate'
+  | 'pest_check'
+  | 'dust'
+
+export interface CalendarGroupingRule {
+  map_id: number
+  care_types: CalendarGroupingCareType[]
+}
+
+export interface CalendarGroupingMap {
+  id: number
+  name: string
+  map_type: 'outdoor' | 'indoor'
+  recurring_care_types: CalendarGroupingCareType[]
+  recommended_care_types: CalendarGroupingCareType[]
+}
+
 export interface CalendarGroupingPreferences {
-  care_types: Array<'water' | 'fertilize' | 'prune'>
+  rules: CalendarGroupingRule[]
+  maps: CalendarGroupingMap[]
+  care_types: CalendarGroupingCareType[]
   map_ids: number[]
   outdoor_maps: Array<{ id: number; name: string }>
 }
@@ -691,7 +716,7 @@ export const household = {
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
   rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
   calendarGrouping: ()                         => api<CalendarGroupingPreferences>('GET', '/household/calendar-grouping'),
-  updateCalendarGrouping: (data: Pick<CalendarGroupingPreferences, 'care_types' | 'map_ids'>) =>
+  updateCalendarGrouping: (data: { rules: CalendarGroupingRule[] }) =>
     api<CalendarGroupingPreferences>('PUT', '/household/calendar-grouping', { body: data }),
 }
 
