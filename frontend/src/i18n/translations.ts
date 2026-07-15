@@ -1187,6 +1187,8 @@ export type Translations = {
     moveOnePlantHint: string
     placeSpotHint: (name: string) => string
     sunNoGpsHint: string    // "Set garden location first to use sun features"
+    plantHitChooserTitle: string
+    plantHitChooserClose: string
   }
 
   garden: {

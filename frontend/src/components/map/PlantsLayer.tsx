@@ -5,8 +5,8 @@ import PlantMarker, { PLANT_LABEL_FONT_SIZE } from './PlantMarker'
 import { canStartPlantDrag, resolveDisplayedDragPosition } from './plantDragPermissions'
 import { useT } from '../../context/LanguageContext'
 import { plantDisplayName } from '../../utils/plantDisplayName'
-import { PX_PER_CM } from '../../utils/gardenStructures'
 import { placeLabels, LABEL_BELOW_OFFSET, LABEL_ABOVE_OFFSET, type LabelCandidate } from '../../utils/labelDeclutter'
+import { topLevelPlantIconRadius } from './plantMarkerGeometry'
 
 /** Label display mode (#454). 'off': no persistent labels (selected plant still
  *  labels on tap). 'smart' (default): #451 priority + #453 zoom gate — only
@@ -27,7 +27,6 @@ interface Props {
   /** Current map zoom — drives semantic zoom (fixed-screen-size text + a
    *  priority gate that reveals more names as you zoom in). */
   zoom?: number
-  onPlantTap: (plant: MapPlant) => void
   onPointerDown: (e: React.PointerEvent, plant: MapPlant) => void
   heatmapCells?: HeatmapCell[]
 }
@@ -39,7 +38,7 @@ const AVG_CHAR_WIDTH_RATIO = 0.55
 // a calm overview. At/above it, everything else is allowed to compete for space.
 const LABEL_DETAIL_ZOOM = 1.5
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, zoom = 1, onPlantTap, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, zoom = 1, onPointerDown, heatmapCells }: Props) {
   const t = useT()
 
   // 'off' hides persistent labels entirely (selected plant still labels on tap);
@@ -71,9 +70,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
       const pos = resolveDisplayedDragPosition(
         `plant-${plant.id}`, dragPositions, { x: plant.map_x, y: plant.map_y },
       )
-      const baseR = plant.display_radius_cm ? plant.display_radius_cm * PX_PER_CM : 14
-      const iconR0 = baseR * 0.85
-      const iconR = plant.is_locked ? Math.min(iconR0, 28) : iconR0
+      const iconR = topLevelPlantIconRadius(plant)
       const name = plantDisplayName(plant, t.locale)
       const isSel = selectedId === `plant-${plant.id}`
       // Priority so the labels that survive a crowded map are the useful ones:
@@ -122,7 +119,6 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             labelFontSize={effFont}
             showWarnings={showWarnings}
             displayName={plantDisplayName(plant, t.locale)}
-            onTap={onPlantTap}
             onPointerDown={onPointerDown}
             heatmapCells={heatmapCells}
           />

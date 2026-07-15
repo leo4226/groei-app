@@ -3,7 +3,6 @@ import { resolveIconUrl } from '../../utils/icons'
 
 interface Props {
   markers: SecondaryMarker[]
-  onTap?: (plantId: number) => void
 }
 
 /**
@@ -11,7 +10,7 @@ interface Props {
  * small dots (with a faint icon when available) that open the parent plant —
  * deliberately lighter than a full PlantMarker so a dense map stays calm.
  */
-export default function SecondaryMarkersLayer({ markers, onTap }: Props) {
+export default function SecondaryMarkersLayer({ markers }: Props) {
   if (markers.length === 0) return null
   const R = 9
   return (
@@ -21,9 +20,9 @@ export default function SecondaryMarkersLayer({ markers, onTap }: Props) {
         return (
           <g
             key={m.id}
+            data-map-plant-id={m.plant_id}
             transform={`translate(${m.map_x}, ${m.map_y})`}
-            onClick={(e) => { e.stopPropagation(); onTap?.(m.plant_id) }}
-            style={{ cursor: 'pointer' }}
+            style={{ pointerEvents: 'none' }}
           >
             {/* Tap target + dot background */}
             <circle r={R} fill="var(--color-surface, #fff)" stroke="var(--color-primary, #2f5d3a)" strokeWidth={1.5} opacity={0.95} />

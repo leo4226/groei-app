@@ -1184,6 +1184,8 @@ export const en: Translations = {
     moveOnePlantHint: 'Drag this plant to its new spot.',
     placeSpotHint: (name: string) => `Tap the map to add another spot for ${name}.`,
     sunNoGpsHint: 'Set the garden location first to use sun features',
+    plantHitChooserTitle: 'Which plant?',
+    plantHitChooserClose: 'Close plant chooser',
   },
 
   garden: {
