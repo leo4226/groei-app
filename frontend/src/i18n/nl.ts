@@ -1017,7 +1017,9 @@ export const nl: Translations = {
     seasonalMissing: (n) => n === 1
       ? '1 plant heeft deze maand geen seizoensgegevens'
       : `${n} planten hebben deze maand geen seizoensgegevens`,
+    seasonalMore: (n) => `+${n} meer`,
     seasonalGardenYear: 'Open Tuinjaar',
+    fieldNote: 'Veldnotitie',
     weatherContext: 'Weercontext',
     weatherRecommendedAction: 'Advies',
     weatherExplanationUnavailable: 'Weeruitleg niet beschikbaar',
@@ -1033,11 +1035,6 @@ export const nl: Translations = {
     filterDescAll: 'alle planten',
     filterDescGarden: 'buitenplanten',
     filterDescHouse: 'kamerplanten',
-    upcoming: '§ Op komst',
-    upcomingSubtitle: 'De komende dagen — gesorteerd op datum.',
-    upcomingTitlePrefix: 'Wat ',
-    upcomingTitleEm: 'komt',
-    silence: '— stilte —',
     moonPhase: '§ Maanstand',
     agendaSelectedDay: '§ Agenda — geselecteerde dag',
     noTasksRest: 'Geen taken — rust.',

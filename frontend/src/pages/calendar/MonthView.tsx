@@ -3,8 +3,6 @@ import CalendarMasthead from './CalendarMasthead'
 import CalendarLegend from './CalendarLegend'
 import CalendarGrid from './CalendarGrid'
 import CalendarAgendaCard from './CalendarAgendaCard'
-import CalendarAlmanac from './CalendarAlmanac'
-import CalendarUpcoming from './CalendarUpcoming'
 import MobileAgendaList from './MobileAgendaList'
 import MonthLoadState from './MonthLoadState'
 import MonthSeasonalPanel from './MonthSeasonalPanel'
@@ -142,8 +140,6 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
                   plants={seasonalPlants}
                   onOpenGardenYear={() => onSetView('year')}
                 />
-                <CalendarUpcoming todayIso={todayIso} events={filtered} />
-                <CalendarAlmanac month1={month1} />
               </aside>
             </main>
           )}

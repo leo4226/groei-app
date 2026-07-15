@@ -9,6 +9,8 @@ import {
   type SeasonalPlantSource,
 } from './seasonalMonthModel'
 
+const SEASONAL_PREVIEW_LIMIT = 3
+
 export interface SeasonalPanelPlant extends SeasonalPlantSource {
   name: string
   species?: string | null
@@ -46,22 +48,36 @@ export default function MonthSeasonalPanel({ month1, plants, onOpenGardenYear }:
       </div>
       <p className="seasonal-scope">{t.calendar.seasonalScope}</p>
       <div className="seasonal-groups">
-        {visibleGroups.map(group => (
-          <section className="seasonal-group" key={group.kind}>
-            <h3>{group.label}</h3>
-            <div className="seasonal-plant-list">
-              {summary.context[group.kind].map(entry => (
-                <Link
-                  className="seasonal-plant-link"
-                  key={`${group.kind}:${entry.plant.id}`}
-                  to={`/plants/${entry.plant.id}`}
-                >
-                  {plantDisplayName(entry.plant, t.locale)}
-                </Link>
-              ))}
-            </div>
-          </section>
-        ))}
+        {visibleGroups.map(group => {
+          const entries = summary.context[group.kind]
+          const remaining = entries.length - SEASONAL_PREVIEW_LIMIT
+          const remainingLabel = remaining > 0 ? t.calendar.seasonalMore(remaining) : null
+
+          return (
+            <section className="seasonal-group" key={group.kind}>
+              <h3>{group.label}</h3>
+              <div className="seasonal-plant-list">
+                {entries.slice(0, SEASONAL_PREVIEW_LIMIT).map(entry => (
+                  <Link
+                    className="seasonal-plant-link"
+                    key={`${group.kind}:${entry.plant.id}`}
+                    to={`/plants/${entry.plant.id}`}
+                  >
+                    {plantDisplayName(entry.plant, t.locale)}
+                  </Link>
+                ))}
+                {remainingLabel && (
+                  <span
+                    aria-label={[group.label, remainingLabel].join(' ')}
+                    className="seasonal-more"
+                  >
+                    {remainingLabel}
+                  </span>
+                )}
+              </div>
+            </section>
+          )
+        })}
       </div>
       {summary.noData.length > 0 && (
         <p className="seasonal-missing">{t.calendar.seasonalMissing(summary.noData.length)}</p>
