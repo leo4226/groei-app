@@ -7,6 +7,7 @@ import MobileAgendaList from './MobileAgendaList'
 import MonthLoadState from './MonthLoadState'
 import MonthSeasonalPanel from './MonthSeasonalPanel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
+import WateringRoundDialog from './WateringRoundDialog'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
@@ -46,15 +47,18 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
   const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
   const {
     actionError,
+    cancelWaterRound,
     clearCompletion,
     completion,
+    confirmWaterRound,
     doneIds,
     handleDone,
     handleGardenUndo,
     handleSkip,
+    pendingWaterRound,
     saving,
     undoMsg,
-  } = useCalendarActions(events, undefined, `${year}-${month1}|${env}|${selectedIso}`)
+  } = useCalendarActions(events, retry, `${year}-${month1}|${env}|${selectedIso}`)
 
   const isNarrow = useIsNarrow(1200)
 
@@ -144,6 +148,14 @@ export default function MonthView({ viewMode, onSetView, env, environmentFilter 
             </main>
           )}
         </>
+      )}
+      {pendingWaterRound && (
+        <WateringRoundDialog
+          event={pendingWaterRound}
+          saving={saving === pendingWaterRound.id}
+          onConfirm={confirmWaterRound}
+          onCancel={cancelWaterRound}
+        />
       )}
     </>
   )

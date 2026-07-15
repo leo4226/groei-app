@@ -6,6 +6,7 @@ import { useCalendarActions } from './useCalendarActions'
 import { useCalendarEventRange } from './useCalendarEvents'
 import { buildWorkAgenda } from './workAgendaModel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
+import WateringRoundDialog from './WateringRoundDialog'
 import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
@@ -32,12 +33,15 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
   )
   const {
     actionError,
+    cancelWaterRound,
     clearCompletion,
     completion,
+    confirmWaterRound,
     doneIds,
     handleDone,
     handleGardenUndo,
     handleSkip,
+    pendingWaterRound,
     saving,
     undoMsg,
   } = useCalendarActions(events, retry, env)
@@ -80,6 +84,14 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
           undoMsg={undoMsg}
           onGardenUndo={handleGardenUndo}
           actionError={actionError}
+        />
+      )}
+      {pendingWaterRound && (
+        <WateringRoundDialog
+          event={pendingWaterRound}
+          saving={saving === pendingWaterRound.id}
+          onConfirm={confirmWaterRound}
+          onCancel={cancelWaterRound}
         />
       )}
     </section>

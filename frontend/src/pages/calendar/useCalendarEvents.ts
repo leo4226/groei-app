@@ -3,6 +3,7 @@ import { calendar } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
 import type { CalendarEvent } from './calendarTypes'
 import { firstOfMonth, lastOfMonth } from './dateUtils'
+import { CARE_RHYTHM_CHANGED_EVENT } from '../../utils/careRhythmEvents'
 
 export function useCalendarEventRange(
   from: string,
@@ -23,6 +24,11 @@ export function useCalendarEventRange(
     [careVersions],
   )
   const retry = useCallback(() => setReloadVersion(version => version + 1), [])
+
+  useEffect(() => {
+    window.addEventListener(CARE_RHYTHM_CHANGED_EVENT, retry)
+    return () => window.removeEventListener(CARE_RHYTHM_CHANGED_EVENT, retry)
+  }, [retry])
 
   useEffect(() => {
     let cancelled = false

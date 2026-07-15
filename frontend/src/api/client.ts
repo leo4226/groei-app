@@ -527,9 +527,21 @@ export const icons = {
 }
 
 export const gardenCare = {
-  complete: (careType: string, userId: number, mapId: number, completedAt?: string) =>
+  complete: (
+    careType: string,
+    userId: number,
+    mapId: number,
+    completedAt?: string,
+    scheduleIds?: number[],
+  ) =>
       api<{ operation_id: number; care_type: string; completed_at: string; affected_count: number }>('POST', '/care/garden/complete', {
-        body: { care_type: careType, user_id: userId, map_id: mapId, completed_at: completedAt ?? null },
+        body: {
+          care_type: careType,
+          user_id: userId,
+          map_id: mapId,
+          completed_at: completedAt ?? null,
+          schedule_ids: scheduleIds,
+        },
     }),
   undo: (operationId: number) => api<{ ok: boolean }>('POST', `/care/garden/${operationId}/undo`),
 }
@@ -707,6 +719,77 @@ export interface CalendarGroupingPreferences {
   outdoor_maps: Array<{ id: number; name: string }>
 }
 
+export interface CareRhythmMapOverride {
+  map_id: number
+  weekdays: number[]
+}
+
+export interface CareRhythmConfig {
+  indoor_weekdays: number[]
+  outdoor_weekdays: number[]
+  map_overrides: CareRhythmMapOverride[]
+}
+
+export interface CareRhythmSettings {
+  saved: boolean
+  config: CareRhythmConfig
+  maps: Array<{ id: number; name: string; map_type: 'outdoor' | 'indoor' }>
+}
+
+export interface CareRhythmPreviewItem {
+  schedule_id: number
+  plant_id: number
+  plant_name: string
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
+  plant_icon_variant: string | null
+  map_id: number
+  map_name: string
+  map_type: 'outdoor' | 'indoor'
+  old_date: string
+  new_date: string
+  movement_days: number
+  status: 'moved' | 'unchanged' | 'exception'
+  reason: string
+}
+
+export interface CareRhythmSummary {
+  total: number
+  moved: number
+  unchanged: number
+  exceptions: number
+  group_count: number
+}
+
+export interface CareRhythmPreview {
+  config: CareRhythmConfig
+  preview_hash: string
+  items: CareRhythmPreviewItem[]
+  groups: Array<{
+    date: string
+    map_id: number
+    map_name: string
+    count: number
+    schedule_ids: number[]
+  }>
+  summary: CareRhythmSummary
+}
+
+export interface CareRhythmOperation {
+  operation_id: number
+  affected_count: number
+  preview_hash: string
+  summary: CareRhythmSummary
+}
+
+export interface CareRhythmOnboardingPreview {
+  available: boolean
+  baseline_date: string
+  proposed_date: string | null
+  movement_days: number
+  reason: string
+}
+
 export const household = {
   invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
   join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
@@ -718,6 +801,20 @@ export const household = {
   calendarGrouping: ()                         => api<CalendarGroupingPreferences>('GET', '/household/calendar-grouping'),
   updateCalendarGrouping: (data: { rules: CalendarGroupingRule[] }) =>
     api<CalendarGroupingPreferences>('PUT', '/household/calendar-grouping', { body: data }),
+}
+
+export const careRhythm = {
+  settings: () => api<CareRhythmSettings>('GET', '/household/care-rhythm'),
+  preview: (config: CareRhythmConfig) =>
+    api<CareRhythmPreview>('POST', '/care-rhythm/preview', { body: config }),
+  apply: (data: { config: CareRhythmConfig; preview_hash: string }) =>
+    api<CareRhythmOperation>('POST', '/care-rhythm/apply', { body: data }),
+  undo: (operationId: number) =>
+    api<{ ok: boolean }>('POST', `/care-rhythm/${operationId}/undo`),
+  onboardingPreview: (mapId: number, intervalDays: number) =>
+    api<CareRhythmOnboardingPreview>('POST', '/care-rhythm/onboarding-preview', {
+      body: { map_id: mapId, interval_days: intervalDays },
+    }),
 }
 
 export interface NotificationPrefs {

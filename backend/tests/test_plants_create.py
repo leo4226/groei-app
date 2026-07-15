@@ -70,6 +70,30 @@ async def test_create_plant_happy_path(client, db_ready, auth_header):
     assert str(water[0]["next_due"]) == date.today().isoformat()
 
 
+async def test_create_plant_preserves_confirmed_rhythm_date_and_opt_out(client, db_ready, auth_header):
+    proposed_date = "2026-07-20"
+    with patch("routers.plants.get_or_create_species", new=AsyncMock(return_value=None)), \
+         patch("routers.plants.generate_thresholds", new=AsyncMock(return_value={})):
+        resp = await client.post(
+            "/api/plants",
+            headers=auth_header,
+            json={
+                "name": "Rhythm plant",
+                "care_schedules": [{
+                    "care_type": "water",
+                    "interval_days": 7,
+                    "next_due": proposed_date,
+                    "rhythm_opt_out": True,
+                }],
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    water = await _schedules(db_ready, resp.json()["id"], "water")
+    assert str(water[0]["next_due"]) == proposed_date
+    assert water[0]["rhythm_opt_out"] == 1
+
+
 async def test_seeds_from_cached_species_thresholds(client, db_ready, auth_header):
     await db_ready.execute(
         "INSERT INTO plant_species (id, care_thresholds) VALUES (1, ?)",

@@ -213,20 +213,22 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             env_map_type = map_rows[0]["map_type"]
     environment = "indoor" if env_map_type == "indoor" else "outdoor_ground"
 
-    # Create care schedules — set next_due to today so tasks appear immediately.
+    # Create care schedules — default to today so tasks appear immediately.
+    # A separately confirmed onboarding rhythm proposal may provide next_due.
     # Skip care types that are invalid for this environment so outdoor plants
     # never auto-acquire rotate/mist (etc.) schedules.
     for sched in data.care_schedules:
         if not is_care_type_valid_for_env(sched.care_type, environment):
             continue
         from datetime import date as _date_today
-        next_due = _date_today.today()
+        next_due = sched.next_due or _date_today.today()
         await db.execute(
             """INSERT INTO care_schedules
-               (plant_id, care_type, interval_days, season_adjust, next_due, notes)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               (plant_id, care_type, interval_days, season_adjust, next_due, notes,
+                rhythm_opt_out)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (plant_id, sched.care_type, sched.interval_days,
-             sched.season_adjust, next_due, sched.notes),
+             sched.season_adjust, next_due, sched.notes, sched.rhythm_opt_out),
         )
 
     await db.commit()
@@ -464,7 +466,8 @@ async def _sync_care_schedules_in_transaction(
 
     rows = await db.execute_fetchall(
         """SELECT id, care_type, interval_days, season_adjust, notes,
-                  next_due, last_done, is_active, is_ephemeral
+                  next_due, last_done, is_active, is_ephemeral,
+                  rhythm_opt_out, rhythm_operation_id
            FROM care_schedules
            WHERE plant_id = ?
            ORDER BY is_active DESC, id DESC""",
@@ -484,13 +487,16 @@ async def _sync_care_schedules_in_transaction(
         candidates = existing_by_type.get(care_type, [])
         row = candidates[0] if candidates else None
         if row is None:
-            next_due = calculate_next_due(None, schedule.interval_days, schedule.season_adjust)
+            next_due = schedule.next_due or calculate_next_due(
+                None, schedule.interval_days, schedule.season_adjust,
+            )
             await db.execute(
                 """INSERT INTO care_schedules
-                   (plant_id, care_type, interval_days, season_adjust, next_due, notes, is_active)
-                   VALUES (?, ?, ?, ?, ?, ?, TRUE)""",
+                   (plant_id, care_type, interval_days, season_adjust, next_due, notes,
+                    rhythm_opt_out, is_active)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)""",
                 (plant_id, care_type, schedule.interval_days, schedule.season_adjust,
-                 next_due, schedule.notes),
+                 next_due, schedule.notes, schedule.rhythm_opt_out),
             )
             continue
 
@@ -507,7 +513,24 @@ async def _sync_care_schedules_in_transaction(
         interval_changed = row["interval_days"] != schedule.interval_days
         reactivated = not bool(row["is_active"])
         schedule_adjust_changed = row.get("season_adjust") != season_adjust
-        if interval_changed or reactivated or schedule_adjust_changed:
+        rhythm_opt_out = (
+            schedule.rhythm_opt_out
+            if "rhythm_opt_out" in schedule.model_fields_set
+            else bool(row.get("rhythm_opt_out"))
+        )
+        rhythm_changed = bool(row.get("rhythm_opt_out")) != rhythm_opt_out
+        explicit_due_changed = (
+            "next_due" in schedule.model_fields_set
+            and schedule.next_due is not None
+            and _date.fromisoformat(str(row["next_due"])) != schedule.next_due
+        )
+        authority_changed = (
+            interval_changed or reactivated or schedule_adjust_changed
+            or rhythm_changed or explicit_due_changed
+        )
+        if schedule.next_due is not None and "next_due" in schedule.model_fields_set:
+            next_due = schedule.next_due
+        elif interval_changed or reactivated or schedule_adjust_changed:
             next_due = calculate_next_due(
                 _care_schedule_anchor(row.get("last_done")),
                 schedule.interval_days,
@@ -518,15 +541,19 @@ async def _sync_care_schedules_in_transaction(
         await db.execute(
             """UPDATE care_schedules
                SET care_type = ?, interval_days = ?, season_adjust = ?, notes = ?,
-                   next_due = ?, is_active = TRUE
+                   next_due = ?, rhythm_opt_out = ?, rhythm_operation_id = ?,
+                   is_active = TRUE
                WHERE id = ?""",
             (care_type, schedule.interval_days, season_adjust, notes,
-             next_due, row["id"]),
+             next_due, rhythm_opt_out,
+             None if authority_changed else row.get("rhythm_operation_id"), row["id"]),
         )
         for duplicate in candidates[1:]:
             if bool(duplicate["is_active"]):
                 await db.execute(
-                    "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                    """UPDATE care_schedules
+                       SET is_active = FALSE, rhythm_operation_id = NULL
+                       WHERE id = ?""",
                     (duplicate["id"],),
                 )
 
@@ -537,7 +564,9 @@ async def _sync_care_schedules_in_transaction(
         for row in existing_rows:
             if bool(row["is_active"]):
                 await db.execute(
-                    "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                    """UPDATE care_schedules
+                       SET is_active = FALSE, rhythm_operation_id = NULL
+                       WHERE id = ?""",
                     (row["id"],),
                 )
 

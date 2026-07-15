@@ -327,6 +327,42 @@ export type Translations = {
     calendarGroupingNone: string
     calendarGroupingNoMaps: string
     calendarGroupingSaveError: string
+    careRhythmTitle: string
+    careRhythmDescription: string
+    careRhythmProposed: string
+    careRhythmSaved: string
+    careRhythmOrganize: string
+    careRhythmChange: string
+    careRhythmSafety: string
+    careRhythmIndoorDays: string
+    careRhythmOutdoorDays: string
+    careRhythmPreferredDays: string
+    careRhythmNoPreferredDays: string
+    careRhythmInherit: string
+    careRhythmOverride: string
+    careRhythmWeekdays: [string, string, string, string, string, string, string]
+    careRhythmPreviewTitle: string
+    careRhythmMovedCount: (count: number) => string
+    careRhythmUnchangedCount: (count: number) => string
+    careRhythmExceptionCount: (count: number) => string
+    careRhythmGroupCount: (count: number) => string
+    careRhythmApply: string
+    careRhythmApplying: string
+    careRhythmUndo: string
+    careRhythmUndoing: string
+    careRhythmApplied: (count: number) => string
+    careRhythmNoSchedules: string
+    careRhythmLoadError: string
+    careRhythmPreviewError: string
+    careRhythmApplyError: string
+    careRhythmStaleError: string
+    careRhythmUndoConflict: string
+    careRhythmClose: string
+    careRhythmReasonMoved: string
+    careRhythmReasonOutside: string
+    careRhythmReasonOptedOut: string
+    careRhythmReasonNotFuture: string
+    careRhythmReasonNoRoutine: string
     digestTitle: string
     digestToggle: string
     digestToggleDesc: string
@@ -755,6 +791,9 @@ export type Translations = {
     secCareSubtitle: string
     labelWatering: string
     labelWateringDesc: string
+    careRhythmJoin: string
+    careRhythmProposal: (date: string) => string
+    careRhythmAccept: string
     labelVolume: string
     labelVolumeDesc: string
     volumeUnit: string
@@ -948,6 +987,8 @@ export type Translations = {
     careScheduleDesc: string  // "How often does this plant need care?"
     everyLabel: string        // "every"
     daysLabel: string         // "days"
+    careRhythmLabel: string
+    careRhythmDescription: string
     submitting: string        // "Adding..."
     // Sun requirement profile labels
     sunFull: string          // "Full sun"
@@ -1018,6 +1059,13 @@ export type Translations = {
     completedGroup: string  // "Watered and aligned"
     affectedPlants: (n: number) => string  // "3 affected plants"
     sessionLoad: (n: number) => string  // "3 sessions"
+    wateringRoundTitle: string
+    wateringRoundDescription: string
+    wateringRoundSelectAll: string
+    wateringRoundSelectNone: string
+    wateringRoundCancel: string
+    wateringRoundConfirm: (n: number) => string
+    wateringRoundSelectAtLeastOne: string
     // Moon short labels
     newMoon: string  // "new"
     fullMoon: string  // "full"

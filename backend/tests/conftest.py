@@ -108,7 +108,9 @@ SCHEMA = """
         created_at TEXT,
         is_ephemeral INTEGER DEFAULT 0,
         notified_for_due DATE,
-        snoozed_until TIMESTAMP
+        snoozed_until TIMESTAMP,
+        rhythm_opt_out INTEGER DEFAULT 0,
+        rhythm_operation_id INTEGER
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,

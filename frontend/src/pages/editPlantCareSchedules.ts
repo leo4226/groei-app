@@ -7,7 +7,11 @@ export const EDITABLE_CARE_TYPES = [
 
 export type EditableCareType = (typeof EDITABLE_CARE_TYPES)[number]
 export type CareEnvironment = 'indoor' | 'outdoor_container' | 'outdoor_ground'
-export type ScheduleEditorEntry = { enabled: boolean; days: number }
+export type ScheduleEditorEntry = {
+  enabled: boolean
+  days: number
+  rhythmEnabled: boolean
+}
 export type ScheduleEditorState = Record<EditableCareType, ScheduleEditorEntry>
 
 const DEFAULT_INTERVALS: Record<EditableCareType, Record<CareEnvironment, number | null>> = {
@@ -50,6 +54,7 @@ export function buildScheduleEditorState(
     return [type, {
       enabled: Boolean(persisted),
       days: persisted?.interval_days ?? fallback,
+      rhythmEnabled: !persisted?.rhythm_opt_out,
     }]
   })) as ScheduleEditorState
 }
@@ -63,5 +68,6 @@ export function buildCareScheduleSyncPayload(
     .map(type => ({
       care_type: type,
       interval_days: Math.trunc(state[type].days),
+      ...(type === 'water' ? { rhythm_opt_out: !state[type].rhythmEnabled } : {}),
     }))
 }

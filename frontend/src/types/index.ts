@@ -24,6 +24,7 @@ export interface CareSchedule {
   last_done_by_name: string | null
   notes: string | null
   is_active: boolean
+  rhythm_opt_out?: boolean
 }
 
 export interface Plant {
@@ -120,6 +121,8 @@ export interface CareScheduleInput {
   interval_days: number
   season_adjust?: string
   notes?: string
+  next_due?: string
+  rhythm_opt_out?: boolean
 }
 
 export interface PlantCreateInput {

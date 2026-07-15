@@ -32,7 +32,7 @@ function replaceRule(
   return next
 }
 
-export default function CalendarGroupingSettings() {
+export default function CalendarGroupingSettings({ embedded = false }: { embedded?: boolean }) {
   const t = useT()
   const [preferences, setPreferences] = useState<CalendarGroupingPreferences | null>(null)
   const [saving, setSaving] = useState(false)
@@ -90,15 +90,8 @@ export default function CalendarGroupingSettings() {
     )))
   }
 
-  return (
-    <section aria-labelledby="care-planning-title">
-      <h2
-        id="care-planning-title"
-        className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
-      >
-        {t.settings.carePlanning}
-      </h2>
-      <div className="card p-4">
+  const content = (
+    <div className="card p-4">
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
           <div>
             <div className="font-semibold text-sm">{t.settings.carePlanningTitle}</div>
@@ -231,7 +224,20 @@ export default function CalendarGroupingSettings() {
             {t.settings.calendarGroupingSaveError}
           </div>
         )}
-      </div>
+    </div>
+  )
+
+  if (embedded) return content
+
+  return (
+    <section aria-labelledby="care-planning-title">
+      <h2
+        id="care-planning-title"
+        className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
+      >
+        {t.settings.carePlanning}
+      </h2>
+      {content}
     </section>
   )
 }
