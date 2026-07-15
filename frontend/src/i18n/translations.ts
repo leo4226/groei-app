@@ -284,6 +284,27 @@ export type Translations = {
         step3: { title: string; body: string }
       }
     }
+    wizard: {
+      shapeTitle: string
+      shapeSubtitle: string
+      shapeRectangle: string
+      shapeRectangleHint: string
+      shapeLshape: string
+      shapeLshapeHint: string
+      shapeBalcony: string
+      shapeBalconyHint: string
+      shapeCustom: string
+      shapeCustomHint: string
+      sizeTitle: string
+      sizeSubtitle: string
+      widthLabel: string
+      depthLabel: string
+      orientationTitle: string
+      orientationSubtitle: string
+      back: string
+      next: string
+      finish: string
+    }
   }
 
   photoJournal: {

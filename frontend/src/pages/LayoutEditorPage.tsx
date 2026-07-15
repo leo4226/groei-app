@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import * as client from '../api/client'
 import { useEditorState } from '../hooks/useEditorState'
-import type { CanvasData, MapInfo, MapObject, MapType } from '../types'
+import type { CanvasData, EditorZone, MapInfo, MapObject, MapType } from '../types'
 import EditorCanvas from '../components/editor/EditorCanvas'
 import EditorToolbar from '../components/editor/EditorToolbar'
 import EditorLegendPanel from '../components/editor/EditorLegendPanel'
@@ -13,8 +13,9 @@ import ObjectPropertiesPanel from '../components/editor/ObjectPropertiesPanel'
 import { useT } from '../context/LanguageContext'
 import Glyph from '../components/ui/Glyph'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
-import { useEditorTour, hasTourBeenSeen } from '../hooks/useEditorTour'
+import { useEditorTour, hasTourBeenSeen, markTourSeen } from '../hooks/useEditorTour'
 import EditorTour from '../components/editor/EditorTour'
+import StarterWizard, { type StarterWizardResult } from './editor/StarterWizard'
 import { useIsTouch } from '../hooks/useIsTouch'
 
 export default function LayoutEditorPage() {
@@ -33,6 +34,7 @@ export default function LayoutEditorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showMoreActions, setShowMoreActions] = useState(false)
   const [shadowMode, setShadowMode] = useState(false)
+  const [showWizard, setShowWizard] = useState(false)
 
   const editor = useEditorState()
   const isTouch = useIsTouch()
@@ -84,13 +86,66 @@ export default function LayoutEditorPage() {
     return () => { cancelled = true }
   }, [mapId])
 
-  // Auto-start tour on first open of an empty canvas
+  // First open of an empty map: outdoor maps get the starter wizard (#646),
+  // indoor maps keep the original auto-tour. Fires once per map.
+  const autoIntroRef = useRef<number | null>(null)
   useEffect(() => {
     if (loading || !mapId) return
-    if (editor.zones.length === 0 && !hasTourBeenSeen(mapId)) {
+    if (autoIntroRef.current === mapId) return
+    if (editor.zones.length > 0 || hasTourBeenSeen(mapId)) {
+      autoIntroRef.current = mapId
+      return
+    }
+    autoIntroRef.current = mapId
+    if (editor.mapType === 'outdoor') {
+      setShowWizard(true)
+    } else {
       tour.start()
     }
-  }, [loading, mapId])
+  }, [loading, mapId, editor.mapType])
+
+  // Wizard finished: seed the chosen template + persist the bearing, or fall
+  // back to the freehand + tour flow when the user picks "Draw my own".
+  const handleWizardComplete = useCallback(async (result: StarterWizardResult | null) => {
+    setShowWizard(false)
+    if (!mapId) return
+    if (!result) {
+      tour.start()   // blank canvas — the original intro tour
+      return
+    }
+    markTourSeen(mapId)   // the wizard was the intro; don't also auto-start the tour
+    const now = Date.now()
+    const zones: EditorZone[] = result.rects.map((r, i) => ({
+      id: `zone_${i + 1}_${now}`,
+      type: r.type,
+      shape: 'rect',
+      x: r.x,
+      y: r.y,
+      width: r.width,
+      height: r.height,
+      label: '',
+    }))
+    const canvasData: CanvasData = {
+      zones,
+      wallElements: [],
+      shadowCasters: [],
+      scale_px_per_m: result.scalePxPerM,
+      canvas_w: 680,
+      canvas_h: 680,
+      mapType: 'outdoor',
+    }
+    editor.loadCanvasData(canvasData)
+    try {
+      await client.maps.update(mapId, {
+        canvas_data: JSON.stringify(canvasData),
+        bearing: result.bearing,
+      })
+      setMap((prev) => (prev ? { ...prev, bearing: result.bearing } : prev))
+    } catch {
+      // Persist failed — the seeded outline is still in the editor and will be
+      // saved on exit; the bearing can be re-set from Map Settings if needed.
+    }
+  }, [mapId, editor.loadCanvasData, tour])
 
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
     setMapObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
@@ -655,6 +710,8 @@ export default function LayoutEditorPage() {
           </>
         )}
       </div>
+
+      {showWizard && <StarterWizard onComplete={handleWizardComplete} />}
 
       <EditorTour
         tour={tour}
