@@ -12,6 +12,20 @@ export interface PlantSunProfile {
 
 export type SunFit = 'good' | 'partial' | 'poor'
 
+export type SunHoursSource = 'measured' | 'estimated'
+
+// Resolves the sun-hours a plant's fit should be judged against. A manually
+// measured value (utils #645) wins over the modelled heatmap value at the
+// plant's position, and the caller can surface which source was used.
+export function effectiveSunHours(
+  measured: number | null | undefined,
+  modelled: number,
+): { sunHours: number; source: SunHoursSource } {
+  return measured != null
+    ? { sunHours: measured, source: 'measured' }
+    : { sunHours: modelled, source: 'estimated' }
+}
+
 export const SUN_FIT_COLORS: Record<SunFit, string> = {
   good:    '#5B9A6F',
   partial: '#D4A843',

@@ -71,6 +71,7 @@ SCHEMA = """
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         sun_requirement TEXT,
+        measured_sun_hours REAL,
         plant_type TEXT,
         icon_key TEXT,
         species_id INTEGER,

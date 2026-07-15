@@ -49,6 +49,8 @@ export interface Plant {
   created_at: string | null
   sown_date: string | null
   sun_requirement: string | null
+  /** Manual sun-fit override in hours of direct sun; null = use modelled heatmap value. */
+  measured_sun_hours: number | null
   plant_type: string | null
   icon_key: string | null
   icon_requested: boolean
@@ -286,6 +288,8 @@ export interface MapPlant {
   temp_status: 'comfortable' | 'chilling' | 'freezing' | 'heatstress'
   most_urgent: MostUrgent | null
   sun_requirement: string | null
+  /** Manual sun-fit override in hours of direct sun; null = use modelled heatmap value. */
+  measured_sun_hours: number | null
   plant_type: string | null
   icon_key: string | null
   species_id: number | null

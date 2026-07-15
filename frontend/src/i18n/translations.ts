@@ -561,6 +561,14 @@ export type Translations = {
     goodFit: string
     partialFit: string
     insufficientFit: string
+    sunHoursUnit: string
+    sunSourceMeasured: string
+    sunSourceEstimated: string
+    sunMeasureOpen: string
+    sunMeasureTitle: string
+    sunMeasureHint: string
+    sunMeasureClear: string
+    sunMeasureSave: string
     water: string
     fertilize: string
     editPlant: string
