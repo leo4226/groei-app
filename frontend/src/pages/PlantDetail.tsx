@@ -30,6 +30,25 @@ function Section({ id, title, children }: { id?: string; title: string; children
   )
 }
 
+/** Prev/next navigation arrow for the desktop masthead. */
+function NavArrow({ dir, plant, t, onClick }: {
+  dir: 'prev' | 'next'
+  plant: { id: number; name: string } | null
+  t: ReturnType<typeof useT>
+  onClick: () => void
+}) {
+  if (!plant) return <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border/30 text-text-muted/30" aria-hidden>…</span>
+  return (
+    <button
+      onClick={onClick}
+      title={`${dir === 'prev' ? t.plantDetail.prevPlant : t.plantDetail.nextPlant}: ${plant.name}`}
+      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
+    >
+      <Glyph name={dir === 'prev' ? 'arrow-left' : 'chevron-right'} size={18} aria-hidden />
+    </button>
+  )
+}
+
 const ALERT_BORDER: Record<string, string> = {
   urgent:  'border-l-fiery-red',
   warning: 'border-l-pumpkin-swirl',
@@ -156,6 +175,26 @@ export default function PlantDetail() {
   const { sunHours } = useSunAt(sunCoord, currentMonth, mapInfo)
   // 720px editorial-layout boundary (same split as Plants.tsx / PageMasthead)
   const isMobile = useIsMobile(720)
+
+  // ── Plant-to-plant navigation ──
+  const sortedPlants = useMemo(
+    () => [...plants].sort((a, b) => a.name.localeCompare(b.name)),
+    [plants],
+  )
+  const plantIndex = sortedPlants.findIndex(p => p.id === plantId)
+  const prevPlant = plantIndex > 0 ? sortedPlants[plantIndex - 1] : null
+  const nextPlant = plantIndex < sortedPlants.length - 1 ? sortedPlants[plantIndex + 1] : null
+  const navigateToPlant = (pid: number) => navigate(`/plants/${pid}`)
+
+  // Swipe gesture for mobile
+  const touchStartX = useRef(0)
+  const onTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(dx) < 60) return  // too short
+    if (dx > 0 && prevPlant) navigateToPlant(prevPlant.id)
+    else if (dx < 0 && nextPlant) navigateToPlant(nextPlant.id)
+  }
 
   useEffect(() => {
     // Use cached plant from store if available, else fetch directly
@@ -593,6 +632,8 @@ export default function PlantDetail() {
             stats={stats}
             actions={
               <>
+                <NavArrow dir="prev" plant={prevPlant} t={t} onClick={() => prevPlant && navigateToPlant(prevPlant.id)} />
+                <NavArrow dir="next" plant={nextPlant} t={t} onClick={() => nextPlant && navigateToPlant(nextPlant.id)} />
                 <button
                   onClick={() => navigate(-1)}
                   title={t.common.back}
@@ -728,12 +769,32 @@ export default function PlantDetail() {
     )
   }
 
-  // ── Mobile (<721px): unchanged layout ──
+  // ── Mobile (<721px): with prev/next arrows and swipe ──
   return (
-    <div className="pb-10">
+    <div className="pb-10" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Hero */}
       <div className="relative">
         {heroMedia('w-full h-52')}
+
+        {/* Prev/next arrows — flanking the hero image */}
+        {prevPlant && (
+          <button
+            onClick={() => navigateToPlant(prevPlant.id)}
+            title={t.plantDetail.prevPlant}
+            className="absolute top-1/2 -translate-y-1/2 left-2 w-8 h-8 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center text-text shadow"
+          >
+            <Glyph name="arrow-left" size={16} aria-hidden />
+          </button>
+        )}
+        {nextPlant && (
+          <button
+            onClick={() => navigateToPlant(nextPlant.id)}
+            title={t.plantDetail.nextPlant}
+            className="absolute top-1/2 -translate-y-1/2 right-2 w-8 h-8 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center text-text shadow"
+          >
+            <Glyph name="chevron-right" size={16} aria-hidden />
+          </button>
+        )}
 
         <button
           onClick={() => navigate(-1)}

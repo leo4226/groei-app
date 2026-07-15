@@ -647,6 +647,8 @@ export const en: Translations = {
     sunHoursUnit: 'h/day',
     speciesProfile: 'Species profile',
     gardenWeather: 'Garden weather',
+    prevPlant: 'Previous plant',
+    nextPlant: 'Next plant',
     fitGood: '✓ Good fit',
     fitPartial: '~ Partial',
     fitInsufficient: '⚠ Insufficient',

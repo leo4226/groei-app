@@ -610,6 +610,8 @@ export type Translations = {
     fitGood: string  // "✓ Good fit"
     fitPartial: string  // "~ Partial"
     fitInsufficient: string  // "⚠ Insufficient"
+    prevPlant: string  // "Previous plant" tooltip
+    nextPlant: string  // "Next plant" tooltip
   }
 
   ecology: {
