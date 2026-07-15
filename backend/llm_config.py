@@ -23,4 +23,4 @@ except ImportError:
 
 LLM_API_KEY = os.getenv("NOUS_API_KEY") or ""
 LLM_CHAT_URL = os.getenv("LLM_CHAT_URL") or "https://inference-api.nousresearch.com/v1/chat/completions"
-LLM_MODEL = os.getenv("LLM_MODEL") or "deepseek/deepseek-v4-flash"
+LLM_MODEL = os.getenv("LLM_MODEL") or "deepseek/deepseek-v4-pro"
