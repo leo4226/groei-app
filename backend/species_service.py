@@ -529,6 +529,20 @@ def _normalise_fact_payload(payload) -> dict[str, str]:
     return {"fact_nl": fact_nl, "fact_en": fact_en}
 
 
+def _extract_fact_json_from_reasoning(reasoning: str) -> str:
+    """Pull the last JSON object containing fact keys from reasoning text.
+
+    Reasoning models (DeepSeek V4 Pro, o1, etc.) embed the final answer inside
+    their reasoning block when `content` is null.  Search backwards for the
+    JSON block that looks like a fact response.
+    """
+    import re  # noqa: PLC0415 — never imported at module level
+    matches = list(re.finditer(r'\{[^{}]*"fact_nl"\s*:\s*"[^"]*"[^{}]*\}', reasoning))
+    if matches:
+        return matches[-1].group()
+    raise ValueError("No usable fact JSON found in reasoning text")
+
+
 async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> dict[str, str]:
     name = plant_name
     if latin_name:
@@ -543,13 +557,22 @@ async def generate_fact_for_species(plant_name: str, latin_name: str | None = No
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 500,
+                # DeepSeek V4 Pro consumes reasoning tokens out of max_tokens
+                # before populating `content`. 500 is not enough for a
+                # bilingual fact prompt; 4000 gives reasoning room to breathe.
+                "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
         resp.raise_for_status()
         body = resp.json()
-        raw = body["choices"][0]["message"]["content"]
+        msg = body["choices"][0]["message"]
+        raw = msg.get("content") or ""
+        # Reasoning models (V4 Pro, o1, etc.) can leave `content` null when
+        # max_tokens runs out; the full response (reasoning + final answer)
+        # then lives in `reasoning`. Try that as a fallback.
+        if not raw.strip() and msg.get("reasoning"):
+            raw = _extract_fact_json_from_reasoning(msg["reasoning"])
 
     cleaned = _strip_json_response(raw)
     try:
@@ -584,7 +607,7 @@ async def _generate_fact_with_retries(
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
-            return _normalise_fact_payload(await generate_fact_for_species(plant_name, latin_name))
+            return await generate_fact_for_species(plant_name, latin_name)
         except Exception as exc:  # noqa: BLE001 - caller returns structured skip detail
             last_error = exc
             if attempt < attempts - 1:
