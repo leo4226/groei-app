@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import date as _date, datetime as _datetime, timedelta as _timedelta
@@ -19,6 +20,7 @@ from threshold_service import generate_thresholds
 from services.deferred import fire_and_forget
 
 router = APIRouter(tags=["plants"])
+logger = logging.getLogger(__name__)
 
 
 async def _generate_thresholds_deferred(
@@ -339,7 +341,14 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
 
     plant = dict(row)
     species_lookup_name = plant.get("species") or plant["name"]
-    species_id = await get_or_create_species(db, species_lookup_name)
+    try:
+        species_id = await get_or_create_species(db, species_lookup_name)
+    except Exception:
+        logger.exception(
+            "Species lookup retry failed for plant_id=%s",
+            plant_id,
+        )
+        raise HTTPException(status_code=503, detail="species_generation_unavailable")
     await db.execute(
         "UPDATE plants SET species_id = ? WHERE id = ?",
         (species_id, plant_id),
@@ -348,12 +357,18 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
 
     # get_or_create_species reuses an existing species row as-is, so a plant
     # linked to a species with incomplete phenology (no month calendar) would
-    # otherwise stay broken. Force a regeneration in that case (best-effort).
+    # otherwise stay broken. An explicit retry must surface a failed generation
+    # instead of returning a misleading 200 with the same incomplete data.
     if species_id is not None:
         try:
             await regenerate_species_phenology(db, species_id, species_lookup_name)
-        except Exception as exc:  # noqa: BLE001 — never fail the retry on LLM hiccups
-            print(f"Warning: could not regenerate phenology for {plant['name']}: {exc}")
+        except Exception:
+            logger.exception(
+                "Species calendar retry failed for plant_id=%s species_id=%s",
+                plant_id,
+                species_id,
+            )
+            raise HTTPException(status_code=503, detail="species_generation_unavailable")
 
     # If thresholds are still missing, retry those too
     if not plant.get("care_thresholds"):
@@ -369,7 +384,16 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
         except Exception as exc:
             print(f"Warning: could not regenerate thresholds for {plant['name']}: {exc}")
 
-    return await get_plant(plant_id, db=db, account=account)
+    result = await get_plant(plant_id, db=db, account=account)
+    phenology = result.get("phenology")
+    if not isinstance(phenology, dict) or not phenology.get("months"):
+        logger.warning(
+            "Species calendar retry produced no usable months for plant_id=%s species_id=%s",
+            plant_id,
+            species_id,
+        )
+        raise HTTPException(status_code=503, detail="species_generation_unavailable")
+    return result
 
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)

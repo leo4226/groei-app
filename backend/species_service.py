@@ -11,6 +11,7 @@ from services.deferred import fire_and_forget
 logger = logging.getLogger(__name__)
 
 _token_usage = {"input": 0, "output": 0}
+_PHENOLOGY_RETRY_DELAY_SECONDS = 1
 
 def get_token_usage() -> dict:
     return dict(_token_usage)
@@ -220,10 +221,19 @@ async def regenerate_species_phenology(
     if not lookup_name:
         return False
 
-    try:
-        data = await _generate_species(lookup_name)
-    except Exception:
-        return False
+    for attempt in range(2):
+        try:
+            data = await _generate_species(lookup_name)
+            break
+        except (httpx.TransportError, json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            if attempt == 1:
+                raise
+            logger.warning(
+                "Phenology generation failed for species_id=%s; retrying once (%s)",
+                species_id,
+                type(exc).__name__,
+            )
+            await asyncio.sleep(_PHENOLOGY_RETRY_DELAY_SECONDS)
     phen = data.get("phenology") or data
     if not isinstance(phen, dict) or not phen.get("months"):
         return False  # generation didn't yield a usable calendar; keep as-is
