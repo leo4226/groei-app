@@ -20,6 +20,7 @@ import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
+import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -186,14 +187,19 @@ export default function PlantDetail() {
   const nextPlant = plantIndex < sortedPlants.length - 1 ? sortedPlants[plantIndex + 1] : null
   const navigateToPlant = (pid: number) => navigate(`/plants/${pid}`)
 
-  // Swipe gesture for mobile
-  const touchStartX = useRef(0)
-  const onTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    if (Math.abs(dx) < 60) return  // too short
-    if (dx > 0 && prevPlant) navigateToPlant(prevPlant.id)
-    else if (dx < 0 && nextPlant) navigateToPlant(nextPlant.id)
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const onHeroTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    swipeStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+  const onHeroTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start) return
+    const touch = e.changedTouches[0]
+    const direction = plantPassportSwipeDirection(start.x, start.y, touch.clientX, touch.clientY)
+    if (direction === 'prev' && prevPlant) navigateToPlant(prevPlant.id)
+    if (direction === 'next' && nextPlant) navigateToPlant(nextPlant.id)
   }
 
   useEffect(() => {
@@ -771,9 +777,9 @@ export default function PlantDetail() {
 
   // ── Mobile (<721px): with prev/next arrows and swipe ──
   return (
-    <div className="pb-10" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="pb-10">
       {/* Hero */}
-      <div className="relative">
+      <div className="relative" onTouchStart={onHeroTouchStart} onTouchEnd={onHeroTouchEnd}>
         {heroMedia('w-full h-52')}
 
         {/* Prev/next arrows — flanking the hero image */}
