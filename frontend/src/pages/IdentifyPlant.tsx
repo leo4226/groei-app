@@ -155,8 +155,6 @@ export function IdentifyPlantPage() {
   }
 
   function retry() {
-    // Keep the camera mounted (hidden behind other steps) so we don't stop the
-    // stream and trigger a fresh getUserMedia prompt.
     setStep({ kind: 'camera' })
     setCapturedPhotoDataUrl(null)
   }
@@ -184,23 +182,13 @@ export function IdentifyPlantPage() {
     }
   }
 
-  // Always render the camera so the MediaStream stays alive between retries.
-  // Passing hidden=true keeps it mounted but invisible, avoiding a fresh
-  // getUserMedia() + permission prompt when the user retries.
-  const isCameraStep = step.kind === 'camera'
+  if (step.kind === 'camera') {
+    return <IdentifyCamera onCapture={handleCapture} onCancel={() => navigate(-1)} />
+  }
 
   // --- render ---
-  // The camera stays mounted behind all other steps so the MediaStream
-  // survives retries without a fresh getUserMedia() permission prompt.
-
   return (
     <>
-      <IdentifyCamera
-        onCapture={handleCapture}
-        onCancel={() => navigate(-1)}
-        hidden={!isCameraStep}
-      />
-
       {step.kind === 'identifying' && (
         <div className="p-6 max-w-md mx-auto text-center">
           <img src={step.thumbnail} alt="" className="w-40 h-40 object-cover rounded mx-auto mb-6" />

@@ -4,25 +4,18 @@ import { useT } from '../../context/LanguageContext'
 type Props = {
   onCapture: (blob: Blob, dataUrl: string) => void
   onCancel: () => void
-  /** When true, hide the camera UI but keep the stream alive.
-   *  Prevents a fresh getUserMedia() call when the user retries. */
-  hidden?: boolean
 }
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-export function IdentifyCamera({ onCapture, onCancel, hidden }: Props) {
+export function IdentifyCamera({ onCapture, onCancel }: Props) {
   const t = useT()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Track whether the browser has already granted camera permission so we
-  // can skip the prompt on remounts.  Only used when the Permissions API is
-  // available (not supported in all browsers).
-  const permissionKnown = useRef(false)
 
   // Digital zoom: we scale the video preview and crop the capture to match.
   // The PAGE is locked against pinch-zoom (touchAction:none + gesture preventDefault)
@@ -36,17 +29,6 @@ export function IdentifyCamera({ onCapture, onCancel, hidden }: Props) {
     let cancelled = false
     async function start() {
       try {
-        // Best-effort permission check: if the browser supports the Permissions
-        // API and reports "granted", getUserMedia won't re-prompt the user.
-        // This avoids the camera permission nag every time the component mounts.
-        if (!permissionKnown.current && navigator.permissions) {
-          try {
-            const cam = await navigator.permissions.query({ name: 'camera' as PermissionName })
-            if (cam.state === 'granted') permissionKnown.current = true
-          } catch {
-            // Permissions API not supported for camera — proceed normally.
-          }
-        }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
           audio: false,
@@ -64,13 +46,10 @@ export function IdentifyCamera({ onCapture, onCancel, hidden }: Props) {
     start()
     return () => {
       cancelled = true
-      // When the parent hides us (hidden=true during retry), keep the stream
-      // alive so the next show doesn't trigger a fresh permission prompt.
-      if (hidden) return
       streamRef.current?.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-  }, [t, hidden])
+  }, [t])
 
   // Pinch-to-zoom. Native non-passive listeners so we can preventDefault — the only
   // reliable way to stop iOS Safari from page-zooming (touchAction alone is ignored
@@ -164,7 +143,7 @@ export function IdentifyCamera({ onCapture, onCancel, hidden }: Props) {
   return (
     <div
       ref={rootRef}
-      className={`fixed inset-0 z-[60] bg-black flex flex-col ${hidden ? 'hidden' : ''}`}
+      className="fixed inset-0 z-[60] bg-black flex flex-col"
       style={{ touchAction: 'none' }}
     >
       <div className="fixed top-0 inset-x-0 flex items-center justify-between p-4 text-white z-10">
