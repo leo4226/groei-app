@@ -607,6 +607,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       <svg
         ref={svgRef}
+        id="garden-map-svg"
         viewBox={computeZoomViewBox(baseViewBox, zoom, pan.x, pan.y)}
         preserveAspectRatio={isLandscapeMobile ? "xMidYMax slice" : "xMidYMid meet"}
         className="absolute"

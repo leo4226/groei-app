@@ -4,6 +4,7 @@ import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 import NewMapModal from '../dashboard/NewMapModal'
 import { STORAGE_KEY } from '../../appMapRedirectModel'
+import { exportGardenPng } from '../../utils/mapExport'
 import type { MapInfo } from '../../types'
 import type { LabelMode } from './PlantsLayer'
 
@@ -27,6 +28,19 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
   const [defaultSlug, setDefaultSlug] = useState<string | null>(() => {
     try { return localStorage.getItem(STORAGE_KEY) } catch { return null }
   })
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    const svg = document.getElementById('garden-map-svg') as SVGSVGElement | null
+    if (!svg) return
+    setDownloading(true)
+    try {
+      await exportGardenPng(svg, map.name, 'Floreren · Veldgids')
+    } catch { /* best-effort */ } finally {
+      setDownloading(false)
+      setOpen(false)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -130,6 +144,19 @@ export default function MapTopBar({ map, allMaps, labelMode, onSetLabelMode, sho
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             <span>{t.maps.newMap}</span>
+          </button>
+          <div className="h-px bg-border mx-3 my-1" />
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors hover:bg-bg/60 min-h-[44px] disabled:opacity-60"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted shrink-0">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>{downloading ? t.mapPage.downloadingMap : t.mapPage.downloadMap}</span>
           </button>
           <div className="h-px bg-border mx-3 my-1" />
           <button

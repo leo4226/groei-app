@@ -1161,6 +1161,8 @@ export const nl: Translations = {
     soilDefaultName: 'Grond',
     switchMap: 'Wisselen',
     mapSettingsLabel: 'Instellingen',
+    downloadMap: 'Kaart downloaden',
+    downloadingMap: 'Voorbereiden…',
     sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 'en'} ${n === 1 ? 'heeft' : 'hebben'} aandacht`,
     sheetAllGood: 'Alles op schema',
     sheetGlobalAttention: (n) => `${n} plant${n === 1 ? '' : 'en'} in je tuinen ${n === 1 ? 'heeft' : 'hebben'} aandacht`,

@@ -1159,6 +1159,8 @@ export const en: Translations = {
     soilDefaultName: 'Soil',
     switchMap: 'Switch map',
     mapSettingsLabel: 'Settings',
+    downloadMap: 'Download map',
+    downloadingMap: 'Preparing…',
     sheetAttentionCount: (n) => `${n} plant${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`,
     sheetAllGood: 'All on schedule',
     sheetGlobalAttention: (n) => `${n} plant${n === 1 ? '' : 's'} across your gardens need${n === 1 ? 's' : ''} attention`,
