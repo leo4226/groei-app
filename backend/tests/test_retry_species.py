@@ -9,6 +9,7 @@ patched so tests never hit the network.
 import json
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest_asyncio
 
 import species_service
@@ -82,6 +83,25 @@ async def test_regenerate_fills_incomplete_calendar(db_ready):
     assert len(json.loads(row["phenology_json"])["months"]) == 12
 
 
+async def test_regenerate_retries_transient_llm_failure(db_ready):
+    await db_ready.execute(
+        "INSERT INTO plant_species (id, latin_name, phenology_json) VALUES (6, 'Retry plant', ?)",
+        (json.dumps(INCOMPLETE_PHENOLOGY),),
+    )
+    await db_ready.commit()
+    generate = AsyncMock(side_effect=[
+        httpx.ReadTimeout("upstream timed out"),
+        {"phenology": GOOD_PHENOLOGY},
+    ])
+    with patch.object(species_service, "_generate_species", new=generate), \
+         patch.object(species_service.asyncio, "sleep", new=AsyncMock()) as sleep:
+        changed = await species_service.regenerate_species_phenology(db_ready, 6, "Retry plant")
+
+    assert changed is True
+    assert generate.await_count == 2
+    sleep.assert_awaited_once()
+
+
 async def test_regenerate_leaves_row_when_generation_empty(db_ready):
     await db_ready.execute(
         "INSERT INTO plant_species (id, latin_name, phenology_json) VALUES (7, 'Z', ?)",
@@ -132,3 +152,29 @@ async def test_retry_species_recovers_incomplete_phenology(client, db_ready, aut
     row = (await db_ready.execute_fetchall(
         "SELECT phenology_json FROM plant_species WHERE id = 5"))[0]
     assert "months" in json.loads(row["phenology_json"])
+
+
+async def test_retry_species_surfaces_exhausted_generation_failure(client, db_ready, auth_header):
+    await _seed_plant_linked_to_incomplete_species(db_ready)
+
+    with patch("routers.plants.get_or_create_species", new=AsyncMock(return_value=5)), \
+         patch.object(species_service, "_generate_species",
+                      new=AsyncMock(side_effect=httpx.ReadTimeout("upstream timed out"))), \
+         patch.object(species_service.asyncio, "sleep", new=AsyncMock()):
+        resp = await client.post("/api/plants/20/retry-species", headers=auth_header)
+
+    assert resp.status_code == 503, resp.text
+    assert resp.json()["detail"] == "species_generation_unavailable"
+
+
+async def test_retry_species_surfaces_species_lookup_failure(client, db_ready, auth_header):
+    await _seed_plant_linked_to_incomplete_species(db_ready)
+
+    with patch(
+        "routers.plants.get_or_create_species",
+        new=AsyncMock(side_effect=httpx.ReadTimeout("upstream timed out")),
+    ):
+        resp = await client.post("/api/plants/20/retry-species", headers=auth_header)
+
+    assert resp.status_code == 503, resp.text
+    assert resp.json()["detail"] == "species_generation_unavailable"
