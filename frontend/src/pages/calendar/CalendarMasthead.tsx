@@ -1,26 +1,22 @@
 import type { ReactNode } from 'react'
 import { MONTH_LONG_EN, MONTH_LONG_NL, isoWeek } from './dateUtils'
-import type { CalendarViewMode } from './calendarViewModel'
 import CalendarMoonMini from './CalendarMoonMini'
 import CalendarFieldNote from './CalendarFieldNote'
-import CalendarViewToggle from './CalendarViewToggle'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
   year: number
   month1: number
   todayDay: number
-  viewMode: CalendarViewMode
   onPrev(): void
   onNext(): void
-  onSetView(v: CalendarViewMode): void
   plannedCount: number
   openCount: number
   environmentFilter: ReactNode
 }
 
 export default function CalendarMasthead({
-  year, month1, todayDay, viewMode, onPrev, onNext, onSetView,
+  year, month1, todayDay, onPrev, onNext,
   plannedCount, openCount, environmentFilter,
 }: Props) {
   const t = useT()
@@ -70,9 +66,6 @@ export default function CalendarMasthead({
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
             </div>
-          </div>
-          <div className="ms-row">
-            <CalendarViewToggle view={viewMode} onSet={onSetView} />
           </div>
           <div className="ms-meta">
             <span>{t.calendar.planned} <span className="v">{plannedCount}</span></span>

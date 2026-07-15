@@ -198,6 +198,19 @@ describe('CareRhythmSettings', () => {
     expect(rhythmChangedCount).toBe(2)
   })
 
+  it('uses the shared Care-planning title and status hierarchy', async () => {
+    await renderSettings()
+
+    const title = container.querySelector('[data-care-rhythm-title]')
+    const status = container.querySelector('[data-care-rhythm-status]')
+
+    expect(title?.tagName).toBe('H3')
+    expect(title?.className).toContain('font-heading')
+    expect(title?.className).toContain('text-base')
+    expect(status?.className).not.toContain('font-mono')
+    expect(status?.className).not.toContain('uppercase')
+  })
+
   it('refreshes a stale preview instead of applying unseen dates', async () => {
     vi.mocked(careRhythm.apply).mockRejectedValueOnce(
       Object.assign(new Error('stale'), { status: 409 }),

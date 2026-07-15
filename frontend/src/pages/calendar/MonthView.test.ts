@@ -69,7 +69,6 @@ describe('MonthView desktop rail', () => {
     act(() => root.render(
       createElement(LanguageProvider, null,
         createElement(MonthView, {
-          viewMode: 'month',
           onSetView: vi.fn(),
           env: 'all',
           environmentFilter: null,

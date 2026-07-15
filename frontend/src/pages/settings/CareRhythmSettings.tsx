@@ -212,9 +212,17 @@ export default function CareRhythmSettings() {
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-sm text-text">{t.settings.careRhythmTitle}</h3>
+            <h3
+              className="font-heading text-base font-medium text-text"
+              data-care-rhythm-title
+            >
+              {t.settings.careRhythmTitle}
+            </h3>
             {settings && (
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-primary">
+              <span
+                className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
+                data-care-rhythm-status
+              >
                 {settings.saved ? t.settings.careRhythmSaved : t.settings.careRhythmProposed}
               </span>
             )}

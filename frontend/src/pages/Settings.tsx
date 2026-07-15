@@ -654,9 +654,9 @@ export default function Settings() {
       <section aria-labelledby="care-planning-title">
         <h2
           id="care-planning-title"
-          className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
+          className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
         >
-          {t.settings.carePlanning}
+          <span className="text-primary">§</span>{t.settings.carePlanning}
         </h2>
         <div className="space-y-3">
           <CareRhythmSettings />

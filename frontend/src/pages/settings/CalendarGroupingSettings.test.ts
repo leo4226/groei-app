@@ -114,6 +114,25 @@ describe('CalendarGroupingSettings', () => {
     expect(buttonWithText(livingRoom, 'Water').getAttribute('aria-pressed')).toBe('false')
   })
 
+  it('uses semantic card headings and quiet sentence-case metadata', async () => {
+    await renderSettings()
+
+    const title = container.querySelector('[data-calendar-grouping-title]')
+    const sharingStatus = container.querySelector('[data-calendar-sharing-status]')
+    const quickSetup = container.querySelector('[data-calendar-quick-setup]')
+    const mapTypes = Array.from(container.querySelectorAll('[data-calendar-map-type]'))
+
+    expect(title?.tagName).toBe('H3')
+    expect(title?.className).toContain('font-heading')
+    expect(sharingStatus?.className).not.toContain('font-mono')
+    expect(sharingStatus?.className).not.toContain('uppercase')
+    expect(quickSetup?.className).not.toContain('font-mono')
+    expect(quickSetup?.className).not.toContain('uppercase')
+    expect(mapTypes).toHaveLength(3)
+    expect(mapTypes.every((badge) => !badge.className.includes('font-mono'))).toBe(true)
+    expect(mapTypes.every((badge) => !badge.className.includes('uppercase'))).toBe(true)
+  })
+
   it('applies recommended, recurring, and clear presets to only one map', async () => {
     await renderSettings()
     const livingRoom = container.querySelector('[data-calendar-grouping-map="2"]') as HTMLElement
