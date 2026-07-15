@@ -170,6 +170,12 @@ SCHEMA = """
         care_types TEXT NOT NULL,
         map_ids TEXT NOT NULL
     );
+    CREATE TABLE household_calendar_grouping_rules (
+        household_id INTEGER NOT NULL,
+        map_id INTEGER NOT NULL,
+        care_type TEXT NOT NULL,
+        PRIMARY KEY (household_id, map_id, care_type)
+    );
     CREATE TABLE plantnet_quota (
         account_id INTEGER NOT NULL,
         date TEXT NOT NULL,

@@ -311,11 +311,21 @@ export type Translations = {
     mastheadAccent: string
     mastheadLede: string
     display: string
-    groupOutdoorWarnings: string
-    groupOutdoorWarningsDesc: string
-    calendarGroupingCareTypes: string
-    calendarGroupingMaps: string
+    carePlanning: string
+    carePlanningTitle: string
+    carePlanningDescription: string
     calendarGroupingShared: string
+    calendarGroupingIndoor: string
+    calendarGroupingOutdoor: string
+    calendarGroupingQuickSetup: string
+    calendarGroupingRecommended: string
+    calendarGroupingAllRecurring: string
+    calendarGroupingClear: string
+    calendarGroupingCopyIndoor: string
+    calendarGroupingCopyOutdoor: string
+    calendarGroupingRecurring: string
+    calendarGroupingNone: string
+    calendarGroupingNoMaps: string
     calendarGroupingSaveError: string
     digestTitle: string
     digestToggle: string

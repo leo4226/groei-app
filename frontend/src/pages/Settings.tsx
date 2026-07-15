@@ -5,27 +5,24 @@ import { useT } from '../context/LanguageContext'
 import { apiRequest, icons, auth, household, notifications, dataExport, type NotificationPrefs, users as usersApi } from '../api/client'
 import type { Location } from '../types'
 import { clearToken } from '../api/auth'
-import type { HouseholdMember, CalendarGroupingPreferences } from '../api/client'
+import type { HouseholdMember } from '../api/client'
 import type { IconSyncResult } from '../types'
 import { enablePush, disablePush, pushSupported, pushAvailabilityInfo, isPushSubscribedHere } from '../utils/push'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
+import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
 
 // Backend care_type keys a user can mute for scheduled care push reminders.
 const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
 
-const CALENDAR_GROUPING_CARE_TYPES = ['water', 'fertilize', 'prune'] as const
 // Must match the boot script in index.html, which applies the theme before
 // React loads to avoid a flash of the wrong theme.
 const THEME_KEY = 'floreren-theme'
 
 export default function Settings() {
   const { users, locations, activeUserId, updateUserLanguage: updateUserLanguageFn } = useFloreren()
-  const [calendarGrouping, setCalendarGrouping] = useState<CalendarGroupingPreferences | null>(null)
-  const [calendarGroupingSaving, setCalendarGroupingSaving] = useState(false)
-  const [calendarGroupingError, setCalendarGroupingError] = useState(false)
   const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>(() => {
     const stored = localStorage.getItem(THEME_KEY)
     return (stored as 'light' | 'dark' | 'system' | null) ?? 'system'
@@ -95,32 +92,6 @@ export default function Settings() {
     isPushSubscribedHere().then(setPushOnHere)
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    household.calendarGrouping()
-      .then((preferences) => { if (!cancelled) setCalendarGrouping(preferences) })
-      .catch(() => { if (!cancelled) setCalendarGroupingError(true) })
-    return () => { cancelled = true }
-  }, [])
-
-  async function saveCalendarGrouping(next: CalendarGroupingPreferences) {
-    const previous = calendarGrouping
-    setCalendarGrouping(next)
-    setCalendarGroupingError(false)
-    setCalendarGroupingSaving(true)
-    try {
-      const saved = await household.updateCalendarGrouping({
-        care_types: next.care_types,
-        map_ids: next.map_ids,
-      })
-      setCalendarGrouping(saved)
-    } catch {
-      setCalendarGrouping(previous)
-      setCalendarGroupingError(true)
-    } finally {
-      setCalendarGroupingSaving(false)
-    }
-  }
 
   function selectProfileMember(member: HouseholdMember) {
     setSelectedProfileMemberId(member.id)
@@ -676,81 +647,10 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Shared Calendar grouping preferences */}
-          <div className="pt-3 border-t border-border">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="font-semibold text-sm">{t.settings.groupOutdoorWarnings}</div>
-                <div className="text-xs text-text-muted mt-0.5">{t.settings.groupOutdoorWarningsDesc}</div>
-              </div>
-              <span className="shrink-0 text-[10px] font-mono uppercase tracking-wide text-primary">{t.settings.calendarGroupingShared}</span>
-            </div>
-
-            {calendarGrouping ? (
-              <div className="space-y-4 mt-4">
-                <div>
-                  <div className="text-xs font-semibold text-text-muted mb-2">{t.settings.calendarGroupingCareTypes}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {CALENDAR_GROUPING_CARE_TYPES.map((careType) => {
-                      const selected = calendarGrouping.care_types.includes(careType)
-                      return (
-                        <button
-                          key={careType}
-                          type="button"
-                          aria-pressed={selected}
-                          disabled={calendarGroupingSaving}
-                          onClick={() => void saveCalendarGrouping({
-                            ...calendarGrouping,
-                            care_types: selected
-                              ? calendarGrouping.care_types.filter((type) => type !== careType)
-                              : [...calendarGrouping.care_types, careType],
-                          })}
-                          className={`font-heading text-sm rounded-full border px-3 py-1.5 transition-colors ${
-                            selected ? 'bg-primary/10 border-primary text-primary font-medium' : 'bg-paper border-border text-text-soft'
-                          } ${calendarGroupingSaving ? 'opacity-50' : ''}`}
-                        >
-                          {t.careTypes[careType]}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-text-muted mb-2">{t.settings.calendarGroupingMaps}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {calendarGrouping.outdoor_maps.map((map) => {
-                      const selected = calendarGrouping.map_ids.includes(map.id)
-                      return (
-                        <button
-                          key={map.id}
-                          type="button"
-                          aria-pressed={selected}
-                          disabled={calendarGroupingSaving}
-                          onClick={() => void saveCalendarGrouping({
-                            ...calendarGrouping,
-                            map_ids: selected
-                              ? calendarGrouping.map_ids.filter((id) => id !== map.id)
-                              : [...calendarGrouping.map_ids, map.id],
-                          })}
-                          className={`font-heading text-sm rounded-full border px-3 py-1.5 transition-colors ${
-                            selected ? 'bg-primary/10 border-primary text-primary font-medium' : 'bg-paper border-border text-text-soft'
-                          } ${calendarGroupingSaving ? 'opacity-50' : ''}`}
-                        >
-                          {map.name}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-text-muted mt-3">{t.common.loading}</div>
-            )}
-            {calendarGroupingError && <div className="text-xs text-red-600 mt-3">{t.settings.calendarGroupingSaveError}</div>}
-          </div>
         </div>
       </section>
+
+      <CalendarGroupingSettings />
 
       <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.digestTitle}</h2>

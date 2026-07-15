@@ -1,8 +1,8 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import date, datetime
 from typing import Any, Literal
 
-from care_types import normalize_care_type
+from care_types import CARE_TYPES, normalize_care_type
 
 
 # --- Users ---
@@ -188,10 +188,19 @@ class CareUndo(BaseModel):
 
 
 class GardenCareCompleteIn(BaseModel):
-    care_type: Literal['water', 'fertilize', 'prune']
+    care_type: str
     completed_at: date | None = None
     user_id: int
     map_id: int
+
+    @field_validator('care_type')
+    @classmethod
+    def validate_grouped_care_type(cls, value: str) -> str:
+        normalized = normalize_care_type(value)
+        definition = CARE_TYPES.get(normalized)
+        if not definition or definition.get('is_weather_triggered'):
+            raise ValueError('unsupported_grouped_care_type')
+        return normalized
 
 
 class GardenCareOperationOut(BaseModel):
@@ -735,12 +744,36 @@ class OutdoorMapOut(BaseModel):
     name: str
 
 
+class CalendarGroupingRule(BaseModel):
+    map_id: int
+    care_types: list[str]
+
+
+class CalendarGroupingMapOut(OutdoorMapOut):
+    map_type: Literal['outdoor', 'indoor']
+    recurring_care_types: list[str]
+    recommended_care_types: list[str]
+
+
 class CalendarGroupingPreferencesIn(BaseModel):
-    care_types: list[Literal['water', 'fertilize', 'prune']]
+    rules: list[CalendarGroupingRule] | None = None
+    # Compatibility with the pre-#626 Cartesian-product payload.
+    care_types: list[str] | None = None
+    map_ids: list[int] | None = None
+
+    @model_validator(mode='after')
+    def require_rules_or_legacy_shape(self):
+        if self.rules is None and (self.care_types is None or self.map_ids is None):
+            raise ValueError('calendar_grouping_rules_required')
+        return self
+
+
+class CalendarGroupingPreferencesOut(BaseModel):
+    rules: list[CalendarGroupingRule]
+    maps: list[CalendarGroupingMapOut]
+    # Compatibility projection for clients deployed before #626.
+    care_types: list[str]
     map_ids: list[int]
-
-
-class CalendarGroupingPreferencesOut(CalendarGroupingPreferencesIn):
     outdoor_maps: list[OutdoorMapOut]
 
 
