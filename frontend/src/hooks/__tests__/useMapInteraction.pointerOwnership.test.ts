@@ -100,7 +100,7 @@ const container: MapObject = {
 let interaction: MapInteraction | null = null
 
 function Harness() {
-  const svgRef = useRef<SVGSVGElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   interaction = useMapInteraction({
     svgRef,
     plants: [plant],
