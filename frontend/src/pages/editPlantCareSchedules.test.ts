@@ -31,6 +31,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     created_at: null,
     sown_date: null,
     sun_requirement: null,
+    measured_sun_hours: null,
     plant_type: null,
     icon_key: null,
     icon_requested: false,
