@@ -413,6 +413,7 @@ export const en: Translations = {
     careRhythmUndoConflict: 'Undo is no longer safe because a schedule changed later.',
     careRhythmClose: 'Close',
     careRhythmReasonMoved: 'Moved one day earlier',
+    careRhythmReasonAligned: 'Already on a preferred day',
     careRhythmReasonOutside: 'Outside the one-day window',
     careRhythmReasonOptedOut: 'Uses its own schedule',
     careRhythmReasonNotFuture: 'Due now or overdue',

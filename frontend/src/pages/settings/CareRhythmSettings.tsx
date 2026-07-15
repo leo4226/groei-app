@@ -187,6 +187,7 @@ export default function CareRhythmSettings() {
   function reasonLabel(item: CareRhythmPreviewItem): string {
     switch (item.reason) {
       case 'moved_earlier': return t.settings.careRhythmReasonMoved
+      case 'aligned': return t.settings.careRhythmReasonAligned
       case 'outside_window': return t.settings.careRhythmReasonOutside
       case 'opted_out': return t.settings.careRhythmReasonOptedOut
       case 'not_future': return t.settings.careRhythmReasonNotFuture
