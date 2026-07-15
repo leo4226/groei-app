@@ -105,7 +105,12 @@ export default function PullToRefresh({ scrollRef, enabled, onRefresh, children 
   const progress = Math.min(pull / THRESHOLD_PX, 1)
 
   return (
-    <div className="relative">
+    // h-full on both wrappers passes the parent's height through to children:
+    // full-bleed pages (the map) size themselves with h-full / absolute inset
+    // against <main>, and would collapse to 0 height if these wrappers were
+    // auto-height. Scrolling pages are unaffected — their content overflows
+    // and <main> scrolls it as before.
+    <div className="relative h-full">
       {/* Indicator: a sprout that grows and turns as you pull, spins while refreshing */}
       {pull > 0 && (
         <div
@@ -130,10 +135,13 @@ export default function PullToRefresh({ scrollRef, enabled, onRefresh, children 
           </div>
         </div>
       )}
-      <div style={{
-        transform: pull > 0 ? `translateY(${pull}px)` : undefined,
-        transition: settling ? 'transform 0.25s ease' : 'none',
-      }}>
+      <div
+        className="h-full"
+        style={{
+          transform: pull > 0 ? `translateY(${pull}px)` : undefined,
+          transition: settling ? 'transform 0.25s ease' : 'none',
+        }}
+      >
         {children}
       </div>
     </div>
