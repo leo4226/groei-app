@@ -1,9 +1,10 @@
-import type { EditorZone } from '../../types'
-
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
+export interface ResizeBBox { x: number; y: number; width: number; height: number }
+
 interface Props {
-  zone: EditorZone
+  /** Axis-aligned bounding box of the selected element (zone, shadow caster…). */
+  bbox: ResizeBBox
   /** Screen pixels per inner content unit (viewBox scale × zoom). Keeps the handles a
    *  constant on-screen size — big enough for a finger — at any zoom or screen size. */
   pxPerUnit: number
@@ -14,8 +15,8 @@ const VISUAL_PX = 7   // visible dot radius (~14px dot)
 const HIT_PX = 22     // invisible touch-target radius (~44px target)
 const PAD = 2
 
-export default function EditorResizeOverlay({ zone, pxPerUnit, onHandlePointerDown }: Props) {
-  const { x, y, width: w, height: h } = zone
+export default function EditorResizeOverlay({ bbox, pxPerUnit, onHandlePointerDown }: Props) {
+  const { x, y, width: w, height: h } = bbox
   const cx = x + w / 2
   const cy = y + h / 2
   const scale = pxPerUnit > 0 ? pxPerUnit : 1

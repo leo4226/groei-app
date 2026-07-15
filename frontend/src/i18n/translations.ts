@@ -1174,6 +1174,8 @@ export type Translations = {
     soilDefaultName: string                 // "Grond"
     switchMap: string                       // "Wisselen…" / "Switch map…"
     mapSettingsLabel: string               // "Instellingen…" / "Settings…"
+    downloadMap: string                    // "Download map" / "Kaart downloaden"
+    downloadingMap: string                 // "Preparing…" / "Voorbereiden…"
     sheetAttentionCount: (n: number) => string  // "3 planten hebben aandacht"
     sheetAllGood: string                         // "Alles op schema"
     sheetGlobalAttention: (n: number) => string  // "3 planten in je tuinen hebben aandacht"

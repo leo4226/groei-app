@@ -257,8 +257,14 @@ interface DragState {
   containedZones?: Array<{ id: string; origX: number; origY: number }>
 }
 
+// Resize applies to a zone or a shadow caster. The math works on an
+// axis-aligned bounding box; the caster branch converts the box back to the
+// caster's native shape (rect x/y/w/h, or circle cx/cy/radius).
+type ResizeTargetKind = 'zone' | 'caster-rect' | 'caster-circle'
+
 interface ResizeState {
-  zoneId: string
+  kind: ResizeTargetKind
+  id: string
   handle: ResizeHandle
   startSvgX: number; startSvgY: number
   origX: number; origY: number; origW: number; origH: number
@@ -426,7 +432,24 @@ export default function EditorCanvas({
     svgRef.current ? screenToSVG(svgRef.current, e.clientX, e.clientY) : null
   , [])
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null
+  const selectedCaster = shadowCasters.find((s) => s.id === selectedShadowCasterId) ?? null
   const isPlacingWallElement = activeTool === 'place_door' || activeTool === 'place_window'
+
+  // The element currently offered resize handles (a zone, or a rect/circle
+  // shadow caster). Returns its kind + axis-aligned bounding box.
+  function resizeTarget(): { kind: ResizeTargetKind; id: string; bbox: { x: number; y: number; width: number; height: number } } | null {
+    if (selectedZone) {
+      return { kind: 'zone', id: selectedZone.id, bbox: { x: selectedZone.x, y: selectedZone.y, width: selectedZone.width, height: selectedZone.height } }
+    }
+    if (selectedCaster && selectedCaster.type === 'rect') {
+      return { kind: 'caster-rect', id: selectedCaster.id, bbox: { x: selectedCaster.x, y: selectedCaster.y, width: selectedCaster.width, height: selectedCaster.height } }
+    }
+    if (selectedCaster && selectedCaster.type === 'circle') {
+      const { cx, cy, radius } = selectedCaster
+      return { kind: 'caster-circle', id: selectedCaster.id, bbox: { x: cx - radius, y: cy - radius, width: radius * 2, height: radius * 2 } }
+    }
+    return null
+  }
 
   function handlePointerDown(e: React.PointerEvent) {
     if (isPinching.current) return
@@ -548,16 +571,18 @@ export default function EditorCanvas({
   }
 
   function handleResizeHandlePointerDown(e: React.PointerEvent, handle: ResizeHandle) {
-    if (!selectedZone) return
+    const target = resizeTarget()
+    if (!target) return
     const pt = getSvgPoint(e)
     if (!pt) return
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     setResizing({
-      zoneId: selectedZone.id,
+      kind: target.kind,
+      id: target.id,
       handle,
       startSvgX: pt.x, startSvgY: pt.y,
-      origX: selectedZone.x, origY: selectedZone.y,
-      origW: selectedZone.width, origH: selectedZone.height,
+      origX: target.bbox.x, origY: target.bbox.y,
+      origW: target.bbox.width, origH: target.bbox.height,
     })
   }
 
@@ -685,8 +710,22 @@ export default function EditorCanvas({
       x = Math.max(0, x); y = Math.max(0, y)
       w = Math.min(w, CANVAS_W - x); hh = Math.min(hh, CANVAS_H - y)
 
+      // Shadow casters resize without zone-edge snapping; convert the box back
+      // to the caster's native shape.
+      if (resizing.kind === 'caster-rect') {
+        onUpdateShadowCaster(resizing.id, { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
+        return
+      }
+      if (resizing.kind === 'caster-circle') {
+        const radius = Math.max(MIN_PX, Math.round(Math.min(w, hh) / 2))
+        const cx = Math.round(x + w / 2)
+        const cy = Math.round(y + hh / 2)
+        onUpdateShadowCaster(resizing.id, { cx, cy, radius })
+        return
+      }
+
       // Snap resize edges to other zone edges
-      const { xTargets, yTargets } = getSnapTargets(zones, resizing.zoneId, scalePxPerM)
+      const { xTargets, yTargets } = getSnapTargets(zones, resizing.id, scalePxPerM)
       const snapLines: SnapLine[] = []
 
       // Fixed opposite edges (don't move for this handle)
@@ -735,7 +774,7 @@ export default function EditorCanvas({
       hh = Math.max(MIN_PX, Math.min(hh, CANVAS_H - y))
 
       setSnapLines(snapLines)
-      onUpdateZone(resizing.zoneId, { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
+      onUpdateZone(resizing.id, { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
     }
 
     if (panning) {
@@ -1043,14 +1082,17 @@ export default function EditorCanvas({
             )
           })}
 
-          {/* Resize overlay on selected zone */}
-          {!previewMode && selectedZone && activeTool === 'select' && (
-            <EditorResizeOverlay
-              zone={selectedZone}
-              pxPerUnit={vbScale * zoom}
-              onHandlePointerDown={handleResizeHandlePointerDown}
-            />
-          )}
+          {/* Resize overlay on the selected zone or shadow caster */}
+          {!previewMode && activeTool === 'select' && (() => {
+            const target = resizeTarget()
+            return target ? (
+              <EditorResizeOverlay
+                bbox={target.bbox}
+                pxPerUnit={vbScale * zoom}
+                onHandlePointerDown={handleResizeHandlePointerDown}
+              />
+            ) : null
+          })()}
 
           {/* Dimension arrows — after zones so they render on top in SVG */}
           {!previewMode && zoneBbox && (
