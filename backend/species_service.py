@@ -78,7 +78,10 @@ _NAMES_PROMPT = """\
 Geef de gangbare Nederlandse en Engelse tuiniersnaam voor de plant "{plant_name}".
 Antwoord ALLEEN met een geldig JSON-object, geen uitleg, geen markdown:
 {{"slug": "lowercase-latijnse-naam", "latin_name": "Latijnse naam", "common_name_nl": "Nederlandse naam", "common_name_en": "English name"}}
-Als er geen gangbare naam bestaat in een taal, gebruik daar de latijnse naam."""
+
+BELANGRIJK: Als je NIET 100% zeker bent van de Nederlandse of Engelse naam, gebruik dan
+ALTIJD de Latijnse naam voor dat veld. Verzin nooit een naam — een foute Nederlandse naam
+is erger dan helemaal geen Nederlandse naam."""
 
 
 async def _generate_names(plant_name: str) -> dict:

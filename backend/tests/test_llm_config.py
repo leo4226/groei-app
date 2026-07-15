@@ -16,7 +16,7 @@ def test_defaults_to_nous_portal(monkeypatch):
     cfg = _reload(monkeypatch, NOUS_API_KEY="secret")
     assert cfg.LLM_API_KEY == "secret"
     assert cfg.LLM_CHAT_URL == "https://inference-api.nousresearch.com/v1/chat/completions"
-    assert cfg.LLM_MODEL == "deepseek/deepseek-v4-flash"
+    assert cfg.LLM_MODEL == "deepseek/deepseek-v4-pro"
 
 
 def test_env_overrides_url_and_model(monkeypatch):
