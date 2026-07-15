@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useT } from '../../context/LanguageContext'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
@@ -36,6 +37,14 @@ interface Props {
   onClose: () => void
 }
 
+/** Format ISO date (YYYY-MM-DD) to European display (DD/MM/YYYY). */
+function isoToDisplay(iso: string): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return iso
+  return `${d}/${m}/${y}`
+}
+
 export default function GardenActionSheet({
   actionType,
   pickerDate,
@@ -59,6 +68,7 @@ export default function GardenActionSheet({
         deleteLabel: t.mapPage.gardenFertilizeDelete,
       }
   const todayStr = new Date().toISOString().slice(0, 10)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <>
@@ -85,17 +95,33 @@ export default function GardenActionSheet({
             {t.mapPage.gardenActionScope}
           </p>
 
-          {/* Date picker row */}
+          {/* Date picker row — shows DD/MM/YYYY via a text input, opens the
+              native date picker via a hidden <input type="date">.  This keeps
+              the native picker UX while always displaying European format. */}
           <div className="flex items-center gap-2 mb-5">
             <label className="text-sm text-text-muted shrink-0">
               {t.mapPage.gardenActionDateLabel}
             </label>
+
+            {/* Visible text input — displays DD/MM/YYYY */}
             <input
+              type="text"
+              readOnly
+              value={isoToDisplay(pickerDate)}
+              onClick={() => dateInputRef.current?.showPicker?.()}
+              onFocus={() => dateInputRef.current?.showPicker?.()}
+              className="flex-1 text-sm bg-bg border border-border rounded-lg px-3 py-2 text-text focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+            />
+
+            {/* Hidden native date input — used only for its picker */}
+            <input
+              ref={dateInputRef}
               type="date"
               value={pickerDate}
               max={todayStr}
               onChange={(e) => onPickerDateChange(e.target.value)}
-              className="flex-1 text-sm bg-bg border border-border rounded-lg px-3 py-2 text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="sr-only"
+              tabIndex={-1}
             />
           </div>
 
