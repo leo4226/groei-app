@@ -50,6 +50,8 @@ class CareScheduleCreate(BaseModel):
     interval_days: int
     season_adjust: str | None = None  # JSON string
     notes: str | None = None
+    rhythm_opt_out: bool = False
+    next_due: date | None = None
 
     @field_validator("care_type", mode="before")
     @classmethod
@@ -114,6 +116,7 @@ class CareScheduleOut(BaseModel):
     notes: str | None = None
     is_active: bool = True
     is_ephemeral: bool = False
+    rhythm_opt_out: bool = False
 
 
 class PlantOut(BaseModel):
@@ -192,6 +195,7 @@ class GardenCareCompleteIn(BaseModel):
     completed_at: date | None = None
     user_id: int
     map_id: int
+    schedule_ids: list[int] | None = None
 
     @field_validator('care_type')
     @classmethod
@@ -201,6 +205,17 @@ class GardenCareCompleteIn(BaseModel):
         if not definition or definition.get('is_weather_triggered'):
             raise ValueError('unsupported_grouped_care_type')
         return normalized
+
+    @field_validator('schedule_ids')
+    @classmethod
+    def validate_schedule_ids(cls, value: list[int] | None) -> list[int] | None:
+        if value is None:
+            return None
+        if not value or any(schedule_id < 1 for schedule_id in value):
+            raise ValueError('schedule_ids_must_be_non_empty_positive_integers')
+        if len(value) != len(set(value)):
+            raise ValueError('duplicate_schedule_ids')
+        return value
 
 
 class GardenCareOperationOut(BaseModel):
@@ -777,6 +792,126 @@ class CalendarGroupingPreferencesOut(BaseModel):
     outdoor_maps: list[OutdoorMapOut]
 
 
+def _validate_iso_weekdays(values: list[int], *, allow_empty: bool = True) -> list[int]:
+    normalized = sorted(set(values))
+    if (not allow_empty and not normalized) or len(normalized) > 2:
+        raise ValueError('care_rhythm_requires_one_or_two_weekdays')
+    if any(day < 1 or day > 7 for day in normalized):
+        raise ValueError('care_rhythm_weekday_must_be_iso_1_to_7')
+    return normalized
+
+
+class CareRhythmMapOverride(BaseModel):
+    map_id: int
+    weekdays: list[int]
+
+    @field_validator('weekdays')
+    @classmethod
+    def validate_weekdays(cls, values: list[int]) -> list[int]:
+        return _validate_iso_weekdays(values, allow_empty=False)
+
+
+class CareRhythmConfig(BaseModel):
+    indoor_weekdays: list[int]
+    outdoor_weekdays: list[int]
+    map_overrides: list[CareRhythmMapOverride] = []
+
+    @field_validator('indoor_weekdays', 'outdoor_weekdays')
+    @classmethod
+    def validate_default_weekdays(cls, values: list[int]) -> list[int]:
+        return _validate_iso_weekdays(values)
+
+    @model_validator(mode='after')
+    def validate_unique_maps(self):
+        map_ids = [override.map_id for override in self.map_overrides]
+        if len(map_ids) != len(set(map_ids)):
+            raise ValueError('duplicate_care_rhythm_map_override')
+        return self
+
+
+class CareRhythmMapOut(OutdoorMapOut):
+    map_type: Literal['outdoor', 'indoor']
+
+
+class CareRhythmSettingsOut(BaseModel):
+    saved: bool
+    config: CareRhythmConfig
+    maps: list[CareRhythmMapOut]
+
+
+class CareRhythmPreviewItemOut(BaseModel):
+    schedule_id: int
+    plant_id: int
+    plant_name: str
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
+    plant_icon_variant: str | None = None
+    map_id: int
+    map_name: str
+    map_type: Literal['outdoor', 'indoor']
+    old_date: str
+    new_date: str
+    movement_days: int
+    status: Literal['moved', 'unchanged', 'exception']
+    reason: str
+
+
+class CareRhythmGroupOut(BaseModel):
+    date: str
+    map_id: int
+    map_name: str
+    count: int
+    schedule_ids: list[int]
+
+
+class CareRhythmPreviewSummaryOut(BaseModel):
+    total: int
+    moved: int
+    unchanged: int
+    exceptions: int
+    group_count: int
+
+
+class CareRhythmPreviewOut(BaseModel):
+    config: CareRhythmConfig
+    preview_hash: str
+    items: list[CareRhythmPreviewItemOut]
+    groups: list[CareRhythmGroupOut]
+    summary: CareRhythmPreviewSummaryOut
+
+
+class CareRhythmApplyIn(BaseModel):
+    config: CareRhythmConfig
+    preview_hash: str
+
+
+class CareRhythmOperationOut(BaseModel):
+    operation_id: int
+    affected_count: int
+    preview_hash: str
+    summary: CareRhythmPreviewSummaryOut
+
+
+class CareRhythmOnboardingIn(BaseModel):
+    map_id: int
+    interval_days: int
+
+    @field_validator('interval_days')
+    @classmethod
+    def validate_interval_days(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError('interval_days_must_be_positive')
+        return value
+
+
+class CareRhythmOnboardingOut(BaseModel):
+    available: bool
+    baseline_date: str
+    proposed_date: str | None = None
+    movement_days: int
+    reason: str
+
+
 class HouseholdUpdate(BaseModel):
     """Rename the household."""
     name: str
@@ -789,6 +924,13 @@ class HouseholdUpdate(BaseModel):
     name: str
     avatar: str | None = None
     is_admin: bool = False
+
+
+class CalendarGroupMemberOut(BaseModel):
+    schedule_id: int
+    plant_id: int
+    plant_name: str
+    plant_icon_variant: str | None = None
 
 
 class CalendarEventOut(BaseModel):
@@ -819,6 +961,7 @@ class CalendarEventOut(BaseModel):
     grouped: bool = False
     group_count: int | None = None
     group_member_schedule_ids: list[int] | None = None
+    group_members: list[CalendarGroupMemberOut] | None = None
     weather_triggered: bool = False
 
 

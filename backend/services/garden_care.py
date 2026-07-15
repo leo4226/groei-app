@@ -10,6 +10,10 @@ class GardenCareUndoConflict(Exception):
     """The grouped operation no longer owns the schedules it would restore."""
 
 
+class GardenCareSelectionError(Exception):
+    """A selected schedule is not part of the requested grouped map action."""
+
+
 def _comparable_db_value(value) -> str | None:
     if value is None:
         return None
@@ -21,7 +25,8 @@ def _comparable_db_value(value) -> str | None:
 
 
 async def complete_outdoor_care(
-    db, *, household_id: int, care_type: str, completed_at: date, user_id: int, map_id: int,
+    db, *, household_id: int, care_type: str, completed_at: date, user_id: int,
+    map_id: int, schedule_ids: list[int] | None = None,
 ) -> dict:
     preferences = await get_calendar_grouping_preferences(db, household_id)
     configured_types = next(
@@ -55,6 +60,13 @@ async def complete_outdoor_care(
         )
         if not schedules:
             return {"operation_id": None, "affected_count": 0}
+
+        if schedule_ids is not None:
+            requested_ids = set(schedule_ids)
+            eligible_by_id = {schedule["id"]: schedule for schedule in schedules}
+            if len(requested_ids) != len(schedule_ids) or not requested_ids.issubset(eligible_by_id):
+                raise GardenCareSelectionError
+            schedules = [eligible_by_id[schedule_id] for schedule_id in schedule_ids]
 
         operation = await db.execute_fetchall(
             """INSERT INTO garden_care_operations

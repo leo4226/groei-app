@@ -22,6 +22,7 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
 import FrequencySlider from '../components/add/FrequencySlider'
+import CareRhythmOnboardingProposal from './addPlant/CareRhythmOnboardingProposal'
 import {
   isIdentifyPrefill,
   findMatchingIcon,
@@ -167,6 +168,11 @@ export default function AddPlant() {
   const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
     () => buildSchedules(prefill, norm.careThresholds)
   )
+  const [acceptedRhythm, setAcceptedRhythm] = useState<{
+    mapId: number
+    intervalDays: number
+    nextDue: string
+  } | null>(null)
 
   // Extract fertilise_tip from care thresholds (identify path uses norm.careThresholds
   // at mount; database path updates it via the lookupLatin useEffect below)
@@ -383,7 +389,20 @@ export default function AddPlant() {
       const isIndoor = placedMap?.map_type === 'indoor'
       const careSchedules: CareScheduleInput[] = Object.entries(schedules)
         .filter(([type, s]) => s.enabled && s.days > 0 && isCareTypeValidForEnv(type as CareType, isIndoor))
-        .map(([type, s]) => ({ care_type: type as CareType, interval_days: s.days }))
+        .map(([type, s]) => {
+          const accepted = acceptedRhythm
+          const acceptedNextDue = type === 'water'
+            && accepted !== null
+            && accepted.mapId === placedMap?.id
+            && accepted.intervalDays === s.days
+            ? accepted.nextDue
+            : undefined
+          return {
+            care_type: type as CareType,
+            interval_days: s.days,
+            next_due: acceptedNextDue,
+          }
+        })
 
       const plant = await addPlant(buildCreatePayload({
         name,
@@ -418,6 +437,23 @@ export default function AddPlant() {
       navigate(finalReturnPath)
       setSubmitting(false)
     }
+  }
+
+  function renderCareRhythmProposal() {
+    if (!selectedZoneId || !schedules.water.enabled || schedules.water.days < 1) return null
+    const mapId = Number(selectedZoneId)
+    const intervalDays = schedules.water.days
+    return (
+      <CareRhythmOnboardingProposal
+        mapId={mapId}
+        intervalDays={intervalDays}
+        onAccepted={(nextDue) => setAcceptedRhythm(nextDue ? {
+          mapId,
+          intervalDays,
+          nextDue,
+        } : null)}
+      />
+    )
   }
 
   
@@ -961,6 +997,8 @@ export default function AddPlant() {
             </FormRow>
           </Card>
         )}
+
+        {renderCareRhythmProposal()}
 
         {/* ——— § IV · Album Card ——— */}
         {showDetails ? (

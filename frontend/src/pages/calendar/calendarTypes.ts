@@ -84,6 +84,12 @@ export interface CalendarEvent {
   grouped: boolean
   group_count: number | null
   group_member_schedule_ids: number[] | null
+  group_members?: Array<{
+    schedule_id: number
+    plant_id: number
+    plant_name: string
+    plant_icon_variant: string | null
+  }> | null
   weather_triggered: boolean
   reason_nl?: string | null
   reason_en?: string | null

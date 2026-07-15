@@ -8,22 +8,32 @@ import MonthView from './MonthView'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
+const calendarHookMocks = vi.hoisted(() => ({
+  retry: vi.fn(),
+  useCalendarActions: vi.fn(),
+}))
+
 vi.mock('./useCalendarEvents', () => ({
-  useCalendarEvents: () => ({ events: [], loading: false, error: false, retry: vi.fn() }),
+  useCalendarEvents: () => ({
+    events: [], loading: false, error: false, retry: calendarHookMocks.retry,
+  }),
 }))
 
 vi.mock('./useCalendarActions', () => ({
-  useCalendarActions: () => ({
-    actionError: null,
-    clearCompletion: vi.fn(),
-    completion: null,
-    doneIds: new Set<string>(),
-    handleDone: vi.fn(),
-    handleGardenUndo: vi.fn(),
-    handleSkip: vi.fn(),
-    saving: null,
-    undoMsg: null,
-  }),
+  useCalendarActions: (...args: unknown[]) => {
+    calendarHookMocks.useCalendarActions(...args)
+    return {
+      actionError: null,
+      clearCompletion: vi.fn(),
+      completion: null,
+      doneIds: new Set<string>(),
+      handleDone: vi.fn(),
+      handleGardenUndo: vi.fn(),
+      handleSkip: vi.fn(),
+      saving: null,
+      undoMsg: null,
+    }
+  },
 }))
 
 vi.mock('./useIsNarrow', () => ({ useIsNarrow: () => false }))
@@ -71,5 +81,8 @@ describe('MonthView desktop rail', () => {
     expect(rail).not.toBeNull()
     expect(rail?.querySelector('.upcoming-summary')).toBeNull()
     expect(rail?.querySelector('.almanac-side')).toBeNull()
+    expect(calendarHookMocks.useCalendarActions).toHaveBeenCalledWith(
+      [], calendarHookMocks.retry, expect.any(String),
+    )
   })
 })

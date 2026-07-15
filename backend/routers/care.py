@@ -3,6 +3,7 @@ from database import db_dep
 from models import CareAction, CareUndo, CareLogOut, RecentLogEntry, GardenCareCompleteIn, GardenCareOperationOut
 from services.scheduling import calculate_next_due
 from services.garden_care import (
+    GardenCareSelectionError,
     GardenCareUndoConflict,
     complete_outdoor_care,
     undo_outdoor_care,
@@ -112,14 +113,21 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
                                account=Depends(get_current_account)):
     completed_at = body.completed_at or date.today()
-    result = await complete_outdoor_care(
-        db,
-        household_id=account["household_id"],
-        care_type=body.care_type,
-        completed_at=completed_at,
-        user_id=body.user_id,
-        map_id=body.map_id,
-    )
+    try:
+        result = await complete_outdoor_care(
+            db,
+            household_id=account["household_id"],
+            care_type=body.care_type,
+            completed_at=completed_at,
+            user_id=body.user_id,
+            map_id=body.map_id,
+            schedule_ids=body.schedule_ids,
+        )
+    except GardenCareSelectionError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_grouped_schedule_selection"},
+        ) from exc
     if result["operation_id"] is None:
         raise HTTPException(
             status_code=404,
@@ -285,7 +293,14 @@ async def update_schedule_interval(
         raise HTTPException(status_code=400, detail="Photo schedule interval is managed via the photo-reminder endpoint")
 
     await db.execute(
-        "UPDATE care_schedules SET interval_days = ? WHERE id = ?",
+        """UPDATE care_schedules
+           SET interval_days = ?,
+               rhythm_opt_out = CASE
+                   WHEN care_type = 'water' THEN TRUE
+                   ELSE rhythm_opt_out
+               END,
+               rhythm_operation_id = NULL
+           WHERE id = ?""",
         (interval, schedule_id),
     )
     await db.commit()

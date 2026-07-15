@@ -135,6 +135,39 @@ describe('useCalendarActions', () => {
     expect(state.completion).toBeNull()
   })
 
+  it('waits for explicit Water-round selection and completes only selected schedules', async () => {
+    mocks.gardenComplete.mockResolvedValue({ operation_id: 89 })
+    const grouped: CalendarEvent = {
+      ...event('2026-07-12'),
+      id: 'garden-group:1:water:2026-07-12',
+      plant_id: null,
+      plant_name: null,
+      schedule_id: null,
+      map_name: 'Back garden',
+      grouped: true,
+      group_count: 2,
+      group_member_schedule_ids: [10, 11],
+      group_members: [
+        { schedule_id: 10, plant_id: 1, plant_name: 'Rose', plant_icon_variant: null },
+        { schedule_id: 11, plant_id: 2, plant_name: 'Basil', plant_icon_variant: null },
+      ],
+    }
+    act(() => root.render(createElement(Harness, { events: [grouped] })))
+
+    await act(async () => state.handleDone(grouped))
+
+    expect(mocks.gardenComplete).not.toHaveBeenCalled()
+    expect(state.pendingWaterRound).toEqual(grouped)
+
+    await act(async () => state.confirmWaterRound([10]))
+
+    expect(mocks.gardenComplete).toHaveBeenCalledWith(
+      'water', 1, 1, expect.any(String), [10],
+    )
+    expect(state.pendingWaterRound).toBeNull()
+    expect(state.completion).toEqual({ kind: 'map', mapId: 1, mapName: 'Back garden' })
+  })
+
   it('clears a completion when Calendar navigation changes', async () => {
     mocks.markCareDone.mockResolvedValue({
       care_log_id: 78,

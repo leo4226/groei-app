@@ -346,6 +346,13 @@ async def test_calendar_groups_outdoor_care_without_hiding_indoor_events(client,
     grouped = next(event for event in events if event["grouped"] and event["type"] == "water")
     assert grouped["group_count"] == 2
     assert len(grouped["group_member_schedule_ids"]) == 2
+    assert {
+        (member["plant_id"], member["plant_name"])
+        for member in grouped["group_members"]
+    } == {(101, "Rose"), (102, "Basil")}
+    assert {
+        member["schedule_id"] for member in grouped["group_members"]
+    } == set(grouped["group_member_schedule_ids"])
     assert any(event["plant_id"] == 103 and event["type"] == "water" for event in events)
 
 

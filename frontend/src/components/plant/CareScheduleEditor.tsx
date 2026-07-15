@@ -10,6 +10,8 @@ interface CareScheduleEditorProps {
   environment: CareEnvironment
   intervalLabel: string
   daysLabel: string
+  rhythmLabel: string
+  rhythmDescription: string
   labels: Record<EditableCareType, string>
   state: ScheduleEditorState
   onChange: (state: ScheduleEditorState) => void
@@ -19,6 +21,8 @@ export default function CareScheduleEditor({
   environment,
   intervalLabel,
   daysLabel,
+  rhythmLabel,
+  rhythmDescription,
   labels,
   state,
   onChange,
@@ -69,24 +73,52 @@ export default function CareScheduleEditor({
             </div>
 
             {schedule.enabled && (
-              <label className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-                <span className="text-xs text-text-muted">{intervalLabel}</span>
-                <span className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={3650}
-                    inputMode="numeric"
-                    value={schedule.days}
-                    onChange={event => {
-                      const value = Number.parseInt(event.target.value, 10)
-                      update(type, { days: Number.isFinite(value) ? Math.max(1, value) : 1 })
-                    }}
-                    className="w-24 rounded-lg border border-border bg-paper px-3 py-1.5 text-right font-mono text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-                  />
-                  <span className="text-xs text-text-muted">{daysLabel}</span>
-                </span>
-              </label>
+              <div className="mt-3 space-y-3 border-t border-border/70 pt-3">
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-text-muted">{intervalLabel}</span>
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      inputMode="numeric"
+                      value={schedule.days}
+                      onChange={event => {
+                        const value = Number.parseInt(event.target.value, 10)
+                        update(type, { days: Number.isFinite(value) ? Math.max(1, value) : 1 })
+                      }}
+                      className="w-24 rounded-lg border border-border bg-paper px-3 py-1.5 text-right font-mono text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <span className="text-xs text-text-muted">{daysLabel}</span>
+                  </span>
+                </label>
+                {type === 'water' && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-text">{rhythmLabel}</div>
+                      <div className="mt-0.5 text-[11px] leading-relaxed text-text-muted">
+                        {rhythmDescription}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={schedule.rhythmEnabled}
+                      aria-label={rhythmLabel}
+                      onClick={() => update(type, { rhythmEnabled: !schedule.rhythmEnabled })}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                        schedule.rhythmEnabled ? 'bg-primary' : 'bg-border'
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                          schedule.rhythmEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )

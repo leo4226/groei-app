@@ -540,6 +540,8 @@ export default function EditPlant() {
                     environment={careEnvironment}
                     intervalLabel={t.editPlant.everyLabel}
                     daysLabel={t.editPlant.daysLabel}
+                    rhythmLabel={t.editPlant.careRhythmLabel}
+                    rhythmDescription={t.editPlant.careRhythmDescription}
                     labels={t.careTypes as Record<EditableCareType, string>}
                     state={schedules}
                     onChange={setSchedules}

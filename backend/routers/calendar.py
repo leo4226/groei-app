@@ -83,6 +83,20 @@ def _group_outdoor_events(
             overdue=any(member.overdue for member in members), grouped=True,
             group_count=len(members),
             group_member_schedule_ids=[member.schedule_id for member in members if member.schedule_id is not None],
+            group_members=[
+                {
+                    "schedule_id": member.schedule_id,
+                    "plant_id": member.plant_id,
+                    "plant_name": member.plant_name,
+                    "plant_icon_variant": member.plant_icon_variant,
+                }
+                for member in members
+                if (
+                    member.schedule_id is not None
+                    and member.plant_id is not None
+                    and member.plant_name is not None
+                )
+            ],
         ))
     return retained
 

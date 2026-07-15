@@ -86,6 +86,7 @@ describe('schedule editor state and payload', () => {
           id: 1, plant_id: 1, care_type: 'water', interval_days: 11,
           season_adjust: null, next_due: '2026-07-24', last_done: null,
           last_done_by: null, last_done_by_name: null, notes: null, is_active: true,
+          rhythm_opt_out: true,
         },
         {
           id: 2, plant_id: 1, care_type: 'dust', interval_days: 45,
@@ -97,21 +98,21 @@ describe('schedule editor state and payload', () => {
 
     const state = buildScheduleEditorState(p, 'indoor')
 
-    expect(state.water).toEqual({ enabled: true, days: 11 })
-    expect(state.dust).toEqual({ enabled: true, days: 45 })
-    expect(state.fertilize).toEqual({ enabled: false, days: 30 })
-    expect(state.mist).toEqual({ enabled: false, days: 7 })
+    expect(state.water).toEqual({ enabled: true, days: 11, rhythmEnabled: false })
+    expect(state.dust).toEqual({ enabled: true, days: 45, rhythmEnabled: true })
+    expect(state.fertilize).toEqual({ enabled: false, days: 30, rhythmEnabled: true })
+    expect(state.mist).toEqual({ enabled: false, days: 7, rhythmEnabled: true })
   })
 
   it('submits only enabled types valid for the current environment', () => {
     const state = buildScheduleEditorState(plant(), 'indoor')
-    state.water = { enabled: true, days: 8 }
-    state.repot = { enabled: true, days: 540 }
-    state.mist = { enabled: true, days: 5 }
-    state.dust = { enabled: true, days: 30 }
+    state.water = { enabled: true, days: 8, rhythmEnabled: false }
+    state.repot = { enabled: true, days: 540, rhythmEnabled: true }
+    state.mist = { enabled: true, days: 5, rhythmEnabled: true }
+    state.dust = { enabled: true, days: 30, rhythmEnabled: true }
 
     expect(buildCareScheduleSyncPayload(state, 'outdoor_container')).toEqual([
-      { care_type: 'water', interval_days: 8 },
+      { care_type: 'water', interval_days: 8, rhythm_opt_out: true },
       { care_type: 'repot', interval_days: 540 },
     ])
   })

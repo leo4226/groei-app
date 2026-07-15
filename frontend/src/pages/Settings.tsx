@@ -13,6 +13,7 @@ import Glyph from '../components/ui/Glyph'
 import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
 import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
+import CareRhythmSettings from './settings/CareRhythmSettings'
 
 // Backend care_type keys a user can mute for scheduled care push reminders.
 const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
@@ -650,7 +651,18 @@ export default function Settings() {
         </div>
       </section>
 
-      <CalendarGroupingSettings />
+      <section aria-labelledby="care-planning-title">
+        <h2
+          id="care-planning-title"
+          className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"
+        >
+          {t.settings.carePlanning}
+        </h2>
+        <div className="space-y-3">
+          <CareRhythmSettings />
+          <CalendarGroupingSettings embedded />
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted"><span className="text-primary">§</span>{t.settings.digestTitle}</h2>
