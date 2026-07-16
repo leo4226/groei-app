@@ -137,7 +137,11 @@ export default function CalendarAgendaCard({
                   <button disabled={busyGroup}
                     onClick={() => handleBatchDone(groupId, groupEvents)}
                     className="ag-btn ag-btn-done">
-                    {firstEvent.grouped ? t.calendar.completeAndAlign : t.dashboard.actions.done}
+                    {firstEvent.type === 'moisture_check'
+                      ? t.calendar.moistureCheckTitle
+                      : firstEvent.grouped
+                        ? t.calendar.completeAndAlign
+                        : t.dashboard.actions.done}
                   </button>
                   {!firstEvent.grouped && (
                     <button disabled={busyGroup}

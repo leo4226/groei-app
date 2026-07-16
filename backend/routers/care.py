@@ -1,12 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
-from models import CareAction, CareUndo, CareLogOut, RecentLogEntry, GardenCareCompleteIn, GardenCareOperationOut
+from models import (
+    CareAction, CareUndo, CareLogOut, RecentLogEntry,
+    GardenCareCompleteIn, GardenCareOperationOut,
+    MoistureCheckResolveIn, MoistureCheckResolveOut,
+)
 from services.scheduling import calculate_next_due
 from services.garden_care import (
     GardenCareSelectionError,
     GardenCareUndoConflict,
     complete_outdoor_care,
     undo_outdoor_care,
+)
+from services.moisture_check_service import (
+    MoistureCheckSelectionError,
+    resolve_moisture_checks,
 )
 from datetime import date, datetime, timedelta
 from auth import get_current_account
@@ -137,6 +145,32 @@ async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
         operation_id=result["operation_id"], care_type=body.care_type,
         completed_at=completed_at, affected_count=result["affected_count"],
     )
+
+
+@router.post(
+    "/care/moisture-checks/resolve",
+    response_model=MoistureCheckResolveOut,
+)
+async def resolve_moisture_check_session(
+    body: MoistureCheckResolveIn,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    try:
+        return await resolve_moisture_checks(
+            db,
+            household_id=account["household_id"],
+            map_id=body.map_id,
+            check_schedule_ids=body.check_schedule_ids,
+            outcome=body.outcome,
+            completed_at=body.completed_at,
+            user_id=body.user_id,
+        )
+    except MoistureCheckSelectionError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": str(exc)},
+        ) from exc
 
 
 @router.post("/care/garden/{operation_id}/undo")

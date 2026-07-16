@@ -14,6 +14,7 @@ export type EventTypeId =
   | 'dust'
   | 'frost_protect'
   | 'heat_protect'
+  | 'moisture_check'
 
 export interface EventTypeDef {
   id: EventTypeId
@@ -39,6 +40,7 @@ export const EVENT_TYPES: EventTypeDef[] = [
   { id: 'dust',          labelNl: 'Afstoffen',    labelEn: 'Dust',      color: '#8A7F7A', cssClass: 'dust' },
   { id: 'frost_protect', labelNl: 'Koude bescherming',  labelEn: 'Frost protection', color: '#5B8FA8', cssClass: 'frost-protect' },
   { id: 'heat_protect',  labelNl: 'Hitte bescherming',  labelEn: 'Heat protection',  color: '#C97A4A', cssClass: 'heat-protect' },
+  { id: 'moisture_check', labelNl: 'Vochtcontrole', labelEn: 'Moisture check', color: '#4F7C66', cssClass: 'moisture-check' },
 ]
 
 export const EVENT_TYPE_BY_ID: Record<string, EventTypeDef | undefined> =
@@ -63,6 +65,7 @@ export const EVENT_TYPE_UTILITY_KEY: Record<EventTypeId, keyof Translations['uti
   dust: 'eventDust',
   frost_protect: 'eventColdProtection',
   heat_protect: 'eventHeatProtection',
+  moisture_check: 'eventMoistureCheck',
 }
 
 export interface CalendarEvent {
@@ -89,6 +92,8 @@ export interface CalendarEvent {
     plant_id: number
     plant_name: string
     plant_icon_variant: string | null
+    reason_nl?: string | null
+    reason_en?: string | null
   }> | null
   weather_triggered: boolean
   reason_nl?: string | null
@@ -104,6 +109,7 @@ export interface CalendarEvent {
 const CARE_ACTION_TYPES = new Set<EventTypeId>([
   'water', 'fertilize', 'prune', 'mist', 'rotate',
   'pest_check', 'dust', 'repot', 'sow', 'harvest', 'scan',
+  'moisture_check',
 ])
 
 export function isCareSession(event: CalendarEvent): boolean {

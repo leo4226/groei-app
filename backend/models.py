@@ -227,6 +227,28 @@ class GardenCareOperationOut(BaseModel):
     affected_count: int
 
 
+class MoistureCheckResolveIn(BaseModel):
+    map_id: int
+    check_schedule_ids: list[int]
+    outcome: Literal['still_moist', 'watered']
+    completed_at: date
+    user_id: int
+
+    @field_validator('check_schedule_ids')
+    @classmethod
+    def validate_check_schedule_ids(cls, value: list[int]) -> list[int]:
+        if not value or len(value) > 200 or any(schedule_id < 1 for schedule_id in value):
+            raise ValueError('invalid_check_schedule_ids')
+        if len(value) != len(set(value)):
+            raise ValueError('duplicate_check_schedule_ids')
+        return value
+
+
+class MoistureCheckResolveOut(BaseModel):
+    outcome: Literal['still_moist', 'watered']
+    affected_count: int
+
+
 # --- Care Logs ---
 
 class CareLogOut(BaseModel):
@@ -934,6 +956,8 @@ class CalendarGroupMemberOut(BaseModel):
     plant_id: int
     plant_name: str
     plant_icon_variant: str | None = None
+    reason_nl: str | None = None
+    reason_en: str | None = None
 
 
 class CalendarEventOut(BaseModel):

@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,6 +11,7 @@ from services.calendar_grouping import get_calendar_grouping_preferences
 from services.weather_task_service import sync_ephemeral_schedules
 from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
+from services.moisture_check_service import sync_moisture_checks
 from care_types import CARE_TYPES, normalize_care_type
 
 router = APIRouter(tags=["calendar"])
@@ -41,13 +43,8 @@ def _pressure_weather_days(forecast: dict, *, usable: bool) -> list[WeatherDay]:
     ]
 
 
-@router.get("/calendar/water-outlook", response_model=WaterOutlookOut)
-async def get_water_outlook(
-    account=Depends(get_current_account),
-    db=Depends(db_dep),
-):
-    """Return read-only, map-local Water pressure for active schedules."""
-    household_id = account["household_id"]
+async def build_water_outlook(db, *, household_id: int) -> dict:
+    """Build map-local Water pressure for one household without writing."""
     rows = await db.execute_fetchall(
         """SELECT cs.id AS schedule_id, cs.next_due,
                   p.id AS plant_id, p.name AS plant_name,
@@ -179,6 +176,15 @@ async def get_water_outlook(
     return {"generated_at": today, "maps": maps}
 
 
+@router.get("/calendar/water-outlook", response_model=WaterOutlookOut)
+async def get_water_outlook(
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Return read-only, map-local Water pressure for active schedules."""
+    return await build_water_outlook(db, household_id=account["household_id"])
+
+
 def _care_warning_to_dict(w: CareWarning) -> dict:
     """Convert a CareWarning dataclass to the dict shape the client expects."""
     return {
@@ -194,6 +200,16 @@ def _care_warning_to_dict(w: CareWarning) -> dict:
         "forecast_day_label_nl": w.forecast_day_label_nl,
         "forecast_day_label_en": w.forecast_day_label_en,
     }
+
+
+def _moisture_metadata(notes: str | None) -> dict:
+    if not notes:
+        return {}
+    try:
+        value = json.loads(notes)
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
 def _generate_occurrences(
@@ -265,6 +281,63 @@ def _group_outdoor_events(
     return retained
 
 
+def _group_moisture_check_events(
+    events: list[CalendarEventOut],
+) -> list[CalendarEventOut]:
+    grouped: dict[tuple[str, int], list[CalendarEventOut]] = {}
+    retained: list[CalendarEventOut] = []
+    for event in events:
+        if event.type == "moisture_check" and event.map_id is not None:
+            grouped.setdefault((event.date, event.map_id), []).append(event)
+        else:
+            retained.append(event)
+
+    for (event_date, map_id), members in grouped.items():
+        first = members[0]
+        retained.append(CalendarEventOut(
+            id=f"moisture:{map_id}:{event_date}",
+            date=event_date,
+            type="moisture_check",
+            plant_id=None,
+            plant_name=None,
+            plant_icon_variant=None,
+            schedule_id=None,
+            map_id=map_id,
+            map_name=first.map_name,
+            overdue=any(member.overdue for member in members),
+            severity="info",
+            reason_nl=first.reason_nl,
+            reason_en=first.reason_en,
+            action_nl="Voel de grond en geef alleen water als die droog aanvoelt.",
+            action_en="Feel the soil and water only when it feels dry.",
+            grouped=True,
+            group_count=len(members),
+            group_member_schedule_ids=[
+                member.schedule_id for member in members
+                if member.schedule_id is not None
+            ],
+            group_member_event_ids=[member.id for member in members],
+            group_members=[
+                {
+                    "schedule_id": member.schedule_id,
+                    "plant_id": member.plant_id,
+                    "plant_name": member.plant_name,
+                    "plant_icon_variant": member.plant_icon_variant,
+                    "reason_nl": member.reason_nl,
+                    "reason_en": member.reason_en,
+                }
+                for member in members
+                if (
+                    member.schedule_id is not None
+                    and member.plant_id is not None
+                    and member.plant_name is not None
+                )
+            ],
+            weather_triggered=True,
+        ))
+    return retained
+
+
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
 async def list_calendar_events(
     from_: str = Query(..., alias="from"),
@@ -296,6 +369,18 @@ async def list_calendar_events(
     try:
         sync_result = await sync_ephemeral_schedules(db)
         warning_weather = sync_result.get("warning_weather")
+    except Exception:
+        pass
+
+    try:
+        pressure_outlook = await build_water_outlook(
+            db, household_id=account["household_id"],
+        )
+        await sync_moisture_checks(
+            db,
+            household_id=account["household_id"],
+            outlook=pressure_outlook,
+        )
     except Exception:
         pass
 
@@ -356,6 +441,7 @@ async def list_calendar_events(
             cs.interval_days AS interval_days,
             cs.season_adjust AS season_adjust,
             cs.is_ephemeral AS is_ephemeral,
+            cs.notes        AS notes,
             p.name          AS plant_name,
             p.icon_key      AS plant_icon_variant
         FROM care_schedules cs
@@ -370,7 +456,7 @@ async def list_calendar_events(
             OR
             (cs.is_ephemeral = 1 AND cs.next_due BETWEEN ? AND ?)
           )
-        ORDER BY cs.next_due, cs.care_type
+        ORDER BY cs.next_due, cs.care_type, cs.id
         """,
         sched_params,
     )
@@ -435,6 +521,16 @@ async def list_calendar_events(
             # One-shot — only show if in range (already guaranteed by query)
             sp_id = plant_species_map.get(pid)
             sp = species_names.get(sp_id, {}) if sp_id else {}
+            if ct == "moisture_check":
+                metadata = _moisture_metadata(r.get("notes"))
+                enrichment = {
+                    **enrichment,
+                    "severity": "info",
+                    "reason_nl": metadata.get("reason_nl"),
+                    "reason_en": metadata.get("reason_en"),
+                    "action_nl": "Voel de grond en geef alleen water als die droog aanvoelt.",
+                    "action_en": "Feel the soil and water only when it feels dry.",
+                }
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
@@ -488,6 +584,8 @@ async def list_calendar_events(
                     overdue=is_overdue,
                     **enrichment,
                 ))
+
+    events = _group_moisture_check_events(events)
 
     # Shared household preferences supersede the legacy browser-local query flag.
     preferences = await get_calendar_grouping_preferences(db, account["household_id"])

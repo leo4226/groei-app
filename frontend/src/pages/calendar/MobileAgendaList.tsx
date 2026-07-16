@@ -119,7 +119,13 @@ export default function MobileAgendaList({
                   {isActionable(e, todayIso) ? (
                     <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>
                       <button disabled={busy} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
-                        {busy ? t.common.loading : e.grouped ? t.calendar.completeAndAlign : t.dashboard.actions.done}
+                        {busy
+                          ? t.common.loading
+                          : e.type === 'moisture_check'
+                            ? t.calendar.moistureCheckTitle
+                            : e.grouped
+                              ? t.calendar.completeAndAlign
+                              : t.dashboard.actions.done}
                       </button>
                       {!e.grouped && (
                         <button disabled={busy} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: 'pointer' }}>

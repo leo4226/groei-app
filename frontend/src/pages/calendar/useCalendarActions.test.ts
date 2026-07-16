@@ -11,6 +11,7 @@ import { useCalendarActions } from './useCalendarActions'
 const mocks = vi.hoisted(() => ({
   gardenComplete: vi.fn(),
   gardenUndo: vi.fn(),
+  moistureResolve: vi.fn(),
   markCareDone: vi.fn(),
   skipCare: vi.fn(async () => undefined),
 }))
@@ -19,6 +20,9 @@ vi.mock('../../api/client', () => ({
   gardenCare: {
     complete: mocks.gardenComplete,
     undo: mocks.gardenUndo,
+  },
+  moistureChecks: {
+    resolve: mocks.moistureResolve,
   },
 }))
 
@@ -65,6 +69,7 @@ describe('useCalendarActions', () => {
   beforeEach(() => {
     mocks.gardenComplete.mockReset()
     mocks.gardenUndo.mockReset()
+    mocks.moistureResolve.mockReset()
     mocks.markCareDone.mockReset()
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -166,6 +171,42 @@ describe('useCalendarActions', () => {
     )
     expect(state.pendingWaterRound).toBeNull()
     expect(state.completion).toEqual({ kind: 'map', mapId: 1, mapName: 'Back garden' })
+  })
+
+  it('resolves selected moisture checks without using grouped garden completion', async () => {
+    mocks.moistureResolve.mockResolvedValue({ outcome: 'watered', affected_count: 1 })
+    const grouped: CalendarEvent = {
+      ...event('2026-07-12'),
+      id: 'moisture:1:2026-07-12',
+      type: 'moisture_check',
+      plant_id: null,
+      plant_name: null,
+      schedule_id: null,
+      map_name: 'Back garden',
+      grouped: true,
+      group_count: 2,
+      group_member_schedule_ids: [11, 21],
+      group_members: [
+        { schedule_id: 11, plant_id: 1, plant_name: 'Rose', plant_icon_variant: null },
+        { schedule_id: 21, plant_id: 2, plant_name: 'Basil', plant_icon_variant: null },
+      ],
+      weather_triggered: true,
+    }
+    act(() => root.render(createElement(Harness, { events: [grouped] })))
+
+    await act(async () => state.handleDone(grouped))
+    expect(state.pendingMoistureCheck).toEqual(grouped)
+    expect(mocks.gardenComplete).not.toHaveBeenCalled()
+
+    await act(async () => state.resolveMoistureCheck([11], 'watered'))
+
+    expect(mocks.moistureResolve).toHaveBeenCalledWith(
+      1, [11], 'watered', expect.any(String), 1,
+    )
+    expect(state.pendingMoistureCheck).toBeNull()
+    expect(state.doneIds.has(grouped.id)).toBe(true)
+    expect(state.moistureNotice).toBe('Water geven vastgelegd voor de geselecteerde planten.')
+    expect(state.completion).toBeNull()
   })
 
   it('clears a completion when Calendar navigation changes', async () => {

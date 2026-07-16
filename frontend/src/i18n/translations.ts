@@ -1157,6 +1157,12 @@ export type Translations = {
     wateringRoundCancel: string
     wateringRoundConfirm: (n: number) => string
     wateringRoundSelectAtLeastOne: string
+    moistureCheckTitle: string
+    moistureCheckDescription: string
+    moistureCheckStillMoist: (n: number) => string
+    moistureCheckWatered: (n: number) => string
+    moistureCheckResolvedStillMoist: string
+    moistureCheckResolvedWatered: string
     // Moon short labels
     newMoon: string  // "new"
     fullMoon: string  // "full"
@@ -1226,6 +1232,7 @@ export type Translations = {
     eventMist: string
     eventColdProtection: string
     eventHeatProtection: string
+    eventMoistureCheck: string
     eventBloom: string
     eventSow: string
     eventHarvest: string

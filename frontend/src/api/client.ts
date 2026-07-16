@@ -549,6 +549,26 @@ export const gardenCare = {
   undo: (operationId: number) => api<{ ok: boolean }>('POST', `/care/garden/${operationId}/undo`),
 }
 
+export const moistureChecks = {
+  resolve: (
+    mapId: number,
+    checkScheduleIds: number[],
+    outcome: 'still_moist' | 'watered',
+    completedAt: string,
+    userId: number,
+  ) => api<{ outcome: 'still_moist' | 'watered'; affected_count: number }>(
+    'POST',
+    '/care/moisture-checks/resolve',
+    { body: {
+      map_id: mapId,
+      check_schedule_ids: checkScheduleIds,
+      outcome,
+      completed_at: completedAt,
+      user_id: userId,
+    } },
+  ),
+}
+
 export const weeds = {
   listSightings:  (map_id?: number)                                => api<import('../types').WeedSightingOut[]>('GET', '/weed-sightings', { params: map_id ? { map_id: String(map_id) } : {} }),
   deleteSighting: (sighting_id: number)                            => api<void>('DELETE', `/weed-sightings/${sighting_id}`),
