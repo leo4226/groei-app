@@ -22,6 +22,7 @@ function EnvironmentFilter({
 
   return (
     <div className={`calendar-environment-filter ${className ?? ''}`}>
+      <span className="env-label" aria-hidden="true">{t.calendar.filterLabel}</span>
       {([
         { id: 'all', label: t.common.all, desc: t.calendar.filterDescAll, glyph: 'list' as GlyphName },
         { id: 'tuin', label: t.common.garden, desc: t.calendar.filterDescGarden, glyph: 'leaf' as GlyphName },
@@ -32,28 +33,13 @@ function EnvironmentFilter({
           <button
             key={id}
             type="button"
+            className={`env-pill ${active ? 'on' : ''}`}
             aria-pressed={active}
+            aria-label={`${label} — ${desc}`}
+            title={desc}
             onClick={() => onChange(id)}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-              gap: 2, cursor: 'pointer', textAlign: 'left',
-              padding: '10px 18px', borderRadius: 14,
-              border: `1.5px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: active ? 'var(--color-surface)' : 'var(--color-text)',
-              transition: 'all 0.15s',
-            }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Glyph name={glyph} size={15} /> {label}
-            </span>
-            <span style={{
-              fontSize: 11, lineHeight: 1.3, fontWeight: 400,
-              color: active ? 'var(--color-surface)' : 'var(--color-text-muted)',
-              opacity: active ? 0.85 : 1,
-            }}>
-              {desc}
-            </span>
+            <Glyph name={glyph} size={13} /> {label}
           </button>
         )
       })}
@@ -61,15 +47,36 @@ function EnvironmentFilter({
   )
 }
 
-function CalendarViewNavigation({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
+/**
+ * The one constant masthead across all three calendar views ("one cover,
+ * three spreads"): title + per-view lede, with the view switch as centered
+ * serif pill-tabs directly under the title — the same grammar Plants uses
+ * for its sibling views. View-specific context (month switcher, moon,
+ * field note, filters) lives in each view's own rail below this header.
+ */
+function CalendarPageMasthead({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
   const t = useT()
+  const viewLabel = view === 'month' ? t.calendar.month : view === 'work' ? t.calendar.agenda : t.calendar.gardenYear
+  const lede = view === 'month'
+    ? t.calendar.subtitle
+    : view === 'work'
+      ? t.calendar.workAgendaSubtitle
+      : t.calendar.gardenYearSubtitle
 
   return (
-    <nav className="calendar-view-navigation" data-calendar-view-navigation aria-label={t.calendar.heading}>
-      <div className="calendar-view-navigation-inner">
-        <CalendarViewToggle view={view} onSet={onSet} />
+    <header className="masthead">
+      <div className="title-block">
+        <div className="eyebrow">
+          <span>{t.calendar.title}</span>
+          <span>{viewLabel}</span>
+        </div>
+        <h1>{t.calendar.heading}<em>.</em></h1>
+        <p className="lede">{lede}</p>
       </div>
-    </nav>
+      <nav className="masthead-toggle-row" data-calendar-view-navigation aria-label={t.calendar.heading}>
+        <CalendarViewToggle view={view} onSet={onSet} />
+      </nav>
+    </header>
   )
 }
 
@@ -81,7 +88,7 @@ export default function PlanningCalendarPage() {
 
   return (
     <div className="cal-page">
-      <CalendarViewNavigation view={view} onSet={setView} />
+      <CalendarPageMasthead view={view} onSet={setView} />
       {view === 'month' ? (
         <MonthView
           onSetView={setView}
@@ -90,7 +97,7 @@ export default function PlanningCalendarPage() {
         />
       ) : (
         view === 'work' ? (
-          <WorkAgendaView env={env} environmentFilter={environmentFilter} />
+          <WorkAgendaView env={env} environmentFilter={environmentFilter} onSetView={setView} />
         ) : (
           <PhenologyView />
         )

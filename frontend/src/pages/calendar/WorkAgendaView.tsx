@@ -1,10 +1,14 @@
 import { useMemo, type ReactNode } from 'react'
 import { useT } from '../../context/LanguageContext'
 import MobileAgendaList from './MobileAgendaList'
+import MonthSeasonalPanel from './MonthSeasonalPanel'
+import WaterOutlookPanel from './WaterOutlookPanel'
 import { isoDate } from './dateUtils'
 import { useCalendarActions } from './useCalendarActions'
 import { useCalendarEventRange } from './useCalendarEvents'
 import { buildWorkAgenda } from './workAgendaModel'
+import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
+import type { CalendarViewMode } from './calendarViewModel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
 import WateringRoundDialog from './WateringRoundDialog'
 import { useFloreren } from '../../store/useFloreren'
@@ -12,18 +16,25 @@ import { useFloreren } from '../../store/useFloreren'
 interface Props {
   env: string
   environmentFilter: ReactNode
+  onSetView?(v: CalendarViewMode): void
 }
 
-export default function WorkAgendaView({ env, environmentFilter }: Props) {
+export default function WorkAgendaView({ env, environmentFilter, onSetView }: Props) {
   const t = useT()
   const today = new Date()
   const todayIso = isoDate(today)
+  const currentMonth1 = today.getMonth() + 1
   const horizon = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30)
   const horizonIso = isoDate(horizon)
   const maps = useFloreren(state => state.maps)
+  const plants = useFloreren(state => state.plants)
   const mapSlugs = useMemo(
     () => new Map(maps.map(map => [map.id, map.slug] as const)),
     [maps],
+  )
+  const seasonalPlants = useMemo(
+    () => filterSeasonalPlantsByEnvironment(plants, maps, env),
+    [plants, maps, env],
   )
   const { events, loading, error, retry } = useCalendarEventRange(
     todayIso,
@@ -52,40 +63,51 @@ export default function WorkAgendaView({ env, environmentFilter }: Props) {
 
   return (
     <section className="work-agenda-view">
-      <header className="work-agenda-head">
-        <div>
-          <div className="eyebrow">{t.calendar.title}</div>
-          <h1>{t.calendar.workAgendaHeading}<em>.</em></h1>
-          <p>{t.calendar.workAgendaSubtitle}</p>
-        </div>
-        {environmentFilter}
-      </header>
+      {/* Context rail — same slot the Month view's month-rail occupies.
+          The lede lives in the shared masthead; here only the filter. */}
+      <div className="view-rail">
+        <div className="masthead-environment">{environmentFilter}</div>
+      </div>
 
-      <CalendarCompletionNotice
-        completion={completion}
-        mapSlugs={mapSlugs}
-        onDismiss={clearCompletion}
-      />
+      {/* Two-column spread on desktop: task list + the context rail the
+          Month view already renders (collapses to one column ≤1200px). */}
+      <main>
+        <div className="work-agenda-list">
+          <CalendarCompletionNotice
+            completion={completion}
+            mapSlugs={mapSlugs}
+            onDismiss={clearCompletion}
+          />
 
-      {loading ? (
-        <p className="work-agenda-status">{t.common.loading}</p>
-      ) : error ? (
-        <div className="work-agenda-status" role="alert">
-          <p>{t.calendar.workAgendaLoadFailed}</p>
-          <button type="button" onClick={retry}>{t.calendar.retry}</button>
+          {loading ? (
+            <p className="work-agenda-status">{t.common.loading}</p>
+          ) : error ? (
+            <div className="work-agenda-status" role="alert">
+              <p>{t.calendar.workAgendaLoadFailed}</p>
+              <button type="button" onClick={retry}>{t.calendar.retry}</button>
+            </div>
+          ) : (
+            <MobileAgendaList
+              events={agenda}
+              todayIso={todayIso}
+              saving={saving}
+              onDone={handleDone}
+              onSkip={handleSkip}
+              undoMsg={undoMsg}
+              onGardenUndo={handleGardenUndo}
+              actionError={actionError}
+            />
+          )}
         </div>
-      ) : (
-        <MobileAgendaList
-          events={agenda}
-          todayIso={todayIso}
-          saving={saving}
-          onDone={handleDone}
-          onSkip={handleSkip}
-          undoMsg={undoMsg}
-          onGardenUndo={handleGardenUndo}
-          actionError={actionError}
-        />
-      )}
+        <aside className="col-side">
+          <WaterOutlookPanel env={env} />
+          <MonthSeasonalPanel
+            month1={currentMonth1}
+            plants={seasonalPlants}
+            onOpenGardenYear={onSetView ? () => onSetView('year') : undefined}
+          />
+        </aside>
+      </main>
       {pendingWaterRound && (
         <WateringRoundDialog
           event={pendingWaterRound}

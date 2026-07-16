@@ -32,11 +32,8 @@ export default function PhenologyView() {
 
   return (
     <section className="garden-year-view" data-calendar-view="year">
-      <header className="garden-year-head">
-        <div className="eyebrow">{t.calendar.title}</div>
-        <h1>{t.calendar.gardenYear}<em>.</em></h1>
-      </header>
-
+      {/* Page title lives in the shared CalendarPageMasthead; the month rail
+          below is this view's context rail. */}
       <nav
         className="garden-year-months"
         data-garden-year-months
