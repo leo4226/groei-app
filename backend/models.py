@@ -964,6 +964,7 @@ class CalendarEventOut(BaseModel):
     grouped: bool = False
     group_count: int | None = None
     group_member_schedule_ids: list[int] | None = None
+    group_member_event_ids: list[str] | None = None
     group_members: list[CalendarGroupMemberOut] | None = None
     weather_triggered: bool = False
 

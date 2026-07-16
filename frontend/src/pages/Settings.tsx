@@ -14,6 +14,7 @@ import Avatar from '../components/ui/Avatar'
 import type { PlantIcon } from '../types'
 import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
 import CareRhythmSettings from './settings/CareRhythmSettings'
+import CalendarSubscriptionSettings from './settings/CalendarSubscriptionSettings'
 
 // Backend care_type keys a user can mute for scheduled care push reminders.
 const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
@@ -661,6 +662,7 @@ export default function Settings() {
         <div className="space-y-3">
           <CareRhythmSettings />
           <CalendarGroupingSettings embedded />
+          <CalendarSubscriptionSettings />
         </div>
       </section>
 

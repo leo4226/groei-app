@@ -83,6 +83,7 @@ def _group_outdoor_events(
             overdue=any(member.overdue for member in members), grouped=True,
             group_count=len(members),
             group_member_schedule_ids=[member.schedule_id for member in members if member.schedule_id is not None],
+            group_member_event_ids=[member.id for member in members],
             group_members=[
                 {
                     "schedule_id": member.schedule_id,
