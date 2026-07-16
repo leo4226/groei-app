@@ -1,5 +1,5 @@
 import { useCallback, useReducer, useRef, useState } from 'react'
-import type { EditorZone, ZoneStyleType, CanvasData, WallElement, MapType, ObjectShapeType, ObjectType, ObjectCategory, ShadowCaster } from '../types'
+import type { EditorZone, ZoneStyleType, CanvasData, WallElement, MapType, ObjectShapeType, ObjectType, ObjectCategory, ShadowCaster, MapUnderlay } from '../types'
 import {
   DEFAULT_DOOR_WIDTH_CM,
   DEFAULT_WINDOW_WIDTH_CM,
@@ -52,6 +52,7 @@ interface EditorState {
   isDirty: boolean
   scalePxPerM: number
   mapType: MapType
+  underlay: MapUnderlay | null
 }
 
 /** The slice of state that undo restores */
@@ -61,6 +62,7 @@ interface Snapshot {
   shadowCasters: ShadowCaster[]
   scalePxPerM: number
   mapType: MapType
+  underlay: MapUnderlay | null
 }
 
 type Action =
@@ -84,6 +86,8 @@ type Action =
   | { type: 'SELECT_SHADOW_CASTER'; id: string | null }
   | { type: 'SET_OBJECT_PRESET'; preset: ObjectPreset | null }
   | { type: 'SET_SHADOW_CASTER_PRESET'; preset: 'building' | 'tree' }
+  | { type: 'SET_UNDERLAY'; underlay: MapUnderlay | null }
+  | { type: 'UPDATE_UNDERLAY'; updates: Partial<MapUnderlay> }
   | { type: 'UNDO'; snapshot: Snapshot }
 
 /** Actions that record undo history before being applied */
@@ -91,7 +95,7 @@ const UNDOABLE = new Set([
   'ADD_ZONE', 'UPDATE_ZONE', 'DELETE_ZONE',
   'ADD_WALL_ELEMENT', 'UPDATE_WALL_ELEMENT', 'DELETE_WALL_ELEMENT',
   'ADD_SHADOW_CASTER', 'UPDATE_SHADOW_CASTER', 'DELETE_SHADOW_CASTER',
-  'SET_SCALE', 'SET_MAP_TYPE',
+  'SET_SCALE', 'SET_MAP_TYPE', 'SET_UNDERLAY',
 ])
 
 const MAX_HISTORY = 60
@@ -112,6 +116,7 @@ const initialState: EditorState = {
   isDirty: false,
   scalePxPerM: 46,
   mapType: 'outdoor',
+  underlay: null,
 }
 
 function isInsideStructure(room: EditorZone, zones: EditorZone[]): boolean {
@@ -135,6 +140,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         shadowCasters: action.data.shadowCasters ?? [],
         scalePxPerM: action.data.scale_px_per_m,
         mapType: action.data.mapType ?? 'outdoor',
+        underlay: action.data.underlay ?? null,
         isDirty: false,
       }
     case 'ADD_ZONE': {
@@ -271,6 +277,14 @@ function reducer(state: EditorState, action: Action): EditorState {
       return { ...state, objectPreset: action.preset }
     case 'SET_SHADOW_CASTER_PRESET':
       return { ...state, shadowCasterPreset: action.preset }
+    case 'SET_UNDERLAY':
+      return { ...state, underlay: action.underlay, isDirty: true }
+    case 'UPDATE_UNDERLAY':
+      return {
+        ...state,
+        underlay: state.underlay ? { ...state.underlay, ...action.updates } : state.underlay,
+        isDirty: true,
+      }
     case 'UNDO':
       return {
         ...state,
@@ -279,6 +293,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         shadowCasters: action.snapshot.shadowCasters,
         scalePxPerM: action.snapshot.scalePxPerM,
         mapType: action.snapshot.mapType,
+        underlay: action.snapshot.underlay,
         selectedZoneId: null,
         selectedWallElementId: null,
         selectedShadowCasterId: null,
@@ -308,7 +323,7 @@ export function useEditorState() {
   const lastPushRef = useRef<{ actionType: string; zoneId?: string; time: number } | null>(null)
 
   function snapState(s: EditorState): Snapshot {
-    return { zones: s.zones, wallElements: s.wallElements, shadowCasters: s.shadowCasters, scalePxPerM: s.scalePxPerM, mapType: s.mapType }
+    return { zones: s.zones, wallElements: s.wallElements, shadowCasters: s.shadowCasters, scalePxPerM: s.scalePxPerM, mapType: s.mapType, underlay: s.underlay }
   }
 
   /** Dispatch wrapper that records the pre-action snapshot for undoable actions. */
@@ -479,6 +494,18 @@ export function useEditorState() {
     dispatch({ type: 'SET_SHADOW_CASTER_PRESET', preset })
   }, [])
 
+  // Add or remove the trace-over background (#647). Undoable so an accidental
+  // add/remove can be reverted.
+  const setUnderlay = useCallback((underlay: MapUnderlay | null) => {
+    dispatchWithHistory({ type: 'SET_UNDERLAY', underlay })
+  }, [dispatchWithHistory])
+
+  // Live tweaks (move / resize / opacity / lock) — not pushed to history so
+  // dragging the underlay doesn't flood the undo stack.
+  const updateUnderlay = useCallback((updates: Partial<MapUnderlay>) => {
+    dispatch({ type: 'UPDATE_UNDERLAY', updates })
+  }, [])
+
   const toCanvasData = useCallback((): CanvasData => {
     return {
       zones: state.zones,
@@ -488,8 +515,9 @@ export function useEditorState() {
       canvas_w: 680,
       canvas_h: 680,
       mapType: state.mapType,
+      underlay: state.underlay,
     }
-  }, [state.zones, state.wallElements, state.shadowCasters, state.scalePxPerM, state.mapType])
+  }, [state.zones, state.wallElements, state.shadowCasters, state.scalePxPerM, state.mapType, state.underlay])
 
   return {
     ...state,
@@ -515,6 +543,8 @@ export function useEditorState() {
     selectShadowCaster,
     setObjectPreset,
     setShadowCasterPreset,
+    setUnderlay,
+    updateUnderlay,
     toCanvasData,
   }
 }

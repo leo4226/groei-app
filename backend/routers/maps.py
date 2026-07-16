@@ -1,7 +1,8 @@
 import json
 import re
+import time
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 from datetime import date
 
@@ -364,6 +365,50 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
     )
     return dict(rows[0])
 
+
+class UnderlayOut(BaseModel):
+    url: str
+
+
+_UNDERLAY_MAX_BYTES = 12 * 1024 * 1024
+_UNDERLAY_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+
+@router.post("/maps/{map_id}/underlay", response_model=UnderlayOut)
+async def upload_map_underlay(
+    map_id: int,
+    file: UploadFile = File(...),
+    account = Depends(get_current_account),
+    db = Depends(db_dep),
+):
+    """Store a trace-over background image for a map in R2 and return its URL.
+
+    The URL + placement transform live in the map's canvas_data (client-side);
+    this endpoint only persists the bytes. The underlay is a private editor
+    aid — it is never rendered on the read-only map view, the public share page,
+    or the PNG export.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT slug FROM maps WHERE id = ? AND household_id = ?",
+        (map_id, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(404, "Map not found")
+
+    ext = _UNDERLAY_TYPES.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(415, "Unsupported image type")
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Empty file")
+    if len(data) > _UNDERLAY_MAX_BYTES:
+        raise HTTPException(413, "Image too large")
+
+    slug = rows[0]["slug"]
+    key = f"maps/{slug}/underlay-{int(time.time())}.{ext}"
+    storage = build_storage_from_env()
+    url = storage.put(key, data, content_type=file.content_type)
+    return {"url": url}
 
 
 @router.delete("/maps/{map_id}")

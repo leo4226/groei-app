@@ -35,6 +35,7 @@ export default function LayoutEditorPage() {
   const [showMoreActions, setShowMoreActions] = useState(false)
   const [shadowMode, setShadowMode] = useState(false)
   const [showWizard, setShowWizard] = useState(false)
+  const [underlayBusy, setUnderlayBusy] = useState(false)
 
   const editor = useEditorState()
   const isTouch = useIsTouch()
@@ -166,6 +167,48 @@ export default function LayoutEditorPage() {
       setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
     }
   }, [mapId])
+
+  // ── Trace-over background (#647) ──────────────────────────────────────────
+  const handleAddUnderlayFile = useCallback(async (file: File) => {
+    if (!mapId || underlayBusy) return
+    setUnderlayBusy(true)
+    try {
+      // Read natural aspect ratio locally so the placed image isn't distorted.
+      const aspect = await new Promise<number>((resolve) => {
+        const img = new Image()
+        const url = URL.createObjectURL(file)
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1) }
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(1) }
+        img.src = url
+      })
+      const { url } = await client.maps.uploadUnderlay(mapId, file)
+      // Fit the image into the 680×680 canvas with a small margin.
+      const CANVAS = 680
+      const maxW = CANVAS * 0.85
+      const width = aspect >= 1 ? maxW : maxW * aspect
+      const height = width / aspect
+      editor.setUnderlay({
+        url,
+        x: Math.round((CANVAS - width) / 2),
+        y: Math.round((CANVAS - height) / 2),
+        width: Math.round(width),
+        height: Math.round(height),
+        opacity: 0.5,
+        locked: false,
+      })
+    } catch {
+      // Upload failed — leave the editor as-is; the user can retry.
+    } finally {
+      setUnderlayBusy(false)
+    }
+  }, [mapId, underlayBusy, editor.setUnderlay])
+
+  // Calibration: interpret the underlay's current pixel width as `metres` of
+  // real distance, and set the map scale accordingly so traced zones are sized.
+  const handleCalibrateWidthM = useCallback((metres: number) => {
+    if (!editor.underlay || metres <= 0) return
+    editor.setScalePxPerM(Math.max(4, Math.round((editor.underlay.width / metres) * 10) / 10))
+  }, [editor.underlay, editor.setScalePxPerM])
 
   const isSavingRef = useRef(false)
 
@@ -570,6 +613,8 @@ export default function LayoutEditorPage() {
           showSunPreview={showSunPreview}
           perimeterPolygon={showSunPreview ? gardenPerimeter : null}
           shadowMode={shadowMode}
+          underlay={editor.underlay}
+          onUpdateUnderlay={editor.updateUnderlay}
         />
 
         {!previewMode && (
@@ -626,6 +671,13 @@ export default function LayoutEditorPage() {
               onSetShadowMode={setShadowMode}
               canFenceGarden={!!gardenBounds}
               onFenceGarden={fenceTheGarden}
+              underlay={editor.underlay}
+              scalePxPerM={editor.scalePxPerM}
+              underlayBusy={underlayBusy}
+              onAddUnderlayFile={handleAddUnderlayFile}
+              onUpdateUnderlay={editor.updateUnderlay}
+              onRemoveUnderlay={() => editor.setUnderlay(null)}
+              onCalibrateWidthM={handleCalibrateWidthM}
             />
             {selectedZone && !selectedWallElement && (
               <ZonePropertiesPanel

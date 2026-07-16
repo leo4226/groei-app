@@ -305,6 +305,18 @@ export type Translations = {
       next: string
       finish: string
     }
+    background: {
+      title: string
+      add: string
+      uploading: string
+      hint: string
+      opacity: string
+      locked: string
+      unlocked: string
+      widthM: string
+      calibrateHint: string
+      remove: string
+    }
   }
 
   photoJournal: {

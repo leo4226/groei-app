@@ -348,6 +348,18 @@ export const en: Translations = {
       next: 'Next',
       finish: 'Finish',
     },
+    background: {
+      title: 'Background',
+      add: 'Add background',
+      uploading: 'Uploading…',
+      hint: 'Drop a screenshot (Google Maps, satellite or a sketch) behind your drawing to trace over.',
+      opacity: 'Opacity',
+      locked: 'Locked',
+      unlocked: 'Unlocked',
+      widthM: 'Width (m)',
+      calibrateHint: 'Enter the background’s real width so your drawing comes out to scale.',
+      remove: 'Remove',
+    },
   },
 
   photoJournal: {

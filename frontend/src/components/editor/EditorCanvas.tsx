@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { usePinch } from '@use-gesture/react'
-import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject } from '../../types'
+import type { EditorZone, WallElement, ZoneStyleType, RoomEdge, ShadowCaster, MapType, MapObject, MapUnderlay } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { screenToSVG } from '../../utils/svgCoords'
 import {
@@ -246,6 +246,8 @@ interface Props {
   onObjectCreated: () => void
   onPlaceObject: (preset: ObjectPreset, svgX: number, svgY: number) => void
   shadowMode?: boolean
+  underlay?: MapUnderlay | null
+  onUpdateUnderlay?: (updates: Partial<MapUnderlay>) => void
 }
 
 interface DrawState {
@@ -260,7 +262,7 @@ interface DragState {
 // Resize applies to a zone or a shadow caster. The math works on an
 // axis-aligned bounding box; the caster branch converts the box back to the
 // caster's native shape (rect x/y/w/h, or circle cx/cy/radius).
-type ResizeTargetKind = 'zone' | 'caster-rect' | 'caster-circle'
+type ResizeTargetKind = 'zone' | 'caster-rect' | 'caster-circle' | 'underlay'
 
 interface ResizeState {
   kind: ResizeTargetKind
@@ -295,6 +297,13 @@ interface ObjectDragState {
   origY: number
 }
 
+interface UnderlayDragState {
+  startSvgX: number
+  startSvgY: number
+  origX: number
+  origY: number
+}
+
 export default function EditorCanvas({
   zones, wallElements, shadowCasters, objects,
   selectedZoneId, selectedWallElementId, selectedShadowCasterId,
@@ -306,6 +315,8 @@ export default function EditorCanvas({
   onPlaceObject,
   shadowCasterPreset,
   shadowMode = false,
+  underlay = null,
+  onUpdateUnderlay,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [drawing, setDrawing] = useState<DrawState | null>(null)
@@ -314,6 +325,8 @@ export default function EditorCanvas({
   const [wallElementDragging, setWallElementDragging] = useState<WallElementDragState | null>(null)
   const [shadowCasterDragging, setShadowCasterDragging] = useState<ShadowCasterDragState | null>(null)
   const [objectDragging, setObjectDragging] = useState<ObjectDragState | null>(null)
+  const [underlayDragging, setUnderlayDragging] = useState<UnderlayDragState | null>(null)
+  const [underlaySelected, setUnderlaySelected] = useState(false)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
   const isMobile = useIsMobile()
@@ -448,6 +461,9 @@ export default function EditorCanvas({
       const { cx, cy, radius } = selectedCaster
       return { kind: 'caster-circle', id: selectedCaster.id, bbox: { x: cx - radius, y: cy - radius, width: radius * 2, height: radius * 2 } }
     }
+    if (underlay && !underlay.locked && underlaySelected) {
+      return { kind: 'underlay', id: 'underlay', bbox: { x: underlay.x, y: underlay.y, width: underlay.width, height: underlay.height } }
+    }
     return null
   }
 
@@ -460,6 +476,9 @@ export default function EditorCanvas({
       // handled by WallElementPlacementOverlay click
       return
     }
+
+    // Any press that starts on empty canvas clears the underlay selection.
+    setUnderlaySelected(false)
 
     if (activeTool === 'draw' || activeTool === 'shadow_caster') {
       e.preventDefault()
@@ -489,6 +508,7 @@ export default function EditorCanvas({
   function handleZonePointerDown(e: React.PointerEvent, zoneId: string) {
     if (isPlacingWallElement) return
     e.stopPropagation()
+    setUnderlaySelected(false)
     const pt = getSvgPoint(e)
     if (!pt) return
     if (activeTool === 'select') {
@@ -535,6 +555,7 @@ export default function EditorCanvas({
   function handleShadowCasterPointerDown(e: React.PointerEvent, casterId: string) {
     if (isPlacingWallElement) return
     e.stopPropagation()
+    setUnderlaySelected(false)
     const pt = getSvgPoint(e)
     if (!pt) return
     onSelectShadowCaster(casterId)
@@ -555,6 +576,7 @@ export default function EditorCanvas({
   function handleObjectPointerDown(e: React.PointerEvent, objectId: number) {
     if (isPlacingWallElement) return
     e.stopPropagation()
+    setUnderlaySelected(false)
     const pt = getSvgPoint(e)
     if (!pt) return
     onSelectObject(objectId)
@@ -568,6 +590,20 @@ export default function EditorCanvas({
         setObjectDragging({ objectId, startSvgX: pt.x, startSvgY: pt.y, origX: object.map_x, origY: object.map_y })
       }
     }
+  }
+
+  function handleUnderlayPointerDown(e: React.PointerEvent) {
+    if (!underlay || underlay.locked || activeTool !== 'select') return
+    e.stopPropagation()
+    const pt = getSvgPoint(e)
+    if (!pt) return
+    setUnderlaySelected(true)
+    onSelectZone(null)
+    onSelectWallElement(null)
+    onSelectShadowCaster(null)
+    onSelectObject(null)
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    setUnderlayDragging({ startSvgX: pt.x, startSvgY: pt.y, origX: underlay.x, origY: underlay.y })
   }
 
   function handleResizeHandlePointerDown(e: React.PointerEvent, handle: ResizeHandle) {
@@ -652,6 +688,13 @@ export default function EditorCanvas({
       return
     }
 
+    if (underlayDragging && onUpdateUnderlay) {
+      const dx = pt.x - underlayDragging.startSvgX
+      const dy = pt.y - underlayDragging.startSvgY
+      onUpdateUnderlay({ x: Math.round(underlayDragging.origX + dx), y: Math.round(underlayDragging.origY + dy) })
+      return
+    }
+
     if (wallElementDragging) {
       const zone = zones.find((z) => z.id === wallElementDragging.zoneId)
       const el   = wallElements.find((w) => w.id === wallElementDragging.elementId)
@@ -721,6 +764,10 @@ export default function EditorCanvas({
         const cx = Math.round(x + w / 2)
         const cy = Math.round(y + hh / 2)
         onUpdateShadowCaster(resizing.id, { cx, cy, radius })
+        return
+      }
+      if (resizing.kind === 'underlay') {
+        onUpdateUnderlay?.({ x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(hh) })
         return
       }
 
@@ -795,6 +842,10 @@ export default function EditorCanvas({
   function handlePointerUp() {
     if (objectDragging) {
       setObjectDragging(null)
+      return
+    }
+    if (underlayDragging) {
+      setUnderlayDragging(null)
       return
     }
     if (drawing) {
@@ -941,6 +992,31 @@ export default function EditorCanvas({
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           <EditorDefs />
           <rect width={CANVAS_W} height={CANVAS_H} fill="url(#editor-grid)" />
+
+          {/* Trace-over background (#647) — behind all zones. Editor-only; never
+              rendered on the map view / share / export. Locked = not selectable. */}
+          {underlay && (
+            <g>
+              <image
+                href={underlay.url}
+                x={underlay.x} y={underlay.y}
+                width={underlay.width} height={underlay.height}
+                opacity={underlay.opacity}
+                preserveAspectRatio="none"
+                style={{ cursor: !previewMode && !underlay.locked && activeTool === 'select' ? 'move' : 'default',
+                         pointerEvents: !previewMode && !underlay.locked && activeTool === 'select' ? 'auto' : 'none' }}
+                onPointerDown={handleUnderlayPointerDown}
+              />
+              {!previewMode && underlaySelected && !underlay.locked && (
+                <rect
+                  x={underlay.x} y={underlay.y}
+                  width={underlay.width} height={underlay.height}
+                  fill="none" stroke="#4A90D9" strokeWidth={1.5} strokeDasharray="6 3"
+                  pointerEvents="none"
+                />
+              )}
+            </g>
+          )}
 
           {/* Shadow casters — drawn below zones when shadowMode is off (normal layer order) */}
           {!shadowMode && shadowCasters.map((sc) => {

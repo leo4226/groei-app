@@ -215,6 +215,22 @@ export type ShadowCaster =
   | { id: string; label: string; type: 'circle'; cx: number; cy: number; radius: number; heightCm: number; opacity?: number; excludeSelf?: boolean }
   | { id: string; label: string; type: 'polygon'; points: [number, number][]; heightCm: number; opacity?: number; excludeSelf?: boolean }
 
+/**
+ * A trace-over background image (screenshot / satellite / sketch) shown behind
+ * the zones in the editor only (#647). Stored in canvas_data but never rendered
+ * on the read-only map view, the public share page, or the PNG export — it's a
+ * private drawing aid. Geometry is in canvas (content) pixels.
+ */
+export interface MapUnderlay {
+  url: string
+  x: number        // top-left, canvas px
+  y: number
+  width: number    // rendered size, canvas px
+  height: number
+  opacity: number  // 0..1
+  locked: boolean  // when true, cannot be selected/moved while drawing
+}
+
 export interface CanvasData {
   zones: EditorZone[]
   wallElements?: WallElement[]
@@ -224,6 +240,7 @@ export interface CanvasData {
   mapType?: MapType
   shadowCasters?: ShadowCaster[]  // external casters (buildings, trees) stored alongside zone data
   gardenPerimeter?: [number, number][]  // manually saved garden boundary (sun polygon)
+  underlay?: MapUnderlay | null   // editor-only trace-over background (#647)
 }
 
 export interface MapDetail extends MapInfo {}
