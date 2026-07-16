@@ -1121,7 +1121,7 @@ export const nl: Translations = {
 
   // ── Calendar page ────────────────────────────────────────
   calendar: {
-    title: '§ Kalender',
+    title: 'Kalender',
     gardenYear: 'Tuinjaar',
     subtitle: "Wat je tuin vraagt, en belooft — per dag.",
     week: 'Week',
@@ -1129,6 +1129,8 @@ export const nl: Translations = {
     agenda: 'Werkagenda',
     workAgendaHeading: 'Werkagenda',
     workAgendaSubtitle: 'Eén volgende taak per schema, met achterstallig werk voorop.',
+    gardenYearSubtitle: 'Maandvensters, geen exacte datums — zaaien, bloei en oogst per maand.',
+    filterLabel: 'Locatie',
     workAgendaLoadFailed: 'De werkagenda kon niet worden geladen.',
     monthLoadFailed: 'De maand kon niet worden geladen.',
     retry: 'Opnieuw proberen',
