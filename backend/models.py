@@ -92,6 +92,7 @@ class PlantUpdate(BaseModel):
     notes: str | None = None
     display_radius_cm: int | None = None
     sun_requirement: str | None = None
+    measured_sun_hours: float | None = None  # manual sun-fit override; explicit null clears it
     plant_type: str | None = None
     icon_key: str | None = None
     icon_requested: bool | None = None   # None = don't change
@@ -141,6 +142,7 @@ class PlantOut(BaseModel):
     is_locked: bool = False
     created_at: datetime | None = None
     sun_requirement: str | None = None
+    measured_sun_hours: float | None = None
     plant_type: str | None = None
     icon_key: str | None = None
     icon_requested: bool = False
@@ -370,6 +372,7 @@ class MapPlantOut(BaseModel):
     temp_status: str = "comfortable"
     most_urgent: MostUrgent | None = None
     sun_requirement: str | None = None
+    measured_sun_hours: float | None = None
     plant_type: str | None = None
     icon_key: str | None = None
     species_id: int | None = None

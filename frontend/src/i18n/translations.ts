@@ -284,6 +284,27 @@ export type Translations = {
         step3: { title: string; body: string }
       }
     }
+    wizard: {
+      shapeTitle: string
+      shapeSubtitle: string
+      shapeRectangle: string
+      shapeRectangleHint: string
+      shapeLshape: string
+      shapeLshapeHint: string
+      shapeBalcony: string
+      shapeBalconyHint: string
+      shapeCustom: string
+      shapeCustomHint: string
+      sizeTitle: string
+      sizeSubtitle: string
+      widthLabel: string
+      depthLabel: string
+      orientationTitle: string
+      orientationSubtitle: string
+      back: string
+      next: string
+      finish: string
+    }
   }
 
   photoJournal: {
@@ -598,6 +619,14 @@ export type Translations = {
     goodFit: string
     partialFit: string
     insufficientFit: string
+    sunHoursUnit: string
+    sunSourceMeasured: string
+    sunSourceEstimated: string
+    sunMeasureOpen: string
+    sunMeasureTitle: string
+    sunMeasureHint: string
+    sunMeasureClear: string
+    sunMeasureSave: string
     water: string
     fertilize: string
     editPlant: string

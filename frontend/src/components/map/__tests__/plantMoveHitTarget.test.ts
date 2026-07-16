@@ -78,6 +78,7 @@ function plant(id: number, isLocked = false, x = 0, y = 0): MapPlant {
     temp_status: 'comfortable',
     most_urgent: null,
     sun_requirement: null,
+    measured_sun_hours: null,
     plant_type: null,
     icon_key: null,
     species_id: null,

@@ -45,6 +45,12 @@ export function hasTourBeenSeen(mapId: number): boolean {
   return !!localStorage.getItem(storageKey(mapId))
 }
 
+/** Mark the intro as seen without launching the tour — used when the first-run
+ *  wizard (#646) already served as the introduction for a new map. */
+export function markTourSeen(mapId: number): void {
+  localStorage.setItem(storageKey(mapId), '1')
+}
+
 export function useEditorTour(
   mapId: number | null,
   mapType: 'outdoor' | 'indoor',

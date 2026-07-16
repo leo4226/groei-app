@@ -1,6 +1,6 @@
 import type { MapPlant } from '../../types'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { getSunFit, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
+import { getSunFit, SUN_FIT_COLORS, effectiveSunHours } from '../../utils/plantSunRequirements'
 import { computeSuitability } from '../../utils/suitability'
 import { getHaloColor } from '../../hooks/usePlantStatus'
 import { getCareDisplay } from '../../utils/careDisplay'
@@ -106,7 +106,9 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
     const cell = heatmapCells.find(c => x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h)
     if (!cell) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
 
-    const sunHours = cell.sunHours
+    // A manually measured sun value overrides the modelled heatmap sun for this
+    // plant's fit (utils #645); falls back to the cell value when unset.
+    const { sunHours } = effectiveSunHours(plant.measured_sun_hours, cell.sunHours)
 
     if (plant.phenology) {
       const month = new Date().getMonth() + 1

@@ -26,6 +26,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     created_at: null,
     sown_date: null,
     sun_requirement: 'partial_sun',
+    measured_sun_hours: null,
     plant_type: 'grass',
     icon_key: 'monstera',
     icon_requested: false,
@@ -70,6 +71,7 @@ describe('buildEditPlantPayload', () => {
       species: 'Monstera deliciosa',
       notes: 'Still healthy',
       sun_requirement: 'partial_sun',
+      measured_sun_hours: null,
     })
     expect(payload).not.toHaveProperty('location_id')
     expect(payload).not.toHaveProperty('pot_size_cm')
