@@ -348,6 +348,18 @@ export const en: Translations = {
       next: 'Next',
       finish: 'Finish',
     },
+    background: {
+      title: 'Background',
+      add: 'Add background',
+      uploading: 'Uploading…',
+      hint: 'Drop a screenshot (Google Maps, satellite or a sketch) behind your drawing to trace over.',
+      opacity: 'Opacity',
+      locked: 'Locked',
+      unlocked: 'Unlocked',
+      widthM: 'Width (m)',
+      calibrateHint: 'Enter the background’s real width so your drawing comes out to scale.',
+      remove: 'Remove',
+    },
   },
 
   photoJournal: {
@@ -542,6 +554,7 @@ export const en: Translations = {
     aboveHorizon: '{deg}° above horizon',
     belowHorizon: 'Below horizon',
     calculating: 'Calculating...',
+    estimatePlantShade: 'Estimate plant shade',
     bucketFull: 'Full sun',
     bucketPart: 'Part shade',
     bucketBrightShade: 'Bright shade',

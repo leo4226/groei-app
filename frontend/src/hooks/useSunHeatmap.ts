@@ -12,6 +12,15 @@ export function useSunHeatmap(month: number, active: boolean, engine?: LightEngi
   const [isCalculating, setIsCalculating] = useState(false)
   const cacheRef = useRef<Map<number, HeatmapCell[]>>(new Map())
 
+  // The per-month cache is keyed only by month, so it must be dropped whenever
+  // the engine changes (bearing, shadow casters, plant-shade toggle) — otherwise
+  // a recomputed month returns stale cells for the old configuration.
+  const prevEngineRef = useRef(engine)
+  if (prevEngineRef.current !== engine) {
+    cacheRef.current.clear()
+    prevEngineRef.current = engine
+  }
+
   useEffect(() => {
     if (!active) {
       setCells([])

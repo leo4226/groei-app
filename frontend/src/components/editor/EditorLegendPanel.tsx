@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { ZoneStyleType } from '../../types'
+import { useRef, useState } from 'react'
+import type { ZoneStyleType, MapUnderlay } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { HARDSCAPE_PRESETS } from '../../hooks/useEditorState'
 import { ZONE_STYLES, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
@@ -21,6 +21,14 @@ interface Props {
   onSetShadowMode: (on: boolean) => void
   canFenceGarden: boolean
   onFenceGarden: () => void
+  // Trace-over background (#647)
+  underlay: MapUnderlay | null
+  scalePxPerM: number
+  underlayBusy?: boolean
+  onAddUnderlayFile: (file: File) => void
+  onUpdateUnderlay: (updates: Partial<MapUnderlay>) => void
+  onRemoveUnderlay: () => void
+  onCalibrateWidthM: (metres: number) => void
 }
 
 function SectionHeader({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
@@ -58,10 +66,18 @@ export default function EditorLegendPanel({
   onSetShadowCasterPreset,
   canFenceGarden,
   onFenceGarden,
+  underlay,
+  scalePxPerM,
+  underlayBusy = false,
+  onAddUnderlayFile,
+  onUpdateUnderlay,
+  onRemoveUnderlay,
+  onCalibrateWidthM,
 }: Props) {
   const t = useT()
   const zoneTypes = mapType === 'indoor' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
-  const [open, setOpen] = useState<Record<string, boolean>>({ zones: true, objects: false, shadows: false, place: false })
+  const [open, setOpen] = useState<Record<string, boolean>>({ zones: true, objects: false, shadows: false, place: false, background: false })
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function toggle(key: string) { setOpen(o => ({ ...o, [key]: !o[key] })) }
 
@@ -135,6 +151,66 @@ export default function EditorLegendPanel({
                 </button>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Achtergrond (trace-over background image, #647) ── */}
+      <div>
+        <SectionHeader label={t.editor.background.title} open={open.background} onToggle={() => toggle('background')} />
+        {open.background && (
+          <div className="mt-2 flex flex-col gap-2">
+            {!underlay ? (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={underlayBusy}
+                  className="flex items-center gap-2 px-2 py-2 rounded-lg bg-bg hover:bg-primary/10 border border-border text-xs font-semibold text-text disabled:opacity-50"
+                >
+                  <Glyph name="camera" size={15} className="text-text-muted shrink-0" />
+                  {underlayBusy ? t.editor.background.uploading : t.editor.background.add}
+                </button>
+                <p className="text-[10px] text-text-muted leading-snug">{t.editor.background.hint}</p>
+              </>
+            ) : (
+              <>
+                <label className="text-[10px] text-text-muted uppercase tracking-wide">{t.editor.background.opacity}</label>
+                <input
+                  type="range" min={10} max={100} value={Math.round(underlay.opacity * 100)}
+                  onChange={(e) => onUpdateUnderlay({ opacity: Number(e.target.value) / 100 })}
+                  className="w-full"
+                />
+                <button
+                  onClick={() => onUpdateUnderlay({ locked: !underlay.locked })}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs font-medium ${
+                    underlay.locked ? 'bg-primary/10 border-primary/40 text-primary' : 'bg-bg border-border text-text-muted'
+                  }`}
+                >
+                  <Glyph name={underlay.locked ? 'lock' : 'unlock'} size={14} className="shrink-0" />
+                  {underlay.locked ? t.editor.background.locked : t.editor.background.unlocked}
+                </button>
+                <label className="text-[10px] text-text-muted uppercase tracking-wide mt-1">{t.editor.background.widthM}</label>
+                <input
+                  type="number" min="0.5" step="0.5"
+                  defaultValue={(underlay.width / scalePxPerM).toFixed(1)}
+                  key={`${underlay.width}-${scalePxPerM}`}
+                  onChange={(e) => { const m = parseFloat(e.target.value); if (m > 0) onCalibrateWidthM(m) }}
+                  className="w-full border border-border rounded-lg px-2 py-1 text-xs bg-bg text-text"
+                />
+                <p className="text-[10px] text-text-muted leading-snug">{t.editor.background.calibrateHint}</p>
+                <button
+                  onClick={onRemoveUnderlay}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border text-xs font-medium text-overdue hover:bg-overdue/10"
+                >
+                  <Glyph name="trash" size={14} className="shrink-0" />
+                  {t.editor.background.remove}
+                </button>
+              </>
+            )}
+            <input
+              ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onAddUnderlayFile(f) }}
+            />
           </div>
         )}
       </div>

@@ -453,6 +453,7 @@ export const maps = {
   plantSuggestions: (slug: string)                                                                               => api<GardenSuggestionsOut>('GET', `/maps/${slug}/plant-suggestions`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
+  uploadUnderlay: (id: number, file: File) => { const f = new FormData(); f.append('file', file); return api<{ url: string }>('POST', `/maps/${id}/underlay`, { form: f }) },
 }
 
 export const objects = {

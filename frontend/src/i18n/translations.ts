@@ -305,6 +305,18 @@ export type Translations = {
       next: string
       finish: string
     }
+    background: {
+      title: string
+      add: string
+      uploading: string
+      hint: string
+      opacity: string
+      locked: string
+      unlocked: string
+      widthM: string
+      calibrateHint: string
+      remove: string
+    }
   }
 
   photoJournal: {
@@ -499,6 +511,7 @@ export type Translations = {
     aboveHorizon: string  // "{deg}° above horizon"
     belowHorizon: string  // "Below horizon"
     calculating: string  // "Calculating..."
+    estimatePlantShade: string  // "Estimate plant shade" toggle (#648)
     // Bucket labels (light quality heatmap)
     bucketFull: string
     bucketPart: string

@@ -18,7 +18,7 @@ type PlacementMap = Pick<MapInfo, 'id' | 'viewbox'>
 type MapPosition = { x: number; y: number }
 
 export interface BuildEditPlantPayloadInput {
-  plant: Pick<Plant, 'map_id'>
+  plant: Pick<Plant, 'map_id' | 'measured_sun_hours'>
   maps: PlacementMap[]
   selectedZoneId: string | null
   name: string
@@ -47,6 +47,9 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
       : null,
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,
+    // The edit form has no measured-sun control (that lives in the map quick
+    // sheet, #645); carry the stored value through so an edit never wipes it.
+    measured_sun_hours: input.plant.measured_sun_hours ?? null,
   }
 
   if (input.quantity != null) {

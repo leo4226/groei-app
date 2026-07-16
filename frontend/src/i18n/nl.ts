@@ -348,6 +348,18 @@ export const nl: Translations = {
       next: 'Volgende',
       finish: 'Klaar',
     },
+    background: {
+      title: 'Achtergrond',
+      add: 'Achtergrond toevoegen',
+      uploading: 'Uploaden…',
+      hint: 'Zet een screenshot (Google Maps, satelliet of schets) achter je tekening om overheen te trekken.',
+      opacity: 'Doorzichtigheid',
+      locked: 'Vergrendeld',
+      unlocked: 'Ontgrendeld',
+      widthM: 'Breedte (m)',
+      calibrateHint: 'Geef de echte breedte van de achtergrond zodat je tekening op schaal komt.',
+      remove: 'Verwijderen',
+    },
   },
 
   photoJournal: {
@@ -542,6 +554,7 @@ export const nl: Translations = {
     aboveHorizon: '{deg}° boven horizon',
     belowHorizon: 'Onder horizon',
     calculating: 'Berekenen...',
+    estimatePlantShade: 'Schaduw van planten schatten',
     bucketFull: 'Volle zon',
     bucketPart: 'Halfschaduw',
     bucketBrightShade: 'Lichte schaduw',
