@@ -246,7 +246,7 @@ export default function MapPage() {
       })
   }, [canvasData, map, groundZones])
 
-  const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData })
+  const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData, plants, mapId: map?.id ?? null })
 
   useEffect(() => {
     const context: Partial<PageContext> = { map_slug: slug }
@@ -639,6 +639,8 @@ export default function MapPage() {
               tappedCell={sun.tappedCell}
               selectedProfile={sun.profile}
               onProfileChange={sun.setProfile}
+              estimatePlantShade={sun.estimatePlantShade}
+              onToggleEstimatePlantShade={sun.toggleEstimatePlantShade}
             />
           }
         />

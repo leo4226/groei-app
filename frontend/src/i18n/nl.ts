@@ -554,6 +554,7 @@ export const nl: Translations = {
     aboveHorizon: '{deg}° boven horizon',
     belowHorizon: 'Onder horizon',
     calculating: 'Berekenen...',
+    estimatePlantShade: 'Schaduw van planten schatten',
     bucketFull: 'Volle zon',
     bucketPart: 'Halfschaduw',
     bucketBrightShade: 'Lichte schaduw',

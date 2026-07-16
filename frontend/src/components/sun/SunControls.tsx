@@ -21,6 +21,8 @@ interface Props {
   tappedCell?: HeatmapCell | null
   selectedProfile?: PlantSunProfile | null
   onProfileChange?: (p: PlantSunProfile | null) => void
+  estimatePlantShade?: boolean
+  onToggleEstimatePlantShade?: () => void
 }
 
 function formatTime(hour: number): string {
@@ -47,6 +49,7 @@ export default function SunControls({
   selectedMonth, selectedHour, sunPosition,
   onMonthChange, onHourChange, onNow,
   isCalculating, tappedCell, selectedProfile, onProfileChange,
+  estimatePlantShade, onToggleEstimatePlantShade,
 }: Props) {
   const t = useT()
   return (
@@ -153,6 +156,22 @@ export default function SunControls({
               )
             })}
           </div>
+
+          {/* Estimate plant shade toggle (#648) — model-driven, default off */}
+          {onToggleEstimatePlantShade && (
+            <button
+              onClick={onToggleEstimatePlantShade}
+              className="flex items-center justify-between w-full gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                <Glyph name="tree" size={13} />
+                {t.sun.estimatePlantShade}
+              </span>
+              <span className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${estimatePlantShade ? 'bg-amber-500' : 'bg-border'}`}>
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${estimatePlantShade ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+              </span>
+            </button>
+          )}
 
           {/* Tapped cell info + grow-here CTA */}
           {tappedCell && (

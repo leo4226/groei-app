@@ -511,6 +511,7 @@ export type Translations = {
     aboveHorizon: string  // "{deg}° above horizon"
     belowHorizon: string  // "Below horizon"
     calculating: string  // "Calculating..."
+    estimatePlantShade: string  // "Estimate plant shade" toggle (#648)
     // Bucket labels (light quality heatmap)
     bucketFull: string
     bucketPart: string

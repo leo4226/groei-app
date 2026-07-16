@@ -554,6 +554,7 @@ export const en: Translations = {
     aboveHorizon: '{deg}° above horizon',
     belowHorizon: 'Below horizon',
     calculating: 'Calculating...',
+    estimatePlantShade: 'Estimate plant shade',
     bucketFull: 'Full sun',
     bucketPart: 'Part shade',
     bucketBrightShade: 'Bright shade',
