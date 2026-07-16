@@ -10,6 +10,7 @@ import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
 import PlantCareInfo from '../components/PlantCareInfo'
 import PhotoJournal from '../components/plant/PhotoJournal'
+import { PassportEditLink } from '../components/plant/PassportEditLink'
 import { photos as photosApi } from '../api/client'
 import { compressImage } from '../utils/compressImage'
 import EcologyCard from '../components/EcologyCard'
@@ -39,10 +40,12 @@ function NavArrow({ dir, plant, t, onClick }: {
   onClick: () => void
 }) {
   if (!plant) return <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border/30 text-text-muted/30" aria-hidden>…</span>
+  const label = `${dir === 'prev' ? t.plantDetail.prevPlant : t.plantDetail.nextPlant}: ${plant.name}`
   return (
     <button
       onClick={onClick}
-      title={`${dir === 'prev' ? t.plantDetail.prevPlant : t.plantDetail.nextPlant}: ${plant.name}`}
+      title={label}
+      aria-label={label}
       className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
     >
       <Glyph name={dir === 'prev' ? 'arrow-left' : 'chevron-right'} size={18} aria-hidden />
@@ -818,12 +821,7 @@ export default function PlantDetail() {
           >
             {duplicating ? '…' : '⎘'}
           </button>
-          <Link
-            to={`/plants/${plantId}/edit`}
-            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center no-underline text-primary font-semibold text-sm"
-          >
-            {t.plantDetail.edit}
-          </Link>
+          <PassportEditLink to={`/plants/${plantId}/edit`} label={t.plantDetail.edit} />
         </div>
       </div>
 
