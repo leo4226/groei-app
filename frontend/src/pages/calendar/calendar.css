@@ -33,82 +33,47 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.calendar-environment-filter {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .cal-page .masthead-environment {
   display: flex;
   justify-content: flex-end;
 }
 
-/* ——— shared view navigation ——— */
-.cal-page .calendar-view-navigation {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  border-bottom: 1px solid var(--cal-rule-soft);
-  background: color-mix(in srgb, var(--cal-bg) 92%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-.cal-page .calendar-view-navigation-inner {
-  width: min(100%, 1800px);
-  margin: 0 auto;
-  padding: max(12px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* ——— masthead ——— */
+/* ——— masthead (one cover for all three views; title in the page, view
+       context in each view's rail — see CalendarPageMasthead) ——— */
 .cal-page .masthead {
   width: min(100%, 1800px);
   margin: 0 auto;
-  padding: 32px clamp(24px, 3vw, 56px) 16px;
+  padding: max(32px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0;
   border-bottom: 1px solid var(--cal-rule);
-}
-.cal-page .top-rail {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 24px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--cal-ink-faint);
-}
-.cal-page .top-rail .me { display: flex; align-items: center; gap: 10px; }
-.cal-page .nav-placeholder { min-width: 1px; }
-
-.cal-page .title-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 24px;
-  align-items: end;
-  margin-top: 28px;
 }
 .cal-page .title-block .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   color: var(--cal-ink-faint);
-  display: flex; align-items: center; gap: 14px;
-  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px;
+}
+/* Hairline-flanked, per the Plants masthead grammar */
+.cal-page .title-block .eyebrow::before {
+  content: '';
+  width: 24px; height: 1px; background: var(--cal-rule);
+  flex: none;
 }
 .cal-page .title-block .eyebrow::after {
   content: '';
   height: 1px; background: var(--cal-rule);
-  flex: 1; max-width: 80px;
+  flex: 1; min-width: 24px; max-width: 80px;
 }
 .cal-page .title-block .eyebrow span:first-child { color: var(--cal-accent); }
 .cal-page .title-block h1 {
   font-family: 'Fraunces', serif;
   font-weight: 500;
-  font-size: 76px;
-  line-height: 0.92;
-  letter-spacing: -0.025em;
+  /* Spec cap (design-language doc): same clamp as the Plants reference. */
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
   margin: 0;
   color: var(--cal-ink);
 }
@@ -125,16 +90,31 @@
   line-height: 1.45;
 }
 
+/* ——— centered view tabs (Plants' sibling-view grammar) ——— */
+.cal-page .masthead-toggle-row {
+  display: flex;
+  justify-content: center;
+  padding: 22px 0 20px;
+}
+
+/* ——— per-view context rail (month switcher · moon · field note · filter) ——— */
+.cal-page .month-rail,
+.cal-page .view-rail {
+  width: min(100%, 1800px);
+  margin: 0 auto;
+  padding: 14px clamp(24px, 3vw, 56px);
+  border-bottom: 1px solid var(--cal-rule-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+}
+.cal-page .view-rail { justify-content: flex-end; }
+
 /* month switcher */
 .cal-page .month-switch {
-  border-left: 1px solid var(--cal-rule);
-  padding-left: 28px;
-  min-width: 320px;
-  display: grid; gap: 14px;
-}
-.cal-page .ms-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px;
+  display: flex; align-items: center; gap: 16px;
 }
 .cal-page .ms-arrows { display: flex; gap: 4px; }
 .cal-page .ms-btn {
@@ -150,57 +130,59 @@
 .cal-page .ms-btn:hover { color: var(--cal-accent); border-color: var(--cal-accent); }
 .cal-page .ms-month {
   font-family: 'Fraunces', serif;
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1;
   color: var(--cal-ink);
 }
 .cal-page .ms-month em { font-style: italic; color: var(--cal-accent); font-weight: 400; }
 .cal-page .ms-year {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--cal-ink-faint);
   text-transform: uppercase;
+  margin-bottom: 3px;
 }
+
+/* Serif pill tabs — same voice as the Plants view switch */
 .cal-page .view-toggle {
   display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
   border: 1px solid var(--cal-rule);
-  border-radius: 99px;
-  overflow: hidden;
-  background: var(--cal-paper);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-text) 5%, transparent);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--cal-paper-dim) 78%, var(--cal-paper));
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--color-text) 4%, transparent);
 }
 .cal-page .view-toggle button {
+  font-family: 'Fraunces', serif;
+  font-size: 15.5px;
+  font-weight: 500;
   min-height: 44px;
-  padding: 8px 16px;
+  padding: 9px 22px;
   background: transparent;
   border: 0;
+  border-radius: 100px;
   color: var(--cal-ink-soft);
   cursor: pointer;
-  border-right: 1px solid var(--cal-rule);
   transition: color .15s, background .15s;
 }
-.cal-page .view-toggle button:last-child { border-right: 0; }
 .cal-page .view-toggle button.on {
   background: var(--cal-accent);
   color: var(--cal-paper);
+  font-weight: 600;
 }
-.cal-page .view-toggle button:hover:not(.on) { color: var(--cal-accent); }
+.cal-page .view-toggle button:hover:not(.on) { background: var(--cal-paper); color: var(--cal-ink); }
 .cal-page .view-toggle button:focus-visible {
-  position: relative;
-  z-index: 1;
   outline: 2px solid var(--cal-accent);
-  outline-offset: -3px;
+  outline-offset: 2px;
 }
+
 .cal-page .ms-meta {
   display: flex; gap: 18px; align-items: baseline;
-  border-top: 1px dashed var(--cal-rule);
-  padding-top: 12px;
+  border-left: 1px dashed var(--cal-rule);
+  padding-left: 18px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   text-transform: uppercase;
@@ -209,6 +191,44 @@
 }
 .cal-page .ms-meta .v { font-family: 'Fraunces', serif; font-size: 16px; color: var(--cal-ink); text-transform: none; letter-spacing: 0; margin-left: 6px; }
 .cal-page .ms-meta .v em { font-style: italic; color: var(--cal-terra); }
+
+/* Compact environment filter — the Plants "LOCATIE ·  pills" voice */
+.cal-page .calendar-environment-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cal-page .env-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+  margin-right: 4px;
+}
+.cal-page .env-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 14px;
+  min-height: 32px;
+  border-radius: 100px;
+  border: 1px solid var(--cal-rule);
+  background: var(--cal-paper);
+  color: var(--cal-ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-page .env-pill:hover:not(.on) { border-color: var(--cal-accent); color: var(--cal-accent); }
+.cal-page .env-pill.on {
+  background: var(--cal-accent);
+  border-color: var(--cal-accent);
+  color: var(--cal-paper);
+}
 
 /* ——— legend strip ——— */
 .cal-page .legend-strip {
@@ -1110,43 +1130,25 @@
   white-space: nowrap;
 }
 
-.cal-page .garden-year-view,
-.cal-page .work-agenda-view {
-  width: min(100%, 900px);
+/* Both secondary views share the Month view's canvas: the same 1800px grid
+   and gutters, so toggling views never shifts the page's landmarks. */
+.cal-page .garden-year-view {
+  width: min(100%, 1800px);
   margin: 0 auto;
-  padding: 32px clamp(16px, 3vw, 40px) 56px;
+  padding: 0 clamp(24px, 3vw, 56px) 56px;
 }
-.cal-page .garden-year-head,
-.cal-page .work-agenda-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 24px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--cal-rule);
+/* Readable measure for the year lists inside the wide canvas */
+.cal-page .garden-year-month-heading,
+.cal-page .garden-year-section,
+.cal-page .garden-year-empty {
+  max-width: 1160px;
 }
-.cal-page .garden-year-head .eyebrow,
-.cal-page .work-agenda-head .eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: var(--cal-accent);
+.cal-page .work-agenda-view .view-rail {
+  padding-left: clamp(24px, 3vw, 56px);
+  padding-right: clamp(24px, 3vw, 56px);
 }
-.cal-page .garden-year-head h1,
-.cal-page .work-agenda-head h1 {
-  margin: 4px 0 6px;
-  font-family: 'Fraunces', serif;
-  font-size: clamp(32px, 5vw, 48px);
-  color: var(--cal-ink);
-}
-.cal-page .garden-year-head h1 em,
-.cal-page .work-agenda-head h1 em {
-  color: var(--cal-accent);
-  font-style: italic;
-  font-weight: 400;
-}
+.cal-page .work-agenda-view main { padding-top: 24px; }
+.cal-page .work-agenda-list { min-width: 0; }
 
 /* ——— Garden year ——— */
 .cal-page .garden-year-months {
@@ -1372,11 +1374,6 @@
   text-align: center;
   color: var(--cal-ink-faint);
 }
-.cal-page .work-agenda-head p {
-  margin: 0;
-  color: var(--cal-ink-soft);
-  font-size: 14px;
-}
 .cal-page .work-agenda-status,
 .cal-page .month-load-state {
   margin: 24px auto;
@@ -1411,45 +1408,37 @@
   .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page main { grid-template-columns: 1fr; }
   .cal-page .col-side { position: static; }
-  .cal-page .title-row { grid-template-columns: 1fr; }
   .cal-page .masthead-context { display: none; }
   .cal-page .moon-mini { display: none; }
-  .cal-page .month-switch { border-left: 0; padding-left: 0; border-top: 1px solid var(--cal-rule); padding-top: 18px; }
 }
 
 @media (max-width: 720px) {
   .cal-page .masthead-environment { justify-content: flex-start; }
-  .cal-page .calendar-view-navigation-inner {
-    padding: max(10px, env(safe-area-inset-top, 0px)) 16px 10px;
+  .cal-page .masthead {
+    padding: max(24px, env(safe-area-inset-top, 0px)) 16px 0;
   }
+  .cal-page .masthead-toggle-row { padding: 16px 0 14px; }
   .cal-page .view-toggle { width: 100%; }
   .cal-page .view-toggle button {
     flex: 1;
     min-width: 0;
-    padding: 8px 6px;
-    letter-spacing: 0.08em;
+    padding: 9px 8px;
+    font-size: 14px;
   }
-  .cal-page .garden-year-view,
-  .cal-page .work-agenda-view { padding-top: 20px; }
-  .cal-page .garden-year-head h1 { font-size: 34px; }
-  .cal-page .work-agenda-head {
-    flex-direction: column;
-    align-items: stretch;
+  .cal-page .title-block .lede { font-size: 15px; }
+  .cal-page .month-rail,
+  .cal-page .view-rail,
+  .cal-page .work-agenda-view .view-rail {
+    padding-left: 16px;
+    padding-right: 16px;
   }
-  .cal-page .masthead {
-    padding: 24px 16px 12px;
-  }
-  .cal-page .title-block h1 {
-    font-size: 36px;
-  }
+  .cal-page .ms-meta { border-left: 0; padding-left: 0; }
+  .cal-page .garden-year-view { padding-left: 16px; padding-right: 16px; }
   .cal-page .legend-strip {
     padding: 12px 16px 0;
   }
   .cal-page main {
     padding: 16px 16px 48px;
-    gap: 16px;
-  }
-  .cal-page .title-row {
     gap: 16px;
   }
 }
