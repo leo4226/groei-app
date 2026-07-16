@@ -29,7 +29,9 @@ export function plantCanopyRadiusCm(
 ): number {
   const spread = plant.phenology?.max_spread_cm
   if (spread && spread > 0) return spread / 2
-  const frac = (plant.plant_type && CANOPY_RADIUS_FRACTION[plant.plant_type]) ?? DEFAULT_CANOPY_FRACTION
+  const frac = plant.plant_type
+    ? (CANOPY_RADIUS_FRACTION[plant.plant_type] ?? DEFAULT_CANOPY_FRACTION)
+    : DEFAULT_CANOPY_FRACTION
   return Math.max(10, heightCm * frac)
 }
 
