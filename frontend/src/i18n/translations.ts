@@ -360,6 +360,38 @@ export type Translations = {
     calendarGroupingNone: string
     calendarGroupingNoMaps: string
     calendarGroupingSaveError: string
+    calendarSubscriptionTitle: string
+    calendarSubscriptionDescription: string
+    calendarSubscriptionSecurity: string
+    calendarSubscriptionEnvironment: string
+    calendarSubscriptionEnvironmentAll: string
+    calendarSubscriptionEnvironmentOutdoor: string
+    calendarSubscriptionEnvironmentIndoor: string
+    calendarSubscriptionSpaces: string
+    calendarSubscriptionAllSpaces: string
+    calendarSubscriptionCareTypes: string
+    calendarSubscriptionAllCareTypes: string
+    calendarSubscriptionContext: string
+    calendarSubscriptionContextDescription: string
+    calendarSubscriptionPrivacy: string
+    calendarSubscriptionPrivacyDescription: string
+    calendarSubscriptionCreate: string
+    calendarSubscriptionRegenerate: string
+    calendarSubscriptionCreating: string
+    calendarSubscriptionActive: string
+    calendarSubscriptionSaveNow: string
+    calendarSubscriptionCopy: string
+    calendarSubscriptionCopied: string
+    calendarSubscriptionRevoke: string
+    calendarSubscriptionDownload: string
+    calendarSubscriptionDownloadDescription: string
+    calendarSubscriptionGoogle: string
+    calendarSubscriptionOutlook: string
+    calendarSubscriptionApple: string
+    calendarSubscriptionProviderHint: string
+    calendarSubscriptionRefreshHint: string
+    calendarSubscriptionLoadError: string
+    calendarSubscriptionActionError: string
     careRhythmTitle: string
     careRhythmDescription: string
     careRhythmProposed: string

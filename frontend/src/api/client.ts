@@ -720,6 +720,28 @@ export interface CalendarGroupingPreferences {
   outdoor_maps: Array<{ id: number; name: string }>
 }
 
+export type CalendarSubscriptionEnvironment = 'all' | 'outdoor' | 'indoor'
+
+export interface CalendarSubscriptionConfig {
+  environment: CalendarSubscriptionEnvironment
+  map_ids: number[]
+  care_types: CalendarGroupingCareType[]
+  include_context: boolean
+  privacy: boolean
+}
+
+export interface CalendarSubscriptionStatus {
+  active: boolean
+  config: CalendarSubscriptionConfig | null
+  created_at: string | null
+}
+
+export interface CalendarSubscriptionCreated {
+  feed_url: string
+  webcal_url: string
+  config: CalendarSubscriptionConfig
+}
+
 export interface CareRhythmMapOverride {
   map_id: number
   weekdays: number[]
@@ -816,6 +838,23 @@ export const careRhythm = {
     api<CareRhythmOnboardingPreview>('POST', '/care-rhythm/onboarding-preview', {
       body: { map_id: mapId, interval_days: intervalDays },
     }),
+}
+
+export const calendarSubscription = {
+  status: () => api<CalendarSubscriptionStatus>('GET', '/calendar/subscription'),
+  create: (config: CalendarSubscriptionConfig) =>
+    api<CalendarSubscriptionCreated>('POST', '/calendar/subscription', { body: config }),
+  revoke: () => api<void>('DELETE', '/calendar/subscription'),
+  downloadSnapshot: async (config: CalendarSubscriptionConfig): Promise<Blob> => {
+    const res = await fetch(buildUrl('/calendar/export.ics'), {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    })
+    await handleAuthErrors(res)
+    await ensureOk(res, 'Failed: POST /calendar/export.ics')
+    return res.blob()
+  },
 }
 
 export interface NotificationPrefs {

@@ -179,6 +179,16 @@ SCHEMA = """
         care_type TEXT NOT NULL,
         PRIMARY KEY (household_id, map_id, care_type)
     );
+    CREATE TABLE calendar_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL UNIQUE,
+        household_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        config_json TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        revoked_at TIMESTAMP
+    );
     CREATE TABLE plantnet_quota (
         account_id INTEGER NOT NULL,
         date TEXT NOT NULL,
