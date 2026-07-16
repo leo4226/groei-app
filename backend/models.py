@@ -969,6 +969,38 @@ class CalendarEventOut(BaseModel):
     weather_triggered: bool = False
 
 
+class WaterPressurePlantOut(BaseModel):
+    plant_id: int
+    plant_name: str
+    schedule_id: int
+    environment: Literal['outdoor_container', 'outdoor_ground', 'indoor']
+    next_due: date
+    recommended_check_date: date
+    level: Literal['unknown', 'normal', 'elevated', 'high']
+    score: float
+    reason_nl: str
+    reason_en: str
+    factors: dict[str, float | str]
+
+
+class WaterPressureMapOut(BaseModel):
+    map_id: int
+    map_name: str
+    map_type: Literal['outdoor', 'indoor']
+    level: Literal['unknown', 'normal', 'elevated', 'high']
+    weather_status: Literal['fresh', 'stale', 'unavailable', 'missing_coordinates']
+    temperature_source: Literal['own_map', 'outdoor_proxy', 'none']
+    source_timestamp: datetime | None = None
+    high_count: int
+    elevated_count: int
+    plants: list[WaterPressurePlantOut]
+
+
+class WaterOutlookOut(BaseModel):
+    generated_at: date
+    maps: list[WaterPressureMapOut]
+
+
 # ── Water Log ──
 
 class WaterLogOut(BaseModel):

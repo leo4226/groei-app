@@ -1105,6 +1105,22 @@ export type Translations = {
     seasonalMissing: (n: number) => string
     seasonalMore: (n: number) => string
     seasonalGardenYear: string
+    waterOutlookTitle: string
+    waterOutlookScope: string
+    waterOutlookLoading: string
+    waterOutlookError: string
+    waterOutlookRetry: string
+    waterOutlookProxy: string
+    waterOutlookCheckDate: (date: string) => string
+    waterOutlookSavedDate: (date: string) => string
+    waterOutlookOverdueDate: (date: string) => string
+    waterOutlookLevelHigh: string
+    waterOutlookLevelElevated: string
+    waterOutlookLevelNormal: string
+    waterOutlookLevelUnknown: string
+    waterOutlookStale: string
+    waterOutlookUnavailable: string
+    waterOutlookMissingCoordinates: string
     fieldNote: string
     weatherContext: string
     weatherRecommendedAction: string

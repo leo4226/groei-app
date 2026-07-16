@@ -506,6 +506,7 @@ export const alerts = {
 }
 
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'
+import type { WaterOutlook } from '../pages/calendar/waterOutlookTypes'
 
 export const calendar = {
   events: (from: string, to: string, env?: string, pinOverdue = false) => {
@@ -514,6 +515,7 @@ export const calendar = {
     if (pinOverdue) params.pin_overdue = 'true'
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
+  waterOutlook: () => api<WaterOutlook>('GET', '/calendar/water-outlook'),
 }
 
 export const icons = {

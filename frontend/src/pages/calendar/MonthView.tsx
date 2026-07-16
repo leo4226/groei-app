@@ -6,6 +6,7 @@ import CalendarAgendaCard from './CalendarAgendaCard'
 import MobileAgendaList from './MobileAgendaList'
 import MonthLoadState from './MonthLoadState'
 import MonthSeasonalPanel from './MonthSeasonalPanel'
+import WaterOutlookPanel from './WaterOutlookPanel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
 import WateringRoundDialog from './WateringRoundDialog'
 import { useCalendarEvents } from './useCalendarEvents'
@@ -29,6 +30,7 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
   const [year, setYear] = useState(now.getFullYear())
   const [month1, setMonth1] = useState(now.getMonth() + 1)
   const todayIso = isoDate(now)
+  const showingCurrentMonth = year === now.getFullYear() && month1 === now.getMonth() + 1
   const [selectedIso, setSelectedIso] = useState(todayIso)
   const [activeTypes, setActiveTypes] = useState<Set<EventTypeId>>(
     () => new Set(EVENT_TYPES.map(t => t.id)),
@@ -119,6 +121,7 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
                 mapSlugs={mapSlugs}
               />
               <div className="seasonal-mobile-wrap">
+                {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <MonthSeasonalPanel
                   month1={month1}
                   plants={seasonalPlants}
@@ -137,6 +140,7 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
                 onSelect={setSelectedIso}
               />
               <aside className="col-side">
+                {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
                 <MonthSeasonalPanel
                   month1={month1}

@@ -1,12 +1,15 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from database import db_dep
 from auth import get_current_account
-from models import CalendarEventOut
+from models import CalendarEventOut, WaterOutlookOut
 from services.warnings import compute_plant_warnings, CareWarning
 from services.scheduling import calculate_effective_interval
 from services.calendar_grouping import get_calendar_grouping_preferences
 from services.weather_task_service import sync_ephemeral_schedules
+from services.weather_forecast import get_map_forecast
+from services.water_pressure import WeatherDay, calculate_water_pressure
 from care_types import CARE_TYPES, normalize_care_type
 
 router = APIRouter(tags=["calendar"])
@@ -14,6 +17,166 @@ router = APIRouter(tags=["calendar"])
 # Safety caps
 MAX_RANGE_DAYS = 366   # refuse ranges longer than a year
 MAX_OCCURRENCES = 200  # per schedule
+
+
+def _water_pressure_today() -> date:
+    return datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+
+
+def _as_date(value) -> date:
+    return value if isinstance(value, date) else date.fromisoformat(value)
+
+
+def _pressure_weather_days(forecast: dict, *, usable: bool) -> list[WeatherDay]:
+    if not usable:
+        return []
+    return [
+        WeatherDay(
+            date=date.fromisoformat(day["date"]),
+            max_temp_c=float(day["max_temp_c"]),
+            precipitation_mm=float(day["precipitation_mm"]),
+            et0_mm=float(day["et0_mm"]),
+        )
+        for day in forecast.get("days", [])
+    ]
+
+
+@router.get("/calendar/water-outlook", response_model=WaterOutlookOut)
+async def get_water_outlook(
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """Return read-only, map-local Water pressure for active schedules."""
+    household_id = account["household_id"]
+    rows = await db.execute_fetchall(
+        """SELECT cs.id AS schedule_id, cs.next_due,
+                  p.id AS plant_id, p.name AS plant_name,
+                  p.container_id, p.ground_zone_id,
+                  m.id AS map_id, m.name AS map_name, m.map_type, m.lat, m.lon
+           FROM care_schedules cs
+           JOIN plants p ON p.id = cs.plant_id
+           JOIN maps m ON m.id = p.map_id
+           WHERE cs.care_type = 'water'
+             AND cs.is_active = 1 AND cs.is_ephemeral = 0
+             AND cs.next_due IS NOT NULL AND p.is_active = 1
+             AND p.household_id = ? AND m.household_id = ?
+           ORDER BY CASE WHEN m.map_type = 'outdoor' THEN 0 ELSE 1 END,
+                    m.id, p.name, p.id""",
+        (household_id, household_id),
+    )
+
+    proxy_rows = await db.execute_fetchall(
+        """SELECT lat, lon FROM maps
+           WHERE household_id = ? AND map_type = 'outdoor'
+             AND lat IS NOT NULL AND lon IS NOT NULL
+           ORDER BY id LIMIT 1""",
+        (household_id,),
+    )
+    proxy_coordinates = (
+        (float(proxy_rows[0]["lat"]), float(proxy_rows[0]["lon"]))
+        if proxy_rows else None
+    )
+
+    grouped: dict[int, dict] = {}
+    coordinate_by_map: dict[int, tuple[float, float] | None] = {}
+    source_by_map: dict[int, str] = {}
+    for raw in rows:
+        row = dict(raw)
+        map_id = row["map_id"]
+        grouped.setdefault(map_id, {"row": row, "plants": []})["plants"].append(row)
+        if map_id in coordinate_by_map:
+            continue
+        if row["map_type"] == "outdoor" and row.get("lat") is not None and row.get("lon") is not None:
+            coordinate_by_map[map_id] = (float(row["lat"]), float(row["lon"]))
+            source_by_map[map_id] = "own_map"
+        elif row["map_type"] == "indoor" and proxy_coordinates is not None:
+            coordinate_by_map[map_id] = proxy_coordinates
+            source_by_map[map_id] = "outdoor_proxy"
+        else:
+            coordinate_by_map[map_id] = None
+            source_by_map[map_id] = "none"
+
+    forecasts: dict[tuple[float, float], dict] = {}
+    for coordinates in dict.fromkeys(
+        value for value in coordinate_by_map.values() if value is not None
+    ):
+        assert coordinates is not None
+        try:
+            forecasts[coordinates] = await get_map_forecast(*coordinates)
+        except Exception:
+            forecasts[coordinates] = {
+                "available": False, "stale": False,
+                "source_timestamp": None, "days": [],
+            }
+
+    today = _water_pressure_today()
+    level_rank = {"unknown": 0, "normal": 1, "elevated": 2, "high": 3}
+    maps = []
+    for map_id, group in grouped.items():
+        map_row = group["row"]
+        coordinates = coordinate_by_map[map_id]
+        forecast = forecasts.get(coordinates, {}) if coordinates is not None else {}
+        if coordinates is None:
+            weather_status = "missing_coordinates"
+        elif forecast.get("stale"):
+            weather_status = "stale"
+        elif not forecast.get("available"):
+            weather_status = "unavailable"
+        else:
+            weather_status = "fresh"
+        weather_days = _pressure_weather_days(
+            forecast,
+            usable=weather_status == "fresh",
+        )
+
+        plants = []
+        for plant in group["plants"]:
+            if map_row["map_type"] == "indoor":
+                environment = "indoor"
+            elif plant.get("ground_zone_id"):
+                environment = "outdoor_ground"
+            else:
+                environment = "outdoor_container"
+            next_due = _as_date(plant["next_due"])
+            pressure = calculate_water_pressure(
+                environment=environment,
+                today=today,
+                next_due=next_due,
+                weather_days=weather_days,
+            )
+            plants.append({
+                "plant_id": plant["plant_id"],
+                "plant_name": plant["plant_name"],
+                "schedule_id": plant["schedule_id"],
+                "environment": environment,
+                "next_due": next_due,
+                "recommended_check_date": pressure.recommended_check_date,
+                "level": pressure.level,
+                "score": pressure.score,
+                "reason_nl": pressure.reason_nl,
+                "reason_en": pressure.reason_en,
+                "factors": pressure.factors,
+            })
+
+        map_level = max(
+            (plant["level"] for plant in plants),
+            key=lambda level: level_rank[level],
+            default="unknown",
+        )
+        maps.append({
+            "map_id": map_id,
+            "map_name": map_row["map_name"],
+            "map_type": map_row["map_type"],
+            "level": map_level,
+            "weather_status": weather_status,
+            "temperature_source": source_by_map[map_id],
+            "source_timestamp": forecast.get("source_timestamp"),
+            "high_count": sum(plant["level"] == "high" for plant in plants),
+            "elevated_count": sum(plant["level"] == "elevated" for plant in plants),
+            "plants": plants,
+        })
+
+    return {"generated_at": today, "maps": maps}
 
 
 def _care_warning_to_dict(w: CareWarning) -> dict:

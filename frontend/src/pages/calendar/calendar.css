@@ -533,6 +533,109 @@
   color: var(--cal-ink-faint);
 }
 .cal-page .seasonal-groups { padding: 2px 22px 8px; }
+
+/* Read-only weather pressure for canonical Water schedules */
+.cal-page .water-outlook-scope {
+  margin: 0;
+  padding: 11px 22px;
+  border-bottom: 1px dashed var(--cal-rule-soft);
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--cal-ink-faint);
+}
+.cal-page .water-outlook-list { padding: 2px 22px 8px; }
+.cal-page .water-outlook-map {
+  padding: 11px 0 12px;
+  border-bottom: 1px dashed var(--cal-rule-soft);
+}
+.cal-page .water-outlook-map:last-child { border-bottom: 0; }
+.cal-page .water-outlook-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cal-page .water-outlook-map h3 {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cal-ink);
+}
+.cal-page .water-outlook-badge {
+  flex: none;
+  padding: 3px 7px;
+  border: 1px solid var(--cal-rule);
+  border-radius: 99px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cal-ink-soft);
+}
+.cal-page .water-outlook-badge--high {
+  border-color: color-mix(in srgb, var(--color-overdue) 55%, var(--cal-rule));
+  background: color-mix(in srgb, var(--color-overdue) 9%, transparent);
+  color: var(--color-overdue);
+}
+.cal-page .water-outlook-badge--elevated {
+  border-color: color-mix(in srgb, var(--color-due) 55%, var(--cal-rule));
+  background: color-mix(in srgb, var(--color-due) 10%, transparent);
+  color: var(--cal-ink);
+}
+.cal-page .water-outlook-badge--normal {
+  border-color: color-mix(in srgb, var(--cal-accent) 45%, var(--cal-rule));
+  background: color-mix(in srgb, var(--cal-accent) 7%, transparent);
+  color: var(--cal-accent-dk);
+}
+.cal-page .water-outlook-date,
+.cal-page .water-outlook-proxy,
+.cal-page .water-outlook-reason {
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+.cal-page .water-outlook-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--cal-accent-dk);
+}
+.cal-page .water-outlook-proxy {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cal-ink-faint);
+}
+.cal-page .water-outlook-reason {
+  font-family: 'Fraunces', serif;
+  font-size: 12px;
+  color: var(--cal-ink-soft);
+}
+.cal-page .water-outlook-loading,
+.cal-page .water-outlook-error {
+  margin: 0;
+  padding: 18px 22px;
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  color: var(--cal-ink-soft);
+}
+.cal-page .water-outlook-retry {
+  min-height: 44px;
+  width: 100%;
+  padding: 10px 22px;
+  border: 0;
+  border-top: 1px solid var(--cal-rule-soft);
+  background: transparent;
+  text-align: left;
+  font-family: 'Fraunces', serif;
+  color: var(--cal-accent-dk);
+  cursor: pointer;
+}
+.cal-page .water-outlook-retry:hover { background: color-mix(in srgb, var(--cal-accent) 5%, transparent); }
 .cal-page .seasonal-group {
   padding: 10px 0;
   border-bottom: 1px dashed var(--cal-rule-soft);
@@ -700,7 +803,11 @@
   cursor: pointer;
 }
 .cal-page .seasonal-year-link:hover { background: color-mix(in srgb, var(--cal-accent) 5%, transparent); }
-.cal-page .seasonal-mobile-wrap { padding: 0 12px 32px; }
+.cal-page .seasonal-mobile-wrap {
+  display: grid;
+  gap: 18px;
+  padding: 0 12px 32px;
+}
 
 /* Agenda */
 .cal-page .agenda-list { padding: 4px 0 8px; }
