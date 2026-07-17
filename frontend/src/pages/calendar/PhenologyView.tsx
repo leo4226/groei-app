@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useFloreren } from '../../store/useFloreren'
 import { alerts } from '../../api/client'
@@ -7,14 +7,21 @@ import type { Plant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../../components/ui/Glyph'
 import {
+  filterSeasonalPlantsByEnvironment,
   seasonalPhaseLabel,
   summarizeSeasonalMonth,
   type SeasonalMonthEntry,
 } from './seasonalMonthModel'
 
-export default function PhenologyView() {
+interface Props {
+  env: string
+  environmentFilter: ReactNode
+}
+
+export default function PhenologyView({ env, environmentFilter }: Props) {
   const t = useT()
   const plants = useFloreren(s => s.plants)
+  const maps = useFloreren(s => s.maps)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const currentMonth = new Date().getMonth() + 1
   const [alertPlantIds, setAlertPlantIds] = useState<Set<number>>(new Set())
@@ -25,15 +32,22 @@ export default function PhenologyView() {
       .catch(() => {})
   }, [])
 
+  const seasonalPlants = useMemo(
+    () => filterSeasonalPlantsByEnvironment(plants, maps, env),
+    [plants, maps, env],
+  )
   const grouped = useMemo(
-    () => summarizeSeasonalMonth(plants, selectedMonth),
-    [plants, selectedMonth],
+    () => summarizeSeasonalMonth(seasonalPlants, selectedMonth),
+    [seasonalPlants, selectedMonth],
   )
 
   return (
     <section className="garden-year-view" data-calendar-view="year">
       {/* Page title lives in the shared CalendarPageMasthead; the month rail
           below is this view's context rail. */}
+      <div className="view-rail">
+        <div className="masthead-environment">{environmentFilter}</div>
+      </div>
       <nav
         className="garden-year-months"
         data-garden-year-months
@@ -129,7 +143,7 @@ export default function PhenologyView() {
 
       {grouped.needsAction.length === 0 && grouped.growing.length === 0 && grouped.dormant.length === 0 && (
         <p className="garden-year-empty">
-          {plants.length === 0 ? t.phenology.noPlants : t.phenology.noData}
+          {seasonalPlants.length === 0 ? t.phenology.noPlants : t.phenology.noData}
         </p>
       )}
     </section>
