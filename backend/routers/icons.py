@@ -155,6 +155,10 @@ async def sync_match_icon_key(
     when the current icon is otherwise valid but generic/shared.
     Priority 2: preserve legacy sync behaviour for requested/missing/placeholder/
     dangling icons by falling back to best-effort catalog matching.
+    Priority 3: when the plant is linked to a species (species_id), look up the
+    species' latin/common names and try matching against the catalog — this
+    catches plants whose user-entered name/species text doesn't fuzzy-match but
+    whose species already has a generated icon.
 
     Both paths are form-preserving: a plant already on a form variant of its
     exact icon (e.g. wallflower_bare vs wallflower) is NOT "upgraded" to the
@@ -174,7 +178,25 @@ async def sync_match_icon_key(
         matched = await match_icon_key(db, plant["name"], plant.get("species"))
         if matched:
             return await _with_preserved_form(db, catalog, matched, current_key)
-        return matched
+
+        # Fallback: try matching via the linked species row — the plant's
+        # user-entered name/species may not fuzzy-match, but its species'
+        # latin_name / common_name_nl often does match a generated icon.
+        species_id = plant.get("species_id")
+        if species_id:
+            species_rows = await db.execute_fetchall(
+                "SELECT common_name_nl, latin_name FROM plant_species WHERE id = ?",
+                (species_id,),
+            )
+            if species_rows:
+                sp = dict(species_rows[0])
+                for species_text in (sp.get("latin_name"), sp.get("common_name_nl")):
+                    if species_text:
+                        matched = await match_icon_key(db, species_text, None)
+                        if matched:
+                            return await _with_preserved_form(db, catalog, matched, current_key)
+
+        return matched  # None
 
     return None
 
@@ -359,7 +381,7 @@ async def sync_icons(db=Depends(db_dep), admin=Depends(require_admin)):
     catalog = await load_catalog(db)
     valid_ids = {e["id"] for e in catalog}
     plants = [dict(r) for r in await db.execute_fetchall(
-        "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
+        "SELECT id, name, species, species_id, icon_key, icon_requested FROM plants WHERE is_active = 1"
     )]
     matched: list[dict] = []
     unmatched: list[dict] = []
