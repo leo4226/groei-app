@@ -88,6 +88,20 @@ async def test_owner_can_bulk_archive_own_plant(client, seeded_db):
 
 
 @pytest.mark.asyncio
+async def test_icons_sync_requires_admin(client, seeded_db):
+    """Global icon maintenance must not be callable by anonymous users."""
+    res = await client.post("/api/icon-catalog/sync")
+    assert res.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_cannot_request_icon_for_other_households_plant(client, seeded_db):
+    await _seed_neighbour_plant(seeded_db)
+    res = await client.patch("/api/icon-catalog/request/500", headers=_token(1))
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_objects_endpoint_requires_auth(client, seeded_db):
     """objects.py had no auth at all before — every route is now protected."""
     res = await client.get("/api/objects")

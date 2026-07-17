@@ -8,7 +8,9 @@ from passlib.context import CryptContext
 
 from database import db_dep
 
-SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
+SECRET = os.environ.get("JWT_SECRET")
+if not SECRET:
+    raise RuntimeError("JWT_SECRET must be configured")
 ALGORITHM = "HS256"
 EXPIRE_DAYS = 30
 

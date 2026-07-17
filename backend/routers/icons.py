@@ -5,7 +5,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_admin
 from services.icon_catalog import load_catalog
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
@@ -347,7 +347,7 @@ async def get_catalog(db=Depends(db_dep)):
 
 
 @router.post("/sync")
-async def sync_icons(db = Depends(db_dep)):
+async def sync_icons(db=Depends(db_dep), admin=Depends(require_admin)):
     """Re-match plants against the unified catalog.
 
     Existing behaviour: requested, placeholdered, icon-less, or dangling keys are
@@ -435,7 +435,10 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
 @router.patch("/request/{plant_id}")
 async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
     """Flag a plant as needing an icon."""
-    row = await db.execute_fetchall("SELECT id FROM plants WHERE id = ? AND is_active = 1", (plant_id,))
+    row = await db.execute_fetchall(
+        "SELECT id FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
+        (plant_id, account["household_id"]),
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
     await db.execute("UPDATE plants SET icon_requested = TRUE WHERE id = ?", (plant_id,))

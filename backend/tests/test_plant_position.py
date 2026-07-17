@@ -154,3 +154,20 @@ async def test_ground_zone_update_persists_bare_icon_and_zone(client, db_ready, 
     assert rows[0]["ground_zone_id"] == "bed-1"
     assert rows[0]["container_id"] is None
     assert rows[0]["icon_key"] == "tomato_bare"
+
+
+async def test_position_update_rejects_other_households_map(client, db_ready, auth_header):
+    pid = await _make_plant(client, auth_header)
+    await db_ready.execute("INSERT INTO households (id, name) VALUES (2, 'Neighbour')")
+    await db_ready.execute(
+        "INSERT INTO maps (id, name, map_type, household_id) VALUES (2, 'Neighbour garden', 'outdoor', 2)"
+    )
+    await db_ready.commit()
+
+    resp = await client.put(
+        f"/api/plants/{pid}/position",
+        headers=auth_header,
+        json={"map_id": 2, "map_x": 240.5, "map_y": 320.25, "ground_zone_id": None},
+    )
+
+    assert resp.status_code == 404

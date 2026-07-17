@@ -26,7 +26,8 @@ sqlite3.register_adapter(datetime.date, lambda d: d.isoformat())
 sqlite3.register_adapter(datetime.datetime, lambda dt: dt.isoformat(timespec="seconds"))
 
 # Ensure tests use a real Postgres connection.
-os.environ.setdefault("DATABASE_URL", "postgresql://floreren:dev@localhost:5432/floreren")
+os.environ.setdefault("DATABASE_URL", "postgresql://floreren:***@localhost:5432/floreren")
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 import pytest_asyncio
 import aiosqlite
 from httpx import AsyncClient, ASGITransport
