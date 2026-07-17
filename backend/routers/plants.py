@@ -735,6 +735,12 @@ async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
 async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    map_rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+        (data.map_id, account["household_id"]),
+    )
+    if not map_rows:
+        raise HTTPException(status_code=404, detail="Map not found")
     cursor = await db.execute("SELECT id, icon_key, container_id, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
@@ -770,6 +776,14 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
 async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    if data.container_id is not None:
+        container_rows = await db.execute_fetchall(
+            """SELECT o.id FROM objects o JOIN maps m ON m.id = o.map_id
+               WHERE o.id = ? AND o.is_active = 1 AND m.household_id = ?""",
+            (data.container_id, account["household_id"]),
+        )
+        if not container_rows:
+            raise HTTPException(status_code=404, detail="Container not found")
     cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:
@@ -793,6 +807,14 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
 async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+    if data.ground_zone_id is not None:
+        zone_rows = await db.execute_fetchall(
+            """SELECT gz.id FROM ground_zones gz JOIN maps m ON m.id = gz.map_id
+               WHERE gz.id = ? AND m.household_id = ?""",
+            (data.ground_zone_id, account["household_id"]),
+        )
+        if not zone_rows:
+            raise HTTPException(status_code=404, detail="Ground zone not found")
     cursor = await db.execute("SELECT id, icon_key, pot_size_cm FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     row = await cursor.fetchone()
     if not row:

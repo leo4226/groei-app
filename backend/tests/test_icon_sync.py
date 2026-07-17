@@ -3,13 +3,13 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_sync_is_match_only_no_new_icons(client, seeded_db):
+async def test_sync_is_match_only_no_new_icons(client, seeded_db, auth_header):
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
     await seeded_db.execute(
         "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
         "VALUES (1,'Monstera','placeholder_houseplant',1,1,1)")
     await seeded_db.commit()
-    resp = await client.post("/api/icon-catalog/sync")
+    resp = await client.post("/api/icon-catalog/sync", headers=await _admin_headers(seeded_db, auth_header))
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "new_icons" not in body  # the old field is gone
@@ -17,6 +17,12 @@ async def test_sync_is_match_only_no_new_icons(client, seeded_db):
     row = (await seeded_db.execute_fetchall("SELECT icon_key, icon_requested FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "monstera"
     assert not row["icon_requested"]
+
+
+async def _admin_headers(db, auth_header):
+    await db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    await db.commit()
+    return auth_header
 
 
 async def _seed_generated_icons(db):
@@ -38,7 +44,7 @@ async def _seed_generated_icons(db):
 
 
 @pytest.mark.asyncio
-async def test_sync_leaves_bare_variant_of_exact_icon_alone(client, seeded_db):
+async def test_sync_leaves_bare_variant_of_exact_icon_alone(client, seeded_db, auth_header):
     """Regression: a plant already on the _bare variant of its own exact AI icon
     must NOT be 'upgraded' to the base (= potted) icon by sync — that was the
     pot-comes-back bug triggered on every plant creation."""
@@ -48,7 +54,7 @@ async def test_sync_leaves_bare_variant_of_exact_icon_alone(client, seeded_db):
         "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
         "VALUES (1,'Muurbloem','gen_muurbloem_bare',0,1,1)")
     await seeded_db.commit()
-    resp = await client.post("/api/icon-catalog/sync")
+    resp = await client.post("/api/icon-catalog/sync", headers=await _admin_headers(seeded_db, auth_header))
     assert resp.status_code == 200, resp.text
     assert resp.json()["matched_plants"] == 0
     row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
@@ -56,7 +62,7 @@ async def test_sync_leaves_bare_variant_of_exact_icon_alone(client, seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_sync_upgrade_preserves_bare_form(client, seeded_db):
+async def test_sync_upgrade_preserves_bare_form(client, seeded_db, auth_header):
     """When sync legitimately upgrades to an exact AI icon, the plant's current
     bare form carries over to the new icon's _bare variant."""
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
@@ -65,14 +71,14 @@ async def test_sync_upgrade_preserves_bare_form(client, seeded_db):
         "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
         "VALUES (1,'Muurbloem','gen_roos_bare',0,1,1)")
     await seeded_db.commit()
-    resp = await client.post("/api/icon-catalog/sync")
+    resp = await client.post("/api/icon-catalog/sync", headers=await _admin_headers(seeded_db, auth_header))
     assert resp.status_code == 200, resp.text
     row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "gen_muurbloem_bare"
 
 
 @pytest.mark.asyncio
-async def test_sync_dangling_bare_key_keeps_form(client, seeded_db):
+async def test_sync_dangling_bare_key_keeps_form(client, seeded_db, auth_header):
     """A dangling icon_key with a _bare suffix re-matches to the new icon's
     _bare variant, not the potted base."""
     await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
@@ -81,7 +87,7 @@ async def test_sync_dangling_bare_key_keeps_form(client, seeded_db):
         "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
         "VALUES (1,'Muurbloem','verdwenen_icoon_bare',0,1,1)")
     await seeded_db.commit()
-    resp = await client.post("/api/icon-catalog/sync")
+    resp = await client.post("/api/icon-catalog/sync", headers=await _admin_headers(seeded_db, auth_header))
     assert resp.status_code == 200, resp.text
     row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "gen_muurbloem_bare"

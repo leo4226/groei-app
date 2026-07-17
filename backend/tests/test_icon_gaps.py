@@ -27,6 +27,7 @@ SCHEMA = """
         icon_key TEXT,
         icon_requested BOOLEAN DEFAULT 0,
         phase TEXT DEFAULT 'mature',
+        household_id INTEGER,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE plant_species (
@@ -128,7 +129,7 @@ def test_gaps_icons_without_species(db_override, fake_manifest):
 # ── Tests: PATCH /api/icon-catalog/request/{plant_id} ──
 
 def test_request_icon_sets_flag(db_override, fake_manifest):
-    seed(db_override, "INSERT INTO plants (name) VALUES ('Pepperoni')")
+    seed(db_override, "INSERT INTO plants (name, household_id) VALUES ('Pepperoni', 1)")
 
     async def get_id():
         rows = await db_override["db"].execute_fetchall("SELECT id FROM plants WHERE name='Pepperoni'")
