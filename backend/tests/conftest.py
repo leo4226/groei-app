@@ -197,6 +197,14 @@ SCHEMA = """
         count INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (account_id, date)
     );
+    CREATE TABLE identify_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
+        household_id INTEGER,
+        engine TEXT NOT NULL,
+        outcome TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 """
 
 

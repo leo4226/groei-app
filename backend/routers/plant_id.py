@@ -364,6 +364,20 @@ async def _increment_quota(db, account_id: int) -> None:
     )
 
 
+async def _log_identify(db, account: dict, engine: str, outcome: str) -> None:
+    """Best-effort record of an identify call, for the admin growth metrics
+    ("how many IDs, by which household, via which engine"). Never fails the
+    identify flow — a logging hiccup must not break identification."""
+    try:
+        await db.execute(
+            "INSERT INTO identify_log (account_id, household_id, engine, outcome) VALUES (?, ?, ?, ?)",
+            (account["account_id"], account["household_id"], engine, outcome),
+        )
+        await db.commit()
+    except Exception:
+        logger.warning("identify_log write failed", exc_info=True)
+
+
 _BIOCLIP_WORKER_URL = os.environ.get("BIOCLIP_WORKER_URL", "")
 _BIOCLIP_WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
 
@@ -592,6 +606,7 @@ async def identify_endpoint(
         try:
             result = await _bioclip_identify(image_bytes, db, lang)
             if result is not None:
+                await _log_identify(db, account, result.source, result.confidence)
                 return result
         except Exception as exc:
             logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
@@ -623,6 +638,7 @@ async def identify_endpoint(
     await _increment_quota(db, account["account_id"])
 
     if not candidates or candidates[0].confidence < _CONFIDENCE_FLOOR:
+        await _log_identify(db, account, "plantnet", "no_match")
         return IdentifyResponse(
             candidates=[],
             confidence="no_match",
@@ -649,6 +665,7 @@ async def identify_endpoint(
     top1 = candidates[0].confidence
     top2 = candidates[1].confidence if len(candidates) > 1 else None
     confidence = _classify_confidence(top1, top2)
+    await _log_identify(db, account, "plantnet", confidence)
     return IdentifyResponse(
         candidates=out,
         confidence=confidence,

@@ -485,12 +485,26 @@ function OverviewView({ onNavigate }: { onNavigate: (s: Section) => void }) {
           onChange={v => setGrowthDays(Number(v))} />
         {growthLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontSize: 13 }}>Loading growth data...</div>}
         {growth && !growthLoading && (
-          <div data-growth-metrics style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
-            <MetricSparklineCard title="Signups" data={growth.metrics.signups} delta={growth.deltas.signups} color="var(--color-primary)" />
-            <MetricSparklineCard title="Plants added" data={growth.metrics.plants_added} delta={growth.deltas.plants_added} color="var(--color-secondary)" />
-            <MetricSparklineCard title="Care logs" data={growth.metrics.care_logs} delta={growth.deltas.care_logs} color="var(--color-due)" />
-            <MetricSparklineCard title="Active households" data={growth.metrics.active_households} delta={growth.deltas.active_households} color="var(--color-text-muted)" />
-          </div>
+          <>
+            <div data-growth-metrics style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+              <MetricSparklineCard title="Signups" data={growth.metrics.signups} delta={growth.deltas.signups} color="var(--color-primary)" />
+              <MetricSparklineCard title="Plants added" data={growth.metrics.plants_added} delta={growth.deltas.plants_added} color="var(--color-secondary)" />
+              <MetricSparklineCard title="Care logs" data={growth.metrics.care_logs} delta={growth.deltas.care_logs} color="var(--color-due)" />
+              <MetricSparklineCard title="Active households" data={growth.metrics.active_households} delta={growth.deltas.active_households} color="var(--color-text-muted)" />
+              <MetricSparklineCard title="Plant IDs" data={growth.metrics.identifies} delta={growth.deltas.identifies} color="var(--color-secondary)" />
+            </div>
+            {growth.top_identifiers.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.18em', color: 'var(--color-text-muted)', marginBottom: 8 }}>Plant IDs by household</div>
+                {growth.top_identifiers.map((t, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--color-border)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--color-text)' }}>{t.household}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
         {!growth && !growthLoading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13 }}>Growth data unavailable.</div>}
       </SectionCard>

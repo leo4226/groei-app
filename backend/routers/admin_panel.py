@@ -557,9 +557,7 @@ async def admin_growth_metrics(
         GROUP BY DATE(created_at)
         ORDER BY d
     """, (start_date,))
-    signups_map: dict[str, int] = {}
-    for r in signups_raw:
-        signups_map[r["d"]] = r["n"]
+    signups_map = {str(r["d"])[:10]: r["n"] for r in signups_raw}
 
     # --- 2. Plants added per day ---
     plants_raw = await db.execute_fetchall("""
@@ -569,9 +567,7 @@ async def admin_growth_metrics(
         GROUP BY DATE(created_at)
         ORDER BY d
     """, (start_date,))
-    plants_map: dict[str, int] = {}
-    for r in plants_raw:
-        plants_map[r["d"]] = r["n"]
+    plants_map = {str(r["d"])[:10]: r["n"] for r in plants_raw}
 
     # --- 3. Care logs per day ---
     care_raw = await db.execute_fetchall("""
@@ -581,9 +577,7 @@ async def admin_growth_metrics(
         GROUP BY DATE(done_at)
         ORDER BY d
     """, (start_date,))
-    care_map: dict[str, int] = {}
-    for r in care_raw:
-        care_map[r["d"]] = r["n"]
+    care_map = {str(r["d"])[:10]: r["n"] for r in care_raw}
 
     # --- 4. Active households (≥1 care log) per day ---
     active_raw = await db.execute_fetchall("""
@@ -594,15 +588,39 @@ async def admin_growth_metrics(
         GROUP BY DATE(cl.done_at)
         ORDER BY d
     """, (start_date,))
-    active_map: dict[str, int] = {}
-    for r in active_raw:
-        active_map[r["d"]] = r["n"]
+    active_map = {str(r["d"])[:10]: r["n"] for r in active_raw}
 
-    # Build the response — fill in zeros for missing dates
+    # --- 5. Plant identifications per day ---
+    identify_raw = await db.execute_fetchall("""
+        SELECT DATE(created_at) as d, COUNT(*) as n
+        FROM identify_log
+        WHERE created_at >= $1::date
+        GROUP BY DATE(created_at)
+        ORDER BY d
+    """, (start_date,))
+    identify_map = {str(r["d"])[:10]: r["n"] for r in identify_raw}
+
+    # Build the response — fill in zeros for missing dates. Keys are coerced to
+    # 'YYYY-MM-DD' strings: asyncpg returns DATE() as a datetime.date object
+    # (SQLite returns a string), so without the coercion the lookups below
+    # silently miss and every day reads 0 in production.
     signups = [{"date": d, "count": signups_map.get(d, 0)} for d in date_series]
     plants_added = [{"date": d, "count": plants_map.get(d, 0)} for d in date_series]
     care_logs = [{"date": d, "count": care_map.get(d, 0)} for d in date_series]
     active_households = [{"date": d, "count": active_map.get(d, 0)} for d in date_series]
+    identifies = [{"date": d, "count": identify_map.get(d, 0)} for d in date_series]
+
+    # --- Who is identifying: top households over the current window ---
+    top_identifiers_raw = await db.execute_fetchall("""
+        SELECT h.name as household, COUNT(*) as count
+        FROM identify_log il
+        JOIN households h ON h.id = il.household_id
+        WHERE il.created_at >= $1::date
+        GROUP BY h.name
+        ORDER BY count DESC, h.name
+        LIMIT 10
+    """, (start_date,))
+    top_identifiers = [{"household": r["household"], "count": r["count"]} for r in top_identifiers_raw]
 
     # --- Deltas: current period vs previous period of same length ---
     previous_start = start_date - timedelta(days=days)
@@ -626,15 +644,29 @@ async def admin_growth_metrics(
         JOIN plants p ON cl.plant_id = p.id
         WHERE cl.done_at >= $1::date AND cl.done_at < $2::date
     """, (previous_start, start_date))
+    prev_identify_raw = await db.execute_fetchall("""
+        SELECT COUNT(*) as n FROM identify_log
+        WHERE created_at >= $1::date AND created_at < $2::date
+    """, (previous_start, start_date))
+    # Distinct active households in the CURRENT window — same unit as prev_active.
+    # (The old code compared active-*days* here against distinct-*households* in
+    # the previous window, so the delta was meaningless.)
+    cur_active_raw = await db.execute_fetchall("""
+        SELECT COUNT(DISTINCT p.household_id) as n
+        FROM care_log cl JOIN plants p ON cl.plant_id = p.id
+        WHERE cl.done_at >= $1::date
+    """, (start_date,))
 
     current_signups = sum(v["count"] for v in signups)
     current_plants = sum(v["count"] for v in plants_added)
     current_care = sum(v["count"] for v in care_logs)
-    current_active = sum(1 for v in active_households if v["count"] > 0)
+    current_identifies = sum(v["count"] for v in identifies)
+    current_active = cur_active_raw[0]["n"]
 
     prev_signups = prev_signups_raw[0]["n"]
     prev_plants = prev_plants_raw[0]["n"]
     prev_care = prev_care_raw[0]["n"]
+    prev_identifies = prev_identify_raw[0]["n"]
     prev_active = prev_active_raw[0]["n"]
 
     return {
@@ -644,13 +676,16 @@ async def admin_growth_metrics(
             "plants_added": plants_added,
             "care_logs": care_logs,
             "active_households": active_households,
+            "identifies": identifies,
         },
         "deltas": {
             "signups": current_signups - prev_signups,
             "plants_added": current_plants - prev_plants,
             "care_logs": current_care - prev_care,
             "active_households": current_active - prev_active,
+            "identifies": current_identifies - prev_identifies,
         },
+        "top_identifiers": top_identifiers,
     }
 
 
