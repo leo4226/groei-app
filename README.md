@@ -4,7 +4,7 @@
 
 # Floreren
 
-**A plant-care app for our garden in Amsterdam — built with friends, AI, and a lot of coffee.**
+**A free garden app built for an Amsterdam garden, and now for anyone who wants to stop guessing where to put things.**
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-4a7c59.svg)](./LICENSE)
 ![PWA](https://img.shields.io/badge/PWA-installable-5a67d8)
@@ -13,7 +13,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white)
 ![Postgres](https://img.shields.io/badge/Postgres-Neon-336791?logo=postgresql&logoColor=white)
 
-![Floreren garden map with live sun and shadows](docs/screenshots/map-sun-live.png)
+![Live sun and shadow map over a garden layout](docs/screenshots/live-sunmap.png)
 
 </div>
 
@@ -21,57 +21,47 @@
 
 ## What is this?
 
-Floreren (Dutch for *"to flourish"*) is the app we built to keep track of every plant in our garden and home in Amsterdam. My wife and I kept forgetting to water things, losing track of what we'd planted where, and guessing wrong about which corner gets afternoon sun. So we built something that actually knows.
+Floreren (*"to flourish"* in Dutch) started because plants kept ending up in the wrong corners of an Amsterdam garden. Too much shade here, scorching sun there. Forgetting to water things, losing track of what was planted where, and every spring meant another round of guesswork.
 
-Draw your garden to scale, place each plant, and Floreren figures out the sun's path and the shadows your fence casts — so "that corner gets three hours of sun in June" stops being a guess.
+So we built something that actually knows.
 
-It's a **mobile-first PWA** — add it to your phone's home screen and it feels like a native app.
+Draw your garden to scale, place each plant, and Floreren calculates the sun's path across every month of the year. So "that spot gets three hours of afternoon sun in June" stops being a hunch. It tracks watering, feeding, and growth. It reminds you what needs care today and shows you what's coming up next week.
+
+It works as a normal web app in any browser, and as a **mobile-first PWA**. Add it to your phone's home screen and it feels native. Both are first-class experiences.
+
+The app is **free**, with no paywalls. You can **download all your own data** (plants, photos, history) whenever you want. Calendar sync (iCal) keeps your plant care alongside the rest of your day.
 
 ## What it does
 
-- **Garden & indoor maps** — draw your space to scale, place plants and objects
-- **Live sun & shadow simulation** — real solar position by GPS + date, with a heatmap showing how much light each spot gets across the seasons
-- **Smart care scheduling** — watering and fertilising schedules that adapt to rain and temperature
-- **Plant identification** — snap a photo, get a species match (BioCLIP on GPU, with PlantNet fallback)
-- **Photo journal** — per-plant photo timeline, stored in the cloud
-- **Daily email digest** — what needs care today, with quiet hours so it doesn't ping at midnight
+- **Garden & indoor maps**. Draw any space to scale. Outdoor gardens get GPS coordinates and a compass bearing; indoor floor plans get rooms, walls, doors, and windows. Place plants and structures exactly where they live.
+
+![Garden layout editor with zone tools and measurements on a 12 × 6 m grid](docs/screenshots/editor.png)
+
+- **Live sun & shadow simulation**. Real solar position based on your coordinates and the date. See exactly where shadows fall at any hour of any month. A seasonal heatmap shows how much light every square metre gets throughout the year: full sun, partial, or deep shade.
+
+![Seasonal sun heatmap: full sun to shade, month by month](docs/screenshots/sun-heatmap.png)
+
+- **Plant identification**. Snap a photo of an unknown plant and get a species match. Runs BioCLIP on a local GPU, with PlantNet as a fallback for the tricky ones.
+
+- **Smart care scheduling**. Watering and feeding schedules that know about rain and heat. Rain delays outdoor watering. Heat waves prompt earlier moisture checks for both indoor and outdoor plants. But your personal schedule stays authoritative. The app suggests, never silently rewrites.
+
+![Monthly care calendar with task types, lunar phases, and weather-context advice](docs/screenshots/calendar.png)
+
+- **Plant logbook**. A searchable collection of every plant you own, with botanical illustrations, per-plant photo timelines, care history, and field notes. Filter by location (garden vs. house), type, or growth form.
+
+![Plant collection: 58 plants across 10 categories, with search and location filters](docs/screenshots/plant-logbook.png)
+
+- **Biodiversity score**. A per-garden biodiversity rating based on native Dutch flora and pollinator value. Still Netherlands-only; expanding to other regions is on the roadmap.
+
+- **iCal sync & data export**. Subscribe to your care calendar in any calendar app. Export your full plant database, photos and all, with one click. Your data, your rules.
+
+![Garden map in field-guide view with numbered plant markers](docs/screenshots/garden-map.png)
 
 ## How it's built
 
-Floreren is developed with [Hermes](https://hermes-agent.nousresearch.com) — an AI coding agent that switches between models (DeepSeek, Codex, Claude) depending on the task. Issues are triaged in GitHub, PRs are reviewed by a second model, and everything is verified against the real Vite production build before it ships.
+React 19 + TypeScript + Tailwind on the frontend, FastAPI + Python + asyncpg on the backend, PostgreSQL on Neon. Deployed to Vercel (frontend) and Fly.io (API). The plant identification worker runs on a local GPU behind a Cloudflare tunnel.
 
-The stack is React 19 + TypeScript + Tailwind on the frontend, FastAPI + Python + asyncpg on the backend, PostgreSQL on Neon, and deployments to Vercel (web) and Fly.io (API).
-
-## A look inside
-
-<table>
-  <tr>
-    <td colspan="2" valign="top">
-      <img src="docs/screenshots/map-editor.png" alt="Layout editor — draw your garden to scale">
-      <p align="center"><em>Draw your garden to scale — zones, structures, fences, and the shadow casters that drive the sun simulation.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/map-sun-heatmap.png" alt="Seasonal sun heatmap">
-      <p align="center"><em>Seasonal sun heatmap — full sun to shade, month by month.</em></p>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/biodiversity.png" alt="Garden biodiversity score">
-      <p align="center"><em>A per-garden biodiversity score, with native & pollinator insight.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/plants.png" alt="Plant collection">
-      <p align="center"><em>Your plant collection — filter by location, type, and form.</em></p>
-    </td>
-    <td width="50%" valign="top">
-      <img src="docs/screenshots/calendar.png" alt="Care calendar">
-      <p align="center"><em>A care calendar: what each day asks of your garden.</em></p>
-    </td>
-  </tr>
-</table>
+The repo is open source under AGPL v3. Read it, learn from it, run your own instance.
 
 ## Getting started
 
@@ -92,10 +82,10 @@ npm install
 
 # 3. Run both (from the repo root)
 cd ..
-npm run dev                      # frontend on :5173, API on :1415
+npm run dev                      # frontend on :5173, backend on :1415
 ```
 
-> Verify frontend changes with `cd frontend && npm run build` — Vite's build is stricter than `tsc` and catches errors `tsc` misses.
+> Verify frontend changes with `cd frontend && npm run build`. Vite's build is stricter than `tsc` and catches errors `tsc` misses.
 
 ## Project structure
 
@@ -111,7 +101,7 @@ frontend/src/
   utils/          # coordinate math, sun calc, shadow geometry
 backend/
   routers/        # FastAPI route modules
-  services/       # business logic (species knowledge, garden log, …)
+  services/       # business logic
   database/       # asyncpg pool + FastAPI dependency
   alembic/        # schema migrations
   main.py
@@ -119,6 +109,4 @@ backend/
 
 ## License
 
-Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](./LICENSE). You're free to read, learn from, and build on this code; if you run a modified version as a network service, the AGPL asks you to share those changes.
-
----
+Licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](./LICENSE). You're free to read, learn from, and build on this code; if you run a modified version as a network service, the AGPL asks you to share those changes.
