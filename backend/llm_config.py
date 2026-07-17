@@ -6,9 +6,10 @@ provider or model is a single-file change instead of editing seven call sites.
 Defaults to Nous Portal (an OpenAI-compatible inference gateway) using
 DeepSeek V4 Flash. Override per environment:
 
-    NOUS_API_KEY   the Nous Portal API key (required for any LLM call)
-    LLM_CHAT_URL   chat-completions endpoint (default: Nous Portal)
-    LLM_MODEL      model id (default: deepseek/deepseek-v4-flash)
+    NOUS_API_KEY        the Nous Portal API key (required for any LLM call)
+    LLM_CHAT_URL        chat-completions endpoint (default: Nous Portal)
+    LLM_MODEL           model id for names/general calls (default: deepseek/deepseek-v4-pro)
+    LLM_PHENOLOGY_MODEL model id for full phenology generation (default: deepseek/deepseek-v4-flash)
 
 The request shape is OpenAI-compatible (Bearer auth), so call sites are
 unchanged apart from the URL, key and model id.
@@ -24,3 +25,4 @@ except ImportError:
 LLM_API_KEY = os.getenv("NOUS_API_KEY") or ""
 LLM_CHAT_URL = os.getenv("LLM_CHAT_URL") or "https://inference-api.nousresearch.com/v1/chat/completions"
 LLM_MODEL = os.getenv("LLM_MODEL") or "deepseek/deepseek-v4-pro"
+LLM_PHENOLOGY_MODEL = os.getenv("LLM_PHENOLOGY_MODEL") or "deepseek/deepseek-v4-flash"

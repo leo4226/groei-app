@@ -5,7 +5,7 @@ import re
 
 import httpx
 
-from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL, LLM_PHENOLOGY_MODEL
 from services.deferred import fire_and_forget
 
 logger = logging.getLogger(__name__)
@@ -134,7 +134,7 @@ def schedule_phenology_enrichment(species_id: int, name_hint: str) -> None:
 
 async def _generate_species(plant_name: str) -> dict:
     prompt = _SPECIES_PROMPT.format(plant_name=plant_name)
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.post(
             LLM_CHAT_URL,
             headers={
@@ -142,7 +142,7 @@ async def _generate_species(plant_name: str) -> dict:
                 "content-type": "application/json",
             },
             json={
-                "model": LLM_MODEL,
+                "model": LLM_PHENOLOGY_MODEL,
                 "max_tokens": 10000,
                 "messages": [{"role": "user", "content": prompt}],
             },
