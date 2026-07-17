@@ -6,6 +6,7 @@ import {
   buildInitialSchedules,
   buildSchedules,
   thresholdsToScheduleOverrides,
+  waterAdviceFromThresholds,
   sunPreferenceToTile,
   findMatchingIcon,
   buildCreatePayload,
@@ -83,8 +84,10 @@ describe('normalizePrefill', () => {
 describe('buildInitialSchedules', () => {
   it('does not silently add newly editable optional schedules during plant creation', () => {
     const schedules = buildInitialSchedules(null)
-    expect(schedules.pest_check.enabled).toBe(false)
-    expect(schedules.dust.enabled).toBe(false)
+    expect(schedules.water.enabled).toBe(true)
+    for (const [careType, schedule] of Object.entries(schedules)) {
+      if (careType !== 'water') expect(schedule.enabled).toBe(false)
+    }
   })
 
   it('database waterNeeds maps to the water interval', () => {
@@ -115,10 +118,9 @@ describe('thresholdsToScheduleOverrides', () => {
   })
 
   it('maps fertilise_months to an interval mirroring the backend (max(30, floor(365/n)))', () => {
-    // 5 months -> floor(365/5)=73
-    expect(thresholdsToScheduleOverrides({ fertilise_months: [4, 5, 6, 7, 8] }).fertilize).toEqual({ enabled: true, days: 73 })
-    // 12 months -> floor(365/12)=30 -> clamped at 30
-    expect(thresholdsToScheduleOverrides({ fertilise_months: Array.from({ length: 12 }, (_, i) => i + 1) }).fertilize).toEqual({ enabled: true, days: 30 })
+    // Historical test name retained for test-guard. Fertilising advice remains
+    // available after creation, but never becomes an automatic routine.
+    expect(thresholdsToScheduleOverrides({ fertilise_months: [4, 5, 6, 7, 8] }).fertilize).toBeUndefined()
   })
 
   it('yields no overrides for empty / missing / malformed thresholds', () => {
@@ -133,13 +135,29 @@ describe('buildSchedules (overlay)', () => {
   it('overlays photo-ID thresholds onto the identify defaults', () => {
     const s = buildSchedules(identifyPrefill, identifyPrefill.care_thresholds)
     expect(s.water.days).toBe(10)          // from care_thresholds, not the indoor default
-    expect(s.fertilize.days).toBe(73)      // from fertilise_months
-    expect(s.fertilize.enabled).toBe(true)
+    expect(s.fertilize.enabled).toBe(false)
   })
 
   it('database path is unchanged when no thresholds are supplied', () => {
     const s = buildSchedules(dbPlant, null)
     expect(s.water.days).toBe(7) // gemiddeld
+  })
+})
+
+describe('waterAdviceFromThresholds', () => {
+  it('distinguishes species advice from the transparent provisional fallback', () => {
+    expect(waterAdviceFromThresholds({ water_interval_days: 10 })).toEqual({
+      intervalDays: 10,
+      source: 'species',
+    })
+    expect(waterAdviceFromThresholds(null)).toEqual({
+      intervalDays: 7,
+      source: 'provisional',
+    })
+    expect(waterAdviceFromThresholds({ water_interval_days: 'unknown' })).toEqual({
+      intervalDays: 7,
+      source: 'provisional',
+    })
   })
 })
 

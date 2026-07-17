@@ -104,6 +104,12 @@ export function findMatchingIcon(plant: LocalPlant, catalog: PlantIcon[]): strin
 
 export type ScheduleEntry = { enabled: boolean; days: number }
 export type ScheduleMap = Record<CareType, ScheduleEntry>
+export type WaterAdvice = {
+  intervalDays: number
+  source: 'species' | 'provisional'
+}
+
+export const PROVISIONAL_WATER_INTERVAL_DAYS = 7
 
 /** Build an initial schedules map, optionally prefilled from a LocalPlant. (moved verbatim) */
 export function buildInitialSchedules(prefill: unknown): ScheduleMap {
@@ -118,8 +124,7 @@ export function buildInitialSchedules(prefill: unknown): ScheduleMap {
     ) {
       days = WATER_NEEDS_TO_DAYS[(prefill as LocalPlant).waterNeeds] ?? days
     }
-    const optionalInCreate = type === 'repot' || type === 'pest_check' || type === 'dust'
-    initial[type] = { enabled: optionalInCreate ? false : days > 0, days }
+    initial[type] = { enabled: type === 'water' && days > 0, days }
   }
   return initial as ScheduleMap
 }
@@ -127,9 +132,7 @@ export function buildInitialSchedules(prefill: unknown): ScheduleMap {
 /**
  * Map a photo-ID `care_thresholds` payload to schedule overrides.
  * - `water_interval_days > 0` → water interval.
- * - `fertilise_months` non-empty → fertilize interval, mirroring the backend
- *   math in `_seed_care_schedules` (`max(30, 365 // len)`) so the in-form
- *   preview matches what the server seeds.
+ * Optional care advice is intentionally not converted into a routine here.
  * Keys the thresholds don't speak to are left to `buildInitialSchedules`.
  */
 export function thresholdsToScheduleOverrides(
@@ -143,12 +146,18 @@ export function thresholdsToScheduleOverrides(
     overrides.water = { enabled: true, days: waterInterval }
   }
 
-  const fertiliseMonths = thresholds['fertilise_months']
-  if (Array.isArray(fertiliseMonths) && fertiliseMonths.length > 0) {
-    overrides.fertilize = { enabled: true, days: Math.max(30, Math.floor(365 / fertiliseMonths.length)) }
-  }
-
   return overrides
+}
+
+/** Describe the backend-owned initial Water cadence without asking the user. */
+export function waterAdviceFromThresholds(
+  thresholds: Record<string, unknown> | null | undefined,
+): WaterAdvice {
+  const waterInterval = thresholds?.['water_interval_days']
+  if (typeof waterInterval === 'number' && Number.isFinite(waterInterval) && waterInterval > 0) {
+    return { intervalDays: Math.floor(waterInterval), source: 'species' }
+  }
+  return { intervalDays: PROVISIONAL_WATER_INTERVAL_DAYS, source: 'provisional' }
 }
 
 /** Initial schedules for a prefill, with photo-ID `care_thresholds` overlaid on top. */

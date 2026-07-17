@@ -461,6 +461,15 @@ export default function PlantDetail() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}</p>
                 <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
+                {sched.care_type === 'water'
+                  && (sched.interval_source === 'species' || sched.interval_source === 'provisional')
+                  && (
+                  <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {sched.interval_source === 'species'
+                      ? t.plantDetail.intervalSourceSpecies
+                      : t.plantDetail.intervalSourceProvisional}
+                  </span>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className={`text-sm font-semibold ${isOverdue ? 'text-overdue' : isDueToday ? 'text-due' : 'text-good'}`}>

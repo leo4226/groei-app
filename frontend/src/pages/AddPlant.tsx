@@ -5,8 +5,6 @@ import type { IdentifyCommitResult } from '../types'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import Glyph from '../components/ui/Glyph'
-import type { CareType, CareScheduleInput } from '../types'
-import { isCareTypeValidForEnv } from '../types'
 import IconPicker from '../components/IconPicker'
 import TileIcon from '../components/ui/TileIcon'
 import type { PlantIcon } from '../types'
@@ -21,18 +19,19 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
-import FrequencySlider from '../components/add/FrequencySlider'
-import CareRhythmOnboardingProposal from './addPlant/CareRhythmOnboardingProposal'
 import {
   isIdentifyPrefill,
   findMatchingIcon,
-  buildSchedules,
   normalizePrefill,
   buildCreatePayload,
   sunPreferenceToTile,
+  waterAdviceFromThresholds,
   SUN_DB_TO_TILE,
   TYPE_TO_FORM,
 } from './addPlant/prefill'
+
+const SECTION_MARKER = String.fromCodePoint(0x00a7)
+const WATER_FORMULA = `H${String.fromCodePoint(0x2082)}O`
 
 type AddPlantLocState = {
   from?: 'identify' | 'manual' | 'pick'
@@ -59,10 +58,10 @@ export default function AddPlant() {
   const zoneList = useMemo(() => maps.map(m => ({
     id: String(m.id),
     name: m.name,
-    description: m.map_type === 'indoor' ? 'Binnen' : 'Buiten',
+    description: m.map_type === 'indoor' ? t.maps.indoor : t.maps.outdoor,
     plantCount: plants.filter(p => p.map_id === m.id).length,
     isIndoor: m.map_type === 'indoor',
-  })), [maps, plants])
+  })), [maps, plants, t.maps.indoor, t.maps.outdoor])
 
   // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
   const fromMapState = (location.state as any)?.fromMap
@@ -151,9 +150,6 @@ export default function AddPlant() {
   const [hasDrainage, setHasDrainage] = useState(false)
   const [substrate, setSubstrate] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
-  const [feedingSchedule, setFeedingSchedule] = useState('monthly')
-  const [pruningType, setPruningType] = useState('none')
-  const [pruningFrequency, setPruningFrequency] = useState('never')
 
 
   function randomMapPos(viewbox: string) {
@@ -165,25 +161,9 @@ export default function AddPlant() {
     }
   }
 
-  const [schedules, setSchedules] = useState<Record<CareType, { enabled: boolean; days: number }>>(
-    () => buildSchedules(prefill, norm.careThresholds)
+  const [waterAdvice, setWaterAdvice] = useState(
+    () => waterAdviceFromThresholds(norm.careThresholds),
   )
-  const [acceptedRhythm, setAcceptedRhythm] = useState<{
-    mapId: number
-    intervalDays: number
-    nextDue: string
-  } | null>(null)
-
-  // Extract fertilise_tip from care thresholds (identify path uses norm.careThresholds
-  // at mount; database path updates it via the lookupLatin useEffect below)
-  const [fertiliseTip, setFertiliseTip] = useState<string | null>(() => {
-    const ct = norm.careThresholds
-    if (ct && typeof ct === 'object') {
-      const tip = (ct as Record<string, unknown>)['fertilise_tip']
-      return typeof tip === 'string' && tip.trim() ? tip.trim() : null
-    }
-    return null
-  })
 
   // Derive plant_type from selected icon's cat field
   const derivedPlantType = useMemo(() => {
@@ -209,15 +189,7 @@ export default function AddPlant() {
     speciesApi.lookupLatin(latin)
       .then(resp => {
         if (cancelled || !resp.care_thresholds) return
-        setSchedules(() => buildSchedules(
-          prefill,
-          resp.care_thresholds,
-        ))
-        // Also extract the fertilise_tip from the fetched thresholds
-        const tip = (resp.care_thresholds as Record<string, unknown>)['fertilise_tip']
-        setFertiliseTip(
-          typeof tip === 'string' && tip.trim() ? tip.trim() : null,
-        )
+        setWaterAdvice(waterAdviceFromThresholds(resp.care_thresholds))
       })
       .catch(() => {}) // latin name may not match — silently skip
     return () => { cancelled = true }
@@ -257,6 +229,7 @@ export default function AddPlant() {
     if (isIdentifyPrefill(prefill)) {
       setName(prefill.name_nl_suggested)
       setSpecies(prefill.scientific_name)
+      setWaterAdvice(waterAdviceFromThresholds(prefill.care_thresholds))
       // Resolve icon through catalog so pot/bare switching works
       if (iconCatalog.length > 0) {
         const iconKeyFromPrefill = prefill.icon_key
@@ -312,11 +285,12 @@ export default function AddPlant() {
         baseIconRef.current = 'pending'
         setIconKey(p.iconKey ?? null)
       }
-      setSchedules(buildSchedules(prefill, norm.careThresholds))
+      setWaterAdvice(waterAdviceFromThresholds(norm.careThresholds))
       return
     }
     if ('name' in prefill) {
       setName(prefill.name)
+      setWaterAdvice(waterAdviceFromThresholds(null))
     }
   }, [prefill, iconCatalog, iconLookup])
 
@@ -334,13 +308,6 @@ export default function AddPlant() {
     }
   }, [potSize, iconLookup])
 
-  // Repot check toggle: only enabled when a pot size is entered
-  useEffect(() => {
-    setSchedules(prev => ({
-      ...prev,
-      repot: { ...prev.repot, enabled: potSize.trim() !== '' },
-    }))
-  }, [potSize])
 
   // Progress timer: update elapsed seconds + phase message while submitting
   useEffect(() => {
@@ -384,26 +351,6 @@ export default function AddPlant() {
       const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
       const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
 
-      // Drop care types that don't apply to this environment (e.g. rotate/mist
-      // outdoors). No map selected → treated as outdoor, matching the backend.
-      const isIndoor = placedMap?.map_type === 'indoor'
-      const careSchedules: CareScheduleInput[] = Object.entries(schedules)
-        .filter(([type, s]) => s.enabled && s.days > 0 && isCareTypeValidForEnv(type as CareType, isIndoor))
-        .map(([type, s]) => {
-          const accepted = acceptedRhythm
-          const acceptedNextDue = type === 'water'
-            && accepted !== null
-            && accepted.mapId === placedMap?.id
-            && accepted.intervalDays === s.days
-            ? accepted.nextDue
-            : undefined
-          return {
-            care_type: type as CareType,
-            interval_days: s.days,
-            next_due: acceptedNextDue,
-          }
-        })
-
       const plant = await addPlant(buildCreatePayload({
         name,
         species,
@@ -422,7 +369,7 @@ export default function AddPlant() {
         phase: phase as any,
         quantity,
         sownDate: displayToIso(sownDateInput) || undefined,
-        careSchedules,
+        careSchedules: [],
       }))
 
       if (photoFile) {
@@ -439,24 +386,7 @@ export default function AddPlant() {
     }
   }
 
-  function renderCareRhythmProposal() {
-    if (!selectedZoneId || !schedules.water.enabled || schedules.water.days < 1) return null
-    const mapId = Number(selectedZoneId)
-    const intervalDays = schedules.water.days
-    return (
-      <CareRhythmOnboardingProposal
-        mapId={mapId}
-        intervalDays={intervalDays}
-        onAccepted={(nextDue) => setAcceptedRhythm(nextDue ? {
-          mapId,
-          intervalDays,
-          nextDue,
-        } : null)}
-      />
-    )
-  }
 
-  
 
   // Derived Latin name for species row (read-only, from prefill)
   const latinName = useMemo(() => {
@@ -544,7 +474,7 @@ export default function AddPlant() {
       <header className="border-b border-border">
         <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-6 sm:pt-8 pb-5">
           <div className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.15em] sm:tracking-[0.22em] text-text-muted flex items-center gap-3 sm:gap-3.5 mb-3 sm:mb-3.5">
-            <span className="text-primary">§</span>
+            <span className="text-primary">{SECTION_MARKER}</span>
             <span>{t.addPlant.breadcrumb}</span>
             <span className="hidden sm:block flex-1 h-px bg-border max-w-[80px]" />
           </div>
@@ -900,105 +830,35 @@ export default function AddPlant() {
         </Card>
 
         {/* ——— § III · Care Card ——— */}
-        {!showDetails ? (
-          <Card
-            eyebrow={t.addPlant.secCare}
-            title={t.addPlant.secCareTitle}
-          >
-            {/* Water gift frequency */}
-            <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
-              <FrequencySlider
-                label={t.addPlant.labelWatering}
-                value={schedules.water.days}
-                onChange={(v) => {
-                  setSchedules(prev => ({
-                    ...prev,
-                    water: { ...prev.water, days: v },
-                  }))
-                }}
-                presets={[
-                  { label: t.addPlant.presetSeldom, value: 14 },
-                  { label: t.addPlant.presetWeekly, value: 7 },
-                  { label: t.addPlant.presetBiweekly, value: 3 },
-                  { label: t.addPlant.presetDaily, value: 1 },
-                ]}
-              />
-            </FormRow>
-
-          </Card>
-        ) : (
-          <Card
-            eyebrow={t.addPlant.secCare}
-            title={t.addPlant.secCareTitle}
-            subtitle={t.addPlant.secCareSubtitle}
-          >
-            {/* Water gift frequency */}
-            <FormRow label={t.addPlant.labelWatering} description={t.addPlant.labelWateringDesc}>
-              <FrequencySlider
-                label={t.addPlant.labelWatering}
-                value={schedules.water.days}
-                onChange={(v) => {
-                  setSchedules(prev => ({
-                    ...prev,
-                    water: { ...prev.water, days: v },
-                  }))
-                }}
-                presets={[
-                  { label: t.addPlant.presetSeldom, value: 14 },
-                  { label: t.addPlant.presetWeekly, value: 7 },
-                  { label: t.addPlant.presetBiweekly, value: 3 },
-                  { label: t.addPlant.presetDaily, value: 1 },
-                ]}
-              />
-            </FormRow>
-
-            <FormRow label={t.addPlant.labelFeeding} description={t.addPlant.labelFeedingDesc}>
-              <TileGrid
-                options={[
-                  { id: 'weekly', title: t.addPlant.feedWeekly, subtitle: t.addPlant.feedWeeklySub, glyph: <TileIcon name="feed-weekly" /> },
-                  { id: 'monthly', title: t.addPlant.feedMonthly, subtitle: t.addPlant.feedMonthlySub, glyph: <TileIcon name="feed-monthly" /> },
-                  { id: 'seasonal', title: t.addPlant.feedSeasonal, subtitle: t.addPlant.feedSeasonalSub, glyph: <TileIcon name="feed-seasonal" /> },
-                  { id: 'optional', title: t.addPlant.feedOptional, subtitle: t.addPlant.feedOptionalSub, glyph: <TileIcon name="feed-optional" /> },
-                ]}
-                value={feedingSchedule}
-                onChange={setFeedingSchedule}
-              />
-            </FormRow>
-            {fertiliseTip && (
-              <p className="text-xs text-text-muted italic mt-1 text-center">{fertiliseTip}</p>
-            )}
-
-            {/* Pruning type */}
-            <FormRow label={t.addPlant.labelPruneType} description={t.addPlant.labelPruneTypeDesc}>
-              <TileGrid
-                options={[
-                  { id: 'none', title: t.addPlant.pruneNone, subtitle: t.addPlant.pruneNoneSub, glyph: <TileIcon name="prune-none" /> },
-                  { id: 'light', title: t.addPlant.pruneLight, subtitle: t.addPlant.pruneLightSub, glyph: <TileIcon name="prune-light" /> },
-                  { id: 'moderate', title: t.addPlant.pruneModerate, subtitle: t.addPlant.pruneModerateSub, glyph: <TileIcon name="prune-moderate" /> },
-                  { id: 'heavy', title: t.addPlant.pruneHeavy, subtitle: t.addPlant.pruneHeavySub, glyph: <TileIcon name="prune-heavy" /> },
-                ]}
-                value={pruningType}
-                onChange={setPruningType}
-              />
-            </FormRow>
-
-            {/* Pruning frequency */}
-            <FormRow label={t.addPlant.labelPruneFreq} description={t.addPlant.labelPruneFreqDesc}>
-              <TileGrid
-                options={[
-                  { id: 'never', title: t.addPlant.pruneNever, subtitle: t.addPlant.pruneNeverSub, glyph: <TileIcon name="freq-never" /> },
-                  { id: 'weekly', title: t.addPlant.pruneW, subtitle: t.addPlant.pruneWSub, glyph: <TileIcon name="freq-weekly" /> },
-                  { id: 'monthly', title: t.addPlant.pruneM, subtitle: t.addPlant.pruneMSub, glyph: <TileIcon name="freq-monthly" /> },
-                  { id: 'seasonal', title: t.addPlant.pruneS, subtitle: t.addPlant.pruneSSub, glyph: <TileIcon name="freq-seasonal" /> },
-                ]}
-                value={pruningFrequency}
-                onChange={setPruningFrequency}
-              />
-            </FormRow>
-          </Card>
-        )}
-
-        {renderCareRhythmProposal()}
+        <Card
+          eyebrow={t.addPlant.secCare}
+          title={t.addPlant.secCareTitle}
+          subtitle={t.addPlant.waterAdviceSubtitle}
+        >
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-bold text-primary">
+                {WATER_FORMULA}
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-heading text-sm font-semibold text-text">
+                  {t.addPlant.labelWatering}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-text-soft">
+                  {waterAdvice.source === 'species'
+                    ? t.addPlant.waterAdviceSpecies(waterAdvice.intervalDays)
+                    : t.addPlant.waterAdviceProvisional(waterAdvice.intervalDays)}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">
+                  {t.addPlant.waterAdviceEditable}
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-text-muted">
+            {t.addPlant.optionalCareAfterCreate}
+          </p>
+        </Card>
 
         {/* ——— § IV · Album Card ——— */}
         {showDetails ? (

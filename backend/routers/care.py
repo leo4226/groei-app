@@ -295,6 +295,7 @@ async def update_schedule_interval(
     await db.execute(
         """UPDATE care_schedules
            SET interval_days = ?,
+               interval_source = 'manual',
                rhythm_opt_out = CASE
                    WHEN care_type = 'water' THEN TRUE
                    ELSE rhythm_opt_out

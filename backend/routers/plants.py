@@ -68,47 +68,58 @@ async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
 
 
 async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
-    """Create care_schedules for a plant from its threshold data. Idempotent — skips if schedule exists."""
+    """Create or refine the initial Water schedule from species thresholds.
+
+    Optional care advice remains available in threshold data, but never becomes
+    a recurring commitment without an explicit post-create user action.
+    """
     try:
         thresholds = json.loads(thresholds_json)
     except (json.JSONDecodeError, TypeError):
         return
 
     water_interval = thresholds.get("water_interval_days")
-    fertilise_months = thresholds.get("fertilise_months") or []
+    if isinstance(water_interval, bool) or not isinstance(water_interval, (int, float)):
+        return
+    water_interval = int(water_interval)
+    if water_interval < 1:
+        return
 
-    if water_interval and water_interval > 0:
-        existing = await db.execute_fetchall(
-            "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'water' AND is_active = 1",
-            (plant_id,),
+    existing = await db.execute_fetchall(
+        """SELECT id, next_due, last_done, season_adjust, is_active, interval_source
+           FROM care_schedules
+           WHERE plant_id = ? AND care_type = 'water'
+           ORDER BY is_active DESC, id LIMIT 1""",
+        (plant_id,),
+    )
+    if not existing:
+        # Use ? placeholders (qm_to_pg translates these); the $1/$2 form is
+        # not translated and breaks under dev SQLite.
+        await db.execute(
+            """INSERT INTO care_schedules
+               (plant_id, care_type, interval_days, next_due, interval_source)
+               VALUES (?, 'water', ?, CURRENT_DATE, 'species')""",
+            (plant_id, water_interval),
         )
-        if not existing:
-            # Use ? placeholders (qm_to_pg translates these); the $1/$2 form is
-            # not translated and breaks under dev SQLite.
-            await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, CURRENT_DATE)",
-                (plant_id, int(water_interval)),
-            )
-
-    if fertilise_months:
-        existing = await db.execute_fetchall(
-            "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'fertilize' AND is_active = 1",
-            (plant_id,),
+    else:
+        row = dict(existing[0])
+    if (
+        existing
+        and bool(row.get("is_active"))
+        and row.get("interval_source") == "provisional"
+    ):
+        anchor = _care_schedule_anchor(row.get("last_done"))
+        next_due = (
+            calculate_next_due(anchor, water_interval, row.get("season_adjust"))
+            if anchor is not None
+            else row["next_due"]
         )
-        if not existing:
-            today = _date.today()
-            current_month = today.month
-            sorted_months = sorted(fertilise_months)
-            next_month = next((m for m in sorted_months if m >= current_month), sorted_months[0])
-            if next_month >= current_month:
-                next_due = _date(today.year, next_month, 1)
-            else:
-                next_due = _date(today.year + 1, next_month, 1)
-            interval = max(30, 365 // len(fertilise_months))
-            await db.execute(
-                "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'fertilize', ?, ?)",
-                (plant_id, interval, next_due),
-            )
+        await db.execute(
+            """UPDATE care_schedules
+               SET interval_days = ?, next_due = ?, interval_source = 'species'
+               WHERE id = ? AND interval_source = 'provisional'""",
+            (water_interval, next_due, row["id"]),
+        )
 
     await db.commit()
 
@@ -215,11 +226,16 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             env_map_type = map_rows[0]["map_type"]
     environment = "indoor" if env_map_type == "indoor" else "outdoor_ground"
 
-    # Create care schedules — default to today so tasks appear immediately.
+    # Create only an explicitly submitted Water schedule. Optional recurring
+    # care is configured after creation from the Plant Passport, never silently.
+    # Water defaults to today so the first interaction remains a check rather
+    # than assuming the newly logged plant was already watered.
     # A separately confirmed onboarding rhythm proposal may provide next_due.
     # Skip care types that are invalid for this environment so outdoor plants
     # never auto-acquire rotate/mist (etc.) schedules.
     for sched in data.care_schedules:
+        if sched.care_type != "water":
+            continue
         if not is_care_type_valid_for_env(sched.care_type, environment):
             continue
         from datetime import date as _date_today
@@ -227,8 +243,8 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         await db.execute(
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, season_adjust, next_due, notes,
-                rhythm_opt_out)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                rhythm_opt_out, interval_source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'manual')""",
             (plant_id, sched.care_type, sched.interval_days,
              sched.season_adjust, next_due, sched.notes, sched.rhythm_opt_out),
         )
@@ -268,7 +284,10 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
     except Exception as exc:
         print(f"Warning: could not generate species data for {data.name}: {exc}")
 
-    # Use cached care thresholds from species if available, else generate via Claude
+    # Use cached care thresholds from species if available. If not, first make
+    # a safe provisional Water routine and only then start deferred generation;
+    # this ordering prevents the request/background connections racing to insert.
+    defer_threshold_generation = False
     try:
         cached = None
         if species_id:
@@ -285,36 +304,36 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
                 (cached, plant_id),
             )
             await db.commit()
-            # _seed_care_schedules is idempotent on care_type 'water'/'fertilize'.
-            # The form's CARE_TYPE_INFO uses the same keys, so a form-sent
-            # 'water'/'fertilize' suppresses the seed (no duplicate rows). Keep
-            # both vocabularies in sync or this dedup silently breaks.
+            # Seeding is idempotent over all Water rows, including a routine the
+            # user already disabled. Optional threshold advice is never seeded.
             await _seed_care_schedules(db, plant_id, cached)
         else:
-            # No cached thresholds: generating them is an LLM call the user
-            # shouldn't wait for. The default water schedule seeded below
-            # keeps the plant actionable until the job lands.
-            fire_and_forget(
-                lambda: _generate_thresholds_deferred(plant_id, species_id, data.name, data.species),
-                f"care-thresholds plant={plant_id}",
-            )
+            defer_threshold_generation = True
     except Exception as exc:
         print(f"Warning: could not generate thresholds for {data.name}: {exc}")
 
-    # Guarantee every plant is at least waterable: if threshold generation
-    # failed (e.g. Claude down) and the form sent no schedules, the plant could
-    # otherwise end up with zero schedules. Seed a default water schedule when
-    # none exists.
+    # Guarantee every plant is at least waterable. Seven days is explicitly a
+    # provisional fallback, not species knowledge, and may be refined later.
     existing_water = await db.execute_fetchall(
         "SELECT id FROM care_schedules WHERE plant_id = ? AND care_type = 'water' AND is_active = 1",
         (plant_id,),
     )
     if not existing_water:
         await db.execute(
-            "INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due) VALUES (?, 'water', ?, ?)",
+            """INSERT INTO care_schedules
+               (plant_id, care_type, interval_days, next_due, interval_source)
+               VALUES (?, 'water', ?, ?, 'provisional')""",
             (plant_id, 7, _date.today()),
         )
         await db.commit()
+
+    if defer_threshold_generation:
+        fire_and_forget(
+            lambda: _generate_thresholds_deferred(
+                plant_id, species_id, data.name, data.species,
+            ),
+            f"care-thresholds plant={plant_id}",
+        )
 
     # Return the created plant
     return await get_plant(plant_id, db=db, account=account)
@@ -491,7 +510,7 @@ async def _sync_care_schedules_in_transaction(
     rows = await db.execute_fetchall(
         """SELECT id, care_type, interval_days, season_adjust, notes,
                   next_due, last_done, is_active, is_ephemeral,
-                  rhythm_opt_out, rhythm_operation_id
+                  rhythm_opt_out, rhythm_operation_id, interval_source
            FROM care_schedules
            WHERE plant_id = ?
            ORDER BY is_active DESC, id DESC""",
@@ -517,8 +536,8 @@ async def _sync_care_schedules_in_transaction(
             await db.execute(
                 """INSERT INTO care_schedules
                    (plant_id, care_type, interval_days, season_adjust, next_due, notes,
-                    rhythm_opt_out, is_active)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)""",
+                    rhythm_opt_out, is_active, interval_source)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, 'manual')""",
                 (plant_id, care_type, schedule.interval_days, schedule.season_adjust,
                  next_due, schedule.notes, schedule.rhythm_opt_out),
             )
@@ -566,11 +585,13 @@ async def _sync_care_schedules_in_transaction(
             """UPDATE care_schedules
                SET care_type = ?, interval_days = ?, season_adjust = ?, notes = ?,
                    next_due = ?, rhythm_opt_out = ?, rhythm_operation_id = ?,
-                   is_active = TRUE
+                   is_active = TRUE,
+                   interval_source = CASE WHEN ? THEN 'manual' ELSE interval_source END
                WHERE id = ?""",
             (care_type, schedule.interval_days, season_adjust, notes,
              next_due, rhythm_opt_out,
-             None if authority_changed else row.get("rhythm_operation_id"), row["id"]),
+             None if authority_changed else row.get("rhythm_operation_id"),
+             authority_changed, row["id"]),
         )
         for duplicate in candidates[1:]:
             if bool(duplicate["is_active"]):
