@@ -32,7 +32,9 @@ def test_hot_dry_outdoor_container_recommends_check_today():
     assert result.level == "high"
     assert result.recommended_check_date == TODAY
     assert result.factors["effective_rain_mm"] == 0.0
-    assert "container" in result.reason_en.lower()
+    assert result.reason_en == "Warm, dry weather is making this outdoor container dry out faster."
+    assert result.reason_nl == "Warm en droog weer laat deze buitenpot sneller uitdrogen."
+    assert "mm" not in result.reason_en
 
 
 def test_rooted_ground_after_rain_keeps_saved_due_date():
@@ -46,6 +48,8 @@ def test_rooted_ground_after_rain_keeps_saved_due_date():
     assert result.level == "normal"
     assert result.recommended_check_date == TODAY + timedelta(days=5)
     assert result.factors["effective_rain_mm"] > result.factors["drying_demand_mm"]
+    assert result.reason_en == "Rain is covering the expected drying."
+    assert result.reason_nl == "De regen compenseert de verwachte uitdroging."
 
 
 def test_sustained_warmth_raises_indoor_pressure_using_explicit_proxy():
@@ -59,8 +63,8 @@ def test_sustained_warmth_raises_indoor_pressure_using_explicit_proxy():
     assert result.level == "high"
     assert result.recommended_check_date == TODAY
     assert result.factors["effective_rain_mm"] == 0.0
-    assert "outdoor temperature proxy" in result.reason_en.lower()
-    assert "buitentemperatuur" in result.reason_nl.lower()
+    assert "rough guide" in result.reason_en.lower()
+    assert "ruwe indicatie" in result.reason_nl.lower()
 
 
 def test_forecast_rain_suppresses_extra_outdoor_check():

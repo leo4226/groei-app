@@ -89,7 +89,7 @@ async def test_water_outlook_is_household_scoped_and_uses_explicit_indoor_proxy(
 
     assert maps[2]["temperature_source"] == "outdoor_proxy"
     assert maps[2]["level"] == "high"
-    assert "outdoor temperature proxy" in maps[2]["plants"][0]["reason_en"].lower()
+    assert "rough guide" in maps[2]["plants"][0]["reason_en"].lower()
 
     assert maps[3]["weather_status"] == "missing_coordinates"
     assert maps[3]["level"] == "unknown"
