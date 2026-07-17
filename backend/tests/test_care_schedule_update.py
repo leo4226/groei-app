@@ -12,8 +12,9 @@ async def sched_db(seeded_db):
         INSERT INTO plants (id, name, household_id) VALUES (1, 'Monstera', 1);
         INSERT INTO plants (id, name, household_id) VALUES (2, 'Foreign', 2);
         INSERT INTO households (id, name) VALUES (2, 'Other');
-        INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
-        VALUES (1, 'water', 7, '2026-06-10', 1);
+        INSERT INTO care_schedules
+            (plant_id, care_type, interval_days, next_due, is_active, interval_source)
+        VALUES (1, 'water', 7, '2026-06-10', 1, 'provisional');
         INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
         VALUES (1, 'photo', 30, '2026-06-20', 1);
     """)
@@ -60,9 +61,10 @@ async def test_update_interval_success(client, sched_db, auth_header):
     assert body["interval_days"] == 14
 
     rows = await sched_db.execute_fetchall(
-        "SELECT interval_days FROM care_schedules WHERE id = 1"
+        "SELECT interval_days, interval_source FROM care_schedules WHERE id = 1"
     )
     assert rows[0]["interval_days"] == 14
+    assert rows[0]["interval_source"] == "manual"
 
 
 @pytest.mark.asyncio

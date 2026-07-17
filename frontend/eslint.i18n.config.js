@@ -71,7 +71,7 @@ export default [
       'src/components/sheets/SpotInspectorSheet.tsx',
       'src/components/sun/DebugSvfOverlay.tsx',
       'src/components/sun/HeatmapLegend.tsx',
-      'src/pages/AddPlant.tsx',
+
       'src/pages/AdminPage.tsx',
       'src/pages/EditPlant.tsx',
       'src/pages/GameHostPage.tsx',

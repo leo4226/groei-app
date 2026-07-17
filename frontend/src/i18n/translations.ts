@@ -702,6 +702,8 @@ export type Translations = {
     overdue: string
     today: string
     xDays: string  // "Every {n} days"
+    intervalSourceSpecies: string
+    intervalSourceProvisional: string
     byPerson: string  // "by {name}"
     deleteSchedule: string
     deleteScheduleConfirm: string
@@ -866,6 +868,11 @@ export type Translations = {
     secCareSubtitle: string
     labelWatering: string
     labelWateringDesc: string
+    waterAdviceSubtitle: string
+    waterAdviceSpecies: (days: number) => string
+    waterAdviceProvisional: (days: number) => string
+    waterAdviceEditable: string
+    optionalCareAfterCreate: string
     careRhythmJoin: string
     careRhythmProposal: (date: string) => string
     careRhythmAccept: string
