@@ -13,6 +13,16 @@ logger = logging.getLogger(__name__)
 _token_usage = {"input": 0, "output": 0}
 _PHENOLOGY_RETRY_DELAY_SECONDS = 1
 
+
+def _llm_message_content(body: dict) -> str:
+    """Return non-empty LLM content using the existing JSON failure path."""
+    content = body["choices"][0]["message"].get("content")
+    raw = content.strip() if isinstance(content, str) else ""
+    if not raw:
+        raise json.JSONDecodeError("LLM returned empty content", "", 0)
+    return raw
+
+
 def get_token_usage() -> dict:
     return dict(_token_usage)
 
@@ -106,7 +116,7 @@ async def _generate_names(plant_name: str) -> dict:
         usage = body.get("usage", {})
         _token_usage["input"] += usage.get("prompt_tokens", 0)
         _token_usage["output"] += usage.get("completion_tokens", 0)
-        raw = body["choices"][0]["message"]["content"].strip()
+        raw = _llm_message_content(body)
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     return json.loads(raw)
@@ -142,7 +152,7 @@ async def _generate_species(plant_name: str) -> dict:
         usage = body.get("usage", {})
         _token_usage["input"] += usage.get("prompt_tokens", 0)
         _token_usage["output"] += usage.get("completion_tokens", 0)
-        raw = body["choices"][0]["message"]["content"].strip()
+        raw = _llm_message_content(body)
 
     raw = re.sub(r"^```json\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
