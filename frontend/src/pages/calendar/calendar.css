@@ -2,28 +2,16 @@
    leak into other pages. Source-of-truth: c:\Users\leon_\Downloads\Floreren Kalender.html */
 
 .cal-page {
-  --cal-bg:        var(--color-bg);
-  --cal-paper:     var(--color-paper);
-  --cal-paper-dim: var(--color-bg);
-  --cal-ink:       var(--color-text);
-  --cal-ink-soft:  var(--color-text-soft);
-  --cal-ink-faint: var(--color-text-muted);
-  --cal-rule:      var(--color-border);
-  --cal-rule-soft: var(--color-border-soft);
-  --cal-accent:    var(--color-primary);
   --cal-accent-hl: #4A7C4E;
-  --cal-accent-dk: var(--color-primary-dark);
-  --cal-terra:     var(--color-secondary);
   --cal-terra-dk:  #8E4A33;
-  --cal-gold:      var(--color-due);
   --cal-gold-dk:   #B0840F;
   --cal-sky:       #6B8FCA;
   --cal-sky-dk:    #4A6BA8;
   --cal-shadow:    0 1px 0 color-mix(in srgb, var(--color-text) 4%, transparent), 0 4px 14px color-mix(in srgb, var(--color-text) 5%, transparent);
 
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--cal-bg);
-  color: var(--cal-ink);
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-size: 14px;
   line-height: 1.5;
   background-image:
@@ -44,47 +32,47 @@
   width: min(100%, 1800px);
   margin: 0 auto;
   padding: max(32px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0;
-  border-bottom: 1px solid var(--cal-rule);
+  border-bottom: 1px solid var(--color-border);
 }
 .cal-page .title-block .eyebrow {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 12px;
 }
 /* Hairline-flanked, per the Plants masthead grammar */
 .cal-page .title-block .eyebrow::before {
   content: '';
-  width: 24px; height: 1px; background: var(--cal-rule);
+  width: 24px; height: 1px; background: var(--color-border);
   flex: none;
 }
 .cal-page .title-block .eyebrow::after {
   content: '';
-  height: 1px; background: var(--cal-rule);
+  height: 1px; background: var(--color-border);
   flex: 1; min-width: 24px; max-width: 80px;
 }
-.cal-page .title-block .eyebrow span:first-child { color: var(--cal-accent); }
+.cal-page .title-block .eyebrow span:first-child { color: var(--color-primary); }
 .cal-page .title-block h1 {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-weight: 500;
   /* Spec cap (design-language doc): same clamp as the Plants reference. */
   font-size: clamp(36px, 5vw, 56px);
   line-height: 0.95;
   letter-spacing: -0.02em;
   margin: 0;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .title-block h1 em {
-  font-style: italic; font-weight: 400; color: var(--cal-accent);
+  font-style: italic; font-weight: 400; color: var(--color-primary);
 }
 .cal-page .title-block .lede {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 18px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   margin: 14px 0 0;
   max-width: 540px;
   line-height: 1.45;
@@ -103,7 +91,7 @@
   width: min(100%, 1800px);
   margin: 0 auto;
   padding: 14px clamp(24px, 3vw, 56px);
-  border-bottom: 1px solid var(--cal-rule-soft);
+  border-bottom: 1px solid var(--color-border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -120,26 +108,26 @@
 .cal-page .ms-btn {
   width: 32px; height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--cal-rule);
-  background: var(--cal-paper);
-  color: var(--cal-ink-soft);
+  border: 1px solid var(--color-border);
+  background: var(--color-paper);
+  color: var(--color-text-soft);
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer;
   transition: all .15s;
 }
-.cal-page .ms-btn:hover { color: var(--cal-accent); border-color: var(--cal-accent); }
+.cal-page .ms-btn:hover { color: var(--color-primary); border-color: var(--color-primary); }
 .cal-page .ms-month {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 26px;
   line-height: 1;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
-.cal-page .ms-month em { font-style: italic; color: var(--cal-accent); font-weight: 400; }
+.cal-page .ms-month em { font-style: italic; color: var(--color-primary); font-weight: 400; }
 .cal-page .ms-year {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.2em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   margin-bottom: 3px;
 }
@@ -150,13 +138,13 @@
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 100px;
-  background: color-mix(in srgb, var(--cal-paper-dim) 78%, var(--cal-paper));
+  background: color-mix(in srgb, var(--color-bg) 78%, var(--color-paper));
   box-shadow: 0 3px 10px color-mix(in srgb, var(--color-text) 4%, transparent);
 }
 .cal-page .view-toggle button {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 15.5px;
   font-weight: 500;
   min-height: 44px;
@@ -164,33 +152,33 @@
   background: transparent;
   border: 0;
   border-radius: 100px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   cursor: pointer;
   transition: color .15s, background .15s;
 }
 .cal-page .view-toggle button.on {
-  background: var(--cal-accent);
-  color: var(--cal-paper);
+  background: var(--color-primary);
+  color: var(--color-paper);
   font-weight: 600;
 }
-.cal-page .view-toggle button:hover:not(.on) { background: var(--cal-paper); color: var(--cal-ink); }
+.cal-page .view-toggle button:hover:not(.on) { background: var(--color-paper); color: var(--color-text); }
 .cal-page .view-toggle button:focus-visible {
-  outline: 2px solid var(--cal-accent);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 .cal-page .ms-meta {
   display: flex; gap: 18px; align-items: baseline;
-  border-left: 1px dashed var(--cal-rule);
+  border-left: 1px dashed var(--color-border);
   padding-left: 18px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
-.cal-page .ms-meta .v { font-family: 'Fraunces', serif; font-size: 16px; color: var(--cal-ink); text-transform: none; letter-spacing: 0; margin-left: 6px; }
-.cal-page .ms-meta .v em { font-style: italic; color: var(--cal-terra); }
+.cal-page .ms-meta .v { font-family: var(--font-heading); font-size: 16px; color: var(--color-text); text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.cal-page .ms-meta .v em { font-style: italic; color: var(--color-secondary); }
 
 /* Compact environment filter — the Plants "LOCATIE ·  pills" voice */
 .cal-page .calendar-environment-filter {
@@ -200,12 +188,12 @@
   flex-wrap: wrap;
 }
 .cal-page .env-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   margin-right: 4px;
 }
 .cal-page .env-pill {
@@ -217,17 +205,17 @@
   padding: 7px 14px;
   min-height: 32px;
   border-radius: 100px;
-  border: 1px solid var(--cal-rule);
-  background: var(--cal-paper);
-  color: var(--cal-ink-soft);
+  border: 1px solid var(--color-border);
+  background: var(--color-paper);
+  color: var(--color-text-soft);
   cursor: pointer;
   transition: all 0.15s;
 }
-.cal-page .env-pill:hover:not(.on) { border-color: var(--cal-accent); color: var(--cal-accent); }
+.cal-page .env-pill:hover:not(.on) { border-color: var(--color-primary); color: var(--color-primary); }
 .cal-page .env-pill.on {
-  background: var(--cal-accent);
-  border-color: var(--cal-accent);
-  color: var(--cal-paper);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-paper);
 }
 
 /* ——— legend strip ——— */
@@ -241,27 +229,27 @@
   align-items: center;
   gap: clamp(12px, 1.5vw, 24px);
   padding: 12px 18px;
-  background: var(--cal-paper);
-  border: 1px solid var(--cal-rule);
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: var(--cal-shadow);
   flex-wrap: wrap;
 }
 .cal-page .legend-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   padding-right: 18px;
-  border-right: 1px solid var(--cal-rule-soft);
+  border-right: 1px solid var(--color-border-soft);
 }
 .cal-page .legend-chip {
   display: inline-flex; align-items: center; gap: 8px;
   cursor: pointer;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 14px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   padding: 4px 0;
   user-select: none;
 }
@@ -270,14 +258,14 @@
   border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 .cal-page .legend-chip .ct {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   margin-left: 2px;
   letter-spacing: 0.1em;
 }
 .cal-page .legend-chip.off { opacity: 0.35; }
-.cal-page .legend-chip:hover { color: var(--cal-ink); }
+.cal-page .legend-chip:hover { color: var(--color-text); }
 .cal-page .legend-spacer { flex: 1; }
 
 /* ——— main layout ——— */
@@ -293,8 +281,8 @@
 
 /* ——— Month grid ——— */
 .cal-page .cal-card {
-  background: var(--cal-paper);
-  border: 1px solid var(--cal-rule);
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   box-shadow: var(--cal-shadow);
   overflow: hidden;
@@ -303,23 +291,23 @@
 .cal-page .week-header {
   display: grid;
   grid-template-columns: 56px repeat(7, minmax(0, 1fr));
-  border-bottom: 1px solid var(--cal-rule);
-  background: var(--cal-paper-dim);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
 .cal-page .week-header .wh-cell {
   padding: 12px 14px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  color: var(--cal-ink-faint);
-  border-right: 1px solid var(--cal-rule-soft);
+  color: var(--color-text-muted);
+  border-right: 1px solid var(--color-border-soft);
 }
 .cal-page .week-header .wh-cell:last-child { border-right: 0; }
-.cal-page .week-header .wh-cell.weekend { color: var(--cal-terra); }
+.cal-page .week-header .wh-cell.weekend { color: var(--color-secondary); }
 .cal-page .week-header .wh-num {
   text-align: center;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 
 .cal-page .cal-grid {
@@ -330,28 +318,28 @@
 .cal-page .wk-num {
   display: flex; align-items: flex-start; justify-content: center;
   padding: 12px 4px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   letter-spacing: 0.1em;
-  border-right: 1px solid var(--cal-rule);
-  border-bottom: 1px solid var(--cal-rule-soft);
-  background: var(--cal-paper-dim);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-bg);
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   padding-top: 14px;
 }
 .cal-page .wk-num .wk-no {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 18px;
-  color: var(--cal-ink);
+  color: var(--color-text);
   margin-bottom: 8px;
   transform: rotate(180deg);
   writing-mode: horizontal-tb;
 }
 .cal-page .day {
-  border-right: 1px solid var(--cal-rule-soft);
-  border-bottom: 1px solid var(--cal-rule-soft);
+  border-right: 1px solid var(--color-border-soft);
+  border-bottom: 1px solid var(--color-border-soft);
   padding: 10px 10px 12px;
   position: relative;
   display: flex; flex-direction: column;
@@ -365,18 +353,18 @@
 .cal-page .day:hover { background: color-mix(in srgb, var(--color-primary) 2.5%, transparent); }
 .cal-page .day.other-month {
   background: color-mix(in srgb, var(--color-border) 18%, transparent);
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
-.cal-page .day.other-month .day-num { color: var(--cal-ink-faint); opacity: 0.6; }
+.cal-page .day.other-month .day-num { color: var(--color-text-muted); opacity: 0.6; }
 .cal-page .day.weekend { background: color-mix(in srgb, var(--color-secondary) 1.8%, transparent); }
 .cal-page .day.weekend.other-month { background: color-mix(in srgb, var(--color-border) 18%, transparent); }
 .cal-page .day.today {
   background: color-mix(in srgb, var(--color-primary) 6%, transparent);
-  box-shadow: inset 0 0 0 2px var(--cal-accent);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
   z-index: 2;
 }
 .cal-page .day.selected:not(.today) {
-  box-shadow: inset 0 0 0 1px var(--cal-terra);
+  box-shadow: inset 0 0 0 1px var(--color-secondary);
   background: color-mix(in srgb, var(--color-secondary) 5%, transparent);
   z-index: 1;
 }
@@ -389,40 +377,40 @@
   height: 3px;
 }
 .cal-page .day.load-low::before { background: var(--cal-sky); }
-.cal-page .day.load-medium::before { background: var(--cal-gold); }
-.cal-page .day.load-high::before { background: var(--cal-terra); }
+.cal-page .day.load-medium::before { background: var(--color-due); }
+.cal-page .day.load-high::before { background: var(--color-secondary); }
 .cal-page .day-head {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 6px;
 }
 .cal-page .day-num {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 20px;
   line-height: 1;
-  color: var(--cal-ink);
+  color: var(--color-text);
   letter-spacing: -0.01em;
 }
 .cal-page .day.today .day-num {
   font-weight: 500;
-  color: var(--cal-accent);
+  color: var(--color-primary);
 }
 .cal-page .day.today .day-num::after {
   content: attr(data-today-label);
   display: block;
   margin-top: 4px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
-  color: var(--cal-terra);
+  color: var(--color-secondary);
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-weight: 400;
 }
 .cal-page .day-meta {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   text-align: right;
   line-height: 1.3;
 }
@@ -437,13 +425,13 @@
 .cal-page .day-load {
   align-self: flex-start;
   padding: 2px 5px;
-  border: 1px solid var(--cal-rule-soft);
+  border: 1px solid var(--color-border-soft);
   border-radius: 999px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   line-height: 1.2;
   letter-spacing: 0.06em;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   background: color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 
@@ -457,11 +445,11 @@
   display: flex; align-items: center; gap: 6px;
   padding: 3px 6px 3px 5px;
   border-radius: 3px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
   line-height: 1.2;
-  color: var(--cal-ink);
-  border-left: 3px solid var(--cal-accent);
+  color: var(--color-text);
+  border-left: 3px solid var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 7%, transparent);
   overflow: hidden;
   white-space: nowrap;
@@ -479,18 +467,18 @@
   flex: 1;
 }
 .cal-page .ev.water  { border-left-color: var(--cal-sky); background: color-mix(in srgb, var(--cal-sky) 10%, transparent); }
-.cal-page .ev.bloom  { border-left-color: var(--cal-accent); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
-.cal-page .ev.prune  { border-left-color: var(--cal-terra); background: color-mix(in srgb, var(--color-secondary) 10%, transparent); }
-.cal-page .ev.feed   { border-left-color: var(--cal-gold); background: color-mix(in srgb, var(--cal-gold) 10%, transparent); }
+.cal-page .ev.bloom  { border-left-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.cal-page .ev.prune  { border-left-color: var(--color-secondary); background: color-mix(in srgb, var(--color-secondary) 10%, transparent); }
+.cal-page .ev.feed   { border-left-color: var(--color-due); background: color-mix(in srgb, var(--color-due) 10%, transparent); }
 .cal-page .ev.sow    { border-left-color: var(--cal-accent-hl); background: color-mix(in srgb, var(--cal-accent-hl) 10%, transparent); }
 .cal-page .ev.repot  { border-left-color: var(--cal-terra-dk); background: color-mix(in srgb, var(--cal-terra-dk) 10%, transparent); }
-.cal-page .ev.harvest{ border-left-color: var(--cal-accent-dk); background: color-mix(in srgb, var(--cal-accent-dk) 10%, transparent); }
+.cal-page .ev.harvest{ border-left-color: var(--color-primary-dark); background: color-mix(in srgb, var(--color-primary-dark) 10%, transparent); }
 .cal-page .ev.scan   { border-left-color: var(--cal-sky-dk); background: color-mix(in srgb, var(--cal-sky-dk) 8%, transparent); }
-.cal-page .ev.rain   { border-left-color: var(--cal-ink-faint); background: color-mix(in srgb, var(--cal-ink-faint) 10%, transparent); color: var(--cal-ink-soft); font-style: italic; }
+.cal-page .ev.rain   { border-left-color: var(--color-text-muted); background: color-mix(in srgb, var(--color-text-muted) 10%, transparent); color: var(--color-text-soft); font-style: italic; }
 .cal-page .ev-more {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   letter-spacing: 0.1em;
   padding: 1px 4px 0;
   text-transform: uppercase;
@@ -508,37 +496,37 @@
 }
 .cal-page .col-side > section + section { margin-top: 0; }
 .cal-page .side-card {
-  background: var(--cal-paper);
-  border: 1px solid var(--cal-rule);
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   box-shadow: var(--cal-shadow);
   overflow: hidden;
 }
 .cal-page .sc-head {
   padding: 18px 22px 12px;
-  border-bottom: 1px solid var(--cal-rule-soft);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 .cal-page .sc-eye {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  color: var(--cal-accent);
+  color: var(--color-primary);
 }
 .cal-page .sc-title {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 24px;
   font-weight: 500;
   margin: 4px 0 0;
   letter-spacing: -0.01em;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
-.cal-page .sc-title em { font-style: italic; color: var(--cal-accent); font-weight: 400; }
+.cal-page .sc-title em { font-style: italic; color: var(--color-primary); font-weight: 400; }
 .cal-page .sc-sub {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 13px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   margin: 4px 0 0;
 }
 
@@ -546,11 +534,11 @@
 .cal-page .seasonal-scope {
   margin: 0;
   padding: 11px 22px;
-  border-bottom: 1px dashed var(--cal-rule-soft);
-  font-family: 'Fraunces', serif;
+  border-bottom: 1px dashed var(--color-border-soft);
+  font-family: var(--font-heading);
   font-size: 12px;
   font-style: italic;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .seasonal-groups { padding: 2px 22px 8px; }
 
@@ -558,17 +546,17 @@
 .cal-page .water-outlook-scope {
   margin: 0;
   padding: 11px 22px;
-  border-bottom: 1px dashed var(--cal-rule-soft);
-  font-family: 'Fraunces', serif;
+  border-bottom: 1px dashed var(--color-border-soft);
+  font-family: var(--font-heading);
   font-size: 12px;
   font-style: italic;
   line-height: 1.45;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .water-outlook-list { padding: 2px 22px 8px; }
 .cal-page .water-outlook-map {
   padding: 11px 0 12px;
-  border-bottom: 1px dashed var(--cal-rule-soft);
+  border-bottom: 1px dashed var(--color-border-soft);
 }
 .cal-page .water-outlook-map:last-child { border-bottom: 0; }
 .cal-page .water-outlook-map-head {
@@ -579,44 +567,44 @@
 }
 .cal-page .water-outlook-map h3 {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 16px;
   font-weight: 600;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .water-outlook-plant {
   margin: 8px 0 2px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 14px;
   font-weight: 600;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .water-outlook-badge {
   flex: none;
   padding: 3px 7px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 99px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .water-outlook-badge--high {
-  border-color: color-mix(in srgb, var(--color-overdue) 55%, var(--cal-rule));
+  border-color: color-mix(in srgb, var(--color-overdue) 55%, var(--color-border));
   background: color-mix(in srgb, var(--color-overdue) 9%, transparent);
   color: var(--color-overdue);
 }
 .cal-page .water-outlook-badge--elevated {
-  border-color: color-mix(in srgb, var(--color-due) 55%, var(--cal-rule));
+  border-color: color-mix(in srgb, var(--color-due) 55%, var(--color-border));
   background: color-mix(in srgb, var(--color-due) 10%, transparent);
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .water-outlook-badge--normal {
-  border-color: color-mix(in srgb, var(--cal-accent) 45%, var(--cal-rule));
-  background: color-mix(in srgb, var(--cal-accent) 7%, transparent);
-  color: var(--cal-accent-dk);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+  color: var(--color-primary-dark);
 }
 .cal-page .water-outlook-date,
 .cal-page .water-outlook-proxy,
@@ -625,67 +613,67 @@
   line-height: 1.45;
 }
 .cal-page .water-outlook-date {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--cal-accent-dk);
+  color: var(--color-primary-dark);
 }
 .cal-page .water-outlook-proxy {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .water-outlook-reason {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 13px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .water-outlook-loading,
 .cal-page .water-outlook-error {
   margin: 0;
   padding: 18px 22px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 13px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .water-outlook-retry {
   min-height: 44px;
   width: 100%;
   padding: 10px 22px;
   border: 0;
-  border-top: 1px solid var(--cal-rule-soft);
+  border-top: 1px solid var(--color-border-soft);
   background: transparent;
   text-align: left;
-  font-family: 'Fraunces', serif;
-  color: var(--cal-accent-dk);
+  font-family: var(--font-heading);
+  color: var(--color-primary-dark);
   cursor: pointer;
 }
-.cal-page .water-outlook-retry:hover { background: color-mix(in srgb, var(--cal-accent) 5%, transparent); }
+.cal-page .water-outlook-retry:hover { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
 .cal-page .seasonal-group {
   padding: 10px 0;
-  border-bottom: 1px dashed var(--cal-rule-soft);
+  border-bottom: 1px dashed var(--color-border-soft);
 }
 .cal-page .seasonal-group:last-child { border-bottom: 0; }
 .cal-page .seasonal-group h3 {
   margin: 0 0 7px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .seasonal-plant-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .cal-page .seasonal-more {
   display: inline-flex;
   align-items: center;
   padding: 3px 4px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.06em;
-  color: var(--cal-accent);
+  color: var(--color-primary);
   white-space: nowrap;
 }
 
@@ -703,10 +691,10 @@
   gap: 7px;
   max-width: 210px;
   padding: 6px 10px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 99px;
-  background: var(--cal-paper);
-  color: var(--cal-ink-soft);
+  background: var(--color-paper);
+  color: var(--color-text-soft);
   cursor: pointer;
   list-style: none;
   white-space: nowrap;
@@ -715,29 +703,29 @@
 .cal-page .calendar-field-note summary::-webkit-details-marker { display: none; }
 .cal-page .calendar-field-note summary:hover,
 .cal-page .calendar-field-note[open] summary {
-  border-color: var(--cal-accent);
-  color: var(--cal-accent-dk);
-  background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-paper));
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-paper));
 }
 .cal-page .calendar-field-note summary:focus-visible {
-  outline: 2px solid var(--cal-accent);
+  outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 .cal-page .calendar-field-note-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--cal-accent);
+  color: var(--color-primary);
 }
 .cal-page .calendar-field-note-title {
   overflow: hidden;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
   text-overflow: ellipsis;
 }
 .cal-page .calendar-field-note-title em {
-  color: var(--cal-accent);
+  color: var(--color-primary);
   font-style: italic;
 }
 .cal-page .calendar-field-note-popover {
@@ -747,17 +735,17 @@
   right: 0;
   width: 300px;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--cal-accent) 72%, var(--cal-rule));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 72%, var(--color-border));
   border-radius: 10px;
   background:
     radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--color-due) 15%, transparent), transparent 50%),
-    linear-gradient(160deg, var(--cal-accent) 0%, var(--cal-accent-dk) 100%);
-  box-shadow: 0 18px 45px color-mix(in srgb, var(--cal-ink) 20%, transparent);
-  color: var(--cal-paper);
+    linear-gradient(160deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  box-shadow: 0 18px 45px color-mix(in srgb, var(--color-text) 20%, transparent);
+  color: var(--color-paper);
 }
 .cal-page .calendar-field-note-month {
   margin: 0 0 7px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -765,7 +753,7 @@
 }
 .cal-page .calendar-field-note-quote {
   margin: 0 0 14px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 14px;
   font-style: italic;
   line-height: 1.5;
@@ -781,11 +769,11 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
 }
 .cal-page .calendar-field-note-popover dt {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -794,42 +782,42 @@
 .cal-page .calendar-field-note-popover dd { margin: 0; text-align: right; }
 .cal-page .seasonal-plant-link {
   padding: 3px 8px;
-  border: 1px solid var(--cal-rule-soft);
+  border: 1px solid var(--color-border-soft);
   border-radius: 99px;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   text-decoration: none;
   transition: border-color .15s, color .15s, background .15s;
 }
 .cal-page .seasonal-plant-link:hover {
-  border-color: var(--cal-accent);
-  color: var(--cal-accent-dk);
-  background: color-mix(in srgb, var(--cal-accent) 5%, transparent);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 .cal-page .seasonal-missing {
   margin: 0;
   padding: 9px 22px;
-  border-top: 1px solid var(--cal-rule-soft);
-  font-family: 'JetBrains Mono', monospace;
+  border-top: 1px solid var(--color-border-soft);
+  font-family: var(--font-mono);
   font-size: 9px;
   line-height: 1.5;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .seasonal-year-link {
   width: 100%;
   padding: 10px 22px;
   border: 0;
-  border-top: 1px solid var(--cal-rule-soft);
+  border-top: 1px solid var(--color-border-soft);
   background: transparent;
   text-align: left;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
   font-style: italic;
-  color: var(--cal-accent-dk);
+  color: var(--color-primary-dark);
   cursor: pointer;
 }
-.cal-page .seasonal-year-link:hover { background: color-mix(in srgb, var(--cal-accent) 5%, transparent); }
+.cal-page .seasonal-year-link:hover { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
 .cal-page .seasonal-mobile-wrap {
   display: grid;
   gap: 18px;
@@ -844,7 +832,7 @@
   gap: 14px;
   align-items: center;
   padding: 12px 22px;
-  border-bottom: 1px dashed var(--cal-rule-soft);
+  border-bottom: 1px dashed var(--color-border-soft);
   cursor: pointer;
   transition: background .15s;
 }
@@ -861,17 +849,17 @@
 .cal-page .ag-icon-group img,
 .cal-page .ag-icon-group svg { display: none; }
 .cal-page .ag-type-letter {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 18px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   line-height: 1;
 }
 .cal-page .ag-group-badge {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 15px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
   border-radius: 99px;
   padding: 2px 10px;
@@ -905,7 +893,7 @@
 .cal-page .agenda-icon {
   width: 48px; height: 48px;
   background: linear-gradient(145deg, var(--color-surface), var(--color-bg-warm));
-  border: 1px solid var(--cal-rule-soft);
+  border: 1px solid var(--color-border-soft);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   position: relative;
@@ -918,25 +906,25 @@
   right: -2px; top: -2px;
   width: 14px; height: 14px;
   border-radius: 50%;
-  background: var(--cal-accent);
-  border: 2px solid var(--cal-paper);
+  background: var(--color-primary);
+  border: 2px solid var(--color-paper);
 }
 .cal-page .agenda-icon.water::after { background: var(--cal-sky); }
-.cal-page .agenda-icon.bloom::after { background: var(--cal-accent); }
-.cal-page .agenda-icon.prune::after { background: var(--cal-terra); }
-.cal-page .agenda-icon.feed::after  { background: var(--cal-gold); }
+.cal-page .agenda-icon.bloom::after { background: var(--color-primary); }
+.cal-page .agenda-icon.prune::after { background: var(--color-secondary); }
+.cal-page .agenda-icon.feed::after  { background: var(--color-due); }
 .cal-page .agenda-icon.sow::after   { background: var(--cal-accent-hl); }
 .cal-page .agenda-icon.repot::after { background: var(--cal-terra-dk); }
-.cal-page .agenda-icon.harvest::after { background: var(--cal-accent-dk); }
+.cal-page .agenda-icon.harvest::after { background: var(--color-primary-dark); }
 .cal-page .agenda-icon.scan::after  { background: var(--cal-sky-dk); }
 .cal-page .agenda-meta .what {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 15px;
-  color: var(--cal-ink);
+  color: var(--color-text);
   margin: 0 0 2px;
   line-height: 1.25;
 }
-.cal-page .agenda-meta .what em { color: var(--cal-accent); font-style: italic; }
+.cal-page .agenda-meta .what em { color: var(--color-primary); font-style: italic; }
 .cal-page .agenda-identity-link,
 .cal-page .mobile-agenda-identity {
   color: inherit;
@@ -946,31 +934,31 @@
 .cal-page .agenda-identity-link:hover,
 .cal-page .mobile-agenda-identity:hover { text-decoration-color: currentColor; }
 .cal-page .mobile-agenda-identity {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 14px;
 }
 .cal-page .calendar-weather-context {
   margin-top: 6px;
   padding: 7px 9px;
-  border-left: 2px solid var(--cal-gold);
+  border-left: 2px solid var(--color-due);
   background: color-mix(in srgb, var(--cal-gold-pale) 65%, transparent);
 }
 .cal-page .calendar-weather-kicker {
   margin: 0 0 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: .09em;
   text-transform: uppercase;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .calendar-weather-reason,
 .cal-page .calendar-weather-action {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 11px;
   line-height: 1.35;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .calendar-weather-action { margin-top: 3px; }
 .cal-page .calendar-completion {
@@ -982,14 +970,14 @@
   padding: 13px 48px 13px 16px;
   border: 1px solid color-mix(in srgb, var(--cal-green) 35%, var(--cal-line));
   border-radius: 4px;
-  background: color-mix(in srgb, var(--cal-green-pale) 70%, var(--cal-paper));
+  background: color-mix(in srgb, var(--cal-green-pale) 70%, var(--color-paper));
 }
 .cal-page .calendar-completion-copy { flex: 1; min-width: 0; }
 .cal-page .calendar-completion-copy p {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .calendar-completion-copy .calendar-completion-title {
   font-weight: 700;
@@ -1000,7 +988,7 @@
   padding: 6px 11px;
   border: 1px solid var(--cal-green);
   border-radius: 999px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 700;
   color: var(--cal-green);
@@ -1016,38 +1004,38 @@
   place-items: center;
   border: 0;
   background: transparent;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   cursor: pointer;
 }
 @media (max-width: 640px) {
   .cal-page .calendar-completion { align-items: flex-start; flex-direction: column; gap: 9px; }
 }
 .cal-page .agenda-meta .who {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 12px;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   margin: 0;
 }
 .cal-page .agenda-meta .where {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   margin-top: 3px;
 }
 .cal-page .agenda-time {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   letter-spacing: 0.05em;
   text-align: right;
   line-height: 1.3;
 }
 .cal-page .agenda-time .dur {
   display: block;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -1056,17 +1044,17 @@
 .cal-page .agenda-empty {
   padding: 28px 22px 32px;
   text-align: center;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   font-size: 14px;
 }
 .cal-page .agenda-empty .em {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-style: normal;
   font-size: 10px;
-  color: var(--cal-terra);
+  color: var(--color-secondary);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -1079,39 +1067,39 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 0;
   margin-top: 10px;
-  border-top: 1px solid var(--cal-rule-soft);
+  border-top: 1px solid var(--color-border-soft);
   padding-top: 14px;
 }
 .cal-page .moon-cell { text-align: center; }
 .cal-page .moon-cell .day-letter {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
   margin-bottom: 6px;
 }
 .cal-page .moon-cell .moon-dot {
   width: 22px; height: 22px;
   border-radius: 50%;
   margin: 0 auto 6px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   position: relative;
   overflow: hidden;
   background: #2A2A2A;
 }
 .cal-page .moon-cell .moon-date {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 12px;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
-.cal-page .moon-cell.now .moon-date { color: var(--cal-terra); font-weight: 500; }
-.cal-page .moon-cell.now .day-letter { color: var(--cal-terra); }
+.cal-page .moon-cell.now .moon-date { color: var(--color-secondary); font-weight: 500; }
+.cal-page .moon-cell.now .day-letter { color: var(--color-secondary); }
 .cal-page .moon-phase-label {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 13px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   text-align: center;
   margin: 12px 0 0;
 }
@@ -1127,13 +1115,13 @@
 .cal-page .moon-mini-dot {
   width: 36px; height: 36px;
   border-radius: 50%;
-  border: 1.5px solid var(--cal-rule);
+  border: 1.5px solid var(--color-border);
 }
 .cal-page .moon-mini-label {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-size: 12px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
   white-space: nowrap;
 }
 
@@ -1164,15 +1152,15 @@
   padding: 18px 0 8px;
   overflow-x: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--cal-rule) transparent;
+  scrollbar-color: var(--color-border) transparent;
 }
 .cal-page .garden-year-month {
   flex: 1 0 54px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--cal-paper);
-  color: var(--cal-ink-faint);
-  font-family: 'JetBrains Mono', monospace;
+  background: var(--color-paper);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: .08em;
@@ -1181,23 +1169,23 @@
   transition: border-color .15s, background .15s, color .15s, transform .15s;
 }
 .cal-page .garden-year-month:hover {
-  border-color: var(--cal-accent);
-  color: var(--cal-accent);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 .cal-page .garden-year-month:active { transform: scale(.96); }
 .cal-page .garden-year-month.is-current:not(.is-selected) {
-  border-color: color-mix(in srgb, var(--cal-accent) 45%, var(--cal-rule));
-  background: color-mix(in srgb, var(--cal-accent) 8%, var(--cal-paper));
-  color: var(--cal-accent-dk);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-paper));
+  color: var(--color-primary-dark);
 }
 .cal-page .garden-year-month.is-selected {
-  border-color: var(--cal-accent);
-  background: var(--cal-accent);
-  color: var(--cal-paper);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--cal-accent) 22%, transparent);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-paper);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 .cal-page .garden-year-month:focus-visible {
-  outline: 2px solid var(--cal-accent);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 .cal-page .garden-year-month-heading {
@@ -1207,17 +1195,17 @@
   margin: 22px 0 14px;
 }
 .cal-page .garden-year-month-heading > span {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: .16em;
-  color: var(--cal-terra);
+  color: var(--color-secondary);
 }
 .cal-page .garden-year-month-heading h2 {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 30px;
   font-weight: 500;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .garden-year-section { margin-bottom: 24px; }
 .cal-page .garden-year-section-title {
@@ -1225,21 +1213,21 @@
   align-items: center;
   gap: 12px;
   margin: 0 0 9px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 600;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .garden-year-section-title::after {
   content: '';
   height: 1px;
   flex: 1;
-  background: var(--cal-rule-soft);
+  background: var(--color-border-soft);
 }
 .cal-page .garden-year-section-title.is-due { color: var(--cal-gold-dk); }
-.cal-page .garden-year-section-title.is-growing { color: var(--cal-accent); }
+.cal-page .garden-year-section-title.is-growing { color: var(--color-primary); }
 .cal-page .garden-year-card-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
@@ -1247,9 +1235,9 @@
 }
 .cal-page .garden-year-action-card,
 .cal-page .garden-year-paper-list {
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: var(--cal-paper);
+  background: var(--color-paper);
   box-shadow: var(--cal-shadow);
 }
 .cal-page .garden-year-action-card { padding: 15px 16px; }
@@ -1258,10 +1246,10 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 16px;
   font-weight: 600;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .garden-year-action-title a,
 .cal-page .garden-year-plant-name a {
@@ -1277,7 +1265,7 @@
   justify-content: center;
   padding: 3px 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--cal-terra) 12%, var(--cal-paper));
+  background: color-mix(in srgb, var(--color-secondary) 12%, var(--color-paper));
   color: var(--cal-terra-dk);
 }
 .cal-page .garden-year-action-badges {
@@ -1293,15 +1281,15 @@
   font-weight: 600;
 }
 .cal-page .garden-year-action-badge.is-sow {
-  background: color-mix(in srgb, var(--cal-accent) 12%, var(--cal-paper));
-  color: var(--cal-accent-dk);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-paper));
+  color: var(--color-primary-dark);
 }
 .cal-page .garden-year-action-badge.is-transplant {
-  background: color-mix(in srgb, var(--cal-sky) 12%, var(--cal-paper));
+  background: color-mix(in srgb, var(--cal-sky) 12%, var(--color-paper));
   color: var(--cal-sky-dk);
 }
 .cal-page .garden-year-action-badge.is-harvest {
-  background: color-mix(in srgb, var(--cal-gold) 14%, var(--cal-paper));
+  background: color-mix(in srgb, var(--color-due) 14%, var(--color-paper));
   color: var(--cal-gold-dk);
 }
 .cal-page .garden-year-action-list {
@@ -1311,7 +1299,7 @@
   padding: 0;
   list-style: none;
   font-size: 12px;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .garden-year-action-list li {
   display: flex;
@@ -1325,7 +1313,7 @@
   gap: 16px;
   min-height: 48px;
   padding: 10px 14px;
-  border-bottom: 1px dashed var(--cal-rule-soft);
+  border-bottom: 1px dashed var(--color-border-soft);
 }
 .cal-page .garden-year-growing-row:last-child { border-bottom: 0; }
 .cal-page .garden-year-plant-name {
@@ -1333,14 +1321,14 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-heading);
   font-size: 15px;
-  color: var(--cal-ink);
+  color: var(--color-text);
 }
 .cal-page .garden-year-phase {
   flex-shrink: 0;
   font-size: 12px;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .garden-year-dormant-list {
   display: flex;
@@ -1353,33 +1341,33 @@
   gap: 5px;
   min-height: 44px;
   padding: 7px 12px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--cal-paper);
-  color: var(--cal-ink-soft);
-  font-family: 'Fraunces', serif;
+  background: var(--color-paper);
+  color: var(--color-text-soft);
+  font-family: var(--font-heading);
   font-size: 13px;
   text-decoration: none;
 }
 .cal-page .garden-year-dormant-plant:hover {
-  border-color: var(--cal-accent);
-  color: var(--cal-accent-dk);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
 }
 .cal-page .garden-year-dormant-plant.has-alert {
-  border-color: color-mix(in srgb, var(--cal-terra) 35%, var(--cal-rule));
+  border-color: color-mix(in srgb, var(--color-secondary) 35%, var(--color-border));
   color: var(--cal-terra-dk);
 }
 .cal-page .garden-year-empty {
   margin: 22px 0 0;
   padding: 30px 18px;
-  border: 1px dashed var(--cal-rule);
+  border: 1px dashed var(--color-border);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--cal-paper) 74%, transparent);
-  font-family: 'Fraunces', serif;
+  background: color-mix(in srgb, var(--color-paper) 74%, transparent);
+  font-family: var(--font-heading);
   font-size: 15px;
   font-style: italic;
   text-align: center;
-  color: var(--cal-ink-faint);
+  color: var(--color-text-muted);
 }
 .cal-page .work-agenda-status,
 .cal-page .month-load-state {
@@ -1387,16 +1375,16 @@
   max-width: 900px;
   padding: 18px;
   text-align: center;
-  color: var(--cal-ink-soft);
+  color: var(--color-text-soft);
 }
 .cal-page .work-agenda-status button,
 .cal-page .month-load-state button {
   margin-top: 10px;
   padding: 7px 14px;
-  border: 1px solid var(--cal-rule);
+  border: 1px solid var(--color-border);
   border-radius: 99px;
-  background: var(--cal-accent);
-  color: var(--cal-paper);
+  background: var(--color-primary);
+  color: var(--color-paper);
   cursor: pointer;
 }
 

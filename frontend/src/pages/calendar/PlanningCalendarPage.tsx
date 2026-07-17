@@ -99,7 +99,7 @@ export default function PlanningCalendarPage() {
         view === 'work' ? (
           <WorkAgendaView env={env} environmentFilter={environmentFilter} onSetView={setView} />
         ) : (
-          <PhenologyView />
+          <PhenologyView env={env} environmentFilter={environmentFilter} />
         )
       )}
     </div>
