@@ -197,6 +197,12 @@ export interface AdminGrowthDeltas {
   plants_added: number
   care_logs: number
   active_households: number
+  identifies: number
+}
+
+export interface AdminTopIdentifier {
+  household: string
+  count: number
 }
 
 export interface AdminGrowthMetrics {
@@ -206,8 +212,10 @@ export interface AdminGrowthMetrics {
     plants_added: AdminGrowthMetricPoint[]
     care_logs: AdminGrowthMetricPoint[]
     active_households: AdminGrowthMetricPoint[]
+    identifies: AdminGrowthMetricPoint[]
   }
   deltas: AdminGrowthDeltas
+  top_identifiers: AdminTopIdentifier[]
 }
 
 export type AdminHealthStatus = 'ok' | 'degraded' | 'down' | 'unconfigured'
