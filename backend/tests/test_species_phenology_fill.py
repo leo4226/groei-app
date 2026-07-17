@@ -1,8 +1,12 @@
 """Phenology is generated once and cached for species that lack it (e.g. GBIF
 imports), and ecology retries a previously-failed enrichment instead of staying
 blank forever."""
+import json
+
 import aiosqlite
 import pytest
+
+import species_service
 
 PS_SCHEMA = """
 CREATE TABLE plant_species (
@@ -23,6 +27,20 @@ async def _db():
     db.row_factory = aiosqlite.Row
     await db.executescript(PS_SCHEMA)
     return db
+
+
+@pytest.mark.parametrize("content", [None, "", "   "])
+def test_llm_message_content_rejects_empty_as_json_failure(content):
+    body = {"choices": [{"message": {"content": content}}]}
+
+    with pytest.raises(json.JSONDecodeError):
+        species_service._llm_message_content(body)
+
+
+def test_llm_message_content_strips_valid_text():
+    body = {"choices": [{"message": {"content": "  {\"ok\": true}  "}}]}
+
+    assert species_service._llm_message_content(body) == '{"ok": true}'
 
 
 @pytest.mark.asyncio
