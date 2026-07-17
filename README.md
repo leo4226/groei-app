@@ -43,6 +43,8 @@ The app is **free**, with no paywalls. You can **download all your own data** (p
 
 - **Plant identification**. Snap a photo of an unknown plant and get a species match. Runs BioCLIP on a local GPU, with PlantNet as a fallback for the tricky ones.
 
+![Plant identification: BioCLIP suggestion with PlantNet second opinion](docs/screenshots/plant-id.jpeg)
+
 - **Smart care scheduling**. Watering and feeding schedules that know about rain and heat. Rain delays outdoor watering. Heat waves prompt earlier moisture checks for both indoor and outdoor plants. But your personal schedule stays authoritative. The app suggests, never silently rewrites.
 
 ![Monthly care calendar with task types, lunar phases, and weather-context advice](docs/screenshots/calendar.png)
@@ -51,11 +53,11 @@ The app is **free**, with no paywalls. You can **download all your own data** (p
 
 ![Plant collection: 58 plants across 10 categories, with search and location filters](docs/screenshots/plant-logbook.png)
 
+![Field journal: timeline of discoveries with phenology tags and CSV export](docs/screenshots/field-journal.jpeg)
+
 - **Biodiversity score**. A per-garden biodiversity rating based on native Dutch flora and pollinator value. Still Netherlands-only; expanding to other regions is on the roadmap.
 
 - **iCal sync & data export**. Subscribe to your care calendar in any calendar app. Export your full plant database, photos and all, with one click. Your data, your rules.
-
-![Garden map in field-guide view with numbered plant markers](docs/screenshots/garden-map.png)
 
 ## How it's built
 
