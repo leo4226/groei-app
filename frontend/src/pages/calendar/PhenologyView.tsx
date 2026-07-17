@@ -64,8 +64,9 @@ export default function PhenologyView() {
         <h2>{t.calendar.monthsLong[selectedMonth - 1]}</h2>
       </div>
 
+      <div className="garden-year-sections" data-garden-year-sections>
       {grouped.needsAction.length > 0 && (
-        <section className="garden-year-section">
+        <section className="garden-year-section is-actions">
           <h3 className="garden-year-section-title is-due">
             {t.phenology.actionRequired(grouped.needsAction.length)}
           </h3>
@@ -132,6 +133,7 @@ export default function PhenologyView() {
           {plants.length === 0 ? t.phenology.noPlants : t.phenology.noData}
         </p>
       )}
+      </div>
     </section>
   )
 }
