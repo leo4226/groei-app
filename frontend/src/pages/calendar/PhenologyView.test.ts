@@ -57,12 +57,14 @@ describe('PhenologyView editorial shell', () => {
 
     const view = container.querySelector('[data-calendar-view="year"]')
     const selector = view?.querySelector('[data-garden-year-months]')
+    const sections = view?.querySelector('[data-garden-year-sections]')
     const monthButtons = Array.from(selector?.querySelectorAll('button') ?? [])
 
     expect(view).not.toBeNull()
     // One cover, three spreads: the page-level CalendarPageMasthead renders the
     // single "Calendar." title; the view must not add its own h1.
     expect(view?.querySelector('h1')).toBeNull()
+    expect(sections).not.toBeNull()
     expect(selector?.getAttribute('aria-label')).toMatch(/garden year/i)
     expect(monthButtons).toHaveLength(12)
     expect(monthButtons.every((button) => button.className.includes('min-h-11'))).toBe(true)

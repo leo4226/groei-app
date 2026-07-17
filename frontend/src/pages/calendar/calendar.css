@@ -1134,7 +1134,6 @@
 }
 /* Readable measure for the year lists inside the wide canvas */
 .cal-page .garden-year-month-heading,
-.cal-page .garden-year-section,
 .cal-page .garden-year-empty {
   max-width: 1160px;
 }
@@ -1208,6 +1207,23 @@
   color: var(--color-text);
 }
 .cal-page .garden-year-section { margin-bottom: 24px; }
+@media (min-width: 1201px) {
+  .cal-page .garden-year-sections {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    align-items: start;
+    gap: 24px 32px;
+  }
+  .cal-page .garden-year-sections .garden-year-section {
+    min-width: 0;
+    margin-bottom: 0;
+  }
+  .cal-page .garden-year-section.is-actions { grid-row: span 2; }
+  .cal-page .garden-year-sections .garden-year-empty {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+}
 .cal-page .garden-year-section-title {
   display: flex;
   align-items: center;
