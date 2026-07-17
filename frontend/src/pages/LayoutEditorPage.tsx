@@ -136,12 +136,18 @@ export default function LayoutEditorPage() {
       mapType: 'outdoor',
     }
     editor.loadCanvasData(canvasData)
+    const hasLocation = typeof result.lat === 'number' && typeof result.lon === 'number'
     try {
       await client.maps.update(mapId, {
         canvas_data: JSON.stringify(canvasData),
         bearing: result.bearing,
+        ...(hasLocation ? { lat: result.lat, lon: result.lon } : {}),
       })
-      setMap((prev) => (prev ? { ...prev, bearing: result.bearing } : prev))
+      setMap((prev) => (
+        prev
+          ? { ...prev, bearing: result.bearing, ...(hasLocation ? { lat: result.lat!, lon: result.lon! } : {}) }
+          : prev
+      ))
     } catch {
       // Persist failed — the seeded outline is still in the editor and will be
       // saved on exit; the bearing can be re-set from Map Settings if needed.

@@ -301,6 +301,13 @@ export type Translations = {
       depthLabel: string
       orientationTitle: string
       orientationSubtitle: string
+      locationTitle: string
+      locationSubtitle: string
+      useMyLocation: string
+      locating: string
+      locationSet: string
+      locationError: string
+      skip: string
       back: string
       next: string
       finish: string

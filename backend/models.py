@@ -1,4 +1,18 @@
-from pydantic import BaseModel, field_validator, model_validator
+import re as _re
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Pragmatic email shape check (avoids the email-validator dependency that
+# pydantic's EmailStr requires). Server-side backstop — the frontend already
+# uses <input type="email"> + minLength, so honest users never hit this.
+_EMAIL_RE = _re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _validate_email(value: str) -> str:
+    cleaned = (value or "").strip()
+    if not _EMAIL_RE.match(cleaned):
+        raise ValueError("invalid email address")
+    return cleaned
 from datetime import date, datetime
 from typing import Any, Literal
 
@@ -682,9 +696,14 @@ class WeedSightingOut(BaseModel):
 
 class RegisterInput(BaseModel):
     email: str
-    password: str
+    password: str = Field(min_length=8)
     name: str
     household_name: str = ""
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        return _validate_email(v)
 
 
 class LoginInput(BaseModel):
@@ -725,8 +744,13 @@ class InviteOutput(BaseModel):
 class JoinInput(BaseModel):
     code: str
     email: str
-    password: str
+    password: str = Field(min_length=8)
     name: str
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        return _validate_email(v)
 
 
 class AccountOut(BaseModel):
