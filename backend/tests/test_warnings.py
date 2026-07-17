@@ -5,6 +5,7 @@ from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
 from services.warnings import _schedule_warning_for_type
 from services.warnings import _weather_warnings_for_plant, compute_plant_warnings
+from care_types import CARE_TYPES
 
 
 def test_dataclasses_have_expected_fields():
@@ -92,9 +93,9 @@ def test_load_care_profile_indoor_activates_indoor_types():
 
 
 def test_load_care_profile_invalid_json_does_not_raise():
-    """Malformed JSON should yield a complete 10-key profile, not raise."""
+    """Malformed JSON should yield a complete catalog profile, not raise."""
     profile = _load_care_profile(None, "{not json", environment="outdoor_ground")
-    assert len(profile) == 10
+    assert set(profile) == set(CARE_TYPES)
     assert "water" in profile
     assert profile["water"]["active"] is True
     # Thresholds dict present but with None values (legacy parse failed silently).

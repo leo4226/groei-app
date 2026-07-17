@@ -46,6 +46,13 @@ CARE_TYPES: dict[str, CareTypeDef] = {
         "halo_visible_for_ground": True,
         "is_weather_triggered": True,
     },
+    "moisture_check": {
+        "icon": "💧", "label_nl": "Vochtcontrole", "label_en": "Moisture check",
+        "default_intervals": {"outdoor_ground": None, "outdoor_container": None, "indoor": None},
+        "valid_environments": ("outdoor_ground", "outdoor_container", "indoor"),
+        "halo_visible_for_ground": False,
+        "is_weather_triggered": True,
+    },
     "prune": {
         "icon": "✂️", "label_nl": "Snoeien", "label_en": "Prune",
         "default_intervals": {"outdoor_ground": 180, "outdoor_container": 180, "indoor": 365},

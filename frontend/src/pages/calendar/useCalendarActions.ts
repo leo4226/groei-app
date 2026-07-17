@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { gardenCare } from '../../api/client'
+import { gardenCare, moistureChecks } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import type { CalendarEvent } from './calendarTypes'
@@ -23,15 +23,20 @@ export function useCalendarActions(
   const [actionError, setActionError] = useState<string | null>(null)
   const [completion, setCompletion] = useState<CalendarCompletion | null>(null)
   const [pendingWaterRound, setPendingWaterRound] = useState<CalendarEvent | null>(null)
+  const [pendingMoistureCheck, setPendingMoistureCheck] = useState<CalendarEvent | null>(null)
+  const [moistureNotice, setMoistureNotice] = useState<string | null>(null)
 
   useEffect(() => {
     setDoneIds(new Set())
     setPendingWaterRound(null)
+    setPendingMoistureCheck(null)
   }, [events])
 
   useEffect(() => {
     setCompletion(null)
     setPendingWaterRound(null)
+    setPendingMoistureCheck(null)
+    setMoistureNotice(null)
   }, [navigationKey])
 
   async function completeGroupedEvent(
@@ -68,6 +73,7 @@ export function useCalendarActions(
   async function handleDone(event: CalendarEvent) {
     setActionError(null)
     setCompletion(null)
+    setMoistureNotice(null)
     if (
       event.grouped
       && event.map_id !== null
@@ -75,6 +81,10 @@ export function useCalendarActions(
       && event.group_member_schedule_ids.length > 0
       && activeUserId !== null
     ) {
+      if (event.type === 'moisture_check' && event.group_members && event.group_members.length > 0) {
+        setPendingMoistureCheck(event)
+        return
+      }
       if (event.type === 'water' && event.group_members && event.group_members.length > 0) {
         setPendingWaterRound(event)
         return
@@ -133,6 +143,48 @@ export function useCalendarActions(
     }
   }
 
+  async function resolveMoistureCheck(
+    scheduleIds: number[],
+    outcome: 'still_moist' | 'watered',
+  ) {
+    if (
+      !pendingMoistureCheck
+      || pendingMoistureCheck.map_id === null
+      || activeUserId === null
+      || scheduleIds.length === 0
+    ) return
+    const allowed = new Set(
+      pendingMoistureCheck.group_members?.map(member => member.schedule_id) ?? [],
+    )
+    if (scheduleIds.some(scheduleId => !allowed.has(scheduleId))) return
+
+    setActionError(null)
+    setCompletion(null)
+    setSaving(pendingMoistureCheck.id)
+    try {
+      await moistureChecks.resolve(
+        pendingMoistureCheck.map_id,
+        scheduleIds,
+        outcome,
+        new Date().toISOString().slice(0, 10),
+        activeUserId,
+      )
+      setDoneIds(previous => new Set([...previous, pendingMoistureCheck.id]))
+      setMoistureNotice(
+        outcome === 'still_moist'
+          ? t.calendar.moistureCheckResolvedStillMoist
+          : t.calendar.moistureCheckResolvedWatered,
+      )
+      setPendingMoistureCheck(null)
+      onGroupChange?.()
+    } catch (error) {
+      console.error('moistureChecks.resolve failed:', error)
+      setActionError(t.common.error)
+    } finally {
+      setSaving(null)
+    }
+  }
+
   async function handleSkip(event: CalendarEvent) {
     if (!event.plant_id) return
     setActionError(null)
@@ -151,6 +203,7 @@ export function useCalendarActions(
 
   return {
     actionError,
+    cancelMoistureCheck: () => setPendingMoistureCheck(null),
     cancelWaterRound: () => setPendingWaterRound(null),
     clearCompletion: () => setCompletion(null),
     completion,
@@ -159,7 +212,10 @@ export function useCalendarActions(
     handleDone,
     handleGardenUndo,
     handleSkip,
+    moistureNotice,
+    pendingMoistureCheck,
     pendingWaterRound,
+    resolveMoistureCheck,
     saving,
     undoMsg,
   }

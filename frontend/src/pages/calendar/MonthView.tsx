@@ -9,6 +9,7 @@ import MonthSeasonalPanel from './MonthSeasonalPanel'
 import WaterOutlookPanel from './WaterOutlookPanel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
 import WateringRoundDialog from './WateringRoundDialog'
+import MoistureCheckDialog from './MoistureCheckDialog'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
@@ -48,6 +49,7 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
   const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
   const {
     actionError,
+    cancelMoistureCheck,
     cancelWaterRound,
     clearCompletion,
     completion,
@@ -56,7 +58,10 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
     handleDone,
     handleGardenUndo,
     handleSkip,
+    moistureNotice,
+    pendingMoistureCheck,
     pendingWaterRound,
+    resolveMoistureCheck,
     saving,
     undoMsg,
   } = useCalendarActions(events, retry, `${year}-${month1}|${env}|${selectedIso}`)
@@ -107,6 +112,11 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
             mapSlugs={mapSlugs}
             onDismiss={clearCompletion}
           />
+          {moistureNotice && (
+            <p className="calendar-moisture-notice" role="status" aria-live="polite">
+              {moistureNotice}
+            </p>
+          )}
           {isNarrow ? (
             <>
               <MobileAgendaList
@@ -158,6 +168,14 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
           saving={saving === pendingWaterRound.id}
           onConfirm={confirmWaterRound}
           onCancel={cancelWaterRound}
+        />
+      )}
+      {pendingMoistureCheck && (
+        <MoistureCheckDialog
+          event={pendingMoistureCheck}
+          saving={saving === pendingMoistureCheck.id}
+          onResolve={resolveMoistureCheck}
+          onCancel={cancelMoistureCheck}
         />
       )}
     </>

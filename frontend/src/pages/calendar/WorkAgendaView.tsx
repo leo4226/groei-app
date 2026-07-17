@@ -11,6 +11,7 @@ import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
 import type { CalendarViewMode } from './calendarViewModel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
 import WateringRoundDialog from './WateringRoundDialog'
+import MoistureCheckDialog from './MoistureCheckDialog'
 import { useFloreren } from '../../store/useFloreren'
 
 interface Props {
@@ -44,6 +45,7 @@ export default function WorkAgendaView({ env, environmentFilter, onSetView }: Pr
   )
   const {
     actionError,
+    cancelMoistureCheck,
     cancelWaterRound,
     clearCompletion,
     completion,
@@ -52,7 +54,10 @@ export default function WorkAgendaView({ env, environmentFilter, onSetView }: Pr
     handleDone,
     handleGardenUndo,
     handleSkip,
+    moistureNotice,
+    pendingMoistureCheck,
     pendingWaterRound,
+    resolveMoistureCheck,
     saving,
     undoMsg,
   } = useCalendarActions(events, retry, env)
@@ -78,6 +83,11 @@ export default function WorkAgendaView({ env, environmentFilter, onSetView }: Pr
             mapSlugs={mapSlugs}
             onDismiss={clearCompletion}
           />
+          {moistureNotice && (
+            <p className="calendar-moisture-notice" role="status" aria-live="polite">
+              {moistureNotice}
+            </p>
+          )}
 
           {loading ? (
             <p className="work-agenda-status">{t.common.loading}</p>
@@ -114,6 +124,14 @@ export default function WorkAgendaView({ env, environmentFilter, onSetView }: Pr
           saving={saving === pendingWaterRound.id}
           onConfirm={confirmWaterRound}
           onCancel={cancelWaterRound}
+        />
+      )}
+      {pendingMoistureCheck && (
+        <MoistureCheckDialog
+          event={pendingMoistureCheck}
+          saving={saving === pendingMoistureCheck.id}
+          onResolve={resolveMoistureCheck}
+          onCancel={cancelMoistureCheck}
         />
       )}
     </section>
