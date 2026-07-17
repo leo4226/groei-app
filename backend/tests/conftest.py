@@ -233,6 +233,17 @@ async def seeded_db():
         await db.close()
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    """Clear the in-memory auth rate limiter before each test so counters from
+    one test don't push another over the limit (all TestClient requests share
+    the same client IP)."""
+    from services.rate_limit import reset
+    reset()
+    yield
+    reset()
+
+
 @pytest.fixture
 def auth_header():
     """Real JWT bearer for account_id=1 / household_id=1."""
