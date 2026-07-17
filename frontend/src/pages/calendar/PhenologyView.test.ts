@@ -37,19 +37,20 @@ describe('PhenologyView editorial shell', () => {
     container.remove()
   })
 
-  it('uses the Calendar editorial hierarchy with an accessible 12-month selector', async () => {
+  it('renders no view-local cover (the shared page masthead owns the title) and an accessible 12-month selector', async () => {
     await act(async () => {
       root.render(createElement(LanguageProvider, null, createElement(PhenologyView)))
       await Promise.resolve()
     })
 
     const view = container.querySelector('[data-calendar-view="year"]')
-    const header = view?.querySelector('.garden-year-head')
     const selector = view?.querySelector('[data-garden-year-months]')
     const monthButtons = Array.from(selector?.querySelectorAll('button') ?? [])
 
     expect(view).not.toBeNull()
-    expect(header?.querySelector('h1')?.textContent).toMatch(/garden year/i)
+    // One cover, three spreads: the page-level CalendarPageMasthead renders the
+    // single "Calendar." title; the view must not add its own h1.
+    expect(view?.querySelector('h1')).toBeNull()
     expect(selector?.getAttribute('aria-label')).toMatch(/garden year/i)
     expect(monthButtons).toHaveLength(12)
     expect(monthButtons.every((button) => button.className.includes('min-h-11'))).toBe(true)

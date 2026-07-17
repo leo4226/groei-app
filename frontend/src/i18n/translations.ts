@@ -1096,6 +1096,8 @@ export type Translations = {
     agenda: string
     workAgendaHeading: string
     workAgendaSubtitle: string
+    gardenYearSubtitle: string  // lede when the Garden Year view is active
+    filterLabel: string         // mono micro-label before the environment pills ("Locatie")
     workAgendaLoadFailed: string
     monthLoadFailed: string
     retry: string

@@ -17,6 +17,7 @@ import EditorZoneShape from './EditorZoneShape'
 import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
 import WallElementPlacementOverlay from './WallElementPlacementOverlay'
+import { zoomAroundViewportCenter } from '../../utils/editorViewport'
 
 const CANVAS_W = 680
 const CANVAS_H = 680
@@ -338,6 +339,21 @@ export default function EditorCanvas({
   const MIN_ZOOM = 0.25
   const MAX_ZOOM = 4
   const ZOOM_STEP = 0.25
+
+  function changeZoom(getRequestedZoom: (currentZoom: number) => number) {
+    setZoom((currentZoom) => {
+      const requestedZoom = getRequestedZoom(currentZoom)
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, +requestedZoom.toFixed(2)))
+      setPan((currentPan) => zoomAroundViewportCenter(
+        currentPan,
+        currentZoom,
+        nextZoom,
+        CANVAS_W,
+        CANVAS_H,
+      ))
+      return nextZoom
+    })
+  }
 
   // Two-finger pinch-zoom (#15), anchored on the pinch midpoint. Native non-passive
   // listeners (target: svgRef) so we can preventDefault the browser's page-zoom.
@@ -941,7 +957,7 @@ export default function EditorCanvas({
     if (e.deltaY === 0) return
     e.preventDefault()
     const dir = e.deltaY < 0 ? 1 : -1
-    setZoom(z => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, +(z + dir * ZOOM_STEP).toFixed(2))))
+    changeZoom((currentZoom) => currentZoom + dir * ZOOM_STEP)
   }
 
   // Standard draw preview (non-wall, non-fence zone types)
@@ -1251,10 +1267,10 @@ export default function EditorCanvas({
         </g>
       </svg>
       <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-3 left-16' : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
-        <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
+        <button onClick={() => changeZoom((currentZoom) => currentZoom - ZOOM_STEP)}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
-        <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
+        <button onClick={() => changeZoom((currentZoom) => currentZoom + ZOOM_STEP)}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">+</button>
         <button onClick={fitToContent}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5"

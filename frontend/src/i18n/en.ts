@@ -1128,7 +1128,7 @@ export const en: Translations = {
 
   // ── Calendar page ────────────────────────────────────────
   calendar: {
-    title: '§ Calendar',
+    title: 'Calendar',
     gardenYear: 'Garden Year',
     subtitle: "What your garden asks, and promises — by day.",
     week: 'Week',
@@ -1136,6 +1136,8 @@ export const en: Translations = {
     agenda: 'Work agenda',
     workAgendaHeading: 'Work agenda',
     workAgendaSubtitle: 'One next job per schedule, with overdue work first.',
+    gardenYearSubtitle: 'Monthly windows, not exact dates — sowing, bloom and harvest per month.',
+    filterLabel: 'Location',
     workAgendaLoadFailed: 'The work agenda could not be loaded.',
     monthLoadFailed: 'The month could not be loaded.',
     retry: 'Try again',
