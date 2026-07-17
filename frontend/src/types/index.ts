@@ -25,6 +25,7 @@ export interface CareSchedule {
   notes: string | null
   is_active: boolean
   rhythm_opt_out?: boolean
+  interval_source?: 'provisional' | 'species' | 'manual'
 }
 
 export interface Plant {

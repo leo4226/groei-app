@@ -111,7 +111,8 @@ async def test_seeds_from_cached_species_thresholds(client, db_ready, auth_heade
     water = await _schedules(db_ready, pid, "water")
     assert len(water) == 1
     assert water[0]["interval_days"] == 9
-    assert len(await _schedules(db_ready, pid, "fertilize")) == 1
+    assert water[0]["interval_source"] == "species"
+    assert len(await _schedules(db_ready, pid, "fertilize")) == 0
 
 
 async def test_default_water_when_threshold_generation_fails(client, db_ready, auth_header):
@@ -128,12 +129,13 @@ async def test_default_water_when_threshold_generation_fails(client, db_ready, a
     water = await _schedules(db_ready, pid, "water")
     assert len(water) == 1
     assert water[0]["interval_days"] == 7
+    assert water[0]["interval_source"] == "provisional"
     assert len(await _schedules(db_ready, pid)) == 1  # only the default water
 
 
 async def test_no_duplicate_when_form_and_thresholds_overlap(client, db_ready, auth_header):
-    # Task 8: form sends water+fertilize AND cached thresholds exist -> the seed
-    # is suppressed (no duplicate rows).
+    # An older client may still submit the former defaults. Water is retained as
+    # an explicit/manual choice, but optional care is ignored during creation.
     await db_ready.execute(
         "INSERT INTO plant_species (id, care_thresholds) VALUES (1, ?)",
         (json.dumps({"water_interval_days": 9, "fertilise_months": [4, 5, 6]}),),
@@ -153,8 +155,11 @@ async def test_no_duplicate_when_form_and_thresholds_overlap(client, db_ready, a
         )
     assert resp.status_code == 200, resp.text
     pid = resp.json()["id"]
-    assert len(await _schedules(db_ready, pid, "water")) == 1
-    assert len(await _schedules(db_ready, pid, "fertilize")) == 1
+    water = await _schedules(db_ready, pid, "water")
+    assert len(water) == 1
+    assert water[0]["interval_days"] == 7
+    assert water[0]["interval_source"] == "manual"
+    assert len(await _schedules(db_ready, pid, "fertilize")) == 0
 
 
 async def test_outdoor_plant_drops_rotate_and_mist(client, db_ready, auth_header):
@@ -186,7 +191,8 @@ async def test_outdoor_plant_drops_rotate_and_mist(client, db_ready, auth_header
 
 
 async def test_indoor_plant_keeps_rotate_and_mist(client, db_ready, auth_header):
-    # Indoor plants legitimately get rotate/mist.
+    # Historical test name retained for the additive test guard. Indoor-only
+    # routines remain available after creation, but are no longer auto-enabled.
     await db_ready.execute(
         "INSERT INTO maps (id, name, map_type, household_id) VALUES (2, 'Woonkamer', 'indoor', 1)"
     )
@@ -207,8 +213,9 @@ async def test_indoor_plant_keeps_rotate_and_mist(client, db_ready, auth_header)
         )
     assert resp.status_code == 200, resp.text
     pid = resp.json()["id"]
-    assert len(await _schedules(db_ready, pid, "rotate")) == 1
-    assert len(await _schedules(db_ready, pid, "mist")) == 1
+    assert len(await _schedules(db_ready, pid, "water")) == 1
+    assert len(await _schedules(db_ready, pid, "rotate")) == 0
+    assert len(await _schedules(db_ready, pid, "mist")) == 0
 
 
 async def test_species_id_linked(client, db_ready, auth_header):

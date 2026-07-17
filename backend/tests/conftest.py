@@ -111,7 +111,8 @@ SCHEMA = """
         notified_for_due DATE,
         snoozed_until TIMESTAMP,
         rhythm_opt_out INTEGER DEFAULT 0,
-        rhythm_operation_id INTEGER
+        rhythm_operation_id INTEGER,
+        interval_source TEXT NOT NULL DEFAULT 'manual'
     );
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,

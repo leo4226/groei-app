@@ -33,7 +33,8 @@ def _db_cache():
                 id INTEGER PRIMARY KEY, plant_id INTEGER, care_type TEXT,
                 interval_days INTEGER, next_due TEXT, is_active INTEGER DEFAULT 1,
                 last_done_by INTEGER, last_done TEXT, notes TEXT,
-                season_adjust TEXT, created_at TEXT, is_ephemeral INTEGER DEFAULT 0
+                season_adjust TEXT, created_at TEXT, is_ephemeral INTEGER DEFAULT 0,
+                interval_source TEXT NOT NULL DEFAULT 'manual'
             );
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER, language TEXT);
             CREATE TABLE households (

@@ -33,14 +33,15 @@ async def schedule_sync_db(seeded_db):
             (2, 'Rose', 2, 1, 1),
             (3, 'Foreign plant', 2, 2, 1);
         INSERT INTO care_schedules
-            (id, plant_id, care_type, interval_days, next_due, last_done, notes, season_adjust, is_active, is_ephemeral)
+            (id, plant_id, care_type, interval_days, next_due, last_done, notes,
+             season_adjust, is_active, is_ephemeral, interval_source)
         VALUES
-            (1, 1, 'water', 7, '2026-07-08', '2026-07-01T09:30:00', 'keep me', '{"summer": 1}', 1, 0),
-            (2, 1, 'fertilize', 30, '2026-08-01', NULL, NULL, NULL, 0, 0),
-            (3, 1, 'prune', 90, '2026-09-01', NULL, NULL, NULL, 1, 0),
-            (4, 1, 'photo', 30, '2026-08-01', NULL, NULL, NULL, 1, 0),
-            (5, 1, 'heat_protect', 1, '2026-07-13', NULL, NULL, NULL, 1, 1),
-            (6, 3, 'water', 7, '2026-07-20', NULL, NULL, NULL, 1, 0);
+            (1, 1, 'water', 7, '2026-07-08', '2026-07-01T09:30:00', 'keep me', '{"summer": 1}', 1, 0, 'provisional'),
+            (2, 1, 'fertilize', 30, '2026-08-01', NULL, NULL, NULL, 0, 0, 'manual'),
+            (3, 1, 'prune', 90, '2026-09-01', NULL, NULL, NULL, 1, 0, 'manual'),
+            (4, 1, 'photo', 30, '2026-08-01', NULL, NULL, NULL, 1, 0, 'manual'),
+            (5, 1, 'heat_protect', 1, '2026-07-13', NULL, NULL, NULL, 1, 1, 'manual'),
+            (6, 3, 'water', 7, '2026-07-20', NULL, NULL, NULL, 1, 0, 'manual');
     """)
     await seeded_db.commit()
     return seeded_db
@@ -67,6 +68,7 @@ async def test_sync_creates_updates_reactivates_and_disables_atomically(
     assert returned["water"]["next_due"] == "2026-07-15"
     assert returned["water"]["notes"] == "keep me"
     assert returned["water"]["season_adjust"] == '{"summer": 1}'
+    assert returned["water"]["interval_source"] == "manual"
     assert returned["fertilize"]["next_due"] == str(date.today() + timedelta(days=21))
     assert returned["pest_check"]["next_due"] == str(date.today() + timedelta(days=30))
 
@@ -80,6 +82,28 @@ async def test_sync_creates_updates_reactivates_and_disables_atomically(
     assert by_type["photo"]["is_active"] == 1
     assert by_type["heat_protect"]["is_active"] == 1
     assert by_type["heat_protect"]["is_ephemeral"] == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_without_water_authority_change_preserves_provisional_source(
+    client, schedule_sync_db, auth_header,
+):
+    response = await client.put(
+        "/api/plants/1/care-schedules",
+        headers=auth_header,
+        json={"schedules": [
+            {"care_type": "water", "interval_days": 7},
+        ]},
+    )
+
+    assert response.status_code == 200
+    water = next(
+        row for row in response.json()["care_schedules"]
+        if row["care_type"] == "water"
+    )
+    assert water["interval_days"] == 7
+    assert water["next_due"] == "2026-07-08"
+    assert water["interval_source"] == "provisional"
 
 
 @pytest.mark.asyncio

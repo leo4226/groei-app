@@ -118,6 +118,7 @@ class CareScheduleOut(BaseModel):
     is_active: bool = True
     is_ephemeral: bool = False
     rhythm_opt_out: bool = False
+    interval_source: str = "manual"
 
 
 class PlantOut(BaseModel):

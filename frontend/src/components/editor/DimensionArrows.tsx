@@ -11,151 +11,71 @@ interface Props {
 }
 
 type CornerCutArrow = {
-  hx1: number; hy1: number; hx2: number; hy2: number   // horizontal arrow
-  vx1: number; vy1: number; vx2: number; vy2: number   // vertical arrow
+  hx1: number; hy1: number; hx2: number; hy2: number
+  vx1: number; vy1: number; vx2: number; vy2: number
   wPx: number; hPx: number
 }
+
+const DIMENSION_COLOR = '#66716c'
+const LABEL_FILL = '#fbfaf7'
+const LABEL_STROKE = '#d8d6cc'
+const ARROW_LENGTH = 5
+const MAIN_OFFSET = 26
+const CUT_OFFSET = 26
 
 export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, pxPerM, zones, compact }: Props) {
   const zoneW = zoneMaxX - zoneMinX
   const zoneH = zoneMaxY - zoneMinY
-  const wM = pxPerM > 0 && zoneW > 0 ? (zoneW / pxPerM).toFixed(1) : null
-  const hM = pxPerM > 0 && zoneH > 0 ? (zoneH / pxPerM).toFixed(1) : null
+  const wM = metres(zoneW, pxPerM)
+  const hM = metres(zoneH, pxPerM)
 
   if (!wM || !hM) return null
 
-  const ARROW_L = 6
-  const ARROW_INSET = 6
-  const ARROW_GAP = 22
-  const TEXT_GAP = 10
-  // Corner cut arrows sit OUTSIDE the main dimension arrows to avoid visual overlap
-  const CUT_OFFSET = 26
-
-  // ── Corner cut arrows (skip indoor — room & structure) ──────────────
-  const cutArrows: CornerCutArrow[] = []
-  for (const z of zones) {
-    if (!z.cornerCut) continue
-    if (z.type === 'room' || z.type === 'structure') continue
-    const { corner, widthPx: cw, heightPx: ch } = z.cornerCut
-
-    const arrow = (() => {
-      switch (corner) {
-        case 'tl':
-          return {
-            hx1: z.x,        hy1: z.y - CUT_OFFSET,
-            hx2: z.x + cw,   hy2: z.y - CUT_OFFSET,
-            vx1: z.x - CUT_OFFSET, vy1: z.y,
-            vx2: z.x - CUT_OFFSET, vy2: z.y + ch,
-            wPx: cw, hPx: ch,
-          }
-        case 'tr':
-          return {
-            hx1: z.x + z.width - cw, hy1: z.y - CUT_OFFSET,
-            hx2: z.x + z.width,       hy2: z.y - CUT_OFFSET,
-            vx1: z.x + z.width + CUT_OFFSET, vy1: z.y,
-            vx2: z.x + z.width + CUT_OFFSET, vy2: z.y + ch,
-            wPx: cw, hPx: ch,
-          }
-        case 'bl':
-          return {
-            hx1: z.x,        hy1: z.y + z.height + CUT_OFFSET,
-            hx2: z.x + cw,   hy2: z.y + z.height + CUT_OFFSET,
-            vx1: z.x - CUT_OFFSET, vy1: z.y + z.height - ch,
-            vx2: z.x - CUT_OFFSET, vy2: z.y + z.height,
-            wPx: cw, hPx: ch,
-          }
-        case 'br':
-          return {
-            hx1: z.x + z.width - cw, hy1: z.y + z.height + CUT_OFFSET,
-            hx2: z.x + z.width,       hy2: z.y + z.height + CUT_OFFSET,
-            vx1: z.x + z.width + CUT_OFFSET, vy1: z.y + z.height - ch,
-            vx2: z.x + z.width + CUT_OFFSET, vy2: z.y + z.height,
-            wPx: cw, hPx: ch,
-          }
-      }
-    })()
-
-    if (arrow) cutArrows.push(arrow)
-  }
-
-  function arrowHead(path: string) {
-    return <path d={path} stroke="currentColor" strokeWidth={1} fill="none" />
-  }
+  const topY = zoneMinY - MAIN_OFFSET
+  const leftX = zoneMinX - MAIN_OFFSET
+  const cutArrows = collectCornerCutArrows(zones)
 
   return (
-    <g pointerEvents="none" style={{ fontFamily: 'system-ui, sans-serif' }}>
-      {/* ══════ Outside dimension arrows (always shown) ══════ */}
-      <g opacity={compact ? 0.45 : 0.45}>
-        {/* Top: zone width */}
-        {renderArrowLine(
-          zoneMinX, zoneMinY - ARROW_GAP, zoneMaxX, zoneMinY - ARROW_GAP,
-          ARROW_L, ARROW_INSET, arrowHead,
-        )}
-        <text x={(zoneMinX + zoneMaxX) / 2} y={zoneMinY - ARROW_GAP - TEXT_GAP}
-          textAnchor="middle" dominantBaseline="auto"
-          fill="currentColor" fontSize={10} fontWeight={500}>
-          {wM} m
-        </text>
+    <g pointerEvents="none" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
+      <g opacity={compact ? 0.7 : 0.82} color={DIMENSION_COLOR}>
+        {/* Extension lines connect the measurement back to the measured edges. */}
+        <line x1={zoneMinX} y1={zoneMinY} x2={zoneMinX} y2={topY} {...extensionLineProps} />
+        <line x1={zoneMaxX} y1={zoneMinY} x2={zoneMaxX} y2={topY} {...extensionLineProps} />
+        <line x1={zoneMinX} y1={zoneMinY} x2={leftX} y2={zoneMinY} {...extensionLineProps} />
+        <line x1={zoneMinX} y1={zoneMaxY} x2={leftX} y2={zoneMaxY} {...extensionLineProps} />
 
-        {/* Left: zone height */}
-        {renderArrowLine(
-          zoneMinX - ARROW_GAP, zoneMinY, zoneMinX - ARROW_GAP, zoneMaxY,
-          ARROW_L, ARROW_INSET, arrowHead,
-        )}
-        <text x={zoneMinX - ARROW_GAP - TEXT_GAP} y={(zoneMinY + zoneMaxY) / 2}
-          textAnchor="end" dominantBaseline="central"
-          fill="currentColor" fontSize={10} fontWeight={500}
-          transform={`rotate(-90, ${zoneMinX - ARROW_GAP - TEXT_GAP}, ${(zoneMinY + zoneMaxY) / 2})`}>
-          {hM} m
-        </text>
+        <DimensionLine x1={zoneMinX} y1={topY} x2={zoneMaxX} y2={topY} />
+        <DimensionLabel x={(zoneMinX + zoneMaxX) / 2} y={topY} label={`${wM} m`} />
 
-        {/* ══════ Corner cut arrows ══════ */}
-        {cutArrows.map((a, i) => (
-          <g key={i} opacity={0.6}>
-            {/* Horizontal (width of cut) */}
-            {renderArrowLine(a.hx1, a.hy1, a.hx2, a.hy2, 4, 4, arrowHead)}
-            <text x={(a.hx1 + a.hx2) / 2} y={a.hy1 - 5}
-              textAnchor="middle" dominantBaseline="auto"
-              fill="currentColor" fontSize={8} fontWeight={500}>
-              {pxPerM > 0 ? (a.wPx / pxPerM).toFixed(1) : '?'} m
-            </text>
+        <DimensionLine x1={leftX} y1={zoneMinY} x2={leftX} y2={zoneMaxY} />
+        <DimensionLabel x={leftX} y={(zoneMinY + zoneMaxY) / 2} label={`${hM} m`} vertical />
 
-            {/* Vertical (height of cut) */}
-            {renderArrowLine(a.vx1, a.vy1, a.vx2, a.vy2, 4, 4, arrowHead)}
-            <text x={a.vx1 - 5} y={(a.vy1 + a.vy2) / 2}
-              textAnchor="end" dominantBaseline="central"
-              fill="currentColor" fontSize={8} fontWeight={500}
-              transform={`rotate(-90, ${a.vx1 - 5}, ${(a.vy1 + a.vy2) / 2})`}>
-              {pxPerM > 0 ? (a.hPx / pxPerM).toFixed(1) : '?'} m
-            </text>
+        {cutArrows.map((arrow, index) => (
+          <g key={index} opacity={0.78}>
+            <DimensionLine x1={arrow.hx1} y1={arrow.hy1} x2={arrow.hx2} y2={arrow.hy2} small />
+            <DimensionLabel x={(arrow.hx1 + arrow.hx2) / 2} y={arrow.hy1} label={`${metres(arrow.wPx, pxPerM) ?? '?'} m`} small />
+            <DimensionLine x1={arrow.vx1} y1={arrow.vy1} x2={arrow.vx2} y2={arrow.vy2} small />
+            <DimensionLabel x={arrow.vx1} y={(arrow.vy1 + arrow.vy2) / 2} label={`${metres(arrow.hPx, pxPerM) ?? '?'} m`} vertical small />
           </g>
         ))}
       </g>
 
-      {/* ══════ Per-zone compact labels (compact mode only) ══════ */}
       {compact && zones.length > 0 && (
-        <g opacity={0.85}>
-          {zones.map((z, i) => {
-            if (z.type === 'structure') return null
-            const zW = pxPerM > 0 && z.width > 0 ? (z.width / pxPerM).toFixed(1) : null
-            const zH = pxPerM > 0 && z.height > 0 ? (z.height / pxPerM).toFixed(1) : null
-            if (!zW || !zH) return null
-            const labelText = `${zW}×${zH}`
-            const labelWidth = labelText.length * 6
-            const lx = z.x + 6
-            const ly = z.y + 14
+        <g opacity={0.9}>
+          {zones.map((zone, index) => {
+            if (zone.type === 'structure') return null
+            const width = metres(zone.width, pxPerM)
+            const height = metres(zone.height, pxPerM)
+            if (!width || !height) return null
+            const label = `${width} × ${height} m`
+            const labelWidth = label.length * 5.7 + 14
+            const x = zone.x + 7
+            const y = zone.y + 8
             return (
-              <g key={i}>
-                <rect
-                  x={lx - 3} y={ly - 10}
-                  width={labelWidth + 6} height={13}
-                  rx={2} ry={2}
-                  fill="#1a1a2e" opacity={0.65}
-                />
-                <text x={lx} y={ly}
-                  textAnchor="start" dominantBaseline="auto"
-                  fill="white" fontSize={9} fontWeight={600}>
-                  {zW}×{zH}
+              <g key={index} transform={`translate(${x}, ${y})`}>
+                <rect x={0} y={0} width={labelWidth} height={15} rx={7.5} fill="#27332d" opacity={0.88} />
+                <text x={7} y={7.5} fill="white" fontSize={8} fontWeight={600} dominantBaseline="middle">
+                  {label}
                 </text>
               </g>
             )
@@ -166,53 +86,81 @@ export default function DimensionArrows({ zoneMinX, zoneMinY, zoneMaxX, zoneMaxY
   )
 }
 
-// ── Shared arrow-line renderer ─────────────────────────────────────────
+const extensionLineProps = {
+  stroke: 'currentColor',
+  strokeWidth: 1,
+  strokeDasharray: '2 2',
+  vectorEffect: 'non-scaling-stroke' as const,
+}
 
-function renderArrowLine(
-  x1: number, y1: number,
-  x2: number, y2: number,
-  arrowL: number, arrowInset: number,
-  arrowHead: (d: string) => React.ReactNode,
-) {
+function DimensionLine({ x1, y1, x2, y2, small = false }: {
+  x1: number; y1: number; x2: number; y2: number; small?: boolean
+}) {
   const horizontal = y1 === y2
+  const arrowLength = small ? 3.5 : ARROW_LENGTH
+  const span = horizontal ? Math.abs(x2 - x1) : Math.abs(y2 - y1)
+  if (span <= arrowLength * 2 + 4) return null
+
   const min = horizontal ? Math.min(x1, x2) : Math.min(y1, y2)
   const max = horizontal ? Math.max(x1, x2) : Math.max(y1, y2)
-  const span = max - min
+  const strokeWidth = small ? 1 : 1.25
 
-  if (span <= arrowInset * 2 + arrowL * 2) return null
-
-  // Arrow heads
   if (horizontal) {
-    const lx = Math.min(x1, x2)
-    const rx = Math.max(x1, x2)
-    const y = y1
     return (
-      <>
-        {arrowHead(`M ${lx + arrowInset} ${y} l ${arrowL} ${-arrowL} M ${lx + arrowInset} ${y} l ${arrowL} ${arrowL}`)}
-        {arrowHead(`M ${rx - arrowInset} ${y} l ${-arrowL} ${-arrowL} M ${rx - arrowInset} ${y} l ${-arrowL} ${arrowL}`)}
-        <line x1={lx + arrowInset + arrowL} y1={y} x2={rx - arrowInset - arrowL} y2={y}
-          stroke="currentColor" strokeWidth={1} />
-        <line x1={lx + arrowInset + arrowL} y1={y - 2} x2={lx + arrowInset + arrowL} y2={y + 2}
-          stroke="currentColor" strokeWidth={1} />
-        <line x1={rx - arrowInset - arrowL} y1={y - 2} x2={rx - arrowInset - arrowL} y2={y + 2}
-          stroke="currentColor" strokeWidth={1} />
-      </>
-    )
-  } else {
-    const ty = Math.min(y1, y2)
-    const by = Math.max(y1, y2)
-    const x = x1
-    return (
-      <>
-        {arrowHead(`M ${x} ${ty + arrowInset} l ${-arrowL} ${arrowL} M ${x} ${ty + arrowInset} l ${arrowL} ${arrowL}`)}
-        {arrowHead(`M ${x} ${by - arrowInset} l ${-arrowL} ${-arrowL} M ${x} ${by - arrowInset} l ${arrowL} ${-arrowL}`)}
-        <line x1={x} y1={ty + arrowInset + arrowL} x2={x} y2={by - arrowInset - arrowL}
-          stroke="currentColor" strokeWidth={1} />
-        <line x1={x - 2} y1={ty + arrowInset + arrowL} x2={x + 2} y2={ty + arrowInset + arrowL}
-          stroke="currentColor" strokeWidth={1} />
-        <line x1={x - 2} y1={by - arrowInset - arrowL} x2={x + 2} y2={by - arrowInset - arrowL}
-          stroke="currentColor" strokeWidth={1} />
-      </>
+      <g fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke">
+        <path d={`M ${min} ${y1} L ${min + arrowLength} ${y1 - arrowLength} M ${min} ${y1} L ${min + arrowLength} ${y1 + arrowLength}`} />
+        <line x1={min + arrowLength} y1={y1} x2={max - arrowLength} y2={y1} />
+        <path d={`M ${max} ${y1} L ${max - arrowLength} ${y1 - arrowLength} M ${max} ${y1} L ${max - arrowLength} ${y1 + arrowLength}`} />
+      </g>
     )
   }
+
+  return (
+    <g fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke">
+      <path d={`M ${x1} ${min} L ${x1 - arrowLength} ${min + arrowLength} M ${x1} ${min} L ${x1 + arrowLength} ${min + arrowLength}`} />
+      <line x1={x1} y1={min + arrowLength} x2={x1} y2={max - arrowLength} />
+      <path d={`M ${x1} ${max} L ${x1 - arrowLength} ${max - arrowLength} M ${x1} ${max} L ${x1 + arrowLength} ${max - arrowLength}`} />
+    </g>
+  )
+}
+
+function DimensionLabel({ x, y, label, vertical = false, small = false }: {
+  x: number; y: number; label: string; vertical?: boolean; small?: boolean
+}) {
+  const fontSize = small ? 7.5 : 10.5
+  const paddingX = small ? 5 : 8
+  const height = small ? 13 : 18
+  const width = label.length * fontSize * 0.61 + paddingX * 2
+  const transform = vertical ? `translate(${x}, ${y}) rotate(-90)` : `translate(${x}, ${y})`
+
+  return (
+    <g transform={transform}>
+      <rect x={-width / 2} y={-height / 2} width={width} height={height} rx={height / 2} fill={LABEL_FILL} stroke={LABEL_STROKE} strokeWidth={0.7} />
+      <text x={0} y={0.5} textAnchor="middle" dominantBaseline="middle" fill="#445047" fontSize={fontSize} fontWeight={650} letterSpacing={small ? 0 : 0.15}>
+        {label}
+      </text>
+    </g>
+  )
+}
+
+function metres(value: number, pxPerM: number): string | null {
+  return pxPerM > 0 && value > 0 ? (value / pxPerM).toFixed(1) : null
+}
+
+function collectCornerCutArrows(zones: Props['zones']): CornerCutArrow[] {
+  const arrows: CornerCutArrow[] = []
+  for (const zone of zones) {
+    if (!zone.cornerCut || zone.type === 'room' || zone.type === 'structure') continue
+    const { corner, widthPx, heightPx } = zone.cornerCut
+    const arrow = (() => {
+      switch (corner) {
+        case 'tl': return { hx1: zone.x, hy1: zone.y - CUT_OFFSET, hx2: zone.x + widthPx, hy2: zone.y - CUT_OFFSET, vx1: zone.x - CUT_OFFSET, vy1: zone.y, vx2: zone.x - CUT_OFFSET, vy2: zone.y + heightPx, wPx: widthPx, hPx: heightPx }
+        case 'tr': return { hx1: zone.x + zone.width - widthPx, hy1: zone.y - CUT_OFFSET, hx2: zone.x + zone.width, hy2: zone.y - CUT_OFFSET, vx1: zone.x + zone.width + CUT_OFFSET, vy1: zone.y, vx2: zone.x + zone.width + CUT_OFFSET, vy2: zone.y + heightPx, wPx: widthPx, hPx: heightPx }
+        case 'bl': return { hx1: zone.x, hy1: zone.y + zone.height + CUT_OFFSET, hx2: zone.x + widthPx, hy2: zone.y + zone.height + CUT_OFFSET, vx1: zone.x - CUT_OFFSET, vy1: zone.y + zone.height - heightPx, vx2: zone.x - CUT_OFFSET, vy2: zone.y + zone.height, wPx: widthPx, hPx: heightPx }
+        case 'br': return { hx1: zone.x + zone.width - widthPx, hy1: zone.y + zone.height + CUT_OFFSET, hx2: zone.x + zone.width, hy2: zone.y + zone.height + CUT_OFFSET, vx1: zone.x + zone.width + CUT_OFFSET, vy1: zone.y + zone.height - heightPx, vx2: zone.x + zone.width + CUT_OFFSET, vy2: zone.y + zone.height, wPx: widthPx, hPx: heightPx }
+      }
+    })()
+    if (arrow) arrows.push(arrow)
+  }
+  return arrows
 }
