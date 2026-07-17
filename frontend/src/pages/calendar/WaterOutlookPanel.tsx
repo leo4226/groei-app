@@ -131,6 +131,7 @@ export default function WaterOutlookPanel({ env }: Props) {
                   {levelLabel(map.level)}
                 </span>
               </div>
+              <p className="water-outlook-plant">{plant.plant_name}</p>
               <p className="water-outlook-date">
                 {isOverdue
                   ? t.calendar.waterOutlookOverdueDate(dateLabel)

@@ -37,8 +37,8 @@ const OUTLOOK = {
         recommended_check_date: '2026-07-16',
         level: 'high' as const,
         score: 1.4,
-        reason_nl: 'Warmte en verdamping wegen zwaarder dan regen.',
-        reason_en: 'Heat and evaporation outweigh effective rain.',
+        reason_nl: 'Warm en droog weer laat deze buitenpot sneller uitdrogen.',
+        reason_en: 'Warm, dry weather is making this outdoor container dry out faster.',
         factors: {},
       }],
     },
@@ -102,8 +102,9 @@ describe('WaterOutlookPanel', () => {
     expect(container.textContent).toContain('Water outlook')
     expect(container.textContent).toContain('Weather may suggest an earlier soil check, never a later Water deadline.')
     expect(container.textContent).toContain('Garden')
+    expect(container.textContent).toContain('Tomato')
     expect(container.textContent).toContain('Check soil by 16 Jul')
-    expect(container.textContent).toContain('Heat and evaporation outweigh effective rain.')
+    expect(container.textContent).toContain('Warm, dry weather is making this outdoor container dry out faster.')
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 
@@ -132,7 +133,7 @@ describe('WaterOutlookPanel', () => {
     expect(container.textContent).toContain('Waterverwachting')
     expect(container.textContent).toContain('Controleer de grond uiterlijk 16 jul')
     expect(container.textContent).toContain('Buitentemperatuur als proxy')
-    expect(container.textContent).toContain('Warmte en verdamping wegen zwaarder')
+    expect(container.textContent).toContain('Warm en droog weer laat deze buitenpot sneller uitdrogen.')
   })
 
   it('labels an already-due canonical schedule instead of suggesting weather escalation', async () => {

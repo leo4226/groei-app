@@ -580,6 +580,13 @@
 .cal-page .water-outlook-map h3 {
   margin: 0;
   font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cal-ink);
+}
+.cal-page .water-outlook-plant {
+  margin: 8px 0 2px;
+  font-family: 'Fraunces', serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--cal-ink);
@@ -619,7 +626,7 @@
 }
 .cal-page .water-outlook-date {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--cal-accent-dk);
 }
@@ -632,7 +639,7 @@
 }
 .cal-page .water-outlook-reason {
   font-family: 'Fraunces', serif;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--cal-ink-soft);
 }
 .cal-page .water-outlook-loading,
