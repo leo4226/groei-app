@@ -24,15 +24,11 @@ _OUTDOOR_COEFFICIENTS = {
         "rain_capture": 0.55,
         "demand": 1.15,
         "high_deficit_mm": 8.0,
-        "label_nl": "potplant buiten",
-        "label_en": "outdoor container",
     },
     "outdoor_ground": {
         "rain_capture": 0.85,
         "demand": 0.85,
         "high_deficit_mm": 12.0,
-        "label_nl": "plant in de volle grond",
-        "label_en": "rooted ground plant",
     },
 }
 
@@ -132,8 +128,8 @@ def calculate_water_pressure(
             level=level,
             score=round(score, 2),
             recommended_check_date=_recommendation(level, today=today, next_due=next_due),
-            reason_nl=f"{tone_nl} Buitentemperatuur wordt gebruikt als voorzichtige proxy.",
-            reason_en=f"{tone_en} Outdoor temperature is used as a conservative outdoor temperature proxy.",
+            reason_nl=f"{tone_nl} De buitentemperatuur is hierbij een ruwe indicatie.",
+            reason_en=f"{tone_en} Outdoor temperature is only a rough guide here.",
             factors={
                 "average_max_c": round(average_max, 1),
                 "effective_rain_mm": 0.0,
@@ -151,30 +147,26 @@ def calculate_water_pressure(
     score = deficit / float(coefficients["high_deficit_mm"])
     level = _level(score)
 
-    label_nl = str(coefficients["label_nl"])
-    label_en = str(coefficients["label_en"])
     if level == "high":
-        lead_nl = "Warmte en verdamping wegen zwaarder dan de effectieve regen."
-        lead_en = "Heat and evaporation outweigh effective rain."
+        if environment == "outdoor_container":
+            reason_nl = "Warm en droog weer laat deze buitenpot sneller uitdrogen."
+            reason_en = "Warm, dry weather is making this outdoor container dry out faster."
+        else:
+            reason_nl = "Warm en droog weer laat de grond rond deze plant sneller uitdrogen."
+            reason_en = "Warm, dry weather is making the soil around this plant dry out faster."
     elif level == "elevated":
-        lead_nl = "De wortelzone kan sneller uitdrogen dan normaal."
-        lead_en = "The root zone may dry faster than normal."
+        reason_nl = "De grond kan iets sneller uitdrogen dan normaal."
+        reason_en = "The soil may dry out a little faster than normal."
     else:
-        lead_nl = "Recente en verwachte regen dekken de berekende uitdroging voldoende."
-        lead_en = "Recent and forecast rain sufficiently cover calculated drying."
+        reason_nl = "De regen compenseert de verwachte uitdroging."
+        reason_en = "Rain is covering the expected drying."
 
     return WaterPressureResult(
         level=level,
         score=round(score, 2),
         recommended_check_date=_recommendation(level, today=today, next_due=next_due),
-        reason_nl=(
-            f"{lead_nl} Voor deze {label_nl}: {drying_demand:.1f}mm uitdroging "
-            f"tegen {effective_rain:.1f}mm effectieve regen."
-        ),
-        reason_en=(
-            f"{lead_en} For this {label_en}: {drying_demand:.1f}mm drying demand "
-            f"versus {effective_rain:.1f}mm effective rain."
-        ),
+        reason_nl=reason_nl,
+        reason_en=reason_en,
         factors={
             "average_max_c": round(average_max, 1),
             "raw_rain_mm": round(raw_rain, 1),

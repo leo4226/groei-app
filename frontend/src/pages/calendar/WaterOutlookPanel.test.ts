@@ -27,20 +27,35 @@ const OUTLOOK = {
       temperature_source: 'own_map' as const,
       source_timestamp: '2026-07-16T09:00:00Z',
       high_count: 1,
-      elevated_count: 0,
-      plants: [{
-        plant_id: 1,
-        plant_name: 'Tomato',
-        schedule_id: 10,
-        environment: 'outdoor_container' as const,
-        next_due: '2026-07-20',
-        recommended_check_date: '2026-07-16',
-        level: 'high' as const,
-        score: 1.4,
-        reason_nl: 'Warmte en verdamping wegen zwaarder dan regen.',
-        reason_en: 'Heat and evaporation outweigh effective rain.',
-        factors: {},
-      }],
+      elevated_count: 1,
+      plants: [
+        {
+          plant_id: 1,
+          plant_name: 'Tomato',
+          schedule_id: 10,
+          environment: 'outdoor_container' as const,
+          next_due: '2026-07-20',
+          recommended_check_date: '2026-07-16',
+          level: 'high' as const,
+          score: 1.4,
+          reason_nl: 'Warm en droog weer laat deze buitenpot sneller uitdrogen.',
+          reason_en: 'Warm, dry weather is making this outdoor container dry out faster.',
+          factors: {},
+        },
+        {
+          plant_id: 3,
+          plant_name: 'Rosemary',
+          schedule_id: 12,
+          environment: 'outdoor_container' as const,
+          next_due: '2026-07-21',
+          recommended_check_date: '2026-07-18',
+          level: 'elevated' as const,
+          score: 0.8,
+          reason_nl: 'De potgrond kan iets sneller uitdrogen dan normaal.',
+          reason_en: 'The potting soil may dry out a little faster than normal.',
+          factors: {},
+        },
+      ],
     },
     {
       map_id: 2,
@@ -102,8 +117,10 @@ describe('WaterOutlookPanel', () => {
     expect(container.textContent).toContain('Water outlook')
     expect(container.textContent).toContain('Weather may suggest an earlier soil check, never a later Water deadline.')
     expect(container.textContent).toContain('Garden')
+    expect(container.textContent).toContain('Tomato')
+    expect(container.textContent).not.toContain('Rosemary')
     expect(container.textContent).toContain('Check soil by 16 Jul')
-    expect(container.textContent).toContain('Heat and evaporation outweigh effective rain.')
+    expect(container.textContent).toContain('Warm, dry weather is making this outdoor container dry out faster.')
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 
@@ -132,7 +149,7 @@ describe('WaterOutlookPanel', () => {
     expect(container.textContent).toContain('Waterverwachting')
     expect(container.textContent).toContain('Controleer de grond uiterlijk 16 jul')
     expect(container.textContent).toContain('Buitentemperatuur als proxy')
-    expect(container.textContent).toContain('Warmte en verdamping wegen zwaarder')
+    expect(container.textContent).toContain('Warm en droog weer laat deze buitenpot sneller uitdrogen.')
   })
 
   it('labels an already-due canonical schedule instead of suggesting weather escalation', async () => {
