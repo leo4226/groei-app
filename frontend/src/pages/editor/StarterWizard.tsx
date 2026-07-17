@@ -14,6 +14,9 @@ export interface StarterWizardResult {
   rects: TemplateRect[]
   scalePxPerM: number
   bearing: number
+  /** Garden GPS — drives the sun/shadow model. Undefined when the user skips. */
+  lat?: number
+  lon?: number
 }
 
 interface Props {
@@ -22,7 +25,8 @@ interface Props {
   onComplete: (result: StarterWizardResult | null) => void
 }
 
-type Step = 'shape' | 'size' | 'orientation'
+type Step = 'shape' | 'size' | 'orientation' | 'location'
+type GeoStatus = 'idle' | 'locating' | 'set' | 'error'
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 300,
@@ -103,6 +107,23 @@ export default function StarterWizard({ onComplete }: Props) {
   const [widthM, setWidthM] = useState(String(STARTER_TEMPLATES.rectangle.defaultWidthM))
   const [depthM, setDepthM] = useState(String(STARTER_TEMPLATES.rectangle.defaultDepthM))
   const [bearing, setBearing] = useState(0)
+  const [lat, setLat] = useState<number | null>(null)
+  const [lon, setLon] = useState<number | null>(null)
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle')
+
+  function requestLocation() {
+    if (!navigator.geolocation) { setGeoStatus('error'); return }
+    setGeoStatus('locating')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude)
+        setLon(pos.coords.longitude)
+        setGeoStatus('set')
+      },
+      () => setGeoStatus('error'),
+      { enableHighAccuracy: false, timeout: 10000 },
+    )
+  }
 
   const shapeMeta: { id: StarterTemplateId; label: string; hint: string }[] = STARTER_TEMPLATE_ORDER.map((id) => ({
     id,
@@ -122,7 +143,13 @@ export default function StarterWizard({ onComplete }: Props) {
     const wM = Math.max(0.5, parseFloat(widthM) || STARTER_TEMPLATES[templateId].defaultWidthM)
     const dM = Math.max(0.5, parseFloat(depthM) || STARTER_TEMPLATES[templateId].defaultDepthM)
     const scale = fitScalePxPerM(wM, dM)
-    onComplete({ rects: buildTemplateZones(templateId, wM, dM, scale), scalePxPerM: scale, bearing })
+    onComplete({
+      rects: buildTemplateZones(templateId, wM, dM, scale),
+      scalePxPerM: scale,
+      bearing,
+      lat: lat ?? undefined,
+      lon: lon ?? undefined,
+    })
   }
 
   return (
@@ -188,8 +215,47 @@ export default function StarterWizard({ onComplete }: Props) {
               <CompassBearingPicker value={bearing} onChange={setBearing} />
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={finish} style={primaryBtnStyle}>{w.finish}</button>
+              <button onClick={() => setStep('location')} style={primaryBtnStyle}>{w.next}</button>
               <button onClick={() => setStep('size')} style={ghostBtnStyle}>{w.back}</button>
+            </div>
+          </>
+        )}
+
+        {step === 'location' && (
+          <>
+            <h2 style={titleStyle}>{w.locationTitle}</h2>
+            <p style={subtitleStyle}>{w.locationSubtitle}</p>
+            <div style={{ marginBottom: 22 }}>
+              <button
+                type="button"
+                onClick={requestLocation}
+                disabled={geoStatus === 'locating'}
+                style={{
+                  ...primaryBtnStyle,
+                  width: '100%',
+                  background: geoStatus === 'set' ? 'var(--color-primary)' : 'var(--color-bg)',
+                  color: geoStatus === 'set' ? '#fff' : 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  cursor: geoStatus === 'locating' ? 'default' : 'pointer',
+                }}
+              >
+                {geoStatus === 'locating'
+                  ? w.locating
+                  : geoStatus === 'set'
+                    ? `✓ ${w.locationSet}`
+                    : w.useMyLocation}
+              </button>
+              {geoStatus === 'error' && (
+                <p style={{ ...subtitleStyle, margin: '10px 0 0', color: 'var(--color-overdue)' }}>
+                  {w.locationError}
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={finish} style={primaryBtnStyle}>
+                {geoStatus === 'set' ? w.finish : w.skip}
+              </button>
+              <button onClick={() => setStep('orientation')} style={ghostBtnStyle}>{w.back}</button>
             </div>
           </>
         )}

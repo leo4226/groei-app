@@ -158,6 +158,22 @@ export default function MapsListPage() {
         </div>
       )}
 
+      {!showCreate && maps.length === 0 && (
+        <div className="bg-surface border border-border rounded-xl p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Glyph name="map" size={26} />
+          </div>
+          <h2 className="font-heading text-lg font-medium text-text mb-1">{t.maps.noMaps}</h2>
+          <p className="text-sm text-text-muted mb-5 max-w-xs mx-auto leading-relaxed">{t.maps.createFirstLede}</p>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          >
+            {t.maps.createFirstMap}
+          </button>
+        </div>
+      )}
+
       <div className="space-y-3">
         {maps.map((map) => (
           <div key={map.id} className="bg-surface border border-border rounded-xl p-4">

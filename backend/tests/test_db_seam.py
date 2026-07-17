@@ -264,6 +264,20 @@ def test_register_creates_account_and_household(client):
     assert data["household_id"] >= 1
 
 
+def test_register_rejects_short_password(client):
+    resp = client.post("/api/auth/register", json={
+        "email": "shortpw@example.com", "password": "short", "name": "S",
+    })
+    assert resp.status_code == 422
+
+
+def test_register_rejects_malformed_email(client):
+    resp = client.post("/api/auth/register", json={
+        "email": "not-an-email", "password": "password123", "name": "S",
+    })
+    assert resp.status_code == 422
+
+
 def test_register_duplicate_email_returns_409(client):
     client.post("/api/auth/register", json={
         "email": "dup@example.com", "password": "password123",
