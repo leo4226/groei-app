@@ -20,10 +20,15 @@ from models import (
 )
 from auth import hash_password, verify_password, create_token, get_current_account
 from services.email import send_password_reset
+from services.rate_limit import rate_limit
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=AuthResponse)
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit("register", limit=5, window_s=3600))],
+)
 async def register(body: RegisterInput, db=Depends(db_dep)):
     existing = await db.execute_fetchall(
         "SELECT id FROM accounts WHERE email = ?", (body.email.lower(),)
@@ -67,7 +72,11 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     return AuthResponse(token=token, account_id=account_id, household_id=household_id, name=body.name.strip())
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(rate_limit("login", limit=10, window_s=300))],
+)
 async def login(body: LoginInput, db=Depends(db_dep)):
     rows = await db.execute_fetchall(
         "SELECT id, household_id, name, password_hash FROM accounts WHERE email = ?",
@@ -89,7 +98,10 @@ async def login(body: LoginInput, db=Depends(db_dep)):
     )
 
 
-@router.post("/forgot-password")
+@router.post(
+    "/forgot-password",
+    dependencies=[Depends(rate_limit("forgot-password", limit=5, window_s=900))],
+)
 async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
     """Send a password reset email if the account exists.
     Always returns 200 to prevent account enumeration.
@@ -114,7 +126,10 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
     return {"message": "If that email exists, a reset link has been sent."}
 
 
-@router.post("/reset-password")
+@router.post(
+    "/reset-password",
+    dependencies=[Depends(rate_limit("reset-password", limit=10, window_s=900))],
+)
 async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     """Validate a reset token and update the account password."""
     now = datetime.utcnow()
