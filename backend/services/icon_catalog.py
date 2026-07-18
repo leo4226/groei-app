@@ -8,7 +8,9 @@ entry carries an explicit `url`, so the frontend can resolve either source.
 from __future__ import annotations
 
 import json
+import logging
 import os
+logger = logging.getLogger(__name__)
 
 # Same resolution as the routers (env override, else repo path). In prod the
 # ICONS_DIR env var is set (fly.toml -> /app/icons); the fallback is dev-only.
@@ -44,6 +46,7 @@ async def _generated_entries(db) -> list[dict]:
     except Exception:
         # generated_icons may not exist yet (fresh DB before migration, or
         # unit-test DBs that don't seed it). Treat as no generated icons.
+        logger.warning("generated_icons table not accessible, returning empty catalog")
         return []
     return [dict(r) for r in rows]
 

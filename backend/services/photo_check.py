@@ -46,6 +46,7 @@ async def check_photo(image_bytes: bytes, plant_species_id: int | None) -> dict 
     try:
         embedding = base64.b64decode(data.get("embedding") or "")
     except Exception:
+        logger.warning("Photo check embedding decode failed, using empty")
         embedding = b""
 
     mismatch = bool(

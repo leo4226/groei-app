@@ -9,6 +9,8 @@ to a stable empty shape on network errors so callers never need to handle except
 """
 import json
 from datetime import datetime, timedelta, timezone
+import logging
+logger = logging.getLogger(__name__)
 
 import httpx
 
@@ -129,6 +131,7 @@ async def get_rain_data(db=None) -> dict:
             resp.raise_for_status()
             raw = resp.json()
     except Exception:
+        logger.warning("Open-Meteo rain fetch failed, returning cached/fallback")
         return _rain_cache.get("data", _RAIN_FALLBACK)
 
     daily  = raw.get("daily", {})
@@ -184,6 +187,7 @@ async def get_temp_data(db=None) -> dict:
             resp.raise_for_status()
             raw = resp.json()
     except Exception:
+        logger.warning("Open-Meteo temp fetch failed, returning cached/fallback")
         return _temp_cache.get("data", _TEMP_FALLBACK)
 
     daily = raw.get("daily", {})

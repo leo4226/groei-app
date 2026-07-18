@@ -1,5 +1,7 @@
+import logging
 import os
 from datetime import date
+logger = logging.getLogger(__name__)
 from typing import Any, Literal
 
 import httpx
@@ -642,6 +644,7 @@ async def _fetch_spot_recommendations_packet(
             limit=5,
         )
     except Exception:
+        logger.warning("Spot recommendations unavailable for spot_id=%s", selected_spot.get("id") if isinstance(selected_spot, dict) else selected_spot)
         return selected_spot, {
             **base_packet,
             "reason": "spot_recommendations_unavailable",
@@ -862,10 +865,12 @@ async def _fetch_weather_packet(db) -> dict[str, Any]:
     try:
         temp = await get_temp_data(db)
     except Exception:
+        logger.warning("Weather temp data fetch failed for Stekkie context")
         temp = {"days": [], "avg_max_7day": 0.0, "assessment": "unknown"}
     try:
         rain = await get_rain_data(db)
     except Exception:
+        logger.warning("Weather rain data fetch failed for Stekkie context")
         rain = {"days": [], "total_7day_mm": 0.0, "total_14day_mm": 0.0, "assessment": "unknown"}
     return {"temp": temp, "rain": rain}
 

@@ -1,4 +1,6 @@
 import json
+import logging
+logger = logging.getLogger(__name__)
 from dataclasses import asdict
 from datetime import date, datetime
 
@@ -271,6 +273,7 @@ async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, l
             plant["warnings"] = [_care_warning_to_dict(w) for w in result.warnings]
         except Exception:
             # Degrade gracefully: new pipeline failure shouldn't break the map
+            logger.warning("Warning computation failed for plant %s", plant.get("id"))
             plant["top_warning"] = None
             plant["warnings"] = []
 

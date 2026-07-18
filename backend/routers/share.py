@@ -90,6 +90,7 @@ def _fact_from(row, lang: str) -> str | None:
         try:
             phenology = json.loads(raw) if isinstance(raw, str) else raw
         except Exception:
+            logger.warning("Failed to parse phenology JSON for share page")
             phenology = None
         if isinstance(phenology, dict):
             for key in (f"interesting_facts_{lang}", f"interesting_facts_{other}"):
@@ -103,6 +104,7 @@ def _get(row, key, default=None):
     try:
         return row[key]
     except Exception:
+        logger.warning("Key %s not found in share row data", key)
         return default
 
 

@@ -13,6 +13,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 import services.digest as digest
+import logging
+logger = logging.getLogger(__name__)
 from auth import get_current_account
 from care_types import parse_muted_care_types
 from database import db_dep
@@ -284,7 +286,7 @@ async def send_digests(
             "weather_deleted": synced["deleted"],
         }
     except Exception:  # noqa: BLE001 — best-effort; never fail the digest run
-        pass
+        logger.warning("Weather ephemeral schedule sync failed (non-fatal)")
     # Two independent channels, same hourly trigger: the daily email digest
     # (fires at each account's chosen hour) and real-time care pushes (fire
     # the hour a task becomes due). Counts only — never account data.

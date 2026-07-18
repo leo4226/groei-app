@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, Query, HTTPException
 import base64
 import json
@@ -40,6 +42,7 @@ def _parse_json(val):
     try:
         return json.loads(val)
     except Exception:
+        logger.warning("Failed to parse weed JSON value: %.80s", str(val)[:80])
         return None
 
 
@@ -73,6 +76,7 @@ def _get_storage() -> Storage | None:
     try:
         return build_storage_from_env()
     except Exception:
+        logger.warning("Storage init failed for weed sightings")
         return None
 
 
@@ -84,6 +88,7 @@ def _decode_photo_data(photo_data: str) -> bytes | None:
     try:
         return base64.b64decode(photo_data)
     except Exception:
+        logger.warning("Failed to decode weed sighting photo data")
         return None
 
 
@@ -178,7 +183,7 @@ async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=
                 key = f"field-observations/{int(time.time() * 1000)}.jpg"
                 photo_url = storage.put(key, decoded, "image/jpeg")
             except Exception:
-                pass
+                logger.warning("Weed sighting photo upload failed")
     cursor = await db.execute(
         "INSERT INTO weed_sightings (weed_id, map_id, map_x, map_y, notes, sighted_at, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (body.weed_id, body.map_id, body.map_x, body.map_y, body.notes, body.sighted_at, photo_url),
@@ -213,4 +218,4 @@ async def delete_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(
                 key = "/".join(photo_url.rstrip("/").split("/")[-2:])
                 storage.delete(key)
             except Exception:
-                pass
+                logger.warning("Weed sighting photo cleanup failed: %s", photo_url)
