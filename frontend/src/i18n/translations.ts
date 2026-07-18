@@ -1417,6 +1417,13 @@ export type Translations = {
       streektuinen: string          // "Streekindeling & planten: streektuinen.nl"
       bloeibogen: string            // "Bijen & bloeidata: Naturalis / Bloeibogen"
     }
+    bees: {
+      title: string                          // "Bijen" / "Wild bees"
+      supportedCount: (n: number) => string  // "Tot 40 wilde bijensoorten kunnen hier terecht"
+      redlistNote: (m: number) => string     // "waarvan 12 op de Rode Lijst"
+      forageGap: (months: string) => string  // "Bijen vliegen in feb, mrt zonder drachtplant…"
+      noForage: string                        // "Nog geen drachtplanten…"
+    }
   }
 
   // ── Map legend ──────────────────────────────────────────────────

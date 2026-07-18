@@ -488,6 +488,7 @@ export const maps = {
   plantSuggestions: (slug: string)                                                                               => api<GardenSuggestionsOut>('GET', `/maps/${slug}/plant-suggestions`),
   streekSuggestions: (slug: string)                                                                              => api<import('../types').StreekSuggestionsOut>('GET', `/maps/${slug}/streek-suggestions`),
   streken: ()                                                                                                    => api<import('../types').Streek[]>('GET', '/streken'),
+  beeSupport: (slug: string)                                                                                     => api<import('../types').BeeSupportOut>('GET', `/maps/${slug}/bee-support`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
   uploadUnderlay: (id: number, file: File) => { const f = new FormData(); f.append('file', file); return api<{ url: string }>('POST', `/maps/${id}/underlay`, { form: f }) },

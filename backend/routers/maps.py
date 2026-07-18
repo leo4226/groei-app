@@ -17,6 +17,7 @@ from services.storage import build_storage_from_env
 from services.garden_biodiversity import compute_for_map as compute_biodiversity
 from services.plant_suggestions import recommend_for_garden, recommend_for_streek
 from services.streek import streek_for, all_streken
+from services.bees import bee_support_for_map
 
 router = APIRouter(tags=["maps"])
 
@@ -92,6 +93,32 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         streek_native_count=profile.streek_native_count,
         drachtplant_count=profile.drachtplant_count,
     )
+
+
+class BeeSupportOut(BaseModel):
+    forage_months: list[bool]
+    supported_count: int
+    supported_redlist_count: int
+    total_bees: int
+    total_redlist: int
+    forage_gap_months: list[int]
+    example_supported: list[str]
+
+
+@router.get("/maps/{slug}/bee-support", response_model=BeeSupportOut)
+async def get_bee_support(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
+    """Which wild bees the garden's drachtplanten support, and where the forage
+    gaps are (Bloeibogen/Naturalis). Outdoor-only."""
+    row = await db.execute_fetchall(
+        "SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
+    )
+    if not row:
+        raise HTTPException(404, "Map not found")
+    if (row[0]["map_type"] or "outdoor") != "outdoor":
+        raise HTTPException(404, "Bee support is only computed for outdoor maps")
+    s = await bee_support_for_map(db, row[0]["id"])
+    return BeeSupportOut(**vars(s))
 
 
 @router.get("/maps/{slug}/plant-suggestions", response_model=GardenSuggestionsOut)
