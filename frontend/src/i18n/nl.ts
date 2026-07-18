@@ -1384,6 +1384,9 @@ export const nl: Translations = {
       componentPollinator: 'Bestuivers',
       componentNative: 'Inheems',
       componentDiversity: 'Diversiteit',
+      componentStreek: 'Streek',
+      streekLabel: 'Streek',
+      streekNativeCount: (n) => `${n} streekeigen soort${n === 1 ? '' : 'en'}`,
     },
     suggestions: {
       title: 'Verbeter je tuin',
@@ -1393,6 +1396,17 @@ export const nl: Translations = {
       sunPartial: 'Halfschaduw',
       sunShade: 'Schaduw',
       nativeBadge: 'Inheems',
+      streekBadge: 'Streekeigen',
+    },
+    streek: {
+      sectionTitle: 'Planten uit jouw streek',
+      subtitle: (name) => `Inheems in het ${name}`,
+      noData: 'Nog geen streekplanten om te tonen',
+      attribution: 'Streekindeling & soorten: streektuinen.nl',
+      pickTitle: 'Kies je streek',
+      pickHint: 'Klopt je streek niet? Kies hem hieronder.',
+      pickNone: 'Onbekend / buiten Nederland',
+      pickCta: 'Opslaan',
     },
   },
 

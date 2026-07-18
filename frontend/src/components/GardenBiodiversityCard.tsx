@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut } from '../types'
 
 /**
  * Small line glyphs for biodiversity stats, in the app's icon language
@@ -130,11 +130,14 @@ const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt'
 
 function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiodiversityOut; slug: string; embedded?: boolean }) {
   const t = useT()
+  const en = t.locale.startsWith('en')
   const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
+  const [streekSug, setStreekSug] = useState<StreekSuggestionsOut | null>(null)
 
   useEffect(() => {
     if (!slug) return
     mapsApi.plantSuggestions(slug).then(setSuggestions).catch(() => {})
+    mapsApi.streekSuggestions(slug).then(setStreekSug).catch(() => {})
   }, [slug])
 
   const Wrapper = embedded ? 'div' : 'section'
@@ -162,6 +165,15 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               <BioIcon name="invasive" size={14} /> {t.garden.biodiversity.invasiveCount(data.invasive_count)}
             </p>
           )}
+          {data.streek_name && (
+            <p className="text-text-muted">
+              <span className="text-text-muted">{t.garden.biodiversity.streekLabel}:</span>{' '}
+              <span className="text-text font-medium">{data.streek_name}</span>
+              {(data.streek_native_count ?? 0) > 0 && (
+                <span className="text-text-muted"> · {t.garden.biodiversity.streekNativeCount(data.streek_native_count ?? 0)}</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -176,6 +188,9 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
         <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/60</span></span>
         <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/30</span></span>
         <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/10</span></span>
+        {data.streek_slug && (
+          <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/15</span></span>
+        )}
       </div>
 
       {/* Plant suggestions section */}
@@ -228,6 +243,11 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                               <BioIcon name="pollinator" size={11} />
                             </span>
                           )}
+                          {s.is_streek && (
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
+                              {t.garden.suggestions.streekBadge}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
                       </div>
@@ -242,6 +262,35 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               })}
             </div>
           )}
+        </section>
+      )}
+
+      {/* "Planten uit jouw streek" — regionally-correct flora to add */}
+      {streekSug && streekSug.streek_name && streekSug.suggestions.length > 0 && (
+        <section className="pt-4 mt-4 border-t border-border/40">
+          <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-1">
+            {t.garden.streek.sectionTitle}
+          </h3>
+          <p className="text-xs text-text-muted mb-3">{t.garden.streek.subtitle(streekSug.streek_name)}</p>
+          <div className="space-y-3">
+            {streekSug.suggestions.map((s) => (
+              <div key={s.species_id} className="card p-3 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-sm text-text">{en ? (s.english_name || s.dutch_name) : s.dutch_name}</span>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
+                    {t.garden.suggestions.streekBadge}
+                  </span>
+                  {(s.pollinator_value ?? 0) >= 2 && (
+                    <span className="text-amber-700 inline-flex items-center px-1 py-0.5 bg-amber-400/10 rounded-full" title={t.garden.biodiversity.componentPollinator}>
+                      <BioIcon name="pollinator" size={11} />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted mt-3">{t.garden.streek.attribution}</p>
         </section>
       )}
     </Wrapper>
