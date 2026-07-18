@@ -1011,7 +1011,7 @@ function SpeciesEditPanel({ species: initial, allSpecies, onSaved, onClose }: {
         latin_name: latinName.trim() || undefined,
       })
       setSaveMsg('✓ Saved')
-      onSaved({ common_name_nl: updated.common_name_nl, latin_name: updated.latin_name ?? undefined })
+      onSaved({ common_name_nl: updated.common_name_nl ?? undefined, latin_name: updated.latin_name ?? undefined })
     } catch (e) {
       setSaveMsg('✗ ' + (e instanceof Error ? e.message : 'Save failed'))
     } finally {
@@ -1710,7 +1710,8 @@ function CoverageView() {
 }
 
 function ManualNameFixesPanel() {
-  const [incomplete, setIncomplete] = useState<Array<{ id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean }> | null>(null)
+  type IncompleteSpecies = { id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean }
+  const [incomplete, setIncomplete] = useState<IncompleteSpecies[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -1729,7 +1730,7 @@ function ManualNameFixesPanel() {
     loadIncomplete()
   }, [loadIncomplete])
 
-  const startEdit = (species: typeof incomplete[0]) => {
+  const startEdit = (species: IncompleteSpecies) => {
     setEditingId(species.id)
     setEditValues({
       nl: species.common_name_nl || '',
