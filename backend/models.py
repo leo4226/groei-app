@@ -1079,6 +1079,7 @@ class PlantRecommendationOut(BaseModel):
     reason: str                      # template text in Dutch
     reason_en: str | None            # template text in English
     caveat: str | None
+    is_streek: bool = False          # belongs to the garden's streek (streekeigen)
 
 
 class RecommendationsOut(BaseModel):

@@ -15,7 +15,7 @@ from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 from services.storage import build_storage_from_env
 from services.garden_biodiversity import compute_for_map as compute_biodiversity
-from services.plant_suggestions import recommend_for_garden
+from services.plant_suggestions import recommend_for_garden, recommend_for_streek
 from services.streek import streek_for, all_streken
 
 router = APIRouter(tags=["maps"])
@@ -116,6 +116,38 @@ async def get_plant_suggestions(
         suggestions=[PlantRecommendationOut(**vars(r)) for r in recs],
         gap_months=gap_months,
         biodiversity_score=bio.score,
+    )
+
+
+class StreekSuggestionsOut(BaseModel):
+    streek_slug: str | None = None
+    streek_name: str | None = None
+    suggestions: list[PlantRecommendationOut]
+
+
+@router.get("/maps/{slug}/streek-suggestions", response_model=StreekSuggestionsOut)
+async def get_streek_suggestions(
+    slug: str,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """"Planten uit jouw streek" — regionally-correct flora to add, from the
+    garden's streek (streektuinen icoonsoorten resolved to our catalog)."""
+    rows = await db.execute_fetchall(
+        "SELECT id, map_type, streek_slug FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+    m = dict(rows[0])
+    if (m.get("map_type") or "outdoor") != "outdoor":
+        raise HTTPException(status_code=400, detail="Streek suggestions only available for outdoor maps")
+
+    streek_name, recs = await recommend_for_streek(db, m["id"])
+    return StreekSuggestionsOut(
+        streek_slug=m.get("streek_slug"),
+        streek_name=streek_name,
+        suggestions=[PlantRecommendationOut(**vars(r)) for r in recs],
     )
 
 
