@@ -126,7 +126,12 @@ function MonthCoverage({ months, locale }: { months: boolean[]; locale: string }
   )
 }
 
-const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+// Localized short month name (1-12) — mirrors MonthCoverage's Intl usage so
+// gap lists read "mrt" in NL and "Mar" in EN, instead of a hardcoded array.
+function monthsShort(months: number[], locale: string): string {
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
+  return months.map(m => fmt.format(new Date(2026, m - 1, 1))).join(', ')
+}
 
 function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiodiversityOut; slug: string; embedded?: boolean }) {
   const t = useT()
@@ -190,11 +195,16 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
         <MonthCoverage months={data.pollinator_coverage_months} locale={t.locale} />
       </div>
 
-      {/* Components breakdown */}
-      <div className="flex justify-between gap-4 text-[11px] text-text-muted pt-3 border-t border-border/40">
+      {/* Components breakdown — wraps to a grid so the subscores never clip on
+          narrow widths (a flex justify-between row overflowed once Streek was
+          added). All five components are shown. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-[11px] text-text-muted pt-3 border-t border-border/40">
         <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/60</span></span>
         <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/30</span></span>
         <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/10</span></span>
+        {(data.components.abundance ?? 0) > 0 && (
+          <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentAbundance}: <span className="text-text font-mono">{data.components.abundance ?? 0}/10</span></span>
+        )}
         {data.streek_slug && (
           <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/15</span></span>
         )}
@@ -211,7 +221,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
             <p className="text-xs text-text-muted mb-3">
               {t.garden.suggestions.gapLabel.replace(
                 '{months}',
-                suggestions.gap_months.map(m => MONTH_SHORT[m - 1]).join(', ')
+                monthsShort(suggestions.gap_months, t.locale)
               )}
             </p>
           )}
@@ -327,7 +337,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           )}
           {bees.forage_gap_months.length > 0 && bees.supported_count > 0 && (
             <p className="text-xs text-text-muted mt-1.5">
-              {t.garden.bees.forageGap(bees.forage_gap_months.map(m => MONTH_SHORT[m - 1]).join(', '))}
+              {t.garden.bees.forageGap(monthsShort(bees.forage_gap_months, t.locale))}
             </p>
           )}
         </section>

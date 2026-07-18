@@ -1383,6 +1383,7 @@ export const en: Translations = {
       componentNative: 'Native',
       componentDiversity: 'Diversity',
       componentStreek: 'Region',
+      componentAbundance: 'Abundance',
       streekLabel: 'Region',
       streekNativeCount: (n) => `${n} regional species`,
       drachtplantCount: (n) => `${n} bee-forage plant${n === 1 ? '' : 's'}`,
