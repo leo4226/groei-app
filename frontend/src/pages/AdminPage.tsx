@@ -1694,7 +1694,165 @@ function CoverageView() {
               </AdminTable>
             </SectionCard>
           )}
+
+          <SectionCard title="Manual name fixes">
+            <div style={{ padding: '14px 18px' }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                For species where LLM name generation failed, manually enter Dutch and/or English names. Saves directly to the database.
+              </p>
+              <ManualNameFixesPanel />
+            </div>
+          </SectionCard>
         </>
+      )}
+    </div>
+  )
+}
+
+function ManualNameFixesPanel() {
+  const [incomplete, setIncomplete] = useState<Array<{ id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean }> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValues, setEditValues] = useState({ nl: '', en: '', latin: '' })
+
+  const loadIncomplete = useCallback(() => {
+    setLoading(true)
+    setErr('')
+    adminPanel.incompleteSpeciesNames(100)
+      .then(data => setIncomplete(data.species))
+      .catch(e => setErr(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    loadIncomplete()
+  }, [loadIncomplete])
+
+  const startEdit = (species: typeof incomplete[0]) => {
+    setEditingId(species.id)
+    setEditValues({
+      nl: species.common_name_nl || '',
+      en: species.common_name_en || '',
+      latin: species.latin_name || '',
+    })
+  }
+
+  const saveEdit = async (speciesId: number) => {
+    try {
+      const updates: Record<string, string> = {}
+      if (editValues.nl) updates.common_name_nl = editValues.nl
+      if (editValues.en) updates.common_name_en = editValues.en
+      if (editValues.latin) updates.latin_name = editValues.latin
+      if (Object.keys(updates).length === 0) {
+        setEditingId(null)
+        return
+      }
+      await adminPanel.patchSpecies(speciesId, updates)
+      setEditingId(null)
+      loadIncomplete()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to save')
+    }
+  }
+
+  if (err) return <ErrorMsg msg={err} />
+  if (loading) return <Loading />
+  if (!incomplete) return null
+
+  return (
+    <div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+        {incomplete.length} species need name fixes
+      </div>
+      {incomplete.length === 0 ? (
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>All species have complete localized names ✓</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {incomplete.map(species => (
+            <div
+              key={species.id}
+              style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: 6,
+                padding: '10px 12px',
+                fontSize: 12,
+              }}
+            >
+              {editingId === species.id ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Dutch name"
+                    value={editValues.nl}
+                    onChange={e => setEditValues({ ...editValues, nl: e.target.value })}
+                    style={{ padding: 6, fontFamily: 'var(--font-mono)', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="English name"
+                    value={editValues.en}
+                    onChange={e => setEditValues({ ...editValues, en: e.target.value })}
+                    style={{ padding: 6, fontFamily: 'var(--font-mono)', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Latin name"
+                    value={editValues.latin}
+                    onChange={e => setEditValues({ ...editValues, latin: e.target.value })}
+                    style={{ padding: 6, fontFamily: 'var(--font-mono)', fontSize: 11, border: '1px solid var(--color-border)', borderRadius: 4 }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => saveEdit(species.id)}
+                      style={{
+                        flex: 1, padding: '6px 10px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      style={{
+                        flex: 1, padding: '6px 10px', background: 'var(--color-border)', color: 'var(--color-text)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <div style={{ fontWeight: 500 }}>
+                    {species.common_name_nl ? (
+                      <span>🇳🇱 {species.common_name_nl}</span>
+                    ) : (
+                      <span style={{ color: 'var(--color-overdue)' }}>🇳🇱 <em>missing</em></span>
+                    )}
+                  </div>
+                  <div>
+                    {species.common_name_en ? (
+                      <span>🇬🇧 {species.common_name_en}</span>
+                    ) : (
+                      <span style={{ color: 'var(--color-overdue)' }}>🇬🇧 <em>missing</em></span>
+                    )}
+                  </div>
+                  {species.latin_name && <div style={{ color: 'var(--color-text-soft)', fontSize: 11 }}>
+                    <em>{species.latin_name}</em>
+                  </div>}
+                  <button
+                    onClick={() => startEdit(species)}
+                    style={{
+                      padding: '6px 10px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 500, alignSelf: 'start',
+                    }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

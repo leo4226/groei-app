@@ -685,8 +685,10 @@ export const adminPanel = {
     return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
   },
   household: (id: number) => api<AdminHouseholdDetail>('GET', `/admin-panel/households/${id}`),
-  patchSpecies: (id: number, body: { common_name_nl?: string; latin_name?: string }) =>
-    api<{ id: number; common_name_nl: string; latin_name: string | null }>('PATCH', `/admin-panel/species/${id}`, { body }),
+  incompleteSpeciesNames: (limit: number = 100) =>
+    api<{ species: Array<{ id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean }>; total: number }>('GET', `/admin-panel/species/incomplete-names`, { params: { limit: String(limit) } }),
+  patchSpecies: (id: number, body: { common_name_nl?: string; common_name_en?: string; latin_name?: string }) =>
+    api<{ id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null }>('PATCH', `/admin-panel/species/${id}`, { body }),
   regenerateSpeciesThresholds: (id: number, propagate = false) =>
     api<{ species_id: number; name: string; propagated_to_plants: number }>('POST', `/admin-panel/species/${id}/regenerate-thresholds`, { params: { propagate: String(propagate) } }),
   regeneratePlantIcon: (plantId: number) =>
