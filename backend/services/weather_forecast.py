@@ -6,6 +6,8 @@ an expired entry remains available as an explicitly stale fallback.
 """
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -141,6 +143,7 @@ async def get_map_forecast(
                 fetched_at=observed_at,
             )
     except Exception:
+        logger.warning("Weather forecast fetch failed for %.2f,%.2f", lat, lon)
         if entry:
             return {**entry["data"], "stale": True}
         return _unavailable(lat, lon)

@@ -9,6 +9,8 @@ from auth import get_current_account, require_admin
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
 from routers.icons import load_manifest
+import logging
+logger = logging.getLogger(__name__)
 from services.admin_audit import log_admin_action
 
 # Every /admin/* route requires the admin account — never add an unprotected route here.
@@ -45,7 +47,7 @@ async def backfill_thresholds(account=Depends(get_current_account), db = Depends
             print(f"  ✓ Thresholds generated for plant {plant_id} ({name})")
         except Exception as exc:
             failures.append({"plant_id": plant_id, "name": name, "error": str(exc)})
-            print(f"  ✗ Failed for plant {plant_id} ({name}): {exc}")
+            logger.warning("Threshold backfill failed for plant %s (%s): %s", plant_id, name, exc)
 
     result = {"processed": processed, "succeeded": succeeded, "failed": len(failures), "failures": failures}
     await log_admin_action(db, account, "backfill_thresholds", target=f"{processed} plants", detail={"succeeded": succeeded, "failed": len(failures)})
@@ -85,7 +87,7 @@ async def backfill_care_schedules(account=Depends(get_current_account), db = Dep
             await _seed_care_schedules(db, row["id"], row["care_thresholds"])
             seeded += 1
         except Exception as exc:
-            print(f"Warning: could not seed schedules for plant {row['id']}: {exc}")
+            logger.warning("Care schedule seed failed for plant %s: %s", row["id"], exc)
 
     result = {"checked": len(rows), "seeded": seeded}
     await log_admin_action(db, account, "backfill_care_schedules", target=f"{len(rows)} plants checked", detail=result)
@@ -118,7 +120,7 @@ async def backfill_species(db = Depends(db_dep)):
             print(f"  ✓ Species created for plant {plant_id} ({plant_name})")
         except Exception as exc:
             failures.append({"plant_id": plant_id, "name": plant_name, "error": str(exc)})
-            print(f"  ✗ Failed for plant {plant_id} ({plant_name}): {exc}")
+            logger.warning("Species backfill failed for plant %s (%s): %s", plant_id, plant_name, exc)
 
     return {
         "processed": processed,

@@ -22,6 +22,8 @@ from routers.icon_generator import (
 )
 import routers.icons as icons_router
 
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["admin-panel"])
 
 HEALTH_CHECK_TIMEOUT_SECONDS = 3.0
@@ -1559,7 +1561,7 @@ async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
             await _seed_care_schedules(db, row["id"], row["care_thresholds"])
             seeded += 1
         except Exception as exc:
-            pass
+            logger.warning("Care schedule seed failed for plant %s: %s", row["id"], exc)
         await on_progress(i + 1, total)
     return {"checked": total, "seeded": seeded}
 
@@ -1687,7 +1689,7 @@ async def list_admin_jobs(
             try:
                 row["result"] = _json.loads(result)
             except Exception:
-                pass
+                logger.warning("Failed to parse job result JSON (job kind=%s)", row.get("kind", "?"))
         result_rows.append(row)
     return result_rows
 
@@ -1719,7 +1721,7 @@ async def get_admin_job(
         try:
             row["result"] = _json.loads(result)
         except Exception:
-            pass
+            logger.warning("Failed to parse job result JSON for job %s", row.get("id", "?"))
     return row
 
 
@@ -1755,7 +1757,7 @@ async def admin_audit(
             try:
                 row["detail"] = _json.loads(detail)
             except Exception:
-                pass
+                logger.warning("Failed to parse audit detail JSON for row id=%s", row.get("id", "?"))
         elif detail is None:
             row["detail"] = None
         result_rows.append(row)

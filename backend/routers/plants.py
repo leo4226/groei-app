@@ -266,7 +266,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
                     (f"placeholder_{cat}", plant_id))
             await db.commit()
         except Exception as exc:  # noqa: BLE001
-            print(f"Warning: icon assignment failed for {data.name}: {exc}")
+            logger.warning("Icon assignment failed for %s: %s", data.name, exc)
 
     # Link or create species (non-fatal if Claude is unavailable). Prefer the
     # scientific species field when present; identify/database prefills set that
@@ -282,7 +282,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         )
         await db.commit()
     except Exception as exc:
-        print(f"Warning: could not generate species data for {data.name}: {exc}")
+        logger.warning("Could not generate species data for %s: %s", data.name, exc)
 
     # Use cached care thresholds from species if available. If not, first make
     # a safe provisional Water routine and only then start deferred generation;
@@ -310,7 +310,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
         else:
             defer_threshold_generation = True
     except Exception as exc:
-        print(f"Warning: could not generate thresholds for {data.name}: {exc}")
+        logger.warning("Could not generate thresholds for %s: %s", data.name, exc)
 
     # Guarantee every plant is at least waterable. Seven days is explicitly a
     # provisional fallback, not species knowledge, and may be refined later.
@@ -401,7 +401,7 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
             await db.commit()
             await _seed_care_schedules(db, plant_id, thresholds_json)
         except Exception as exc:
-            print(f"Warning: could not regenerate thresholds for {plant['name']}: {exc}")
+            logger.warning("Could not regenerate thresholds for %s: %s", plant["name"], exc)
 
     result = await get_plant(plant_id, db=db, account=account)
     phenology = result.get("phenology")
@@ -627,6 +627,7 @@ async def _care_schedule_transaction(db):
     try:
         yield
     except Exception:
+        logger.exception("Care schedule transaction rolled back")
         await db.rollback()
         raise
     else:
@@ -763,6 +764,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
         await db.commit()
     except Exception:
         # Fallback: update position without ground_zone_id (e.g., FK constraint)
+        logger.warning("ground_zone_id FK constraint failed for plant %s, falling back to position-only update", plant_id)
         await db.execute(
             """UPDATE plants
                SET map_id = ?, map_x = ?, map_y = ?,
@@ -837,6 +839,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
         await db.commit()
     except Exception:
         # Fallback: update position without ground_zone_id (e.g., FK constraint)
+        logger.warning("ground_zone_id FK constraint failed for plant %s, falling back to position-only update", plant_id)
         await db.execute(
             """UPDATE plants
                SET map_x = ?, map_y = ?,

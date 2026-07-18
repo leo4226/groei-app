@@ -1,4 +1,6 @@
 """HTTP endpoint exposing the unified warning pipeline."""
+import logging
+logger = logging.getLogger(__name__)
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -113,6 +115,7 @@ async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dic
             return None
         return {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
     except Exception:
+        logger.warning("Weather context fetch failed for household %s", household_id)
         return None
 
 
@@ -174,7 +177,7 @@ async def get_warning_summary(
         return await _compute_warning_summary(db, household_id, env, today)
     except Exception as exc:
         import logging
-        logging.getLogger("floreren.warnings").exception(
+        logger.exception(
             "warnings/summary failed for household %s", household_id
         )
         return WarningSummaryOut(

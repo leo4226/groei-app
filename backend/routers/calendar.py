@@ -14,6 +14,8 @@ from services.water_pressure import WeatherDay, calculate_water_pressure
 from services.moisture_check_service import sync_moisture_checks
 from care_types import CARE_TYPES, normalize_care_type
 
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["calendar"])
 
 # Safety caps
@@ -101,6 +103,7 @@ async def build_water_outlook(db, *, household_id: int) -> dict:
         try:
             forecasts[coordinates] = await get_map_forecast(*coordinates)
         except Exception:
+            logger.warning("Map forecast failed for coordinates %s", coordinates)
             forecasts[coordinates] = {
                 "available": False, "stale": False,
                 "source_timestamp": None, "days": [],
@@ -370,7 +373,7 @@ async def list_calendar_events(
         sync_result = await sync_ephemeral_schedules(db)
         warning_weather = sync_result.get("warning_weather")
     except Exception:
-        pass
+        logger.warning("sync_ephemeral_schedules failed in calendar endpoint")
 
     try:
         pressure_outlook = await build_water_outlook(
@@ -382,7 +385,7 @@ async def list_calendar_events(
             outlook=pressure_outlook,
         )
     except Exception:
-        pass
+        logger.warning("Water outlook / moisture sync failed in calendar endpoint")
 
     # 1. Fetch all plants in the household, optionally filtered by env
     plant_params: tuple = (account["household_id"],)
@@ -496,7 +499,7 @@ async def list_calendar_events(
             for w in state.warnings:
                 enrichment_cache[(pid, w.care_type)] = _care_warning_to_dict(w)
         except Exception:
-            pass
+            logger.warning("Warning enrichment failed for plant %s", pid)
 
     # 4. Build enriched events — virtual occurrences for regular, one-shot for ephemeral
     events = []
