@@ -160,10 +160,29 @@ def streek_for(lat: float, lon: float) -> Streek | None:
 Streek is a function of the map's `lat`/`lon`, which are set at garden creation
 and rarely change. So resolve **at write time**, not per request:
 
-- `maps` gains `streek_slug TEXT NULL` (+ maybe `streek_resolved_at`).
+- `maps` gains `streek_slug TEXT NULL` and `streek_source TEXT` (`'auto'` |
+  `'manual'`).
 - On garden create / lat-lon update (`routers/maps.py`), call `streek_for()` and
-  persist the slug. One-line, synchronous, no external call.
+  persist the slug with `streek_source='auto'`. One-line, synchronous, no
+  external call.
 - Backfill existing gardens in the migration / a small script.
+
+### Manual override — "pick your streek" (decided, Leon 2026-07-18)
+
+Because the streektuinen map has genuinely soft borders, a garden near a streek
+boundary can auto-resolve to the neighbour (the POC showed this for Utrecht,
+Nijmegen, Groningen), and a garden just off the coast/tail may resolve to
+`None`. So the auto-resolution is a **default, not a lock**:
+
+- The garden's streek is user-editable. In garden settings (and when
+  auto-resolution returns `None`), offer a **"Kies je streek" / "Pick your
+  region"** selector listing the 25 streken — ideally with the small map so the
+  user can see where they sit relative to the borders.
+- A manual choice sets `streek_source='manual'` and is **never overwritten** by a
+  later auto-resolve (e.g. if lat/lon is nudged). Auto only fills when the user
+  hasn't chosen.
+- This turns "soft borders" from a correctness risk into a one-tap correction,
+  and doubles as the graceful path for any garden the polygons miss.
 
 ---
 
@@ -190,7 +209,8 @@ streek_species                          -- streektuinen icoonsoorten, as sourced
   species_id      INTEGER NULL REFS plant_species(id)   -- resolved link, nullable
   UNIQUE(streek_slug, name_nl, category)
 
-maps.streek_slug  TEXT NULL REFS streken(slug)
+maps.streek_slug    TEXT NULL REFS streken(slug)
+maps.streek_source  TEXT DEFAULT 'auto'   -- 'auto' (point-in-polygon) | 'manual' (user picked)
 ```
 
 ### Name resolution (streektuinen Dutch name → our `plant_species`)
@@ -284,7 +304,11 @@ regional-provenance source in the methodology text.
   add, reusing the existing suggestion card. Each item links to the plant if we
   have a `species_id`.
 - **New-garden onboarding**: once lat/lon is entered we already know the streek —
-  echo it back ("Je tuin ligt in …") as a small confirmation and teaser.
+  echo it back ("Je tuin ligt in …") as a small confirmation and teaser, with a
+  quiet "klopt dit niet?" / "not right?" link into the streek picker.
+- **"Kies je streek" picker**: a selector over the 25 streken (with the map for
+  orientation) in garden settings and as the fallback when auto-resolution is
+  `None`. Sets `streek_source='manual'`; see "Manual override" in Part 2.
 - Verify in **both NL and EN** (flip account language) per the language-audit
   rule — English mode shows endonym streek names + translated chrome.
 
@@ -327,8 +351,9 @@ Ordered; each phase is independently shippable.
 2. **Boundaries.** `build_streken_geojson.py` (georeference SVG → GeoJSON) +
    committed `streken.geojson` + city-assertion fixture test.
 3. **Migration + resolver.** Alembic: `streken`, `streek_species`,
-   `maps.streek_slug`. `services/streek.py` point-in-polygon. Wire
-   `streek_for()` into garden create / lat-lon update; backfill existing maps.
+   `maps.streek_slug` + `maps.streek_source`. `services/streek.py`
+   point-in-polygon. Wire `streek_for()` into garden create / lat-lon update
+   (only when `streek_source != 'manual'`); backfill existing maps.
 4. **Name resolution.** Resolve `streek_species.name_nl → plant_species.id`
    (fuzzy NL + GBIF Latin fallback). Report coverage %.
 5. **Recommendations.** `recommend_for_streek()` + streekeigen boost/tag/reason
@@ -336,7 +361,8 @@ Ordered; each phase is independently shippable.
 6. **Score bonus.** Add additive `streek_score` (0–15) + `streek_native_count`
    to `GardenBiodiversity`; expose via the maps biodiversity endpoint.
 7. **Frontend.** Streek line + streek bonus/count in `GardenBiodiversityCard`;
-   "Uit jouw streek" recommendation section; onboarding echo; NL+EN i18n; verify
+   "Uit jouw streek" recommendation section; onboarding echo + **"Kies je streek"
+   picker** (settings & null-resolution fallback); NL+EN i18n; verify
    `npm run build`.
 
 ---
