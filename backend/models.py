@@ -354,6 +354,7 @@ class MapUpdate(BaseModel):
     lat: float | None = None
     lon: float | None = None
     bearing: float | None = None
+    streek_slug: str | None = None  # explicit set → 'manual' source (see maps router)
 
 
 class MapOut(BaseModel):
@@ -370,6 +371,8 @@ class MapOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
+    streek_slug: str | None = None
+    streek_source: str = 'auto'
 
 
 class ZoneOut(BaseModel):
@@ -1076,6 +1079,7 @@ class PlantRecommendationOut(BaseModel):
     reason: str                      # template text in Dutch
     reason_en: str | None            # template text in English
     caveat: str | None
+    is_streek: bool = False          # belongs to the garden's streek (streekeigen)
 
 
 class RecommendationsOut(BaseModel):

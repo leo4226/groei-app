@@ -1386,6 +1386,9 @@ export type Translations = {
       componentPollinator: string // "Bestuivers"
       componentNative: string     // "Inheems"
       componentDiversity: string  // "Diversiteit"
+      componentStreek: string     // "Streek"
+      streekLabel: string         // "Streek" (row label)
+      streekNativeCount: (n: number) => string  // "3 streekeigen soorten"
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
@@ -1395,6 +1398,17 @@ export type Translations = {
       sunPartial: string   // "⛅ Halfschaduw"
       sunShade: string     // "🌿 Schaduw"
       nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
+      streekBadge: string  // "Streekeigen" / "Regional"
+    }
+    streek: {
+      sectionTitle: string          // "Planten uit jouw streek"
+      subtitle: (name: string) => string  // "Inheems in het/de {name}"
+      noData: string                // "Nog geen streekplanten om te tonen"
+      attribution: string           // "Streekindeling: streektuinen.nl"
+      pickTitle: string             // "Kies je streek"
+      pickHint: string              // "Klopt je streek niet? Kies hem hieronder."
+      pickNone: string              // "Onbekend / buiten Nederland"
+      pickCta: string               // "Opslaan"
     }
   }
 

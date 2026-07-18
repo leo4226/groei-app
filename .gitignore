@@ -42,4 +42,9 @@ backend/photos/*
 # Git worktrees
 .worktrees/
 .vercel
-backend/data/
+# Local DBs & backfill artifacts live here, but the committed streek datasets
+# (sourced from streektuinen.nl, built by scripts/) are version-controlled.
+backend/data/*
+!backend/data/streken_source.json
+!backend/data/streken.geojson
+!backend/data/streken_map.svg

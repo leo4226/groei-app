@@ -1382,6 +1382,9 @@ export const en: Translations = {
       componentPollinator: 'Pollinators',
       componentNative: 'Native',
       componentDiversity: 'Diversity',
+      componentStreek: 'Region',
+      streekLabel: 'Region',
+      streekNativeCount: (n) => `${n} regional species`,
     },
     suggestions: {
       title: 'Improve your garden',
@@ -1391,6 +1394,17 @@ export const en: Translations = {
       sunPartial: 'Partial shade',
       sunShade: 'Shade',
       nativeBadge: 'Native',
+      streekBadge: 'Regional',
+    },
+    streek: {
+      sectionTitle: 'Plants from your region',
+      subtitle: (name) => `Native to the ${name} region`,
+      noData: 'No regional plants to show yet',
+      attribution: 'Region map & species: streektuinen.nl',
+      pickTitle: 'Pick your region',
+      pickHint: "Region not right? Choose it below.",
+      pickNone: 'Unknown / outside the Netherlands',
+      pickCta: 'Save',
     },
   },
 

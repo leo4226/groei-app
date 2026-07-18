@@ -15,7 +15,8 @@ from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plant, enrich_plants
 from services.storage import build_storage_from_env
 from services.garden_biodiversity import compute_for_map as compute_biodiversity
-from services.plant_suggestions import recommend_for_garden
+from services.plant_suggestions import recommend_for_garden, recommend_for_streek
+from services.streek import streek_for, all_streken
 
 router = APIRouter(tags=["maps"])
 
@@ -27,12 +28,27 @@ class GardenBiodiversityOut(BaseModel):
     invasive_count: int
     pollinator_coverage_months: list[bool]
     components: dict
+    streek_slug: str | None = None
+    streek_name: str | None = None
+    streek_native_count: int = 0
+
+
+class StreekOut(BaseModel):
+    slug: str
+    name: str
+
+
+@router.get("/streken", response_model=list[StreekOut])
+async def list_streken(account = Depends(get_current_account)):
+    """The 25 Dutch ecological streken — for the 'Kies je streek' picker.
+    Static data (georeferenced from streektuinen.nl); no DB read needed."""
+    return all_streken()
 
 
 @router.get("/maps", response_model=list[MapOut])
 async def list_maps(account = Depends(get_current_account), db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE household_id = ? ORDER BY sort_order",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source FROM maps WHERE household_id = ? ORDER BY sort_order",
         (account["household_id"],),
     )
     return [dict(r) for r in rows]
@@ -41,7 +57,7 @@ async def list_maps(account = Depends(get_current_account), db = Depends(db_dep)
 @router.get("/maps/{slug}", response_model=MapDetailOut)
 async def get_map(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     row = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE slug = ? AND household_id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source FROM maps WHERE slug = ? AND household_id = ?",
         (slug, account["household_id"]),
     )
     if not row:
@@ -70,6 +86,9 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         invasive_count=profile.invasive_count,
         pollinator_coverage_months=profile.pollinator_coverage_months,
         components=profile.components,
+        streek_slug=profile.streek_slug,
+        streek_name=profile.streek_name,
+        streek_native_count=profile.streek_native_count,
     )
 
 
@@ -97,6 +116,38 @@ async def get_plant_suggestions(
         suggestions=[PlantRecommendationOut(**vars(r)) for r in recs],
         gap_months=gap_months,
         biodiversity_score=bio.score,
+    )
+
+
+class StreekSuggestionsOut(BaseModel):
+    streek_slug: str | None = None
+    streek_name: str | None = None
+    suggestions: list[PlantRecommendationOut]
+
+
+@router.get("/maps/{slug}/streek-suggestions", response_model=StreekSuggestionsOut)
+async def get_streek_suggestions(
+    slug: str,
+    account=Depends(get_current_account),
+    db=Depends(db_dep),
+):
+    """"Planten uit jouw streek" — regionally-correct flora to add, from the
+    garden's streek (streektuinen icoonsoorten resolved to our catalog)."""
+    rows = await db.execute_fetchall(
+        "SELECT id, map_type, streek_slug FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Map not found")
+    m = dict(rows[0])
+    if (m.get("map_type") or "outdoor") != "outdoor":
+        raise HTTPException(status_code=400, detail="Streek suggestions only available for outdoor maps")
+
+    streek_name, recs = await recommend_for_streek(db, m["id"])
+    return StreekSuggestionsOut(
+        streek_slug=m.get("streek_slug"),
+        streek_name=streek_name,
+        suggestions=[PlantRecommendationOut(**vars(r)) for r in recs],
     )
 
 
@@ -216,7 +267,7 @@ def _slugify(name: str) -> str:
 @router.get("/maps/by-id/{map_id}", response_model=MapOut)
 async def get_map_by_id(map_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ? AND household_id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source FROM maps WHERE id = ? AND household_id = ?",
         (map_id, account["household_id"]),
     )
     if not rows:
@@ -248,15 +299,20 @@ async def create_map(data: MapCreate, account = Depends(get_current_account), db
     storage = build_storage_from_env()
     svg_url = storage.put(key, svg_content.encode("utf-8"), content_type="image/svg+xml")
 
+    # Resolve the streek from GPS (outdoor maps). Auto by default; the user can
+    # override later via "Kies je streek" (PUT with streek_slug → 'manual').
+    streek = streek_for(data.lat, data.lon)
+    streek_slug = streek["slug"] if streek else None
+
     cursor = await db.execute(
-        """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, household_id)
-           VALUES (?, ?, ?, '0 0 680 680', '{"px_per_meter": 46}', ?, ?, ?, ?, ?, ?, ?)""",
-        (data.name, slug, svg_url, next_order, canvas_data, data.map_type, data.lat, data.lon, data.bearing, account["household_id"]),
+        """INSERT INTO maps (name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, household_id, streek_slug, streek_source)
+           VALUES (?, ?, ?, '0 0 680 680', '{"px_per_meter": 46}', ?, ?, ?, ?, ?, ?, ?, ?, 'auto')""",
+        (data.name, slug, svg_url, next_order, canvas_data, data.map_type, data.lat, data.lon, data.bearing, account["household_id"], streek_slug),
     )
     await db.commit()
     map_id = cursor.lastrowid
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source FROM maps WHERE id = ?",
         (map_id,),
     )
     return dict(rows[0])
@@ -264,7 +320,7 @@ async def create_map(data: MapCreate, account = Depends(get_current_account), db
 
 @router.put("/maps/{map_id}", response_model=MapOut)
 async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current_account), db = Depends(db_dep)):
-    existing = await db.execute_fetchall("SELECT id, slug FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
+    existing = await db.execute_fetchall("SELECT id, slug, lat, lon, streek_source FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
     if not existing:
         raise HTTPException(404, "Map not found")
     existing_row = dict(existing[0])
@@ -354,13 +410,31 @@ async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current
         updates.append("bearing = ?")
         params.append(data.bearing)
 
+    # ── Streek resolution ──
+    # An explicit streek_slug is a user's "Kies je streek" pick → 'manual',
+    # which auto-resolution must never overwrite. Otherwise, when lat/lon
+    # changes and the streek isn't manually pinned, re-resolve from GPS.
+    if data.streek_slug is not None:
+        updates.append("streek_slug = ?")
+        params.append(data.streek_slug or None)
+        updates.append("streek_source = ?")
+        params.append("manual")
+    elif (data.lat is not None or data.lon is not None) and existing_row.get("streek_source") != "manual":
+        eff_lat = data.lat if data.lat is not None else existing_row.get("lat")
+        eff_lon = data.lon if data.lon is not None else existing_row.get("lon")
+        streek = streek_for(eff_lat, eff_lon)
+        updates.append("streek_slug = ?")
+        params.append(streek["slug"] if streek else None)
+        updates.append("streek_source = ?")
+        params.append("auto")
+
     if updates:
         params.append(map_id)
         await db.execute(f"UPDATE maps SET {', '.join(updates)} WHERE id = ?", params)
         await db.commit()
 
     rows = await db.execute_fetchall(
-        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file FROM maps WHERE id = ?",
+        "SELECT id, name, slug, svg_file, viewbox, scale_info, sort_order, canvas_data, map_type, lat, lon, bearing, thumbnail_file, streek_slug, streek_source FROM maps WHERE id = ?",
         (map_id,),
     )
     return dict(rows[0])

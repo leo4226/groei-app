@@ -163,6 +163,8 @@ export interface MapInfo {
   lat: number | null
   lon: number | null
   bearing: number
+  streek_slug?: string | null
+  streek_source?: 'auto' | 'manual'
 }
 
 // --- Map Editor ---
@@ -662,6 +664,18 @@ export type PlantRecommendation = {
   reason: string
   reason_en?: string | null
   caveat: string | null
+  is_streek?: boolean                  // belongs to the garden's streek (streekeigen)
+}
+
+export type StreekSuggestionsOut = {
+  streek_slug: string | null
+  streek_name: string | null
+  suggestions: PlantRecommendation[]
+}
+
+export type Streek = {
+  slug: string
+  name: string
 }
 
 export type RecommendationsOut = {
@@ -690,7 +704,12 @@ export type GardenBiodiversityOut = {
     pollinator: number
     native: number
     diversity: number
+    abundance?: number
+    streek?: number
   }
+  streek_slug?: string | null
+  streek_name?: string | null
+  streek_native_count?: number
 }
 
 export type EcologyOut = {
