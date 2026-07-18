@@ -296,11 +296,12 @@ async def ensure_species_localized_names(
 
     rec = dict(rows[0])
     latin_name = _text_or_none(rec.get("latin_name"))
+    missing_latin = latin_name is None
     missing_nl = _localized_name_missing(rec.get("common_name_nl"), latin_name)
     missing_en = _localized_name_missing(rec.get("common_name_en"), latin_name)
     missing_phenology = _text_or_none(rec.get("phenology_json")) is None
 
-    if not (missing_nl or missing_en or missing_phenology):
+    if not (missing_nl or missing_en or missing_latin or missing_phenology):
         return False
 
     lookup_name = (
@@ -317,7 +318,7 @@ async def ensure_species_localized_names(
     if missing_phenology:
         schedule_phenology_enrichment(species_id, lookup_name)
 
-    if not (missing_nl or missing_en or latin_name is None):
+    if not (missing_nl or missing_en or missing_latin):
         return False
 
     data = await _generate_names(lookup_name)

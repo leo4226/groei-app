@@ -160,3 +160,37 @@ async def test_backfill_names_job_runner_fills_both_languages(admin_names_db, mo
     # complete species untouched
     assert by_id[3]["common_name_nl"] == "Venkel"
     assert by_id[3]["common_name_en"] == "Fennel"
+
+@pytest.mark.asyncio
+async def test_backfill_names_fills_species_with_only_latin_missing(admin_names_db, monkeypatch):
+    await admin_names_db.execute(
+        """
+        INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name, phenology_json)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (6, "Munt", "Mint", None, "{}"),
+    )
+    await admin_names_db.commit()
+
+    from species_service import ensure_species_localized_names
+
+    async def fake_generate_names(plant_name):
+        return {
+            "common_name_nl": f"NL-{plant_name}",
+            "common_name_en": f"EN-{plant_name}",
+            "latin_name": "Mentha spicata",
+        }
+
+    monkeypatch.setattr("species_service._generate_names", fake_generate_names)
+
+    updated = await ensure_species_localized_names(admin_names_db, 6, "Munt")
+
+    assert updated is True
+    rows = await admin_names_db.execute_fetchall(
+        "SELECT common_name_nl, common_name_en, latin_name FROM plant_species WHERE id = ?",
+        (6,),
+    )
+    row = dict(rows[0])
+    assert row["common_name_nl"] == "Munt"
+    assert row["common_name_en"] == "Mint"
+    assert row["latin_name"] == "Mentha spicata"
