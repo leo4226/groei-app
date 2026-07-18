@@ -1710,7 +1710,7 @@ function CoverageView() {
 }
 
 function ManualNameFixesPanel() {
-  type IncompleteSpecies = { id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean }
+  type IncompleteSpecies = { id: number; common_name_nl: string | null; common_name_en: string | null; latin_name: string | null; missing_nl: boolean; missing_en: boolean; missing_latin: boolean; active_count?: number }
   const [incomplete, setIncomplete] = useState<IncompleteSpecies[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')

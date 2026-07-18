@@ -1303,12 +1303,19 @@ async def admin_incomplete_species_names(
     """
     from species_service import _localized_name_missing, _text_or_none
 
+    # Fetch the full catalog, compute the gaps in Python (same helper as the
+    # backfill path), then apply the UI limit after filtering. Applying LIMIT in
+    # SQL first can hide incomplete rows that sort after already-complete species.
+    # The active_count join keeps the manual-fix list sorted by prevalence.
     rows = await db.execute_fetchall(
-        """SELECT id, common_name_nl, common_name_en, latin_name
-           FROM plant_species
-           ORDER BY common_name_nl NULLS LAST, common_name_en NULLS LAST, id
-           LIMIT ?""",
-        (limit,),
+        """SELECT ps.id, ps.common_name_nl, ps.common_name_en, ps.latin_name,
+                  COUNT(p.id) AS active_count
+           FROM plant_species ps
+           LEFT JOIN plants p ON p.species_id = ps.id AND p.is_active = TRUE
+           GROUP BY ps.id, ps.common_name_nl, ps.common_name_en, ps.latin_name
+           ORDER BY active_count DESC,
+                    LOWER(COALESCE(ps.common_name_nl, ps.common_name_en, ps.latin_name, '')),
+                    ps.id"""
     )
 
     incomplete = []
@@ -1328,9 +1335,10 @@ async def admin_incomplete_species_names(
                 "missing_nl": missing_nl,
                 "missing_en": missing_en,
                 "missing_latin": missing_latin,
+                "active_count": int(rec.get("active_count") or 0),
             })
 
-    return {"species": incomplete, "total": len(incomplete)}
+    return {"species": incomplete[:limit], "total": len(incomplete)}
 
 
 @router.post("/admin-panel/species/{species_id}/regenerate-thresholds")
