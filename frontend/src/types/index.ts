@@ -710,6 +710,7 @@ export type GardenBiodiversityOut = {
   streek_slug?: string | null
   streek_name?: string | null
   streek_native_count?: number
+  drachtplant_count?: number
 }
 
 export type EcologyOut = {

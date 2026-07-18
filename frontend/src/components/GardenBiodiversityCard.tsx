@@ -165,6 +165,11 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               <BioIcon name="invasive" size={14} /> {t.garden.biodiversity.invasiveCount(data.invasive_count)}
             </p>
           )}
+          {(data.drachtplant_count ?? 0) > 0 && (
+            <p className="flex items-center gap-1.5" style={{ color: 'var(--color-due)', fontWeight: 600 }}>
+              <BioIcon name="pollinator" size={14} /> {t.garden.biodiversity.drachtplantCount(data.drachtplant_count ?? 0)}
+            </p>
+          )}
           {data.streek_name && (
             <p className="text-text-muted">
               <span className="text-text-muted">{t.garden.biodiversity.streekLabel}:</span>{' '}
@@ -271,7 +276,16 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-1">
             {t.garden.streek.sectionTitle}
           </h3>
-          <p className="text-xs text-text-muted mb-3">{t.garden.streek.subtitle(streekSug.streek_name)}</p>
+          <p className="text-xs text-text-muted mb-2">{t.garden.streek.subtitle(streekSug.streek_name)}</p>
+          {streekSug.streek_slug && (
+            <a
+              href={`https://streektuinen.nl/streekmixen/${streekSug.streek_slug}/`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:underline mb-3"
+            >
+              {t.garden.streek.seedMix} ↗
+            </a>
+          )}
           <div className="space-y-3">
             {streekSug.suggestions.map((s) => (
               <div key={s.species_id} className="card p-3 space-y-1.5">
@@ -290,9 +304,29 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-text-muted mt-3">{t.garden.streek.attribution}</p>
         </section>
       )}
+
+      {/* Bronnen / Sources — attribution + outbound links */}
+      <section className="pt-4 mt-4 border-t border-border/40">
+        <h4 className="font-mono text-[10px] font-bold tracking-widest uppercase text-text-muted mb-1.5">
+          {t.garden.sources.title}
+        </h4>
+        <ul className="space-y-0.5">
+          <li>
+            <a href="https://streektuinen.nl/" target="_blank" rel="noopener noreferrer"
+               className="text-[11px] text-text-muted hover:text-text hover:underline">
+              {t.garden.sources.streektuinen} ↗
+            </a>
+          </li>
+          <li>
+            <a href="https://www.bloeibogen.nl/" target="_blank" rel="noopener noreferrer"
+               className="text-[11px] text-text-muted hover:text-text hover:underline">
+              {t.garden.sources.bloeibogen} ↗
+            </a>
+          </li>
+        </ul>
+      </section>
     </Wrapper>
   )
 }

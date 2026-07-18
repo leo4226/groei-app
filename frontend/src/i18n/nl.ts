@@ -1387,6 +1387,7 @@ export const nl: Translations = {
       componentStreek: 'Streek',
       streekLabel: 'Streek',
       streekNativeCount: (n) => `${n} streekeigen soort${n === 1 ? '' : 'en'}`,
+      drachtplantCount: (n) => `${n} bijenplant${n === 1 ? '' : 'en'} (drachtplanten)`,
     },
     suggestions: {
       title: 'Verbeter je tuin',
@@ -1407,6 +1408,12 @@ export const nl: Translations = {
       pickHint: 'Klopt je streek niet? Kies hem hieronder.',
       pickNone: 'Onbekend / buiten Nederland',
       pickCta: 'Opslaan',
+      seedMix: 'Zaaimengsel voor jouw streek',
+    },
+    sources: {
+      title: 'Bronnen',
+      streektuinen: 'Streekindeling & planten: streektuinen.nl',
+      bloeibogen: 'Bijen & bloeidata: Naturalis / Bloeibogen',
     },
   },
 

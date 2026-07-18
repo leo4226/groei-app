@@ -47,6 +47,7 @@ class GardenBiodiversity:
     streek_slug: str | None = None       # the garden's Dutch ecological region
     streek_name: str | None = None
     streek_native_count: int = 0         # distinct garden species belonging to that streek
+    drachtplant_count: int = 0           # distinct bee-forage species (Naturalis/Bloeibogen)
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -178,6 +179,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     # that only *adds* coverage (never removes any), strengthening the otherwise
     # LLM/GBIF-derived pollinator_value. See issue #709.
     dracht_ids = await _drachtplant_ids(db, map_id)
+    drachtplant_count = len(dracht_ids)
     coverage = [False] * 12
     for s in species:
         pv = s.get("pollinator_value") or 0
@@ -236,4 +238,5 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         streek_slug=streek_slug,
         streek_name=streek_name,
         streek_native_count=streek_native_count,
+        drachtplant_count=drachtplant_count,
     )
