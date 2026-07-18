@@ -365,12 +365,27 @@ grow slowly). No live dependency in the request path. Strategy:
    plants, nectar), so planting the streek flora already delivers them. Fauna
    can later be a "who you'll attract here" teaser — not a scored input.
 
-**Still open:**
-3. **Reach out to streektuinen** for a blessing / official data before we lean on
-   their lists — now, or only if the app goes public?
-4. **Precision bar**: is "right streek, soft borders" acceptable (it's inherent
-   to their stylised map), or do you want me to refine borders later against the
-   official soil / fysisch-geografische-regio datasets?
+3. ✅ **Reach out to streektuinen** — Leon will contact them to ask if they're OK
+   with us using the streek indeling + species lists. Gate the public/shipping
+   step on their answer; internal design work continues meanwhile.
+4. ✅ **Precision bar** — "right streek, soft borders" is acceptable, **with a
+   visual-verification checkpoint**: after the georeference build (Phase 2),
+   render the georeferenced polygons + known-city markers as an overlay so Leon
+   can eyeball it against streektuinen's own map before anything is built on top.
+   See "Visual verification" below.
+
+### Visual verification (Phase 2 gate)
+
+Because the boundary source is a stylised SVG, the georeference is fit-by-eye and
+must be sanity-checked visually, not just by assertions. Deliverable of Phase 2:
+
+- A self-contained overlay that plots the 25 georeferenced streek polygons in
+  lat/lon space alongside markers for known cities (Amsterdam, Maastricht,
+  Groningen, Enschede, Rotterdam, Zwolle, …), each marker coloured by the streek
+  the point-in-polygon test places it in. Mismatches are then obvious to the eye.
+- Leon signs off that the shapes and city placements track streektuinen's own
+  map before Phases 3+ build on the coordinates. An early proof-of-concept of
+  this overlay is produced now (2026-07-18) to de-risk the transform up front.
 
 ## References
 
