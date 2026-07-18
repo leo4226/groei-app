@@ -236,24 +236,40 @@ Add a **streek boost** and a **streek surface**:
   Utrechts laagveengebied"* / *"belongs in your region"* (bilingual via the
   template reasons already in `plant_suggestions.py`).
 
-### 4b. Score (secondary — keep it honest)
+### 4b. Score — additive streek bonus (decided)
 
-Do **not** silently reweight the existing 0–100. Two options, in preference
-order:
+**Decision (Leon, 2026-07-18): streek plants score extra.** Add a new,
+**purely additive** component to the model — streekeigen plants earn bonus
+points, non-streek plants are never penalised. This keeps the anti-purism
+principle (a great non-native pollinator plant still scores on pollinator
+coverage) while rewarding gardens that plant what belongs in their region.
 
-1. **Informational streek dimension (recommended).** Alongside the score, report
-   `streek_native_count` / a "streekeigen" tag and surface it in the card as
-   context ("8 of your species belong to your streek"). No change to the headline
-   number → no gaming, no purism penalty, fully transparent. This mirrors how
-   `invasive_count` is already reported-but-not-deducted.
-2. **Small additive component (optional, later).** A capped **streek bonus
-   (≤10)** folded into the total, analogous to the abundance bonus, *only after*
-   name-resolution coverage is high enough that absence-of-data doesn't read as
-   absence-of-merit. Gate behind coverage; document the weight and cite
-   streektuinen as the regional-provenance source.
+**Streek bonus (0–15)** — count-based, capped, mirrors the existing
+`native_count` shape so *adding* a streek plant can only ever raise the score:
 
-Start with (1). It delivers the insight with zero risk of the score becoming a
-regional checklist.
+```
+streek_native_count = # distinct species in the garden that are tagged
+                       to the garden's streek (via streek_species.species_id)
+streek_score        = min(15, streek_native_count * 3)   # 5 streek species = max
+```
+
+Folded into the additive total (which stays capped at 100, consistent with the
+existing over-100 pre-cap headroom of 60+30+10+10). Because it's additive-only,
+low name-resolution coverage just means fewer bonus points available — never a
+penalty — so it doesn't need to be gated behind a coverage threshold the way a
+subtractive signal would.
+
+Always surface `streek_score` / `streek_native_count` as **its own visible line**
+in the card (not just absorbed into the headline number), so it stays legible
+even when a strong garden saturates at 100. Cite streektuinen as the
+regional-provenance source in the methodology text.
+
+> Note: the *exact* weight (3 pts/species, 15 cap) is a starting proposal. Final
+> calibration ties into the #444 weight audit — treat these as tunable, and
+> document them on the methodology page alongside the other components.
+
+`GardenBiodiversity` gains `streek_slug`, `streek_native_count`, and a
+`components["streek"]` subscore for transparency.
 
 ---
 
@@ -317,12 +333,11 @@ Ordered; each phase is independently shippable.
    (fuzzy NL + GBIF Latin fallback). Report coverage %.
 5. **Recommendations.** `recommend_for_streek()` + streekeigen boost/tag/reason
    in `plant_suggestions.py`; new API field.
-6. **Score dimension.** Add informational `streek_native_count` to
-   `GardenBiodiversity`; expose via the maps biodiversity endpoint.
-7. **Frontend.** Streek line + streekeigen count in `GardenBiodiversityCard`;
+6. **Score bonus.** Add additive `streek_score` (0–15) + `streek_native_count`
+   to `GardenBiodiversity`; expose via the maps biodiversity endpoint.
+7. **Frontend.** Streek line + streek bonus/count in `GardenBiodiversityCard`;
    "Uit jouw streek" recommendation section; onboarding echo; NL+EN i18n; verify
    `npm run build`.
-8. **(Optional, gated) additive streek bonus** once resolution coverage is high.
 
 ---
 
@@ -339,13 +354,18 @@ grow slowly). No live dependency in the request path. Strategy:
 
 ---
 
-## Open questions for Leon
+## Decisions & open questions
 
-1. **Score treatment**: informational streek dimension only (recommended), or do
-   you also want a capped additive *streek bonus* in the headline 0–100?
-2. **Fauna**: streektuinen tags 79 fauna icoonsoorten per streek too (bees,
-   butterflies). Out of scope for planting advice, but they're great "who you'll
-   attract" context. Surface them, or plants-only for v1?
+**Decided (Leon, 2026-07-18):**
+1. ✅ **Score treatment** — an additive **streek bonus** (0–15), plants that
+   belong to your streek score extra; non-streek plants are never penalised.
+   See Part 4b.
+2. ✅ **Fauna** — **plants-only for v1.** streektuinen tags 79 fauna icoonsoorten
+   per streek (bees, butterflies), but fauna are *attracted by* the flora (host
+   plants, nectar), so planting the streek flora already delivers them. Fauna
+   can later be a "who you'll attract here" teaser — not a scored input.
+
+**Still open:**
 3. **Reach out to streektuinen** for a blessing / official data before we lean on
    their lists — now, or only if the app goes public?
 4. **Precision bar**: is "right streek, soft borders" acceptable (it's inherent
