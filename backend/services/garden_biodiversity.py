@@ -59,6 +59,23 @@ def _streek_name(slug: str | None) -> str | None:
     return slug
 
 
+async def _drachtplant_ids(db, map_id: int) -> set:
+    """species_ids in this garden flagged as drachtplant (Naturalis bee-forage).
+
+    Guarded: the reduced test schemas may lack the plant_species.is_drachtplant
+    column, in which case drachtplant simply contributes nothing."""
+    try:
+        rows = await db.execute_fetchall(
+            """SELECT DISTINCT ps.id AS species_id
+               FROM plants p JOIN plant_species ps ON p.species_id = ps.id
+               WHERE p.map_id = ? AND p.is_active = TRUE AND ps.is_drachtplant = TRUE""",
+            (map_id,),
+        )
+        return {r["species_id"] for r in rows}
+    except Exception:
+        return set()
+
+
 async def _streek_context(db, map_id: int) -> tuple[str | None, int]:
     """(streek_slug, streek_native_count) for a map, or (None, 0).
 
@@ -155,12 +172,16 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     invasive_count = sum(1 for s in species if s.get("invasive_nl"))
 
     # ── Pollinator coverage per month ──
-    # Month is "covered" if any species with pollinator_value ≥ 2 is
-    # flowering in that month.
+    # Month is "covered" if, in that month, a bee-forage plant is flowering — i.e.
+    # a species with pollinator_value ≥ 2 OR a Naturalis-flagged drachtplant
+    # (bee-forage). Drachtplant is a hard authoritative signal from Bloeibogen
+    # that only *adds* coverage (never removes any), strengthening the otherwise
+    # LLM/GBIF-derived pollinator_value. See issue #709.
+    dracht_ids = await _drachtplant_ids(db, map_id)
     coverage = [False] * 12
     for s in species:
         pv = s.get("pollinator_value") or 0
-        if pv < 2:
+        if pv < 2 and s["species_id"] not in dracht_ids:
             continue
         for m in _coerce_months(s.get("flowering_months")):
             coverage[m - 1] = True
