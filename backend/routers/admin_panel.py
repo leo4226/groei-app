@@ -403,6 +403,14 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
         _small_plant_row(p) for p in active_plants if p.get("species_id") is None
     ]
 
+    from species_service import _localized_name_missing
+
+    # Species linked to at least one active garden plant (any household) — these
+    # are the gaps a user actually sees, so they're flagged for prioritisation.
+    active_species_ids = {
+        int(p["species_id"]) for p in active_plants if p.get("species_id") is not None
+    }
+
     species_stats = {
         "total": len(species_rows),
         "missing_latin_name": 0,
@@ -413,22 +421,60 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
         "missing_facts_en": 0,
         "missing_thresholds": 0,
     }
+    incomplete_species = 0
+    species_gap_rows: list[dict] = []
     for row in species_rows:
-        if not _has_text(row.get("latin_name")):
-            species_stats["missing_latin_name"] += 1
-        if not _has_text(row.get("common_name_nl")):
-            species_stats["missing_common_name_nl"] += 1
-        if not _has_text(row.get("common_name_en")):
-            species_stats["missing_common_name_en"] += 1
-        if not _has_text(row.get("care_thresholds")):
-            species_stats["missing_thresholds"] += 1
+        latin = row.get("latin_name")
+        missing_latin = not _has_text(latin)
+        # Stricter than _has_text: a name that merely echoes the Latin name is a
+        # gap too, matching what the "Backfill localized names" tool repairs.
+        missing_nl = _localized_name_missing(row.get("common_name_nl"), latin)
+        missing_en = _localized_name_missing(row.get("common_name_en"), latin)
+        missing_thresholds = not _has_text(row.get("care_thresholds"))
         phenology = _parse_json_object(row.get("phenology_json"))
-        if not phenology:
+        missing_phenology = not phenology
+        missing_facts_nl = not _has_text(phenology.get("interesting_facts_nl"))
+        missing_facts_en = not _has_text(phenology.get("interesting_facts_en"))
+
+        if missing_latin:
+            species_stats["missing_latin_name"] += 1
+        if missing_nl:
+            species_stats["missing_common_name_nl"] += 1
+        if missing_en:
+            species_stats["missing_common_name_en"] += 1
+        if missing_thresholds:
+            species_stats["missing_thresholds"] += 1
+        if missing_phenology:
             species_stats["missing_phenology"] += 1
-        if not _has_text(phenology.get("interesting_facts_nl")):
+        if missing_facts_nl:
             species_stats["missing_facts_nl"] += 1
-        if not _has_text(phenology.get("interesting_facts_en")):
+        if missing_facts_en:
             species_stats["missing_facts_en"] += 1
+
+        has_gap = any((
+            missing_latin, missing_nl, missing_en, missing_thresholds,
+            missing_phenology, missing_facts_nl, missing_facts_en,
+        ))
+        if has_gap:
+            incomplete_species += 1
+            if len(species_gap_rows) < 200:
+                species_gap_rows.append({
+                    "id": row.get("id"),
+                    "common_name_nl": row.get("common_name_nl"),
+                    "common_name_en": row.get("common_name_en"),
+                    "latin_name": latin,
+                    "in_use": row.get("id") is not None and int(row["id"]) in active_species_ids,
+                    "missing_name_nl": missing_nl,
+                    "missing_name_en": missing_en,
+                    "missing_latin": missing_latin,
+                    "missing_facts_nl": missing_facts_nl,
+                    "missing_facts_en": missing_facts_en,
+                    "missing_thresholds": missing_thresholds,
+                    "missing_phenology": missing_phenology,
+                })
+    # In-use gaps sort first so the user's own plants surface at the top.
+    species_gap_rows.sort(key=lambda r: (not r["in_use"], str(r.get("common_name_nl") or "").lower()))
+    species_stats["incomplete"] = incomplete_species
 
     bioclip_worker = await _fetch_bioclip_coverage()
     embedded_ids = set(bioclip_worker.get("species_ids") or [])
@@ -458,6 +504,7 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
             "missing_species_link_rows": missing_species_link_rows[:50],
         },
         "species": species_stats,
+        "species_gaps": species_gap_rows,
         "icons": {
             "active_missing_icon": sum(1 for p in active_plants if not _has_text(p.get("icon_key"))),
             "active_stale_icon_key": len(active_stale_icon_rows),
@@ -1157,6 +1204,24 @@ async def backfill_facts_preview(
     )
 
 
+@router.get("/admin-panel/backfill-names/preview")
+async def backfill_names_preview(
+    scope: str = "all",
+    map_only: bool = False,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Preview: count species missing a Dutch and/or English common name."""
+    from species_service import preview_missing_names
+
+    return await preview_missing_names(
+        db,
+        scope=scope,
+        map_only=map_only,
+        household_id=admin.get("household_id"),
+    )
+
+
 @router.post("/admin-panel/backfill-facts")
 async def backfill_plant_facts(
     limit: int = 50,
@@ -1585,6 +1650,25 @@ async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
     return result
 
 
+async def _run_backfill_names(db, params: dict, on_progress) -> dict:
+    from species_service import backfill_missing_names
+
+    limit = int(params.get("limit", 50))
+    scope = str(params.get("scope", "all"))
+    map_only = bool(params.get("map_only", False))
+    household_id = params.get("household_id")
+    await on_progress(0, 1)
+    result = await backfill_missing_names(
+        db,
+        limit=limit,
+        scope=scope,
+        map_only=map_only,
+        household_id=int(household_id) if household_id is not None else None,
+    )
+    await on_progress(1, 1)
+    return result
+
+
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     await on_progress(0, 1)
     rows = await db.execute_fetchall(
@@ -1634,6 +1718,7 @@ _JOB_RUNNERS = {
     "backfill_thresholds":    _run_backfill_thresholds,
     "backfill_care_schedules": _run_backfill_care_schedules,
     "backfill_facts":         _run_backfill_facts,
+    "backfill_names":         _run_backfill_names,
     "backfill_plant_types":   _run_backfill_plant_types,
 }
 
@@ -1655,7 +1740,7 @@ async def start_admin_job(
     if is_kind_running(body.kind):
         raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
     params = dict(body.params)
-    if body.kind in {"backfill_facts", "generate_icons"}:
+    if body.kind in {"backfill_facts", "backfill_names", "generate_icons"}:
         params["household_id"] = admin.get("household_id")
     job_id = await start_job(db, admin, body.kind, params, runner)
     return {"job_id": job_id}

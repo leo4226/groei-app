@@ -249,6 +249,21 @@ export interface AdminCoverageSpeciesRow {
   latin_name: string | null
 }
 
+export interface AdminCoverageSpeciesGap {
+  id: number
+  common_name_nl: string | null
+  common_name_en: string | null
+  latin_name: string | null
+  in_use: boolean
+  missing_name_nl: boolean
+  missing_name_en: boolean
+  missing_latin: boolean
+  missing_facts_nl: boolean
+  missing_facts_en: boolean
+  missing_thresholds: boolean
+  missing_phenology: boolean
+}
+
 export interface AdminCoverage {
   plants: {
     active_total: number
@@ -264,7 +279,9 @@ export interface AdminCoverage {
     missing_facts_nl: number
     missing_facts_en: number
     missing_thresholds: number
+    incomplete?: number
   }
+  species_gaps?: AdminCoverageSpeciesGap[]
   icons: {
     active_missing_icon: number
     active_stale_icon_key: number
@@ -313,6 +330,16 @@ export interface AdminBackfillFactsPreview {
   missing_facts: number
   missing_facts_nl?: number
   missing_facts_en?: number
+}
+
+export interface AdminBackfillNamesPreview {
+  scope: AdminFactsScope
+  map_only: boolean
+  total_species: number
+  missing_names: number
+  missing_names_nl: number
+  missing_names_en: number
+  missing_latin: number
 }
 
 export interface AdminBackfillPlantTypesResult {
@@ -634,6 +661,13 @@ export const adminPanel = {
     if (opts.mapOnly) q.set('map_only', 'true')
     const qs = q.toString()
     return api<AdminBackfillFactsPreview>('GET', `/admin-panel/backfill-facts/preview${qs ? `?${qs}` : ''}`)
+  },
+  backfillNamesPreview: (opts: { scope?: AdminFactsScope; mapOnly?: boolean } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.scope) q.set('scope', opts.scope)
+    if (opts.mapOnly) q.set('map_only', 'true')
+    const qs = q.toString()
+    return api<AdminBackfillNamesPreview>('GET', `/admin-panel/backfill-names/preview${qs ? `?${qs}` : ''}`)
   },
   generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
     const q = new URLSearchParams()

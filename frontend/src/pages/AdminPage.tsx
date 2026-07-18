@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Glyph, { type GlyphName } from '../components/ui/Glyph'
 import {
@@ -9,7 +9,7 @@ import {
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type AdminHouseholdDetail, type AdminAuditRow,
   type AdminJob, type AdminJobStatus, type AdminCoverage, type AdminSkippedDetail,
-  type AdminBackfillFactsPreview,
+  type AdminBackfillFactsPreview, type AdminBackfillNamesPreview,
 } from '../api/client'
 import {
   ADMIN_RESPONSIVE_STYLES,
@@ -1336,6 +1336,7 @@ function jobResultSummary(kind: string, job: AdminJob): string {
   if (kind === 'backfill_thresholds') return `✓ ${r.succeeded ?? 0} updated · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
   if (kind === 'backfill_care_schedules') return `✓ ${r.seeded ?? 0} schedules seeded out of ${r.checked ?? 0} checked`
   if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} bilingual facts updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
+  if (kind === 'backfill_names') return `✓ ${r.updated ?? 0} species named · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
   if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0} active candidates`
   if (kind === 'generate_icons') {
     const count = Number(r.count ?? 0)
@@ -1368,6 +1369,68 @@ function JobProgressBar({ done, total, status }: { done: number; total: number; 
       )}
     </div>
   )
+}
+
+/**
+ * Shared background-job runner: tracks one live job per kind, polls the backend
+ * while any are active, and calls `onComplete(kind)` when a job finishes. Used by
+ * both the Tools view and the actionable Coverage "fix from here" panel.
+ */
+function useKindJobs(onComplete?: (kind: string) => void) {
+  const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete })
+
+  const getJob = useCallback((kind: string): KindJobState => jobs[kind] ?? IDLE_JOB, [jobs])
+  const setJob = useCallback((kind: string, patch: Partial<KindJobState>) =>
+    setJobs(prev => ({ ...prev, [kind]: { ...(prev[kind] ?? IDLE_JOB), ...patch } })), [])
+
+  useEffect(() => {
+    const activeKinds = Object.entries(jobs)
+      .filter(([, j]) => j.status === 'pending' || j.status === 'running')
+      .map(([kind]) => kind)
+    if (activeKinds.length === 0) return
+
+    let cancelled = false
+    const interval = window.setInterval(async () => {
+      if (cancelled) return
+      for (const kind of activeKinds) {
+        const jobId = jobs[kind]?.jobId
+        if (!jobId) continue
+        try {
+          const j = await adminPanel.getJob(jobId)
+          if (cancelled) return
+          const done = j.status === 'completed' || j.status === 'failed' || j.status === 'interrupted'
+          setJob(kind, {
+            status: j.status,
+            done: j.progress_done,
+            total: j.progress_total,
+            result: done ? jobResultSummary(kind, j) : '',
+          })
+          if (done) onCompleteRef.current?.(kind)
+        } catch { /* network blip */ }
+      }
+    }, 2000)
+
+    return () => { cancelled = true; window.clearInterval(interval) }
+  }, [jobs, setJob])
+
+  const runJob = useCallback(async (kind: string, params: Record<string, unknown> = {}) => {
+    setJob(kind, { jobId: null, status: 'pending', done: 0, total: 0, result: '' })
+    try {
+      const { job_id } = await adminPanel.startJob(kind, params)
+      setJob(kind, { jobId: job_id, status: 'pending' })
+    } catch (e) {
+      setJob(kind, { status: 'failed', result: `✗ ${e instanceof Error ? e.message : 'Failed'}` })
+    }
+  }, [setJob])
+
+  const busy = useCallback((kind: string) => {
+    const s = (jobs[kind] ?? IDLE_JOB).status
+    return s === 'pending' || s === 'running'
+  }, [jobs])
+
+  return { jobs, getJob, runJob, busy }
 }
 
 function RecentJobsCard({ jobs, loading }: { jobs: AdminJob[] | null; loading: boolean }) {
@@ -1429,10 +1492,25 @@ function CoverageStat({ label, value, tone = 'muted' }: { label: string; value: 
   )
 }
 
+function GapChip({ label }: { label: string }) {
+  return (
+    <span style={{ display: 'inline-block', fontFamily: 'var(--font-mono)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.08em', padding: '2px 6px', borderRadius: 5, background: 'var(--color-overdue-soft, rgba(200,80,60,.14))', color: 'var(--color-overdue)', marginRight: 4, marginBottom: 2 }}>{label}</span>
+  )
+}
+
 function CoverageView() {
   const [coverage, setCoverage] = useState<AdminCoverage | null>(null)
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(() => {
+    return adminPanel.coverage()
+      .then(setCoverage)
+      .catch(e => setErr(e instanceof Error ? e.message : 'Failed to load coverage'))
+  }, [])
+
+  // Re-pull coverage counts whenever a fix job finishes so the gaps shrink live.
+  const { getJob, runJob, busy } = useKindJobs(() => { refetch() })
 
   useEffect(() => {
     let cancelled = false
@@ -1455,31 +1533,114 @@ function CoverageView() {
           ? 'muted'
           : 'red'
 
+  const fixBtnStyle = (isBusy: boolean) => ({
+    background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8,
+    padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 11,
+    cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? .6 : 1,
+  } as const)
+
+  const FixCard = ({ kind, title, count, label, params }: {
+    kind: string; title: string; count: number; label: string; params: Record<string, unknown>
+  }) => {
+    const j = getJob(kind)
+    const isBusy = busy(kind)
+    return (
+      <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: count ? 'var(--color-primary)' : 'var(--color-text-muted)', marginBottom: 8 }}>{label}</div>
+        <button onClick={() => runJob(kind, params)} disabled={isBusy || count === 0} style={fixBtnStyle(isBusy || count === 0)}>
+          {isBusy ? 'Running…' : title}
+        </button>
+        <JobProgressBar done={j.done} total={j.total} status={j.status} />
+        {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 8, color: j.result.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{j.result}</p>}
+      </div>
+    )
+  }
+
+  const s = coverage?.species
+  const missingNames = s ? Math.max(s.missing_common_name_nl, s.missing_common_name_en) : 0
+  const missingFacts = s ? Math.max(s.missing_facts_nl, s.missing_facts_en) : 0
+  const gaps = coverage?.species_gaps ?? []
+
   return (
     <div>
-      <PageHeader title="Coverage" sub="Data health across garden plants, species knowledge, icons and BioCLIP reference material" />
+      <style>{`@keyframes adminJobIndeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }`}</style>
+      <PageHeader title="Coverage" sub="Data completeness across garden plants, species knowledge, icons and BioCLIP reference material — with one-click fills for every gap" />
       {err && <ErrorMsg msg={err} />}
       {loading && !coverage && !err && <Loading />}
 
-      {coverage && (
+      {coverage && s && (
         <>
           <div data-admin-overview-cards style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: 20 }}>
-            <CoverageStat label="Garden plants unlinked" value={`${coverage.plants.missing_species_link}/${coverage.plants.active_total}`} tone={coverage.plants.missing_species_link ? 'amber' : 'green'} />
-            <CoverageStat label="Species missing EN facts" value={coverage.species.missing_facts_en} tone={coverage.species.missing_facts_en ? 'amber' : 'green'} />
+            <CoverageStat label="Incomplete species" value={s.incomplete ?? gaps.length} tone={(s.incomplete ?? gaps.length) ? 'amber' : 'green'} />
+            <CoverageStat label="Species missing NL/EN name" value={missingNames} tone={missingNames ? 'red' : 'green'} />
+            <CoverageStat label="Species missing facts" value={missingFacts} tone={missingFacts ? 'amber' : 'green'} />
             <CoverageStat label="Active stale icons" value={coverage.icons.active_stale_icon_key} tone={coverage.icons.active_stale_icon_key ? 'red' : 'green'} />
-            <CoverageStat label="BioCLIP coverage" value={coverage.bioclip.embedded_species} tone={bioclipTone} />
           </div>
+
+          <SectionCard title="Complete species data">
+            <div style={{ padding: '14px 18px' }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Fill every gap below straight from here. Each fills up to 500 species per run across the whole catalog (one LLM call each); re-run until the count reaches zero.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                <FixCard kind="backfill_names" title="Fill Dutch & English names"
+                  count={missingNames}
+                  label={`Missing a localized name: ${missingNames} (NL ${s.missing_common_name_nl} · EN ${s.missing_common_name_en})`}
+                  params={{ scope: 'all', map_only: false, limit: 500 }} />
+                <FixCard kind="backfill_facts" title="Fill interesting facts"
+                  count={missingFacts}
+                  label={`Missing facts: ${missingFacts} (NL ${s.missing_facts_nl} · EN ${s.missing_facts_en})`}
+                  params={{ scope: 'all', map_only: false, limit: 500 }} />
+                <FixCard kind="backfill_thresholds" title="Fill care thresholds"
+                  count={s.missing_thresholds}
+                  label={`Species missing thresholds: ${s.missing_thresholds}`}
+                  params={{}} />
+                <FixCard kind="generate_icons" title="Generate missing icons"
+                  count={coverage.icons.active_missing_icon}
+                  label={`Active plants without an icon: ${coverage.icons.active_missing_icon}`}
+                  params={{ scope: 'all', map_only: false, limit: 100 }} />
+              </div>
+            </div>
+          </SectionCard>
 
           <SectionCard title="Species knowledge">
             <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-              <span>Total species: <strong>{coverage.species.total}</strong></span>
-              <span>Missing Latin: <strong>{coverage.species.missing_latin_name}</strong></span>
-              <span>Missing NL facts: <strong>{coverage.species.missing_facts_nl}</strong></span>
-              <span>Missing EN facts: <strong>{coverage.species.missing_facts_en}</strong></span>
-              <span>Missing phenology: <strong>{coverage.species.missing_phenology}</strong></span>
-              <span>Missing thresholds: <strong>{coverage.species.missing_thresholds}</strong></span>
+              <span>Total species: <strong>{s.total}</strong></span>
+              <span>Missing Latin: <strong>{s.missing_latin_name}</strong></span>
+              <span>Missing NL name: <strong>{s.missing_common_name_nl}</strong></span>
+              <span>Missing EN name: <strong>{s.missing_common_name_en}</strong></span>
+              <span>Missing NL facts: <strong>{s.missing_facts_nl}</strong></span>
+              <span>Missing EN facts: <strong>{s.missing_facts_en}</strong></span>
+              <span>Missing phenology: <strong>{s.missing_phenology}</strong></span>
+              <span>Missing thresholds: <strong>{s.missing_thresholds}</strong></span>
             </div>
           </SectionCard>
+
+          {gaps.length > 0 && (
+            <SectionCard title={`Incomplete species — what's missing (${gaps.length}${(s.incomplete ?? gaps.length) > gaps.length ? ` of ${s.incomplete}` : ''})`}>
+              <div style={{ padding: '10px 18px', fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--color-text-soft)' }}>
+                In-use species (linked to an active garden plant) are marked and sorted first.
+              </div>
+              <AdminTable heads={['Species', 'Latin name', 'In use', 'Missing']} scrollable>
+                {gaps.map(g => (
+                  <tr key={g.id}>
+                    <Td><strong>{g.common_name_nl || g.common_name_en || `#${g.id}`}</strong></Td>
+                    <Td>{g.latin_name ? <em>{g.latin_name}</em> : '—'}</Td>
+                    <Td>{g.in_use ? '✓' : '—'}</Td>
+                    <Td>
+                      {g.missing_name_nl && <GapChip label="NL name" />}
+                      {g.missing_name_en && <GapChip label="EN name" />}
+                      {g.missing_latin && <GapChip label="Latin" />}
+                      {g.missing_facts_nl && <GapChip label="NL facts" />}
+                      {g.missing_facts_en && <GapChip label="EN facts" />}
+                      {g.missing_thresholds && <GapChip label="Thresholds" />}
+                      {g.missing_phenology && <GapChip label="Phenology" />}
+                    </Td>
+                  </tr>
+                ))}
+              </AdminTable>
+            </SectionCard>
+          )}
 
           <SectionCard title="BioCLIP reference material">
             <div style={{ padding: '16px 18px', fontFamily: 'var(--font-heading)', fontSize: 13, lineHeight: 1.6 }}>
@@ -1564,28 +1725,35 @@ function SkippedDetails({ details }: { details: AdminSkippedDetail[] }) {
 function ToolsView() {
   const [mapOnly, setMapOnly] = useState(false)
   const [factsMapOnly, setFactsMapOnly] = useState(FACTS_MAP_ONLY_DEFAULT)
+  const [namesMapOnly, setNamesMapOnly] = useState(false)
   const [iconLimit, setIconLimit] = useState(25)
   const [factsLimit, setFactsLimit] = useState(25)
+  const [namesLimit, setNamesLimit] = useState(50)
   const [ipAll, setIpAll] = useState<number | null>(null)
   const [ipInUse, setIpInUse] = useState<number | null>(null)
   const [iconRefresh, setIconRefresh] = useState(0)
   const [factsRefresh, setFactsRefresh] = useState(0)
+  const [namesRefresh, setNamesRefresh] = useState(0)
   const [tp, setTp] = useState<{ active_total: number; missing_thresholds: number } | null>(null)
   const [sp, setSp] = useState<{ total_with_thresholds: number; missing_schedules: number } | null>(null)
   const [fpAll, setFpAll] = useState<AdminBackfillFactsPreview | null>(null)
   const [fpInUse, setFpInUse] = useState<AdminBackfillFactsPreview | null>(null)
+  const [npAll, setNpAll] = useState<AdminBackfillNamesPreview | null>(null)
+  const [npInUse, setNpInUse] = useState<AdminBackfillNamesPreview | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
   const [regenPlantId, setRegenPlantId] = useState('')
   const [regenBusy, setRegenBusy] = useState(false)
   const [regenResult, setRegenResult] = useState<string | null>(null)
 
-  const [jobs, setJobs] = useState<Record<string, KindJobState>>({})
   const [recentJobs, setRecentJobs] = useState<AdminJob[] | null>(null)
   const [recentLoading, setRecentLoading] = useState(true)
 
-  const getJob = (kind: string): KindJobState => jobs[kind] ?? IDLE_JOB
-  const setJob = useCallback((kind: string, patch: Partial<KindJobState>) =>
-    setJobs(prev => ({ ...prev, [kind]: { ...(prev[kind] ?? IDLE_JOB), ...patch } })), [])
+  const { getJob, runJob, busy } = useKindJobs(kind => {
+    if (kind === 'generate_icons') setIconRefresh(n => n + 1)
+    if (kind === 'backfill_facts') setFactsRefresh(n => n + 1)
+    if (kind === 'backfill_names') setNamesRefresh(n => n + 1)
+    adminPanel.listJobs(20).then(setRecentJobs).catch(() => {})
+  })
 
   useEffect(() => {
     admin.thresholdsPreview().then(setTp).catch(() => {})
@@ -1605,54 +1773,9 @@ function ToolsView() {
   }, [factsMapOnly, factsRefresh])
 
   useEffect(() => {
-    const activeKinds = Object.entries(jobs)
-      .filter(([, j]) => j.status === 'pending' || j.status === 'running')
-      .map(([kind]) => kind)
-    if (activeKinds.length === 0) return
-
-    let cancelled = false
-    const interval = window.setInterval(async () => {
-      if (cancelled) return
-      for (const kind of activeKinds) {
-        const jobId = jobs[kind]?.jobId
-        if (!jobId) continue
-        try {
-          const j = await adminPanel.getJob(jobId)
-          if (!cancelled) {
-            const done = j.status === 'completed' || j.status === 'failed' || j.status === 'interrupted'
-            setJob(kind, {
-              status: j.status,
-              done: j.progress_done,
-              total: j.progress_total,
-              result: done ? jobResultSummary(kind, j) : '',
-            })
-            if (done) {
-              if (kind === 'generate_icons') setIconRefresh(n => n + 1)
-              if (kind === 'backfill_facts') setFactsRefresh(n => n + 1)
-              adminPanel.listJobs(20).then(setRecentJobs).catch(() => {})
-            }
-          }
-        } catch { /* network blip */ }
-      }
-    }, 2000)
-
-    return () => { cancelled = true; window.clearInterval(interval) }
-  }, [jobs, setJob])
-
-  async function runJob(kind: string, params: Record<string, unknown> = {}) {
-    setJob(kind, { jobId: null, status: 'pending', done: 0, total: 0, result: '' })
-    try {
-      const { job_id } = await adminPanel.startJob(kind, params)
-      setJob(kind, { jobId: job_id, status: 'pending' })
-    } catch (e) {
-      setJob(kind, { status: 'failed', result: `✗ ${e instanceof Error ? e.message : 'Failed'}` })
-    }
-  }
-
-  const busy = (kind: string) => {
-    const s = getJob(kind).status
-    return s === 'pending' || s === 'running'
-  }
+    adminPanel.backfillNamesPreview({ scope: 'all' }).then(setNpAll).catch(() => {})
+    adminPanel.backfillNamesPreview({ scope: 'in_use', mapOnly: namesMapOnly }).then(setNpInUse).catch(() => {})
+  }, [namesMapOnly, namesRefresh])
 
   const btnStyle = (isBusy: boolean) => ({
     background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 8,
@@ -1745,6 +1868,52 @@ function ToolsView() {
     </div>
   )
 
+  const namesJob = getJob('backfill_names')
+  const namesBusy = busy('backfill_names')
+  const namesInUseCount = npInUse?.missing_names ?? null
+  const namesTool = (
+    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
+      <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Backfill Dutch &amp; English names</h3>
+      <p style={{ fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        Generate the missing localized common name (Dutch <em>and</em> English) via LLM for species that only have one language or just a Latin name — the reason a plant shows an English name under a Dutch UI, or the raw entered name. One LLM call per species.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 14, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={namesMapOnly} onChange={e => setNamesMapOnly(e.target.checked)} />
+          Map-placed plants only
+        </label>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Batch limit
+          <input type="number" min={1} max={500} value={namesLimit}
+                 onChange={e => setNamesLimit(Math.max(1, Number(e.target.value) || 1))}
+                 style={{ width: 64, fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 6px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+        </label>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
+            My plants{namesMapOnly ? ' on a map' : ''} missing a name: {namesInUseCount ?? '…'}
+            {npInUse ? ` · NL ${npInUse.missing_names_nl} · EN ${npInUse.missing_names_en}` : ''}
+          </div>
+          <button onClick={() => runJob('backfill_names', { scope: 'in_use', map_only: namesMapOnly, limit: namesLimit })} disabled={namesBusy} style={btnStyle(namesBusy)}>
+            {namesBusy ? 'Generating…' : `Fix my plants${namesInUseCount != null ? ` (${Math.min(namesInUseCount, namesLimit)})` : ''}`}
+          </button>
+        </div>
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Whole species catalog missing a name: {npAll?.missing_names ?? '…'}
+            {npAll ? ` · NL ${npAll.missing_names_nl} · EN ${npAll.missing_names_en}` : ''}
+          </div>
+          <button onClick={() => runJob('backfill_names', { scope: 'all', map_only: false, limit: namesLimit })} disabled={namesBusy} style={btnStyle(namesBusy)}>
+            {namesBusy ? 'Generating…' : `Fix catalog${npAll ? ` (${Math.min(npAll.missing_names, namesLimit)})` : ''}`}
+          </button>
+        </div>
+      </div>
+      <JobProgressBar done={namesJob.done} total={namesJob.total} status={namesJob.status} />
+      {namesJob.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(namesJob.result) }}>{namesJob.result}</p>}
+    </div>
+  )
+
   const iconTool = (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '18px 20px', gridColumn: '1 / -1' }}>
       <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 16, margin: '0 0 6px' }}>Generate icons</h3>
@@ -1802,6 +1971,7 @@ function ToolsView() {
         {simpleTool('backfill_plant_types', 'Backfill plant types',
           'Set plant_type from icon manifest cat field for active plants where it is NULL. Archived plants are ignored.',
           pp ? `${pp.missing_plant_type} of ${pp.total_active_plants} active plants need a type` : 'Loading…')}
+        {namesTool}
         {factsTool}
         {iconTool}
         {/* Single-plant icon regeneration */}
