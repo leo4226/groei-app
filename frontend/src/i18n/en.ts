@@ -1413,6 +1413,13 @@ export const en: Translations = {
       streektuinen: 'Region map & plants: streektuinen.nl',
       bloeibogen: 'Bee & flowering data: Naturalis / Bloeibogen',
     },
+    bees: {
+      title: 'Wild bees',
+      supportedCount: (n) => `Up to ${n} wild bee species can forage here`,
+      redlistNote: (m) => `${m} of them Red-Listed`,
+      forageGap: (months) => `Bees are on the wing in ${months} with no bee-forage in bloom — plant something for those months`,
+      noForage: 'No bee-forage plants yet — add bee-friendly plants to support wild bees',
+    },
   },
 
   // ── Map legend ──────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut } from '../types'
 
 /**
  * Small line glyphs for biodiversity stats, in the app's icon language
@@ -133,11 +133,13 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
   const en = t.locale.startsWith('en')
   const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
   const [streekSug, setStreekSug] = useState<StreekSuggestionsOut | null>(null)
+  const [bees, setBees] = useState<BeeSupportOut | null>(null)
 
   useEffect(() => {
     if (!slug) return
     mapsApi.plantSuggestions(slug).then(setSuggestions).catch(() => {})
     mapsApi.streekSuggestions(slug).then(setStreekSug).catch(() => {})
+    mapsApi.beeSupport(slug).then(setBees).catch(() => {})
   }, [slug])
 
   const Wrapper = embedded ? 'div' : 'section'
@@ -304,6 +306,30 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Wilde bijen — who the garden's bee-forage supports + forage gaps */}
+      {bees && (bees.supported_count > 0 || bees.forage_gap_months.length > 0) && (
+        <section className="pt-4 mt-4 border-t border-border/40">
+          <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-2 flex items-center gap-1.5">
+            <BioIcon name="pollinator" size={13} /> {t.garden.bees.title}
+          </h3>
+          {bees.supported_count > 0 ? (
+            <p className="text-sm text-text">
+              {t.garden.bees.supportedCount(bees.supported_count)}
+              {bees.supported_redlist_count > 0 && (
+                <span className="text-text-muted"> — {t.garden.bees.redlistNote(bees.supported_redlist_count)}</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted">{t.garden.bees.noForage}</p>
+          )}
+          {bees.forage_gap_months.length > 0 && bees.supported_count > 0 && (
+            <p className="text-xs text-text-muted mt-1.5">
+              {t.garden.bees.forageGap(bees.forage_gap_months.map(m => MONTH_SHORT[m - 1]).join(', '))}
+            </p>
+          )}
         </section>
       )}
 

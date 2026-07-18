@@ -1415,6 +1415,13 @@ export const nl: Translations = {
       streektuinen: 'Streekindeling & planten: streektuinen.nl',
       bloeibogen: 'Bijen & bloeidata: Naturalis / Bloeibogen',
     },
+    bees: {
+      title: 'Wilde bijen',
+      supportedCount: (n) => `Tot ${n} wilde bijensoort${n === 1 ? '' : 'en'} kunnen hier terecht`,
+      redlistNote: (m) => `waarvan ${m} op de Rode Lijst`,
+      forageGap: (months) => `Bijen vliegen in ${months} zonder bloeiende drachtplant — plant iets voor die maanden`,
+      noForage: 'Nog geen drachtplanten — voeg bijvriendelijke planten toe om wilde bijen te ondersteunen',
+    },
   },
 
   // ── Map legend ──────────────────────────────────────────────────

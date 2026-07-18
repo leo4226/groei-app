@@ -678,6 +678,16 @@ export type Streek = {
   name: string
 }
 
+export type BeeSupportOut = {
+  forage_months: boolean[]          // 12 entries, index 0 = January
+  supported_count: number
+  supported_redlist_count: number
+  total_bees: number
+  total_redlist: number
+  forage_gap_months: number[]       // 1..12
+  example_supported: string[]
+}
+
 export type RecommendationsOut = {
   recommendations: PlantRecommendation[]
   gap_months: number[]
