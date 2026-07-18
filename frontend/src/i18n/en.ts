@@ -1385,6 +1385,7 @@ export const en: Translations = {
       componentStreek: 'Region',
       streekLabel: 'Region',
       streekNativeCount: (n) => `${n} regional species`,
+      drachtplantCount: (n) => `${n} bee-forage plant${n === 1 ? '' : 's'}`,
     },
     suggestions: {
       title: 'Improve your garden',
@@ -1405,6 +1406,12 @@ export const en: Translations = {
       pickHint: "Region not right? Choose it below.",
       pickNone: 'Unknown / outside the Netherlands',
       pickCta: 'Save',
+      seedMix: 'Seed mix for your region',
+    },
+    sources: {
+      title: 'Sources',
+      streektuinen: 'Region map & plants: streektuinen.nl',
+      bloeibogen: 'Bee & flowering data: Naturalis / Bloeibogen',
     },
   },
 

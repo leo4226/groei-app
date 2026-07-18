@@ -1,0 +1,1986 @@
+{
+  "source": "bloeibogen.nl",
+  "license_note": "Bee & plant data © Naturalis Biodiversity Center / Bloeibogen (bloeibogen.nl). Images are individually CC-licensed (see per-plant imageLicense/copyrightText). Used with attribution for a private garden app.",
+  "bees": [
+    {
+      "scientific_name": "Andrena agilissima",
+      "dutch_name": "Blauwe zandbij",
+      "is_red_list": true,
+      "red_list_category": "GE",
+      "flight_months": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena angustior",
+      "dutch_name": "Geriemde zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena apicata",
+      "dutch_name": "Donkere wilgenzandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena argentata",
+      "dutch_name": "Zilveren zandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Andrena barbilabris",
+      "dutch_name": "Witbaardzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena bicolor",
+      "dutch_name": "Tweekleurige zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena bimaculata",
+      "dutch_name": "Donkere rimpelrug",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena chrysosceles",
+      "dutch_name": "Goudpootzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena cineraria",
+      "dutch_name": "Asbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena clarkella",
+      "dutch_name": "Zwart-rosse zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena coitana",
+      "dutch_name": "Boszandbij",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena denticulata",
+      "dutch_name": "Kruiskruidzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena dorsata",
+      "dutch_name": "Wimperflankzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena falsifica",
+      "dutch_name": "Zadeldwergzandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena ferox",
+      "dutch_name": "Eikenzandbij",
+      "is_red_list": true,
+      "red_list_category": "GE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena flavipes",
+      "dutch_name": "Grasbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena florea",
+      "dutch_name": "Heggenrankbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena fucata",
+      "dutch_name": "Gewone rozenzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena fulva",
+      "dutch_name": "Vosje",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena fulvago",
+      "dutch_name": "Texelse zandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena fulvida",
+      "dutch_name": "Sporkehoutzandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena fuscipes",
+      "dutch_name": "Heidezandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Andrena gravida",
+      "dutch_name": "Weidebij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena haemorrhoa",
+      "dutch_name": "Roodgatje",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena hattorfiana",
+      "dutch_name": "Knautiabij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena helvola",
+      "dutch_name": "Valse rozenzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena humilis",
+      "dutch_name": "Paardenbloembij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena labialis",
+      "dutch_name": "Donkere klaverzandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena labiata",
+      "dutch_name": "Ereprijszandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena lapponica",
+      "dutch_name": "Bosbesbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena lathyri",
+      "dutch_name": "Wikkebij ",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena minutula",
+      "dutch_name": "Gewone dwergzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena minutuloides",
+      "dutch_name": "Glimmende dwergzandbij ",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena mitis",
+      "dutch_name": "Lichte wilgenzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena nigriceps",
+      "dutch_name": "Donkere zomerzandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena nigroaenea",
+      "dutch_name": "Zwartbronzen zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena nitida",
+      "dutch_name": "Viltvlekzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena nitidiuscula",
+      "dutch_name": "Schermbloemzandbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena niveata",
+      "dutch_name": "Gebandeerde dwergzandbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena ovatula",
+      "dutch_name": "Bremzandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena pilipes",
+      "dutch_name": "Koolzwarte zandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena polita",
+      "dutch_name": "Glimmende zandbij ",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena praecox",
+      "dutch_name": "Vroege zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena proxima",
+      "dutch_name": "Fluitenkruidbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena rosae",
+      "dutch_name": "Roodrandzandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena ruficrus",
+      "dutch_name": "Roodscheenzandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena scotica",
+      "dutch_name": "Goudstaartzandbij ",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena semilaevis",
+      "dutch_name": "Halfgladde dwergzandbij ",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena similis",
+      "dutch_name": "Roodstaartklaverzandbij ",
+      "is_red_list": true,
+      "red_list_category": "VN",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena subopaca",
+      "dutch_name": "Witkopdwergzandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena synadelpha",
+      "dutch_name": "Breedrandzandbij ",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena tarsata",
+      "dutch_name": "Tormentilzandbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Andrena tibialis",
+      "dutch_name": "Grijze rimpelrug",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Andrena trimmerana",
+      "dutch_name": "Doornkaakzandbij",
+      "is_red_list": true,
+      "red_list_category": "GE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Andrena vaga",
+      "dutch_name": "Grijze zandbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena varians",
+      "dutch_name": "Variabele zandbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Andrena ventralis",
+      "dutch_name": "Roodbuikje",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Andrena wilkella",
+      "dutch_name": "Geelstaartklaverzandbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Anthidiellum strigatum",
+      "dutch_name": "Kleine harsbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Anthidium manicatum",
+      "dutch_name": "Grote wolbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Anthidium punctatum",
+      "dutch_name": "Kleine wolbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Anthophora furcata",
+      "dutch_name": "Andoornbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Anthophora plumipes",
+      "dutch_name": "Gewone sachembij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Anthophora quadrimaculata",
+      "dutch_name": "Kattenkruidbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Anthophora retusa",
+      "dutch_name": "Zwarte sachembij",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Bombus barbutellus",
+      "dutch_name": "Lichte koekoekshommel",
+      "is_red_list": true,
+      "red_list_category": "VN",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus cryptarum",
+      "dutch_name": "Wilgenhommel",
+      "is_red_list": true,
+      "red_list_category": "OG",
+      "flight_months": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus hortorum",
+      "dutch_name": "Tuinhommel",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus humilis",
+      "dutch_name": "Heidehommel",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus hypnorum",
+      "dutch_name": "Boomhommel",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus jonellus",
+      "dutch_name": "Veenhommel",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus lucorum",
+      "dutch_name": "Veldhommel",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus magnus",
+      "dutch_name": "Grote veldhommel",
+      "is_red_list": true,
+      "red_list_category": "OG",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus pratorum",
+      "dutch_name": "Weidehommel",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Bombus ruderarius",
+      "dutch_name": "Grashommel",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Ceratina cyanea",
+      "dutch_name": "Blauwe ertsbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Chelostoma campanularum",
+      "dutch_name": "Kleine klokjesbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Chelostoma florisomne",
+      "dutch_name": "Ranonkelbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Chelostoma rapunculi",
+      "dutch_name": "Grote klokjesbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Colletes cunicularius",
+      "dutch_name": "Grote zijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Colletes daviesanus",
+      "dutch_name": "Wormkruidbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Colletes fodiens",
+      "dutch_name": "Duinzijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Colletes halophilus",
+      "dutch_name": "Schorzijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Colletes marginatus",
+      "dutch_name": "Donkere zijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Colletes similis",
+      "dutch_name": "Zuidelijke zijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Colletes succinctus",
+      "dutch_name": "Heizijdebij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Dasypoda hirtipes",
+      "dutch_name": "Pluimvoetbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Eucera longicornis",
+      "dutch_name": "Gewone langhoornbij",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Eucera nigrescens",
+      "dutch_name": "Zuidelijke langhoornbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Halictus maculatus",
+      "dutch_name": "Blokhoofdgroefbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Halictus quadricinctus",
+      "dutch_name": "Vierbandgroefbij",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Halictus rubicundus",
+      "dutch_name": "Roodpotige groefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Halictus scabiosae",
+      "dutch_name": "Breedbandgroefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Heriades truncorum",
+      "dutch_name": "Tronkenbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hoplitis adunca",
+      "dutch_name": "Slangenkruidbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hoplitis claviventris",
+      "dutch_name": "Geelgespoorde houtmetselbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hoplitis leucomelana",
+      "dutch_name": "Zwartgespoorde houtmetselbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus annularis",
+      "dutch_name": "Duinmaskerbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus brevicornis",
+      "dutch_name": "Kortsprietmaskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus communis",
+      "dutch_name": "Gewone maskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus confusus",
+      "dutch_name": "Poldermaskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus cornutus",
+      "dutch_name": "Gehoornde maskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus dilatatus",
+      "dutch_name": "Brilmaskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus hyalinatus",
+      "dutch_name": "Tuinmaskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus incongruus",
+      "dutch_name": "Weidemaskerbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus pectoralis",
+      "dutch_name": "Rietmaskerbij ",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus pictipes",
+      "dutch_name": "Kleine tuinmaskerbij ",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus punctulatissimus",
+      "dutch_name": "Lookmaskerbij",
+      "is_red_list": true,
+      "red_list_category": "GE",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus signatus",
+      "dutch_name": "Resedamaskerbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Hylaeus variegatus",
+      "dutch_name": "Rode maskerbij ",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum lativentre",
+      "dutch_name": "Breedbuikgroefbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum leucopus",
+      "dutch_name": "Gewone smaragdgroefbij ",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum lucidulum",
+      "dutch_name": "Glanzende groefbij ",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum monstrificum",
+      "dutch_name": "Glanzende franjegroefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum nitidiusculum",
+      "dutch_name": "Borstelgroefbij ",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum parvulum",
+      "dutch_name": "Kleine groefbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum prasinum",
+      "dutch_name": "Viltige groefbij ",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum rufitarse",
+      "dutch_name": "Roodpootgroefbij ",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum sexnotatum",
+      "dutch_name": "Zesvlekkige groefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Lasioglossum sexstrigatum",
+      "dutch_name": "Gewone franjegroefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Macropis europaea",
+      "dutch_name": "Gewone slobkousbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Macropis fulvipes",
+      "dutch_name": "Bruine slobkousbij",
+      "is_red_list": true,
+      "red_list_category": "GE",
+      "flight_months": [
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Megachile analis",
+      "dutch_name": "Ericabij",
+      "is_red_list": true,
+      "red_list_category": "EB",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile centuncularis",
+      "dutch_name": "Tuinbladsnijder",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile circumcincta",
+      "dutch_name": "Ruige behangersbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile ericetorum",
+      "dutch_name": "Lathyrusbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile lapponica",
+      "dutch_name": "Lapse behangersbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile leachella",
+      "dutch_name": "Zilveren fluitje",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile ligniseca",
+      "dutch_name": "Distelbehangersbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Megachile maritima",
+      "dutch_name": "Kustbehangersbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Megachile versicolor",
+      "dutch_name": "Gewone behangersbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Megachile willughbiella",
+      "dutch_name": "Grote bladsnijder",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Melitta haemorrhoidalis",
+      "dutch_name": "Klokjesdikpoot",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Melitta leporina",
+      "dutch_name": "Klaverdikpoot",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Melitta nigricans",
+      "dutch_name": "Kattenstaartdikpoot",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Melitta tricincta",
+      "dutch_name": "Ogentroostdikpoot",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Osmia aurulenta",
+      "dutch_name": "Gouden slakkenhuisbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "scientific_name": "Osmia bicornis",
+      "dutch_name": "Rosse metselbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Osmia caerulescens",
+      "dutch_name": "Blauwe metselbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Osmia cornuta",
+      "dutch_name": "Gehoornde metselbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "scientific_name": "Osmia leaiana",
+      "dutch_name": "Kauwende metselbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Osmia niveata",
+      "dutch_name": "Zwartbronzen houtmetselbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Osmia spinulosa",
+      "dutch_name": "Gedoornde slakkenhuisbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Osmia uncinata",
+      "dutch_name": "Bosmetselbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "scientific_name": "Panurgus banksianus",
+      "dutch_name": "Grote roetbij",
+      "is_red_list": true,
+      "red_list_category": "KW",
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Panurgus calcaratus",
+      "dutch_name": "Kleine roetbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "scientific_name": "Seladonia confusa",
+      "dutch_name": "Heidebronsgroefbij",
+      "is_red_list": false,
+      "red_list_category": null,
+      "flight_months": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "scientific_name": "Xylocopa violacea",
+      "dutch_name": "Blauw zwarte houtbij",
+      "is_red_list": true,
+      "red_list_category": "BE",
+      "flight_months": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ]
+}

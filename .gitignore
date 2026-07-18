@@ -48,3 +48,5 @@ backend/data/*
 !backend/data/streken_source.json
 !backend/data/streken.geojson
 !backend/data/streken_map.svg
+!backend/data/bloeibogen_plants.json
+!backend/data/bloeibogen_bees.json

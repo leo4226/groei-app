@@ -31,6 +31,7 @@ class GardenBiodiversityOut(BaseModel):
     streek_slug: str | None = None
     streek_name: str | None = None
     streek_native_count: int = 0
+    drachtplant_count: int = 0
 
 
 class StreekOut(BaseModel):
@@ -89,6 +90,7 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         streek_slug=profile.streek_slug,
         streek_name=profile.streek_name,
         streek_native_count=profile.streek_native_count,
+        drachtplant_count=profile.drachtplant_count,
     )
 
 
