@@ -32,18 +32,31 @@ async def test_empty_garden_supports_no_bees_and_gaps_span_bee_season():
 
 
 @pytest.mark.asyncio
-async def test_drachtplant_supports_bees_flying_in_its_bloom_months():
+async def test_full_year_forage_supports_all_bees():
     db = await _db()
-    # A drachtplant blooming May–Jul (5,6,7) supports bees flying then.
-    await db.execute("INSERT INTO plant_species (id,flowering_months,is_drachtplant) VALUES (1,'[5,6,7]',1)")
+    # Forage every month → every bee's whole flight is covered → all supported.
+    await db.execute("INSERT INTO plant_species (id,flowering_months,is_drachtplant) VALUES (1,'[1,2,3,4,5,6,7,8,9,10,11,12]',1)")
     await db.execute("INSERT INTO plants (species_id,map_id) VALUES (1,7)")
     await db.commit()
     b = await bee_support_for_map(db, 7)
-    assert b.forage_months[4] and b.forage_months[5] and b.forage_months[6]  # May,Jun,Jul
-    assert b.supported_count > 0
-    assert b.supported_count <= b.total_bees
-    # Months 5,6,7 are now forage-covered → not in the gap list.
-    assert all(m not in b.forage_gap_months for m in (5, 6, 7))
+    assert b.supported_count == b.total_bees
+    assert b.forage_gap_months == []
+    await db.close()
+
+
+@pytest.mark.asyncio
+async def test_supported_requires_full_flight_coverage_not_just_overlap():
+    db = await _db()
+    # Summer-only forage (Jun–Sep). A bee flying Mar–Jul is NOT supported
+    # (Mar–May lack forage); a bee flying entirely within Jun–Sep is.
+    await db.execute("INSERT INTO plant_species (id,flowering_months,is_drachtplant) VALUES (1,'[6,7,8,9]',1)")
+    await db.execute("INSERT INTO plants (species_id,map_id) VALUES (1,7)")
+    await db.commit()
+    b = await bee_support_for_map(db, 7)
+    # Not saturated — the early-spring gap excludes spring-flying bees.
+    assert 0 < b.supported_count < b.total_bees
+    assert b.forage_months[5] and b.forage_months[8]   # Jun, Sep
+    assert all(m not in b.forage_gap_months for m in (6, 7, 8, 9))
     await db.close()
 
 

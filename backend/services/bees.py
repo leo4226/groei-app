@@ -79,10 +79,14 @@ async def bee_support_for_map(db, map_id: int) -> BeeSupport:
     forage = await _forage_months(db, map_id)
     coverage = [(m + 1) in forage for m in range(12)]
 
+    # "Supported" = the bee can forage across its *whole* flight period (every
+    # flight month has a drachtplant blooming). A looser "any overlap" rule
+    # saturates — with summer forage nearly every bee overlaps somewhere — so it
+    # carries no signal. Full-coverage makes the count respond to real gaps.
     supported: list[dict] = []
     for b in bees:
         flight = set(b.get("flight_months") or [])
-        if flight & forage:
+        if flight and flight <= forage:
             supported.append(b)
 
     supported_redlist = sum(1 for b in supported if b.get("is_red_list"))
