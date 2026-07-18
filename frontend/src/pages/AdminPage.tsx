@@ -10,7 +10,6 @@ import {
   type AdminHouseholdDetail, type AdminAuditRow,
   type AdminJob, type AdminJobStatus, type AdminCoverage, type AdminSkippedDetail,
   type AdminBackfillFactsPreview, type AdminBackfillNamesPreview,
-  type AdminCoverageSpeciesGap,
 } from '../api/client'
 import {
   ADMIN_RESPONSIVE_STYLES,
