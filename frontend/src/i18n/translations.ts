@@ -1387,6 +1387,7 @@ export type Translations = {
       componentNative: string     // "Inheems"
       componentDiversity: string  // "Diversiteit"
       componentStreek: string     // "Streek"
+      componentAbundance: string  // "Aantal" / "Abundance"
       streekLabel: string         // "Streek" (row label)
       streekNativeCount: (n: number) => string  // "3 streekeigen soorten"
       drachtplantCount: (n: number) => string   // "4 bijenplanten (drachtplanten)"

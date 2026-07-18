@@ -1385,6 +1385,7 @@ export const nl: Translations = {
       componentNative: 'Inheems',
       componentDiversity: 'Diversiteit',
       componentStreek: 'Streek',
+      componentAbundance: 'Aantal',
       streekLabel: 'Streek',
       streekNativeCount: (n) => `${n} streekeigen soort${n === 1 ? '' : 'en'}`,
       drachtplantCount: (n) => `${n} bijenplant${n === 1 ? '' : 'en'} (drachtplanten)`,
