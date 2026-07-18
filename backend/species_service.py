@@ -780,3 +780,177 @@ async def backfill_missing_facts(
             "remaining": max(0, len(all_rows) - len(rows)),
         })
     return result
+
+
+# ── Localized common-name gaps (missing NL and/or EN names) ───────────────────
+#
+# Species imported from GBIF/BioCLIP frequently arrive with only one language (or
+# only a Latin name) populated. The frontend deliberately falls back to the raw
+# user-entered plant name when a localized species name is missing, so a plant
+# with a half-populated species shows an English name under a Dutch UI (and vice
+# versa). These helpers surface and repair that gap in bulk, reusing
+# ``ensure_species_localized_names`` so the fix logic lives in one place.
+
+
+def _name_row_missing(row: dict) -> tuple[bool, bool, bool]:
+    """(missing_nl, missing_en, missing_latin) for a species row."""
+    latin = _text_or_none(row.get("latin_name"))
+    missing_nl = _localized_name_missing(row.get("common_name_nl"), latin)
+    missing_en = _localized_name_missing(row.get("common_name_en"), latin)
+    missing_latin = latin is None
+    return missing_nl, missing_en, missing_latin
+
+
+async def _name_scope_rows(
+    db,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+    household_id: int | None = None,
+) -> list[dict]:
+    scope = _normalise_fact_scope(scope)
+    if scope == "in_use":
+        sql = (
+            "SELECT DISTINCT ps.id, ps.common_name_nl, ps.common_name_en, ps.latin_name "
+            "FROM plant_species ps "
+            "JOIN plants p ON p.species_id = ps.id "
+            "WHERE p.is_active = 1 "
+        )
+        params: list[object] = []
+        if household_id is not None:
+            sql += "AND p.household_id = ? "
+            params.append(household_id)
+        if map_only:
+            sql += "AND p.map_id IS NOT NULL "
+        sql += "ORDER BY ps.common_name_nl"
+        rows = await db.execute_fetchall(sql, tuple(params)) if params else await db.execute_fetchall(sql)
+    else:
+        rows = await db.execute_fetchall(
+            "SELECT id, common_name_nl, common_name_en, latin_name "
+            "FROM plant_species ORDER BY common_name_nl"
+        )
+    return [dict(row) for row in rows]
+
+
+def _rows_missing_localized_names(rows: list[dict]) -> list[dict]:
+    out = []
+    for row in rows:
+        missing_nl, missing_en, missing_latin = _name_row_missing(row)
+        if missing_nl or missing_en or missing_latin:
+            out.append(row)
+    return out
+
+
+async def preview_missing_names(
+    db,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+    household_id: int | None = None,
+) -> dict:
+    scope = _normalise_fact_scope(scope)
+    rows = await _name_scope_rows(db, scope=scope, map_only=map_only, household_id=household_id)
+    missing_nl = 0
+    missing_en = 0
+    missing_latin = 0
+    missing_any = 0
+    for row in rows:
+        m_nl, m_en, m_latin = _name_row_missing(row)
+        if m_nl:
+            missing_nl += 1
+        if m_en:
+            missing_en += 1
+        if m_latin:
+            missing_latin += 1
+        if m_nl or m_en or m_latin:
+            missing_any += 1
+    return {
+        "scope": scope,
+        "map_only": bool(map_only),
+        "total_species": len(rows),
+        "missing_names": missing_any,
+        "missing_names_nl": missing_nl,
+        "missing_names_en": missing_en,
+        "missing_latin": missing_latin,
+    }
+
+
+async def backfill_missing_names(
+    db,
+    limit: int = 50,
+    *,
+    scope: str = "all",
+    map_only: bool = False,
+    household_id: int | None = None,
+) -> dict:
+    """Fill missing NL/EN common names (and Latin) for species in one LLM call each.
+
+    Reuses ``ensure_species_localized_names`` per species so display logic stays
+    untouched — only the underlying data is repaired.
+    """
+    scope = _normalise_fact_scope(scope)
+    all_rows = _rows_missing_localized_names(
+        await _name_scope_rows(db, scope=scope, map_only=map_only, household_id=household_id)
+    )
+    rows = all_rows[:limit] if limit and limit > 0 else all_rows
+
+    if not rows:
+        result = {
+            "processed": 0,
+            "updated": 0,
+            "skipped": 0,
+            "errors": [],
+            "skipped_details": [],
+            "message": "All selected species already have localized common names.",
+        }
+        if scope != "all" or map_only:
+            result.update({"scope": scope, "map_only": bool(map_only), "remaining": 0})
+        return result
+
+    updated = 0
+    errors = []
+    skipped_details = []
+    processed = 0
+
+    for row in rows:
+        species_id = row["id"]
+        name_hint = (
+            _text_or_none(row.get("common_name_nl"))
+            or _text_or_none(row.get("common_name_en"))
+            or _text_or_none(row.get("latin_name"))
+        )
+        processed += 1
+        try:
+            did_update = await ensure_species_localized_names(db, species_id, name_hint)
+            if did_update:
+                updated += 1
+            else:
+                skipped_details.append({
+                    "species_id": species_id,
+                    "name": name_hint,
+                    "reason": "no_localized_name_generated",
+                    "message": "LLM returned no usable NL/EN name for this species.",
+                })
+        except Exception as e:  # noqa: BLE001 - caller returns structured skip detail
+            errors.append({"species_id": species_id, "name": name_hint, "error": str(e)})
+            skipped_details.append({
+                "species_id": species_id,
+                "name": name_hint,
+                "reason": "name_generation_failed",
+                "error": str(e),
+            })
+
+    result = {
+        "processed": processed,
+        "updated": updated,
+        "skipped": len(skipped_details),
+        "errors": errors,
+        "skipped_details": skipped_details,
+    }
+    if scope != "all" or map_only:
+        result.update({
+            "scope": scope,
+            "map_only": bool(map_only),
+            "remaining": max(0, len(all_rows) - len(rows)),
+        })
+    return result

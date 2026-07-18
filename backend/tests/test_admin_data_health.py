@@ -224,3 +224,16 @@ async def test_admin_coverage_reports_garden_species_icon_and_bioclip_gaps(
     assert body["bioclip"]["missing_species_rows"] == [
         {"id": 2, "common_name_nl": "Lavendel", "latin_name": "Lavandula angustifolia"}
     ]
+
+    # species 2 (missing thresholds + EN facts) and 3 (missing latin/EN name/
+    # facts/phenology/thresholds) are incomplete; species 1 is fully populated.
+    assert body["species"]["incomplete"] == 2
+    gaps = {g["id"]: g for g in body["species_gaps"]}
+    assert set(gaps) == {2, 3}
+    assert gaps[3]["missing_name_en"] is True
+    assert gaps[3]["missing_latin"] is True
+    assert gaps[3]["missing_phenology"] is True
+    assert gaps[2]["missing_thresholds"] is True
+    assert gaps[2]["missing_facts_en"] is True
+    # both species are linked to active plants, so they're flagged in-use
+    assert gaps[2]["in_use"] is True
