@@ -25,7 +25,12 @@ _BEES = Path(__file__).parent.parent / "data" / "bloeibogen_bees.json"
 
 @lru_cache(maxsize=1)
 def _all_bees() -> list[dict]:
-    return json.loads(_BEES.read_text(encoding="utf-8")).get("bees", [])
+    # Defensive: degrade to "no bee data" if the snapshot isn't packaged rather
+    # than 500 the endpoint. The build ships data/bloeibogen_bees.json.
+    try:
+        return json.loads(_BEES.read_text(encoding="utf-8")).get("bees", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
 
 
 @dataclass

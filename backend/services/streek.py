@@ -21,7 +21,13 @@ _GEOJSON = Path(__file__).parent.parent / "data" / "streken.geojson"
 
 @lru_cache(maxsize=1)
 def _features() -> list[dict]:
-    data = json.loads(_GEOJSON.read_text(encoding="utf-8"))
+    # Defensive: if the georeferenced data isn't packaged (e.g. excluded from the
+    # image), degrade to "no streken" rather than 500 every caller. The build is
+    # meant to ship data/streken.geojson; see .dockerignore exceptions.
+    try:
+        data = json.loads(_GEOJSON.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
     return data.get("features", [])
 
 

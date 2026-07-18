@@ -16,8 +16,13 @@ venv/
 backend/.venv/
 *.egg-info/
 
-# Backend data (embeddings, uploads) — niet nodig in Docker image
+# Backend data (embeddings, uploads) — niet nodig in Docker image, behalve de
+# gecommitte streek/bloeibogen datasets die de app runtime + migraties nodig hebben.
 backend/data/
+!backend/data/streken_source.json
+!backend/data/streken.geojson
+!backend/data/bloeibogen_plants.json
+!backend/data/bloeibogen_bees.json
 backend/uploads/
 
 # Node

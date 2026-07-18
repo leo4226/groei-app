@@ -8,7 +8,11 @@ primary_region = "ams"
 [deploy]
   # Runs in a temporary machine before the new release is rolled out.
   # If alembic fails the deploy aborts and existing machines stay alive.
-  release_command = "alembic upgrade head"
+  # After migrations, (re)seed streek reference data and backfill the
+  # streek/drachtplant enrichment from the committed snapshots — each step is
+  # idempotent and best-effort (|| true) so a transient hiccup never aborts a
+  # deploy, and new catalog species get enriched on the next deploy.
+  release_command = "sh -c 'alembic upgrade head && (python -m scripts.seed_streken || true) && (python -m scripts.resolve_streek_species --no-gbif || true) && (python -m scripts.resolve_bloeibogen || true)'"
 
 [env]
   PORT = "8000"
