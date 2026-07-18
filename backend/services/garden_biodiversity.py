@@ -44,6 +44,45 @@ class GardenBiodiversity:
     invasive_count: int
     pollinator_coverage_months: list[bool]   # 12 booleans, index 0 = January
     components: dict = field(default_factory=dict)   # raw subscores for transparency
+    streek_slug: str | None = None       # the garden's Dutch ecological region
+    streek_name: str | None = None
+    streek_native_count: int = 0         # distinct garden species belonging to that streek
+
+
+def _streek_name(slug: str | None) -> str | None:
+    if not slug:
+        return None
+    from services.streek import all_streken
+    for s in all_streken():
+        if s["slug"] == slug:
+            return s["name"]
+    return slug
+
+
+async def _streek_context(db, map_id: int) -> tuple[str | None, int]:
+    """(streek_slug, streek_native_count) for a map, or (None, 0).
+
+    Defensive by design: compute_for_map runs against reduced test schemas (the
+    aiosqlite seam) that may lack the maps.streek_slug column or the
+    streek_species table — there, streek simply contributes nothing."""
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT streek_slug FROM maps WHERE id = ?", (map_id,)
+        )
+        streek_slug = rows[0]["streek_slug"] if rows else None
+        if not streek_slug:
+            return None, 0
+        cnt = await db.execute_fetchall(
+            """SELECT COUNT(DISTINCT p.species_id) AS n
+               FROM plants p
+               JOIN streek_species ss
+                 ON ss.species_id = p.species_id AND ss.streek_slug = ?
+               WHERE p.map_id = ? AND p.is_active = TRUE""",
+            (streek_slug, map_id),
+        )
+        return streek_slug, int(cnt[0]["n"] or 0)
+    except Exception:
+        return None, 0
 
 
 def _coerce_months(value) -> list[int]:
@@ -91,6 +130,12 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     species = list(by_species.values())
     species_count = len(species)
 
+    # Regional (streek) context — the garden's Dutch ecological region and how
+    # many of its species belong there. Resolved even for empty gardens so the
+    # UI can show "your region" before anything is planted.
+    streek_slug, streek_native_count = await _streek_context(db, map_id)
+    streek_name = _streek_name(streek_slug)
+
     if species_count == 0:
         return GardenBiodiversity(
             score=0,
@@ -98,7 +143,10 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             native_count=0,
             invasive_count=0,
             pollinator_coverage_months=[False] * 12,
-            components={"pollinator": 0, "native": 0, "diversity": 0, "abundance": 0},
+            components={"pollinator": 0, "native": 0, "diversity": 0, "abundance": 0, "streek": 0},
+            streek_slug=streek_slug,
+            streek_name=streek_name,
+            streek_native_count=0,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -140,7 +188,16 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     total_extra = sum(max(0, s["specimens"] - 1) for s in species)
     abundance_score = round(10 * total_extra / (total_extra + 10)) if total_extra else 0
 
-    total = min(100, pollinator_score + native_score + diversity_score + abundance_score)
+    # ── Streek bonus ──
+    # Purely additive (never penalises non-streek plants): planting what belongs
+    # in your region scores extra. Count-based & capped like native_count — 3
+    # points per streekeigen species, 5 species reach the 15-point cap — so
+    # adding a streek plant can only ever raise the score. Weight is a starting
+    # proposal (see docs/plans/2026-07-18-streek-biodiversity.md, tied to #444).
+    streek_score = min(15, streek_native_count * 3)   # 0..15
+
+    total = min(100, pollinator_score + native_score + diversity_score
+                + abundance_score + streek_score)
 
     return GardenBiodiversity(
         score=total,
@@ -153,5 +210,9 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             "native": native_score,
             "diversity": diversity_score,
             "abundance": abundance_score,
+            "streek": streek_score,
         },
+        streek_slug=streek_slug,
+        streek_name=streek_name,
+        streek_native_count=streek_native_count,
     )

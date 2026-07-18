@@ -28,6 +28,9 @@ class GardenBiodiversityOut(BaseModel):
     invasive_count: int
     pollinator_coverage_months: list[bool]
     components: dict
+    streek_slug: str | None = None
+    streek_name: str | None = None
+    streek_native_count: int = 0
 
 
 class StreekOut(BaseModel):
@@ -83,6 +86,9 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         invasive_count=profile.invasive_count,
         pollinator_coverage_months=profile.pollinator_coverage_months,
         components=profile.components,
+        streek_slug=profile.streek_slug,
+        streek_name=profile.streek_name,
+        streek_native_count=profile.streek_native_count,
     )
 
 
