@@ -1406,6 +1406,10 @@ export type Translations = {
       streekLabel: string         // "Streek" (row label)
       streekNativeCount: (n: number) => string  // "3 streekeigen soorten"
       drachtplantCount: (n: number) => string   // "4 bijenplanten (drachtplanten)"
+      soilPhLabel: string         // "Bodem" (soil-pH advice row label)
+      soilPhAcid: string          // advice: plants prefer lime-free/acid soil
+      soilPhAlkaline: string      // advice: plants prefer chalky/alkaline soil
+      soilPhMixed: string         // advice: garden mixes acid- and lime-lovers
     }
     suggestions: {
       title: string        // "Verbeter je tuin"

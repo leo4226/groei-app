@@ -35,6 +35,7 @@ class GardenBiodiversityOut(BaseModel):
     drachtplant_count: int = 0
     area_m2: float | None = None
     score_targets: dict = {}
+    soil_ph: dict = {}
 
 
 class StreekOut(BaseModel):
@@ -96,6 +97,7 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         drachtplant_count=profile.drachtplant_count,
         area_m2=profile.area_m2,
         score_targets=profile.score_targets,
+        soil_ph=profile.soil_ph,
     )
 
 

@@ -1404,6 +1404,10 @@ export const nl: Translations = {
       streekLabel: 'Streek',
       streekNativeCount: (n) => `${n} streekeigen soort${n === 1 ? '' : 'en'}`,
       drachtplantCount: (n) => `${n} bijenplant${n === 1 ? '' : 'en'} (drachtplanten)`,
+      soilPhLabel: 'Bodem',
+      soilPhAcid: 'je planten houden van kalkarme, zure grond — vermijd kalk; een zuurmeting bevestigt de pH.',
+      soilPhAlkaline: 'je planten houden van kalkrijke grond — een zuurmeting laat zien of bijmesten met kalk nodig is.',
+      soilPhMixed: 'je combineert zuur- en kalkminnende planten — doe een zuurmeting en groepeer ze per voorkeur.',
     },
     suggestions: {
       title: 'Verbeter je tuin',

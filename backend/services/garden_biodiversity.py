@@ -49,6 +49,7 @@ class GardenBiodiversity:
     drachtplant_count: int = 0           # distinct bee-forage species (Naturalis/Bloeibogen)
     area_m2: float | None = None         # garden footprint (drives the count targets)
     score_targets: dict = field(default_factory=dict)  # area-scaled targets, for transparency
+    soil_ph: dict = field(default_factory=dict)  # advice-only: {advice_code, acid_count, …}
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -205,6 +206,18 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     area_m2 = await _garden_area_m2(db, map_id)
     targets = _score_targets(area_m2)
 
+    # Soil-pH advice (advice-only, never scored). Empty gardens get an empty
+    # (no-advice) packet, which is correct — there's nothing to advise on yet.
+    from services.soil_advice import soil_ph_advice_for_map
+    soil = await soil_ph_advice_for_map(db, map_id)
+    soil_ph = {
+        "advice_code": soil.advice_code,
+        "acid_count": soil.acid_count,
+        "alkaline_count": soil.alkaline_count,
+        "acid_examples": soil.acid_examples,
+        "alkaline_examples": soil.alkaline_examples,
+    }
+
     if species_count == 0:
         return GardenBiodiversity(
             score=0,
@@ -218,6 +231,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             streek_native_count=0,
             area_m2=area_m2,
             score_targets=targets,
+            soil_ph=soil_ph,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -291,4 +305,5 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         drachtplant_count=drachtplant_count,
         area_m2=area_m2,
         score_targets=targets,
+        soil_ph=soil_ph,
     )
