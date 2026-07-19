@@ -8,6 +8,7 @@ import MonthLoadState from './MonthLoadState'
 import MonthSeasonalPanel from './MonthSeasonalPanel'
 import WaterOutlookPanel from './WaterOutlookPanel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
+import CalendarRefreshNotice from './CalendarRefreshNotice'
 import WateringRoundDialog from './WateringRoundDialog'
 import MoistureCheckDialog from './MoistureCheckDialog'
 import { useCalendarEvents } from './useCalendarEvents'
@@ -51,7 +52,7 @@ export default function MonthView({
     () => filterSeasonalPlantsByEnvironment(plants, maps, env),
     [plants, maps, env],
   )
-  const { events, loading, error, retry } = useCalendarEvents(year, month1, env)
+  const { events, loading, error, refreshError, retry } = useCalendarEvents(year, month1, env)
   const {
     actionError,
     cancelMoistureCheck,
@@ -69,7 +70,7 @@ export default function MonthView({
     resolveMoistureCheck,
     saving,
     undoMsg,
-  } = useCalendarActions(events, undefined, `${year}-${month1}|${env}|${selectedIso}`)
+  } = useCalendarActions(events, retry, `${year}-${month1}|${env}|${selectedIso}`)
 
   const isNarrow = useIsNarrow(1200)
 
@@ -115,6 +116,7 @@ export default function MonthView({
         <MonthLoadState loading={loading} error={error} onRetry={retry} />
       ) : (
         <>
+          <CalendarRefreshNotice error={refreshError} onRetry={retry} />
           <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
           <CalendarCompletionNotice
             completion={completion}

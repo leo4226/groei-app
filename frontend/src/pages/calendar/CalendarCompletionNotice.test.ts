@@ -26,7 +26,7 @@ describe('CalendarCompletionNotice', () => {
     container.remove()
   })
 
-  it('links an individual completion to history and photo journal', () => {
+  it('links an individual completion to its care history without suggesting a photo', () => {
     const onDismiss = vi.fn()
     act(() => root.render(
       createElement(LanguageProvider, null,
@@ -43,7 +43,8 @@ describe('CalendarCompletionNotice', () => {
     expect(container.textContent).toContain('Care logged')
     expect(container.textContent).toContain('Fern')
     expect(Array.from(container.querySelectorAll('a')).map(link => link.getAttribute('href')))
-      .toEqual(['/plants/3#care-log-77', '/plants/3#photo-journal'])
+      .toEqual(['/plants/3#care-log-77'])
+    expect(container.textContent).not.toContain('Add photo')
 
     act(() => container.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true })))
     expect(onDismiss).toHaveBeenCalledOnce()

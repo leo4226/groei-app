@@ -31,10 +31,7 @@ export default function CalendarCompletionNotice({ completion, mapSlugs, onDismi
       </div>
       <div className="calendar-completion-actions">
         {completion.kind === 'plant' && (
-          <>
-            <Link to={`/plants/${completion.plantId}#${historyAnchor}`}>{t.calendar.reviewHistory}</Link>
-            <Link to={`/plants/${completion.plantId}#${PLANT_PASSPORT_ANCHORS.photoJournal}`}>{t.calendar.addPhoto}</Link>
-          </>
+          <Link to={`/plants/${completion.plantId}#${historyAnchor}`}>{t.calendar.reviewHistory}</Link>
         )}
         {completion.kind === 'map' && mapSlug && (
           <Link to={`/map/${mapSlug}`}>{t.calendar.viewMap}</Link>
