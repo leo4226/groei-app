@@ -1741,4 +1741,11 @@ export type Translations = {
     action: string     // "Vernieuwen"
     dismiss: string    // "Sluiten"
   }
+
+  demo: {
+    badge: string       // "Demo"
+    gardenName: string  // "Voorbeeldtuin"
+    cta: string         // "Maak je eigen tuin"
+    hint: string        // sun-mode explainer shown on the public demo garden
+  }
 }

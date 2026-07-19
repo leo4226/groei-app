@@ -724,6 +724,7 @@ class RegisterInput(BaseModel):
     password: str = Field(min_length=8)
     name: str
     household_name: str = ""
+    language: Literal['nl', 'en'] = 'nl'
 
     @field_validator("email")
     @classmethod
@@ -771,6 +772,7 @@ class JoinInput(BaseModel):
     email: str
     password: str = Field(min_length=8)
     name: str
+    language: Literal['nl', 'en'] = 'nl'
 
     @field_validator("email")
     @classmethod

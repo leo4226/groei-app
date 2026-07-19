@@ -1772,4 +1772,11 @@ export const en: Translations = {
     action: 'Refresh',
     dismiss: 'Close',
   },
+
+  demo: {
+    badge: 'Demo',
+    gardenName: 'Example garden',
+    cta: 'Create your own garden',
+    hint: 'Pick a month and hour to see where sun and shade fall — or view the sun heatmap for the whole year.',
+  },
 }

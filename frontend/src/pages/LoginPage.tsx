@@ -7,35 +7,207 @@ import PageDecor from '../components/PageDecor'
 import Glyph from '../components/ui/Glyph'
 import { resolveIconUrl } from '../utils/icons'
 
-// This page is shown BEFORE there is an account language. It renders in
-// English (the default for new visitors; Dutch is a Settings option), with
-// only the brand name carrying the Dutch flavour (see CLAUDE.md § Languages —
-// LoginPage is the documented exception to the translation-catalog rule).
-const FEATURES = [
-  {
-    no: '01',
-    icon: 'daisy',
-    title: 'Identify',
-    text: 'Photograph any plant in the wild and the field scanner names it in seconds.',
+// This page is shown BEFORE there is an account language, so it cannot use the
+// account-driven translation catalog (useT). It carries its own bilingual copy
+// below, defaults to Dutch (all current users + the biodiversity content are
+// Dutch), and offers an NL/EN toggle. The chosen language is passed to
+// register/join so the new account starts in that language. (LoginPage remains
+// the documented exception to the catalog rule — see CLAUDE.md § Languages.)
+type Lang = 'nl' | 'en'
+
+const LANG_KEY = 'floreren-landing-lang'
+
+function initialLang(): Lang {
+  try {
+    return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'nl'
+  } catch {
+    return 'nl'
+  }
+}
+
+interface FeatureCopy {
+  no: string
+  icon: string
+  title: string
+  text: string
+}
+
+interface LandingCopy {
+  kicker: string
+  heroSubtitle: string
+  mobileTagline: string
+  stampText: string
+  features: readonly FeatureCopy[]
+  signIn: string
+  tabLogin: string
+  tabRegister: string
+  tabJoin: string
+  yourName: string
+  namePlaceholderRegister: string
+  namePlaceholderJoin: string
+  householdName: string
+  optional: string
+  householdPlaceholder: (name: string) => string
+  householdDefault: string
+  householdFallback: (name: string) => string
+  uniqueNameHint: string
+  inviteCode: string
+  email: string
+  password: string
+  show: string
+  hide: string
+  forgotPassword: string
+  forgotSentText: string
+  backToLogin: string
+  submitLogin: string
+  submitRegister: string
+  submitJoin: string
+  submitForgot: string
+  genericError: string
+  previewKicker: string
+  previewTitle: string
+  previewText: string
+  demoCta: string
+  demoNote: string
+}
+
+const COPY: Record<Lang, LandingCopy> = {
+  nl: {
+    kicker: 'Veldgids & plantenzorg',
+    heroSubtitle:
+      'Een veldjournaal en tuinhulp. Herken planten, plan op zon en schaduw, en laat de biodiversiteit in je tuin floreren.',
+    mobileTagline: 'Laat je tuin floreren',
+    stampText: 'FLOREREN · VELDGIDS · PLANTENZORG ·',
+    features: [
+      {
+        no: '01',
+        icon: 'daisy',
+        title: 'Herken',
+        text: 'Fotografeer een plant en de veldscanner herkent hem in seconden. Elke vondst wordt een soortenkaart in je veldgids.',
+      },
+      {
+        no: '02',
+        icon: 'rosemary',
+        title: 'Verzorg',
+        text: 'Water-, voedings- en snoeiherinneringen, afgestemd op jouw tuin.',
+      },
+      {
+        no: '03',
+        icon: 'sunflower',
+        title: 'Plaats',
+        text: 'De zonnekaart toont per uur waar zon en schaduw vallen — zo vindt elke plant de juiste plek.',
+      },
+      {
+        no: '04',
+        icon: 'wildebloemen',
+        title: 'Floreer',
+        text: 'Advies over je bloeiboog en streekeigen planten, zodat bijen en vlinders het hele jaar voedsel vinden.',
+      },
+    ],
+    signIn: 'Aanmelden',
+    tabLogin: 'Inloggen',
+    tabRegister: 'Registreren',
+    tabJoin: 'Meedoen',
+    yourName: 'Je naam',
+    namePlaceholderRegister: 'Sam',
+    namePlaceholderJoin: 'Lisbeth',
+    householdName: 'Naam van je tuin',
+    optional: '(optioneel)',
+    householdPlaceholder: (name) => `Tuin van ${name}`,
+    householdDefault: 'Mijn tuin',
+    householdFallback: (name) => `Tuin van ${name}`,
+    uniqueNameHint: 'Namen zijn uniek voor alle gebruikers — kies een naam die nog niet in gebruik is.',
+    inviteCode: 'Uitnodigingscode',
+    email: 'E-mail',
+    password: 'Wachtwoord',
+    show: 'Toon',
+    hide: 'Verberg',
+    forgotPassword: 'Wachtwoord vergeten?',
+    forgotSentText: 'Kijk in je inbox. Als dat e-mailadres bekend is, is er een herstellink onderweg.',
+    backToLogin: 'Terug naar inloggen',
+    submitLogin: 'Inloggen',
+    submitRegister: 'Account aanmaken',
+    submitJoin: 'Tuin toetreden',
+    submitForgot: 'Verstuur herstellink',
+    genericError: 'Er ging iets mis',
+    previewKicker: 'De zonnekaart',
+    previewTitle: 'Zie je tuin in zon en schaduw',
+    previewText:
+      'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
+    demoCta: 'Bekijk de voorbeeldtuin',
+    demoNote: 'Geen account nodig',
   },
-  {
-    no: '02',
-    icon: 'rosemary',
-    title: 'Care',
-    text: 'Watering, feeding and pruning reminders tuned to your own garden.',
+  en: {
+    kicker: 'Field guide & plant care',
+    heroSubtitle:
+      'A field journal and plant-care companion. Identify plants, plan around sun and shade, and let your garden’s biodiversity flourish.',
+    mobileTagline: 'Let your garden flourish',
+    stampText: 'FLOREREN · FIELD GUIDE · PLANT CARE ·',
+    features: [
+      {
+        no: '01',
+        icon: 'daisy',
+        title: 'Identify',
+        text: 'Photograph any plant and the field scanner names it in seconds. Every find becomes a specimen card in your field guide.',
+      },
+      {
+        no: '02',
+        icon: 'rosemary',
+        title: 'Care',
+        text: 'Watering, feeding and pruning reminders tuned to your own garden.',
+      },
+      {
+        no: '03',
+        icon: 'sunflower',
+        title: 'Position',
+        text: 'The sun heatmap shows where sun and shade fall hour by hour — so every plant finds the right spot.',
+      },
+      {
+        no: '04',
+        icon: 'wildebloemen',
+        title: 'Flourish',
+        text: 'Advice on your flowering arc (bloeiboog) and regional native plants, so bees and butterflies find food all year round.',
+      },
+    ],
+    signIn: 'Sign in',
+    tabLogin: 'Log in',
+    tabRegister: 'Register',
+    tabJoin: 'Join',
+    yourName: 'Your name',
+    namePlaceholderRegister: 'Sam',
+    namePlaceholderJoin: 'Lisbeth',
+    householdName: 'Household name',
+    optional: '(optional)',
+    householdPlaceholder: (name) => `${name}'s Garden`,
+    householdDefault: 'My Garden',
+    householdFallback: (name) => `${name}'s Garden`,
+    uniqueNameHint: 'Names are unique across all users — pick one that is not taken yet.',
+    inviteCode: 'Invite code',
+    email: 'Email',
+    password: 'Password',
+    show: 'Show',
+    hide: 'Hide',
+    forgotPassword: 'Forgot password?',
+    forgotSentText: 'Check your inbox. If that email is registered, a reset link is on its way.',
+    backToLogin: 'Back to log in',
+    submitLogin: 'Log in',
+    submitRegister: 'Create account',
+    submitJoin: 'Join garden',
+    submitForgot: 'Send reset link',
+    genericError: 'Something went wrong',
+    previewKicker: 'The sun heatmap',
+    previewTitle: 'See your garden in sun and shade',
+    previewText:
+      'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
+    demoCta: 'Explore the example garden',
+    demoNote: 'No account needed',
   },
-  {
-    no: '03',
-    icon: 'oak',
-    title: 'Collect',
-    text: 'Every find becomes a numbered specimen card in your personal field guide.',
-  },
-] as const
+}
 
 const MRZ_LINE = 'V<FLO<<FIELD<GUIDE<<PLANT<CARE<<<<<<<<<<<<'
 
 /** Faded circular herbarium stamp, echoing the specimen-card motif. */
-function HerbariumStamp({ className }: { className?: string }) {
+function HerbariumStamp({ text, className }: { text: string; className?: string }) {
   return (
     <svg
       viewBox="0 0 200 200"
@@ -48,13 +220,13 @@ function HerbariumStamp({ className }: { className?: string }) {
       <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
       <text fontSize="13" letterSpacing="5.5" fill="currentColor" style={{ fontFamily: 'var(--font-mono)' }}>
-        <textPath href="#stamp-ring">FLOREREN · FIELD GUIDE · PLANT CARE ·</textPath>
+        <textPath href="#stamp-ring">{text}</textPath>
       </text>
     </svg>
   )
 }
 
-function SpecimenEntry({ f, compact }: { f: (typeof FEATURES)[number]; compact?: boolean }) {
+function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
   return (
     <div className="flex items-start gap-4">
       <div
@@ -74,7 +246,29 @@ function SpecimenEntry({ f, compact }: { f: (typeof FEATURES)[number]; compact?:
   )
 }
 
+function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
+  return (
+    <div className="absolute right-4 top-4 z-20 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 font-mono text-[10px] uppercase tracking-[0.14em] shadow-[0_2px_8px_rgba(31,42,30,0.06)]">
+      {(['nl', 'en'] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => onChange(l)}
+          aria-pressed={lang === l}
+          className={`rounded-full px-2.5 py-1 transition-colors ${
+            lang === l ? 'bg-primary text-white' : 'bg-transparent text-text-muted hover:text-text'
+          }`}
+          style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function LoginPage() {
+  const [lang, setLang] = useState<Lang>(initialLang)
   const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -87,6 +281,20 @@ export default function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false)
   const navigate = useNavigate()
 
+  const t = COPY[lang]
+
+  function changeLang(l: Lang) {
+    setLang(l)
+    try {
+      localStorage.setItem(LANG_KEY, l)
+      // Keep the app-wide pre-auth language (LanguageContext) in sync so the
+      // public demo garden follows the language chosen here.
+      localStorage.setItem('floreren_lang', l)
+    } catch {
+      // ignore storage failures (private mode)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -98,13 +306,13 @@ export default function LoginPage() {
         useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
       } else if (mode === 'register') {
-        const hName = householdName.trim() || `${name.trim()}'s Garden`
-        const res = await register(email, password, name, hName)
+        const hName = householdName.trim() || t.householdFallback(name.trim())
+        const res = await register(email, password, name, hName, lang)
         saveToken(res.token)
         useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
       } else if (mode === 'join') {
-        const res = await household.join({ code: code.toUpperCase().trim(), email, password, name })
+        const res = await household.join({ code: code.toUpperCase().trim(), email, password, name, language: lang })
         saveToken(res.token)
         useFloreren.getState().resetForNewSession()
         navigate('/maps', { replace: true })
@@ -113,7 +321,7 @@ export default function LoginPage() {
         setForgotSent(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : t.genericError)
     } finally {
       setLoading(false)
     }
@@ -149,14 +357,16 @@ export default function LoginPage() {
         style={{ background: 'radial-gradient(ellipse 60% 44% at 50% 50%, var(--color-bg) 12%, transparent 72%)' }}
       />
 
+      <LangToggle lang={lang} onChange={changeLang} />
+
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">
         {/* ── Left: field-guide cover hero (desktop) ── */}
         <section className="relative hidden max-w-[520px] flex-1 lg:block">
-          <HerbariumStamp className="absolute -left-16 -top-24 h-52 w-52 text-primary opacity-[0.07]" />
+          <HerbariumStamp text={t.stampText} className="absolute -left-16 -top-24 h-52 w-52 text-primary opacity-[0.07]" />
 
           <p className="relative m-0 mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
             <span className="h-px w-7 flex-none bg-border" />
-            Field guide &amp; plant care
+            {t.kicker}
             <span className="h-px min-w-[24px] max-w-[70px] flex-1 bg-border" />
           </p>
 
@@ -165,12 +375,11 @@ export default function LoginPage() {
           </h1>
 
           <p className="relative mt-4 max-w-[440px] font-heading text-[16px] italic leading-[1.55] text-text-soft">
-            A field journal and plant-care companion. Identify wild plants, log
-            every find, and keep your garden thriving.
+            {t.heroSubtitle}
           </p>
 
           <div className="relative mt-9 flex flex-col gap-5">
-            {FEATURES.map((f) => (
+            {t.features.map((f) => (
               <SpecimenEntry key={f.no} f={f} />
             ))}
           </div>
@@ -185,23 +394,23 @@ export default function LoginPage() {
 
         {/* ── Right: auth column ── */}
         <div className="w-full max-w-[380px] flex-none">
-          {/* Brand block (mobile shows the full bilingual tagline here) */}
+          {/* Brand block (mobile shows the full tagline here) */}
           <div className="mb-7 text-center lg:hidden">
             <h1 className="m-0 font-heading text-[44px] font-medium leading-none tracking-[-0.02em] text-primary">
               Floreren
             </h1>
             <p className="m-0 mt-2 font-heading text-[15px] italic text-text-soft">
-              Let your garden flourish
+              {t.mobileTagline}
             </p>
             <p className="m-0 mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-              Field guide &amp; plant care
+              {t.kicker}
             </p>
           </div>
 
           <div className="rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
             <p className="m-0 mb-5 flex items-center gap-2.5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-text-muted">
               <span className="h-px flex-1 bg-border" />
-              Sign in
+              {t.signIn}
               <span className="h-px flex-1 bg-border" />
             </p>
 
@@ -228,7 +437,7 @@ export default function LoginPage() {
                       fontFamily: 'inherit',
                     }}
                   >
-                    {m === 'login' ? 'Log in' : m === 'register' ? 'Register' : 'Join'}
+                    {m === 'login' ? t.tabLogin : m === 'register' ? t.tabRegister : t.tabJoin}
                   </button>
                 ))}
               </div>
@@ -238,7 +447,7 @@ export default function LoginPage() {
               /* Success state — no form */
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
                 <p style={{ color: 'var(--color-text)', fontSize: '0.95rem', lineHeight: 1.5, margin: '0 0 20px' }}>
-                  Check your inbox. If that email is registered, a reset link is on its way.
+                  {t.forgotSentText}
                 </p>
                 <button
                   type="button"
@@ -254,7 +463,7 @@ export default function LoginPage() {
                   }}
                 >
                   <Glyph name="arrow-left" size={14} className="inline-block align-[-2px] mr-1" />
-                  Back to log in
+                  {t.backToLogin}
                 </button>
               </div>
             ) : (
@@ -262,39 +471,39 @@ export default function LoginPage() {
                 {mode === 'register' && (
                   <>
                     <div>
-                      <label style={labelStyle}>Your name</label>
+                      <label style={labelStyle}>{t.yourName}</label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        placeholder="Sam"
+                        placeholder={t.namePlaceholderRegister}
                         style={inputStyle}
                       />
                     </div>
                     <div>
                       <label style={labelStyle}>
-                        Household name{' '}
-                        <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span>
+                        {t.householdName}{' '}
+                        <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{t.optional}</span>
                       </label>
                       <input
                         type="text"
                         value={householdName}
                         onChange={(e) => setHouseholdName(e.target.value)}
-                        placeholder={name ? `${name}'s Garden` : 'My Garden'}
+                        placeholder={name ? t.householdPlaceholder(name) : t.householdDefault}
                         style={inputStyle}
                       />
                     </div>
                     <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '-4px 0 0', lineHeight: 1.4, display: 'flex', gap: 5, alignItems: 'flex-start' }}>
                       <Glyph name="alert" size={13} style={{ flexShrink: 0, marginTop: 2 }} />
-                      <span>Names must be unique across all users. If someone already uses this name, registration will fail.</span>
+                      <span>{t.uniqueNameHint}</span>
                     </p>
                   </>
                 )}
                 {mode === 'join' && (
                   <>
                     <div>
-                      <label style={labelStyle}>Invite code</label>
+                      <label style={labelStyle}>{t.inviteCode}</label>
                       <input
                         type="text"
                         value={code}
@@ -305,13 +514,13 @@ export default function LoginPage() {
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>Your name</label>
+                      <label style={labelStyle}>{t.yourName}</label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        placeholder="Lisbeth"
+                        placeholder={t.namePlaceholderJoin}
                         style={inputStyle}
                       />
                     </div>
@@ -319,7 +528,7 @@ export default function LoginPage() {
                 )}
 
                 <div>
-                  <label style={labelStyle}>Email</label>
+                  <label style={labelStyle}>{t.email}</label>
                   <input
                     type="email"
                     value={email}
@@ -332,7 +541,7 @@ export default function LoginPage() {
 
                 {mode !== 'forgot' && (
                   <div>
-                    <label style={labelStyle}>Password</label>
+                    <label style={labelStyle}>{t.password}</label>
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -360,7 +569,7 @@ export default function LoginPage() {
                           fontFamily: 'inherit',
                         }}
                       >
-                        {showPassword ? 'Hide' : 'Show'}
+                        {showPassword ? t.hide : t.show}
                       </button>
                     </div>
                     {mode === 'login' && (
@@ -378,7 +587,7 @@ export default function LoginPage() {
                           fontWeight: 500,
                         }}
                       >
-                        Forgot password?
+                        {t.forgotPassword}
                       </button>
                     )}
                   </div>
@@ -407,7 +616,7 @@ export default function LoginPage() {
                     marginTop: '4px',
                   }}
                 >
-                  {loading ? '…' : mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : mode === 'join' ? 'Join garden' : 'Send reset link'}
+                  {loading ? '…' : mode === 'login' ? t.submitLogin : mode === 'register' ? t.submitRegister : mode === 'join' ? t.submitJoin : t.submitForgot}
                 </button>
 
                 {mode === 'forgot' && (
@@ -425,21 +634,73 @@ export default function LoginPage() {
                     }}
                   >
                     <Glyph name="arrow-left" size={14} className="inline-block align-[-2px] mr-1" />
-                    Back to log in
+                    {t.backToLogin}
                   </button>
                 )}
               </form>
             )}
           </div>
 
+          {/* Try-before-you-register: read-only demo garden */}
+          <p className="m-0 mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => navigate('/demo')}
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {t.demoCta} →
+            </button>
+          </p>
+
           {/* Compact specimen entries under the card (mobile) */}
           <div className="mt-8 flex flex-col gap-4 lg:hidden">
-            {FEATURES.map((f) => (
+            {t.features.map((f) => (
               <SpecimenEntry key={f.no} f={f} compact />
             ))}
           </div>
         </div>
       </div>
+
+      {/* ── Product preview: sun-heatmap video of the demo garden ── */}
+      <section className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-16 pt-2 lg:pt-6">
+        <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center lg:gap-16">
+          <div className="w-full max-w-[290px] flex-none overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
+            <video
+              src="/landing/sunmap-demo.mp4"
+              poster="/landing/sunmap-demo-poster.jpg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="block h-auto w-full"
+            />
+          </div>
+          <div className="max-w-[420px] text-center lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.previewKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
+              {t.previewTitle}
+            </h2>
+            <p className="mt-3 text-[14px] leading-[1.6] text-text-soft">
+              {t.previewText}
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 lg:items-start">
+              <button
+                type="button"
+                onClick={() => navigate('/demo')}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
+              >
+                {t.demoCta}
+              </button>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                {t.demoNote}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

@@ -60,6 +60,8 @@ interface Props {
   onFixedPlantTap?: (plant: FixedPlant) => void
   labelMode?: LabelMode
   showWarnings?: boolean
+  /** Hide padlock badges on locked plants (public demo garden). */
+  hideLockBadges?: boolean
   sunModeActive?: boolean
   shadows?: ShadowPolygon[]
   sunPosition?: SunPosition | null
@@ -86,7 +88,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, hideLockBadges = false, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const t = useT()
   // Object labels (containers/pots) follow the same on/off split as plant
@@ -692,6 +694,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             movePlantId={movePlantId}
             labelMode={labelMode}
             showWarnings={showWarnings}
+            hideLockBadges={hideLockBadges}
             zoom={zoom}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
@@ -763,8 +766,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       </svg>
 
-      {/* Zoom controls --- always visible */}
-      <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
+      {/* Zoom controls --- always visible (map-zoom-controls lets embedders hide them, e.g. the demo video recorder) */}
+      <div className="map-zoom-controls absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); handleZoomIn() }}

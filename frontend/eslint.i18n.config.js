@@ -78,8 +78,9 @@ export default [
       'src/pages/GameJoinPage.tsx',
       'src/pages/GamePlayerPage.tsx',
       'src/pages/LayoutEditorPage.tsx',
-      // LoginPage is pre-auth (no account language exists yet) and renders in
-      // English by design (Dutch is a Settings option) — permanent exemption.
+      // LoginPage is pre-auth (no account language exists yet) so it can't use
+      // the account-driven catalog; it carries its own bilingual COPY dict with
+      // an NL/EN toggle (Dutch default) — permanent exemption.
       'src/pages/LoginPage.tsx',
       'src/pages/MapPage.tsx',
       'src/pages/MapSettingsPage.tsx',

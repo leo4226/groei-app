@@ -21,6 +21,7 @@ import { defaultMapRedirectSlug } from './appMapRedirectModel'
 // Route-level code splitting
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const DemoGardenPage = lazy(() => import('./pages/DemoGardenPage'))
 const MapPage = lazy(() => import('./pages/MapPage'))
 const Plants = lazy(() => import('./pages/Plants'))
 const AddPlant = lazy(() => import('./pages/AddPlant'))
@@ -171,6 +172,8 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const isLoginPage = location.pathname === '/login'
+  // The public demo garden (/demo) is pre-auth like the login page: no app chrome.
+  const isDemoPage = location.pathname === '/demo'
   const isAdminPage = location.pathname.startsWith('/admin')
   // Hide Stekkie during the identify flow — it overlaps the full-screen camera.
   const isIdentifyPage = location.pathname.startsWith('/identify')
@@ -241,6 +244,7 @@ export default function App() {
                 }
               />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/demo" element={<DemoGardenPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route
                 path="/maps"
@@ -396,15 +400,15 @@ export default function App() {
         </PullToRefresh>
       </main>
 
-      {!isLoginPage && !isAdminPage && !isEditorPage && (
+      {!isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isLoginPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
+      {!isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
 
-      {!isLoginPage && <UpdateToast />}
+      {!isLoginPage && !isDemoPage && <UpdateToast />}
 
       {showPlantPicker && (
         <PlantPickerSheet

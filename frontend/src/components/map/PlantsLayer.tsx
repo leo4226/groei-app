@@ -24,6 +24,9 @@ interface Props {
   movePlantId?: number | null
   labelMode?: LabelMode
   showWarnings?: boolean
+  /** Hide the padlock badge on locked plants (public demo garden: everything
+   *  is locked but the badges would read as clutter). */
+  hideLockBadges?: boolean
   /** Current map zoom — drives semantic zoom (fixed-screen-size text + a
    *  priority gate that reveals more names as you zoom in). */
   zoom?: number
@@ -38,7 +41,7 @@ const AVG_CHAR_WIDTH_RATIO = 0.55
 // a calm overview. At/above it, everything else is allowed to compete for space.
 const LABEL_DETAIL_ZOOM = 1.5
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, zoom = 1, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, hideLockBadges = false, zoom = 1, onPointerDown, heatmapCells }: Props) {
   const t = useT()
 
   // 'off' hides persistent labels entirely (selected plant still labels on tap);
@@ -118,6 +121,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             labelPlacement={labelPlacements.get(plant.id) ?? 'below'}
             labelFontSize={effFont}
             showWarnings={showWarnings}
+            hideLockBadge={hideLockBadges}
             displayName={plantDisplayName(plant, t.locale)}
             onPointerDown={onPointerDown}
             heatmapCells={heatmapCells}
