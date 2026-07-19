@@ -1381,6 +1381,30 @@
   cursor: pointer;
 }
 
+.cal-page .calendar-refresh-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px clamp(12px, 2vw, 28px) 0;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 32%, var(--color-border));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-secondary) 6%, var(--color-paper));
+  color: var(--color-text-soft);
+  font-family: var(--font-heading);
+  font-size: 12px;
+}
+.cal-page .calendar-refresh-notice button {
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--color-primary-dark);
+  font: inherit;
+  cursor: pointer;
+}
+
 .calendar-moisture-notice {
   margin: 12px 16px;
   padding: 12px 16px;

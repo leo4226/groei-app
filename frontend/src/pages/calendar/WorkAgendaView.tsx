@@ -10,6 +10,7 @@ import { buildWorkAgenda } from './workAgendaModel'
 import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
 import type { CalendarViewMode } from './calendarViewModel'
 import CalendarCompletionNotice from './CalendarCompletionNotice'
+import CalendarRefreshNotice from './CalendarRefreshNotice'
 import WateringRoundDialog from './WateringRoundDialog'
 import MoistureCheckDialog from './MoistureCheckDialog'
 import { useFloreren } from '../../store/useFloreren'
@@ -38,7 +39,7 @@ export default function WorkAgendaView({ env, environmentFilter, viewNavigation,
     () => filterSeasonalPlantsByEnvironment(plants, maps, env),
     [plants, maps, env],
   )
-  const { events, loading, error, retry } = useCalendarEventRange(
+  const { events, loading, error, refreshError, retry } = useCalendarEventRange(
     todayIso,
     horizonIso,
     env,
@@ -85,6 +86,7 @@ export default function WorkAgendaView({ env, environmentFilter, viewNavigation,
             mapSlugs={mapSlugs}
             onDismiss={clearCompletion}
           />
+          <CalendarRefreshNotice error={refreshError} onRetry={retry} />
           {moistureNotice && (
             <p className="calendar-moisture-notice" role="status" aria-live="polite">
               {moistureNotice}

@@ -12,13 +12,18 @@ import type { CalendarEvent } from './calendarTypes'
 const calendarHookMocks = vi.hoisted(() => ({
   events: [] as CalendarEvent[],
   doneIds: new Set<string>(),
+  refreshError: null as string | null,
   retry: vi.fn(),
   useCalendarActions: vi.fn(),
 }))
 
 vi.mock('./useCalendarEvents', () => ({
   useCalendarEvents: () => ({
-    events: calendarHookMocks.events, loading: false, error: false, retry: calendarHookMocks.retry,
+    events: calendarHookMocks.events,
+    loading: false,
+    error: false,
+    refreshError: calendarHookMocks.refreshError,
+    retry: calendarHookMocks.retry,
   }),
 }))
 
@@ -67,6 +72,7 @@ describe('MonthView desktop rail', () => {
   beforeEach(() => {
     calendarHookMocks.events = []
     calendarHookMocks.doneIds = new Set<string>()
+    calendarHookMocks.refreshError = null
     calendarHookMocks.retry.mockClear()
     calendarHookMocks.useCalendarActions.mockClear()
     localStorage.clear()
@@ -106,7 +112,7 @@ describe('MonthView desktop rail', () => {
     expect(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'weather'))
       .toBeLessThan(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'seasonal'))
     expect(calendarHookMocks.useCalendarActions).toHaveBeenCalledWith(
-      [], undefined, expect.any(String),
+      [], calendarHookMocks.retry, expect.any(String),
     )
   })
 
@@ -149,5 +155,48 @@ describe('MonthView desktop rail', () => {
     expect(container.querySelector('[data-calendar-context="grid"]')?.getAttribute('data-event-count'))
       .toBe('1')
     expect(container.querySelector('.sc-sub')?.textContent).toContain('No tasks')
+  })
+
+  it('keeps the month grid visible when a background refresh fails', () => {
+    calendarHookMocks.events = [{
+      id: 'schedule:42:water:0',
+      date: new Date().toISOString().slice(0, 10),
+      type: 'water',
+      plant_id: 42,
+      plant_name: 'Rose',
+      plant_icon_variant: null,
+      schedule_id: 42,
+      map_id: 1,
+      map_name: 'Garden',
+      overdue: false,
+      severity: null,
+      color: null,
+      icon: null,
+      grouped: false,
+      group_count: null,
+      group_member_schedule_ids: null,
+      weather_triggered: false,
+    }]
+    calendarHookMocks.refreshError = 'offline'
+
+    act(() => root.render(
+      createElement(LanguageProvider, null,
+        createElement(MonthView, {
+          onSetView: vi.fn(),
+          env: 'all',
+          environmentFilter: null,
+          viewNavigation: null,
+          year: 2026,
+          month1: 7,
+          onMonthChange: vi.fn(),
+        }),
+      ),
+    ))
+
+    expect(container.querySelector('[data-calendar-context="grid"]')).not.toBeNull()
+    expect(container.querySelector('[role="alert"]')).not.toBeNull()
+
+    act(() => (container.querySelector('[role="alert"] button') as HTMLButtonElement).click())
+    expect(calendarHookMocks.retry).toHaveBeenCalledOnce()
   })
 })

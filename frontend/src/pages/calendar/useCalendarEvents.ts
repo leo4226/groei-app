@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { calendar } from '../../api/client'
 import { useFloreren } from '../../store/useFloreren'
 import type { CalendarEvent } from './calendarTypes'
@@ -13,8 +13,11 @@ export function useCalendarEventRange(
 ) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const [reloadVersion, setReloadVersion] = useState(0)
+  const loadedRangeRef = useRef<string | null>(null)
 
   const careVersions = useFloreren(s => s.careVersions)
   // Pull-to-refresh / app-foreground refreshes bump refreshTick app-wide.
@@ -24,6 +27,7 @@ export function useCalendarEventRange(
     [careVersions],
   )
   const retry = useCallback(() => setReloadVersion(version => version + 1), [])
+  const rangeKey = `${from}|${to}|${env ?? ''}|${pinOverdue}`
 
   useEffect(() => {
     window.addEventListener(CARE_RHYTHM_CHANGED_EVENT, retry)
@@ -32,25 +36,33 @@ export function useCalendarEventRange(
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    const backgroundRefresh = loadedRangeRef.current === rangeKey
+    setLoading(!backgroundRefresh)
+    setRefreshing(backgroundRefresh)
     setError(null)
+    setRefreshError(null)
     calendar.events(from, to, env, pinOverdue)
       .then(data => {
         if (!cancelled) {
+          loadedRangeRef.current = rangeKey
           setEvents(data)
           setLoading(false)
+          setRefreshing(false)
         }
       })
       .catch(fetchError => {
         if (!cancelled) {
-          setError(String(fetchError?.message ?? fetchError))
+          const message = String(fetchError?.message ?? fetchError)
+          if (backgroundRefresh) setRefreshError(message)
+          else setError(message)
           setLoading(false)
+          setRefreshing(false)
         }
       })
     return () => { cancelled = true }
-  }, [from, to, env, pinOverdue, careVersionsSum, reloadVersion, refreshTick])
+  }, [from, to, env, pinOverdue, rangeKey, careVersionsSum, reloadVersion, refreshTick])
 
-  return { events, loading, error, retry }
+  return { events, loading, refreshing, error, refreshError, retry }
 }
 
 export function useCalendarEvents(year: number, month1: number, env?: string) {
