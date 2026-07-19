@@ -185,4 +185,28 @@ describe('MobileAgendaList care controls', () => {
     expect(container.textContent).not.toContain('Maximum 31°C expected today')
     expect(container.querySelector('button')).toBeNull()
   })
+
+  it('keeps completed Month history visible without care controls', () => {
+    const completedEvent = event({
+      id: 'care-log:1',
+      status: 'completed',
+      schedule_id: null,
+    })
+
+    act(() => root.render(createElement(MobileAgendaList, {
+      events: [completedEvent],
+      todayIso: TODAY,
+      saving: null,
+      onDone: vi.fn(),
+      onSkip: vi.fn(),
+      undoMsg: null,
+      onGardenUndo: vi.fn(),
+      actionError: null,
+    })))
+
+    const history = container.querySelector('[data-calendar-history]')
+    expect(history).not.toBeNull()
+    expect(history?.textContent).toContain('Afgerond')
+    expect(history?.querySelector('button')).toBeNull()
+  })
 })

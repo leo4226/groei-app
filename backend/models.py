@@ -994,6 +994,7 @@ class CalendarEventOut(BaseModel):
     id: str                  # composite e.g. "schedule:42:water"
     date: str                # ISO date YYYY-MM-DD
     type: str                # 'water' | 'fertilize' | etc.
+    status: Literal['scheduled', 'completed'] = 'scheduled'
     plant_id: int | None
     plant_name: str | None
     plant_icon_variant: str | None

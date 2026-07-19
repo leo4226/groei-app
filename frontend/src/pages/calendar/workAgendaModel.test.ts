@@ -8,6 +8,7 @@ function event(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     id: overrides.id ?? 'schedule:1:2026-07-12',
     date: overrides.date ?? '2026-07-12',
     type,
+    status: overrides.status,
     plant_id: overrides.plant_id ?? 1,
     plant_name: overrides.plant_name ?? 'Test plant',
     plant_icon_variant: null,
@@ -73,6 +74,17 @@ describe('buildWorkAgenda', () => {
       today,
       future,
     ])
+  })
+
+  it('excludes completed history from actionable work', () => {
+    const scheduled = event({ id: 'schedule:1' })
+    const completed = event({
+      id: 'care-log:1',
+      schedule_id: null,
+      status: 'completed',
+    })
+
+    expect(buildWorkAgenda([completed, scheduled], '2026-07-12')).toEqual([scheduled])
   })
 
   it('does not leak Dutch species names into English', () => {

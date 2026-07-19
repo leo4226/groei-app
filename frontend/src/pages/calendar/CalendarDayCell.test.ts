@@ -90,4 +90,33 @@ describe('CalendarDayCell workload', () => {
 
     expect(container.querySelector('.day-num')?.getAttribute('data-today-label')).toBe('today')
   })
+
+  it('renders completed care as a checked, read-only history marker', () => {
+    localStorage.setItem('floreren_lang', 'en')
+    const completed = {
+      ...event(1),
+      id: 'care-log:1',
+      status: 'completed' as const,
+    }
+    const cell = createElement(CalendarDayCell, {
+      day: 13,
+      month0: 6,
+      year: 2026,
+      otherMonth: false,
+      weekend: false,
+      isToday: false,
+      isSelected: false,
+      events: [completed],
+      load: 0,
+      maxVisible: 2,
+      onClick: vi.fn(),
+    })
+
+    act(() => root.render(createElement(LanguageProvider, null, cell)))
+
+    const marker = container.querySelector('.ev.completed')
+    expect(marker).not.toBeNull()
+    expect(marker?.querySelector('.ev-completed-mark svg')).not.toBeNull()
+    expect(marker?.getAttribute('aria-label')).toContain('Completed')
+  })
 })

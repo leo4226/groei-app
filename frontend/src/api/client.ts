@@ -547,10 +547,17 @@ import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 import type { WaterOutlook } from '../pages/calendar/waterOutlookTypes'
 
 export const calendar = {
-  events: (from: string, to: string, env?: string, pinOverdue = false) => {
+  events: (
+    from: string,
+    to: string,
+    env?: string,
+    pinOverdue = false,
+    includeHistory = false,
+  ) => {
     const params: Record<string, string> = { from, to }
     if (env && env !== 'all') params.env = env
     if (pinOverdue) params.pin_overdue = 'true'
+    if (includeHistory) params.include_history = 'true'
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
   waterOutlook: () => api<WaterOutlook>('GET', '/calendar/water-outlook'),

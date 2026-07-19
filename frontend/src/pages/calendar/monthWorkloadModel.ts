@@ -20,6 +20,7 @@ export function summarizeMonthWorkload(events: CalendarEvent[]): MonthWorkload {
   let planned = 0
 
   events.forEach(event => {
+    if (event.status === 'completed') return
     if (!isCareSession(event)) return
 
     byDate.set(event.date, (byDate.get(event.date) ?? 0) + 1)

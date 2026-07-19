@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { calendar } from '../../api/client'
 import type { CalendarEvent } from './calendarTypes'
-import { useCalendarEventRange } from './useCalendarEvents'
+import { useCalendarEventRange, useCalendarEvents } from './useCalendarEvents'
 
 vi.mock('../../api/client', () => ({
   calendar: { events: vi.fn() },
@@ -35,6 +35,11 @@ function Harness() {
         ? 'stale-error'
         : 'ready'
   return createElement('span', null, `${state}:${events.length}`)
+}
+
+function MonthHarness() {
+  useCalendarEvents(2026, 7)
+  return null
 }
 
 function deferred<T>() {
@@ -108,5 +113,16 @@ describe('useCalendarEventRange Care-rhythm refresh', () => {
       await flush()
     })
     expect(container.textContent).toBe('stale-error:1')
+  })
+
+  it('requests durable completion history for Month ranges', async () => {
+    await act(async () => {
+      root.render(createElement(MonthHarness))
+      await flush()
+    })
+
+    expect(calendar.events).toHaveBeenCalledWith(
+      '2026-07-01', '2026-07-31', undefined, false, true,
+    )
   })
 })

@@ -6,6 +6,7 @@ import { DAY_LONG_NL, MONTH_SHORT_NL, DAY_LONG_EN, MONTH_SHORT_EN, dowMon } from
 import { useT } from '../../context/LanguageContext'
 import CalendarEventLink from './CalendarEventLink'
 import CalendarWeatherContext from './CalendarWeatherContext'
+import Glyph from '../../components/ui/Glyph'
 
 const EMPTY_MAP_SLUGS = new Map<number, string>()
 
@@ -89,6 +90,7 @@ export default function MobileAgendaList({
             {list.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
               const busy = saving === e.id
+              const completed = e.status === 'completed'
               const groupCount = e.group_count ?? e.group_member_schedule_ids?.length ?? 0
               return (
                 <div key={e.id} style={{
@@ -96,8 +98,9 @@ export default function MobileAgendaList({
                   padding: '10px 12px', background: 'var(--color-paper)',
                   borderLeft: `3px solid ${def?.color ?? 'var(--color-primary)'}`,
                   borderRadius: 4, marginBottom: 6,
-                  opacity: busy ? 0.5 : 1, transition: 'opacity 0.15s',
-                }} aria-busy={busy || undefined}>
+                  opacity: busy ? 0.5 : completed ? 0.72 : 1,
+                  transition: 'opacity 0.15s',
+                }} aria-busy={busy || undefined} data-calendar-history={completed || undefined}>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', minWidth: 64 }}>{t.utility[EVENT_TYPE_UTILITY_KEY[e.type as EventTypeId]] ?? e.type}</span>
                   <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     <CalendarEventLink
@@ -107,6 +110,11 @@ export default function MobileAgendaList({
                     >
                       {agendaPlantName(e, t.locale) || '—'}
                     </CalendarEventLink>
+                    {completed && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-primary-dark)' }}>
+                        <Glyph name="check" size={11} /> {t.calendar.completedHistory}
+                      </span>
+                    )}
                     {(e.grouped || e.overdue) && (
                       <span style={{ fontSize: 11, color: e.overdue ? 'var(--color-secondary)' : 'var(--color-text-muted)' }}>
                         {e.grouped && t.calendar.affectedPlants(groupCount)}

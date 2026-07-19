@@ -109,4 +109,37 @@ describe('CalendarAgendaCard handoffs', () => {
     expect(container.textContent).toContain('Zet kwetsbare potten binnen.')
     expect(container.querySelector('button')).toBeNull()
   })
+
+  it('renders completed care in a separate read-only history section', () => {
+    const card = createElement(CalendarAgendaCard, {
+      selectedIso: TODAY,
+      events: [],
+      completedEvents: [
+        event({ id: 'care-log:1', status: 'completed', schedule_id: null }),
+        event({
+          id: 'garden-operation:2',
+          status: 'completed',
+          plant_id: null,
+          schedule_id: null,
+          grouped: true,
+          group_count: 4,
+        }),
+      ],
+      todayIso: TODAY,
+      saving: null,
+      onDone: vi.fn(),
+      onSkip: vi.fn(),
+      undoMsg: null,
+      onGardenUndo: vi.fn(),
+      mapSlugs: new Map([[10, 'back-garden']]),
+    })
+    act(() => root.render(createElement(MemoryRouter, null, card)))
+
+    const history = container.querySelector('[data-calendar-history]')
+    expect(history).not.toBeNull()
+    expect(history?.querySelectorAll('.agenda-group')).toHaveLength(2)
+    expect(history?.querySelector('button')).toBeNull()
+    expect(Array.from(history?.querySelectorAll('a') ?? []).map(link => link.getAttribute('href')))
+      .toEqual(['/plants/1', '/map/back-garden'])
+  })
 })

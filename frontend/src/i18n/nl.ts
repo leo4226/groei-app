@@ -1164,6 +1164,7 @@ export const nl: Translations = {
     taskSingular: 'taak',
     bloom: 'Bloei',
     open: 'Open',
+    completedHistory: 'Afgerond',
     seasonalThisMonth: 'Seizoen deze maand',
     seasonalScope: 'Maandvensters, geen exacte datums.',
     seasonalMissing: (n) => n === 1

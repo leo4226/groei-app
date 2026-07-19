@@ -79,12 +79,16 @@ export default function MonthView({
     [events, activeTypes],
   )
   const agendaEvents = useMemo(
-    () => visibleEvents.filter(e => !doneIds.has(e.id)),
+    () => visibleEvents.filter(e => e.status !== 'completed' && !doneIds.has(e.id)),
     [visibleEvents, doneIds],
   )
   const selectedEvents = useMemo(
     () => agendaEvents.filter(e => e.date === selectedIso),
     [agendaEvents, selectedIso],
+  )
+  const selectedCompletedEvents = useMemo(
+    () => visibleEvents.filter(e => e.status === 'completed' && e.date === selectedIso),
+    [visibleEvents, selectedIso],
   )
   const workload = useMemo(() => summarizeMonthWorkload(agendaEvents), [agendaEvents])
 
@@ -131,7 +135,7 @@ export default function MonthView({
           {isNarrow ? (
             <>
               <MobileAgendaList
-                events={agendaEvents}
+                events={visibleEvents.filter(e => !doneIds.has(e.id))}
                 todayIso={todayIso}
                 saving={saving}
                 onDone={handleDone}
@@ -161,7 +165,7 @@ export default function MonthView({
                 onSelect={setSelectedIso}
               />
               <aside className="col-side">
-                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} completedEvents={selectedCompletedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
                 {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <MonthSeasonalPanel
                   month1={month1}

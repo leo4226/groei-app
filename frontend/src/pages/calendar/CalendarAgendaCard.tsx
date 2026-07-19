@@ -5,10 +5,12 @@ import { useT } from '../../context/LanguageContext'
 import { agendaPlantName } from './workAgendaModel'
 import CalendarEventLink from './CalendarEventLink'
 import CalendarWeatherContext from './CalendarWeatherContext'
+import Glyph from '../../components/ui/Glyph'
 
 interface Props {
   selectedIso: string
   events: CalendarEvent[]
+  completedEvents?: CalendarEvent[]
   todayIso: string
   saving: string | null
   onDone: (e: CalendarEvent) => void
@@ -21,6 +23,7 @@ interface Props {
 export default function CalendarAgendaCard({
   selectedIso,
   events,
+  completedEvents = [],
   todayIso,
   onDone,
   onSkip,
@@ -156,6 +159,52 @@ export default function CalendarAgendaCard({
           )
         })}
       </div>
+      {completedEvents.length > 0 && (
+        <div className="agenda-history" data-calendar-history>
+          <div className="agenda-history-heading">
+            <Glyph name="check" size={11} />
+            {t.calendar.completedHistory}
+          </div>
+          <div className="agenda-list">
+            {completedEvents.map(event => {
+              const type = event.type
+              const def = EVENT_TYPE_BY_ID[type]
+              const careLabel = t.utility[EVENT_TYPE_UTILITY_KEY[type]] ?? type
+              const identity = event.grouped
+                ? event.map_name
+                : agendaPlantName(event, t.locale)
+              const label = identity ? `${careLabel} · ${identity}` : careLabel
+              const affectedCount = event.group_count
+                ?? event.group_member_schedule_ids?.length
+                ?? 0
+
+              return (
+                <div key={event.id} className="agenda-item agenda-group completed">
+                  <div className={`agenda-icon ag-icon-group ${def?.cssClass ?? ''}`}>
+                    <span className="ag-type-letter" aria-hidden="true">
+                      <Glyph name="check" size={16} />
+                    </span>
+                  </div>
+                  <div className="agenda-meta">
+                    <p className="what">
+                      <CalendarEventLink
+                        event={event}
+                        mapSlugs={mapSlugs}
+                        className="agenda-identity-link"
+                      >
+                        {label}
+                      </CalendarEventLink>
+                    </p>
+                  </div>
+                  {event.grouped && affectedCount > 0 && (
+                    <span className="ag-group-badge">{affectedCount}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {undoMsg && (
         <div className="sc-head" style={{ padding: '14px 22px', borderTop: '1px solid var(--color-border)' }}>
           <p className="sc-sub" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
