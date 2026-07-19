@@ -35,7 +35,7 @@ async def test_drachtplant_covers_months_without_pollinator_value():
     b = await compute_for_map(db, 7)
     assert b.pollinator_coverage_months[2] is True   # March
     assert b.pollinator_coverage_months[3] is True   # April
-    assert b.components["pollinator"] == 10           # 2 months * 5
+    assert b.components["pollinator"] == 7            # round(40 * 2/12)
     await db.close()
 
 

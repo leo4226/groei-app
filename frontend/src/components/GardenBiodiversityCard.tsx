@@ -199,14 +199,14 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           narrow widths (a flex justify-between row overflowed once Streek was
           added). All five components are shown. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-[11px] text-text-muted pt-3 border-t border-border/40">
-        <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/60</span></span>
-        <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/30</span></span>
-        <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/10</span></span>
+        <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/40</span></span>
+        <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/25</span></span>
+        <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/15</span></span>
         {(data.components.abundance ?? 0) > 0 && (
-          <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentAbundance}: <span className="text-text font-mono">{data.components.abundance ?? 0}/10</span></span>
+          <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentAbundance}: <span className="text-text font-mono">{data.components.abundance ?? 0}/8</span></span>
         )}
         {data.streek_slug && (
-          <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/15</span></span>
+          <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/12</span></span>
         )}
       </div>
 

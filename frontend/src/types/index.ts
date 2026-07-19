@@ -721,6 +721,8 @@ export type GardenBiodiversityOut = {
   streek_name?: string | null
   streek_native_count?: number
   drachtplant_count?: number
+  area_m2?: number | null
+  score_targets?: { diversity?: number; native?: number; streek?: number }
 }
 
 export type EcologyOut = {
