@@ -116,11 +116,12 @@ describe('WaterOutlookPanel', () => {
 
     expect(container.textContent).toContain('Water outlook')
     expect(container.textContent).toContain('Weather may suggest an earlier soil check, never a later Water deadline.')
-    expect(container.textContent).toContain('Garden')
-    expect(container.textContent).toContain('Tomato')
+    expect(container.textContent).toContain('Warm and dry. Check exposed outdoor soil earlier.')
+    expect(container.textContent).toContain('Check by 16 Jul')
+    expect(container.textContent).toContain('Water deadlines stay unchanged.')
+    expect(container.textContent).not.toContain('Garden')
+    expect(container.textContent).not.toContain('Tomato')
     expect(container.textContent).not.toContain('Rosemary')
-    expect(container.textContent).toContain('Check soil by 16 Jul')
-    expect(container.textContent).toContain('Warm, dry weather is making this outdoor container dry out faster.')
     expect(container.querySelectorAll('button')).toHaveLength(0)
   })
 
@@ -132,8 +133,10 @@ describe('WaterOutlookPanel', () => {
     )))
     await flush()
 
-    expect(container.textContent).toContain('Living room')
-    expect(container.textContent).toContain('Outdoor temperature proxy')
+    expect(container.textContent).toContain('Available weather data does not suggest an earlier soil check.')
+    expect(container.textContent).toContain('Water deadlines stay unchanged.')
+    expect(container.textContent).not.toContain('Living room')
+    expect(container.textContent).not.toContain('Fern')
     expect(container.textContent).not.toContain('Garden')
   })
 
@@ -147,9 +150,10 @@ describe('WaterOutlookPanel', () => {
     await flush()
 
     expect(container.textContent).toContain('Waterverwachting')
-    expect(container.textContent).toContain('Controleer de grond uiterlijk 16 jul')
-    expect(container.textContent).toContain('Buitentemperatuur als proxy')
-    expect(container.textContent).toContain('Warm en droog weer laat deze buitenpot sneller uitdrogen.')
+    expect(container.textContent).toContain('Warm en droog. Controleer blootgestelde buitengrond eerder.')
+    expect(container.textContent).toContain('Controleer uiterlijk 16 jul')
+    expect(container.textContent).toContain('Waterdeadlines blijven ongewijzigd.')
+    expect(container.textContent).not.toContain('Tomato')
   })
 
   it('labels an already-due canonical schedule instead of suggesting weather escalation', async () => {
@@ -175,8 +179,8 @@ describe('WaterOutlookPanel', () => {
     )))
     await flush()
 
-    expect(container.textContent).toContain('Water deadline already passed: 14 Jul')
-    expect(container.textContent).not.toContain('Check soil by')
+    expect(container.textContent).toContain('Available weather data does not suggest an earlier soil check.')
+    expect(container.textContent).not.toContain('Check by')
   })
 
   it('shows a localized failure and retries', async () => {
@@ -196,6 +200,7 @@ describe('WaterOutlookPanel', () => {
     act(() => retry?.click())
     await flush()
     expect(mockedOutlook).toHaveBeenCalledTimes(2)
-    expect(container.textContent).toContain('Garden')
+    expect(container.textContent).toContain('Water outlook')
+    expect(container.textContent).not.toContain('Garden')
   })
 })

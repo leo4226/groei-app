@@ -1125,6 +1125,13 @@ export type Translations = {
     seasonalGardenYear: string
     waterOutlookTitle: string
     waterOutlookScope: string
+    waterOutlookGlobalOutdoor: string
+    waterOutlookGlobalIndoor: string
+    waterOutlookGlobalMixed: string
+    waterOutlookGlobalNormal: string
+    waterOutlookGlobalUnavailable: string
+    waterOutlookCheckDateShort: (date: string) => string
+    waterOutlookDeadlinesUnchanged: string
     waterOutlookLoading: string
     waterOutlookError: string
     waterOutlookRetry: string

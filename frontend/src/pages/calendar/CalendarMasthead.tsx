@@ -1,29 +1,27 @@
 import type { ReactNode } from 'react'
 import { MONTH_LONG_EN, MONTH_LONG_NL, isoWeek } from './dateUtils'
-import CalendarMoonMini from './CalendarMoonMini'
-import CalendarFieldNote from './CalendarFieldNote'
 import { useT } from '../../context/LanguageContext'
 
 interface Props {
   year: number
   month1: number
-  todayDay: number
   onPrev(): void
   onNext(): void
   plannedCount: number
   openCount: number
   environmentFilter: ReactNode
+  viewNavigation: ReactNode
 }
 
 /**
  * The Month view's context rail. The page title lives in the shared
  * CalendarPageMasthead (PlanningCalendarPage); this row is the single date
- * authority for the month spread — switcher + workload counts on the left,
- * moon + field note in the middle, the environment filter on the right.
+ * authority for the month spread: switcher + workload counts on the left,
+ * shared view navigation in the middle, and the environment filter on the right.
  */
 export default function CalendarMasthead({
-  year, month1, todayDay, onPrev, onNext,
-  plannedCount, openCount, environmentFilter,
+  year, month1, onPrev, onNext,
+  plannedCount, openCount, environmentFilter, viewNavigation,
 }: Props) {
   const t = useT()
   const monthName = (t.locale.startsWith('en') ? MONTH_LONG_EN : MONTH_LONG_NL)[month1 - 1]
@@ -51,10 +49,7 @@ export default function CalendarMasthead({
         </div>
       </div>
 
-      <div className="masthead-context">
-        <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />
-        <CalendarFieldNote month1={month1} />
-      </div>
+      {viewNavigation}
 
       <div className="masthead-environment">
         {environmentFilter}

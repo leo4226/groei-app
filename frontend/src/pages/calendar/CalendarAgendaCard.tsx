@@ -78,7 +78,7 @@ export default function CalendarAgendaCard({
   }
 
   return (
-    <section className="side-card">
+    <section className="side-card" data-calendar-context="agenda">
       <div className="sc-head">
         <div className="sc-eye">{t.calendar.agendaSelectedDay}</div>
         <h2 className="sc-title">{dayName} <em>{d} {monthShort}</em></h2>
