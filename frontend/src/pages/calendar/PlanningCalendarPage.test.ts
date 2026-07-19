@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createElement } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LanguageProvider } from '../../context/LanguageContext'
@@ -8,17 +8,29 @@ import PlanningCalendarPage from './PlanningCalendarPage'
 
 vi.mock('./MonthView', async () => {
   const { createElement } = await import('react')
-  return { default: () => createElement('div', { 'data-active-calendar-view': 'month' }) }
+  return {
+    default: ({ viewNavigation }: { viewNavigation: ReactNode }) => (
+      createElement('div', { 'data-active-calendar-view': 'month' }, viewNavigation)
+    ),
+  }
 })
 
 vi.mock('./WorkAgendaView', async () => {
   const { createElement } = await import('react')
-  return { default: () => createElement('div', { 'data-active-calendar-view': 'work' }) }
+  return {
+    default: ({ viewNavigation }: { viewNavigation: ReactNode }) => (
+      createElement('div', { 'data-active-calendar-view': 'work' }, viewNavigation)
+    ),
+  }
 })
 
 vi.mock('./PhenologyView', async () => {
   const { createElement } = await import('react')
-  return { default: () => createElement('div', { 'data-active-calendar-view': 'year' }) }
+  return {
+    default: ({ viewNavigation }: { viewNavigation: ReactNode }) => (
+      createElement('div', { 'data-active-calendar-view': 'year' }, viewNavigation)
+    ),
+  }
 })
 
 vi.mock('./useIsNarrow', () => ({ useIsNarrow: () => false }))
@@ -54,9 +66,9 @@ describe('PlanningCalendarPage view navigation', () => {
       const currentNavigation = container.querySelector('[data-calendar-view-navigation]')
       const activeView = container.querySelector(`[data-active-calendar-view="${view}"]`)
       expect(container.querySelectorAll('[data-calendar-view-navigation]')).toHaveLength(1)
-      expect(currentNavigation).toBe(navigation)
+      expect(currentNavigation).not.toBeNull()
       expect(activeView).not.toBeNull()
-      expect(currentNavigation!.compareDocumentPosition(activeView as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(activeView!.contains(currentNavigation)).toBe(true)
     }
 
     assertStableNavigation('month')
@@ -67,7 +79,10 @@ describe('PlanningCalendarPage view navigation', () => {
     act(() => viewButtons[1].click())
     assertStableNavigation('work')
 
-    act(() => viewButtons[2].click())
+    const currentButtons = Array.from(
+      container.querySelectorAll('[data-calendar-view-navigation] button'),
+    ) as HTMLButtonElement[]
+    act(() => currentButtons[2].click())
     assertStableNavigation('year')
   })
 })

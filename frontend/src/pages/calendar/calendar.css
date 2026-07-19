@@ -26,14 +26,21 @@
   justify-content: flex-end;
 }
 
-/* ——— masthead (one cover for all three views; title in the page, view
-       context in each view's rail — see CalendarPageMasthead) ——— */
+/* ——— masthead (one cover for all three views; moon and field-note context
+       share the title row, while navigation lives in each view rail) ——— */
 .cal-page .masthead {
   width: min(100%, 1800px);
   margin: 0 auto;
-  padding: max(32px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 0;
+  padding: max(32px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 20px;
   border-bottom: 1px solid var(--color-border);
 }
+.cal-page .masthead-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+.cal-page .title-block { min-width: 0; }
 .cal-page .title-block .eyebrow {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -78,27 +85,21 @@
   line-height: 1.45;
 }
 
-/* ——— centered view tabs (Plants' sibling-view grammar) ——— */
-.cal-page .masthead-toggle-row {
-  display: flex;
-  justify-content: center;
-  padding: 22px 0 20px;
-}
-
-/* ——— per-view context rail (month switcher · moon · field note · filter) ——— */
+/* ——— per-view control rail (date · view switch · filter) ——— */
 .cal-page .month-rail,
 .cal-page .view-rail {
   width: min(100%, 1800px);
   margin: 0 auto;
   padding: 14px clamp(24px, 3vw, 56px);
   border-bottom: 1px solid var(--color-border-soft);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 14px 28px;
 }
-.cal-page .view-rail { justify-content: flex-end; }
+.cal-page .month-switch { grid-column: 1; justify-self: start; }
+.cal-page .calendar-view-navigation { grid-column: 2; justify-self: center; }
+.cal-page .masthead-environment { grid-column: 3; justify-self: end; }
 
 /* month switcher */
 .cal-page .month-switch {
@@ -543,41 +544,39 @@
 .cal-page .seasonal-groups { padding: 2px 22px 8px; }
 
 /* Read-only weather pressure for canonical Water schedules */
-.cal-page .water-outlook-scope {
-  margin: 0;
-  padding: 11px 22px;
-  border-bottom: 1px dashed var(--color-border-soft);
-  font-family: var(--font-heading);
-  font-size: 12px;
-  font-style: italic;
-  line-height: 1.45;
-  color: var(--color-text-muted);
-}
-.cal-page .water-outlook-list { padding: 2px 22px 8px; }
-.cal-page .water-outlook-map {
-  padding: 11px 0 12px;
-  border-bottom: 1px dashed var(--color-border-soft);
-}
-.cal-page .water-outlook-map:last-child { border-bottom: 0; }
-.cal-page .water-outlook-map-head {
+.cal-page .water-outlook-card .sc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
+  padding: 14px 18px 10px;
 }
-.cal-page .water-outlook-map h3 {
+.cal-page .water-outlook-card .sc-title { font-size: 20px; }
+.cal-page .water-outlook-scope {
+  margin: 0;
+  padding: 8px 18px;
+  border-bottom: 1px dashed var(--color-border-soft);
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+.cal-page .water-outlook-alert { padding: 11px 18px 14px; }
+.cal-page .water-outlook-summary {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--color-text);
 }
-.cal-page .water-outlook-plant {
-  margin: 8px 0 2px;
-  font-family: var(--font-heading);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
+.cal-page .water-outlook-meta {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
 }
 .cal-page .water-outlook-badge {
   flex: none;
@@ -605,30 +604,6 @@
   border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
   background: color-mix(in srgb, var(--color-primary) 7%, transparent);
   color: var(--color-primary-dark);
-}
-.cal-page .water-outlook-date,
-.cal-page .water-outlook-proxy,
-.cal-page .water-outlook-reason {
-  margin: 6px 0 0;
-  line-height: 1.45;
-}
-.cal-page .water-outlook-date {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-primary-dark);
-}
-.cal-page .water-outlook-proxy {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-.cal-page .water-outlook-reason {
-  font-family: var(--font-heading);
-  font-size: 13px;
-  color: var(--color-text-soft);
 }
 .cal-page .water-outlook-loading,
 .cal-page .water-outlook-error {
@@ -680,9 +655,11 @@
 /* Desktop monthly field note */
 .cal-page .masthead-context {
   position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex: none;
 }
 .cal-page .calendar-field-note { position: relative; }
 .cal-page .calendar-field-note summary {
@@ -1419,16 +1396,31 @@
   .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page main { grid-template-columns: 1fr; }
   .cal-page .col-side { position: static; }
-  .cal-page .masthead-context { display: none; }
-  .cal-page .moon-mini { display: none; }
 }
 
 @media (max-width: 720px) {
   .cal-page .masthead-environment { justify-content: flex-start; }
   .cal-page .masthead {
-    padding: max(24px, env(safe-area-inset-top, 0px)) 16px 0;
+    padding: max(24px, env(safe-area-inset-top, 0px)) 16px 14px;
   }
-  .cal-page .masthead-toggle-row { padding: 16px 0 14px; }
+  .cal-page .masthead-title-row { display: block; }
+  .cal-page .masthead-context {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .cal-page .month-rail,
+  .cal-page .view-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cal-page .month-switch,
+  .cal-page .calendar-view-navigation,
+  .cal-page .masthead-environment {
+    grid-column: 1;
+    justify-self: stretch;
+  }
+  .cal-page .masthead-environment { justify-content: flex-start; }
+  .cal-page .calendar-view-navigation { width: 100%; }
   .cal-page .view-toggle { width: 100%; }
   .cal-page .view-toggle button {
     flex: 1;

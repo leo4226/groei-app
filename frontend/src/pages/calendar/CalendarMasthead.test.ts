@@ -4,6 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CalendarMasthead from './CalendarMasthead'
+import { CalendarPageMasthead } from './PlanningCalendarPage'
 import { LanguageProvider } from '../../context/LanguageContext'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -28,19 +29,19 @@ describe('CalendarMasthead workload metrics', () => {
     act(() => root.render(createElement(CalendarMasthead, {
       year: 2026,
       month1: 7,
-      todayDay: 13,
       onPrev: vi.fn(),
       onNext: vi.fn(),
       plannedCount: 9,
       openCount: 2,
       environmentFilter: null,
+      viewNavigation: createElement('nav', { 'data-test-view-navigation': true }),
     })))
 
     expect(container.textContent).toContain('Gepland 9')
     expect(container.textContent).toContain('Open 2')
     expect(container.textContent).not.toContain('Bloei')
-    expect(container.textContent).toContain('Veldnotitie')
-    expect(container.textContent).toContain('Zomerhoogte water')
+    expect(container.querySelector('[data-test-view-navigation]')).not.toBeNull()
+    expect(container.textContent).not.toContain('Veldnotitie')
   })
 
   it('uses English month and metric labels for an English profile', () => {
@@ -48,12 +49,12 @@ describe('CalendarMasthead workload metrics', () => {
     const masthead = createElement(CalendarMasthead, {
       year: 2026,
       month1: 7,
-      todayDay: 13,
       onPrev: vi.fn(),
       onNext: vi.fn(),
       plannedCount: 4,
       openCount: 1,
       environmentFilter: null,
+      viewNavigation: null,
     })
 
     act(() => root.render(createElement(LanguageProvider, null, masthead)))
@@ -65,15 +66,11 @@ describe('CalendarMasthead workload metrics', () => {
 
   it('exposes the monthly field note through a native disclosure', () => {
     localStorage.setItem('floreren_lang', 'en')
-    const masthead = createElement(CalendarMasthead, {
+    const masthead = createElement(CalendarPageMasthead, {
+      view: 'month',
       year: 2026,
       month1: 7,
       todayDay: 15,
-      onPrev: vi.fn(),
-      onNext: vi.fn(),
-      plannedCount: 12,
-      openCount: 3,
-      environmentFilter: null,
     })
 
     act(() => root.render(createElement(LanguageProvider, null, masthead)))
@@ -81,6 +78,8 @@ describe('CalendarMasthead workload metrics', () => {
     const disclosure = container.querySelector('details.calendar-field-note') as HTMLDetailsElement | null
     const trigger = disclosure?.querySelector('summary') as HTMLElement | null
 
+    expect(container.querySelector('.masthead-title-row .moon-mini')).not.toBeNull()
+    expect(container.querySelector('.masthead-title-row .calendar-field-note')).not.toBeNull()
     expect(disclosure).not.toBeNull()
     expect(disclosure?.open).toBe(false)
     expect(trigger?.textContent).toContain('Field note')

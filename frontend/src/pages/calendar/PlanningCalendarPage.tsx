@@ -5,6 +5,8 @@ import MonthView from './MonthView'
 import PhenologyView from './PhenologyView'
 import WorkAgendaView from './WorkAgendaView'
 import CalendarViewToggle from './CalendarViewToggle'
+import CalendarMoonMini from './CalendarMoonMini'
+import CalendarFieldNote from './CalendarFieldNote'
 import { defaultCalendarView, type CalendarViewMode } from './calendarViewModel'
 import { useIsNarrow } from './useIsNarrow'
 import './calendar.css'
@@ -48,13 +50,21 @@ function EnvironmentFilter({
 }
 
 /**
- * The one constant masthead across all three calendar views ("one cover,
- * three spreads"): title + per-view lede, with the view switch as centered
- * serif pill-tabs directly under the title — the same grammar Plants uses
- * for its sibling views. View-specific context (month switcher, moon,
- * field note, filters) lives in each view's own rail below this header.
+ * The one constant masthead across all three calendar views. The title keeps
+ * the Plants/Settings rhythm, while secondary moon and field-note context use
+ * the otherwise empty space on the right.
  */
-function CalendarPageMasthead({ view, onSet }: { view: CalendarViewMode; onSet(v: CalendarViewMode): void }) {
+export function CalendarPageMasthead({
+  view,
+  year,
+  month1,
+  todayDay,
+}: {
+  view: CalendarViewMode
+  year: number
+  month1: number
+  todayDay: number
+}) {
   const t = useT()
   const viewLabel = view === 'month' ? t.calendar.month : view === 'work' ? t.calendar.agenda : t.calendar.gardenYear
   const lede = view === 'month'
@@ -65,41 +75,73 @@ function CalendarPageMasthead({ view, onSet }: { view: CalendarViewMode; onSet(v
 
   return (
     <header className="masthead">
-      <div className="title-block">
-        <div className="eyebrow">
-          <span>{t.calendar.title}</span>
-          <span>{viewLabel}</span>
+      <div className="masthead-title-row">
+        <div className="title-block">
+          <div className="eyebrow">
+            <span>{t.calendar.title}</span>
+            <span>{viewLabel}</span>
+          </div>
+          <h1>{t.calendar.heading}<em>.</em></h1>
+          <p className="lede">{lede}</p>
         </div>
-        <h1>{t.calendar.heading}<em>.</em></h1>
-        <p className="lede">{lede}</p>
+        <div className="masthead-context masthead-context--header">
+          <CalendarMoonMini year={year} month1={month1} todayDay={todayDay} />
+          <CalendarFieldNote month1={month1} />
+        </div>
       </div>
-      <nav className="masthead-toggle-row" data-calendar-view-navigation aria-label={t.calendar.heading}>
-        <CalendarViewToggle view={view} onSet={onSet} />
-      </nav>
     </header>
   )
 }
 
 export default function PlanningCalendarPage() {
   const isNarrow = useIsNarrow()
+  const t = useT()
+  const today = new Date()
   const [view, setView] = useState<CalendarViewMode>(() => defaultCalendarView(isNarrow))
   const [env, setEnv] = useState('all')
+  const [displayedMonth, setDisplayedMonth] = useState(() => ({
+    year: today.getFullYear(),
+    month1: today.getMonth() + 1,
+  }))
   const environmentFilter = <EnvironmentFilter env={env} onChange={setEnv} />
+  const viewNavigation = (
+    <nav className="calendar-view-navigation" data-calendar-view-navigation aria-label={t.calendar.heading}>
+      <CalendarViewToggle view={view} onSet={setView} />
+    </nav>
+  )
 
   return (
     <div className="cal-page">
-      <CalendarPageMasthead view={view} onSet={setView} />
+      <CalendarPageMasthead
+        view={view}
+        year={displayedMonth.year}
+        month1={displayedMonth.month1}
+        todayDay={today.getDate()}
+      />
       {view === 'month' ? (
         <MonthView
           onSetView={setView}
           env={env}
           environmentFilter={environmentFilter}
+          viewNavigation={viewNavigation}
+          year={displayedMonth.year}
+          month1={displayedMonth.month1}
+          onMonthChange={(year, month1) => setDisplayedMonth({ year, month1 })}
         />
       ) : (
         view === 'work' ? (
-          <WorkAgendaView env={env} environmentFilter={environmentFilter} onSetView={setView} />
+          <WorkAgendaView
+            env={env}
+            environmentFilter={environmentFilter}
+            viewNavigation={viewNavigation}
+            onSetView={setView}
+          />
         ) : (
-          <PhenologyView env={env} environmentFilter={environmentFilter} />
+          <PhenologyView
+            env={env}
+            environmentFilter={environmentFilter}
+            viewNavigation={viewNavigation}
+          />
         )
       )}
     </div>

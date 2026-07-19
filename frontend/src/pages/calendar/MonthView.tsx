@@ -24,12 +24,17 @@ interface Props {
   onSetView(v: CalendarViewMode): void
   env: string
   environmentFilter: ReactNode
+  viewNavigation: ReactNode
+  year: number
+  month1: number
+  onMonthChange(year: number, month1: number): void
 }
 
-export default function MonthView({ onSetView, env, environmentFilter }: Props) {
+export default function MonthView({
+  onSetView, env, environmentFilter, viewNavigation,
+  year, month1, onMonthChange,
+}: Props) {
   const now = new Date()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month1, setMonth1] = useState(now.getMonth() + 1)
   const todayIso = isoDate(now)
   const showingCurrentMonth = year === now.getFullYear() && month1 === now.getMonth() + 1
   const [selectedIso, setSelectedIso] = useState(todayIso)
@@ -80,8 +85,7 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
 
   function moveMonth(delta: -1 | 1) {
     const target = moveCalendarMonth(year, month1, selectedIso, delta)
-    setYear(target.year)
-    setMonth1(target.month1)
+    onMonthChange(target.year, target.month1)
     setSelectedIso(target.selectedIso)
   }
   function prev() { moveMonth(-1) }
@@ -97,10 +101,11 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
   return (
     <>
       <CalendarMasthead
-        year={year} month1={month1} todayDay={now.getDate()}
+        year={year} month1={month1}
         onPrev={prev} onNext={next}
         plannedCount={workload.planned} openCount={workload.open}
         environmentFilter={environmentFilter}
+        viewNavigation={viewNavigation}
       />
       {loading || error ? (
         <MonthLoadState loading={loading} error={error} onRetry={retry} />
@@ -150,8 +155,8 @@ export default function MonthView({ onSetView, env, environmentFilter }: Props) 
                 onSelect={setSelectedIso}
               />
               <aside className="col-side">
-                {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <MonthSeasonalPanel
                   month1={month1}
                   plants={seasonalPlants}

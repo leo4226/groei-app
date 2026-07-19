@@ -17,10 +17,11 @@ import { useFloreren } from '../../store/useFloreren'
 interface Props {
   env: string
   environmentFilter: ReactNode
+  viewNavigation: ReactNode
   onSetView?(v: CalendarViewMode): void
 }
 
-export default function WorkAgendaView({ env, environmentFilter, onSetView }: Props) {
+export default function WorkAgendaView({ env, environmentFilter, viewNavigation, onSetView }: Props) {
   const t = useT()
   const today = new Date()
   const todayIso = isoDate(today)
@@ -71,6 +72,7 @@ export default function WorkAgendaView({ env, environmentFilter, onSetView }: Pr
       {/* Context rail — same slot the Month view's month-rail occupies.
           The lede lives in the shared masthead; here only the filter. */}
       <div className="view-rail">
+        {viewNavigation}
         <div className="masthead-environment">{environmentFilter}</div>
       </div>
 
