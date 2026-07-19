@@ -69,19 +69,23 @@ export default function MonthView({
     resolveMoistureCheck,
     saving,
     undoMsg,
-  } = useCalendarActions(events, retry, `${year}-${month1}|${env}|${selectedIso}`)
+  } = useCalendarActions(events, undefined, `${year}-${month1}|${env}|${selectedIso}`)
 
   const isNarrow = useIsNarrow(1200)
 
-  const filtered = useMemo(
-    () => events.filter(e => activeTypes.has(e.type) && !doneIds.has(e.id)),
-    [events, activeTypes, doneIds],
+  const visibleEvents = useMemo(
+    () => events.filter(e => activeTypes.has(e.type)),
+    [events, activeTypes],
+  )
+  const agendaEvents = useMemo(
+    () => visibleEvents.filter(e => !doneIds.has(e.id)),
+    [visibleEvents, doneIds],
   )
   const selectedEvents = useMemo(
-    () => filtered.filter(e => e.date === selectedIso),
-    [filtered, selectedIso],
+    () => agendaEvents.filter(e => e.date === selectedIso),
+    [agendaEvents, selectedIso],
   )
-  const workload = useMemo(() => summarizeMonthWorkload(filtered), [filtered])
+  const workload = useMemo(() => summarizeMonthWorkload(agendaEvents), [agendaEvents])
 
   function moveMonth(delta: -1 | 1) {
     const target = moveCalendarMonth(year, month1, selectedIso, delta)
@@ -125,7 +129,7 @@ export default function MonthView({
           {isNarrow ? (
             <>
               <MobileAgendaList
-                events={filtered}
+                events={agendaEvents}
                 todayIso={todayIso}
                 saving={saving}
                 onDone={handleDone}
@@ -148,7 +152,7 @@ export default function MonthView({
             <main>
               <CalendarGrid
                 year={year} month1={month1}
-                events={filtered}
+                events={visibleEvents}
                 loadByDate={workload.byDate}
                 todayIso={todayIso}
                 selectedIso={selectedIso}

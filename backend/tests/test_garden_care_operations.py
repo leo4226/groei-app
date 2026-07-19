@@ -123,6 +123,40 @@ async def test_complete_garden_care_updates_only_selected_plants(
 
 
 @pytest.mark.asyncio
+async def test_complete_garden_care_uses_catalog_interval_when_schedule_interval_invalid(
+    client, selectable_garden_db, auth_header,
+):
+    db = selectable_garden_db
+    await db.execute(
+        "UPDATE care_schedules SET care_type = 'fertilize', interval_days = 0 WHERE id = 10"
+    )
+    await db.execute(
+        "INSERT INTO household_calendar_grouping_rules (household_id, map_id, care_type) VALUES (1, 1, 'fertilize')"
+    )
+    await db.commit()
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'feed',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()['care_type'] == 'fertilize'
+    schedules = await db.execute_fetchall(
+        'SELECT id, next_due, last_done FROM care_schedules WHERE id = 10'
+    )
+    assert schedules[0]['next_due'] == '2026-08-09'
+    assert schedules[0]['last_done'] is not None
+
+
+@pytest.mark.asyncio
 async def test_complete_garden_care_rejects_schedule_outside_selected_group(
     client, selectable_garden_db, auth_header,
 ):

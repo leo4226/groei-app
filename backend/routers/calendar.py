@@ -8,6 +8,7 @@ from models import CalendarEventOut, WaterOutlookOut
 from services.warnings import compute_plant_warnings, CareWarning
 from services.scheduling import calculate_effective_interval
 from services.calendar_grouping import get_calendar_grouping_preferences
+from services.garden_care import schedule_interval_days
 from services.weather_task_service import sync_ephemeral_schedules
 from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
@@ -552,9 +553,16 @@ async def list_calendar_events(
             ))
         else:
             # Recurring — generate all occurrences in [from_dt, to_dt]
+            interval_days = schedule_interval_days({**dict(r), **plant}, ct)
+            if interval_days is None:
+                logger.warning(
+                    "Skipping calendar schedule %s with invalid interval for care type %s",
+                    r["schedule_id"], ct,
+                )
+                continue
             occurrences = _generate_occurrences(
                 next_due,
-                r["interval_days"],
+                interval_days,
                 r.get("season_adjust"),
                 from_dt,
                 to_dt,
