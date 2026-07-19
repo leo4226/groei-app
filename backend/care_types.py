@@ -165,6 +165,9 @@ CARE_TYPE_ALIASES: dict[str, str] = {
     "repot_check": "repot",
     "protect_cold": "frost_protect",
     "protect_heat": "heat_protect",
+    "feed": "fertilize",
+    "fertilise": "fertilize",
+    "fertilizer": "fertilize",
 }
 
 
