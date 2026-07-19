@@ -61,6 +61,31 @@ async def test_backfill_names_preview_counts_all_localized_gaps(client, admin_na
 
 
 @pytest.mark.asyncio
+async def test_incomplete_names_endpoint_limits_after_filtering_and_sorts_by_prevalence(
+    client, admin_names_db, auth_header
+):
+    # Give species 2 the highest active prevalence; the endpoint should filter
+    # incomplete species first, report the full total, then apply the UI limit.
+    await admin_names_db.execute(
+        """INSERT INTO plants (id, name, species_id, is_active, map_id, household_id)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (104, "More lavender", 2, 1, 10, 1),
+    )
+    await admin_names_db.commit()
+
+    resp = await client.get(
+        "/api/admin-panel/species/incomplete-names?limit=2",
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["total"] == 4
+    assert [s["id"] for s in body["species"]] == [2, 5]
+    assert [s["active_count"] for s in body["species"]] == [2, 1]
+
+
+@pytest.mark.asyncio
 async def test_backfill_names_preview_scopes_to_household_active_plants(client, admin_names_db, auth_header):
     in_use = await client.get("/api/admin-panel/backfill-names/preview?scope=in_use", headers=auth_header)
     assert in_use.status_code == 200, in_use.text

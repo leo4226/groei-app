@@ -1263,10 +1263,10 @@ async def admin_patch_species(
     admin=Depends(require_admin),
     db=Depends(db_dep),
 ):
-    """Edit common_name_nl and/or latin_name for a species."""
+    """Edit common_name_nl, common_name_en, and/or latin_name for a species."""
     from fastapi import HTTPException
 
-    allowed = {"common_name_nl", "latin_name"}
+    allowed = {"common_name_nl", "common_name_en", "latin_name"}
     updates = {k: v for k, v in body.items() if k in allowed}
     if not updates:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -1283,12 +1283,62 @@ async def admin_patch_species(
     await db.commit()
 
     updated = await db.execute_fetchall(
-        "SELECT id, common_name_nl, latin_name FROM plant_species WHERE id = ?",
+        "SELECT id, common_name_nl, common_name_en, latin_name FROM plant_species WHERE id = ?",
         (species_id,),
     )
     row = dict(updated[0])
     await log_admin_action(db, admin, "patch_species", target=f"species/{species_id}", detail={"fields": list(updates.keys()), **updates})
     return row
+
+
+@router.get("/admin-panel/species/incomplete-names")
+async def admin_incomplete_species_names(
+    limit: int = Query(100, ge=1, le=500),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """List species with incomplete localized common names (NL or EN missing).
+
+    Use this to find species that failed LLM name generation and need manual fixes.
+    """
+    from species_service import _localized_name_missing, _text_or_none
+
+    # Fetch the full catalog, compute the gaps in Python (same helper as the
+    # backfill path), then apply the UI limit after filtering. Applying LIMIT in
+    # SQL first can hide incomplete rows that sort after already-complete species.
+    # The active_count join keeps the manual-fix list sorted by prevalence.
+    rows = await db.execute_fetchall(
+        """SELECT ps.id, ps.common_name_nl, ps.common_name_en, ps.latin_name,
+                  COUNT(p.id) AS active_count
+           FROM plant_species ps
+           LEFT JOIN plants p ON p.species_id = ps.id AND p.is_active = TRUE
+           GROUP BY ps.id, ps.common_name_nl, ps.common_name_en, ps.latin_name
+           ORDER BY active_count DESC,
+                    LOWER(COALESCE(ps.common_name_nl, ps.common_name_en, ps.latin_name, '')),
+                    ps.id"""
+    )
+
+    incomplete = []
+    for row in rows:
+        rec = dict(row)
+        latin_name = _text_or_none(rec.get("latin_name"))
+        missing_nl = _localized_name_missing(rec.get("common_name_nl"), latin_name)
+        missing_en = _localized_name_missing(rec.get("common_name_en"), latin_name)
+        missing_latin = latin_name is None
+
+        if missing_nl or missing_en or missing_latin:
+            incomplete.append({
+                "id": rec["id"],
+                "common_name_nl": rec.get("common_name_nl"),
+                "common_name_en": rec.get("common_name_en"),
+                "latin_name": rec.get("latin_name"),
+                "missing_nl": missing_nl,
+                "missing_en": missing_en,
+                "missing_latin": missing_latin,
+                "active_count": int(rec.get("active_count") or 0),
+            })
+
+    return {"species": incomplete[:limit], "total": len(incomplete)}
 
 
 @router.post("/admin-panel/species/{species_id}/regenerate-thresholds")
