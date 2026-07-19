@@ -655,6 +655,9 @@ export const en: Translations = {
     frostSensitive: 'Frost-sensitive',
     deficitPerDay: '~{hours}h/day deficit in growing season',
     sunPerMonth: 'Sun per month at this spot',
+    bioNative: 'Native',
+    bioStreek: 'Regional',
+    bioBeeForage: 'Bee forage',
   },
 
   // ── Phenology / Agenda ──────────────────────────────────────────

@@ -655,6 +655,9 @@ export const nl: Translations = {
     frostSensitive: 'Vorstgevoelig',
     deficitPerDay: '~{hours}u/dag tekort in groeiseizoen',
     sunPerMonth: 'Zon per maand op deze plek',
+    bioNative: 'Inheems',
+    bioStreek: 'Streekeigen',
+    bioBeeForage: 'Drachtplant',
   },
 
   // ── Phenology / Agenda ──────────────────────────────────────────

@@ -15,6 +15,11 @@ export interface SpeciesSuggestion {
   frost_sensitive: boolean
   interesting_facts_nl: string
   active_months: number[]
+  // Biodiversity lens
+  is_native?: boolean
+  pollinator_value?: number | null
+  is_drachtplant?: boolean
+  is_streek?: boolean
 }
 
 export interface SpotInspectorResult {

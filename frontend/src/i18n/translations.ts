@@ -615,6 +615,9 @@ export type Translations = {
     frostSensitive: string  // "Frost-sensitive"
     deficitPerDay: string  // "~{hours}h/day deficit in growing season"
     sunPerMonth: string  // "Sun per month at this spot"
+    bioNative: string  // "Native"
+    bioStreek: string  // "Regional"
+    bioBeeForage: string  // "Bee forage"
   }
 
   // ── Phenology / Agenda ──────────────────────────────────────────
