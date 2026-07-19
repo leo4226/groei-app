@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS plant_species (
     phenology_json TEXT,
     native_to_nl INTEGER,
     pollinator_value INTEGER,
-    is_drachtplant INTEGER DEFAULT 0
+    is_drachtplant INTEGER DEFAULT 0,
+    is_moth_plant INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, streek_slug TEXT);
 CREATE TABLE IF NOT EXISTS streek_species (
@@ -49,18 +50,18 @@ _FULL_SUN = [8.0] * 12
 async def _seed(db):
     await db.executescript(_DDL)
     await db.execute("INSERT INTO maps (id, streek_slug) VALUES (7, 'twente')")
-    # 1: streek + native + drachtplant, 2: native only, 3: plain
-    for sid, nl, native, pv, dracht in [
-        (1, "Streekplant", 1, 5, 1),
-        (2, "Inheemse plant", 1, 3, 0),
-        (3, "Gewone plant", 0, 0, 0),
+    # 1: streek + native + drachtplant + moth, 2: native only, 3: plain
+    for sid, nl, native, pv, dracht, moth in [
+        (1, "Streekplant", 1, 5, 1, 1),
+        (2, "Inheemse plant", 1, 3, 0, 0),
+        (3, "Gewone plant", 0, 0, 0, 0),
     ]:
         await db.execute(
             "INSERT INTO plant_species "
             "(id, common_name_nl, common_name_en, latin_name, phenology_json, "
-            "native_to_nl, pollinator_value, is_drachtplant) "
-            "VALUES (?,?,?,?,?,?,?,?)",
-            (sid, nl, nl, f"Latin {sid}", _PHENOLOGY, native, pv, dracht),
+            "native_to_nl, pollinator_value, is_drachtplant, is_moth_plant) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (sid, nl, nl, f"Latin {sid}", _PHENOLOGY, native, pv, dracht, moth),
         )
     await db.execute(
         "INSERT INTO streek_species (streek_slug, species_id, category) "
@@ -83,11 +84,13 @@ async def test_suitability_carries_biodiversity_flags(client, seeded_db):
     assert species[1]["is_streek"] is True
     assert species[1]["is_native"] is True
     assert species[1]["is_drachtplant"] is True
+    assert species[1]["is_moth_plant"] is True
     assert species[1]["pollinator_value"] == 5
 
     assert species[2]["is_streek"] is False
     assert species[2]["is_native"] is True
     assert species[2]["is_drachtplant"] is False
+    assert species[2]["is_moth_plant"] is False
 
     assert species[3]["is_streek"] is False
     assert species[3]["is_native"] is False

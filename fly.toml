@@ -12,7 +12,7 @@ primary_region = "ams"
   # streek/drachtplant enrichment from the committed snapshots — each step is
   # idempotent and best-effort (|| true) so a transient hiccup never aborts a
   # deploy, and new catalog species get enriched on the next deploy.
-  release_command = "sh -c 'alembic upgrade head && (python -m scripts.seed_streken || true) && (python -m scripts.resolve_streek_species --no-gbif || true) && (python -m scripts.resolve_bloeibogen || true)'"
+  release_command = "sh -c 'alembic upgrade head && (python -m scripts.seed_streken || true) && (python -m scripts.resolve_streek_species --no-gbif || true) && (python -m scripts.resolve_bloeibogen || true) && (python -m scripts.resolve_moth_plants || true)'"
 
 [env]
   PORT = "8000"

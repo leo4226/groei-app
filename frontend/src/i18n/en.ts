@@ -627,6 +627,8 @@ export const en: Translations = {
     ecologyFillsGap: 'Fills: {months}',
     ecologyStreek: 'Regional',
     ecologyForageGap: '🐝 Fills bee gap',
+    ecologyMoth: '🌙 Moth plant',
+    ecologyMothGap: '🌙 Attracts moths',
     sunFitPerfect: 'Ideal light',
     sunFitAcceptable: 'Suitable light',
     sunFitMarginal: 'Tight light',
@@ -658,6 +660,7 @@ export const en: Translations = {
     bioNative: 'Native',
     bioStreek: 'Regional',
     bioBeeForage: 'Bee forage',
+    bioMoth: 'Moth',
   },
 
   // ── Phenology / Agenda ──────────────────────────────────────────

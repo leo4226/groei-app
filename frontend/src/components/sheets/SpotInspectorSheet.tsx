@@ -149,6 +149,11 @@ function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
             🐝 {t.spotInspector.bioBeeForage}
           </span>
         )}
+        {species.is_moth_plant && (
+          <span className="text-[9px] bg-indigo-500/15 text-indigo-600 px-1.5 py-0.5 rounded-full">
+            🌙 {t.spotInspector.bioMoth}
+          </span>
+        )}
       </div>
       {species.avg_shortfall_hours > 0 && (
         <p className="text-[9px] text-due mt-1">

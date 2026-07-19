@@ -667,6 +667,8 @@ export type PlantRecommendation = {
   is_streek?: boolean                  // belongs to the garden's streek (streekeigen)
   is_drachtplant?: boolean             // Naturalis bee-forage plant
   fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
+  is_moth_plant?: boolean              // night-flowering / moth-forage (nachtvlinder)
+  supports_moth_gap?: boolean          // moth plant in a garden that has none yet
 }
 
 export type StreekSuggestionsOut = {

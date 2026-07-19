@@ -587,6 +587,8 @@ export type Translations = {
     ecologyFillsGap: string      // "Vult: {months}"
     ecologyStreek: string        // "Streekeigen" / "Regional"
     ecologyForageGap: string     // "🐝 Vult drachtgat" / "🐝 Fills bee gap"
+    ecologyMoth: string          // "🌙 Nachtvlinder" / "🌙 Moth plant"
+    ecologyMothGap: string       // "🌙 Trekt nachtvlinders" / "🌙 Attracts moths"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
@@ -618,6 +620,7 @@ export type Translations = {
     bioNative: string  // "Native"
     bioStreek: string  // "Regional"
     bioBeeForage: string  // "Bee forage"
+    bioMoth: string  // "Moth"
   }
 
   // ── Phenology / Agenda ──────────────────────────────────────────

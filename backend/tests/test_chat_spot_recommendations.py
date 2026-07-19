@@ -18,7 +18,8 @@ async def _prepare_spot_db(seeded_db):
             pollinator_value INTEGER,
             flowering_months TEXT,
             ecology_enriched_at TEXT,
-            is_drachtplant INTEGER DEFAULT 0
+            is_drachtplant INTEGER DEFAULT 0,
+            is_moth_plant INTEGER DEFAULT 0
         )"""
     )
     await seeded_db.execute(

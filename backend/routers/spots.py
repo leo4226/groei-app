@@ -23,7 +23,7 @@ async def get_spot_suitability(payload: SpotPayload, db = Depends(db_dep)):
 
     rows = await db.execute_fetchall(
         "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json, "
-        "native_to_nl, pollinator_value, is_drachtplant "
+        "native_to_nl, pollinator_value, is_drachtplant, is_moth_plant "
         "FROM plant_species WHERE phenology_json IS NOT NULL"
     )
 
@@ -76,6 +76,7 @@ async def get_spot_suitability(payload: SpotPayload, db = Depends(db_dep)):
             "pollinator_value": row["pollinator_value"],
             "is_drachtplant": bool(row["is_drachtplant"]),
             "is_streek": row["id"] in streek_ids,
+            "is_moth_plant": bool(row["is_moth_plant"]),
         })
 
     tier_order = {"suitable": 0, "marginal": 1, "unsuitable": 2}

@@ -20,6 +20,7 @@ export interface SpeciesSuggestion {
   pollinator_value?: number | null
   is_drachtplant?: boolean
   is_streek?: boolean
+  is_moth_plant?: boolean
 }
 
 export interface SpotInspectorResult {
