@@ -144,6 +144,23 @@ export type Translations = {
     noMaps: string
     createFirstMap: string
     createFirstLede: string
+    // New-garden modal: starter layout + location (soft first-run)
+    starterLabel: string          // "Beginnen met"
+    starterTemplate: string       // "Voorbeeldopzet"
+    starterTemplateHint: string   // "Borders, gazon en terras — pas alles later aan"
+    starterEmpty: string          // "Leeg"
+    starterEmptyHint: string      // "Zelf tekenen in de editor"
+    locationLabel: string         // "Locatie (voor de zon)"
+    locationUse: string           // "Gebruik mijn locatie"
+    locationBusy: string          // "Locatie ophalen…"
+    locationSet: string           // "Locatie ingesteld"
+    locationError: string         // "Locatie ophalen mislukt — kan later in instellingen"
+    locationSkipHint: string      // "Optioneel — kan ook later, in tuininstellingen"
+    starterZoneFence: string      // "Schutting"
+    starterZoneBackBorder: string // "Achterborder"
+    starterZoneBorder: string     // "Border"
+    starterZoneLawn: string       // "Gazon"
+    starterZoneTerrace: string    // "Terras"
   }
 
   // ── Map settings page ───────────────────────────────────────────
