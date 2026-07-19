@@ -4,6 +4,18 @@ import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
 import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut } from '../types'
 
+/** Soil-pH advice copy for a garden (advice-only, never scored). Returns '' when
+ * there's no signal, so the caller can hide the line entirely. */
+function soilPhAdvice(
+  code: 'prefers_acid' | 'prefers_alkaline' | 'mixed' | null | undefined,
+  t: ReturnType<typeof useT>,
+): string {
+  if (code === 'prefers_acid') return t.garden.biodiversity.soilPhAcid
+  if (code === 'prefers_alkaline') return t.garden.biodiversity.soilPhAlkaline
+  if (code === 'mixed') return t.garden.biodiversity.soilPhMixed
+  return ''
+}
+
 /**
  * Small line glyphs for biodiversity stats, in the app's icon language
  * (thin stroke, rounded caps, currentColor) — replacing the old emoji
@@ -184,6 +196,15 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               {(data.streek_native_count ?? 0) > 0 && (
                 <span className="text-text-muted"> · {t.garden.biodiversity.streekNativeCount(data.streek_native_count ?? 0)}</span>
               )}
+            </p>
+          )}
+          {soilPhAdvice(data.soil_ph?.advice_code, t) && (
+            <p className="flex items-start gap-1.5 text-text-muted">
+              <BioIcon name="native" size={14} />
+              <span>
+                <span className="text-text-muted">{t.garden.biodiversity.soilPhLabel}:</span>{' '}
+                <span className="text-text">{soilPhAdvice(data.soil_ph?.advice_code, t)}</span>
+              </span>
             </p>
           )}
         </div>

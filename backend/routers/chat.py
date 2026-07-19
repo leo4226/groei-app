@@ -813,6 +813,25 @@ async def _fetch_biodiversity_packet(
         if gap_labels:
             lines.append(f"  Bloeigat (geen bestuivers): {', '.join(gap_labels)}")
 
+        # Soil-pH advice (advice-only). Gives Stekkie the facts to suggest a
+        # zuurmeting / lime; the worker phrases it in the user's language.
+        soil = bio.soil_ph or {}
+        soil_code = soil.get("advice_code")
+        if soil_code == "prefers_acid":
+            lines.append(
+                "  Bodem-pH: veel planten zijn kalkmijdend (o.a. "
+                f"{', '.join(soil.get('acid_examples') or [])}) — vermijd kalk, een zuurmeting bevestigt de pH."
+            )
+        elif soil_code == "prefers_alkaline":
+            lines.append(
+                "  Bodem-pH: veel planten zijn kalkminnend (o.a. "
+                f"{', '.join(soil.get('alkaline_examples') or [])}) — een zuurmeting laat zien of bijmesten met kalk nodig is."
+            )
+        elif soil_code == "mixed":
+            lines.append(
+                "  Bodem-pH: zowel kalkmijdende als kalkminnende planten — doe een zuurmeting en groepeer per voorkeur."
+            )
+
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
             if suggestions:
@@ -847,6 +866,7 @@ async def _fetch_biodiversity_packet(
                 # Backward-compatible legacy key used by the old prose worker rollout.
                 "pollinator_gaps": gap_labels,
                 "suggestions": suggestions_context,
+                "soil_ph": bio.soil_ph,
             }
         )
 

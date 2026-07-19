@@ -727,6 +727,13 @@ export type GardenBiodiversityOut = {
   drachtplant_count?: number
   area_m2?: number | null
   score_targets?: { diversity?: number; native?: number; streek?: number }
+  soil_ph?: {
+    advice_code?: 'prefers_acid' | 'prefers_alkaline' | 'mixed' | null
+    acid_count?: number
+    alkaline_count?: number
+    acid_examples?: string[]
+    alkaline_examples?: string[]
+  }
 }
 
 export type EcologyOut = {

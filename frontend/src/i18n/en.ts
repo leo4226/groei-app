@@ -1418,6 +1418,10 @@ export const en: Translations = {
       streekLabel: 'Region',
       streekNativeCount: (n) => `${n} regional species`,
       drachtplantCount: (n) => `${n} bee-forage plant${n === 1 ? '' : 's'}`,
+      soilPhLabel: 'Soil',
+      soilPhAcid: 'your plants prefer lime-free, acidic soil — avoid lime; a pH test confirms it.',
+      soilPhAlkaline: 'your plants prefer chalky, alkaline soil — a pH test shows whether adding lime helps.',
+      soilPhMixed: 'you mix acid- and lime-loving plants — do a pH test and group them by preference.',
     },
     suggestions: {
       title: 'Improve your garden',
