@@ -311,7 +311,11 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
 
 export default function LoginPage() {
   const [lang, setLang] = useState<Lang>(initialLang)
-  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>('login')
+  // ?mode=register opens the register tab directly (the demo garden's
+  // "create your own garden" CTA links here).
+  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>(() =>
+    new URLSearchParams(window.location.search).get('mode') === 'register' ? 'register' : 'login',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
