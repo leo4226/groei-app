@@ -32,7 +32,6 @@ shows both honestly.
 """
 
 import json
-import math
 from dataclasses import dataclass, field
 
 
@@ -48,6 +47,8 @@ class GardenBiodiversity:
     streek_name: str | None = None
     streek_native_count: int = 0         # distinct garden species belonging to that streek
     drachtplant_count: int = 0           # distinct bee-forage species (Naturalis/Bloeibogen)
+    area_m2: float | None = None         # garden footprint (drives the count targets)
+    score_targets: dict = field(default_factory=dict)  # area-scaled targets, for transparency
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -118,6 +119,54 @@ def _coerce_months(value) -> list[int]:
     return []
 
 
+# ── Scoring weights (sum to 100) ──
+# Recalibrated 2026-07-18 (audit): the old model's components summed to 125 and
+# hard-capped at 100, so a 6-species balcony hit ~99. These weights sum to
+# exactly 100, and the count-based components are graded against an *area-scaled
+# target* (a bigger garden must plant proportionally more for full marks). See
+# docs/plans/2026-07-18-streek-biodiversity.md / issue #444.
+_W_POLLINATOR = 40    # 12-month flowering succession (calendar, not area-scaled)
+_W_NATIVE     = 25    # native species, vs area target
+_W_DIVERSITY  = 15    # distinct species, vs area target
+_W_STREEK     = 12    # streekeigen species, vs area target
+_W_ABUNDANCE  = 8     # clumping (diminishing), not area-scaled
+_INVASIVE_CAP = 90    # soft cap: a garden with invasives can't display 100
+
+_REF_AREA_M2 = 40.0   # reference garden; targets scale as sqrt(area / ref)
+
+
+async def _garden_area_m2(db, map_id: int) -> float | None:
+    """Garden footprint in m² from canvas_data (width×depth), or None if unknown.
+
+    Guarded — the reduced test schemas have no maps.canvas_data column, so area
+    simply defaults (neutral) there."""
+    try:
+        rows = await db.execute_fetchall("SELECT canvas_data FROM maps WHERE id = ?", (map_id,))
+        if not rows or not rows[0]["canvas_data"]:
+            return None
+        cd = rows[0]["canvas_data"]
+        d = json.loads(cd) if isinstance(cd, str) else cd
+        scale = float(d.get("scale_px_per_m") or 46) or 46
+        area = (float(d.get("canvas_w") or 0) / scale) * (float(d.get("canvas_h") or 0) / scale)
+        return area if area > 0 else None
+    except Exception:
+        return None
+
+
+def _score_targets(area_m2: float | None) -> dict:
+    """Species targets for the count-based components, scaled by garden area.
+
+    Sub-linear (sqrt) so a big garden needs *more* plants for full marks without
+    an arms race, and a small dense garden still reaches the floor easily. Unknown
+    area falls back to the reference (floor targets)."""
+    f = (max(area_m2 or _REF_AREA_M2, 4.0) / _REF_AREA_M2) ** 0.5
+    return {
+        "diversity": min(40, max(8, round(8 * f))),
+        "native":    min(25, max(5, round(5 * f))),
+        "streek":    min(16, max(4, round(4 * f))),
+    }
+
+
 async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     """Aggregate ecology over distinct species placed on this map.
 
@@ -153,6 +202,8 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     # UI can show "your region" before anything is planted.
     streek_slug, streek_native_count = await _streek_context(db, map_id)
     streek_name = _streek_name(streek_slug)
+    area_m2 = await _garden_area_m2(db, map_id)
+    targets = _score_targets(area_m2)
 
     if species_count == 0:
         return GardenBiodiversity(
@@ -165,6 +216,8 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             streek_slug=streek_slug,
             streek_name=streek_name,
             streek_native_count=0,
+            area_m2=area_m2,
+            score_targets=targets,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -188,39 +241,36 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         for m in _coerce_months(s.get("flowering_months")):
             coverage[m - 1] = True
     covered_months = sum(coverage)
-    pollinator_score = covered_months * 5      # 0..60
 
-    # ── Native count ──
-    # Count-based (not a ratio): every native species adds points up to a cap, so
-    # adding plants never lowers the score and a garden with more natives ranks
-    # higher. 6 points each → 5 natives reaches the 30-point cap.
-    native_score = min(30, native_count * 6)    # 0..30
+    # ── Pollinator coverage (0..40) ──
+    # Flowering succession across the calendar. Not area-scaled: 12-month forage
+    # is equally valuable on a balcony or an acre.
+    pollinator_score = round(_W_POLLINATOR * covered_months / 12)
 
-    # ── Diversity bonus ──
-    # log scale capped at 20 distinct species → 10 points. Below that
-    # rewards each new species; above, marginal gain diminishes.
-    diversity_score = round(
-        min(10, math.log(species_count + 1) / math.log(20 + 1) * 10)
-    )
+    # The count-based components (native, diversity, streek) are graded against an
+    # area-scaled *target* rather than a flat cap: a bigger garden must plant
+    # proportionally more for full marks (#444 audit, choice 1A). min(1, …) keeps
+    # them additive — adding a plant only ever raises the score (targets depend on
+    # area, not plant count).
+    native_score    = round(_W_NATIVE    * min(1.0, native_count        / targets["native"]))
+    diversity_score = round(_W_DIVERSITY * min(1.0, species_count       / targets["diversity"]))
+    streek_score    = round(_W_STREEK    * min(1.0, streek_native_count / targets["streek"]))
 
-    # ── Abundance bonus ──
-    # Diminishing returns on "extra" specimens (those beyond the first of each
-    # species), so a clump of 6 ferns is worth a little more than one fern, but
-    # the curve saturates (10·x/(x+10), max 10) — abundance never becomes an
-    # arms race and never outweighs breadth.
+    # ── Abundance (0..8) ──
+    # Diminishing returns on "extra" specimens (beyond the first of each species):
+    # a clump of 6 is worth a little more than one, but the curve saturates so
+    # abundance never becomes an arms race or outweighs breadth.
     total_extra = sum(max(0, s["specimens"] - 1) for s in species)
-    abundance_score = round(10 * total_extra / (total_extra + 10)) if total_extra else 0
+    abundance_score = round(_W_ABUNDANCE * total_extra / (total_extra + 10)) if total_extra else 0
 
-    # ── Streek bonus ──
-    # Purely additive (never penalises non-streek plants): planting what belongs
-    # in your region scores extra. Count-based & capped like native_count — 3
-    # points per streekeigen species, 5 species reach the 15-point cap — so
-    # adding a streek plant can only ever raise the score. Weight is a starting
-    # proposal (see docs/plans/2026-07-18-streek-biodiversity.md, tied to #444).
-    streek_score = min(15, streek_native_count * 3)   # 0..15
-
-    total = min(100, pollinator_score + native_score + diversity_score
-                + abundance_score + streek_score)
+    # Weights sum to 100, so the raw total is already 0..100.
+    total = pollinator_score + native_score + diversity_score + abundance_score + streek_score
+    # Soft invasive cap (#444 audit, choice 3A): a garden with invasive species
+    # can't display a perfect score — honest, without a purist point-by-point
+    # penalty. The invasive count is still surfaced separately.
+    if invasive_count > 0:
+        total = min(total, _INVASIVE_CAP)
+    total = min(100, total)
 
     return GardenBiodiversity(
         score=total,
@@ -239,4 +289,6 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         streek_name=streek_name,
         streek_native_count=streek_native_count,
         drachtplant_count=drachtplant_count,
+        area_m2=area_m2,
+        score_targets=targets,
     )
