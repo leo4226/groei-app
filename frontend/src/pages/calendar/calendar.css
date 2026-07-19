@@ -31,7 +31,7 @@
 .cal-page .masthead {
   width: min(100%, 1800px);
   margin: 0 auto;
-  padding: max(32px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 20px;
+  padding: max(40px, env(safe-area-inset-top, 0px)) clamp(24px, 3vw, 56px) 20px;
   border-bottom: 1px solid var(--color-border);
 }
 .cal-page .masthead-title-row {
@@ -48,7 +48,7 @@
   letter-spacing: 0.2em;
   color: var(--color-text-muted);
   display: flex; align-items: center; gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 /* Hairline-flanked, per the Plants masthead grammar */
 .cal-page .title-block .eyebrow::before {
@@ -78,11 +78,11 @@
 .cal-page .title-block .lede {
   font-family: var(--font-heading);
   font-style: italic;
-  font-size: 18px;
+  font-size: 15px;
   color: var(--color-text-soft);
-  margin: 14px 0 0;
-  max-width: 540px;
-  line-height: 1.45;
+  margin: 8px 0 0;
+  max-width: 440px;
+  line-height: 1.5;
 }
 
 /* ——— per-view control rail (date · view switch · filter) ——— */
@@ -1428,7 +1428,13 @@
     padding: 9px 8px;
     font-size: 14px;
   }
-  .cal-page .title-block .lede { font-size: 15px; }
+  .cal-page .title-block .eyebrow { margin-bottom: 12px; }
+  .cal-page .title-block .lede {
+    font-size: 15px;
+    margin: 14px 0 0;
+    max-width: 540px;
+    line-height: 1.45;
+  }
   .cal-page .month-rail,
   .cal-page .view-rail,
   .cal-page .work-agenda-view .view-rail {
