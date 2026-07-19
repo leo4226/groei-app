@@ -76,6 +76,20 @@ async def _forage_months(db, map_id: int) -> set[int]:
     return months
 
 
+def _bee_season_months() -> set[int]:
+    """Union of every bee's flight months — roughly the wild-bee season."""
+    season: set[int] = set()
+    for b in _all_bees():
+        season.update(b.get("flight_months") or [])
+    return season
+
+
+async def forage_gap_months(db, map_id: int) -> set[int]:
+    """Months where wild bees are on the wing but the garden has no drachtplant
+    blooming — the actionable gaps a recommendation can close."""
+    return _bee_season_months() - await _forage_months(db, map_id)
+
+
 async def bee_support_for_map(db, map_id: int) -> BeeSupport:
     bees = _all_bees()
     total = len(bees)
