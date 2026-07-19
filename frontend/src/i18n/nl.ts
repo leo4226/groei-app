@@ -627,6 +627,8 @@ export const nl: Translations = {
     ecologyFillsGap: 'Vult: {months}',
     ecologyStreek: 'Streekeigen',
     ecologyForageGap: '🐝 Vult drachtgat',
+    ecologyMoth: '🌙 Nachtvlinder',
+    ecologyMothGap: '🌙 Trekt nachtvlinders',
     sunFitPerfect: 'Ideaal licht',
     sunFitAcceptable: 'Geschikt licht',
     sunFitMarginal: 'Krap licht',
@@ -655,6 +657,10 @@ export const nl: Translations = {
     frostSensitive: 'Vorstgevoelig',
     deficitPerDay: '~{hours}u/dag tekort in groeiseizoen',
     sunPerMonth: 'Zon per maand op deze plek',
+    bioNative: 'Inheems',
+    bioStreek: 'Streekeigen',
+    bioBeeForage: 'Drachtplant',
+    bioMoth: 'Nachtvlinder',
   },
 
   // ── Phenology / Agenda ──────────────────────────────────────────

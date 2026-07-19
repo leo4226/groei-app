@@ -134,6 +134,26 @@ function SpeciesCard({ species }: { species: SpeciesSuggestion }) {
             {t.spotInspector.frostSensitive}
           </span>
         )}
+        {species.is_streek && (
+          <span className="text-[9px] bg-emerald-500/15 text-emerald-700 px-1.5 py-0.5 rounded-full">
+            🌿 {t.spotInspector.bioStreek}
+          </span>
+        )}
+        {species.is_native && !species.is_streek && (
+          <span className="text-[9px] bg-emerald-500/10 text-emerald-600 px-1.5 py-0.5 rounded-full">
+            {t.spotInspector.bioNative}
+          </span>
+        )}
+        {species.is_drachtplant && (
+          <span className="text-[9px] bg-yellow-500/15 text-yellow-700 px-1.5 py-0.5 rounded-full">
+            🐝 {t.spotInspector.bioBeeForage}
+          </span>
+        )}
+        {species.is_moth_plant && (
+          <span className="text-[9px] bg-indigo-500/15 text-indigo-600 px-1.5 py-0.5 rounded-full">
+            🌙 {t.spotInspector.bioMoth}
+          </span>
+        )}
       </div>
       {species.avg_shortfall_hours > 0 && (
         <p className="text-[9px] text-due mt-1">

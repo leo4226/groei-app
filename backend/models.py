@@ -1084,6 +1084,8 @@ class PlantRecommendationOut(BaseModel):
     is_streek: bool = False          # belongs to the garden's streek (streekeigen)
     is_drachtplant: bool = False     # Naturalis bee-forage plant
     fills_forage_gap: bool = False   # a drachtplant blooming in a bee forage-gap month
+    is_moth_plant: bool = False      # night-flowering / moth-forage (nachtvlinder)
+    supports_moth_gap: bool = False  # moth plant in a garden that has none yet
 
 
 class RecommendationsOut(BaseModel):

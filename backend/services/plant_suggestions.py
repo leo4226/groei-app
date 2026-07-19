@@ -87,6 +87,8 @@ class PlantRecommendation:
     is_streek: bool = False             # belongs to the garden's streek (streekeigen)
     is_drachtplant: bool = False        # Naturalis bee-forage plant (Bloeibogen)
     fills_forage_gap: bool = False      # a drachtplant blooming in a bee forage-gap month
+    is_moth_plant: bool = False         # night-flowering / moth-forage (nachtvlinder)
+    supports_moth_gap: bool = False     # moth plant in a garden that has none yet
 
 
 def bucket_for(direct_hours: float, svf: float = 1.0) -> str:
@@ -146,17 +148,19 @@ def _score_candidate(
     flowers_now: bool = False,
     is_streek: bool = False,
     fills_forage_gap: bool = False,
+    supports_moth_gap: bool = False,
 ) -> float:
     """Higher is better. Used for sorting candidates.
 
     The ecology subscore (gap coverage, pollinator value, native, flowers-now,
-    streekeigen, bee-forage-gap) is scaled by a light-suitability multiplier so the
-    same plant ranks higher where it thrives — while a strong gap-filler in imperfect
-    light still beats a weak plant in perfect light. A flat bonus for a perfect fit
-    breaks ties."""
+    streekeigen, bee-forage-gap, night-moth gap) is scaled by a light-suitability
+    multiplier so the same plant ranks higher where it thrives — while a strong
+    gap-filler in imperfect light still beats a weak plant in perfect light. A flat
+    bonus for a perfect fit breaks ties."""
     ecology = 0
     ecology += len(gap_months_covered) * 10    # pollinator-month gap coverage is most important
     ecology += 8 if fills_forage_gap else 0    # closes a wild-bee forage gap (Bloeibogen)
+    ecology += 6 if supports_moth_gap else 0   # adds night-moth forage to a garden that has none
     ecology += (pollinator_value or 0) * 5     # pollinator value
     ecology += 4 if is_streek else 0           # belongs in this region (streekeigen)
     ecology += 3 if is_native else 0           # native preference
@@ -190,6 +194,15 @@ def _with_forage_reason(rec: "PlantRecommendation") -> None:
         setattr(rec, attr, f"{cur} · {clause}" if cur else clause)
 
 
+def _with_moth_reason(rec: "PlantRecommendation") -> None:
+    """Append the night-moth clause when a moth plant fills a garden that has none yet."""
+    if not rec.supports_moth_gap:
+        return
+    for attr, clause in (("reason", "trekt nachtvlinders aan"), ("reason_en", "attracts night moths")):
+        cur = getattr(rec, attr) or ""
+        setattr(rec, attr, f"{cur} · {clause}" if cur else clause)
+
+
 async def _streek_for_map(db, map_id: int) -> tuple[str | None, str | None, set[int]]:
     """(streek_slug, streek_name, {species_id}) for a map — guarded for the
     reduced test schemas (returns empties when the streek tables are absent)."""
@@ -210,6 +223,24 @@ async def _streek_for_map(db, map_id: int) -> tuple[str | None, str | None, set[
     return slug, name, ids
 
 
+async def _garden_has_moth_plants(db, map_id: int) -> bool:
+    """Does this garden already hold a night-flowering / moth-forage plant?
+
+    Guarded: the reduced test schemas may lack plant_species.is_moth_plant, in
+    which case we treat the garden as having none (so moth picks are nudged, never
+    crash). Drives the "your garden has no night-moth plants yet" recommendation."""
+    try:
+        rows = await db.execute_fetchall(
+            """SELECT 1 FROM plants p JOIN plant_species ps ON p.species_id = ps.id
+               WHERE p.map_id = ? AND p.is_active = TRUE AND ps.is_moth_plant = TRUE
+               LIMIT 1""",
+            (map_id,),
+        )
+        return bool(rows)
+    except Exception:
+        return False
+
+
 async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
     if exclude_ids:
         placeholders = ",".join("?" * len(exclude_ids))
@@ -220,7 +251,8 @@ async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
         params = ()
     return await db.execute_fetchall(
         f"""SELECT id, common_name_nl, common_name_en, latin_name, sun_preference,
-                   native_to_nl, pollinator_value, flowering_months, is_drachtplant
+                   native_to_nl, pollinator_value, flowering_months, is_drachtplant,
+                   is_moth_plant
             FROM plant_species
             WHERE ecology_enriched_at IS NOT NULL
               {exclude_clause}
@@ -275,6 +307,7 @@ async def recommend_for_spot(
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
     forage_gap = await forage_gap_months(db, map_id)
+    needs_moths = not await _garden_has_moth_plants(db, map_id)
 
     # Fetch enriched candidates — no light filter in SQL since sun_preference
     # may be NULL for recently-enriched species; we filter in Python.
@@ -294,6 +327,8 @@ async def recommend_for_spot(
         flowers_now = month in flowering  # bool: does this plant flower in the current month?
         is_dracht = bool(row.get("is_drachtplant"))
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
+        is_moth = bool(row.get("is_moth_plant"))
+        moth_gap = is_moth and needs_moths
 
         rec = PlantRecommendation(
             species_id=row["id"],
@@ -311,9 +346,12 @@ async def recommend_for_spot(
             is_streek=row["id"] in streek_ids,
             is_drachtplant=is_dracht,
             fills_forage_gap=fills_gap,
+            is_moth_plant=is_moth,
+            supports_moth_gap=moth_gap,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
+        _with_moth_reason(rec)
         candidates.append(rec)
 
     # Sort by composite score
@@ -321,7 +359,7 @@ async def recommend_for_spot(
         key=lambda r: _score_candidate(
             r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
             flowers_now=month in (r.flowering_months or []), is_streek=r.is_streek,
-            fills_forage_gap=r.fills_forage_gap,
+            fills_forage_gap=r.fills_forage_gap, supports_moth_gap=r.supports_moth_gap,
         ),
         reverse=True,
     )
@@ -351,6 +389,7 @@ async def recommend_for_garden(
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
     forage_gap = await forage_gap_months(db, map_id)
+    needs_moths = not await _garden_has_moth_plants(db, map_id)
     rows = await _fetch_enriched_candidates(db, exclude_ids)
 
     candidates: list[PlantRecommendation] = []
@@ -359,6 +398,8 @@ async def recommend_for_garden(
         gap_covered = [m for m in flowering if m in gap_set]
         is_dracht = bool(row.get("is_drachtplant"))
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
+        is_moth = bool(row.get("is_moth_plant"))
+        moth_gap = is_moth and needs_moths
 
         rec = PlantRecommendation(
             species_id=row["id"],
@@ -376,14 +417,18 @@ async def recommend_for_garden(
             is_streek=row["id"] in streek_ids,
             is_drachtplant=is_dracht,
             fills_forage_gap=fills_gap,
+            is_moth_plant=is_moth,
+            supports_moth_gap=moth_gap,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
+        _with_moth_reason(rec)
         candidates.append(rec)
 
     candidates.sort(
         key=lambda r: _score_candidate(r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
-                                       is_streek=r.is_streek, fills_forage_gap=r.fills_forage_gap),
+                                       is_streek=r.is_streek, fills_forage_gap=r.fills_forage_gap,
+                                       supports_moth_gap=r.supports_moth_gap),
         reverse=True,
     )
     return candidates[:limit], gap_months
@@ -420,11 +465,13 @@ async def recommend_for_streek(
 
     from services.bees import forage_gap_months
     forage_gap = await forage_gap_months(db, map_id)
+    needs_moths = not await _garden_has_moth_plants(db, map_id)
 
     placeholders = ",".join("?" * len(want))
     rows = await db.execute_fetchall(
         f"""SELECT id, common_name_nl, common_name_en, latin_name, sun_preference,
-                   native_to_nl, pollinator_value, flowering_months, is_drachtplant
+                   native_to_nl, pollinator_value, flowering_months, is_drachtplant,
+                   is_moth_plant
             FROM plant_species
             WHERE id IN ({placeholders})
             ORDER BY COALESCE(pollinator_value, -1) DESC""",
@@ -437,6 +484,8 @@ async def recommend_for_streek(
         gap_covered = [m for m in flowering if m in gap_set]
         is_dracht = bool(row.get("is_drachtplant"))
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
+        is_moth = bool(row.get("is_moth_plant"))
+        moth_gap = is_moth and needs_moths
         rec = PlantRecommendation(
             species_id=row["id"],
             dutch_name=row["common_name_nl"] or row["latin_name"],
@@ -453,14 +502,17 @@ async def recommend_for_streek(
             is_streek=True,
             is_drachtplant=is_dracht,
             fills_forage_gap=fills_gap,
+            is_moth_plant=is_moth,
+            supports_moth_gap=moth_gap,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
+        _with_moth_reason(rec)
         recs.append(rec)
 
     recs.sort(
         key=lambda r: _score_candidate(r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
-                                       is_streek=True),
+                                       is_streek=True, supports_moth_gap=r.supports_moth_gap),
         reverse=True,
     )
     return streek_name, recs[:limit]
