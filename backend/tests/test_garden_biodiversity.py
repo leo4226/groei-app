@@ -28,7 +28,7 @@ async def _db():
 
 
 @pytest.mark.asyncio
-async def test_native_graded_against_target():
+async def test_native_is_count_based_not_ratio():
     db = await _db()
     # 1 native, target 5 → 25 * 1/5 = 5. Non-natives don't change the native score.
     await db.execute("INSERT INTO plant_species (id,native_to_nl,pollinator_value,flowering_months) VALUES (1,1,0,'[]')")
@@ -81,7 +81,7 @@ async def test_abundance_bonus_rewards_quantity_with_diminishing_returns():
 
 
 @pytest.mark.asyncio
-async def test_abundance_bonus_caps_at_8():
+async def test_abundance_bonus_caps_at_10():
     db = await _db()
     await db.execute("INSERT INTO plant_species (id,native_to_nl,pollinator_value,flowering_months) VALUES (1,0,0,'[]')")
     await db.execute("INSERT INTO plants (species_id,map_id,is_active,quantity) VALUES (1,7,1,1000)")
@@ -92,7 +92,7 @@ async def test_abundance_bonus_caps_at_8():
 
 
 @pytest.mark.asyncio
-async def test_native_score_caps_at_target():
+async def test_native_score_caps_at_30():
     db = await _db()
     for i in range(1, 8):  # 7 natives, target 5 → capped at the 25-point weight
         await db.execute("INSERT INTO plant_species (id,native_to_nl,pollinator_value,flowering_months) VALUES (?,1,0,'[]')", (i,))

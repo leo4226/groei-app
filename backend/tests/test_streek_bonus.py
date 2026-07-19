@@ -54,7 +54,7 @@ async def test_streek_bonus_counts_streekeigen_species():
 
 
 @pytest.mark.asyncio
-async def test_streek_bonus_capped_at_weight():
+async def test_streek_bonus_capped_at_15():
     db = await _db()
     await db.execute("INSERT INTO maps (id,streek_slug) VALUES (7,'twente')")
     for sid in range(1, 8):                     # 7 streek species → 21 pre-cap
