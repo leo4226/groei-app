@@ -111,8 +111,8 @@ export default function DemoGardenPage() {
           showWarnings={false}
           hideLockBadges
           sunModeActive={sun.active}
-          shadows={sun.shadows}
-          sunPosition={sun.sunPosition}
+          shadows={sun.isLiveActive ? sun.shadows : []}
+          sunPosition={sun.isLiveActive ? sun.sunPosition : null}
           heatmapCells={sun.cells}
           heatmapCalculating={sun.isCalculating}
           heatmapLayer="sun_hours"
