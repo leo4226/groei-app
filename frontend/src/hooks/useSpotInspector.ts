@@ -31,7 +31,7 @@ export interface SpotInspectorResult {
   error: string | null
 }
 
-export function useSpotInspector(engine?: LightEngine | null) {
+export function useSpotInspector(engine?: LightEngine | null, mapId?: number | null) {
   const [result, setResult] = useState<SpotInspectorResult | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -57,7 +57,7 @@ export function useSpotInspector(engine?: LightEngine | null) {
       const resp = await fetch(`${apiBase}/spots/suitability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y, sun_by_month: sunByMonth }),
+        body: JSON.stringify({ x, y, map_id: mapId ?? undefined, sun_by_month: sunByMonth }),
       })
       const data = await resp.json()
       setResult({ x, y, sunByMonth, species: data.species, error: null })
@@ -66,7 +66,7 @@ export function useSpotInspector(engine?: LightEngine | null) {
     } finally {
       setLoading(false)
     }
-  }, [engine])
+  }, [engine, mapId])
 
   const clear = useCallback(() => setResult(null), [])
 

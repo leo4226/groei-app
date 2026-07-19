@@ -163,7 +163,7 @@ export function useSunVisualization(options: {
   const [showGrowHere, setShowGrowHere] = useState(false)
   const [inspectorMode, setInspectorMode] = useState(false)
 
-  const { result: inspectorResult, loading: inspectorLoading, inspect, clear: clearInspector } = useSpotInspector(engine)
+  const { result: inspectorResult, loading: inspectorLoading, inspect, clear: clearInspector } = useSpotInspector(engine, mapId)
 
   const isHeatmapActive = isOutdoor && sunModeActive && viewMode === 'heatmap'
   const isLiveActive = isOutdoor && sunModeActive && viewMode === 'live'
