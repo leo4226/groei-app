@@ -108,12 +108,12 @@ async def complete_outdoor_care(
             next_due = calculate_next_due(
                 completed_at, interval_days, schedule["season_adjust"],
             )
-            await db.execute(
+            await db.execute_fetchall(
                 """INSERT INTO garden_care_operation_members
                    (operation_id, schedule_id, previous_next_due, previous_last_done,
                     previous_last_done_by, care_log_id, applied_next_due,
                     applied_last_done)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING operation_id""",
                 (
                     operation_id, schedule["id"], schedule["next_due"],
                     schedule.get("last_done"), schedule.get("last_done_by"), log[0]["id"],

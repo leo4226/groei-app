@@ -123,6 +123,47 @@ async def test_complete_garden_care_updates_only_selected_plants(
 
 
 @pytest.mark.asyncio
+async def test_complete_garden_care_returns_composite_member_key(
+    client, selectable_garden_db, auth_header, monkeypatch,
+):
+    db = selectable_garden_db
+    member_inserts: list[tuple[str, str]] = []
+    original_execute = db.execute
+    original_execute_fetchall = db.execute_fetchall
+
+    async def capture_execute(sql, params=()):
+        if 'INSERT INTO garden_care_operation_members' in sql:
+            member_inserts.append(('execute', ' '.join(sql.split())))
+        return await original_execute(sql, params)
+
+    async def capture_execute_fetchall(sql, params=()):
+        if 'INSERT INTO garden_care_operation_members' in sql:
+            member_inserts.append(('execute_fetchall', ' '.join(sql.split())))
+        return await original_execute_fetchall(sql, params)
+
+    monkeypatch.setattr(db, 'execute', capture_execute)
+    monkeypatch.setattr(db, 'execute_fetchall', capture_execute_fetchall)
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    assert len(member_inserts) == 1
+    method, sql = member_inserts[0]
+    assert method == 'execute_fetchall'
+    assert 'RETURNING operation_id' in sql
+
+
+@pytest.mark.asyncio
 async def test_complete_garden_care_uses_catalog_interval_when_schedule_interval_invalid(
     client, selectable_garden_db, auth_header,
 ):
