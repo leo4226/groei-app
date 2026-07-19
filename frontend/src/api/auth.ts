@@ -25,11 +25,12 @@ export async function register(
   password: string,
   name: string,
   householdName: string,
+  language: 'nl' | 'en' = 'nl',
 ): Promise<AuthResponse> {
   const res = await fetch(`${BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, name, household_name: householdName }),
+    body: JSON.stringify({ email, password, name, household_name: householdName, language }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

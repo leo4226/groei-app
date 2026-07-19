@@ -60,6 +60,8 @@ interface Props {
   onFixedPlantTap?: (plant: FixedPlant) => void
   labelMode?: LabelMode
   showWarnings?: boolean
+  /** Hide padlock badges on locked plants (public demo garden). */
+  hideLockBadges?: boolean
   sunModeActive?: boolean
   shadows?: ShadowPolygon[]
   sunPosition?: SunPosition | null
@@ -86,7 +88,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, hideLockBadges = false, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const t = useT()
   // Object labels (containers/pots) follow the same on/off split as plant
@@ -103,7 +105,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   }, [map.canvas_data])
   const isHouseMap = !!(canvasData && map.map_type === 'indoor')
   const [zoom, setZoom] = useState(1)
-  const MIN_ZOOM = 0.25
+  const minZoom = isMobile ? 0.5 : 0.75
   const MAX_ZOOM = 4
   // --- Pan + Pinch-zoom state ---
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -158,7 +160,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       // (The editor keeps target: svgRef because its <svg> IS the event target.)
       target: containerRef,
       eventOptions: { passive: false },
-      scaleBounds: { min: MIN_ZOOM, max: MAX_ZOOM },
+      scaleBounds: { min: minZoom, max: MAX_ZOOM },
       from: () => [zoom, 0],
     },
   )
@@ -170,10 +172,10 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
       if (isPinching.current) return
       e.preventDefault()
       const cz = zoomRef.current
-      if (cz <= MIN_ZOOM && e.deltaY > 0) return
+      if (cz <= minZoom && e.deltaY > 0) return
       if (cz >= MAX_ZOOM && e.deltaY < 0) return
       const delta = e.deltaY > 0 ? 1 / 1.15 : 1.15
-      const newZ = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +(cz * delta).toFixed(3)))
+      const newZ = Math.min(MAX_ZOOM, Math.max(minZoom, +(cz * delta).toFixed(3)))
       if (newZ === cz) return
       const svg = svgRef.current
       if (svg) {
@@ -191,7 +193,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
     }
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
-  }, [containerRef.current, baseCenter])
+  }, [containerRef.current, baseCenter, minZoom])
 
   // --- One-finger / mouse drag-to-pan on the background (#184) ---
   // Plant/object drags never reach these handlers: their pointer-down handlers
@@ -289,8 +291,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   }, [])
 
   const handleZoomOut = useCallback(() => {
-    setZoom(z => Math.max(MIN_ZOOM, +(z / 1.25).toFixed(2)))
-  }, [])
+    setZoom(z => Math.max(minZoom, +(z / 1.25).toFixed(2)))
+  }, [minZoom])
 
   // --- End zoom/pan state ---
 
@@ -625,11 +627,11 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
         {/* Background: static SVG (garden maps) + live canvas zones */}
         {canvasData ? (
           <>
-            {!isHouseMap && (() => {
+            {!isHouseMap && !gardenViewBox && (() => {
               const [,, w, h] = map.viewbox.split(' ').map(Number)
               return <image href={`/maps/${map.svg_file}`} x="0" y="0" width={w} height={h} />
             })()}
-            <CanvasZonesLayer canvasData={canvasData} /* showBackground removed */ />
+            <CanvasZonesLayer canvasData={canvasData} showBackground={isHouseMap} />
           </>
         ) : (
           (() => {
@@ -692,6 +694,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             movePlantId={movePlantId}
             labelMode={labelMode}
             showWarnings={showWarnings}
+            hideLockBadges={hideLockBadges}
             zoom={zoom}
             onPointerDown={handlePlantPointerDown}
             heatmapCells={heatmapCells}
@@ -763,8 +766,8 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
 
       </svg>
 
-      {/* Zoom controls --- always visible */}
-      <div className="absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
+      {/* Zoom controls --- always visible (map-zoom-controls lets embedders hide them, e.g. the demo video recorder) */}
+      <div className="map-zoom-controls absolute bottom-3 right-3 flex flex-col gap-0.5 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 z-10">
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); handleZoomIn() }}

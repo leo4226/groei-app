@@ -1,0 +1,2182 @@
+{
+  "source": "streektuinen.nl",
+  "source_url": "https://streektuinen.nl/streken/",
+  "license_note": "Streek indeling & icoonsoorten © streektuinen.nl (Urgenda, De Vlinderstichting, Cruydt-Hoeck e.a.). Used with attribution for a private garden app.",
+  "streken": [
+    {
+      "slug": "achterhoek",
+      "taxonomy_slug": "achterhoek",
+      "name": "Achterhoek",
+      "species_count": 112
+    },
+    {
+      "slug": "brabantse-maasstreek",
+      "taxonomy_slug": "brabantse-maasstreek",
+      "name": "Brabantse Maasstreek",
+      "species_count": 69
+    },
+    {
+      "slug": "brabantse-zand-en-leemstreek",
+      "taxonomy_slug": "brabantse-zand-en-leemstreek",
+      "name": "Brabantse zand- en leemstreek",
+      "species_count": 184
+    },
+    {
+      "slug": "centrale-stuwwallen",
+      "taxonomy_slug": "centrale-stuwwallen",
+      "name": "Centrale stuwwallen",
+      "species_count": 183
+    },
+    {
+      "slug": "de-peel",
+      "taxonomy_slug": "de-peel",
+      "name": "De Peel",
+      "species_count": 52
+    },
+    {
+      "slug": "drents-plateau-en-friese-wouden",
+      "taxonomy_slug": "drents-plateau-en-friese-wouden",
+      "name": "Drents Plateau en Friese Wouden",
+      "species_count": 222
+    },
+    {
+      "slug": "friese-en-groningse-zeeklei",
+      "taxonomy_slug": "friese-en-groningse-zeeklei",
+      "name": "Friese en Groningse zeeklei",
+      "species_count": 109
+    },
+    {
+      "slug": "friese-meren-tot-weerribben",
+      "taxonomy_slug": "friese-meren-tot-weerribben",
+      "name": "Friese Meren tot Weerribben",
+      "species_count": 48
+    },
+    {
+      "slug": "gelderse-poort",
+      "taxonomy_slug": "gelderse-poort-en-pannerden",
+      "name": "Gelderse Poort en Pannerden",
+      "species_count": 84
+    },
+    {
+      "slug": "hollands-en-utrechts-laagveengebied",
+      "taxonomy_slug": "hollands-en-utrechts-laagveengebied",
+      "name": "Hollands en Utrechts laagveengebied",
+      "species_count": 251
+    },
+    {
+      "slug": "ijsseldal",
+      "taxonomy_slug": "ijsseldal",
+      "name": "IJsseldal",
+      "species_count": 135
+    },
+    {
+      "slug": "ijsselmeerpolders-en-zuiderzeedijken",
+      "taxonomy_slug": "ijsselmeerpolders-en-zuiderzeedijken",
+      "name": "IJsselmeerpolders en Zuiderzeedijken",
+      "species_count": 49
+    },
+    {
+      "slug": "kalkrijke-hollandse-duinstreek",
+      "taxonomy_slug": "kalkrijke-hollandse-duinstreek",
+      "name": "Kalkrijke Hollandse duinstreek",
+      "species_count": 113
+    },
+    {
+      "slug": "laaglandrivieren",
+      "taxonomy_slug": "laaglandrivieren",
+      "name": "Laaglandrivieren",
+      "species_count": 178
+    },
+    {
+      "slug": "limburgs-heuvelland",
+      "taxonomy_slug": "limburgs-heuvelland",
+      "name": "Limburgs heuvelland",
+      "species_count": 73
+    },
+    {
+      "slug": "limburgse-maasstreek",
+      "taxonomy_slug": "limburgse-maasstreek",
+      "name": "Limburgse Maasstreek",
+      "species_count": 64
+    },
+    {
+      "slug": "reestdal",
+      "taxonomy_slug": "reestdal",
+      "name": "Reestdal",
+      "species_count": 50
+    },
+    {
+      "slug": "regge-en-sallandse-heuvelrug",
+      "taxonomy_slug": "regge-en-sallandse-heuvelrug",
+      "name": "Regge en Sallandse Heuvelrug",
+      "species_count": 51
+    },
+    {
+      "slug": "rijk-van-nijmegen",
+      "taxonomy_slug": "rijk-van-nijmegen",
+      "name": "Rijk van Nijmegen",
+      "species_count": 68
+    },
+    {
+      "slug": "twente",
+      "taxonomy_slug": "twente",
+      "name": "Twente",
+      "species_count": 73
+    },
+    {
+      "slug": "vechtdal",
+      "taxonomy_slug": "vechtstreek",
+      "name": "Vechtdal",
+      "species_count": 149
+    },
+    {
+      "slug": "wadden-en-noordelijke-duinstreek",
+      "taxonomy_slug": "wadden-en-noordelijke-duinstreek",
+      "name": "Wadden en noordelijke duinstreek",
+      "species_count": 36
+    },
+    {
+      "slug": "west-friesland",
+      "taxonomy_slug": "west-friesland",
+      "name": "West-Friesland",
+      "species_count": 90
+    },
+    {
+      "slug": "zeeuwse-zandgronden",
+      "taxonomy_slug": "zeeuwse-zandgronden",
+      "name": "Zeeuwse zandgronden",
+      "species_count": 41
+    },
+    {
+      "slug": "zuidwestelijke-zeekleipolders",
+      "taxonomy_slug": "zuidwestelijke-zeekleipolders",
+      "name": "Zuidwestelijke zeekleipolders",
+      "species_count": 97
+    }
+  ],
+  "species": [
+    {
+      "name_nl": "Absintmonnik",
+      "slug": "absintmonnik",
+      "category": "fauna",
+      "streek_slugs": [
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Blauwe ertsbij (v)",
+      "slug": "blauwe-ertsbij",
+      "category": "fauna",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Bont dikkopje",
+      "slug": "bont-dikkopje",
+      "category": "fauna",
+      "streek_slugs": [
+        "de-peel",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Bonte viltbij (v)",
+      "slug": "bonte-viltbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "drents-plateau-en-friese-wouden",
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Bonte worteluil",
+      "slug": "bonte-worteluil",
+      "category": "fauna",
+      "streek_slugs": [
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Bosbesbij (m)",
+      "slug": "bosbesbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Boshommel",
+      "slug": "boshommel",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Breedbandgroefbij (v)",
+      "slug": "breedbandgroefbij",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "ijsseldal",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Bruine essenuil",
+      "slug": "bruine-essenuil",
+      "category": "fauna",
+      "streek_slugs": [
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Bruine slobkousbij (m)",
+      "slug": "bruine-slobkousbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Bruinsprietwespbij (v)",
+      "slug": "bruinsprietwespbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden"
+      ]
+    },
+    {
+      "name_nl": "Cipresdwergspanner",
+      "slug": "cipresdwergspanner",
+      "category": "fauna",
+      "streek_slugs": [
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Citroenvlinder",
+      "slug": "citroenvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Coniferenuil",
+      "slug": "coniferenuil",
+      "category": "fauna",
+      "streek_slugs": [
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Dennenuil",
+      "slug": "dennenuil",
+      "category": "fauna",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Donker pimpernelblauwtje",
+      "slug": "donker-pimpernelblauwtje",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Donkere klokjeszandbij (v)",
+      "slug": "donkere-klokjeszandbij",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgs-heuvelland",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Donkere wapendrager",
+      "slug": "donkere-wapendrager",
+      "category": "fauna",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Donkere zomerzandbij (v)",
+      "slug": "donkere-zomerzandbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Doornkaakzandbij (v)",
+      "slug": "doornkaakzandbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "laaglandrivieren",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Duinkegelbij (v)",
+      "slug": "duinkegelbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Erwtenuil",
+      "slug": "erwtenuil",
+      "category": "fauna",
+      "streek_slugs": [
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Esdoorndwergspanner",
+      "slug": "esdoorndwergspanner",
+      "category": "fauna",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "ijsseldal",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "twente",
+        "wadden-en-noordelijke-duinstreek",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Esdoorntandvlinder",
+      "slug": "esdoorntandvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek"
+      ]
+    },
+    {
+      "name_nl": "Fruitboomdwergspanner",
+      "slug": "fruitboomdwergspanner",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Gedoornde slakkenhuisbij (v)",
+      "slug": "gedoornde-slakkenhuisbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Geelstaartklaverzandbij (v)",
+      "slug": "geelstaartklaverzandbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "achterhoek",
+        "twente",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Gele tubebij (v)",
+      "slug": "gele-tubebij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek"
+      ]
+    },
+    {
+      "name_nl": "Gentiaanblauwtje",
+      "slug": "gentiaanblauwtje",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Gewone langhoornbij (m)",
+      "slug": "gewone-langhoornbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "rijk-van-nijmegen",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Gouden bronsgroefbij (m)",
+      "slug": "gouden-bronsgroefbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Gouden slakkenhuisbij (v)",
+      "slug": "gouden-slakkenhuisbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Groenige orvlinder",
+      "slug": "groenige-orvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Grote beer",
+      "slug": "grote-beer",
+      "category": "fauna",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Grote klokjesbij (v)",
+      "slug": "grote-klokjesbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Grote roetbij (v)",
+      "slug": "grote-roetbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Grote weerschijnvlinder",
+      "slug": "de-grote-weerschijnvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Heggenrankbij (m)",
+      "slug": "2707-2",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Heideblauwtje",
+      "slug": "heideblauwtje",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "de-peel",
+        "drents-plateau-en-friese-wouden",
+        "regge-en-sallandse-heuvelrug",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Hermelijnvlinder",
+      "slug": "hermelijnvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Karmozijnroodweeskind",
+      "slug": "karmozijnroodweeskind",
+      "category": "fauna",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Keizersmantel",
+      "slug": "keizersmantel",
+      "category": "fauna",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Klaverdikpoot (m)",
+      "slug": "2705-2",
+      "category": "fauna",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken"
+      ]
+    },
+    {
+      "name_nl": "Kleine ijsvogelvlinder",
+      "slug": "kleine-ijsvogelvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "de-peel",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Kleine klokjesbij (v)",
+      "slug": "kleine-klokjesbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "ijsseldal",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Kleine parelmoervlinder",
+      "slug": "kleine-parelmoervlinder-2",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "vechtdal",
+        "wadden-en-noordelijke-duinstreek",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Kleine roetbij (v)",
+      "slug": "kleine-roetbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Klokjesdikpootbij (v)",
+      "slug": "2695-2",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Knautiabij (v)",
+      "slug": "knautiabij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "gelderse-poort",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Koolui",
+      "slug": "koolui",
+      "category": "fauna",
+      "streek_slugs": [
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Krakeling",
+      "slug": "krakeling",
+      "category": "fauna",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Kustbehangersbij (v)",
+      "slug": "kustbehangersbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "wadden-en-noordelijke-duinstreek",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Lathyrusbij (v)",
+      "slug": "lathyrusbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "gelderse-poort",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Lookmaskerbij (m)",
+      "slug": "lookmaskerbij-m",
+      "category": "fauna",
+      "streek_slugs": [
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Meidoornspanner",
+      "slug": "meidoornspanner",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Oranje zandoogje",
+      "slug": "oranje-zandoogje",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "drents-plateau-en-friese-wouden",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Phegeavlinder",
+      "slug": "phegeavlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Pimpernelblauwtje",
+      "slug": "pimpernelblauwtje",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Ranonkelbij (v)",
+      "slug": "ranonkelbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "west-friesland"
+      ]
+    },
+    {
+      "name_nl": "Rode maskerbij (v)",
+      "slug": "rode-maskerbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Rood weeskind",
+      "slug": "rood-weeskind",
+      "category": "fauna",
+      "streek_slugs": [
+        "west-friesland"
+      ]
+    },
+    {
+      "name_nl": "Ruige behangersbij (v)",
+      "slug": "ruige-behangersbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Schijn-nonvlinder",
+      "slug": "schijn-nonvlinder-2",
+      "category": "fauna",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Schorviltbij (v)",
+      "slug": "schorviltbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Schorzijdebij (v)",
+      "slug": "schorzijdebij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Slangenkruidbij (v)",
+      "slug": "slangenkruidbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgs-heuvelland",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Sleedoornpage",
+      "slug": "sleedoornpage",
+      "category": "fauna",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "ijsseldal",
+        "reestdal",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Spiegeldikkopje",
+      "slug": "spiegeldikkopje",
+      "category": "fauna",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Teunisbloempijlstaart",
+      "slug": "teunisbloempijlstaart",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Texelse zandbij (v)",
+      "slug": "texelse-zandbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgs-heuvelland",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Vierbandgroefbij (v)",
+      "slug": "vierbandgroefbij-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "gelderse-poort",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Vuursteenvlinder",
+      "slug": "vuursteenvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied",
+        "west-friesland"
+      ]
+    },
+    {
+      "name_nl": "Walstropijlstaart",
+      "slug": "walstropijlstaart",
+      "category": "fauna",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Wikkebij (v)",
+      "slug": "wikkebij",
+      "category": "fauna",
+      "streek_slugs": [
+        "gelderse-poort"
+      ]
+    },
+    {
+      "name_nl": "Wilgenhoutrups",
+      "slug": "wilgenhoutvlinder",
+      "category": "fauna",
+      "streek_slugs": [
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Witte eenstaart",
+      "slug": "witte-eenstaart",
+      "category": "fauna",
+      "streek_slugs": [
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Zandhommel (v)",
+      "slug": "zandhommel-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Zilveren fluitje (v)",
+      "slug": "zilveren-fluitje-v",
+      "category": "fauna",
+      "streek_slugs": [
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Zwarte sachembij (v)",
+      "slug": "zwarte-sachembij",
+      "category": "fauna",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Aarddistel",
+      "slug": "aarddistel",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Akkerhoornbloem",
+      "slug": "akkerhoornbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Beemdkroon",
+      "slug": "beemdkroon",
+      "category": "flora",
+      "streek_slugs": [
+        "gelderse-poort",
+        "ijsseldal",
+        "laaglandrivieren",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Beemdooivevaarsbek",
+      "slug": "beemdooivevaarsbek",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-en-groningse-zeeklei",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Beenbreek",
+      "slug": "beenbreek",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Besanjelier",
+      "slug": "besanjelier",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Betonie",
+      "slug": "betonie",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Bevertjes",
+      "slug": "bevertjes",
+      "category": "flora",
+      "streek_slugs": [
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Biggenkruid",
+      "slug": "biggenkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "de-peel",
+        "reestdal",
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Blauwe knoop",
+      "slug": "blauwe-knoop",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "de-peel",
+        "hollands-en-utrechts-laagveengebied",
+        "reestdal",
+        "twente",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Bleke klaproos",
+      "slug": "bleke-klaproos",
+      "category": "flora",
+      "streek_slugs": [
+        "reestdal"
+      ]
+    },
+    {
+      "name_nl": "Boerenwormkruid",
+      "slug": "boerenwormkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "friese-en-groningse-zeeklei"
+      ]
+    },
+    {
+      "name_nl": "Borstelkrans",
+      "slug": "borstelkrans",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Bosandoorn",
+      "slug": "bosandoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Bosrank",
+      "slug": "bosrank",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "gelderse-poort",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "limburgs-heuvelland",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Bosroos",
+      "slug": "bosroos",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Boswederik",
+      "slug": "boswederik",
+      "category": "flora",
+      "streek_slugs": [
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Boswilg",
+      "slug": "boswilg",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "regge-en-sallandse-heuvelrug",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Brem",
+      "slug": "brem",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "regge-en-sallandse-heuvelrug",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Dagkoekoeksbloem",
+      "slug": "dagkoekoeksbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Driedistel",
+      "slug": "driedistel",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Driekleurig viooltje",
+      "slug": "driekleurig-viooltje",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Duifkruid",
+      "slug": "duifkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "ijsseldal",
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Duindoorn",
+      "slug": "duindoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Duinroos",
+      "slug": "duinroos",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Echt duizendguldenkruid",
+      "slug": "echt-duizendguldenkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "gelderse-poort"
+      ]
+    },
+    {
+      "name_nl": "Echte guldenroede",
+      "slug": "echte-guldenroede",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "de-peel",
+        "drents-plateau-en-friese-wouden",
+        "regge-en-sallandse-heuvelrug",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Egelantier",
+      "slug": "egelantier",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "friese-en-groningse-zeeklei",
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "vechtdal",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Engels gras",
+      "slug": "engels-gras",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Geel walstro",
+      "slug": "geel-walstro",
+      "category": "flora",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Gelderse roos",
+      "slug": "gelderse-roos",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "de-peel",
+        "drents-plateau-en-friese-wouden",
+        "hollands-en-utrechts-laagveengebied",
+        "laaglandrivieren",
+        "reestdal",
+        "regge-en-sallandse-heuvelrug",
+        "rijk-van-nijmegen",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Gele ganzenbloem",
+      "slug": "gele-ganzenbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "reestdal"
+      ]
+    },
+    {
+      "name_nl": "Gele kornoelje",
+      "slug": "gele-kornoelje",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Gele morgenster",
+      "slug": "gele-morgenster",
+      "category": "flora",
+      "streek_slugs": [
+        "gelderse-poort"
+      ]
+    },
+    {
+      "name_nl": "Gevlekt longkruid",
+      "slug": "gevlekt-longkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Gevleugeld hertshooi",
+      "slug": "gevleugeld-hertshooi",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Gewone agrimonie",
+      "slug": "gewone-agrimonie",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "gelderse-poort",
+        "ijsseldal",
+        "kalkrijke-hollandse-duinstreek",
+        "laaglandrivieren",
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen",
+        "zeeuwse-zandgronden",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Gewone brunel",
+      "slug": "gewone-brunel",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Gewone dophei",
+      "slug": "gewone-dophei",
+      "category": "flora",
+      "streek_slugs": [
+        "drents-plateau-en-friese-wouden",
+        "limburgse-maasstreek",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Gewone dotterbloem",
+      "slug": "gewone-dotterbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-meren-tot-weerribben",
+        "reestdal",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Gewone margriet",
+      "slug": "gewone-margriet",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Gewone rolklaver",
+      "slug": "gewone-rolklaver",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Gewone vlier",
+      "slug": "gewone-vlier",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "laaglandrivieren",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Grasklokje",
+      "slug": "grasklokje-3",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Grasklokje",
+      "slug": "grasklokje",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "centrale-stuwwallen",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Groot kaasjeskruid",
+      "slug": "groot-kaasjeskruid",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken"
+      ]
+    },
+    {
+      "name_nl": "Groot streepzaad",
+      "slug": "groot-streepzaad",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "gelderse-poort",
+        "ijsseldal",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Grote boterbloem",
+      "slug": "grote-boterbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-meren-tot-weerribben"
+      ]
+    },
+    {
+      "name_nl": "Grote centaurie",
+      "slug": "grote-centaurie",
+      "category": "flora",
+      "streek_slugs": [
+        "gelderse-poort",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Grote kattenstaart",
+      "slug": "grote-kattenstaart",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel",
+        "friese-en-groningse-zeeklei",
+        "friese-meren-tot-weerribben",
+        "hollands-en-utrechts-laagveengebied",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Grote klaproos",
+      "slug": "grote-klaproos",
+      "category": "flora",
+      "streek_slugs": [
+        "reestdal"
+      ]
+    },
+    {
+      "name_nl": "Grote muur",
+      "slug": "grote-muur",
+      "category": "flora",
+      "streek_slugs": [
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Grote pimpernel",
+      "slug": "grote-pimpernel",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Grote ratelaar",
+      "slug": "grote-ratelaar",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "de-peel",
+        "friese-meren-tot-weerribben",
+        "reestdal",
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Grote tijm",
+      "slug": "grote-tijm",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Gulden Sleutelbloem",
+      "slug": "gulden-sleutelbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Haagbeuk",
+      "slug": "haagbeuk",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Hartgespan",
+      "slug": "hartgespan",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Hazelaar",
+      "slug": "hazelaar",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Heemst",
+      "slug": "heemst",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Heggenrank",
+      "slug": "heggenrank",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "gelderse-poort",
+        "ijsseldal",
+        "rijk-van-nijmegen",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Hondsroos",
+      "slug": "hondsroos",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "gelderse-poort",
+        "ijsseldal",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "reestdal",
+        "rijk-van-nijmegen",
+        "twente",
+        "zeeuwse-zandgronden",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Hondsviooltje",
+      "slug": "hondsviooltje",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "twente",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Hulst",
+      "slug": "hulst",
+      "category": "flora",
+      "streek_slugs": [
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Kantig herfsthooi",
+      "slug": "kantig-herfsthooi",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Kattendoorn",
+      "slug": "kattendoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgse-maasstreek",
+        "vechtdal",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Keizerskaars",
+      "slug": "keizerskaars",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Klein streepzaad",
+      "slug": "klein-streepzaad",
+      "category": "flora",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Kleine leeuwentand",
+      "slug": "kleine-leeuwentand",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Kleine pimpernel",
+      "slug": "kleine-pimpernel",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Kleine ratelaar",
+      "slug": "kleine-ratelaar",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Kleine valeriaan",
+      "slug": "kleine-valeriaan",
+      "category": "flora",
+      "streek_slugs": [
+        "twente"
+      ]
+    },
+    {
+      "name_nl": "Klokjesgentiaan",
+      "slug": "klokjesgentiaan",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden",
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Knikkend nagelkruid",
+      "slug": "knikkend-nagelkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Knolboterbloem",
+      "slug": "knolboterbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Knolsteenbreek",
+      "slug": "knolsteenbreek",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-zand-en-leemstreek",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Knoopkruid",
+      "slug": "knoopkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Korenbloem",
+      "slug": "korenbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "reestdal"
+      ]
+    },
+    {
+      "name_nl": "Kraaihei",
+      "slug": "kraaihei",
+      "category": "flora",
+      "streek_slugs": [
+        "drents-plateau-en-friese-wouden",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Kruisbladgentiaan",
+      "slug": "kruisbladgentiaan",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Lange ereprijs",
+      "slug": "lange-ereprijs",
+      "category": "flora",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Lavendelhei",
+      "slug": "lavendelhei",
+      "category": "flora",
+      "streek_slugs": [
+        "drents-plateau-en-friese-wouden"
+      ]
+    },
+    {
+      "name_nl": "Liggende ereprijs",
+      "slug": "liggende-ereprijs",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Lijsterbes",
+      "slug": "lijsterbes",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "de-peel",
+        "friese-meren-tot-weerribben",
+        "reestdal",
+        "twente",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Moerasandoorn",
+      "slug": "moerasandoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-meren-tot-weerribben"
+      ]
+    },
+    {
+      "name_nl": "Moerasrolklaver",
+      "slug": "moerasrolklaver",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel",
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Moerasspirea",
+      "slug": "moerasspirea",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Muskuskruid",
+      "slug": "muskuskruid",
+      "category": "flora",
+      "streek_slugs": [
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Muurpeper",
+      "slug": "muurpeper",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Parnassia",
+      "slug": "parnassia",
+      "category": "flora",
+      "streek_slugs": [
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Pinksterbloem",
+      "slug": "pinksterbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-en-groningse-zeeklei",
+        "friese-meren-tot-weerribben",
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Rapunzelklokje",
+      "slug": "rapunzelklokje-2",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsseldal",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Rode klaver",
+      "slug": "rode-klaver",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-en-groningse-zeeklei",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "west-friesland"
+      ]
+    },
+    {
+      "name_nl": "Ruig klokje",
+      "slug": "ruig-klokje",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Ruige leeuwentand",
+      "slug": "ruige-leeuwentand",
+      "category": "flora",
+      "streek_slugs": [
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Ruwe iep",
+      "slug": "ruwe-iep-2",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek"
+      ]
+    },
+    {
+      "name_nl": "Schermhavikskruid",
+      "slug": "schermhavikskruid",
+      "category": "flora",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Scherpe boterbloem",
+      "slug": "scherpe-boterbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel",
+        "friese-en-groningse-zeeklei",
+        "friese-meren-tot-weerribben",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "laaglandrivieren",
+        "reestdal"
+      ]
+    },
+    {
+      "name_nl": "Schietwilg",
+      "slug": "schietwilg",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "hollands-en-utrechts-laagveengebied",
+        "ijsseldal",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "laaglandrivieren"
+      ]
+    },
+    {
+      "name_nl": "Sint Janskruid",
+      "slug": "sint-janskruid",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Slangenkruid",
+      "slug": "slangenkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Sleedoorn",
+      "slug": "sleedoorn-2",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "ijsseldal",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "regge-en-sallandse-heuvelrug",
+        "rijk-van-nijmegen",
+        "twente",
+        "vechtdal",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Spaanse Ruiter",
+      "slug": "spaanse-ruiter",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Sporkehout (Vuilboom-familie)",
+      "slug": "sporkehout-vuilboom",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-zand-en-leemstreek",
+        "centrale-stuwwallen",
+        "friese-meren-tot-weerribben",
+        "hollands-en-utrechts-laagveengebied",
+        "reestdal",
+        "regge-en-sallandse-heuvelrug",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Stalkaars",
+      "slug": "stalkaars",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Steenanjer",
+      "slug": "steenanjer",
+      "category": "flora",
+      "streek_slugs": [
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Stijf havikskruid",
+      "slug": "stijf-havikskruid",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen"
+      ]
+    },
+    {
+      "name_nl": "Struikhei",
+      "slug": "struikhei",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "de-peel",
+        "drents-plateau-en-friese-wouden",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Tweestijlige meidoorn",
+      "slug": "tweestijlige-meidoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "drents-plateau-en-friese-wouden",
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen",
+        "vechtdal"
+      ]
+    },
+    {
+      "name_nl": "Valkruid",
+      "slug": "valkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "drents-plateau-en-friese-wouden"
+      ]
+    },
+    {
+      "name_nl": "Veldesdoorn",
+      "slug": "2102-2",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "brabantse-zand-en-leemstreek",
+        "friese-en-groningse-zeeklei",
+        "gelderse-poort",
+        "ijsseldal",
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "limburgse-maasstreek",
+        "twente",
+        "west-friesland",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Veldlathyrus",
+      "slug": "veldlathyrus",
+      "category": "flora",
+      "streek_slugs": [
+        "hollands-en-utrechts-laagveengebied",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Veldsalie",
+      "slug": "veldsalie-2",
+      "category": "flora",
+      "streek_slugs": [
+        "gelderse-poort",
+        "ijsseldal",
+        "laaglandrivieren",
+        "limburgse-maasstreek"
+      ]
+    },
+    {
+      "name_nl": "Vertakte leeuwentand",
+      "slug": "vertakte-leeuwentand",
+      "category": "flora",
+      "streek_slugs": [
+        "reestdal",
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Vlasbekje",
+      "slug": "vlasbekje",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Vogelwikke",
+      "slug": "vogelwikke",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Wegedoorn",
+      "slug": "wegedoorn",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "brabantse-maasstreek",
+        "ijsseldal",
+        "kalkrijke-hollandse-duinstreek",
+        "limburgse-maasstreek",
+        "vechtdal",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Wild kattenkruid",
+      "slug": "wild-kattenkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Wilde akelei",
+      "slug": "wilde-akelei",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland"
+      ]
+    },
+    {
+      "name_nl": "Wilde cichorei",
+      "slug": "wilde-cichorei",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsselmeerpolders-en-zuiderzeedijken"
+      ]
+    },
+    {
+      "name_nl": "Wilde kamperfoelie",
+      "slug": "wilde-kamperfoelie",
+      "category": "flora",
+      "streek_slugs": [
+        "drents-plateau-en-friese-wouden",
+        "rijk-van-nijmegen"
+      ]
+    },
+    {
+      "name_nl": "Wilde kardinaalsmuts",
+      "slug": "wilde-kardinaalsmuts",
+      "category": "flora",
+      "streek_slugs": [
+        "achterhoek",
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "twente",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Wilde Kievietsbloem",
+      "slug": "wilde-kievietsbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "ijsseldal"
+      ]
+    },
+    {
+      "name_nl": "Wilde liguster",
+      "slug": "2745-2",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek",
+        "limburgs-heuvelland",
+        "zeeuwse-zandgronden",
+        "zuidwestelijke-zeekleipolders"
+      ]
+    },
+    {
+      "name_nl": "Wilde marjolein",
+      "slug": "wilde-marjolein",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgs-heuvelland",
+        "limburgse-maasstreek",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Wilde peen",
+      "slug": "wilde-peen",
+      "category": "flora",
+      "streek_slugs": [
+        "brabantse-maasstreek",
+        "de-peel"
+      ]
+    },
+    {
+      "name_nl": "Wilde reseda",
+      "slug": "wilde-reseda",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Wintereik",
+      "slug": "wintereik",
+      "category": "flora",
+      "streek_slugs": [
+        "centrale-stuwwallen",
+        "regge-en-sallandse-heuvelrug"
+      ]
+    },
+    {
+      "name_nl": "Witte klaver",
+      "slug": "witte-klaver",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-en-groningse-zeeklei"
+      ]
+    },
+    {
+      "name_nl": "Wondklaver",
+      "slug": "wondklaver",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Zandblauwtje",
+      "slug": "zandblauwtje",
+      "category": "flora",
+      "streek_slugs": [
+        "regge-en-sallandse-heuvelrug",
+        "wadden-en-noordelijke-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Zeepkruid",
+      "slug": "zeepkruid",
+      "category": "flora",
+      "streek_slugs": [
+        "kalkrijke-hollandse-duinstreek"
+      ]
+    },
+    {
+      "name_nl": "Zwanenbloem",
+      "slug": "zwanenbloem",
+      "category": "flora",
+      "streek_slugs": [
+        "friese-meren-tot-weerribben",
+        "hollands-en-utrechts-laagveengebied"
+      ]
+    },
+    {
+      "name_nl": "Zwarte els",
+      "slug": "zwarte-els",
+      "category": "flora",
+      "streek_slugs": [
+        "drents-plateau-en-friese-wouden"
+      ]
+    },
+    {
+      "name_nl": "Zwarte toorts",
+      "slug": "zwarte-toorts",
+      "category": "flora",
+      "streek_slugs": [
+        "limburgse-maasstreek",
+        "rijk-van-nijmegen",
+        "zeeuwse-zandgronden"
+      ]
+    },
+    {
+      "name_nl": "Éénjarig wollegras",
+      "slug": "eenjarig-wollegras",
+      "category": "flora",
+      "streek_slugs": [
+        "de-peel"
+      ]
+    }
+  ]
+}

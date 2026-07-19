@@ -163,6 +163,8 @@ export interface MapInfo {
   lat: number | null
   lon: number | null
   bearing: number
+  streek_slug?: string | null
+  streek_source?: 'auto' | 'manual'
 }
 
 // --- Map Editor ---
@@ -662,6 +664,32 @@ export type PlantRecommendation = {
   reason: string
   reason_en?: string | null
   caveat: string | null
+  is_streek?: boolean                  // belongs to the garden's streek (streekeigen)
+  is_drachtplant?: boolean             // Naturalis bee-forage plant
+  fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
+  is_moth_plant?: boolean              // night-flowering / moth-forage (nachtvlinder)
+  supports_moth_gap?: boolean          // moth plant in a garden that has none yet
+}
+
+export type StreekSuggestionsOut = {
+  streek_slug: string | null
+  streek_name: string | null
+  suggestions: PlantRecommendation[]
+}
+
+export type Streek = {
+  slug: string
+  name: string
+}
+
+export type BeeSupportOut = {
+  forage_months: boolean[]          // 12 entries, index 0 = January
+  supported_count: number
+  supported_redlist_count: number
+  total_bees: number
+  total_redlist: number
+  forage_gap_months: number[]       // 1..12
+  example_supported: string[]
 }
 
 export type RecommendationsOut = {
@@ -690,7 +718,15 @@ export type GardenBiodiversityOut = {
     pollinator: number
     native: number
     diversity: number
+    abundance?: number
+    streek?: number
   }
+  streek_slug?: string | null
+  streek_name?: string | null
+  streek_native_count?: number
+  drachtplant_count?: number
+  area_m2?: number | null
+  score_targets?: { diversity?: number; native?: number; streek?: number }
 }
 
 export type EcologyOut = {

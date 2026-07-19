@@ -116,6 +116,7 @@ describe('PhenologyView editorial shell', () => {
             createElement(PhenologyView, {
               env: 'tuin',
               environmentFilter: createElement('div', { 'data-environment-filter': true }),
+              viewNavigation: null,
             }),
           ),
         ),

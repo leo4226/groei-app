@@ -17,7 +17,9 @@ async def _prepare_biodiversity_db(seeded_db):
             invasive_nl INTEGER,
             pollinator_value INTEGER,
             flowering_months TEXT,
-            ecology_enriched_at TEXT
+            ecology_enriched_at TEXT,
+            is_drachtplant INTEGER DEFAULT 0,
+            is_moth_plant INTEGER DEFAULT 0
         )"""
     )
     await seeded_db.execute(
@@ -62,7 +64,7 @@ async def test_biodiversity_context_includes_outdoor_score_gaps_and_full_suggest
     assert garden['species_count'] == 1
     assert garden['native_count'] == 0
     assert garden['invasive_count'] == 0
-    assert garden['score_components']['pollinator'] == 10
+    assert garden['score_components']['pollinator'] == 7
     assert garden['pollinator_covered_months'] == [1, 2]
     assert garden['pollinator_gap_months'] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
@@ -95,7 +97,7 @@ async def test_biodiversity_context_keeps_map_context_when_no_recommendations(se
     garden = packet['maps'][0]
     assert garden['suggestions'] == []
     assert garden['pollinator_gap_months'] == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    assert garden['score_components']['pollinator'] == 10
+    assert garden['score_components']['pollinator'] == 7
     assert 'Achtertuin: score' in prose
 
 

@@ -1,7 +1,9 @@
 """Server-side grouped map care operations with reversible schedule snapshots."""
 from datetime import date, datetime
 
+from care_types import CARE_TYPES
 from services.calendar_grouping import get_calendar_grouping_preferences
+from services.care_profile import environment_for_plant
 from services.db_transactions import database_transaction, for_update_clause
 from services.scheduling import calculate_next_due
 
@@ -22,6 +24,22 @@ def _comparable_db_value(value) -> str | None:
     if isinstance(value, date):
         return value.isoformat()
     return str(value)
+
+
+def _schedule_interval_days(schedule: dict, care_type: str) -> int | None:
+    """Return a safe interval for a grouped schedule.
+
+    Some older manually-created FEED/PRUNE rows can be missing interval data even
+    though the calendar can still group and show them. Completing such a session
+    should not 500; fall back to the catalog default for that plant's
+    environment so the group can be aligned onto a valid next due date.
+    """
+    raw_interval = schedule.get("interval_days")
+    if isinstance(raw_interval, int) and not isinstance(raw_interval, bool) and raw_interval > 0:
+        return raw_interval
+    environment = environment_for_plant(schedule)
+    default_interval = CARE_TYPES.get(care_type, {}).get("default_intervals", {}).get(environment)
+    return default_interval if isinstance(default_interval, int) and default_interval > 0 else None
 
 
 async def complete_outdoor_care(
@@ -50,7 +68,8 @@ async def complete_outdoor_care(
     async with database_transaction(db):
         schedules = await db.execute_fetchall(
             """SELECT cs.id, cs.plant_id, cs.interval_days, cs.season_adjust,
-                      cs.next_due, cs.last_done, cs.last_done_by
+                      cs.next_due, cs.last_done, cs.last_done_by,
+                      p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
                FROM care_schedules cs
                JOIN plants p ON p.id = cs.plant_id
                JOIN maps m ON m.id = p.map_id
@@ -83,8 +102,11 @@ async def complete_outdoor_care(
                    VALUES (?, ?, ?, ?, FALSE) RETURNING id""",
                 (schedule["plant_id"], care_type, user_id, done_at),
             )
+            interval_days = _schedule_interval_days(schedule, care_type)
+            if interval_days is None:
+                raise GardenCareSelectionError
             next_due = calculate_next_due(
-                completed_at, schedule["interval_days"], schedule["season_adjust"],
+                completed_at, interval_days, schedule["season_adjust"],
             )
             await db.execute(
                 """INSERT INTO garden_care_operation_members

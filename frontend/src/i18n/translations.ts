@@ -585,6 +585,10 @@ export type Translations = {
     ecologyPollinatorHigh: string // "🐝 Top bestuiver"
     ecologyPollinatorGood: string // "🐝 Goed voor bijen"
     ecologyFillsGap: string      // "Vult: {months}"
+    ecologyStreek: string        // "Streekeigen" / "Regional"
+    ecologyForageGap: string     // "🐝 Vult drachtgat" / "🐝 Fills bee gap"
+    ecologyMoth: string          // "🌙 Nachtvlinder" / "🌙 Moth plant"
+    ecologyMothGap: string       // "🌙 Trekt nachtvlinders" / "🌙 Attracts moths"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
@@ -613,6 +617,10 @@ export type Translations = {
     frostSensitive: string  // "Frost-sensitive"
     deficitPerDay: string  // "~{hours}h/day deficit in growing season"
     sunPerMonth: string  // "Sun per month at this spot"
+    bioNative: string  // "Native"
+    bioStreek: string  // "Regional"
+    bioBeeForage: string  // "Bee forage"
+    bioMoth: string  // "Moth"
   }
 
   // ── Phenology / Agenda ──────────────────────────────────────────
@@ -1123,6 +1131,13 @@ export type Translations = {
     seasonalGardenYear: string
     waterOutlookTitle: string
     waterOutlookScope: string
+    waterOutlookGlobalOutdoor: string
+    waterOutlookGlobalIndoor: string
+    waterOutlookGlobalMixed: string
+    waterOutlookGlobalNormal: string
+    waterOutlookGlobalUnavailable: string
+    waterOutlookCheckDateShort: (date: string) => string
+    waterOutlookDeadlinesUnchanged: string
     waterOutlookLoading: string
     waterOutlookError: string
     waterOutlookRetry: string
@@ -1386,6 +1401,11 @@ export type Translations = {
       componentPollinator: string // "Bestuivers"
       componentNative: string     // "Inheems"
       componentDiversity: string  // "Diversiteit"
+      componentStreek: string     // "Streek"
+      componentAbundance: string  // "Aantal" / "Abundance"
+      streekLabel: string         // "Streek" (row label)
+      streekNativeCount: (n: number) => string  // "3 streekeigen soorten"
+      drachtplantCount: (n: number) => string   // "4 bijenplanten (drachtplanten)"
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
@@ -1395,6 +1415,30 @@ export type Translations = {
       sunPartial: string   // "⛅ Halfschaduw"
       sunShade: string     // "🌿 Schaduw"
       nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
+      streekBadge: string  // "Streekeigen" / "Regional"
+    }
+    streek: {
+      sectionTitle: string          // "Planten uit jouw streek"
+      subtitle: (name: string) => string  // "Inheems in het/de {name}"
+      noData: string                // "Nog geen streekplanten om te tonen"
+      attribution: string           // "Streekindeling: streektuinen.nl"
+      pickTitle: string             // "Kies je streek"
+      pickHint: string              // "Klopt je streek niet? Kies hem hieronder."
+      pickNone: string              // "Onbekend / buiten Nederland"
+      pickCta: string               // "Opslaan"
+      seedMix: string               // "Zaaimengsel voor jouw streek" / "Seed mix for your region"
+    }
+    sources: {
+      title: string                 // "Bronnen" / "Sources"
+      streektuinen: string          // "Streekindeling & planten: streektuinen.nl"
+      bloeibogen: string            // "Bijen & bloeidata: Naturalis / Bloeibogen"
+    }
+    bees: {
+      title: string                          // "Bijen" / "Wild bees"
+      supportedCount: (n: number) => string  // "Tot 40 wilde bijensoorten kunnen hier terecht"
+      redlistNote: (m: number) => string     // "waarvan 12 op de Rode Lijst"
+      forageGap: (months: string) => string  // "Bijen vliegen in feb, mrt zonder drachtplant…"
+      noForage: string                        // "Nog geen drachtplanten…"
     }
   }
 
@@ -1709,5 +1753,12 @@ export type Translations = {
     available: string  // "Nieuwe versie beschikbaar"
     action: string     // "Vernieuwen"
     dismiss: string    // "Sluiten"
+  }
+
+  demo: {
+    badge: string       // "Demo"
+    gardenName: string  // "Voorbeeldtuin"
+    cta: string         // "Maak je eigen tuin"
+    hint: string        // sun-mode explainer shown on the public demo garden
   }
 }

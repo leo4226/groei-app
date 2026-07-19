@@ -39,7 +39,11 @@ export default function MonthSeasonalPanel({ month1, plants, onOpenGardenYear }:
   if (plants.length === 0 || (visibleGroups.length === 0 && summary.noData.length === 0)) return null
 
   return (
-    <section className="side-card seasonal-card" aria-labelledby="seasonal-month-title">
+    <section
+      className="side-card seasonal-card"
+      data-calendar-context="seasonal"
+      aria-labelledby="seasonal-month-title"
+    >
       <div className="sc-head">
         <div>
           <p className="sc-eye">{t.calendar.seasonalThisMonth}</p>

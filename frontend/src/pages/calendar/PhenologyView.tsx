@@ -16,9 +16,10 @@ import {
 interface Props {
   env: string
   environmentFilter: ReactNode
+  viewNavigation: ReactNode
 }
 
-export default function PhenologyView({ env, environmentFilter }: Props) {
+export default function PhenologyView({ env, environmentFilter, viewNavigation }: Props) {
   const t = useT()
   const plants = useFloreren(s => s.plants)
   const maps = useFloreren(s => s.maps)
@@ -46,6 +47,7 @@ export default function PhenologyView({ env, environmentFilter }: Props) {
       {/* Page title lives in the shared CalendarPageMasthead; the month rail
           below is this view's context rail. */}
       <div className="view-rail">
+        {viewNavigation}
         <div className="masthead-environment">{environmentFilter}</div>
       </div>
       <nav

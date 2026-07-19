@@ -4,8 +4,6 @@ import { useT } from '../../context/LanguageContext'
 import type {
   WaterOutlook,
   WaterPressureLevel,
-  WaterPressureMap,
-  WaterPressurePlant,
 } from './waterOutlookTypes'
 
 interface Props {
@@ -26,14 +24,6 @@ function formatIsoDate(value: string, locale: string): string {
     month: 'short',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, month - 1, day)))
-}
-
-function summaryPlant(map: WaterPressureMap): WaterPressurePlant | null {
-  return map.plants.reduce<WaterPressurePlant | null>((best, plant) => {
-    if (!best) return plant
-    const rankDelta = LEVEL_RANK[plant.level] - LEVEL_RANK[best.level]
-    return rankDelta > 0 || (rankDelta === 0 && plant.score > best.score) ? plant : best
-  }, null)
 }
 
 export default function WaterOutlookPanel({ env }: Props) {
@@ -66,20 +56,29 @@ export default function WaterOutlookPanel({ env }: Props) {
     return true
   }), [env, outlook])
   const generatedAt = outlook?.generated_at ?? ''
+  const earlyChecks = maps.flatMap(map => map.plants
+    .filter(plant => (
+      map.weather_status === 'fresh'
+      && plant.recommended_check_date < plant.next_due
+      && (generatedAt === '' || plant.next_due >= generatedAt)
+    ))
+    .map(plant => ({ plant, mapType: map.map_type })))
+  const alertLevel = earlyChecks.reduce<WaterPressureLevel>((level, { plant }) => (
+    LEVEL_RANK[plant.level] > LEVEL_RANK[level] ? plant.level : level
+  ), 'unknown')
+  const earliestCheckDate = earlyChecks.reduce<string | null>((earliest, { plant }) => (
+    !earliest || plant.recommended_check_date < earliest ? plant.recommended_check_date : earliest
+  ), null)
+  const hasOutdoorAlert = earlyChecks.some(({ mapType }) => mapType === 'outdoor')
+  const hasIndoorAlert = earlyChecks.some(({ mapType }) => mapType === 'indoor')
+  const hasFreshWeather = maps.some(map => map.weather_status === 'fresh')
 
-  const levelLabel = (level: WaterPressureLevel) => ({
+  const levelLabel = ({
     high: t.calendar.waterOutlookLevelHigh,
     elevated: t.calendar.waterOutlookLevelElevated,
     normal: t.calendar.waterOutlookLevelNormal,
     unknown: t.calendar.waterOutlookLevelUnknown,
-  })[level]
-
-  const statusMessage = (map: WaterPressureMap) => {
-    if (map.weather_status === 'stale') return t.calendar.waterOutlookStale
-    if (map.weather_status === 'missing_coordinates') return t.calendar.waterOutlookMissingCoordinates
-    if (map.weather_status === 'unavailable') return t.calendar.waterOutlookUnavailable
-    return null
-  }
+  })[alertLevel]
 
   if (loading) {
     return (
@@ -103,49 +102,41 @@ export default function WaterOutlookPanel({ env }: Props) {
   if (maps.length === 0) return null
 
   return (
-    <section className="side-card water-outlook-card" aria-labelledby="water-outlook-title">
+    <section
+      className="side-card water-outlook-card"
+      data-calendar-context="weather"
+      aria-labelledby="water-outlook-title"
+    >
       <div className="sc-head">
         <div>
           <p className="sc-eye">{t.calendar.weatherContext}</p>
           <h2 className="sc-title" id="water-outlook-title">{t.calendar.waterOutlookTitle}</h2>
         </div>
+        {earliestCheckDate && (
+          <span className={`water-outlook-badge water-outlook-badge--${alertLevel}`}>
+            {levelLabel}
+          </span>
+        )}
       </div>
       <p className="water-outlook-scope">{t.calendar.waterOutlookScope}</p>
-      <div className="water-outlook-list">
-        {maps.map(map => {
-          const plant = summaryPlant(map)
-          if (!plant) return null
-          const weatherMessage = statusMessage(map)
-          const explanation = t.locale.startsWith('en') ? plant.reason_en : plant.reason_nl
-          const isEarly = plant.recommended_check_date < plant.next_due
-          const isOverdue = generatedAt !== '' && plant.next_due < generatedAt
-          const dateLabel = formatIsoDate(
-            isEarly ? plant.recommended_check_date : plant.next_due,
-            t.locale,
-          )
-          return (
-            <article className="water-outlook-map" key={map.map_id}>
-              <div className="water-outlook-map-head">
-                <h3>{map.map_name}</h3>
-                <span className={`water-outlook-badge water-outlook-badge--${map.level}`}>
-                  {levelLabel(map.level)}
-                </span>
-              </div>
-              <p className="water-outlook-plant">{plant.plant_name}</p>
-              <p className="water-outlook-date">
-                {isOverdue
-                  ? t.calendar.waterOutlookOverdueDate(dateLabel)
-                  : isEarly
-                  ? t.calendar.waterOutlookCheckDate(dateLabel)
-                  : t.calendar.waterOutlookSavedDate(dateLabel)}
-              </p>
-              {map.temperature_source === 'outdoor_proxy' && (
-                <p className="water-outlook-proxy">{t.calendar.waterOutlookProxy}</p>
-              )}
-              <p className="water-outlook-reason">{weatherMessage ?? explanation}</p>
-            </article>
-          )
-        })}
+      <div className={`water-outlook-alert ${earliestCheckDate ? 'is-early' : 'is-normal'}`}>
+        <p className="water-outlook-summary">
+          {earliestCheckDate
+            ? hasOutdoorAlert && hasIndoorAlert
+              ? t.calendar.waterOutlookGlobalMixed
+              : hasIndoorAlert
+                ? t.calendar.waterOutlookGlobalIndoor
+                : t.calendar.waterOutlookGlobalOutdoor
+            : hasFreshWeather
+              ? t.calendar.waterOutlookGlobalNormal
+              : t.calendar.waterOutlookGlobalUnavailable}
+        </p>
+        <p className="water-outlook-meta">
+          {earliestCheckDate && (
+            <>{t.calendar.waterOutlookCheckDateShort(formatIsoDate(earliestCheckDate, t.locale))} · </>
+          )}
+          {t.calendar.waterOutlookDeadlinesUnchanged}
+        </p>
       </div>
     </section>
   )

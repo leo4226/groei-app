@@ -354,6 +354,7 @@ class MapUpdate(BaseModel):
     lat: float | None = None
     lon: float | None = None
     bearing: float | None = None
+    streek_slug: str | None = None  # explicit set → 'manual' source (see maps router)
 
 
 class MapOut(BaseModel):
@@ -370,6 +371,8 @@ class MapOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
+    streek_slug: str | None = None
+    streek_source: str = 'auto'
 
 
 class ZoneOut(BaseModel):
@@ -721,6 +724,7 @@ class RegisterInput(BaseModel):
     password: str = Field(min_length=8)
     name: str
     household_name: str = ""
+    language: Literal['nl', 'en'] = 'nl'
 
     @field_validator("email")
     @classmethod
@@ -768,6 +772,7 @@ class JoinInput(BaseModel):
     email: str
     password: str = Field(min_length=8)
     name: str
+    language: Literal['nl', 'en'] = 'nl'
 
     @field_validator("email")
     @classmethod
@@ -1076,6 +1081,11 @@ class PlantRecommendationOut(BaseModel):
     reason: str                      # template text in Dutch
     reason_en: str | None            # template text in English
     caveat: str | None
+    is_streek: bool = False          # belongs to the garden's streek (streekeigen)
+    is_drachtplant: bool = False     # Naturalis bee-forage plant
+    fills_forage_gap: bool = False   # a drachtplant blooming in a bee forage-gap month
+    is_moth_plant: bool = False      # night-flowering / moth-forage (nachtvlinder)
+    supports_moth_gap: bool = False  # moth plant in a garden that has none yet
 
 
 class RecommendationsOut(BaseModel):

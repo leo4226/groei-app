@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut } from '../types'
 
 /**
  * Small line glyphs for biodiversity stats, in the app's icon language
@@ -126,15 +126,25 @@ function MonthCoverage({ months, locale }: { months: boolean[]; locale: string }
   )
 }
 
-const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
+// Localized short month name (1-12) — mirrors MonthCoverage's Intl usage so
+// gap lists read "mrt" in NL and "Mar" in EN, instead of a hardcoded array.
+function monthsShort(months: number[], locale: string): string {
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
+  return months.map(m => fmt.format(new Date(2026, m - 1, 1))).join(', ')
+}
 
 function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiodiversityOut; slug: string; embedded?: boolean }) {
   const t = useT()
+  const en = t.locale.startsWith('en')
   const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
+  const [streekSug, setStreekSug] = useState<StreekSuggestionsOut | null>(null)
+  const [bees, setBees] = useState<BeeSupportOut | null>(null)
 
   useEffect(() => {
     if (!slug) return
     mapsApi.plantSuggestions(slug).then(setSuggestions).catch(() => {})
+    mapsApi.streekSuggestions(slug).then(setStreekSug).catch(() => {})
+    mapsApi.beeSupport(slug).then(setBees).catch(() => {})
   }, [slug])
 
   const Wrapper = embedded ? 'div' : 'section'
@@ -162,6 +172,20 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               <BioIcon name="invasive" size={14} /> {t.garden.biodiversity.invasiveCount(data.invasive_count)}
             </p>
           )}
+          {(data.drachtplant_count ?? 0) > 0 && (
+            <p className="flex items-center gap-1.5" style={{ color: 'var(--color-due)', fontWeight: 600 }}>
+              <BioIcon name="pollinator" size={14} /> {t.garden.biodiversity.drachtplantCount(data.drachtplant_count ?? 0)}
+            </p>
+          )}
+          {data.streek_name && (
+            <p className="text-text-muted">
+              <span className="text-text-muted">{t.garden.biodiversity.streekLabel}:</span>{' '}
+              <span className="text-text font-medium">{data.streek_name}</span>
+              {(data.streek_native_count ?? 0) > 0 && (
+                <span className="text-text-muted"> · {t.garden.biodiversity.streekNativeCount(data.streek_native_count ?? 0)}</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
@@ -171,11 +195,19 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
         <MonthCoverage months={data.pollinator_coverage_months} locale={t.locale} />
       </div>
 
-      {/* Components breakdown */}
-      <div className="flex justify-between gap-4 text-[11px] text-text-muted pt-3 border-t border-border/40">
-        <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/60</span></span>
-        <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/30</span></span>
-        <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/10</span></span>
+      {/* Components breakdown — wraps to a grid so the subscores never clip on
+          narrow widths (a flex justify-between row overflowed once Streek was
+          added). All five components are shown. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-[11px] text-text-muted pt-3 border-t border-border/40">
+        <span className="flex items-center gap-1"><BioIcon name="pollinator" size={12} /> {t.garden.biodiversity.componentPollinator}: <span className="text-text font-mono">{data.components.pollinator}/40</span></span>
+        <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentNative}: <span className="text-text font-mono">{data.components.native}/25</span></span>
+        <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentDiversity}: <span className="text-text font-mono">{data.components.diversity}/15</span></span>
+        {(data.components.abundance ?? 0) > 0 && (
+          <span className="flex items-center gap-1"><BioIcon name="diversity" size={12} /> {t.garden.biodiversity.componentAbundance}: <span className="text-text font-mono">{data.components.abundance ?? 0}/8</span></span>
+        )}
+        {data.streek_slug && (
+          <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/12</span></span>
+        )}
       </div>
 
       {/* Plant suggestions section */}
@@ -189,7 +221,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
             <p className="text-xs text-text-muted mb-3">
               {t.garden.suggestions.gapLabel.replace(
                 '{months}',
-                suggestions.gap_months.map(m => MONTH_SHORT[m - 1]).join(', ')
+                monthsShort(suggestions.gap_months, t.locale)
               )}
             </p>
           )}
@@ -197,7 +229,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           {suggestions.suggestions.length === 0 ? (
             <p className="text-xs text-text-muted">{t.garden.suggestions.noData}</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
               {suggestions.suggestions.map((s) => {
                 const sunLabel = s.sun_preference === 'full_sun'
                   ? t.garden.suggestions.sunFull
@@ -228,6 +260,11 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                               <BioIcon name="pollinator" size={11} />
                             </span>
                           )}
+                          {s.is_streek && (
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
+                              {t.garden.suggestions.streekBadge}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
                       </div>
@@ -244,6 +281,88 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           )}
         </section>
       )}
+
+      {/* "Planten uit jouw streek" — regionally-correct flora to add */}
+      {streekSug && streekSug.streek_name && streekSug.suggestions.length > 0 && (
+        <section className="pt-4 mt-4 border-t border-border/40">
+          <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-1">
+            {t.garden.streek.sectionTitle}
+          </h3>
+          <p className="text-xs text-text-muted mb-2">{t.garden.streek.subtitle(streekSug.streek_name)}</p>
+          {streekSug.streek_slug && (
+            <a
+              href={`https://streektuinen.nl/streekmixen/${streekSug.streek_slug}/`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 hover:underline mb-3"
+            >
+              {t.garden.streek.seedMix} ↗
+            </a>
+          )}
+          <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
+            {streekSug.suggestions.map((s) => (
+              <div key={s.species_id} className="card p-3 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-sm text-text">{en ? (s.english_name || s.dutch_name) : s.dutch_name}</span>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
+                    {t.garden.suggestions.streekBadge}
+                  </span>
+                  {(s.pollinator_value ?? 0) >= 2 && (
+                    <span className="text-amber-700 inline-flex items-center px-1 py-0.5 bg-amber-400/10 rounded-full" title={t.garden.biodiversity.componentPollinator}>
+                      <BioIcon name="pollinator" size={11} />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Wilde bijen — who the garden's bee-forage supports + forage gaps */}
+      {bees && (bees.supported_count > 0 || bees.forage_gap_months.length > 0) && (
+        <section className="pt-4 mt-4 border-t border-border/40">
+          <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted mb-2 flex items-center gap-1.5">
+            <BioIcon name="pollinator" size={13} /> {t.garden.bees.title}
+          </h3>
+          {bees.supported_count > 0 ? (
+            <p className="text-sm text-text">
+              {t.garden.bees.supportedCount(bees.supported_count)}
+              {bees.supported_redlist_count > 0 && (
+                <span className="text-text-muted"> — {t.garden.bees.redlistNote(bees.supported_redlist_count)}</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted">{t.garden.bees.noForage}</p>
+          )}
+          {bees.forage_gap_months.length > 0 && bees.supported_count > 0 && (
+            <p className="text-xs text-text-muted mt-1.5">
+              {t.garden.bees.forageGap(monthsShort(bees.forage_gap_months, t.locale))}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* Bronnen / Sources — attribution + outbound links */}
+      <section className="pt-4 mt-4 border-t border-border/40">
+        <h4 className="font-mono text-[10px] font-bold tracking-widest uppercase text-text-muted mb-1.5">
+          {t.garden.sources.title}
+        </h4>
+        <ul className="space-y-0.5">
+          <li>
+            <a href="https://streektuinen.nl/" target="_blank" rel="noopener noreferrer"
+               className="text-[11px] text-text-muted hover:text-text hover:underline">
+              {t.garden.sources.streektuinen} ↗
+            </a>
+          </li>
+          <li>
+            <a href="https://www.bloeibogen.nl/" target="_blank" rel="noopener noreferrer"
+               className="text-[11px] text-text-muted hover:text-text hover:underline">
+              {t.garden.sources.bloeibogen} ↗
+            </a>
+          </li>
+        </ul>
+      </section>
     </Wrapper>
   )
 }
@@ -319,7 +438,7 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md max-h-[calc(100dvh-8rem)] bg-surface rounded-2xl shadow-xl flex flex-col overflow-hidden"
+              className="w-full max-w-md sm:max-w-2xl max-h-[calc(100dvh-8rem)] bg-surface rounded-2xl shadow-xl flex flex-col overflow-hidden"
             >
               {/* Header bar — title + close, anchored (no floating ✕) */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">

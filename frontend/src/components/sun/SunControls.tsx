@@ -151,7 +151,7 @@ export default function SunControls({
                   style={isActive ? { backgroundColor: profile.color + '55' } : undefined}
                 >
                   <Glyph name={profile.icon} size={13} />
-                  <span>{profile.label}</span>
+                  <span>{t.locale.startsWith('nl') ? profile.labelNl : profile.label}</span>
                 </button>
               )
             })}

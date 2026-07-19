@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { apiRequest } from '../api/client'
 import type { LightEngine } from '../utils/lightEngine'
 
 export interface SpeciesSuggestion {
@@ -15,6 +16,12 @@ export interface SpeciesSuggestion {
   frost_sensitive: boolean
   interesting_facts_nl: string
   active_months: number[]
+  // Biodiversity lens
+  is_native?: boolean
+  pollinator_value?: number | null
+  is_drachtplant?: boolean
+  is_streek?: boolean
+  is_moth_plant?: boolean
 }
 
 export interface SpotInspectorResult {
@@ -25,7 +32,7 @@ export interface SpotInspectorResult {
   error: string | null
 }
 
-export function useSpotInspector(engine?: LightEngine | null) {
+export function useSpotInspector(engine?: LightEngine | null, mapId?: number | null) {
   const [result, setResult] = useState<SpotInspectorResult | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -47,20 +54,16 @@ export function useSpotInspector(engine?: LightEngine | null) {
     })
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
-      const resp = await fetch(`${apiBase}/spots/suitability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y, sun_by_month: sunByMonth }),
+      const data = await apiRequest<{ species: SpeciesSuggestion[] }>('POST', '/spots/suitability', {
+        body: { x, y, map_id: mapId ?? undefined, sun_by_month: sunByMonth },
       })
-      const data = await resp.json()
       setResult({ x, y, sunByMonth, species: data.species, error: null })
     } catch {
       setResult({ x, y, sunByMonth, species: [], error: 'Kon niet laden' })
     } finally {
       setLoading(false)
     }
-  }, [engine])
+  }, [engine, mapId])
 
   const clear = useCallback(() => setResult(null), [])
 

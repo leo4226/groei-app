@@ -38,6 +38,12 @@ vi.mock('./useCalendarActions', () => ({
 
 vi.mock('./useIsNarrow', () => ({ useIsNarrow: () => false }))
 vi.mock('./CalendarGrid', () => ({ default: () => null }))
+vi.mock('./WaterOutlookPanel', () => ({
+  default: () => createElement('section', { 'data-calendar-context': 'weather' }),
+}))
+vi.mock('./MonthSeasonalPanel', () => ({
+  default: () => createElement('section', { 'data-calendar-context': 'seasonal' }),
+}))
 
 vi.mock('../../store/useFloreren', () => ({
   useFloreren: (selector: (state: {
@@ -72,6 +78,10 @@ describe('MonthView desktop rail', () => {
           onSetView: vi.fn(),
           env: 'all',
           environmentFilter: null,
+          viewNavigation: createElement('nav', { 'data-calendar-view-navigation': true }),
+          year: 2026,
+          month1: 7,
+          onMonthChange: vi.fn(),
         }),
       ),
     ))
@@ -80,6 +90,11 @@ describe('MonthView desktop rail', () => {
     expect(rail).not.toBeNull()
     expect(rail?.querySelector('.upcoming-summary')).toBeNull()
     expect(rail?.querySelector('.almanac-side')).toBeNull()
+    const cards = Array.from(rail?.children ?? [])
+    expect(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'agenda'))
+      .toBeLessThan(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'weather'))
+    expect(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'weather'))
+      .toBeLessThan(cards.findIndex(card => card.getAttribute('data-calendar-context') === 'seasonal'))
     expect(calendarHookMocks.useCalendarActions).toHaveBeenCalledWith(
       [], calendarHookMocks.retry, expect.any(String),
     )

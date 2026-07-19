@@ -480,12 +480,15 @@ export const species = {
 export const maps = {
   list:    ()                                                                                                     => apiWithTimeout<MapInfo[]>('GET', '/maps'),
   create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number })             => api<MapInfo>('POST', '/maps', { body: data }),
-  update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
+  update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number; streek_slug?: string | null }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
   delete:  (id: number)                                                                                          => api<void>('DELETE', `/maps/${id}`),
   byId:    (id: number)                                                                                          => api<MapInfo>('GET', `/maps/by-id/${id}`),
   detail:  (slug: string)                                                                                        => api<MapDetail>('GET', `/maps/${slug}`),
   biodiversity: (slug: string)                                                                                   => api<import('../types').GardenBiodiversityOut>('GET', `/maps/${slug}/biodiversity`),
   plantSuggestions: (slug: string)                                                                               => api<GardenSuggestionsOut>('GET', `/maps/${slug}/plant-suggestions`),
+  streekSuggestions: (slug: string)                                                                              => api<import('../types').StreekSuggestionsOut>('GET', `/maps/${slug}/streek-suggestions`),
+  streken: ()                                                                                                    => api<import('../types').Streek[]>('GET', '/streken'),
+  beeSupport: (slug: string)                                                                                     => api<import('../types').BeeSupportOut>('GET', `/maps/${slug}/bee-support`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
   uploadUnderlay: (id: number, file: File) => { const f = new FormData(); f.append('file', file); return api<{ url: string }>('POST', `/maps/${id}/underlay`, { form: f }) },
@@ -881,7 +884,7 @@ export interface CareRhythmOnboardingPreview {
 
 export const household = {
   invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
-  join:        (data: { code: string; email: string; password: string; name: string }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
+  join:        (data: { code: string; email: string; password: string; name: string; language?: 'nl' | 'en' }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
   updateMember:(memberId: number, data: { name: string; avatar: string | null }) =>
     api<HouseholdMember>('PATCH', `/household/members/${memberId}`, { body: data }),

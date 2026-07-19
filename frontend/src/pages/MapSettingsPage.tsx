@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { maps } from '../api/client'
-import type { MapInfo } from '../types'
+import type { MapInfo, Streek } from '../types'
 import CompassBearingPicker from '../components/settings/CompassBearingPicker'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
@@ -21,6 +21,8 @@ export default function MapSettingsPage() {
   const [lat, setLat] = useState('')
   const [lon, setLon] = useState('')
   const [bearing, setBearing] = useState(0)
+  const [streken, setStreken] = useState<Streek[]>([])
+  const [streekSlug, setStreekSlug] = useState<string>('')
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -39,6 +41,7 @@ export default function MapSettingsPage() {
       setLat(m.lat != null ? String(m.lat) : '')
       setLon(m.lon != null ? String(m.lon) : '')
       setBearing(m.bearing ?? 0)
+      setStreekSlug(m.streek_slug ?? '')
       setLoading(false)
     }).catch(() => {
       if (mounted.current) setError(t.mapSettings.notFound)
@@ -46,6 +49,15 @@ export default function MapSettingsPage() {
     })
     return () => { mounted.current = false }
   }, [mapId])
+
+  useEffect(() => {
+    maps.streken().then(s => { if (mounted.current) setStreken(s) }).catch(() => {})
+  }, [])
+
+  function handleStreekChange(slug: string) {
+    setStreekSlug(slug)
+    doSave({ streek_slug: slug || null })  // explicit choice → 'manual' server-side
+  }
 
   const doSave = useCallback((fields: Record<string, unknown>) => {
     if (!mapId) return
@@ -257,6 +269,25 @@ export default function MapSettingsPage() {
           <div className="flex justify-center">
             <CompassBearingPicker value={bearing} onChange={handleBearingChange} />
           </div>
+        </section>
+      )}
+
+      {/* Streek (outdoor only) — auto-resolved from GPS; user can override */}
+      {isOutdoor && (
+        <section className="mb-6">
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.garden.streek.pickTitle}</label>
+          <p className="text-xs text-text-muted mb-3">{t.garden.streek.pickHint}</p>
+          <select
+            className="w-full bg-surface rounded-xl px-4 py-2.5 text-sm text-text border border-border/50"
+            value={streekSlug}
+            onChange={(e) => handleStreekChange(e.target.value)}
+          >
+            <option value="">{t.garden.streek.pickNone}</option>
+            {streken.map(s => (
+              <option key={s.slug} value={s.slug}>{s.name}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-text-muted mt-2">{t.garden.streek.attribution}</p>
         </section>
       )}
 

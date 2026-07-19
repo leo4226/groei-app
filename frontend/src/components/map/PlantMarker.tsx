@@ -42,6 +42,8 @@ interface Props {
    *  stay in agreement. Defaults to the base size (zoom = 1). */
   labelFontSize?: number
   showWarnings?: boolean
+  /** Hide the padlock badge on locked plants (used by the public demo garden). */
+  hideLockBadge?: boolean
   displayName?: string
   onPointerDown: (e: React.PointerEvent, plant: MapPlant, dragElementOverride?: SVGGElement | null) => void
   heatmapCells?: HeatmapCell[]
@@ -96,7 +98,7 @@ export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean):
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
 export const PLANT_LABEL_FONT_SIZE = 9
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, displayName = plant.name, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, hideLockBadge = false, displayName = plant.name, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
   const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
   const topBadge = showWarnings ? topMarkerBadge(plant) : null
@@ -203,13 +205,15 @@ export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag 
         )}
 
         {/* Lock badge — visual only; MapView resolves the whole marker target. */}
-        <g style={{ pointerEvents: 'none' }}>
-          <circle cx={lockBadgeOffset} cy={-lockBadgeOffset} r={lockHitR} fill="rgba(30,30,30,0.65)" />
-          <g transform={`translate(${lockBadgeOffset}, ${-lockBadgeOffset})`} style={{ pointerEvents: 'none' }}>
-            <rect x={-2.3} y={-0.4} width={4.6} height={3.4} rx={0.8} fill="#fff" />
-            <path d="M-1.5 -0.4V-1.8a1.5 1.5 0 0 1 3 0V-0.4" fill="none" stroke="#fff" strokeWidth={0.7} strokeLinecap="round" />
+        {!hideLockBadge && (
+          <g style={{ pointerEvents: 'none' }}>
+            <circle cx={lockBadgeOffset} cy={-lockBadgeOffset} r={lockHitR} fill="rgba(30,30,30,0.65)" />
+            <g transform={`translate(${lockBadgeOffset}, ${-lockBadgeOffset})`} style={{ pointerEvents: 'none' }}>
+              <rect x={-2.3} y={-0.4} width={4.6} height={3.4} rx={0.8} fill="#fff" />
+              <path d="M-1.5 -0.4V-1.8a1.5 1.5 0 0 1 3 0V-0.4" fill="none" stroke="#fff" strokeWidth={0.7} strokeLinecap="round" />
+            </g>
           </g>
-        </g>
+        )}
 
       </g>
     )
