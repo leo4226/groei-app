@@ -625,6 +625,8 @@ export const nl: Translations = {
     ecologyPollinatorHigh: '🐝 Top bestuiver',
     ecologyPollinatorGood: '🐝 Goed voor bijen',
     ecologyFillsGap: 'Vult: {months}',
+    ecologyStreek: 'Streekeigen',
+    ecologyForageGap: '🐝 Vult drachtgat',
     sunFitPerfect: 'Ideaal licht',
     sunFitAcceptable: 'Geschikt licht',
     sunFitMarginal: 'Krap licht',

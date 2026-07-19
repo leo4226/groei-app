@@ -665,6 +665,8 @@ export type PlantRecommendation = {
   reason_en?: string | null
   caveat: string | null
   is_streek?: boolean                  // belongs to the garden's streek (streekeigen)
+  is_drachtplant?: boolean             // Naturalis bee-forage plant
+  fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
 }
 
 export type StreekSuggestionsOut = {

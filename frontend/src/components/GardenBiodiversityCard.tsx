@@ -229,7 +229,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           {suggestions.suggestions.length === 0 ? (
             <p className="text-xs text-text-muted">{t.garden.suggestions.noData}</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
               {suggestions.suggestions.map((s) => {
                 const sunLabel = s.sun_preference === 'full_sun'
                   ? t.garden.suggestions.sunFull
@@ -298,7 +298,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               {t.garden.streek.seedMix} ↗
             </a>
           )}
-          <div className="space-y-3">
+          <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
             {streekSug.suggestions.map((s) => (
               <div key={s.species_id} className="card p-3 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -438,7 +438,7 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md max-h-[calc(100dvh-8rem)] bg-surface rounded-2xl shadow-xl flex flex-col overflow-hidden"
+              className="w-full max-w-md sm:max-w-2xl max-h-[calc(100dvh-8rem)] bg-surface rounded-2xl shadow-xl flex flex-col overflow-hidden"
             >
               {/* Header bar — title + close, anchored (no floating ✕) */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">

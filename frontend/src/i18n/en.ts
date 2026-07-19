@@ -625,6 +625,8 @@ export const en: Translations = {
     ecologyPollinatorHigh: '🐝 Top pollinator',
     ecologyPollinatorGood: '🐝 Good for bees',
     ecologyFillsGap: 'Fills: {months}',
+    ecologyStreek: 'Regional',
+    ecologyForageGap: '🐝 Fills bee gap',
     sunFitPerfect: 'Ideal light',
     sunFitAcceptable: 'Suitable light',
     sunFitMarginal: 'Tight light',

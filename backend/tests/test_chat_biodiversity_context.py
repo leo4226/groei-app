@@ -17,7 +17,8 @@ async def _prepare_biodiversity_db(seeded_db):
             invasive_nl INTEGER,
             pollinator_value INTEGER,
             flowering_months TEXT,
-            ecology_enriched_at TEXT
+            ecology_enriched_at TEXT,
+            is_drachtplant INTEGER DEFAULT 0
         )"""
     )
     await seeded_db.execute(

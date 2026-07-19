@@ -1080,6 +1080,8 @@ class PlantRecommendationOut(BaseModel):
     reason_en: str | None            # template text in English
     caveat: str | None
     is_streek: bool = False          # belongs to the garden's streek (streekeigen)
+    is_drachtplant: bool = False     # Naturalis bee-forage plant
+    fills_forage_gap: bool = False   # a drachtplant blooming in a bee forage-gap month
 
 
 class RecommendationsOut(BaseModel):
