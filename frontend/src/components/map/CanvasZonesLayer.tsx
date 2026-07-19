@@ -5,6 +5,7 @@ import RoomWallRenderer from '../editor/RoomWallRenderer'
 
 interface Props {
   canvasData: CanvasData
+  showBackground?: boolean
 }
 
 // Stable no-op handlers — view mode has no interactivity
@@ -15,7 +16,7 @@ const noop = () => {}
  * Uses RoomWallRenderer for indoor rooms/structures (room walls, door/window gaps,
  * thickness auto-detect), and EditorZoneShape for outdoor / ground zones.
  */
-export default function CanvasZonesLayer({ canvasData }: Props) {
+export default function CanvasZonesLayer({ canvasData, showBackground = true }: Props) {
   const { zones, wallElements = [], scale_px_per_m, canvas_w, canvas_h } = canvasData
 
   return (
@@ -23,8 +24,9 @@ export default function CanvasZonesLayer({ canvasData }: Props) {
       {/* SVG pattern defs (hatching, textures, etc.) */}
       <EditorDefs />
 
-      {/* Canvas background */}
-      <rect width={canvas_w} height={canvas_h} fill="#f5f3ee" />
+      {/* Canvas background: useful for indoor/editor-like maps, hidden for outdoor map view so
+          the garden footprint does not appear as a white authoring canvas. */}
+      {showBackground && <rect width={canvas_w} height={canvas_h} fill="#f5f3ee" />}
 
       {zones.map((zone) => {
         const isIndoorZone = zone.type === 'room' || zone.type === 'structure'

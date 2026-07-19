@@ -138,7 +138,7 @@ export function deriveFenceCasters(zones: EditorZone[]): ShadowCaster[] {
     })
 }
 
-export function deriveStructureCasters(zones: EditorZone[], _scalePxPerM: number): ShadowCaster[] {
+export function deriveStructureCasters(zones: EditorZone[]): ShadowCaster[] {
   return zones
     .filter(z => z.type === 'structure')
     .map((z): ShadowCaster => {
@@ -157,7 +157,7 @@ export function deriveStructureCasters(zones: EditorZone[], _scalePxPerM: number
     })
 }
 
-export function deriveRaisedBedCasters(zones: EditorZone[], _scalePxPerM: number): ShadowCaster[] {
+export function deriveRaisedBedCasters(zones: EditorZone[]): ShadowCaster[] {
   return zones
     .filter(z => z.type === 'raised_bed')
     .map((z): ShadowCaster => {
@@ -180,8 +180,8 @@ export function deriveRaisedBedCasters(zones: EditorZone[], _scalePxPerM: number
 export function deriveAllShadowCasters(canvasData: CanvasData): ShadowCaster[] {
   return [
     ...deriveFenceCasters(canvasData.zones),
-    ...deriveStructureCasters(canvasData.zones, canvasData.scale_px_per_m),
-    ...deriveRaisedBedCasters(canvasData.zones, canvasData.scale_px_per_m),
+    ...deriveStructureCasters(canvasData.zones),
+    ...deriveRaisedBedCasters(canvasData.zones),
     ...(canvasData.shadowCasters ?? []),
   ]
 }
@@ -193,7 +193,6 @@ export function deriveViewBoxString(zones: EditorZone[], canvasW: number, canvas
   const allZones = surface.length > 0 ? surface : zones
   if (allZones.length === 0) return `0 0 ${canvasW} ${canvasH}`
 
-  const pad = 20
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const z of allZones) {
     if (z.x < minX) minX = z.x
@@ -201,7 +200,10 @@ export function deriveViewBoxString(zones: EditorZone[], canvasW: number, canvas
     if (z.x + z.width > maxX) maxX = z.x + z.width
     if (z.y + z.height > maxY) maxY = z.y + z.height
   }
-  return `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`
+  const rawW = maxX - minX
+  const rawH = maxY - minY
+  const pad = Math.min(120, Math.max(24, Math.max(rawW, rawH) * 0.08))
+  return `${minX - pad} ${minY - pad} ${rawW + pad * 2} ${rawH + pad * 2}`
 }
 
 export function isInsideGarden(point: { x: number; y: number }, perimeter: [number, number][]): boolean {
