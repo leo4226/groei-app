@@ -89,7 +89,7 @@ export function useCalendarActions(
         setPendingWaterRound(event)
         return
       }
-      await completeGroupedEvent(event)
+      await completeGroupedEvent(event, event.group_member_schedule_ids)
       return
     }
     if (!event.plant_id) return

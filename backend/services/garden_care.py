@@ -26,7 +26,7 @@ def _comparable_db_value(value) -> str | None:
     return str(value)
 
 
-def _schedule_interval_days(schedule: dict, care_type: str) -> int | None:
+def schedule_interval_days(schedule: dict, care_type: str) -> int | None:
     """Return a safe interval for a grouped schedule.
 
     Some older manually-created FEED/PRUNE rows can be missing interval data even
@@ -102,7 +102,7 @@ async def complete_outdoor_care(
                    VALUES (?, ?, ?, ?, FALSE) RETURNING id""",
                 (schedule["plant_id"], care_type, user_id, done_at),
             )
-            interval_days = _schedule_interval_days(schedule, care_type)
+            interval_days = schedule_interval_days(schedule, care_type)
             if interval_days is None:
                 raise GardenCareSelectionError
             next_due = calculate_next_due(

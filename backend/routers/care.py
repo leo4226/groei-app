@@ -10,6 +10,7 @@ from services.garden_care import (
     GardenCareSelectionError,
     GardenCareUndoConflict,
     complete_outdoor_care,
+    schedule_interval_days,
     undo_outdoor_care,
 )
 from services.moisture_check_service import (
@@ -28,8 +29,10 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     # Find the matching schedule — scoped to the caller's household
     cursor = await db.execute(
         """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
-                  cs.next_due, cs.last_done, cs.last_done_by
+                  cs.next_due, cs.last_done, cs.last_done_by,
+                  p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
            FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
+           LEFT JOIN maps m ON m.id = p.map_id
            WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
              AND p.household_id = ?""",
         (action.plant_id, action.care_type, account["household_id"]),
@@ -58,8 +61,11 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     if schedule["is_ephemeral"]:
         next_due = today + timedelta(days=1)
     else:
+        interval_days = schedule_interval_days(schedule, action.care_type)
+        if interval_days is None:
+            raise HTTPException(status_code=422, detail="Invalid schedule interval")
         next_due = calculate_next_due(
-            today, schedule["interval_days"], schedule["season_adjust"]
+            today, interval_days, schedule["season_adjust"]
         )
     await db.execute(
         """UPDATE care_schedules
@@ -81,8 +87,10 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
 async def skip_care(action: CareAction, db = Depends(db_dep),
                     account = Depends(get_current_account)):
     cursor = await db.execute(
-        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral
+        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
+                  p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
            FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
+           LEFT JOIN maps m ON m.id = p.map_id
            WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
              AND p.household_id = ?""",
         (action.plant_id, action.care_type, account["household_id"]),
@@ -105,8 +113,11 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
     if schedule["is_ephemeral"]:
         next_due = today + timedelta(days=1)
     else:
+        interval_days = schedule_interval_days(schedule, action.care_type)
+        if interval_days is None:
+            raise HTTPException(status_code=422, detail="Invalid schedule interval")
         next_due = calculate_next_due(
-            today, schedule["interval_days"], schedule["season_adjust"]
+            today, interval_days, schedule["season_adjust"]
         )
     await db.execute(
         "UPDATE care_schedules SET next_due = ? WHERE id = ?",

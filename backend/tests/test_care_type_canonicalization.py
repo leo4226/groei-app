@@ -13,6 +13,9 @@ from care_types import normalize_care_type
         ("repot_check", "repot"),
         ("protect_cold", "frost_protect"),
         ("protect_heat", "heat_protect"),
+        ("feed", "fertilize"),
+        ("fertilise", "fertilize"),
+        ("fertilizer", "fertilize"),
     ],
 )
 def test_legacy_care_types_normalize_to_canonical(legacy, canonical):
@@ -53,6 +56,44 @@ async def test_legacy_repot_done_payload_updates_canonical_schedule(
         "SELECT care_type, last_done FROM care_schedules WHERE plant_id = 41"
     ))[0]
     assert schedule["care_type"] == "repot"
+    assert schedule["last_done"] is not None
+
+
+async def test_feed_done_uses_default_interval_when_schedule_interval_invalid(
+    client, seeded_db, auth_header,
+):
+    await seeded_db.executescript("""
+        CREATE TABLE care_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plant_id INTEGER, care_type TEXT, done_by INTEGER, done_at TEXT,
+            notes TEXT, skipped BOOLEAN DEFAULT FALSE
+        );
+        INSERT INTO maps (id, name, map_type, household_id)
+        VALUES (5, 'Garden', 'outdoor', 1);
+        INSERT INTO plants (id, name, household_id, map_id, is_active)
+        VALUES (45, 'Tomato', 1, 5, 1);
+        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO care_schedules
+            (plant_id, care_type, interval_days, next_due, is_active)
+        VALUES (45, 'fertilize', 0, '2026-07-01', 1);
+    """)
+    await seeded_db.commit()
+
+    response = await client.post(
+        "/api/care/done",
+        json={"plant_id": 45, "care_type": "feed", "user_id": 1},
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200, response.text
+    rows = await seeded_db.execute_fetchall(
+        "SELECT care_type FROM care_log WHERE plant_id = 45"
+    )
+    assert [row["care_type"] for row in rows] == ["fertilize"]
+    schedule = (await seeded_db.execute_fetchall(
+        "SELECT next_due, last_done FROM care_schedules WHERE plant_id = 45"
+    ))[0]
+    assert schedule["next_due"] > date.today().isoformat()
     assert schedule["last_done"] is not None
 
 

@@ -173,6 +173,33 @@ describe('useCalendarActions', () => {
     expect(state.completion).toEqual({ kind: 'map', mapId: 1, mapName: 'Back garden' })
   })
 
+  it('completes non-water grouped sessions with only that session schedule list', async () => {
+    mocks.gardenComplete.mockResolvedValue({ operation_id: 90 })
+    const grouped: CalendarEvent = {
+      ...event('2026-07-19'),
+      id: 'garden-group:1:fertilize:2026-07-19',
+      type: 'fertilize',
+      plant_id: null,
+      plant_name: null,
+      schedule_id: null,
+      map_name: 'Garden',
+      grouped: true,
+      group_count: 1,
+      group_member_schedule_ids: [18],
+      group_members: [
+        { schedule_id: 18, plant_id: 3, plant_name: 'Tomato', plant_icon_variant: null },
+      ],
+    }
+    act(() => root.render(createElement(Harness, { events: [grouped] })))
+
+    await act(async () => state.handleDone(grouped))
+
+    expect(mocks.gardenComplete).toHaveBeenCalledWith(
+      'fertilize', 1, 1, expect.any(String), [18],
+    )
+    expect(state.completion).toEqual({ kind: 'map', mapId: 1, mapName: 'Garden' })
+  })
+
   it('resolves selected moisture checks without using grouped garden completion', async () => {
     mocks.moistureResolve.mockResolvedValue({ outcome: 'watered', affected_count: 1 })
     const grouped: CalendarEvent = {
