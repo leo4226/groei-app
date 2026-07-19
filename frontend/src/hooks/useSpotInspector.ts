@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { apiRequest } from '../api/client'
 import type { LightEngine } from '../utils/lightEngine'
 
 export interface SpeciesSuggestion {
@@ -53,13 +54,9 @@ export function useSpotInspector(engine?: LightEngine | null, mapId?: number | n
     })
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api'
-      const resp = await fetch(`${apiBase}/spots/suitability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y, map_id: mapId ?? undefined, sun_by_month: sunByMonth }),
+      const data = await apiRequest<{ species: SpeciesSuggestion[] }>('POST', '/spots/suitability', {
+        body: { x, y, map_id: mapId ?? undefined, sun_by_month: sunByMonth },
       })
-      const data = await resp.json()
       setResult({ x, y, sunByMonth, species: data.species, error: null })
     } catch {
       setResult({ x, y, sunByMonth, species: [], error: 'Kon niet laden' })

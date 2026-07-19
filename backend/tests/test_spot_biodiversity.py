@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS plant_species (
     is_drachtplant INTEGER DEFAULT 0,
     is_moth_plant INTEGER DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, streek_slug TEXT);
+CREATE TABLE IF NOT EXISTS maps (id INTEGER PRIMARY KEY, streek_slug TEXT, household_id INTEGER);
 CREATE TABLE IF NOT EXISTS streek_species (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     streek_slug TEXT, species_id INTEGER, category TEXT
@@ -49,7 +49,7 @@ _FULL_SUN = [8.0] * 12
 
 async def _seed(db):
     await db.executescript(_DDL)
-    await db.execute("INSERT INTO maps (id, streek_slug) VALUES (7, 'twente')")
+    await db.execute("INSERT INTO maps (id, streek_slug, household_id) VALUES (7, 'twente', 1)")
     # 1: streek + native + drachtplant + moth, 2: native only, 3: plain
     for sid, nl, native, pv, dracht, moth in [
         (1, "Streekplant", 1, 5, 1, 1),
@@ -71,12 +71,13 @@ async def _seed(db):
 
 
 @pytest.mark.asyncio
-async def test_suitability_carries_biodiversity_flags(client, seeded_db):
+async def test_suitability_carries_biodiversity_flags(client, seeded_db, auth_header):
     await _seed(seeded_db)
 
     resp = await client.post(
         f"{BASE}/spots/suitability",
         json={"x": 0.0, "y": 0.0, "map_id": 7, "sun_by_month": _FULL_SUN},
+        headers=auth_header,
     )
     assert resp.status_code == 200, resp.text
     species = {s["species_id"]: s for s in resp.json()["species"]}
@@ -97,11 +98,11 @@ async def test_suitability_carries_biodiversity_flags(client, seeded_db):
 
 
 @pytest.mark.asyncio
-async def test_suitability_survives_missing_streek_tables(client, seeded_db):
+async def test_suitability_survives_missing_streek_tables(client, seeded_db, auth_header):
     """A map with no streek (or absent streek tables) still returns flags —
     is_streek just falls back to False for everything."""
     await seeded_db.executescript(_DDL)
-    await seeded_db.execute("INSERT INTO maps (id, streek_slug) VALUES (9, NULL)")
+    await seeded_db.execute("INSERT INTO maps (id, streek_slug, household_id) VALUES (9, NULL, 1)")
     await seeded_db.execute(
         "INSERT INTO plant_species "
         "(id, common_name_nl, common_name_en, latin_name, phenology_json, "
@@ -114,9 +115,27 @@ async def test_suitability_survives_missing_streek_tables(client, seeded_db):
     resp = await client.post(
         f"{BASE}/spots/suitability",
         json={"x": 0.0, "y": 0.0, "map_id": 9, "sun_by_month": _FULL_SUN},
+        headers=auth_header,
     )
     assert resp.status_code == 200, resp.text
     species = resp.json()["species"]
     assert len(species) == 1
     assert species[0]["is_streek"] is False
     assert species[0]["is_native"] is True
+
+
+@pytest.mark.asyncio
+async def test_suitability_rejects_map_from_another_household(client, seeded_db, auth_header):
+    await _seed(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO maps (id, streek_slug, household_id) VALUES (8, 'twente', 999)"
+    )
+    await seeded_db.commit()
+
+    resp = await client.post(
+        f"{BASE}/spots/suitability",
+        json={"x": 0.0, "y": 0.0, "map_id": 8, "sun_by_month": _FULL_SUN},
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 404

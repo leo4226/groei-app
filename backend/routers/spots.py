@@ -1,8 +1,9 @@
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from auth import get_current_account
 from database import db_dep
 
 router = APIRouter(prefix="/spots", tags=["spots"])
@@ -13,12 +14,16 @@ ACTIVE_PHASES = {"growing", "flowering", "fruiting", "harvest", "establishing", 
 class SpotPayload(BaseModel):
     x: float
     y: float
-    map_id: int = 1
+    map_id: int | None = None
     sun_by_month: list[float]  # 12 values, index 0 = January
 
 
 @router.post("/suitability")
-async def get_spot_suitability(payload: SpotPayload, db = Depends(db_dep)):
+async def get_spot_suitability(
+    payload: SpotPayload,
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
     sun = payload.sun_by_month
 
     rows = await db.execute_fetchall(
@@ -28,9 +33,20 @@ async def get_spot_suitability(payload: SpotPayload, db = Depends(db_dep)):
     )
 
     # Biodiversity lens: which of these species belong to this garden's streek,
-    # so the crop/sun inspector can also flag ecologically valuable picks.
-    from services.plant_suggestions import _streek_for_map
-    _, _, streek_ids = await _streek_for_map(db, payload.map_id)
+    # so the crop/sun inspector can also flag ecologically valuable picks. Since
+    # streek is derived from the user's map/location, only resolve it after the
+    # usual household ownership check.
+    streek_ids: set[int] = set()
+    if payload.map_id is not None:
+        owned = await db.execute_fetchall(
+            "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+            (payload.map_id, account["household_id"]),
+        )
+        if not owned:
+            raise HTTPException(status_code=404, detail="Map not found")
+
+        from services.plant_suggestions import _streek_for_map
+        _, _, streek_ids = await _streek_for_map(db, payload.map_id)
 
     results = []
     for row in rows:
