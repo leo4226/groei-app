@@ -100,12 +100,13 @@ function AISkeleton() {
   )
 }
 
-const MONTH_SHORT = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']
 
-function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: Translations['growHere'] }) {
+function EcologyBadges({ rec, t, locale }: { rec: PlantRecommendation; t: Translations['growHere']; locale: string }) {
   const badges: { label: string; cls: string }[] = []
+  if (rec.is_streek) badges.push({ label: t.ecologyStreek, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' })
   if (rec.is_native) badges.push({ label: t.ecologyNative, cls: 'bg-green-500/10 text-green-700 dark:text-green-400' })
-  if ((rec.pollinator_value ?? 0) >= 3) badges.push({ label: t.ecologyPollinatorHigh, cls: 'bg-amber-400/15 text-amber-700' })
+  if (rec.fills_forage_gap) badges.push({ label: t.ecologyForageGap, cls: 'bg-amber-400/15 text-amber-700' })
+  else if ((rec.pollinator_value ?? 0) >= 3) badges.push({ label: t.ecologyPollinatorHigh, cls: 'bg-amber-400/15 text-amber-700' })
   else if ((rec.pollinator_value ?? 0) === 2) badges.push({ label: t.ecologyPollinatorGood, cls: 'bg-amber-400/10 text-amber-600' })
   const fitBadge: Record<string, { label: string; cls: string }> = {
     perfect:    { label: t.sunFitPerfect,    cls: 'bg-primary/10 text-primary' },
@@ -115,7 +116,8 @@ function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: Translations['
   }
   badges.push(fitBadge[rec.sun_fit] ?? fitBadge.tolerated)
   if (rec.gap_months_covered.length > 0) {
-    const monthStr = rec.gap_months_covered.map(m => MONTH_SHORT[m - 1]).join(', ')
+    const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
+    const monthStr = rec.gap_months_covered.map(m => fmt.format(new Date(2026, m - 1, 1))).join(', ')
     badges.push({ label: t.ecologyFillsGap.replace('{months}', monthStr), cls: 'bg-primary/10 text-primary' })
   }
   return (
@@ -128,20 +130,22 @@ function EcologyBadges({ rec, t }: { rec: PlantRecommendation; t: Translations['
 }
 
 function RecommendationCard({
-  rec, onAdd, addingName, t,
+  rec, onAdd, addingName, t, locale,
 }: {
   rec: PlantRecommendation
   onAdd: (name: string, species: string, sunReq?: string) => void
   addingName: string | null
   t: Translations['growHere']
+  locale: string
 }) {
+  const dutchLabel = locale.startsWith('en') ? (rec.english_name || rec.dutch_name) : rec.dutch_name
   return (
     <div className="card p-3 space-y-1.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-text">{rec.dutch_name}</p>
+          <p className="font-medium text-sm text-text">{dutchLabel}</p>
           <p className="text-xs text-text-muted italic">{rec.latin_name}</p>
-          <EcologyBadges rec={rec} t={t} />
+          <EcologyBadges rec={rec} t={t} locale={locale} />
         </div>
         <button
           onClick={() => onAdd(rec.dutch_name, rec.latin_name, rec.sun_preference ?? undefined)}
@@ -152,7 +156,9 @@ function RecommendationCard({
         </button>
       </div>
       {rec.reason && (
-        <p className="text-xs text-text-muted leading-relaxed">{rec.reason}</p>
+        <p className="text-xs text-text-muted leading-relaxed">
+          {locale.startsWith('en') ? (rec.reason_en || rec.reason) : rec.reason}
+        </p>
       )}
       {rec.caveat && (
         <p className="text-xs text-amber-500/80 leading-relaxed"><Glyph name="alert" size={12} className="inline-block align-[-1px] mr-1" />{rec.caveat}</p>
@@ -353,6 +359,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
                       onAdd={handleAddToGarden}
                       addingName={addingName}
                       t={t.growHere}
+                      locale={t.locale}
                     />
                   ))}
                 </div>

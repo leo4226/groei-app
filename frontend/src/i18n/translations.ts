@@ -585,6 +585,8 @@ export type Translations = {
     ecologyPollinatorHigh: string // "🐝 Top bestuiver"
     ecologyPollinatorGood: string // "🐝 Goed voor bijen"
     ecologyFillsGap: string      // "Vult: {months}"
+    ecologyStreek: string        // "Streekeigen" / "Regional"
+    ecologyForageGap: string     // "🐝 Vult drachtgat" / "🐝 Fills bee gap"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
