@@ -79,13 +79,12 @@ function generateDecor(count: number, variant: DecorVariant = 'scatter'): DecorI
     let left = 0, top = 0
     let placed_ok = false
 
-    // Landing: a mixture — ~30% of icons scatter uniformly (so the top half
-    // never goes empty), the rest lean towards the bottom like a garden bed.
-    // Sparse: uniform, but the central content zone is rejected so the few
-    // icons hug the margins of the empty-state / error card.
-    const randTop = () => variant === 'landing' && rand() >= 0.3
-      ? (1 - Math.pow(rand(), 2.0)) * 97 - 2
-      : rand() * 97 - 2
+    // All variants scatter uniformly over the page — the landing "garden bed"
+    // feel comes from the opacity ramp below (denser look near the bottom),
+    // not from position bias, which clustered nearly everything in the bottom
+    // half on tall pages. Sparse: uniform, but the central content zone is
+    // rejected so the few icons hug the margins of the empty-state card.
+    const randTop = () => rand() * 97 - 2
     const inSparseKeepOut = (l: number, t: number) =>
       variant === 'sparse' && l > 15 && l < 82 && t > 12 && t < 84
 

@@ -10,24 +10,38 @@ const DEMO_CANVAS: CanvasData = {
   canvas_w: 500,
   canvas_h: 640,
   mapType: 'outdoor',
+  // Zones tile EXACTLY (no overlaps): visible seams and paint-order artifacts
+  // come from overlapping rects, so every edge below is flush with its
+  // neighbours. Garden surface: x 60..405, y 40..546.
   zones: [
-    // Boundary fences (cast shadows; excluded from the sun perimeter)
-    { id: 'fence-n', type: 'fence', shape: 'rect', x: 55, y: 30, width: 355, height: 10, label: 'Schutting', fenceMaterial: 'wood', fenceHeightM: 1.8 },
+    // Boundary fences (cast shadows; excluded from the sun perimeter).
+    // fence-n runs between the two side fences; fence-e is the brick wall.
+    { id: 'fence-n', type: 'fence', shape: 'rect', x: 60, y: 30, width: 345, height: 10, label: 'Schutting', fenceMaterial: 'wood', fenceHeightM: 1.8 },
     { id: 'fence-w', type: 'fence', shape: 'rect', x: 50, y: 30, width: 10, height: 516, label: 'Schutting', fenceMaterial: 'wood', fenceHeightM: 1.8 },
     { id: 'fence-e', type: 'fence', shape: 'rect', x: 405, y: 30, width: 10, height: 516, label: 'Muur', fenceMaterial: 'brick', fenceHeightM: 2.0 },
-    // Shed in the back corner
-    { id: 'shed', type: 'structure', shape: 'rect', x: 60, y: 40, width: 90, height: 70, label: 'Schuur', structureHeightM: 2.4 },
+    // Shed in the back corner (flush with border-back to its right). Kept
+    // narrow enough that the achterborder rows hold >75% of a full heatmap
+    // row — trimRaggedEdges drops sparser rows as ragged edges.
+    { id: 'shed', type: 'structure', shape: 'rect', x: 60, y: 40, width: 75, height: 70, label: 'Schuur', structureHeightM: 2.4 },
     // Planting borders
-    { id: 'border-back', type: 'soil', shape: 'rect', x: 150, y: 40, width: 255, height: 80, label: 'Achterborder' },
+    { id: 'border-back', type: 'soil', shape: 'rect', x: 135, y: 40, width: 270, height: 70, label: 'Achterborder' },
     { id: 'border-w', type: 'soil', shape: 'rect', x: 60, y: 110, width: 45, height: 316, label: 'Schaduwborder' },
     { id: 'border-e', type: 'soil', shape: 'rect', x: 360, y: 110, width: 45, height: 316, label: 'Zonborder' },
-    // Lawn + pond
+    // Lawn with the pond fully inside it
     { id: 'lawn', type: 'lawn', shape: 'rect', x: 105, y: 110, width: 255, height: 316, label: 'Gazon' },
-    { id: 'pond', type: 'water', shape: 'rect', x: 300, y: 130, width: 70, height: 55, label: 'Vijver' },
+    { id: 'pond', type: 'water', shape: 'rect', x: 275, y: 135, width: 70, height: 55, label: 'Vijver' },
     // Vegetable raised bed on the lawn
     { id: 'moestuin', type: 'raised_bed', shape: 'rect', x: 260, y: 350, width: 95, height: 70, label: 'Moestuin', raisedBedHeightM: 0.4 },
     // Terrace by the house
     { id: 'terras', type: 'deck', shape: 'rect', x: 60, y: 426, width: 345, height: 120, label: 'Terras' },
+  ],
+  // Explicit sun perimeter: an L-shape that excludes the shed, outset 2px past
+  // the surface zones so heatmap edge cells (whose four corners must all fall
+  // inside the polygon) reach the walls exactly instead of dropping the
+  // outermost row. Without this the auto convex-hull cuts a diagonal across
+  // the shed, painting a heatmap staircase over its roof.
+  gardenPerimeter: [
+    [133, 38], [407, 38], [407, 548], [58, 548], [58, 108], [133, 108],
   ],
   shadowCasters: [
     { id: 'house', label: 'Huis', type: 'rect', x: 40, y: 556, width: 440, height: 84, heightCm: 900 },
@@ -166,3 +180,43 @@ export const DEMO_BIODIVERSITY = {
   // Per-month count of flowering pollinator plants (Jan..Dec) — the bloeiboog.
   bloomMonths: [0, 1, 3, 5, 7, 9, 11, 10, 8, 5, 1, 0],
 }
+
+// What the plant helper would recommend for this garden (static snapshot of
+// the real "Verbeter je tuin" suggestions): fills the Dec–Jan bloeiboog gap
+// and adds late/early forage for wild bees. Shown on the landing page next to
+// the biodiversity preview.
+export interface DemoSuggestion {
+  icon: string
+  name_nl: string
+  name_en: string
+  badge: 'native' | 'streek'
+  reason_nl: string
+  reason_en: string
+}
+
+export const DEMO_SUGGESTIONS: DemoSuggestion[] = [
+  {
+    icon: 'snowdrop_bare',
+    name_nl: 'Sneeuwklokje',
+    name_en: 'Snowdrop',
+    badge: 'native',
+    reason_nl: 'Bloeit in januari–februari en vult zo het wintergat in je bloeiboog.',
+    reason_en: 'Flowers in January–February, filling the winter gap in your bloom arc.',
+  },
+  {
+    icon: 'ivy_bare',
+    name_nl: 'Klimop',
+    name_en: 'Ivy',
+    badge: 'native',
+    reason_nl: 'Late bloei tot in november — de laatste nectar van het jaar voor bijen.',
+    reason_en: 'Blooms into November — the last nectar of the year for bees.',
+  },
+  {
+    icon: 'thyme_bare',
+    name_nl: 'Wilde tijm',
+    name_en: 'Wild thyme',
+    badge: 'streek',
+    reason_nl: 'Streekeigen drachtplant die het goed doet in jouw zonnige border.',
+    reason_en: 'A regional forage plant that thrives in your sunny border.',
+  },
+]
