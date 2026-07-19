@@ -64,6 +64,11 @@ interface LandingCopy {
   submitJoin: string
   submitForgot: string
   genericError: string
+  previewKicker: string
+  previewTitle: string
+  previewText: string
+  demoCta: string
+  demoNote: string
 }
 
 const COPY: Record<Lang, LandingCopy> = {
@@ -125,6 +130,12 @@ const COPY: Record<Lang, LandingCopy> = {
     submitJoin: 'Tuin toetreden',
     submitForgot: 'Verstuur herstellink',
     genericError: 'Er ging iets mis',
+    previewKicker: 'De zonnekaart',
+    previewTitle: 'Zie je tuin in zon en schaduw',
+    previewText:
+      'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
+    demoCta: 'Bekijk de voorbeeldtuin',
+    demoNote: 'Geen account nodig',
   },
   en: {
     kicker: 'Field guide & plant care',
@@ -184,6 +195,12 @@ const COPY: Record<Lang, LandingCopy> = {
     submitJoin: 'Join garden',
     submitForgot: 'Send reset link',
     genericError: 'Something went wrong',
+    previewKicker: 'The sun heatmap',
+    previewTitle: 'See your garden in sun and shade',
+    previewText:
+      'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
+    demoCta: 'Explore the example garden',
+    demoNote: 'No account needed',
   },
 }
 
@@ -270,6 +287,9 @@ export default function LoginPage() {
     setLang(l)
     try {
       localStorage.setItem(LANG_KEY, l)
+      // Keep the app-wide pre-auth language (LanguageContext) in sync so the
+      // public demo garden follows the language chosen here.
+      localStorage.setItem('floreren_lang', l)
     } catch {
       // ignore storage failures (private mode)
     }
@@ -621,6 +641,17 @@ export default function LoginPage() {
             )}
           </div>
 
+          {/* Try-before-you-register: read-only demo garden */}
+          <p className="m-0 mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => navigate('/demo')}
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {t.demoCta} →
+            </button>
+          </p>
+
           {/* Compact specimen entries under the card (mobile) */}
           <div className="mt-8 flex flex-col gap-4 lg:hidden">
             {t.features.map((f) => (
@@ -629,6 +660,47 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Product preview: sun-heatmap video of the demo garden ── */}
+      <section className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-16 pt-2 lg:pt-6">
+        <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center lg:gap-16">
+          <div className="w-full max-w-[290px] flex-none overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
+            <video
+              src="/landing/sunmap-demo.mp4"
+              poster="/landing/sunmap-demo-poster.jpg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="block h-auto w-full"
+            />
+          </div>
+          <div className="max-w-[420px] text-center lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.previewKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
+              {t.previewTitle}
+            </h2>
+            <p className="mt-3 text-[14px] leading-[1.6] text-text-soft">
+              {t.previewText}
+            </p>
+            <div className="mt-5 flex flex-col items-center gap-2 lg:items-start">
+              <button
+                type="button"
+                onClick={() => navigate('/demo')}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
+              >
+                {t.demoCta}
+              </button>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                {t.demoNote}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

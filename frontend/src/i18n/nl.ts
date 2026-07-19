@@ -1774,4 +1774,11 @@ export const nl: Translations = {
     action: 'Vernieuwen',
     dismiss: 'Sluiten',
   },
+
+  demo: {
+    badge: 'Demo',
+    gardenName: 'Voorbeeldtuin',
+    cta: 'Maak je eigen tuin',
+    hint: 'Kies een maand en uur en zie waar zon en schaduw vallen — of bekijk de zonnekaart van het hele jaar.',
+  },
 }
