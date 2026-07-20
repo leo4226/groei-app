@@ -742,6 +742,14 @@ export type GardenBiodiversityOut = {
     woody_examples?: string[]
     ground_cover_examples?: string[]
   }
+  circularity?: CircularityFlags
+}
+
+export type CircularityFlags = {
+  compost?: boolean
+  mulch?: boolean
+  rainwater?: boolean
+  peat_free?: boolean
 }
 
 export type EcologyOut = {

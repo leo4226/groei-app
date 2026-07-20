@@ -51,6 +51,7 @@ class GardenBiodiversity:
     score_targets: dict = field(default_factory=dict)  # area-scaled targets, for transparency
     soil_ph: dict = field(default_factory=dict)  # advice-only: {advice_code, acid_count, …}
     growth_form: dict = field(default_factory=dict)  # advice-only: {carbon_level, ground_cover_advice, …}
+    circularity: dict = field(default_factory=dict)  # self-reported kringloop practices {key: bool}
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -135,6 +136,27 @@ _W_ABUNDANCE  = 8     # clumping (diminishing), not area-scaled
 _INVASIVE_CAP = 90    # soft cap: a garden with invasives can't display 100
 
 _REF_AREA_M2 = 40.0   # reference garden; targets scale as sqrt(area / ref)
+
+
+_CIRCULARITY_KEYS = ("compost", "mulch", "rainwater", "peat_free")
+
+
+async def _circularity(db, map_id: int) -> dict:
+    """Self-reported kringloop practices for a map as {key: bool} (missing = False).
+
+    Guarded — the reduced test schemas have no maps.circularity column, so it
+    simply defaults to all-False there."""
+    try:
+        rows = await db.execute_fetchall("SELECT circularity FROM maps WHERE id = ?", (map_id,))
+        raw = rows[0]["circularity"] if rows else None
+        data = {}
+        if isinstance(raw, str) and raw:
+            data = json.loads(raw)
+        elif isinstance(raw, dict):
+            data = raw
+        return {k: bool(data.get(k)) for k in _CIRCULARITY_KEYS}
+    except Exception:
+        return {k: False for k in _CIRCULARITY_KEYS}
 
 
 async def _garden_area_m2(db, map_id: int) -> float | None:
@@ -231,6 +253,9 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         "ground_cover_examples": gf.ground_cover_examples,
     }
 
+    # Self-reported circularity (kringloop) practices — advice-only.
+    circularity = await _circularity(db, map_id)
+
     if species_count == 0:
         return GardenBiodiversity(
             score=0,
@@ -246,6 +271,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             score_targets=targets,
             soil_ph=soil_ph,
             growth_form=growth_form,
+            circularity=circularity,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -321,4 +347,5 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         score_targets=targets,
         soil_ph=soil_ph,
         growth_form=growth_form,
+        circularity=circularity,
     )

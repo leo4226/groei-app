@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut, CircularityFlags } from '../types'
 
 /** Soil-pH advice copy for a garden (advice-only, never scored). Returns '' when
  * there's no signal, so the caller can hide the line entirely. */
@@ -156,6 +156,53 @@ function monthsShort(months: number[], locale: string): string {
   return months.map(m => fmt.format(new Date(2026, m - 1, 1))).join(', ')
 }
 
+const CIRC_KEYS = ['compost', 'mulch', 'rainwater', 'peat_free'] as const
+
+/** Self-reported kringloop practices — advice-only, not scored. Toggling PUTs
+ * to the map and updates optimistically (reverting on failure). */
+function CircularitySection({ slug, initial }: { slug: string; initial?: CircularityFlags }) {
+  const t = useT()
+  const c = t.garden.biodiversity.circularity
+  const [flags, setFlags] = useState<CircularityFlags>(initial ?? {})
+  const done = CIRC_KEYS.filter(k => flags[k]).length
+  const label: Record<(typeof CIRC_KEYS)[number], string> = {
+    compost: c.compost, mulch: c.mulch, rainwater: c.rainwater, peat_free: c.peatFree,
+  }
+
+  const toggle = (key: (typeof CIRC_KEYS)[number]) => {
+    const prev = flags
+    const next = { ...flags, [key]: !flags[key] }
+    setFlags(next)
+    mapsApi.updateCircularity(slug, next).catch(() => setFlags(prev))
+  }
+
+  return (
+    <section className="pt-4 mt-4 border-t border-border/40">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">{c.title}</h3>
+        <span className="text-xs font-mono text-text-muted">{done}/4</span>
+      </div>
+      <p className="text-[11px] text-text-muted mb-3">{c.hint}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {CIRC_KEYS.map(k => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => toggle(k)}
+            aria-pressed={!!flags[k]}
+            className={`flex items-center gap-2 text-left text-xs px-2.5 py-2 rounded-lg border transition-colors ${
+              flags[k] ? 'border-good/50 bg-good/10 text-text' : 'border-border/50 text-text-muted hover:border-border'
+            }`}
+          >
+            <span className={`w-3.5 h-3.5 rounded-full shrink-0 border-2 transition-colors ${flags[k] ? 'bg-good border-good' : 'border-border'}`} />
+            {label[k]}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiodiversityOut; slug: string; embedded?: boolean }) {
   const t = useT()
   const en = t.locale.startsWith('en')
@@ -259,6 +306,9 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/12</span></span>
         )}
       </div>
+
+      {/* Circularity (kringloop) self-report — advice-only */}
+      {slug && <CircularitySection slug={slug} initial={data.circularity} />}
 
       {/* Plant suggestions section */}
       {suggestions && (

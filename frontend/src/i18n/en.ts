@@ -1427,6 +1427,14 @@ export const en: Translations = {
       carbonLow: 'no woody planting yet — trees and shrubs store more carbon than annuals.',
       groundCoverLabel: 'Ground cover',
       groundCoverAdd: 'no ground-cover plants yet — creeping plants protect bare soil, suppress weeds and feed soil life.',
+      circularity: {
+        title: 'Circularity',
+        hint: 'Tick what you already do in this garden.',
+        compost: 'Composting',
+        mulch: 'Mulching',
+        rainwater: 'Rainwater harvesting',
+        peatFree: 'Peat-free gardening',
+      },
     },
     suggestions: {
       title: 'Improve your garden',

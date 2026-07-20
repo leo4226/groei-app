@@ -947,6 +947,15 @@ async def _fetch_biodiversity_packet(
         if gf.get("ground_cover_advice") == "add":
             lines.append("  Bodembedekking: nog geen bodembedekkers — kale grond profiteert van kruipende beplanting (minder onkruid, meer bodemleven).")
 
+        # Circularity (kringloop) self-report — advice-only.
+        circ = bio.circularity or {}
+        _circ_nl = {"compost": "composteren", "mulch": "mulchen", "rainwater": "regenwater opvangen", "peat_free": "turfvrij tuinieren"}
+        circ_done = [_circ_nl[k] for k in ("compost", "mulch", "rainwater", "peat_free") if circ.get(k)]
+        circ_todo = [_circ_nl[k] for k in ("compost", "mulch", "rainwater", "peat_free") if not circ.get(k)]
+        if circ_done or circ_todo:
+            done_str = ", ".join(circ_done) if circ_done else "nog niets aangegeven"
+            lines.append(f"  Kringloop ({len(circ_done)}/4): doet {done_str}." + (f" Kansen: {', '.join(circ_todo)}." if circ_todo else ""))
+
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
             if suggestions:
@@ -983,6 +992,7 @@ async def _fetch_biodiversity_packet(
                 "suggestions": suggestions_context,
                 "soil_ph": bio.soil_ph,
                 "growth_form": bio.growth_form,
+                "circularity": bio.circularity,
             }
         )
 
