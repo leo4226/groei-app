@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
 import { household } from '../api/client'
@@ -70,6 +70,7 @@ interface LandingCopy {
   previewText: string
   demoCta: string
   demoNote: string
+  scrollHint: string
   bioKicker: string
   bioTitle: string
   bioText: string
@@ -150,6 +151,7 @@ const COPY: Record<Lang, LandingCopy> = {
       'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
     demoCta: 'Bekijk de voorbeeldtuin',
     demoNote: 'Geen account nodig',
+    scrollHint: 'Zo werkt het',
     bioKicker: 'De biodiversiteitshulp',
     bioTitle: 'Weet wat je tuin voor bijen doet',
     bioText:
@@ -229,6 +231,7 @@ const COPY: Record<Lang, LandingCopy> = {
       'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
     demoCta: 'Explore the example garden',
     demoNote: 'No account needed',
+    scrollHint: 'See how it works',
     bioKicker: 'The biodiversity helper',
     bioTitle: 'Know what your garden does for bees',
     bioText:
@@ -284,6 +287,39 @@ function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
           {f.text}
         </p>
       </div>
+    </div>
+  )
+}
+
+/** Soft fade-up when the element scrolls into view. Content is never hidden
+ * for keyboard/reduced-motion users: the pre-reveal opacity/translate only
+ * apply under motion-safe, so with reduced motion everything is simply
+ * visible. */
+function Reveal({ children, className = '', delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.15 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return (
+    <div
+      ref={ref}
+      style={delayMs ? { transitionDelay: `${delayMs}ms` } : undefined}
+      className={`${className} motion-safe:transition-all motion-safe:duration-700 motion-safe:ease-out ${shown ? 'translate-y-0 opacity-100' : 'motion-safe:translate-y-8 motion-safe:opacity-0'}`}
+    >
+      {children}
     </div>
   )
 }
@@ -705,34 +741,46 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
+
+        {/* Scroll cue: the previews live below the fold */}
+        <button
+          type="button"
+          aria-label={t.scrollHint}
+          onClick={() => document.getElementById('product-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="absolute bottom-1 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-text-muted transition-colors hover:text-text lg:flex"
+        >
+          <span className="font-mono text-[9px] uppercase tracking-[0.22em]">{t.scrollHint}</span>
+          <Glyph name="chevron-down" size={16} className="motion-safe:animate-bounce" />
+        </button>
       </div>
 
-      {/* ── Product preview: sun-heatmap video of the demo garden ── */}
-      <section className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-16 pt-2 lg:pt-6">
-        <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center lg:gap-16">
-          <div className="w-full max-w-[290px] flex-none overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
-            <video
-              src="/landing/sunmap-demo.mp4"
-              poster="/landing/sunmap-demo-poster.jpg"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className="block h-auto w-full"
-            />
-          </div>
-          <div className="max-w-[420px] text-center lg:text-left">
+      {/* ── Product previews: zonnekaart & biodiversiteitshulp side by side ── */}
+      <section id="product-preview" className="relative z-10 mx-auto w-full max-w-[1060px] scroll-mt-6 px-5 pb-16 pt-2 lg:pt-10">
+        <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
+          {/* Zonnekaart */}
+          <Reveal className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
               {t.previewKicker}
             </p>
             <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
               {t.previewTitle}
             </h2>
-            <p className="mt-3 text-[14px] leading-[1.6] text-text-soft">
+            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
               {t.previewText}
             </p>
-            <div className="mt-5 flex flex-col items-center gap-2 lg:items-start">
+            <div className="mt-6 w-full max-w-[320px] overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
+              <video
+                src="/landing/sunmap-demo.mp4"
+                poster="/landing/sunmap-demo-poster.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="block h-auto w-full"
+              />
+            </div>
+            <div className="mt-auto flex flex-col items-center gap-2 pt-6 lg:items-start">
               <button
                 type="button"
                 onClick={() => navigate('/demo')}
@@ -744,12 +792,20 @@ export default function LoginPage() {
                 {t.demoNote}
               </span>
             </div>
-          </div>
-        </div>
+          </Reveal>
 
-        {/* ── Biodiversity helper preview: score + what the helper would recommend ── */}
-        <div className="mt-16 flex flex-col items-center gap-8 lg:flex-row-reverse lg:justify-center lg:gap-16">
-          <div className="flex w-full max-w-[320px] flex-none flex-col gap-3">
+          {/* Biodiversiteitshulp */}
+          <Reveal delayMs={150} className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.bioKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
+              {t.bioTitle}
+            </h2>
+            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
+              {t.bioText}
+            </p>
+            <div className="mt-6 flex w-full max-w-[320px] flex-col gap-3">
             <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-text">{t.scoreLabel}</span>
@@ -803,17 +859,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="max-w-[420px] text-center lg:text-left">
-            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
-              {t.bioKicker}
-            </p>
-            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
-              {t.bioTitle}
-            </h2>
-            <p className="mt-3 text-[14px] leading-[1.6] text-text-soft">
-              {t.bioText}
-            </p>
-            <div className="mt-5 flex justify-center lg:justify-start">
+            <div className="mt-auto flex justify-center pt-6 lg:justify-start">
               <button
                 type="button"
                 onClick={() => {
@@ -825,7 +871,7 @@ export default function LoginPage() {
                 {t.bioCta}
               </button>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
     </div>
