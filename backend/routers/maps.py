@@ -37,6 +37,7 @@ class GardenBiodiversityOut(BaseModel):
     score_targets: dict = {}
     soil_ph: dict = {}
     growth_form: dict = {}
+    circularity: dict = {}   # self-reported kringloop practices (advice-only)
 
 
 class StreekOut(BaseModel):
@@ -72,6 +73,19 @@ async def get_map(slug: str, account = Depends(get_current_account), db = Depend
     return map_data
 
 
+# Canonical circularity (kringloop) practices — a fixed, ordered set so the
+# meter is always N/len(CIRCULARITY_KEYS). Extend deliberately (a new key
+# lowers every existing garden's ratio until re-reported).
+CIRCULARITY_KEYS = ("compost", "mulch", "rainwater", "peat_free")
+
+
+class CircularityIn(BaseModel):
+    compost: bool = False
+    mulch: bool = False
+    rainwater: bool = False
+    peat_free: bool = False
+
+
 @router.get("/maps/{slug}/biodiversity", response_model=GardenBiodiversityOut)
 async def get_map_biodiversity(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     """Per-garden biodiversity profile. Outdoor-only — indoor maps return 404
@@ -100,7 +114,31 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         score_targets=profile.score_targets,
         soil_ph=profile.soil_ph,
         growth_form=profile.growth_form,
+        circularity=profile.circularity,
     )
+
+
+@router.put("/maps/{slug}/circularity")
+async def update_map_circularity(
+    slug: str,
+    data: CircularityIn,
+    account = Depends(get_current_account),
+    db = Depends(db_dep),
+):
+    """Self-reported kringloop practices for a garden (advice-only, not scored)."""
+    row = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE slug = ? AND household_id = ?",
+        (slug, account["household_id"]),
+    )
+    if not row:
+        raise HTTPException(404, "Map not found")
+    flags = {k: bool(getattr(data, k)) for k in CIRCULARITY_KEYS}
+    await db.execute(
+        "UPDATE maps SET circularity = ? WHERE id = ?",
+        (json.dumps(flags), row[0]["id"]),
+    )
+    await db.commit()
+    return flags
 
 
 class BeeSupportOut(BaseModel):

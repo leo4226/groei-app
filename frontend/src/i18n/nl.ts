@@ -1429,6 +1429,14 @@ export const nl: Translations = {
       carbonLow: 'nog geen houtige beplanting — bomen en heesters leggen meer koolstof vast dan eenjarigen.',
       groundCoverLabel: 'Bodembedekking',
       groundCoverAdd: 'nog geen bodembedekkers — kruipende planten beschermen kale grond, remmen onkruid en voeden het bodemleven.',
+      circularity: {
+        title: 'Kringloop',
+        hint: 'Vink aan wat je al doet in deze tuin.',
+        compost: 'Composteren',
+        mulch: 'Mulchen',
+        rainwater: 'Regenwater opvangen',
+        peatFree: 'Turfvrij tuinieren',
+      },
     },
     suggestions: {
       title: 'Verbeter je tuin',

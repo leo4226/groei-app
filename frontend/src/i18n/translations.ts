@@ -1432,6 +1432,14 @@ export type Translations = {
       carbonLow: string           // advice: no woody planting yet
       groundCoverLabel: string    // "Bodembedekking" (ground-cover row label)
       groundCoverAdd: string      // advice: no ground cover yet, add some
+      circularity: {
+        title: string     // "Kringloop"
+        hint: string      // "Vink aan wat je al doet"
+        compost: string   // "Composteren"
+        mulch: string     // "Mulchen"
+        rainwater: string // "Regenwater opvangen"
+        peatFree: string  // "Turfvrij tuinieren"
+      }
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
