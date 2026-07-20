@@ -1640,6 +1640,10 @@ export const en: Translations = {
         { title: 'What happened?', prompt: 'Did you get an error, did nothing happen, did the page go blank, or did you see something unexpected?' },
         { title: 'What was the last step?', prompt: 'For example: I tapped the water icon, or I opened the plant list.' },
       ],
+      actionConfirm: 'Confirm',
+      actionCancel: 'Cancel',
+      actionDone: '✓ Done!',
+      actionError: 'Something went wrong. Try from the app instead.',
     },
   },
 

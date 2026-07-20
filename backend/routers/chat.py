@@ -65,8 +65,113 @@ class BotRequest(BaseModel):
     language: str | None = None
 
 
+class SuggestedAction(BaseModel):
+    type: Literal["navigate", "mark_care_done"]
+    label: str
+    requires_confirmation: bool
+    payload: dict[str, Any]
+
+
 class ChatResponse(BaseModel):
     response: str
+    suggested_action: SuggestedAction | None = None
+
+
+async def _validate_suggested_action(
+    raw: Any, db, household_id: int
+) -> SuggestedAction | None:
+    """Validate an untrusted suggested_action from the chat worker.
+
+    The worker only ever *suggests* an action; this checks the type is one
+    we support and that any referenced plant/schedule/map actually exists
+    in the caller's household before letting the frontend render a button
+    for it. Returns None (silently dropping the action, not the reply) for
+    anything malformed, unsupported, or out of scope — the ids are never
+    trusted enough to execute directly, only enough to offer a button that
+    itself calls the normal authenticated REST endpoints.
+    """
+    if not isinstance(raw, dict):
+        return None
+    action_type = raw.get("type")
+    label = raw.get("label")
+    payload = raw.get("payload")
+    if not isinstance(label, str) or not label.strip() or not isinstance(payload, dict):
+        return None
+
+    if action_type == "navigate":
+        target = payload.get("target")
+        map_id = payload.get("id")
+        slug = payload.get("slug")
+        if target not in ("plant", "map", "calendar", "add_plant"):
+            return None
+
+        if target == "plant":
+            if not isinstance(map_id, int):
+                return None
+            rows = await db.execute_fetchall(
+                "SELECT 1 FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
+                (map_id, household_id),
+            )
+            if not rows:
+                return None
+            return SuggestedAction(
+                type="navigate", label=label, requires_confirmation=False,
+                payload={"target": "plant", "id": map_id},
+            )
+
+        if target == "map":
+            if not isinstance(map_id, int) and not isinstance(slug, str):
+                return None
+            if isinstance(slug, str):
+                rows = await db.execute_fetchall(
+                    "SELECT 1 FROM maps WHERE slug = ? AND household_id = ?",
+                    (slug, household_id),
+                )
+            else:
+                rows = await db.execute_fetchall(
+                    "SELECT 1 FROM maps WHERE id = ? AND household_id = ?",
+                    (map_id, household_id),
+                )
+            if not rows:
+                return None
+            map_payload: dict[str, Any] = {"target": "map"}
+            if isinstance(slug, str):
+                map_payload["slug"] = slug
+            if isinstance(map_id, int):
+                map_payload["id"] = map_id
+            return SuggestedAction(
+                type="navigate", label=label, requires_confirmation=False, payload=map_payload,
+            )
+
+        # calendar / add_plant are static routes — no id to validate.
+        return SuggestedAction(
+            type="navigate", label=label, requires_confirmation=False, payload={"target": target},
+        )
+
+    if action_type == "mark_care_done":
+        plant_id = payload.get("plant_id")
+        schedule_id = payload.get("schedule_id")
+        care_type = payload.get("care_type")
+        if not isinstance(plant_id, int) or not isinstance(care_type, str):
+            return None
+        rows = await db.execute_fetchall(
+            """SELECT cs.id FROM care_schedules cs
+               JOIN plants p ON cs.plant_id = p.id
+               WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+                 AND p.household_id = ? AND p.is_active = 1""",
+            (plant_id, care_type, household_id),
+        )
+        if not rows:
+            return None
+        resolved_schedule_id = rows[0]["id"]
+        if isinstance(schedule_id, int) and schedule_id != resolved_schedule_id:
+            return None
+        return SuggestedAction(
+            type="mark_care_done", label=label, requires_confirmation=True,
+            payload={"plant_id": plant_id, "schedule_id": resolved_schedule_id, "care_type": care_type},
+        )
+
+    return None
 
 
 def _json_safe(value: Any) -> Any:
@@ -1059,7 +1164,13 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
                 headers={"Content-Type": "application/json"},
             )
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            if "response" not in data:
+                raise HTTPException(status_code=502, detail="Chatbot antwoord miste 'response' veld")
+            suggested_action = await _validate_suggested_action(
+                data.get("suggested_action"), db, account["household_id"]
+            )
+            return ChatResponse(response=data["response"], suggested_action=suggested_action)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Chatbot reageert niet (timeout)")
     except httpx.HTTPStatusError as e:
