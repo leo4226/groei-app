@@ -5,6 +5,7 @@ import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
 import Glyph from './ui/Glyph'
 import { sendChatMessage, submitBugReport, ChatRequestError, type ChatMessage, type PageContext } from '../api/chat'
+import { renderChatText } from '../utils/chatMarkdown'
 import {
   bugStepFromAnswerCount,
   getAssistantPanelConfig,
@@ -601,7 +602,7 @@ export default function HelpAssistant() {
                           ? 'bg-primary text-white rounded-br-md'
                           : 'bg-bg text-text-soft rounded-bl-md'
                       }`}>
-                        {msg.content}
+                        {msg.role === 'assistant' ? renderChatText(msg.content) : msg.content}
                       </div>
                     </div>
                   ))}

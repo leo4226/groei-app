@@ -1594,7 +1594,7 @@ export const nl: Translations = {
     dismiss: 'Stekkie verbergen',
     askStekkie: 'Vraag Stekkie',
     subtitle: (name: string) => `${name}s persoonlijke plantenhulp`,
-    disclaimer: 'Stekkie is een simpel beestje — heb geduld voor een antwoord.',
+    disclaimer: 'Stekkie kan fouten maken — check belangrijke dingen even zelf.',
     bubbles: [
       'Wil je hulp bij het kiezen van een nieuwe plant? Vraag het me!',
       'Benieuwd naar de verzorging van een plant?',
