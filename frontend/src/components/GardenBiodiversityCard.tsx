@@ -16,6 +16,17 @@ function soilPhAdvice(
   return ''
 }
 
+/** Carbon (koolstof) proxy line — only shown for the two informative levels
+ * (a strong woody garden, or none yet). 'moderate' stays quiet to avoid noise. */
+function carbonAdvice(
+  level: 'low' | 'moderate' | 'strong' | null | undefined,
+  t: ReturnType<typeof useT>,
+): string {
+  if (level === 'strong') return t.garden.biodiversity.carbonStrong
+  if (level === 'low') return t.garden.biodiversity.carbonLow
+  return ''
+}
+
 /**
  * Small line glyphs for biodiversity stats, in the app's icon language
  * (thin stroke, rounded caps, currentColor) — replacing the old emoji
@@ -204,6 +215,24 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
               <span>
                 <span className="text-text-muted">{t.garden.biodiversity.soilPhLabel}:</span>{' '}
                 <span className="text-text">{soilPhAdvice(data.soil_ph?.advice_code, t)}</span>
+              </span>
+            </p>
+          )}
+          {carbonAdvice(data.growth_form?.carbon_level, t) && (
+            <p className="flex items-start gap-1.5 text-text-muted">
+              <BioIcon name="diversity" size={14} />
+              <span>
+                <span className="text-text-muted">{t.garden.biodiversity.carbonLabel}:</span>{' '}
+                <span className="text-text">{carbonAdvice(data.growth_form?.carbon_level, t)}</span>
+              </span>
+            </p>
+          )}
+          {data.growth_form?.ground_cover_advice === 'add' && (
+            <p className="flex items-start gap-1.5 text-text-muted">
+              <BioIcon name="native" size={14} />
+              <span>
+                <span className="text-text-muted">{t.garden.biodiversity.groundCoverLabel}:</span>{' '}
+                <span className="text-text">{t.garden.biodiversity.groundCoverAdd}</span>
               </span>
             </p>
           )}

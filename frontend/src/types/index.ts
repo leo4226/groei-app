@@ -734,6 +734,14 @@ export type GardenBiodiversityOut = {
     acid_examples?: string[]
     alkaline_examples?: string[]
   }
+  growth_form?: {
+    carbon_level?: 'low' | 'moderate' | 'strong' | null
+    woody_count?: number
+    ground_cover_count?: number
+    ground_cover_advice?: 'add' | null
+    woody_examples?: string[]
+    ground_cover_examples?: string[]
+  }
 }
 
 export type EcologyOut = {

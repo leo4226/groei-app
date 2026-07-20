@@ -832,6 +832,16 @@ async def _fetch_biodiversity_packet(
                 "  Bodem-pH: zowel kalkmijdende als kalkminnende planten — doe een zuurmeting en groepeer per voorkeur."
             )
 
+        # Growth-form advice (advice-only): carbon proxy + ground cover.
+        gf = bio.growth_form or {}
+        carbon = gf.get("carbon_level")
+        if carbon == "strong":
+            lines.append(f"  Koolstof: veel houtige, meerjarige beplanting ({gf.get('woody_count', 0)} soorten) — legt relatief veel koolstof vast.")
+        elif carbon == "low":
+            lines.append("  Koolstof: nog geen houtige beplanting — bomen/heesters leggen meer koolstof vast dan eenjarigen.")
+        if gf.get("ground_cover_advice") == "add":
+            lines.append("  Bodembedekking: nog geen bodembedekkers — kale grond profiteert van kruipende beplanting (minder onkruid, meer bodemleven).")
+
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
             if suggestions:
@@ -867,6 +877,7 @@ async def _fetch_biodiversity_packet(
                 "pollinator_gaps": gap_labels,
                 "suggestions": suggestions_context,
                 "soil_ph": bio.soil_ph,
+                "growth_form": bio.growth_form,
             }
         )
 

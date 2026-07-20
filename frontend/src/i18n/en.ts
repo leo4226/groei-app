@@ -1422,6 +1422,11 @@ export const en: Translations = {
       soilPhAcid: 'your plants prefer lime-free, acidic soil — avoid lime; a pH test confirms it.',
       soilPhAlkaline: 'your plants prefer chalky, alkaline soil — a pH test shows whether adding lime helps.',
       soilPhMixed: 'you mix acid- and lime-loving plants — do a pH test and group them by preference.',
+      carbonLabel: 'Carbon',
+      carbonStrong: 'lots of woody, perennial planting — stores relatively more carbon (estimate).',
+      carbonLow: 'no woody planting yet — trees and shrubs store more carbon than annuals.',
+      groundCoverLabel: 'Ground cover',
+      groundCoverAdd: 'no ground-cover plants yet — creeping plants protect bare soil, suppress weeds and feed soil life.',
     },
     suggestions: {
       title: 'Improve your garden',

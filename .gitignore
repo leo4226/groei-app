@@ -52,3 +52,4 @@ backend/data/*
 !backend/data/bloeibogen_bees.json
 !backend/data/moth_plants.json
 !backend/data/soil_ph_plants.json
+!backend/data/growth_form_plants.json
