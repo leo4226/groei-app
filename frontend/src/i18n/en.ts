@@ -1597,7 +1597,7 @@ export const en: Translations = {
     dismiss: 'Hide Stekkie',
     askStekkie: 'Ask Stekkie',
     subtitle: (name: string) => `${name}'s personal plant helper`,
-    disclaimer: 'Stekkie is a simple clanker — please be patient for a response.',
+    disclaimer: 'Stekkie can make mistakes — check anything important.',
     bubbles: [
       'Want help picking a new plant? Ask me!',
       'Curious about a plant\'s care needs?',

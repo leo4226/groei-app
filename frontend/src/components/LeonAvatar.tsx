@@ -11,10 +11,10 @@ export default function LeonAvatar({ size = 100, className }: Props) {
       width={size}
       height={size}
       role="img"
-      aria-label="Leon"
+      aria-label="Stekkie"
       className={className}
     >
-      <title>Leon</title>
+      <title>Stekkie</title>
 
       {/* Neck + shoulders */}
       <path d="M 34 84 Q 30 94 28 100 L 72 100 Q 70 94 66 84 Z" fill="#D9A87E" />
