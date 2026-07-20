@@ -1424,6 +1424,11 @@ export const nl: Translations = {
       soilPhAcid: 'je planten houden van kalkarme, zure grond — vermijd kalk; een zuurmeting bevestigt de pH.',
       soilPhAlkaline: 'je planten houden van kalkrijke grond — een zuurmeting laat zien of bijmesten met kalk nodig is.',
       soilPhMixed: 'je combineert zuur- en kalkminnende planten — doe een zuurmeting en groepeer ze per voorkeur.',
+      carbonLabel: 'Koolstof',
+      carbonStrong: 'veel houtige, meerjarige beplanting — legt relatief veel koolstof vast (schatting).',
+      carbonLow: 'nog geen houtige beplanting — bomen en heesters leggen meer koolstof vast dan eenjarigen.',
+      groundCoverLabel: 'Bodembedekking',
+      groundCoverAdd: 'nog geen bodembedekkers — kruipende planten beschermen kale grond, remmen onkruid en voeden het bodemleven.',
     },
     suggestions: {
       title: 'Verbeter je tuin',

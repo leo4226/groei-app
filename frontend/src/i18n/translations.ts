@@ -1427,6 +1427,11 @@ export type Translations = {
       soilPhAcid: string          // advice: plants prefer lime-free/acid soil
       soilPhAlkaline: string      // advice: plants prefer chalky/alkaline soil
       soilPhMixed: string         // advice: garden mixes acid- and lime-lovers
+      carbonLabel: string         // "Koolstof" (carbon proxy row label)
+      carbonStrong: string        // advice: lots of woody planting stores carbon
+      carbonLow: string           // advice: no woody planting yet
+      groundCoverLabel: string    // "Bodembedekking" (ground-cover row label)
+      groundCoverAdd: string      // advice: no ground cover yet, add some
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
