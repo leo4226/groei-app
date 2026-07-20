@@ -4,6 +4,7 @@ import {
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
   bugQuestions,
+  resolveNavigateHref,
 } from './helpAssistantModel'
 
 const mockChat = {
@@ -17,6 +18,7 @@ const mockChat = {
   empty: '', example: '', bugReport: '', bugReportHeader: '', expand: '', collapse: '',
   next: '', review: '', stepLabel: (c: number, t: number) => `${c}/${t}`,
   reviewTitle: '', reviewHint: '', submit: '', submitting: '', submitted: '', submitError: '',
+  actionConfirm: '', actionCancel: '', actionDone: '', actionError: '',
 }
 
 describe('HelpAssistant mobile model', () => {
@@ -56,5 +58,34 @@ describe('HelpAssistant mobile model', () => {
     expect(questions).toHaveLength(3)
     expect(questions.join('\n')).not.toContain('**')
     expect(questions[0].title).toBe('Waar was je?')
+  })
+})
+
+describe('resolveNavigateHref (#410 action buttons)', () => {
+  const maps = [{ id: 10, slug: 'balcony' }]
+
+  it('links a plant navigate action to the plant detail page', () => {
+    expect(resolveNavigateHref({ target: 'plant', id: 101 }, maps)).toBe('/plants/101')
+  })
+
+  it('drops a plant navigate action with no id', () => {
+    expect(resolveNavigateHref({ target: 'plant' }, maps)).toBeNull()
+  })
+
+  it('links a map navigate action by slug directly', () => {
+    expect(resolveNavigateHref({ target: 'map', slug: 'balcony' }, maps)).toBe('/map/balcony')
+  })
+
+  it('resolves a map navigate action by id via the store map list', () => {
+    expect(resolveNavigateHref({ target: 'map', id: 10 }, maps)).toBe('/map/balcony')
+  })
+
+  it('drops a map navigate action whose id is not in the store map list', () => {
+    expect(resolveNavigateHref({ target: 'map', id: 999 }, maps)).toBeNull()
+  })
+
+  it('links calendar and add_plant navigate actions to their static routes', () => {
+    expect(resolveNavigateHref({ target: 'calendar' }, maps)).toBe('/calendar')
+    expect(resolveNavigateHref({ target: 'add_plant' }, maps)).toBe('/plants/add')
   })
 })

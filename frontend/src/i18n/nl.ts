@@ -1642,6 +1642,10 @@ export const nl: Translations = {
         { title: 'Wat gebeurde er?', prompt: 'Kreeg je een foutmelding, gebeurde er niks, werd de pagina wit, of zag je iets anders dan verwacht?' },
         { title: 'Wat was de laatste stap?', prompt: 'Bijvoorbeeld: ik tikte op het water-icoontje, of ik opende de plantenlijst.' },
       ],
+      actionConfirm: 'Bevestigen',
+      actionCancel: 'Annuleren',
+      actionDone: '✓ Gedaan!',
+      actionError: 'Er ging iets mis. Probeer het via de app.',
     },
   },
 

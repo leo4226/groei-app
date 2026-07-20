@@ -1599,6 +1599,10 @@ export type Translations = {
       submitted: string
       submitError: string
       bugQuestions: Array<{ title: string; prompt: string }>
+      actionConfirm: string
+      actionCancel: string
+      actionDone: string
+      actionError: string
     }
   }
 

@@ -109,7 +109,7 @@ async def test_chat_proxy_sends_bounded_structured_garden_context(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"response": "Water Kitchen basil today."}
+    assert response.json() == {"response": "Water Kitchen basil today.", "suggested_action": None}
     payload = captured["json"]
     assert payload["language"] == "en"
     assert payload["garden_context"]["schema_version"] == "garden-context-v1"

@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
 import Glyph from './ui/Glyph'
-import { sendChatMessage, submitBugReport, ChatRequestError, type ChatMessage, type PageContext } from '../api/chat'
+import {
+  sendChatMessage, submitBugReport, ChatRequestError,
+  type ChatMessage, type PageContext, type StekkieAction,
+} from '../api/chat'
 import { renderChatText } from '../utils/chatMarkdown'
 import {
   bugStepFromAnswerCount,
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
   bugQuestions,
+  resolveNavigateHref,
   type AssistantSheetState,
 } from './helpAssistantModel'
 
@@ -43,6 +47,12 @@ function extractPlantIdFromRoute(pathname: string): number | undefined {
   const id = Number(match[1])
   return Number.isFinite(id) ? id : undefined
 }
+
+interface DisplayMessage extends ChatMessage {
+  action?: StekkieAction | null
+}
+
+type ActionPhase = 'confirm' | 'loading' | 'done' | 'error'
 
 function randomBubble(pageKey: PageKey, name: string): string {
   const bubbles: Record<PageKey, string[]> = {
@@ -110,6 +120,7 @@ function useIsMobile() {
 export default function HelpAssistant() {
   const t = useT()
   const location = useLocation()
+  const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
   const [sheetState, setSheetState] = useState<AssistantSheetState>('compact')
@@ -117,7 +128,8 @@ export default function HelpAssistant() {
   const [bubble, setBubble] = useState('')
   const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [bubbleVisible, setBubbleVisible] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<DisplayMessage[]>([])
+  const [actionPhase, setActionPhase] = useState<Record<number, ActionPhase>>({})
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -167,6 +179,8 @@ export default function HelpAssistant() {
   const users = useFloreren((s) => s.users)
   const activeUserId = useFloreren((s) => s.activeUserId)
   const assistantPageContext = useFloreren((s) => s.assistantPageContext)
+  const maps = useFloreren((s) => s.maps)
+  const markCareDone = useFloreren((s) => s.markCareDone)
   const activeUser = users.find((u) => u.id === activeUserId)
   const userName = activeUser?.name ?? 'user'
 
@@ -229,11 +243,11 @@ export default function HelpAssistant() {
       }
       const routePlantId = extractPlantIdFromRoute(location.pathname)
       if (routePlantId !== undefined) pageContext.plant_id = routePlantId
-      const reply = await sendChatMessage(userMsg, messages, pageContext, {
+      const { response, suggestedAction } = await sendChatMessage(userMsg, messages, pageContext, {
         activeUserId,
         language: activeUser?.language,
       })
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      setMessages(prev => [...prev, { role: 'assistant', content: response, action: suggestedAction }])
     } catch (err) {
       // "Offline" covers a true browser network failure (TypeError) and the
       // backend's gateway statuses when the Stekkie worker is down/timing out
@@ -247,6 +261,37 @@ export default function HelpAssistant() {
       }])
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ---------- Stekkie action buttons (#410) ----------
+  function handleActionClick(index: number, action: StekkieAction) {
+    if (action.type === 'navigate') {
+      const href = resolveNavigateHref(action.payload, maps)
+      if (!href) return
+      navigate(href)
+      closeAssistant()
+      return
+    }
+    // mark_care_done always requires confirmation before it touches anything.
+    setActionPhase(prev => ({ ...prev, [index]: 'confirm' }))
+  }
+
+  function cancelActionConfirm(index: number) {
+    setActionPhase(prev => {
+      const next = { ...prev }
+      delete next[index]
+      return next
+    })
+  }
+
+  async function confirmMarkCareDone(index: number, action: StekkieAction & { type: 'mark_care_done' }) {
+    setActionPhase(prev => ({ ...prev, [index]: 'loading' }))
+    try {
+      await markCareDone(action.payload.plant_id, action.payload.care_type)
+      setActionPhase(prev => ({ ...prev, [index]: 'done' }))
+    } catch {
+      setActionPhase(prev => ({ ...prev, [index]: 'error' }))
     }
   }
 
@@ -596,7 +641,7 @@ export default function HelpAssistant() {
                     </div>
                   )}
                   {messages.map((msg, i) => (
-                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={i} className={`flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                       <div className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-3.5 sm:px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                         msg.role === 'user'
                           ? 'bg-primary text-white rounded-br-md'
@@ -604,6 +649,39 @@ export default function HelpAssistant() {
                       }`}>
                         {msg.role === 'assistant' ? renderChatText(msg.content) : msg.content}
                       </div>
+                      {msg.role === 'assistant' && msg.action && (
+                        <div className="max-w-[88%] sm:max-w-[80%]">
+                          {actionPhase[i] === 'done' ? (
+                            <p className="text-xs text-green-700 px-1">{t.help.chat.actionDone}</p>
+                          ) : actionPhase[i] === 'error' ? (
+                            <p className="text-xs text-red-600 px-1">{t.help.chat.actionError}</p>
+                          ) : actionPhase[i] === 'confirm' || actionPhase[i] === 'loading' ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => cancelActionConfirm(i)}
+                                disabled={actionPhase[i] === 'loading'}
+                                className="px-3 py-1.5 rounded-xl border border-border-soft text-text-muted text-xs font-medium active:scale-[0.98] transition-all disabled:opacity-40"
+                              >
+                                {t.help.chat.actionCancel}
+                              </button>
+                              <button
+                                onClick={() => msg.action?.type === 'mark_care_done' && confirmMarkCareDone(i, msg.action)}
+                                disabled={actionPhase[i] === 'loading'}
+                                className="px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-semibold active:scale-[0.98] transition-all disabled:opacity-40"
+                              >
+                                {actionPhase[i] === 'loading' ? '…' : t.help.chat.actionConfirm}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleActionClick(i, msg.action!)}
+                              className="px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/30 text-xs font-semibold active:scale-[0.98] transition-all hover:bg-primary/15"
+                            >
+                              {msg.action.label}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {loading && (

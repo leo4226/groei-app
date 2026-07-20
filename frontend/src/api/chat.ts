@@ -38,12 +38,38 @@ export class ChatRequestError extends Error {
   }
 }
 
+// See issue #410. The backend already validated this against the caller's
+// household before sending it — ids are real, but this file still never
+// executes anything just because the worker suggested it; the confirm
+// button in HelpAssistant.tsx always calls the normal authenticated
+// endpoints (via the useFloreren store) to actually perform the action.
+export interface NavigateActionPayload {
+  target: 'plant' | 'map' | 'calendar' | 'add_plant'
+  id?: number
+  slug?: string
+}
+
+export interface MarkCareDoneActionPayload {
+  plant_id: number
+  schedule_id: number
+  care_type: string
+}
+
+export type StekkieAction =
+  | { type: 'navigate'; label: string; requires_confirmation: boolean; payload: NavigateActionPayload }
+  | { type: 'mark_care_done'; label: string; requires_confirmation: boolean; payload: MarkCareDoneActionPayload }
+
+export interface ChatReply {
+  response: string
+  suggestedAction: StekkieAction | null
+}
+
 export async function sendChatMessage(
   message: string,
   history: ChatMessage[],
   pageContext?: PageContext,
   options?: { activeUserId?: number | null; language?: 'nl' | 'en' },
-): Promise<string> {
+): Promise<ChatReply> {
   const token = getToken()
   const resp = await fetch(`${BASE}/chat`, {
     method: 'POST',
@@ -53,7 +79,7 @@ export async function sendChatMessage(
     },
     body: JSON.stringify({
       message,
-      history,
+      history: history.map(({ role, content }) => ({ role, content })),
       page_context: pageContext ?? null,
       active_user_id: options?.activeUserId ?? null,
       language: options?.language ?? null,
@@ -61,7 +87,7 @@ export async function sendChatMessage(
   })
   if (!resp.ok) throw new ChatRequestError(resp.status)
   const data = await resp.json()
-  return data.response
+  return { response: data.response, suggestedAction: data.suggested_action ?? null }
 }
 
 export interface BugReportResponse {
