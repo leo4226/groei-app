@@ -669,6 +669,9 @@ export type PlantRecommendation = {
   fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
   is_moth_plant?: boolean              // night-flowering / moth-forage (nachtvlinder)
   supports_moth_gap?: boolean          // moth plant in a garden that has none yet
+  habit?: string | null                // tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+  mature_height_cm?: number | null
+  size_fit?: 'fits' | 'large_for_space' | 'unknown'  // vs garden area
 }
 
 export type StreekSuggestionsOut = {

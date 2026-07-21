@@ -13,7 +13,8 @@ CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT,
                             native_to_nl INTEGER, invasive_nl INTEGER,
                             pollinator_value INTEGER, flowering_months TEXT,
                             ecology_enriched_at TEXT, is_drachtplant INTEGER DEFAULT 0,
-                            is_moth_plant INTEGER DEFAULT 0);
+                            is_moth_plant INTEGER DEFAULT 0,
+                            habit TEXT, mature_height_cm INTEGER);
 CREATE TABLE maps (id INTEGER PRIMARY KEY, streek_slug TEXT);
 CREATE TABLE streek_species (id INTEGER PRIMARY KEY AUTOINCREMENT,
                              streek_slug TEXT, species_id INTEGER, category TEXT);

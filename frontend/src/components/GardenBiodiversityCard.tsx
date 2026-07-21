@@ -365,6 +365,11 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                               {t.garden.suggestions.streekBadge}
                             </span>
                           )}
+                          {s.size_fit === 'large_for_space' && (
+                            <span className="text-[10px] bg-orange-500/15 text-orange-700 dark:text-orange-400 px-1.5 py-0.5 rounded-full">
+                              {t.garden.suggestions.sizeBadge}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
                       </div>

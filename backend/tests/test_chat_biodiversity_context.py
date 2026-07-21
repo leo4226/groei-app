@@ -19,7 +19,9 @@ async def _prepare_biodiversity_db(seeded_db):
             flowering_months TEXT,
             ecology_enriched_at TEXT,
             is_drachtplant INTEGER DEFAULT 0,
-            is_moth_plant INTEGER DEFAULT 0
+            is_moth_plant INTEGER DEFAULT 0,
+            habit TEXT,
+            mature_height_cm INTEGER
         )"""
     )
     await seeded_db.execute(

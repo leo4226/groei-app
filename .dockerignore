@@ -26,6 +26,7 @@ backend/data/
 !backend/data/moth_plants.json
 !backend/data/soil_ph_plants.json
 !backend/data/growth_form_plants.json
+!backend/data/plant_habits.json
 backend/uploads/
 
 # Node
