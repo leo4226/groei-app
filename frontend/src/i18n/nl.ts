@@ -645,6 +645,7 @@ export const nl: Translations = {
     ecologyForageGap: '🐝 Vult drachtgat',
     ecologyMoth: '🌙 Nachtvlinder',
     ecologyMothGap: '🌙 Trekt nachtvlinders',
+    sizeLargeForSpace: '🌳 Grote plant — veel ruimte',
     sunFitPerfect: 'Ideaal licht',
     sunFitAcceptable: 'Geschikt licht',
     sunFitMarginal: 'Krap licht',
@@ -1447,6 +1448,7 @@ export const nl: Translations = {
       sunShade: 'Schaduw',
       nativeBadge: 'Inheems',
       streekBadge: 'Streekeigen',
+      sizeBadge: '🌳 Grote plant',
     },
     streek: {
       sectionTitle: 'Planten uit jouw streek',

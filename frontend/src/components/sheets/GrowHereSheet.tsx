@@ -110,6 +110,7 @@ function EcologyBadges({ rec, t, locale }: { rec: PlantRecommendation; t: Transl
   else if ((rec.pollinator_value ?? 0) === 2) badges.push({ label: t.ecologyPollinatorGood, cls: 'bg-amber-400/10 text-amber-600' })
   if (rec.supports_moth_gap) badges.push({ label: t.ecologyMothGap, cls: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' })
   else if (rec.is_moth_plant) badges.push({ label: t.ecologyMoth, cls: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' })
+  if (rec.size_fit === 'large_for_space') badges.push({ label: t.sizeLargeForSpace, cls: 'bg-orange-500/15 text-orange-700 dark:text-orange-400' })
   const fitBadge: Record<string, { label: string; cls: string }> = {
     perfect:    { label: t.sunFitPerfect,    cls: 'bg-primary/10 text-primary' },
     acceptable: { label: t.sunFitAcceptable, cls: 'bg-good/10 text-good' },
