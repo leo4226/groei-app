@@ -1182,6 +1182,7 @@ export const en: Translations = {
     taskSingular: 'task',
     bloom: 'Bloom',
     open: 'Open',
+    completedHistory: 'Completed',
     seasonalThisMonth: 'Seasonal this month',
     seasonalScope: 'Monthly windows, not exact dates.',
     seasonalMissing: (n) => `${n} plant${n === 1 ? ' has' : 's have'} no seasonal data for this month`,

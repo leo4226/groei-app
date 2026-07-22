@@ -1143,6 +1143,7 @@ export type Translations = {
     taskSingular: string  // "task"
     bloom: string  // "Bloom"
     open: string  // "Open"
+    completedHistory: string
     seasonalThisMonth: string
     seasonalScope: string
     seasonalMissing: (n: number) => string

@@ -32,6 +32,7 @@ export function buildWorkAgenda(
   const nextByJob = new Map<string, CalendarEvent>()
 
   for (const event of events) {
+    if (event.status === 'completed') continue
     const key = agendaKey(event)
     const current = nextByJob.get(key)
     if (!current || prefer(event, current)) nextByJob.set(key, event)

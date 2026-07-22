@@ -72,6 +72,7 @@ export interface CalendarEvent {
   id: string
   date: string
   type: EventTypeId
+  status?: 'scheduled' | 'completed'
   plant_id: number | null
   plant_name: string | null
   species_common_name_nl?: string | null
@@ -117,5 +118,5 @@ export function isCareSession(event: CalendarEvent): boolean {
 }
 
 export function isActionable(event: CalendarEvent, todayIso: string): boolean {
-  return isCareSession(event) && event.date <= todayIso
+  return event.status !== 'completed' && isCareSession(event) && event.date <= todayIso
 }

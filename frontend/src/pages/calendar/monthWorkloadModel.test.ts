@@ -65,6 +65,14 @@ describe('summarizeMonthWorkload', () => {
     expect(workload.open).toBe(0)
     expect(workload.byDate.get('2026-07-20')).toBe(1)
   })
+
+  it('excludes completed history from planned, open, and daily workload', () => {
+    const workload = summarizeMonthWorkload([
+      event({ id: 'care-log:1', status: 'completed' }),
+    ])
+
+    expect(workload).toEqual({ open: 0, planned: 0, byDate: new Map() })
+  })
 })
 
 describe('moveCalendarMonth', () => {

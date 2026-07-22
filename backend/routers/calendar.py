@@ -22,10 +22,12 @@ router = APIRouter(tags=["calendar"])
 # Safety caps
 MAX_RANGE_DAYS = 366   # refuse ranges longer than a year
 MAX_OCCURRENCES = 200  # per schedule
+AMSTERDAM_TZ = ZoneInfo("Europe/Amsterdam")
+UTC_TZ = ZoneInfo("UTC")
 
 
 def _water_pressure_today() -> date:
-    return datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+    return datetime.now(AMSTERDAM_TZ).date()
 
 
 def _as_date(value) -> date:
@@ -342,6 +344,110 @@ def _group_moisture_check_events(
     return retained
 
 
+def _history_date(value) -> date:
+    if isinstance(value, datetime):
+        timestamp = value if value.tzinfo else value.replace(tzinfo=UTC_TZ)
+        return timestamp.astimezone(AMSTERDAM_TZ).date()
+    if isinstance(value, date):
+        return value
+    return _history_date(datetime.fromisoformat(value))
+
+
+async def _completion_history(
+    db,
+    *,
+    household_id: int,
+    from_dt: date,
+    to_dt: date,
+    env: str | None,
+) -> list[CalendarEventOut]:
+    """Project successful care logs and grouped operations into Month history."""
+    env_where = ""
+    if env == "tuin":
+        env_where = " AND (m.map_type IS NULL OR m.map_type <> 'indoor')"
+    elif env == "huis":
+        env_where = " AND m.map_type = 'indoor'"
+
+    log_rows = await db.execute_fetchall(
+        """
+        SELECT cl.id AS care_log_id, cl.plant_id, cl.care_type, cl.done_at,
+               p.name AS plant_name, p.icon_key AS plant_icon_variant,
+               p.map_id, m.name AS map_name
+        FROM care_log cl
+        JOIN plants p ON p.id = cl.plant_id
+        LEFT JOIN maps m ON m.id = p.map_id
+        LEFT JOIN garden_care_operation_members member
+          ON member.care_log_id = cl.id
+        WHERE p.household_id = ?
+          AND cl.skipped = FALSE
+          AND cl.care_type <> 'photo'
+          AND member.care_log_id IS NULL
+          AND DATE(cl.done_at) BETWEEN ? AND ?
+        """ + env_where + """
+        ORDER BY cl.done_at, cl.id
+        """,
+        (household_id, from_dt - timedelta(days=1), to_dt + timedelta(days=1)),
+    )
+
+    operation_rows = await db.execute_fetchall(
+        """
+        SELECT operation.id AS operation_id, operation.care_type,
+               operation.completed_at, operation.map_id,
+               m.name AS map_name, COUNT(member.schedule_id) AS member_count
+        FROM garden_care_operations operation
+        JOIN garden_care_operation_members member
+          ON member.operation_id = operation.id
+        LEFT JOIN maps m ON m.id = operation.map_id
+        WHERE operation.household_id = ?
+          AND operation.undone_at IS NULL
+          AND operation.completed_at BETWEEN ? AND ?
+        """ + env_where + """
+        GROUP BY operation.id, operation.care_type, operation.completed_at,
+                 operation.map_id, m.name
+        ORDER BY operation.completed_at, operation.id
+        """,
+        (household_id, from_dt, to_dt),
+    )
+
+    history: list[CalendarEventOut] = []
+    for row in log_rows:
+        completed_date = _history_date(row["done_at"])
+        if completed_date < from_dt or completed_date > to_dt:
+            continue
+        history.append(CalendarEventOut(
+            id=f"care-log:{row['care_log_id']}",
+            date=completed_date.isoformat(),
+            type=normalize_care_type(row["care_type"]),
+            status="completed",
+            plant_id=row["plant_id"],
+            plant_name=row["plant_name"],
+            plant_icon_variant=row["plant_icon_variant"],
+            schedule_id=None,
+            map_id=row["map_id"],
+            map_name=row["map_name"],
+            overdue=False,
+        ))
+    history.extend(
+        CalendarEventOut(
+            id=f"garden-operation:{row['operation_id']}",
+            date=_history_date(row["completed_at"]).isoformat(),
+            type=normalize_care_type(row["care_type"]),
+            status="completed",
+            plant_id=None,
+            plant_name=None,
+            plant_icon_variant=None,
+            schedule_id=None,
+            map_id=row["map_id"],
+            map_name=row["map_name"],
+            overdue=False,
+            grouped=True,
+            group_count=int(row["member_count"]),
+        )
+        for row in operation_rows
+    )
+    return sorted(history, key=lambda event: (event.date, event.id))
+
+
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
 async def list_calendar_events(
     from_: str = Query(..., alias="from"),
@@ -349,6 +455,7 @@ async def list_calendar_events(
     env: str | None = Query(None),
     group_outdoor: bool = Query(False),
     pin_overdue: bool = Query(False),
+    include_history: bool = Query(False),
     account = Depends(get_current_account),
     db = Depends(db_dep),
 ):
@@ -424,6 +531,14 @@ async def list_calendar_events(
     #    Regular schedules: next_due <= to_dt (they recur forward from next_due)
     #    Ephemeral: next_due BETWEEN from_dt AND to_dt (one-shot, no recurrence)
     if env and not plants:
+        if include_history:
+            return await _completion_history(
+                db,
+                household_id=account["household_id"],
+                from_dt=from_dt,
+                to_dt=to_dt,
+                env=env,
+            )
         return []
 
     if env:
@@ -607,5 +722,14 @@ async def list_calendar_events(
             for rule in preferences["rules"]
         },
     )
+
+    if include_history:
+        events.extend(await _completion_history(
+            db,
+            household_id=account["household_id"],
+            from_dt=from_dt,
+            to_dt=to_dt,
+            env=env,
+        ))
 
     return events

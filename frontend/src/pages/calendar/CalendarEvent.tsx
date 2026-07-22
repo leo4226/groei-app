@@ -2,6 +2,7 @@ import type { CalendarEvent as Ev } from './calendarTypes'
 import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
+import Glyph from '../../components/ui/Glyph'
 
 function calendarPlantName(ev: Ev, locale: string): string {
   if (ev.grouped) return ev.map_name || ''
@@ -16,11 +17,21 @@ export default function CalendarEvent({ ev }: { ev: Ev }) {
   const def = EVENT_TYPE_BY_ID[ev.type]
   const css = def?.cssClass ?? 'water'
   const iconSrc = resolveIconUrl(ev.plant_icon_variant) ?? (ev.plant_id ? '/icons/seed.svg' : null)
+  const label = calendarPlantName(ev, t.locale) || t.utility[EVENT_TYPE_UTILITY_KEY[ev.type]] || ev.type
+  const completed = ev.status === 'completed'
 
   return (
-    <div className={`ev ${css}`}>
+    <div
+      className={`ev ${css}${completed ? ' completed' : ''}`}
+      aria-label={completed ? `${label}, ${t.calendar.completedHistory}` : label}
+    >
+      {completed && (
+        <span className="ev-completed-mark" aria-hidden="true">
+          <Glyph name="check" size={10} />
+        </span>
+      )}
       {iconSrc && <span className="ev-icon"><img src={iconSrc} alt="" /></span>}
-      <span className="ev-label">{calendarPlantName(ev, t.locale) || t.utility[EVENT_TYPE_UTILITY_KEY[ev.type]] || ev.type}</span>
+      <span className="ev-label">{label}</span>
     </div>
   )
 }
