@@ -379,6 +379,16 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                         {t.locale.startsWith('en') ? ((s as any).reason_en || s.reason) : s.reason}
                       </p>
                     )}
+                    {s.alternatives?.picks && s.alternatives.picks.length > 0 && (
+                      <p className="text-[11px] text-text-muted leading-relaxed border-t border-border/40 pt-1.5">
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">{t.garden.suggestions.altPrefix}</span>{' '}
+                        {(() => {
+                          const en = t.locale.startsWith('en')
+                          const fn = (en ? s.alternatives!.function_en : s.alternatives!.function_nl) || ''
+                          return <>{fn && <span className="italic">({fn}) </span>}<span className="text-text">{s.alternatives!.picks!.map(p => p.dutch_name).join(' · ')}</span></>
+                        })()}
+                      </p>
+                    )}
                   </div>
                 )
               })}

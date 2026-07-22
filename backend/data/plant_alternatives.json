@@ -1,0 +1,137 @@
+{
+  "source": "curated (same-function, right-size alternatives for large garden plants)",
+  "note": "For a plant that's too big for a small garden, a shortlist of smaller plants serving the same ecological function — so 'best plant' can mean best that fits. Keyed by the big plant's scientific name (genus+species, cultivars match via sci_key). Each entry names the shared function (bilingual) and 2-4 smaller picks. Compiled for a private garden app from standard horticultural + NL native-planting references.",
+  "alternatives": {
+    "Salix caprea": {
+      "function_nl": "vroege bijendracht", "function_en": "early-spring bee forage",
+      "picks": [
+        {"dutch_name": "Wilg in pot", "latin_name": "Salix caprea", "note_nl": "als kuipplant, jaarlijks terugsnoeien", "note_en": "in a pot, pruned back yearly"},
+        {"dutch_name": "Sleedoorn", "latin_name": "Prunus spinosa", "note_nl": "vroege bloesem, geschikt als haag", "note_en": "early blossom, works as a hedge"},
+        {"dutch_name": "Gevlekt longkruid", "latin_name": "Pulmonaria officinalis", "note_nl": "vroege nectar voor de border", "note_en": "early nectar for a border"},
+        {"dutch_name": "Boerenkrokus", "latin_name": "Crocus tommasinianus", "note_nl": "eerste stuifmeel, verwildert in gazon", "note_en": "first pollen, naturalises in lawn"}
+      ]
+    },
+    "Salix babylonica": {
+      "function_nl": "vroege bijendracht", "function_en": "early-spring bee forage",
+      "picks": [
+        {"dutch_name": "Kruipwilg", "latin_name": "Salix repens", "note_nl": "lage inheemse wilg, zelfde vroege dracht", "note_en": "low native willow, same early forage"},
+        {"dutch_name": "Sleedoorn", "latin_name": "Prunus spinosa", "note_nl": "vroege bloesem, als haag", "note_en": "early blossom, as a hedge"},
+        {"dutch_name": "Gevlekt longkruid", "latin_name": "Pulmonaria officinalis", "note_nl": "vroege nectar voor de border", "note_en": "early nectar for a border"}
+      ]
+    },
+    "Salix alba": {
+      "function_nl": "vroege bijendracht", "function_en": "early-spring bee forage",
+      "picks": [
+        {"dutch_name": "Kruipwilg", "latin_name": "Salix repens", "note_nl": "lage inheemse wilg", "note_en": "low native willow"},
+        {"dutch_name": "Wilg in pot", "latin_name": "Salix caprea", "note_nl": "als kuipplant, jaarlijks snoeien", "note_en": "in a pot, pruned yearly"},
+        {"dutch_name": "Sleedoorn", "latin_name": "Prunus spinosa", "note_nl": "vroege bloesem, als haag", "note_en": "early blossom, as a hedge"}
+      ]
+    },
+    "Quercus robur": {
+      "function_nl": "inheemse waardplant (rupsen & vogels)", "function_en": "native host tree (caterpillars & birds)",
+      "picks": [
+        {"dutch_name": "Eenstijlige meidoorn", "latin_name": "Crataegus monogyna", "note_nl": "waardplant + bessen, als haag", "note_en": "host + berries, as a hedge"},
+        {"dutch_name": "Hazelaar", "latin_name": "Corylus avellana", "note_nl": "kleiner, noten voor vogels, snoeibaar", "note_en": "smaller, nuts for birds, prunable"},
+        {"dutch_name": "Wilde lijsterbes", "latin_name": "Sorbus aucuparia", "note_nl": "kleine boom, bloesem + bessen", "note_en": "small tree, blossom + berries"}
+      ]
+    },
+    "Fagus sylvatica": {
+      "function_nl": "grote inheemse boom / haag", "function_en": "large native tree / hedge",
+      "picks": [
+        {"dutch_name": "Haagbeuk", "latin_name": "Carpinus betulus", "note_nl": "zelfde look als haag te houden", "note_en": "same look, kept as a hedge"},
+        {"dutch_name": "Hazelaar", "latin_name": "Corylus avellana", "note_nl": "kleiner, snoeibaar, noten voor vogels", "note_en": "smaller, prunable, nuts for birds"}
+      ]
+    },
+    "Betula pendula": {
+      "function_nl": "inheemse boom voor insecten", "function_en": "native tree for insects",
+      "picks": [
+        {"dutch_name": "Krentenboompje", "latin_name": "Amelanchier lamarckii", "note_nl": "kleine boom, bloesem + bessen + herfstkleur", "note_en": "small tree: blossom, berries, autumn colour"},
+        {"dutch_name": "Wilde lijsterbes", "latin_name": "Sorbus aucuparia", "note_nl": "kleine boom voor bijen en vogels", "note_en": "small tree for bees and birds"}
+      ]
+    },
+    "Alnus glutinosa": {
+      "function_nl": "inheemse boom voor natte grond", "function_en": "native tree for wet soil",
+      "picks": [
+        {"dutch_name": "Gelderse roos", "latin_name": "Viburnum opulus", "note_nl": "inheemse struik voor vochtige grond, bessen", "note_en": "native shrub for damp soil, berries"},
+        {"dutch_name": "Rode kornoelje", "latin_name": "Cornus sanguinea", "note_nl": "inheemse struik, snoeibaar", "note_en": "native shrub, prunable"}
+      ]
+    },
+    "Tilia cordata": {
+      "function_nl": "late zomerdracht (bijen)", "function_en": "late-summer bee forage",
+      "picks": [
+        {"dutch_name": "Koninginnenkruid", "latin_name": "Eupatorium cannabinum", "note_nl": "inheemse vaste plant, veel bijen en vlinders", "note_en": "native perennial, lots of bees and butterflies"},
+        {"dutch_name": "Wilde marjolein", "latin_name": "Origanum vulgare", "note_nl": "compact, topdracht in de zomer", "note_en": "compact, top summer forage"}
+      ]
+    },
+    "Fraxinus excelsior": {
+      "function_nl": "grote inheemse boom", "function_en": "large native tree",
+      "picks": [
+        {"dutch_name": "Wilde lijsterbes", "latin_name": "Sorbus aucuparia", "note_nl": "kleine inheemse boom", "note_en": "small native tree"},
+        {"dutch_name": "Krentenboompje", "latin_name": "Amelanchier lamarckii", "note_nl": "kleine boom, veel waarde per m²", "note_en": "small tree, lots of value per m²"}
+      ]
+    },
+    "Castanea sativa": {
+      "function_nl": "grote boom, zomerdracht", "function_en": "large tree, summer forage",
+      "picks": [
+        {"dutch_name": "Zoete kers", "latin_name": "Prunus avium", "note_nl": "kleinere leiboom mogelijk, bloesem + kers", "note_en": "can be trained smaller; blossom + cherries"},
+        {"dutch_name": "Koninginnenkruid", "latin_name": "Eupatorium cannabinum", "note_nl": "vaste plant met veel zomerdracht", "note_en": "perennial with lots of summer forage"}
+      ]
+    },
+    "Sorbus aucuparia": {
+      "function_nl": "bloesem + bessen voor vogels", "function_en": "blossom + berries for birds",
+      "picks": [
+        {"dutch_name": "Krentenboompje", "latin_name": "Amelanchier lamarckii", "note_nl": "kleiner, bloesem + bessen + herfstkleur", "note_en": "smaller: blossom, berries, autumn colour"},
+        {"dutch_name": "Hondsroos", "latin_name": "Rosa canina", "note_nl": "bloesem voor bijen + bottels voor vogels", "note_en": "blossom for bees + hips for birds"}
+      ]
+    },
+    "Crataegus monogyna": {
+      "function_nl": "bloesem + bessen, haag", "function_en": "blossom + berries, hedge",
+      "picks": [
+        {"dutch_name": "Wilde liguster", "latin_name": "Ligustrum vulgare", "note_nl": "compactere inheemse haag, bloesem + bessen", "note_en": "more compact native hedge, blossom + berries"},
+        {"dutch_name": "Hondsroos", "latin_name": "Rosa canina", "note_nl": "bloesem + bottels, in een border", "note_en": "blossom + hips, for a border"}
+      ]
+    },
+    "Corylus avellana": {
+      "function_nl": "vroeg stuifmeel + noten voor vogels", "function_en": "early pollen + nuts for birds",
+      "picks": [
+        {"dutch_name": "Sleedoorn", "latin_name": "Prunus spinosa", "note_nl": "vroege bloesem, als haag", "note_en": "early blossom, as a hedge"},
+        {"dutch_name": "Rode kornoelje", "latin_name": "Cornus sanguinea", "note_nl": "inheemse struik, snoeibaar", "note_en": "native shrub, prunable"}
+      ]
+    },
+    "Sambucus nigra": {
+      "function_nl": "bloesem + bessen voor vogels", "function_en": "blossom + berries for birds",
+      "picks": [
+        {"dutch_name": "Gelderse roos", "latin_name": "Viburnum opulus", "note_nl": "compacter, bloesem + rode bessen", "note_en": "more compact, blossom + red berries"},
+        {"dutch_name": "Rode kornoelje", "latin_name": "Cornus sanguinea", "note_nl": "snoeibaar, bessen voor vogels", "note_en": "prunable, berries for birds"}
+      ]
+    },
+    "Syringa vulgaris": {
+      "function_nl": "geurende voorjaarsbloei", "function_en": "scented spring blossom",
+      "picks": [
+        {"dutch_name": "Boerenjasmijn", "latin_name": "Philadelphus coronarius", "note_nl": "geurend, kleiner te houden", "note_en": "scented, can be kept smaller"},
+        {"dutch_name": "Damastbloem", "latin_name": "Hesperis matronalis", "note_nl": "geurende border-plant, ook voor nachtvlinders", "note_en": "scented border plant, also for moths"}
+      ]
+    },
+    "Acer campestre": {
+      "function_nl": "inheemse boom / haag", "function_en": "native tree / hedge",
+      "picks": [
+        {"dutch_name": "Haagbeuk", "latin_name": "Carpinus betulus", "note_nl": "als haag te houden", "note_en": "kept as a hedge"},
+        {"dutch_name": "Wilde liguster", "latin_name": "Ligustrum vulgare", "note_nl": "compacte inheemse haag", "note_en": "compact native hedge"}
+      ]
+    },
+    "Ilex aquifolium": {
+      "function_nl": "wintergroen + bessen voor vogels", "function_en": "evergreen + berries for birds",
+      "picks": [
+        {"dutch_name": "Taxus", "latin_name": "Taxus baccata", "note_nl": "wintergroen, snoeibaar, bessen", "note_en": "evergreen, prunable, berries"},
+        {"dutch_name": "Wilde liguster", "latin_name": "Ligustrum vulgare", "note_nl": "half-wintergroen, bessen voor vogels", "note_en": "semi-evergreen, berries for birds"}
+      ]
+    },
+    "Prunus avium": {
+      "function_nl": "voorjaarsbloesem + vruchten", "function_en": "spring blossom + fruit",
+      "picks": [
+        {"dutch_name": "Krentenboompje", "latin_name": "Amelanchier lamarckii", "note_nl": "kleine boom, bloesem + eetbare bessen", "note_en": "small tree, blossom + edible berries"},
+        {"dutch_name": "Sleedoorn", "latin_name": "Prunus spinosa", "note_nl": "bloesem + sleepruimen, als haag", "note_en": "blossom + sloes, as a hedge"}
+      ]
+    }
+  }
+}

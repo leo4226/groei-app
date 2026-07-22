@@ -597,6 +597,8 @@ def _recommendation_to_context(recommendation: Any) -> dict[str, Any]:
             "gap_months_covered": recommendation.gap_months_covered,
             "reason": recommendation.reason,
             "caveat": recommendation.caveat,
+            "size_fit": getattr(recommendation, "size_fit", None),
+            "alternatives": getattr(recommendation, "alternatives", None),
         }
     )
 

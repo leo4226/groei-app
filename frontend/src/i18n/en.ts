@@ -646,6 +646,7 @@ export const en: Translations = {
     ecologyMoth: '🌙 Moth plant',
     ecologyMothGap: '🌙 Attracts moths',
     sizeLargeForSpace: '🌳 Large — needs space',
+    altPrefix: 'No room? Same function:',
     sunFitPerfect: 'Ideal light',
     sunFitAcceptable: 'Suitable light',
     sunFitMarginal: 'Tight light',
@@ -1447,6 +1448,7 @@ export const en: Translations = {
       nativeBadge: 'Native',
       streekBadge: 'Regional',
       sizeBadge: '🌳 Large — needs space',
+      altPrefix: 'No room? Same function:',
     },
     streek: {
       sectionTitle: 'Plants from your region',

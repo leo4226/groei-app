@@ -1089,6 +1089,7 @@ class PlantRecommendationOut(BaseModel):
     habit: str | None = None         # tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
     mature_height_cm: int | None = None
     size_fit: str = "unknown"        # 'fits' | 'large_for_space' | 'unknown' (vs garden area)
+    alternatives: dict | None = None # smaller same-function swaps when oversized
 
 
 class RecommendationsOut(BaseModel):
