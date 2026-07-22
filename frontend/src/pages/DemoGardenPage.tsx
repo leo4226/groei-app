@@ -111,8 +111,8 @@ export default function DemoGardenPage() {
           showWarnings={false}
           hideLockBadges
           sunModeActive={sun.active}
-          shadows={sun.shadows}
-          sunPosition={sun.sunPosition}
+          shadows={sun.isLiveActive ? sun.shadows : []}
+          sunPosition={sun.isLiveActive ? sun.sunPosition : null}
           heatmapCells={sun.cells}
           heatmapCalculating={sun.isCalculating}
           heatmapLayer="sun_hours"
@@ -165,7 +165,7 @@ export default function DemoGardenPage() {
           <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
             <button
               type="button"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/login?mode=register')}
               className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg transition-transform active:scale-95"
             >
               {t.demo.cta}

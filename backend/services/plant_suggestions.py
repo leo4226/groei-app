@@ -89,6 +89,10 @@ class PlantRecommendation:
     fills_forage_gap: bool = False      # a drachtplant blooming in a bee forage-gap month
     is_moth_plant: bool = False         # night-flowering / moth-forage (nachtvlinder)
     supports_moth_gap: bool = False     # moth plant in a garden that has none yet
+    habit: str | None = None            # tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+    mature_height_cm: int | None = None
+    size_fit: str = "unknown"           # 'fits' | 'large_for_space' | 'unknown' (vs garden area)
+    alternatives: dict | None = None    # {function_nl/en, picks:[…]} — smaller same-function swaps when oversized
 
 
 def bucket_for(direct_hours: float, svf: float = 1.0) -> str:
@@ -140,6 +144,29 @@ def template_reason(
     return " · ".join(parts)
 
 
+# How strongly a plant that's too big for the garden is pushed down. Soft, not
+# a filter: an oversized pick still appears (a determined gardener can grow a
+# willow in a pot), it just no longer tops the list ahead of things that fit.
+_OVERSIZE_MULT = 0.45
+
+# Height (cm) at which a plant needs real room, and the garden area (m²) below
+# which that becomes a problem. A tree in a courtyard is "large_for_space"; the
+# same tree in a 400 m² garden fits fine.
+def _size_fit(habit: str | None, height_cm: int | None, area_m2: float | None) -> str:
+    """'fits' | 'large_for_space' | 'unknown' — is this plant's mature size
+    reasonable for this garden? Unknown size or unknown area → 'unknown' (no
+    penalty), so the size lens never hides a plant it can't assess."""
+    if not area_m2 or not height_cm:
+        return "unknown"
+    if area_m2 < 15 and height_cm >= 250:      # balcony / courtyard: no big shrubs or trees
+        return "large_for_space"
+    if area_m2 < 40 and height_cm >= 400:      # small garden: no trees
+        return "large_for_space"
+    if area_m2 < 150 and height_cm >= 1000:    # medium garden: no forest trees
+        return "large_for_space"
+    return "fits"
+
+
 def _score_candidate(
     gap_months_covered: list[int],
     pollinator_value: int | None,
@@ -149,6 +176,7 @@ def _score_candidate(
     is_streek: bool = False,
     fills_forage_gap: bool = False,
     supports_moth_gap: bool = False,
+    size_fit: str = "unknown",
 ) -> float:
     """Higher is better. Used for sorting candidates.
 
@@ -156,7 +184,8 @@ def _score_candidate(
     streekeigen, bee-forage-gap, night-moth gap) is scaled by a light-suitability
     multiplier so the same plant ranks higher where it thrives — while a strong
     gap-filler in imperfect light still beats a weak plant in perfect light. A flat
-    bonus for a perfect fit breaks ties."""
+    bonus for a perfect fit breaks ties. Finally, a plant that's too big for the
+    garden is softly pushed down so it never tops the list of things that fit."""
     ecology = 0
     ecology += len(gap_months_covered) * 10    # pollinator-month gap coverage is most important
     ecology += 8 if fills_forage_gap else 0    # closes a wild-bee forage gap (Bloeibogen)
@@ -165,7 +194,10 @@ def _score_candidate(
     ecology += 4 if is_streek else 0           # belongs in this region (streekeigen)
     ecology += 3 if is_native else 0           # native preference
     ecology += 1 if flowers_now else 0         # currently in bloom
-    return ecology * _LIGHT_MULT.get(sun_fit, 0.65) + (2 if sun_fit == "perfect" else 0)
+    score = ecology * _LIGHT_MULT.get(sun_fit, 0.65) + (2 if sun_fit == "perfect" else 0)
+    if size_fit == "large_for_space":
+        score *= _OVERSIZE_MULT
+    return score
 
 
 def _streek_clause(streek_name: str | None, lang: str = "nl") -> str:
@@ -201,6 +233,25 @@ def _with_moth_reason(rec: "PlantRecommendation") -> None:
     for attr, clause in (("reason", "trekt nachtvlinders aan"), ("reason_en", "attracts night moths")):
         cur = getattr(rec, attr) or ""
         setattr(rec, attr, f"{cur} · {clause}" if cur else clause)
+
+
+# Honest size caveat per habit — named so the gardener knows the trade-off.
+_HABIT_CAVEAT_NL = {"tree": "een boom, veel ruimte nodig", "large_shrub": "een grote struik, veel ruimte nodig"}
+_HABIT_CAVEAT_EN = {"tree": "a tree, needs space", "large_shrub": "a large shrub, needs space"}
+
+
+def _with_size_reason(rec: "PlantRecommendation") -> None:
+    """Append an honest size caveat when a pick is large for this garden, and
+    attach smaller same-function alternatives ("no room? → …") when we have them."""
+    if rec.size_fit != "large_for_space":
+        return
+    nl = _HABIT_CAVEAT_NL.get(rec.habit or "", "grote plant, veel ruimte nodig")
+    en = _HABIT_CAVEAT_EN.get(rec.habit or "", "large plant, needs space")
+    for attr, clause in (("reason", nl), ("reason_en", en)):
+        cur = getattr(rec, attr) or ""
+        setattr(rec, attr, f"{cur} · {clause}" if cur else clause)
+    from services.plant_alternatives import alternatives_raw
+    rec.alternatives = alternatives_raw(rec.latin_name)
 
 
 async def _streek_for_map(db, map_id: int) -> tuple[str | None, str | None, set[int]]:
@@ -241,6 +292,19 @@ async def _garden_has_moth_plants(db, map_id: int) -> bool:
         return False
 
 
+async def _dismissed_ids(db, map_id: int) -> set[int]:
+    """Species the gardener has waved off for this map — excluded from every
+    recommendation surface. Guarded: reduced test schemas lack the table, so it
+    simply contributes nothing there."""
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT species_id FROM dismissed_recommendations WHERE map_id = ?", (map_id,)
+        )
+        return {r["species_id"] for r in rows}
+    except Exception:
+        return set()
+
+
 async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
     if exclude_ids:
         placeholders = ",".join("?" * len(exclude_ids))
@@ -252,7 +316,7 @@ async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
     return await db.execute_fetchall(
         f"""SELECT id, common_name_nl, common_name_en, latin_name, sun_preference,
                    native_to_nl, pollinator_value, flowering_months, is_drachtplant,
-                   is_moth_plant
+                   is_moth_plant, habit, mature_height_cm
             FROM plant_species
             WHERE ecology_enriched_at IS NOT NULL
               {exclude_clause}
@@ -297,12 +361,13 @@ async def recommend_for_spot(
     gap_months = [i + 1 for i, covered in enumerate(bio.pollinator_coverage_months) if not covered]
     gap_set = set(gap_months)
 
-    # Species already in this garden (exclude from suggestions)
+    # Species already in this garden, plus ones the gardener dismissed — both
+    # excluded from suggestions.
     existing = await db.execute_fetchall(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    exclude_ids = {r["species_id"] for r in existing}
+    exclude_ids = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
 
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
@@ -329,6 +394,9 @@ async def recommend_for_spot(
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
         is_moth = bool(row.get("is_moth_plant"))
         moth_gap = is_moth and needs_moths
+        habit = row.get("habit")
+        height = row.get("mature_height_cm")
+        size_fit = _size_fit(habit, height, bio.area_m2)
 
         rec = PlantRecommendation(
             species_id=row["id"],
@@ -348,10 +416,14 @@ async def recommend_for_spot(
             fills_forage_gap=fills_gap,
             is_moth_plant=is_moth,
             supports_moth_gap=moth_gap,
+            habit=habit,
+            mature_height_cm=height,
+            size_fit=size_fit,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
         _with_moth_reason(rec)
+        _with_size_reason(rec)
         candidates.append(rec)
 
     # Sort by composite score
@@ -360,6 +432,7 @@ async def recommend_for_spot(
             r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
             flowers_now=month in (r.flowering_months or []), is_streek=r.is_streek,
             fills_forage_gap=r.fills_forage_gap, supports_moth_gap=r.supports_moth_gap,
+            size_fit=r.size_fit,
         ),
         reverse=True,
     )
@@ -384,7 +457,7 @@ async def recommend_for_garden(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    exclude_ids = {r["species_id"] for r in existing}
+    exclude_ids = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
 
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
@@ -400,6 +473,9 @@ async def recommend_for_garden(
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
         is_moth = bool(row.get("is_moth_plant"))
         moth_gap = is_moth and needs_moths
+        habit = row.get("habit")
+        height = row.get("mature_height_cm")
+        size_fit = _size_fit(habit, height, bio.area_m2)
 
         rec = PlantRecommendation(
             species_id=row["id"],
@@ -419,16 +495,20 @@ async def recommend_for_garden(
             fills_forage_gap=fills_gap,
             is_moth_plant=is_moth,
             supports_moth_gap=moth_gap,
+            habit=habit,
+            mature_height_cm=height,
+            size_fit=size_fit,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
         _with_moth_reason(rec)
+        _with_size_reason(rec)
         candidates.append(rec)
 
     candidates.sort(
         key=lambda r: _score_candidate(r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
                                        is_streek=r.is_streek, fills_forage_gap=r.fills_forage_gap,
-                                       supports_moth_gap=r.supports_moth_gap),
+                                       supports_moth_gap=r.supports_moth_gap, size_fit=r.size_fit),
         reverse=True,
     )
     return candidates[:limit], gap_months
@@ -458,7 +538,7 @@ async def recommend_for_streek(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    have = {r["species_id"] for r in existing}
+    have = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
     want = streek_ids - have
     if not want:
         return streek_name, []
@@ -471,7 +551,7 @@ async def recommend_for_streek(
     rows = await db.execute_fetchall(
         f"""SELECT id, common_name_nl, common_name_en, latin_name, sun_preference,
                    native_to_nl, pollinator_value, flowering_months, is_drachtplant,
-                   is_moth_plant
+                   is_moth_plant, habit, mature_height_cm
             FROM plant_species
             WHERE id IN ({placeholders})
             ORDER BY COALESCE(pollinator_value, -1) DESC""",
@@ -486,6 +566,9 @@ async def recommend_for_streek(
         fills_gap = is_dracht and any(m in forage_gap for m in flowering)
         is_moth = bool(row.get("is_moth_plant"))
         moth_gap = is_moth and needs_moths
+        habit = row.get("habit")
+        height = row.get("mature_height_cm")
+        size_fit = _size_fit(habit, height, bio.area_m2)
         rec = PlantRecommendation(
             species_id=row["id"],
             dutch_name=row["common_name_nl"] or row["latin_name"],
@@ -504,15 +587,20 @@ async def recommend_for_streek(
             fills_forage_gap=fills_gap,
             is_moth_plant=is_moth,
             supports_moth_gap=moth_gap,
+            habit=habit,
+            mature_height_cm=height,
+            size_fit=size_fit,
         )
         _with_streek_reason(rec, streek_name)
         _with_forage_reason(rec)
         _with_moth_reason(rec)
+        _with_size_reason(rec)
         recs.append(rec)
 
     recs.sort(
         key=lambda r: _score_candidate(r.gap_months_covered, r.pollinator_value, r.is_native, r.sun_fit,
-                                       is_streek=True, supports_moth_gap=r.supports_moth_gap),
+                                       is_streek=True, supports_moth_gap=r.supports_moth_gap,
+                                       size_fit=r.size_fit),
         reverse=True,
     )
     return streek_name, recs[:limit]

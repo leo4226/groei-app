@@ -65,8 +65,113 @@ class BotRequest(BaseModel):
     language: str | None = None
 
 
+class SuggestedAction(BaseModel):
+    type: Literal["navigate", "mark_care_done"]
+    label: str
+    requires_confirmation: bool
+    payload: dict[str, Any]
+
+
 class ChatResponse(BaseModel):
     response: str
+    suggested_action: SuggestedAction | None = None
+
+
+async def _validate_suggested_action(
+    raw: Any, db, household_id: int
+) -> SuggestedAction | None:
+    """Validate an untrusted suggested_action from the chat worker.
+
+    The worker only ever *suggests* an action; this checks the type is one
+    we support and that any referenced plant/schedule/map actually exists
+    in the caller's household before letting the frontend render a button
+    for it. Returns None (silently dropping the action, not the reply) for
+    anything malformed, unsupported, or out of scope — the ids are never
+    trusted enough to execute directly, only enough to offer a button that
+    itself calls the normal authenticated REST endpoints.
+    """
+    if not isinstance(raw, dict):
+        return None
+    action_type = raw.get("type")
+    label = raw.get("label")
+    payload = raw.get("payload")
+    if not isinstance(label, str) or not label.strip() or not isinstance(payload, dict):
+        return None
+
+    if action_type == "navigate":
+        target = payload.get("target")
+        map_id = payload.get("id")
+        slug = payload.get("slug")
+        if target not in ("plant", "map", "calendar", "add_plant"):
+            return None
+
+        if target == "plant":
+            if not isinstance(map_id, int):
+                return None
+            rows = await db.execute_fetchall(
+                "SELECT 1 FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
+                (map_id, household_id),
+            )
+            if not rows:
+                return None
+            return SuggestedAction(
+                type="navigate", label=label, requires_confirmation=False,
+                payload={"target": "plant", "id": map_id},
+            )
+
+        if target == "map":
+            if not isinstance(map_id, int) and not isinstance(slug, str):
+                return None
+            if isinstance(slug, str):
+                rows = await db.execute_fetchall(
+                    "SELECT 1 FROM maps WHERE slug = ? AND household_id = ?",
+                    (slug, household_id),
+                )
+            else:
+                rows = await db.execute_fetchall(
+                    "SELECT 1 FROM maps WHERE id = ? AND household_id = ?",
+                    (map_id, household_id),
+                )
+            if not rows:
+                return None
+            map_payload: dict[str, Any] = {"target": "map"}
+            if isinstance(slug, str):
+                map_payload["slug"] = slug
+            if isinstance(map_id, int):
+                map_payload["id"] = map_id
+            return SuggestedAction(
+                type="navigate", label=label, requires_confirmation=False, payload=map_payload,
+            )
+
+        # calendar / add_plant are static routes — no id to validate.
+        return SuggestedAction(
+            type="navigate", label=label, requires_confirmation=False, payload={"target": target},
+        )
+
+    if action_type == "mark_care_done":
+        plant_id = payload.get("plant_id")
+        schedule_id = payload.get("schedule_id")
+        care_type = payload.get("care_type")
+        if not isinstance(plant_id, int) or not isinstance(care_type, str):
+            return None
+        rows = await db.execute_fetchall(
+            """SELECT cs.id FROM care_schedules cs
+               JOIN plants p ON cs.plant_id = p.id
+               WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+                 AND p.household_id = ? AND p.is_active = 1""",
+            (plant_id, care_type, household_id),
+        )
+        if not rows:
+            return None
+        resolved_schedule_id = rows[0]["id"]
+        if isinstance(schedule_id, int) and schedule_id != resolved_schedule_id:
+            return None
+        return SuggestedAction(
+            type="mark_care_done", label=label, requires_confirmation=True,
+            payload={"plant_id": plant_id, "schedule_id": resolved_schedule_id, "care_type": care_type},
+        )
+
+    return None
 
 
 def _json_safe(value: Any) -> Any:
@@ -492,6 +597,8 @@ def _recommendation_to_context(recommendation: Any) -> dict[str, Any]:
             "gap_months_covered": recommendation.gap_months_covered,
             "reason": recommendation.reason,
             "caveat": recommendation.caveat,
+            "size_fit": getattr(recommendation, "size_fit", None),
+            "alternatives": getattr(recommendation, "alternatives", None),
         }
     )
 
@@ -813,6 +920,44 @@ async def _fetch_biodiversity_packet(
         if gap_labels:
             lines.append(f"  Bloeigat (geen bestuivers): {', '.join(gap_labels)}")
 
+        # Soil-pH advice (advice-only). Gives Stekkie the facts to suggest a
+        # zuurmeting / lime; the worker phrases it in the user's language.
+        soil = bio.soil_ph or {}
+        soil_code = soil.get("advice_code")
+        if soil_code == "prefers_acid":
+            lines.append(
+                "  Bodem-pH: veel planten zijn kalkmijdend (o.a. "
+                f"{', '.join(soil.get('acid_examples') or [])}) — vermijd kalk, een zuurmeting bevestigt de pH."
+            )
+        elif soil_code == "prefers_alkaline":
+            lines.append(
+                "  Bodem-pH: veel planten zijn kalkminnend (o.a. "
+                f"{', '.join(soil.get('alkaline_examples') or [])}) — een zuurmeting laat zien of bijmesten met kalk nodig is."
+            )
+        elif soil_code == "mixed":
+            lines.append(
+                "  Bodem-pH: zowel kalkmijdende als kalkminnende planten — doe een zuurmeting en groepeer per voorkeur."
+            )
+
+        # Growth-form advice (advice-only): carbon proxy + ground cover.
+        gf = bio.growth_form or {}
+        carbon = gf.get("carbon_level")
+        if carbon == "strong":
+            lines.append(f"  Koolstof: veel houtige, meerjarige beplanting ({gf.get('woody_count', 0)} soorten) — legt relatief veel koolstof vast.")
+        elif carbon == "low":
+            lines.append("  Koolstof: nog geen houtige beplanting — bomen/heesters leggen meer koolstof vast dan eenjarigen.")
+        if gf.get("ground_cover_advice") == "add":
+            lines.append("  Bodembedekking: nog geen bodembedekkers — kale grond profiteert van kruipende beplanting (minder onkruid, meer bodemleven).")
+
+        # Circularity (kringloop) self-report — advice-only.
+        circ = bio.circularity or {}
+        _circ_nl = {"compost": "composteren", "mulch": "mulchen", "rainwater": "regenwater opvangen", "peat_free": "turfvrij tuinieren"}
+        circ_done = [_circ_nl[k] for k in ("compost", "mulch", "rainwater", "peat_free") if circ.get(k)]
+        circ_todo = [_circ_nl[k] for k in ("compost", "mulch", "rainwater", "peat_free") if not circ.get(k)]
+        if circ_done or circ_todo:
+            done_str = ", ".join(circ_done) if circ_done else "nog niets aangegeven"
+            lines.append(f"  Kringloop ({len(circ_done)}/4): doet {done_str}." + (f" Kansen: {', '.join(circ_todo)}." if circ_todo else ""))
+
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
             if suggestions:
@@ -847,6 +992,9 @@ async def _fetch_biodiversity_packet(
                 # Backward-compatible legacy key used by the old prose worker rollout.
                 "pollinator_gaps": gap_labels,
                 "suggestions": suggestions_context,
+                "soil_ph": bio.soil_ph,
+                "growth_form": bio.growth_form,
+                "circularity": bio.circularity,
             }
         )
 
@@ -1028,7 +1176,13 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
                 headers={"Content-Type": "application/json"},
             )
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            if "response" not in data:
+                raise HTTPException(status_code=502, detail="Chatbot antwoord miste 'response' veld")
+            suggested_action = await _validate_suggested_action(
+                data.get("suggested_action"), db, account["household_id"]
+            )
+            return ChatResponse(response=data["response"], suggested_action=suggested_action)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Chatbot reageert niet (timeout)")
     except httpx.HTTPStatusError as e:

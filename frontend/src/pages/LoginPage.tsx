@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
 import { household } from '../api/client'
@@ -6,6 +6,7 @@ import { useFloreren } from '../store/useFloreren'
 import PageDecor from '../components/PageDecor'
 import Glyph from '../components/ui/Glyph'
 import { resolveIconUrl } from '../utils/icons'
+import { DEMO_BIODIVERSITY, DEMO_SUGGESTIONS } from '../demo/demoGarden'
 
 // This page is shown BEFORE there is an account language, so it cannot use the
 // account-driven translation catalog (useT). It carries its own bilingual copy
@@ -69,6 +70,20 @@ interface LandingCopy {
   previewText: string
   demoCta: string
   demoNote: string
+  scrollHint: string
+  bioKicker: string
+  bioTitle: string
+  bioText: string
+  bioCta: string
+  scoreLabel: string
+  bioSpecies: (n: number) => string
+  bioNative: (n: number) => string
+  bioDracht: (n: number) => string
+  bioBees: (n: number) => string
+  bloomLabel: string
+  suggTitle: string
+  badgeNative: string
+  badgeStreek: string
 }
 
 const COPY: Record<Lang, LandingCopy> = {
@@ -136,6 +151,21 @@ const COPY: Record<Lang, LandingCopy> = {
       'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
     demoCta: 'Bekijk de voorbeeldtuin',
     demoNote: 'Geen account nodig',
+    scrollHint: 'Zo werkt het',
+    bioKicker: 'De biodiversiteitshulp',
+    bioTitle: 'Weet wat je tuin voor bijen doet',
+    bioText:
+      'Floreren kent de bloeimaanden en de waarde voor bestuivers van je planten. Je ziet je bloeiboog, hoeveel wilde bijensoorten je tuin kan ondersteunen, en welke inheemse en streekeigen planten de gaten vullen.',
+    bioCta: 'Maak je eigen tuin',
+    scoreLabel: 'Biodiversiteit',
+    bioSpecies: (n) => `${n} soorten`,
+    bioNative: (n) => `${n} inheems`,
+    bioDracht: (n) => `${n} bijenplanten (drachtplanten)`,
+    bioBees: (n) => `Tot ${n} wilde bijensoorten kunnen hier terecht`,
+    bloomLabel: 'Bloeimaanden voor bestuivers',
+    suggTitle: 'Aanbevolen voor deze tuin',
+    badgeNative: 'Inheems',
+    badgeStreek: 'Streekeigen',
   },
   en: {
     kicker: 'Field guide & plant care',
@@ -201,6 +231,21 @@ const COPY: Record<Lang, LandingCopy> = {
       'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
     demoCta: 'Explore the example garden',
     demoNote: 'No account needed',
+    scrollHint: 'See how it works',
+    bioKicker: 'The biodiversity helper',
+    bioTitle: 'Know what your garden does for bees',
+    bioText:
+      'Floreren knows the flowering months and pollinator value of your plants. See your bloom arc, how many wild bee species your garden can support, and which native and regional plants fill the gaps.',
+    bioCta: 'Create your own garden',
+    scoreLabel: 'Biodiversity',
+    bioSpecies: (n) => `${n} species`,
+    bioNative: (n) => `${n} native`,
+    bioDracht: (n) => `${n} bee forage plants`,
+    bioBees: (n) => `Up to ${n} wild bee species can forage here`,
+    bloomLabel: 'Pollinator bloom months',
+    suggTitle: 'Recommended for this garden',
+    badgeNative: 'Native',
+    badgeStreek: 'Regional',
   },
 }
 
@@ -246,6 +291,39 @@ function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
   )
 }
 
+/** Soft fade-up when the element scrolls into view. Content is never hidden
+ * for keyboard/reduced-motion users: the pre-reveal opacity/translate only
+ * apply under motion-safe, so with reduced motion everything is simply
+ * visible. */
+function Reveal({ children, className = '', delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true)
+          io.disconnect()
+        }
+      },
+      { threshold: 0.15 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return (
+    <div
+      ref={ref}
+      style={delayMs ? { transitionDelay: `${delayMs}ms` } : undefined}
+      className={`${className} motion-safe:transition-all motion-safe:duration-700 motion-safe:ease-out ${shown ? 'translate-y-0 opacity-100' : 'motion-safe:translate-y-8 motion-safe:opacity-0'}`}
+    >
+      {children}
+    </div>
+  )
+}
+
 function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
   return (
     <div className="absolute right-4 top-4 z-20 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 font-mono text-[10px] uppercase tracking-[0.14em] shadow-[0_2px_8px_rgba(31,42,30,0.06)]">
@@ -269,7 +347,11 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
 
 export default function LoginPage() {
   const [lang, setLang] = useState<Lang>(initialLang)
-  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>('login')
+  // ?mode=register opens the register tab directly (the demo garden's
+  // "create your own garden" CTA links here).
+  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>(() =>
+    new URLSearchParams(window.location.search).get('mode') === 'register' ? 'register' : 'login',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -359,7 +441,7 @@ export default function LoginPage() {
 
       <LangToggle lang={lang} onChange={changeLang} />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">
+      <div className="relative z-10 mx-auto flex min-h-[80dvh] w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">
         {/* ── Left: field-guide cover hero (desktop) ── */}
         <section className="relative hidden max-w-[520px] flex-1 lg:block">
           <HerbariumStamp text={t.stampText} className="absolute -left-16 -top-24 h-52 w-52 text-primary opacity-[0.07]" />
@@ -407,7 +489,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
+          <div id="auth-card" className="rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
             <p className="m-0 mb-5 flex items-center gap-2.5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-text-muted">
               <span className="h-px flex-1 bg-border" />
               {t.signIn}
@@ -659,34 +741,46 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
+
+        {/* Scroll cue: the previews live below the fold */}
+        <button
+          type="button"
+          aria-label={t.scrollHint}
+          onClick={() => document.getElementById('product-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="absolute bottom-1 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-text-muted transition-colors hover:text-text lg:flex"
+        >
+          <span className="font-mono text-[9px] uppercase tracking-[0.22em]">{t.scrollHint}</span>
+          <Glyph name="chevron-down" size={16} className="motion-safe:animate-bounce" />
+        </button>
       </div>
 
-      {/* ── Product preview: sun-heatmap video of the demo garden ── */}
-      <section className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-16 pt-2 lg:pt-6">
-        <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-center lg:gap-16">
-          <div className="w-full max-w-[290px] flex-none overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
-            <video
-              src="/landing/sunmap-demo.mp4"
-              poster="/landing/sunmap-demo-poster.jpg"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className="block h-auto w-full"
-            />
-          </div>
-          <div className="max-w-[420px] text-center lg:text-left">
+      {/* ── Product previews: zonnekaart & biodiversiteitshulp side by side ── */}
+      <section id="product-preview" className="relative z-10 mx-auto w-full max-w-[1060px] scroll-mt-6 px-5 pb-16 pt-2 lg:pt-10">
+        <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
+          {/* Zonnekaart */}
+          <Reveal className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
               {t.previewKicker}
             </p>
             <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
               {t.previewTitle}
             </h2>
-            <p className="mt-3 text-[14px] leading-[1.6] text-text-soft">
+            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
               {t.previewText}
             </p>
-            <div className="mt-5 flex flex-col items-center gap-2 lg:items-start">
+            <div className="mt-6 w-full max-w-[320px] overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
+              <video
+                src="/landing/sunmap-demo.mp4"
+                poster="/landing/sunmap-demo-poster.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="block h-auto w-full"
+              />
+            </div>
+            <div className="mt-auto flex flex-col items-center gap-2 pt-6 lg:items-start">
               <button
                 type="button"
                 onClick={() => navigate('/demo')}
@@ -698,7 +792,86 @@ export default function LoginPage() {
                 {t.demoNote}
               </span>
             </div>
+          </Reveal>
+
+          {/* Biodiversiteitshulp */}
+          <Reveal delayMs={150} className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.bioKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
+              {t.bioTitle}
+            </h2>
+            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
+              {t.bioText}
+            </p>
+            <div className="mt-6 flex w-full max-w-[320px] flex-col gap-3">
+            <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-text">{t.scoreLabel}</span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary">{DEMO_BIODIVERSITY.score}</span>
+              </div>
+              <p className="m-0 mt-1.5 text-[12px] leading-[1.5] text-text-soft">
+                {t.bioSpecies(DEMO_BIODIVERSITY.speciesCount)} · {t.bioNative(DEMO_BIODIVERSITY.nativeCount)}
+              </p>
+              <p className="m-0 text-[12px] leading-[1.5] text-text-soft">
+                {t.bioDracht(DEMO_BIODIVERSITY.drachtplantCount)}
+              </p>
+              <p className="m-0 mt-1 text-[12px] font-medium leading-[1.5] text-primary">
+                {t.bioBees(DEMO_BIODIVERSITY.beeSpecies)}
+              </p>
+              <div className="mt-2.5">
+                <p className="m-0 mb-1 text-[10px] uppercase tracking-wide text-text-muted">{t.bloomLabel}</p>
+                <div className="flex h-8 items-end gap-[3px]">
+                  {DEMO_BIODIVERSITY.bloomMonths.map((v, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 rounded-sm ${v > 0 ? 'bg-primary/70' : 'bg-border'}`}
+                      style={{ height: `${Math.max(9, (v / Math.max(...DEMO_BIODIVERSITY.bloomMonths)) * 100)}%` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
+              <p className="m-0 mb-2.5 text-[13px] font-semibold text-text">{t.suggTitle}</p>
+              <div className="flex flex-col gap-2.5">
+                {DEMO_SUGGESTIONS.map((s) => (
+                  <div key={s.icon} className="flex items-start gap-2.5">
+                    <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-bg">
+                      <img src={resolveIconUrl(s.icon)!} alt="" className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="m-0 text-[12.5px] font-semibold leading-tight text-text">
+                        {lang === 'nl' ? s.name_nl : s.name_en}{' '}
+                        <span className={`ml-1 inline-block rounded-full px-1.5 py-px align-[1px] text-[9px] font-bold uppercase tracking-wide ${s.badge === 'native' ? 'bg-primary/10 text-primary' : 'bg-amber-400/25 text-amber-800'}`}>
+                          {s.badge === 'native' ? t.badgeNative : t.badgeStreek}
+                        </span>
+                      </p>
+                      <p className="m-0 mt-0.5 text-[11.5px] leading-[1.45] text-text-soft">
+                        {lang === 'nl' ? s.reason_nl : s.reason_en}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
+            <div className="mt-auto flex justify-center pt-6 lg:justify-start">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register')
+                  document.getElementById('auth-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
+              >
+                {t.bioCta}
+              </button>
+            </div>
+          </Reveal>
         </div>
       </section>
     </div>

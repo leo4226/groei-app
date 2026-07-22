@@ -49,6 +49,9 @@ class GardenBiodiversity:
     drachtplant_count: int = 0           # distinct bee-forage species (Naturalis/Bloeibogen)
     area_m2: float | None = None         # garden footprint (drives the count targets)
     score_targets: dict = field(default_factory=dict)  # area-scaled targets, for transparency
+    soil_ph: dict = field(default_factory=dict)  # advice-only: {advice_code, acid_count, …}
+    growth_form: dict = field(default_factory=dict)  # advice-only: {carbon_level, ground_cover_advice, …}
+    circularity: dict = field(default_factory=dict)  # self-reported kringloop practices {key: bool}
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -135,6 +138,27 @@ _INVASIVE_CAP = 90    # soft cap: a garden with invasives can't display 100
 _REF_AREA_M2 = 40.0   # reference garden; targets scale as sqrt(area / ref)
 
 
+_CIRCULARITY_KEYS = ("compost", "mulch", "rainwater", "peat_free")
+
+
+async def _circularity(db, map_id: int) -> dict:
+    """Self-reported kringloop practices for a map as {key: bool} (missing = False).
+
+    Guarded — the reduced test schemas have no maps.circularity column, so it
+    simply defaults to all-False there."""
+    try:
+        rows = await db.execute_fetchall("SELECT circularity FROM maps WHERE id = ?", (map_id,))
+        raw = rows[0]["circularity"] if rows else None
+        data = {}
+        if isinstance(raw, str) and raw:
+            data = json.loads(raw)
+        elif isinstance(raw, dict):
+            data = raw
+        return {k: bool(data.get(k)) for k in _CIRCULARITY_KEYS}
+    except Exception:
+        return {k: False for k in _CIRCULARITY_KEYS}
+
+
 async def _garden_area_m2(db, map_id: int) -> float | None:
     """Garden footprint in m² from canvas_data (width×depth), or None if unknown.
 
@@ -205,6 +229,33 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     area_m2 = await _garden_area_m2(db, map_id)
     targets = _score_targets(area_m2)
 
+    # Soil-pH advice (advice-only, never scored). Empty gardens get an empty
+    # (no-advice) packet, which is correct — there's nothing to advise on yet.
+    from services.soil_advice import soil_ph_advice_for_map
+    soil = await soil_ph_advice_for_map(db, map_id)
+    soil_ph = {
+        "advice_code": soil.advice_code,
+        "acid_count": soil.acid_count,
+        "alkaline_count": soil.alkaline_count,
+        "acid_examples": soil.acid_examples,
+        "alkaline_examples": soil.alkaline_examples,
+    }
+
+    # Growth-form signals (carbon proxy + ground cover) — advice-only.
+    from services.growth_signals import growth_form_signals_for_map
+    gf = await growth_form_signals_for_map(db, map_id)
+    growth_form = {
+        "carbon_level": gf.carbon_level,
+        "woody_count": gf.woody_count,
+        "ground_cover_count": gf.ground_cover_count,
+        "ground_cover_advice": gf.ground_cover_advice,
+        "woody_examples": gf.woody_examples,
+        "ground_cover_examples": gf.ground_cover_examples,
+    }
+
+    # Self-reported circularity (kringloop) practices — advice-only.
+    circularity = await _circularity(db, map_id)
+
     if species_count == 0:
         return GardenBiodiversity(
             score=0,
@@ -218,6 +269,9 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             streek_native_count=0,
             area_m2=area_m2,
             score_targets=targets,
+            soil_ph=soil_ph,
+            growth_form=growth_form,
+            circularity=circularity,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -291,4 +345,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         drachtplant_count=drachtplant_count,
         area_m2=area_m2,
         score_targets=targets,
+        soil_ph=soil_ph,
+        growth_form=growth_form,
+        circularity=circularity,
     )

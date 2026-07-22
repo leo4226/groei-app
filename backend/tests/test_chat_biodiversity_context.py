@@ -19,7 +19,9 @@ async def _prepare_biodiversity_db(seeded_db):
             flowering_months TEXT,
             ecology_enriched_at TEXT,
             is_drachtplant INTEGER DEFAULT 0,
-            is_moth_plant INTEGER DEFAULT 0
+            is_moth_plant INTEGER DEFAULT 0,
+            habit TEXT,
+            mature_height_cm INTEGER
         )"""
     )
     await seeded_db.execute(
@@ -81,6 +83,7 @@ async def test_biodiversity_context_includes_outdoor_score_gaps_and_full_suggest
         'flowering_months': [9],
         'gap_months_covered': [9],
         'reason': 'Inheems in Nederland · top bestuiversplant · bloeit in sep (vult je tuinkalender in)',
+        'size_fit': 'unknown',
     }
     assert 'Plantaanbevelingen' in prose
     assert 'Wilde marjolein' in prose

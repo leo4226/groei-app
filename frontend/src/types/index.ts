@@ -669,6 +669,16 @@ export type PlantRecommendation = {
   fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
   is_moth_plant?: boolean              // night-flowering / moth-forage (nachtvlinder)
   supports_moth_gap?: boolean          // moth plant in a garden that has none yet
+  habit?: string | null                // tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+  mature_height_cm?: number | null
+  size_fit?: 'fits' | 'large_for_space' | 'unknown'  // vs garden area
+  alternatives?: PlantAlternatives | null   // smaller same-function swaps when oversized
+}
+
+export type PlantAlternatives = {
+  function_nl?: string
+  function_en?: string
+  picks?: { dutch_name: string; latin_name: string; note_nl?: string; note_en?: string }[]
 }
 
 export type StreekSuggestionsOut = {
@@ -727,6 +737,29 @@ export type GardenBiodiversityOut = {
   drachtplant_count?: number
   area_m2?: number | null
   score_targets?: { diversity?: number; native?: number; streek?: number }
+  soil_ph?: {
+    advice_code?: 'prefers_acid' | 'prefers_alkaline' | 'mixed' | null
+    acid_count?: number
+    alkaline_count?: number
+    acid_examples?: string[]
+    alkaline_examples?: string[]
+  }
+  growth_form?: {
+    carbon_level?: 'low' | 'moderate' | 'strong' | null
+    woody_count?: number
+    ground_cover_count?: number
+    ground_cover_advice?: 'add' | null
+    woody_examples?: string[]
+    ground_cover_examples?: string[]
+  }
+  circularity?: CircularityFlags
+}
+
+export type CircularityFlags = {
+  compost?: boolean
+  mulch?: boolean
+  rainwater?: boolean
+  peat_free?: boolean
 }
 
 export type EcologyOut = {

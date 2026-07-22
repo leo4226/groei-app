@@ -1087,6 +1087,10 @@ class PlantRecommendationOut(BaseModel):
     fills_forage_gap: bool = False   # a drachtplant blooming in a bee forage-gap month
     is_moth_plant: bool = False      # night-flowering / moth-forage (nachtvlinder)
     supports_moth_gap: bool = False  # moth plant in a garden that has none yet
+    habit: str | None = None         # tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+    mature_height_cm: int | None = None
+    size_fit: str = "unknown"        # 'fits' | 'large_for_space' | 'unknown' (vs garden area)
+    alternatives: dict | None = None # smaller same-function swaps when oversized
 
 
 class RecommendationsOut(BaseModel):

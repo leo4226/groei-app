@@ -144,6 +144,23 @@ export type Translations = {
     noMaps: string
     createFirstMap: string
     createFirstLede: string
+    // New-garden modal: starter layout + location (soft first-run)
+    starterLabel: string          // "Beginnen met"
+    starterTemplate: string       // "Voorbeeldopzet"
+    starterTemplateHint: string   // "Borders, gazon en terras — pas alles later aan"
+    starterEmpty: string          // "Leeg"
+    starterEmptyHint: string      // "Zelf tekenen in de editor"
+    locationLabel: string         // "Locatie (voor de zon)"
+    locationUse: string           // "Gebruik mijn locatie"
+    locationBusy: string          // "Locatie ophalen…"
+    locationSet: string           // "Locatie ingesteld"
+    locationError: string         // "Locatie ophalen mislukt — kan later in instellingen"
+    locationSkipHint: string      // "Optioneel — kan ook later, in tuininstellingen"
+    starterZoneFence: string      // "Schutting"
+    starterZoneBackBorder: string // "Achterborder"
+    starterZoneBorder: string     // "Border"
+    starterZoneLawn: string       // "Gazon"
+    starterZoneTerrace: string    // "Terras"
   }
 
   // ── Map settings page ───────────────────────────────────────────
@@ -589,6 +606,8 @@ export type Translations = {
     ecologyForageGap: string     // "🐝 Vult drachtgat" / "🐝 Fills bee gap"
     ecologyMoth: string          // "🌙 Nachtvlinder" / "🌙 Moth plant"
     ecologyMothGap: string       // "🌙 Trekt nachtvlinders" / "🌙 Attracts moths"
+    sizeLargeForSpace: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+    altPrefix: string            // "Geen ruimte?" / "No room?"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
@@ -1407,6 +1426,23 @@ export type Translations = {
       streekLabel: string         // "Streek" (row label)
       streekNativeCount: (n: number) => string  // "3 streekeigen soorten"
       drachtplantCount: (n: number) => string   // "4 bijenplanten (drachtplanten)"
+      soilPhLabel: string         // "Bodem" (soil-pH advice row label)
+      soilPhAcid: string          // advice: plants prefer lime-free/acid soil
+      soilPhAlkaline: string      // advice: plants prefer chalky/alkaline soil
+      soilPhMixed: string         // advice: garden mixes acid- and lime-lovers
+      carbonLabel: string         // "Koolstof" (carbon proxy row label)
+      carbonStrong: string        // advice: lots of woody planting stores carbon
+      carbonLow: string           // advice: no woody planting yet
+      groundCoverLabel: string    // "Bodembedekking" (ground-cover row label)
+      groundCoverAdd: string      // advice: no ground cover yet, add some
+      circularity: {
+        title: string     // "Kringloop"
+        hint: string      // "Vink aan wat je al doet"
+        compost: string   // "Composteren"
+        mulch: string     // "Mulchen"
+        rainwater: string // "Regenwater opvangen"
+        peatFree: string  // "Turfvrij tuinieren"
+      }
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
@@ -1417,6 +1453,17 @@ export type Translations = {
       sunShade: string     // "🌿 Schaduw"
       nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
       streekBadge: string  // "Streekeigen" / "Regional"
+      sizeBadge: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+      altPrefix: string    // "Geen ruimte?" / "No room?"
+      dismiss: string      // "Niet tonen" / "Not for me"
+      dismissUndo: string  // "Ongedaan maken" / "Undo"
+      lanes: {
+        gap: string      // "Vult je bloeigat: {months}" / "Fills your bloom gap: {months}"
+        impact: string   // "Grootste impact" / "Biggest impact"
+        easy: string     // "Klein & makkelijk" / "Small & easy"
+        moth: string     // "Voor nachtvlinders" / "For night moths"
+        more: string     // "Meer opties" / "More options"
+      }
     }
     streek: {
       sectionTitle: string          // "Planten uit jouw streek"
@@ -1574,6 +1621,10 @@ export type Translations = {
       submitted: string
       submitError: string
       bugQuestions: Array<{ title: string; prompt: string }>
+      actionConfirm: string
+      actionCancel: string
+      actionDone: string
+      actionError: string
     }
   }
 
