@@ -292,6 +292,19 @@ async def _garden_has_moth_plants(db, map_id: int) -> bool:
         return False
 
 
+async def _dismissed_ids(db, map_id: int) -> set[int]:
+    """Species the gardener has waved off for this map — excluded from every
+    recommendation surface. Guarded: reduced test schemas lack the table, so it
+    simply contributes nothing there."""
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT species_id FROM dismissed_recommendations WHERE map_id = ?", (map_id,)
+        )
+        return {r["species_id"] for r in rows}
+    except Exception:
+        return set()
+
+
 async def _fetch_enriched_candidates(db, exclude_ids: set[int]) -> list:
     if exclude_ids:
         placeholders = ",".join("?" * len(exclude_ids))
@@ -348,12 +361,13 @@ async def recommend_for_spot(
     gap_months = [i + 1 for i, covered in enumerate(bio.pollinator_coverage_months) if not covered]
     gap_set = set(gap_months)
 
-    # Species already in this garden (exclude from suggestions)
+    # Species already in this garden, plus ones the gardener dismissed — both
+    # excluded from suggestions.
     existing = await db.execute_fetchall(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    exclude_ids = {r["species_id"] for r in existing}
+    exclude_ids = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
 
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
@@ -443,7 +457,7 @@ async def recommend_for_garden(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    exclude_ids = {r["species_id"] for r in existing}
+    exclude_ids = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
 
     _, streek_name, streek_ids = await _streek_for_map(db, map_id)
     from services.bees import forage_gap_months
@@ -524,7 +538,7 @@ async def recommend_for_streek(
         "SELECT DISTINCT species_id FROM plants WHERE map_id = ? AND is_active = TRUE AND species_id IS NOT NULL",
         (map_id,),
     )
-    have = {r["species_id"] for r in existing}
+    have = {r["species_id"] for r in existing} | await _dismissed_ids(db, map_id)
     want = streek_ids - have
     if not want:
         return streek_name, []

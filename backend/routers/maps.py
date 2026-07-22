@@ -196,6 +196,53 @@ async def get_plant_suggestions(
     )
 
 
+class DismissIn(BaseModel):
+    species_id: int
+
+
+async def _owned_map_id(db, slug: str, household_id: int) -> int:
+    rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE slug = ? AND household_id = ?", (slug, household_id)
+    )
+    if not rows:
+        raise HTTPException(404, "Map not found")
+    return rows[0]["id"]
+
+
+@router.post("/maps/{slug}/dismiss-recommendation")
+async def dismiss_recommendation(
+    slug: str, data: DismissIn, account = Depends(get_current_account), db = Depends(db_dep)
+):
+    """Wave off a recommended species for this garden — it won't be suggested
+    here again until un-dismissed. Idempotent."""
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    exists = await db.execute_fetchall(
+        "SELECT 1 FROM dismissed_recommendations WHERE map_id = ? AND species_id = ?",
+        (map_id, data.species_id),
+    )
+    if not exists:
+        await db.execute(
+            "INSERT INTO dismissed_recommendations (map_id, species_id) VALUES (?, ?)",
+            (map_id, data.species_id),
+        )
+        await db.commit()
+    return {"dismissed": True, "species_id": data.species_id}
+
+
+@router.delete("/maps/{slug}/dismiss-recommendation/{species_id}")
+async def undismiss_recommendation(
+    slug: str, species_id: int, account = Depends(get_current_account), db = Depends(db_dep)
+):
+    """Undo a dismissal — the species can be recommended here again."""
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    await db.execute(
+        "DELETE FROM dismissed_recommendations WHERE map_id = ? AND species_id = ?",
+        (map_id, species_id),
+    )
+    await db.commit()
+    return {"dismissed": False, "species_id": species_id}
+
+
 class StreekSuggestionsOut(BaseModel):
     streek_slug: str | None = None
     streek_name: str | None = None

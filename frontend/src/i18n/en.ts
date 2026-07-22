@@ -1449,6 +1449,8 @@ export const en: Translations = {
       streekBadge: 'Regional',
       sizeBadge: '🌳 Large — needs space',
       altPrefix: 'No room? Same function:',
+      dismiss: 'Not for me',
+      dismissUndo: 'Undo',
       lanes: {
         gap: 'Fills your bloom gap: {months}',
         impact: 'Biggest impact',

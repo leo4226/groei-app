@@ -1454,6 +1454,8 @@ export type Translations = {
       streekBadge: string  // "Streekeigen" / "Regional"
       sizeBadge: string    // "🌳 Grote plant" / "🌳 Large — needs space"
       altPrefix: string    // "Geen ruimte?" / "No room?"
+      dismiss: string      // "Niet tonen" / "Not for me"
+      dismissUndo: string  // "Ongedaan maken" / "Undo"
       lanes: {
         gap: string      // "Vult je bloeigat: {months}" / "Fills your bloom gap: {months}"
         impact: string   // "Grootste impact" / "Biggest impact"

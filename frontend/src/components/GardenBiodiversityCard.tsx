@@ -218,8 +218,25 @@ function laneOf(s: PlantRecommendation): Lane {
   return 'more'
 }
 
-function SuggestionCard({ s, t }: { s: PlantRecommendation; t: ReturnType<typeof useT> }) {
+function SuggestionCard({ s, t, dismissed, onDismiss, onUndo }: {
+  s: PlantRecommendation
+  t: ReturnType<typeof useT>
+  dismissed: boolean
+  onDismiss: () => void
+  onUndo: () => void
+}) {
   const en = t.locale.startsWith('en')
+  const name = en ? (s.english_name || s.dutch_name) : s.dutch_name
+  if (dismissed) {
+    return (
+      <div className="card p-3 flex items-center justify-between gap-2 opacity-70">
+        <span className="text-xs text-text-muted line-through truncate">{name}</span>
+        <button onClick={onUndo} className="shrink-0 text-[11px] font-medium text-primary hover:underline">
+          {t.garden.suggestions.dismissUndo}
+        </button>
+      </div>
+    )
+  }
   const sunLabel = s.sun_preference === 'full_sun'
     ? t.garden.suggestions.sunFull
     : s.sun_preference === 'partial_sun'
@@ -251,6 +268,14 @@ function SuggestionCard({ s, t }: { s: PlantRecommendation; t: ReturnType<typeof
           </div>
           <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
         </div>
+        <button
+          onClick={onDismiss}
+          aria-label={t.garden.suggestions.dismiss}
+          title={t.garden.suggestions.dismiss}
+          className="shrink-0 -mt-1 -mr-1 w-6 h-6 rounded-full flex items-center justify-center text-text-muted/60 hover:text-text hover:bg-bg/60 transition-colors"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
       </div>
       {s.reason && (
         <p className="text-xs text-text-muted leading-relaxed">{en ? (s.reason_en || s.reason) : s.reason}</p>
@@ -274,6 +299,7 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
   const [suggestions, setSuggestions] = useState<GardenSuggestionsOut | null>(null)
   const [streekSug, setStreekSug] = useState<StreekSuggestionsOut | null>(null)
   const [bees, setBees] = useState<BeeSupportOut | null>(null)
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (!slug) return
@@ -281,6 +307,17 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
     mapsApi.streekSuggestions(slug).then(setStreekSug).catch(() => {})
     mapsApi.beeSupport(slug).then(setBees).catch(() => {})
   }, [slug])
+
+  // Learn-from-dismissals: waved-off picks collapse to an undo strip (persisted
+  // on the map), and are gone on the next fetch.
+  const dismiss = (id: number) => {
+    setDismissed(prev => new Set(prev).add(id))
+    mapsApi.dismissRecommendation(slug, id).catch(() => {})
+  }
+  const undismiss = (id: number) => {
+    setDismissed(prev => { const n = new Set(prev); n.delete(id); return n })
+    mapsApi.undismissRecommendation(slug, id).catch(() => {})
+  }
 
   const Wrapper = embedded ? 'div' : 'section'
 
@@ -402,7 +439,16 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
                       <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />{title}
                     </p>
                     <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
-                      {items.map((s) => <SuggestionCard key={s.species_id} s={s} t={t} />)}
+                      {items.map((s) => (
+                        <SuggestionCard
+                          key={s.species_id}
+                          s={s}
+                          t={t}
+                          dismissed={dismissed.has(s.species_id)}
+                          onDismiss={() => dismiss(s.species_id)}
+                          onUndo={() => undismiss(s.species_id)}
+                        />
+                      ))}
                     </div>
                   </div>
                 )
