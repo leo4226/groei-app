@@ -83,6 +83,7 @@ async def test_biodiversity_context_includes_outdoor_score_gaps_and_full_suggest
         'flowering_months': [9],
         'gap_months_covered': [9],
         'reason': 'Inheems in Nederland · top bestuiversplant · bloeit in sep (vult je tuinkalender in)',
+        'size_fit': 'unknown',
     }
     assert 'Plantaanbevelingen' in prose
     assert 'Wilde marjolein' in prose

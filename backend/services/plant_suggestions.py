@@ -92,6 +92,7 @@ class PlantRecommendation:
     habit: str | None = None            # tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
     mature_height_cm: int | None = None
     size_fit: str = "unknown"           # 'fits' | 'large_for_space' | 'unknown' (vs garden area)
+    alternatives: dict | None = None    # {function_nl/en, picks:[…]} — smaller same-function swaps when oversized
 
 
 def bucket_for(direct_hours: float, svf: float = 1.0) -> str:
@@ -240,7 +241,8 @@ _HABIT_CAVEAT_EN = {"tree": "a tree, needs space", "large_shrub": "a large shrub
 
 
 def _with_size_reason(rec: "PlantRecommendation") -> None:
-    """Append an honest size caveat when a pick is large for this garden."""
+    """Append an honest size caveat when a pick is large for this garden, and
+    attach smaller same-function alternatives ("no room? → …") when we have them."""
     if rec.size_fit != "large_for_space":
         return
     nl = _HABIT_CAVEAT_NL.get(rec.habit or "", "grote plant, veel ruimte nodig")
@@ -248,6 +250,8 @@ def _with_size_reason(rec: "PlantRecommendation") -> None:
     for attr, clause in (("reason", nl), ("reason_en", en)):
         cur = getattr(rec, attr) or ""
         setattr(rec, attr, f"{cur} · {clause}" if cur else clause)
+    from services.plant_alternatives import alternatives_raw
+    rec.alternatives = alternatives_raw(rec.latin_name)
 
 
 async def _streek_for_map(db, map_id: int) -> tuple[str | None, str | None, set[int]]:

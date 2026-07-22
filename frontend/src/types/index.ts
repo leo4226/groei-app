@@ -672,6 +672,13 @@ export type PlantRecommendation = {
   habit?: string | null                // tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
   mature_height_cm?: number | null
   size_fit?: 'fits' | 'large_for_space' | 'unknown'  // vs garden area
+  alternatives?: PlantAlternatives | null   // smaller same-function swaps when oversized
+}
+
+export type PlantAlternatives = {
+  function_nl?: string
+  function_en?: string
+  picks?: { dutch_name: string; latin_name: string; note_nl?: string; note_en?: string }[]
 }
 
 export type StreekSuggestionsOut = {

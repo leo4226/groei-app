@@ -607,6 +607,7 @@ export type Translations = {
     ecologyMoth: string          // "🌙 Nachtvlinder" / "🌙 Moth plant"
     ecologyMothGap: string       // "🌙 Trekt nachtvlinders" / "🌙 Attracts moths"
     sizeLargeForSpace: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+    altPrefix: string            // "Geen ruimte?" / "No room?"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
@@ -1452,6 +1453,7 @@ export type Translations = {
       nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
       streekBadge: string  // "Streekeigen" / "Regional"
       sizeBadge: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+      altPrefix: string    // "Geen ruimte?" / "No room?"
     }
     streek: {
       sectionTitle: string          // "Planten uit jouw streek"
