@@ -184,7 +184,9 @@ async def get_plant_suggestions(
     if (m.get("map_type") or "outdoor") != "outdoor":
         raise HTTPException(status_code=400, detail="Plant suggestions only available for outdoor maps")
 
-    recs, gap_months = await recommend_for_garden(db, m["id"])
+    # A bit deeper than the default 8 so the frontend's function lanes
+    # (fills-a-gap / biggest-impact / small-&-easy / …) each have content.
+    recs, gap_months = await recommend_for_garden(db, m["id"], limit=14)
     bio = await compute_biodiversity(db, m["id"])
 
     return GardenSuggestionsOut(

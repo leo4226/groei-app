@@ -1451,6 +1451,13 @@ export const nl: Translations = {
       streekBadge: 'Streekeigen',
       sizeBadge: '🌳 Grote plant',
       altPrefix: 'Geen ruimte? Zelfde functie:',
+      lanes: {
+        gap: 'Vult je bloeigat: {months}',
+        impact: 'Grootste impact',
+        easy: 'Klein & makkelijk',
+        moth: 'Voor nachtvlinders',
+        more: 'Meer opties',
+      },
     },
     streek: {
       sectionTitle: 'Planten uit jouw streek',

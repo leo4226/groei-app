@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut, CircularityFlags } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut, CircularityFlags, PlantRecommendation } from '../types'
 
 /** Soil-pH advice copy for a garden (advice-only, never scored). Returns '' when
  * there's no signal, so the caller can hide the line entirely. */
@@ -203,6 +203,71 @@ function CircularitySection({ slug, initial }: { slug: string; initial?: Circula
   )
 }
 
+// Function lanes: organise garden recommendations by the job they do, so the
+// gardener scans by intent ("fills my gap", "small & easy") instead of one flat
+// list. Each plant lands in one lane (first match wins); empty lanes are hidden.
+const LANE_ORDER = ['gap', 'impact', 'easy', 'moth', 'more'] as const
+type Lane = (typeof LANE_ORDER)[number]
+const SMALL_HABITS = new Set(['perennial', 'groundcover', 'bulb', 'annual'])
+
+function laneOf(s: PlantRecommendation): Lane {
+  if ((s.gap_months_covered?.length ?? 0) > 0) return 'gap'
+  if ((s.pollinator_value ?? 0) >= 3) return 'impact'
+  if (s.habit && SMALL_HABITS.has(s.habit) && s.size_fit !== 'large_for_space') return 'easy'
+  if (s.is_moth_plant || s.supports_moth_gap) return 'moth'
+  return 'more'
+}
+
+function SuggestionCard({ s, t }: { s: PlantRecommendation; t: ReturnType<typeof useT> }) {
+  const en = t.locale.startsWith('en')
+  const sunLabel = s.sun_preference === 'full_sun'
+    ? t.garden.suggestions.sunFull
+    : s.sun_preference === 'partial_sun'
+    ? t.garden.suggestions.sunPartial
+    : s.sun_preference === 'shade'
+    ? t.garden.suggestions.sunShade
+    : null
+  return (
+    <div className="card p-3 space-y-1.5">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-medium text-sm text-text">{en ? (s.english_name || s.dutch_name) : s.dutch_name}</span>
+            {sunLabel && (
+              <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded-full border border-border/50">{sunLabel}</span>
+            )}
+            {s.is_native && (
+              <span className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full">{t.garden.suggestions.nativeBadge}</span>
+            )}
+            {(s.pollinator_value ?? 0) >= 2 && (
+              <span className="text-amber-700 inline-flex items-center px-1 py-0.5 bg-amber-400/10 rounded-full" title={t.garden.biodiversity.componentPollinator}><BioIcon name="pollinator" size={11} /></span>
+            )}
+            {s.is_streek && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">{t.garden.suggestions.streekBadge}</span>
+            )}
+            {s.size_fit === 'large_for_space' && (
+              <span className="text-[10px] bg-orange-500/15 text-orange-700 dark:text-orange-400 px-1.5 py-0.5 rounded-full">{t.garden.suggestions.sizeBadge}</span>
+            )}
+          </div>
+          <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
+        </div>
+      </div>
+      {s.reason && (
+        <p className="text-xs text-text-muted leading-relaxed">{en ? (s.reason_en || s.reason) : s.reason}</p>
+      )}
+      {s.alternatives?.picks && s.alternatives.picks.length > 0 && (
+        <p className="text-[11px] text-text-muted leading-relaxed border-t border-border/40 pt-1.5">
+          <span className="text-amber-600 dark:text-amber-400 font-medium">{t.garden.suggestions.altPrefix}</span>{' '}
+          {(() => {
+            const fn = (en ? s.alternatives!.function_en : s.alternatives!.function_nl) || ''
+            return <>{fn && <span className="italic">({fn}) </span>}<span className="text-text">{s.alternatives!.picks!.map(p => p.dutch_name).join(' · ')}</span></>
+          })()}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiodiversityOut; slug: string; embedded?: boolean }) {
   const t = useT()
   const en = t.locale.startsWith('en')
@@ -317,78 +382,28 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
             {t.garden.suggestions.title}
           </h3>
 
-          {suggestions.gap_months.length > 0 && (
-            <p className="text-xs text-text-muted mb-3">
-              {t.garden.suggestions.gapLabel.replace(
-                '{months}',
-                monthsShort(suggestions.gap_months, t.locale)
-              )}
-            </p>
-          )}
-
           {suggestions.suggestions.length === 0 ? (
             <p className="text-xs text-text-muted">{t.garden.suggestions.noData}</p>
           ) : (
-            <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
-              {suggestions.suggestions.map((s) => {
-                const sunLabel = s.sun_preference === 'full_sun'
-                  ? t.garden.suggestions.sunFull
-                  : s.sun_preference === 'partial_sun'
-                  ? t.garden.suggestions.sunPartial
-                  : s.sun_preference === 'shade'
-                  ? t.garden.suggestions.sunShade
-                  : null
-
+            <div className="space-y-4">
+              {LANE_ORDER.map((lane) => {
+                const items = suggestions.suggestions.filter((s) => laneOf(s) === lane)
+                if (items.length === 0) return null
+                const L = t.garden.suggestions.lanes
+                const title = lane === 'gap'
+                  ? L.gap.replace('{months}', monthsShort(suggestions.gap_months, t.locale))
+                  : lane === 'impact' ? L.impact
+                  : lane === 'easy' ? L.easy
+                  : lane === 'moth' ? L.moth
+                  : L.more
                 return (
-                  <div key={s.species_id} className="card p-3 space-y-1.5">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-medium text-sm text-text">{t.locale.startsWith('en') ? (s.english_name || s.dutch_name) : s.dutch_name}</span>
-                          {sunLabel && (
-                            <span className="text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded-full border border-border/50">
-                              {sunLabel}
-                            </span>
-                          )}
-                          {s.is_native && (
-                            <span className="text-[10px] bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full">
-                              {t.garden.suggestions.nativeBadge}
-                            </span>
-                          )}
-                          {(s.pollinator_value ?? 0) >= 2 && (
-                            <span className="text-amber-700 inline-flex items-center px-1 py-0.5 bg-amber-400/10 rounded-full" title={t.garden.biodiversity.componentPollinator}>
-                              <BioIcon name="pollinator" size={11} />
-                            </span>
-                          )}
-                          {s.is_streek && (
-                            <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
-                              {t.garden.suggestions.streekBadge}
-                            </span>
-                          )}
-                          {s.size_fit === 'large_for_space' && (
-                            <span className="text-[10px] bg-orange-500/15 text-orange-700 dark:text-orange-400 px-1.5 py-0.5 rounded-full">
-                              {t.garden.suggestions.sizeBadge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-text-muted italic">{s.latin_name}</p>
-                      </div>
+                  <div key={lane}>
+                    <p className="text-[11px] font-semibold text-text mb-2 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />{title}
+                    </p>
+                    <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
+                      {items.map((s) => <SuggestionCard key={s.species_id} s={s} t={t} />)}
                     </div>
-                    {s.reason && (
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        {t.locale.startsWith('en') ? ((s as any).reason_en || s.reason) : s.reason}
-                      </p>
-                    )}
-                    {s.alternatives?.picks && s.alternatives.picks.length > 0 && (
-                      <p className="text-[11px] text-text-muted leading-relaxed border-t border-border/40 pt-1.5">
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">{t.garden.suggestions.altPrefix}</span>{' '}
-                        {(() => {
-                          const en = t.locale.startsWith('en')
-                          const fn = (en ? s.alternatives!.function_en : s.alternatives!.function_nl) || ''
-                          return <>{fn && <span className="italic">({fn}) </span>}<span className="text-text">{s.alternatives!.picks!.map(p => p.dutch_name).join(' · ')}</span></>
-                        })()}
-                      </p>
-                    )}
                   </div>
                 )
               })}

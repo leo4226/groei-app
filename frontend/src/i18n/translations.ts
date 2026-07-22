@@ -1454,6 +1454,13 @@ export type Translations = {
       streekBadge: string  // "Streekeigen" / "Regional"
       sizeBadge: string    // "🌳 Grote plant" / "🌳 Large — needs space"
       altPrefix: string    // "Geen ruimte?" / "No room?"
+      lanes: {
+        gap: string      // "Vult je bloeigat: {months}" / "Fills your bloom gap: {months}"
+        impact: string   // "Grootste impact" / "Biggest impact"
+        easy: string     // "Klein & makkelijk" / "Small & easy"
+        moth: string     // "Voor nachtvlinders" / "For night moths"
+        more: string     // "Meer opties" / "More options"
+      }
     }
     streek: {
       sectionTitle: string          // "Planten uit jouw streek"
