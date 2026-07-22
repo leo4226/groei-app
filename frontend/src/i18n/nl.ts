@@ -1451,6 +1451,8 @@ export const nl: Translations = {
       streekBadge: 'Streekeigen',
       sizeBadge: '🌳 Grote plant',
       altPrefix: 'Geen ruimte? Zelfde functie:',
+      dismiss: 'Niet tonen',
+      dismissUndo: 'Ongedaan maken',
       lanes: {
         gap: 'Vult je bloeigat: {months}',
         impact: 'Grootste impact',
