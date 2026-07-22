@@ -1449,6 +1449,13 @@ export const en: Translations = {
       streekBadge: 'Regional',
       sizeBadge: '🌳 Large — needs space',
       altPrefix: 'No room? Same function:',
+      lanes: {
+        gap: 'Fills your bloom gap: {months}',
+        impact: 'Biggest impact',
+        easy: 'Small & easy',
+        moth: 'For night moths',
+        more: 'More options',
+      },
     },
     streek: {
       sectionTitle: 'Plants from your region',
