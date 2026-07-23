@@ -181,6 +181,18 @@ SCHEMA = """
         care_type TEXT NOT NULL,
         PRIMARY KEY (household_id, map_id, care_type)
     );
+    CREATE TABLE household_care_rhythm_preferences (
+        household_id INTEGER PRIMARY KEY,
+        indoor_weekdays TEXT NOT NULL,
+        outdoor_weekdays TEXT NOT NULL,
+        last_operation_id INTEGER
+    );
+    CREATE TABLE map_care_rhythm_overrides (
+        household_id INTEGER NOT NULL,
+        map_id INTEGER NOT NULL,
+        weekdays TEXT NOT NULL,
+        PRIMARY KEY (household_id, map_id)
+    );
     CREATE TABLE calendar_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         account_id INTEGER NOT NULL UNIQUE,

@@ -71,6 +71,9 @@ export const EVENT_TYPE_UTILITY_KEY: Record<EventTypeId, keyof Translations['uti
 export interface CalendarEvent {
   id: string
   date: string
+  canonical_date?: string | null
+  routine_session?: boolean
+  routine_reason?: string | null
   type: EventTypeId
   status?: 'scheduled' | 'completed'
   plant_id: number | null
@@ -93,6 +96,7 @@ export interface CalendarEvent {
     plant_id: number
     plant_name: string
     plant_icon_variant: string | null
+    canonical_date?: string | null
     reason_nl?: string | null
     reason_en?: string | null
   }> | null

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../context/LanguageContext'
+import { isoToDisplay } from '../../utils/dateFormat'
 import type { CalendarEvent } from './calendarTypes'
 
 interface Props {
@@ -152,8 +153,20 @@ export default function WateringRoundDialog({ event, saving, onConfirm, onCancel
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-heading text-sm font-bold text-primary">
                 {member.plant_name.slice(0, 1).toUpperCase()}
               </span>
-              <span className="min-w-0 break-words font-heading text-sm font-semibold text-text">
-                {member.plant_name}
+              <span className="min-w-0 break-words">
+                <span className="block font-heading text-sm font-semibold text-text">
+                  {member.plant_name}
+                </span>
+                {member.canonical_date && (
+                  <span
+                    data-canonical-due={member.schedule_id}
+                    className="mt-0.5 block text-xs font-normal text-text-muted"
+                  >
+                    {t.calendar.wateringRoundDueDate(
+                      isoToDisplay(member.canonical_date),
+                    )}
+                  </span>
+                )}
               </span>
             </label>
           ))}

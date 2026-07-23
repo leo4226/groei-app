@@ -988,6 +988,7 @@ class CalendarGroupMemberOut(BaseModel):
     plant_icon_variant: str | None = None
     reason_nl: str | None = None
     reason_en: str | None = None
+    canonical_date: str | None = None
 
 
 class CalendarEventOut(BaseModel):
@@ -1022,6 +1023,9 @@ class CalendarEventOut(BaseModel):
     group_member_event_ids: list[str] | None = None
     group_members: list[CalendarGroupMemberOut] | None = None
     weather_triggered: bool = False
+    canonical_date: str | None = None
+    routine_session: bool = False
+    routine_reason: str | None = None
 
 
 class WaterPressurePlantOut(BaseModel):

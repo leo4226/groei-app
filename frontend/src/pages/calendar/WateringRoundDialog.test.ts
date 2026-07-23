@@ -27,8 +27,20 @@ const round: CalendarEvent = {
   group_count: 2,
   group_member_schedule_ids: [10, 11],
   group_members: [
-    { schedule_id: 10, plant_id: 1, plant_name: 'Rose', plant_icon_variant: null },
-    { schedule_id: 11, plant_id: 2, plant_name: 'Basil', plant_icon_variant: null },
+    {
+      schedule_id: 10,
+      plant_id: 1,
+      plant_name: 'Rose',
+      plant_icon_variant: null,
+      canonical_date: '2026-07-16',
+    },
+    {
+      schedule_id: 11,
+      plant_id: 2,
+      plant_name: 'Basil',
+      plant_icon_variant: null,
+      canonical_date: '2026-07-18',
+    },
   ],
   weather_triggered: false,
 }
@@ -78,6 +90,11 @@ describe('WateringRoundDialog', () => {
     expect(container.textContent).toContain('Back garden')
     expect(container.textContent).toContain('Rose')
     expect(container.textContent).toContain('Basil')
+    expect(container.textContent).toContain('Due 16-07-2026')
+    const dueLabel = container.querySelector('[data-canonical-due="10"]')
+    expect(dueLabel?.className).toContain('text-text-muted')
+    expect(dueLabel?.className).not.toContain('text-amber')
+    expect(dueLabel?.className).not.toContain('text-red')
     expect(buttonWithText(container, 'Water 2 plants').disabled).toBe(false)
 
     const basil = container.querySelector('input[value="11"]') as HTMLInputElement

@@ -838,6 +838,16 @@ export interface CareRhythmSettings {
   maps: Array<{ id: number; name: string; map_type: 'outdoor' | 'indoor' }>
 }
 
+export type CareRhythmPreviewReason =
+  | 'routine'
+  | 'too_frequent'
+  | 'opted_out'
+  | 'no_routine'
+  | 'not_future'
+  | 'moved_earlier'
+  | 'aligned'
+  | 'outside_window'
+
 export interface CareRhythmPreviewItem {
   schedule_id: number
   plant_id: number
@@ -852,7 +862,7 @@ export interface CareRhythmPreviewItem {
   new_date: string
   movement_days: number
   status: 'moved' | 'unchanged' | 'exception'
-  reason: string
+  reason: CareRhythmPreviewReason
 }
 
 export interface CareRhythmSummary {

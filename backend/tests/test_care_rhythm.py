@@ -8,6 +8,7 @@ from services.care_rhythm import (
     align_due_date,
     apply_care_rhythm,
     build_rhythm_preview,
+    get_saved_care_rhythm_config,
     propose_preferred_weekdays,
     undo_care_rhythm,
 )
@@ -69,6 +70,7 @@ def _preview_row(
     map_id: int,
     map_type: str,
     opted_out: bool = False,
+    interval_days: int = 7,
 ) -> dict:
     return {
         "schedule_id": schedule_id,
@@ -81,7 +83,8 @@ def _preview_row(
         "map_name": f"Map {map_id}",
         "map_type": map_type,
         "next_due": due,
-        "interval_days": 7,
+        "interval_days": interval_days,
+        "season_adjust": None,
         "rhythm_opt_out": opted_out,
     }
 
@@ -119,20 +122,74 @@ def test_preview_separates_environments_and_keeps_visible_exceptions():
     assert by_id[1]["new_date"] == "2026-07-20"
     assert by_id[1]["movement_days"] == -1
     assert by_id[1]["status"] == "moved"
-    assert by_id[2]["status"] == "exception"
-    assert by_id[2]["reason"] == "outside_window"
+    assert by_id[1]["reason"] == "routine"
+    assert by_id[2]["new_date"] == "2026-07-20"
+    assert by_id[2]["movement_days"] == -2
+    assert by_id[2]["status"] == "moved"
+    assert by_id[2]["reason"] == "routine"
     assert by_id[3]["status"] == "unchanged"
     assert by_id[4]["status"] == "unchanged"
     assert by_id[5]["reason"] == "opted_out"
     assert by_id[6]["reason"] == "not_future"
     assert preview["summary"] == {
         "total": 6,
-        "moved": 1,
+        "moved": 2,
         "unchanged": 2,
-        "exceptions": 3,
+        "exceptions": 2,
         "group_count": 3,
     }
-    assert [group["count"] for group in preview["groups"]] == [1, 1, 1]
+    assert [group["count"] for group in preview["groups"]] == [2, 1, 1]
+
+
+def test_preview_marks_frequent_water_as_exact_exception():
+    row = _preview_row(
+        1,
+        date(2026, 7, 21),
+        map_id=1,
+        map_type="outdoor",
+        interval_days=3,
+    )
+    preview = build_rhythm_preview(
+        [row],
+        {
+            "indoor_weekdays": [],
+            "outdoor_weekdays": [1],
+            "map_overrides": [],
+        },
+        today=date(2026, 7, 15),
+        household_id=10,
+    )
+
+    item = preview["items"][0]
+    assert item["old_date"] == item["new_date"] == "2026-07-21"
+    assert item["status"] == "exception"
+    assert item["reason"] == "too_frequent"
+    assert preview["groups"] == []
+
+
+def test_preview_marks_water_without_effective_weekdays_as_exact():
+    preview = build_rhythm_preview(
+        [
+            _preview_row(
+                1,
+                date(2026, 7, 21),
+                map_id=1,
+                map_type="outdoor",
+            )
+        ],
+        {
+            "indoor_weekdays": [4],
+            "outdoor_weekdays": [],
+            "map_overrides": [],
+        },
+        today=date(2026, 7, 15),
+        household_id=10,
+    )
+
+    item = preview["items"][0]
+    assert item["status"] == "exception"
+    assert item["reason"] == "no_routine"
+    assert item["old_date"] == item["new_date"]
 
 
 def test_preview_hash_is_stable_and_changes_with_schedule_or_configuration():
@@ -182,18 +239,6 @@ CREATE TABLE care_rhythm_operations (
     preview_hash TEXT NOT NULL,
     created_at TEXT,
     undone_at TEXT
-);
-CREATE TABLE household_care_rhythm_preferences (
-    household_id INTEGER PRIMARY KEY,
-    indoor_weekdays TEXT NOT NULL,
-    outdoor_weekdays TEXT NOT NULL,
-    last_operation_id INTEGER
-);
-CREATE TABLE map_care_rhythm_overrides (
-    household_id INTEGER NOT NULL,
-    map_id INTEGER NOT NULL,
-    weekdays TEXT NOT NULL,
-    PRIMARY KEY (household_id, map_id)
 );
 CREATE TABLE care_rhythm_operation_members (
     operation_id INTEGER NOT NULL,
@@ -253,6 +298,121 @@ async def rhythm_db(seeded_db):
     return seeded_db
 
 
+# ── RED→GREEN: get_saved_care_rhythm_config ──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_returns_none_when_not_saved(rhythm_db):
+    """No saved preferences row → None, even though get_care_rhythm_settings
+    would dynamically propose weekdays."""
+    result = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_returns_normalized_config_when_saved(rhythm_db):
+    """Saved preferences with indoor_weekdays and outdoor_weekdays → dict."""
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays)
+           VALUES (1, ?, ?)""",
+        (json.dumps([4]), json.dumps([1])),
+    )
+    await rhythm_db.commit()
+
+    result = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+
+    assert result is not None
+    assert result["indoor_weekdays"] == [4]
+    assert result["outdoor_weekdays"] == [1]
+    assert result["map_overrides"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_includes_decoded_map_overrides(rhythm_db):
+    """Saved preferences with map_overrides → overrides decoded in result."""
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays)
+           VALUES (1, ?, ?)""",
+        (json.dumps([4]), json.dumps([1])),
+    )
+    await rhythm_db.execute(
+        """INSERT INTO map_care_rhythm_overrides
+           (household_id, map_id, weekdays)
+           VALUES (1, 1, ?)""",
+        (json.dumps([2, 5]),),
+    )
+    await rhythm_db.commit()
+
+    result = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+
+    assert result is not None
+    assert result["indoor_weekdays"] == [4]
+    assert result["outdoor_weekdays"] == [1]
+    assert result["map_overrides"] == [{"map_id": 1, "weekdays": [2, 5]}]
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_does_not_leak_another_household(rhythm_db):
+    """Only household 1's config returned for household 1, not household 2's."""
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays)
+           VALUES (1, ?, ?)""",
+        (json.dumps([4]), json.dumps([1])),
+    )
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays)
+           VALUES (2, ?, ?)""",
+        (json.dumps([2]), json.dumps([3])),
+    )
+    await rhythm_db.commit()
+
+    # Household 1 sees its own config
+    result_1 = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+    assert result_1 is not None
+    assert result_1["indoor_weekdays"] == [4]
+
+    # Household 2 sees its own config
+    result_2 = await get_saved_care_rhythm_config(rhythm_db, household_id=2)
+    assert result_2 is not None
+    assert result_2["indoor_weekdays"] == [2]
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_gracefully_decodes_corrupted_json(rhythm_db):
+    """Corrupted JSON weekdays in DB → gracefully decoded as empty list."""
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays)
+           VALUES (1, ?, ?)""",
+        ("not-json", json.dumps([1])),
+    )
+    await rhythm_db.commit()
+
+    result = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+
+    assert result is not None
+    assert result["indoor_weekdays"] == []
+    assert result["outdoor_weekdays"] == [1]
+    assert result["map_overrides"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_saved_config_does_not_write_to_db(rhythm_db):
+    """Read-only helper — no rows inserted by calling it."""
+    result = await get_saved_care_rhythm_config(rhythm_db, household_id=1)
+    assert result is None
+    assert await rhythm_db.execute_fetchall(
+        "SELECT household_id FROM household_care_rhythm_preferences"
+    ) == []
+
+
+# ── Existing integration tests (unchanged) ────────────────────────────
+
+
 @pytest.mark.asyncio
 async def test_preview_endpoint_is_side_effect_free_and_household_scoped(
     client, rhythm_db, auth_header,
@@ -278,12 +438,46 @@ async def test_preview_endpoint_is_side_effect_free_and_household_scoped(
     assert [item["schedule_id"] for item in body["items"]] == [201, 202, 203]
     assert body["items"][0]["new_date"] == monday.isoformat()
     assert body["items"][0]["movement_days"] == -1
-    assert body["items"][1]["reason"] == "outside_window"
+    assert body["items"][1]["reason"] == "routine"
+    assert body["items"][1]["movement_days"] == -2
     assert body["items"][2]["status"] == "unchanged"
     after = await rhythm_db.execute_fetchall(
         "SELECT id, next_due FROM care_schedules ORDER BY id"
     )
     assert after == before
+
+
+@pytest.mark.asyncio
+async def test_preview_endpoint_uses_season_adjusted_interval_for_eligibility(
+    client, rhythm_db, auth_header,
+):
+    season_adjust = json.dumps({
+        "spring": 0.2,
+        "summer": 0.2,
+        "autumn": 0.2,
+        "winter": 0.2,
+    })
+    await rhythm_db.execute(
+        """UPDATE care_schedules
+           SET interval_days = 14, season_adjust = ? WHERE id = 201""",
+        (season_adjust,),
+    )
+    await rhythm_db.commit()
+
+    preview = await _preview(
+        client,
+        auth_header,
+        {
+            "indoor_weekdays": [4],
+            "outdoor_weekdays": [1],
+            "map_overrides": [],
+        },
+    )
+
+    item = next(item for item in preview["items"] if item["schedule_id"] == 201)
+    assert item["status"] == "exception"
+    assert item["reason"] == "too_frequent"
+    assert item["old_date"] == item["new_date"]
 
 
 @pytest.mark.asyncio
@@ -391,7 +585,7 @@ async def test_onboarding_preview_is_unavailable_until_routine_is_saved(
 
 
 @pytest.mark.asyncio
-async def test_apply_and_undo_change_only_future_due_dates_transactionally(
+async def test_apply_and_undo_change_only_routine_preferences_transactionally(
     client, rhythm_db, auth_header,
 ):
     config = {
@@ -405,20 +599,23 @@ async def test_apply_and_undo_change_only_future_due_dates_transactionally(
 
     assert applied.status_code == 200
     result = applied.json()
-    assert result["affected_count"] == 1
+    assert result["affected_count"] == 0
     operation_id = result["operation_id"]
     rows = await rhythm_db.execute_fetchall(
         """SELECT id, interval_days, next_due, last_done, season_adjust,
                   rhythm_operation_id
            FROM care_schedules WHERE id IN (201, 202, 203) ORDER BY id"""
     )
-    assert rows[0]["next_due"] == preview["items"][0]["new_date"]
-    assert rows[0]["rhythm_operation_id"] == operation_id
-    assert rows[1]["next_due"] == preview["items"][1]["old_date"]
-    assert rows[2]["next_due"] == preview["items"][2]["old_date"]
+    assert [row["next_due"] for row in rows] == [
+        item["old_date"] for item in preview["items"]
+    ]
+    assert all(row["rhythm_operation_id"] is None for row in rows)
     assert [row["interval_days"] for row in rows] == [7, 7, 7]
     assert all(row["last_done"] is None for row in rows)
     assert all(row["season_adjust"] is None for row in rows)
+    assert await rhythm_db.execute_fetchall(
+        "SELECT operation_id FROM care_rhythm_operation_members"
+    ) == []
 
     stored = (await rhythm_db.execute_fetchall(
         """SELECT indoor_weekdays, outdoor_weekdays, last_operation_id
@@ -525,8 +722,64 @@ async def test_chained_apply_and_undo_restore_previous_map_override_configuratio
     assert proposed.json()["saved"] is False
 
 
+async def _seed_legacy_rhythm_operation(
+    rhythm_db, config: dict,
+) -> tuple[int, str, str]:
+    schedule = (await rhythm_db.execute_fetchall(
+        "SELECT next_due FROM care_schedules WHERE id = 201"
+    ))[0]
+    previous_date = date.fromisoformat(schedule["next_due"])
+    applied_date = previous_date - timedelta(days=1)
+    previous_config = {
+        "saved": False,
+        "config": {
+            "indoor_weekdays": [],
+            "outdoor_weekdays": [],
+            "map_overrides": [],
+        },
+        "last_operation_id": None,
+    }
+    operation = await rhythm_db.execute_fetchall(
+        """INSERT INTO care_rhythm_operations
+           (household_id, previous_config, applied_config, preview_hash)
+           VALUES (1, ?, ?, 'legacy-preview') RETURNING id""",
+        (
+            json.dumps(previous_config, sort_keys=True),
+            json.dumps(config, sort_keys=True),
+        ),
+    )
+    operation_id = operation[0]["id"]
+    await rhythm_db.execute(
+        """UPDATE care_schedules SET next_due = ?, rhythm_operation_id = ?
+           WHERE id = 201""",
+        (applied_date, operation_id),
+    )
+    await rhythm_db.execute(
+        """INSERT INTO care_rhythm_operation_members
+           (operation_id, schedule_id, previous_next_due, applied_next_due,
+            previous_rhythm_operation_id, previous_last_done,
+            previous_last_done_by)
+           VALUES (?, 201, ?, ?, NULL, NULL, NULL)""",
+        (operation_id, previous_date, applied_date),
+    )
+    await rhythm_db.execute(
+        """INSERT INTO household_care_rhythm_preferences
+           (household_id, indoor_weekdays, outdoor_weekdays, last_operation_id)
+           VALUES (1, ?, ?, ?)""",
+        (
+            json.dumps(config["indoor_weekdays"]),
+            json.dumps(config["outdoor_weekdays"]),
+            operation_id,
+        ),
+    )
+    await rhythm_db.commit()
+    return operation_id, previous_date.isoformat(), applied_date.isoformat()
+
+
 @pytest.mark.asyncio
-async def test_undo_rejects_later_manual_schedule_change(client, rhythm_db, auth_header):
+async def test_preference_only_undo_ignores_later_manual_schedule_change(
+    client, rhythm_db, auth_header,
+):
     config = {
         "indoor_weekdays": [4],
         "outdoor_weekdays": [1],
@@ -535,11 +788,49 @@ async def test_undo_rejects_later_manual_schedule_change(client, rhythm_db, auth
     preview = await _preview(client, auth_header, config)
     applied = await _apply(client, auth_header, config, preview["preview_hash"])
     operation_id = applied.json()["operation_id"]
+    changed_due = date.today() + timedelta(days=40)
     await rhythm_db.execute(
         """UPDATE care_schedules
            SET next_due = ?, rhythm_opt_out = 1, rhythm_operation_id = NULL
            WHERE id = 201""",
-        (date.today() + timedelta(days=40),),
+        (changed_due,),
+    )
+    await rhythm_db.commit()
+
+    response = await client.post(
+        f"/api/care-rhythm/{operation_id}/undo",
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    current = (await rhythm_db.execute_fetchall(
+        "SELECT next_due, rhythm_opt_out FROM care_schedules WHERE id = 201"
+    ))[0]
+    assert current == {
+        "next_due": changed_due.isoformat(),
+        "rhythm_opt_out": 1,
+    }
+    assert await rhythm_db.execute_fetchall(
+        "SELECT household_id FROM household_care_rhythm_preferences"
+    ) == []
+
+
+@pytest.mark.asyncio
+async def test_undo_rejects_later_manual_schedule_change(
+    client, rhythm_db, auth_header,
+):
+    config = {
+        "indoor_weekdays": [4],
+        "outdoor_weekdays": [1],
+        "map_overrides": [],
+    }
+    operation_id, _, applied_date = await _seed_legacy_rhythm_operation(
+        rhythm_db, config,
+    )
+    manually_changed_date = date.fromisoformat(applied_date) + timedelta(days=1)
+    await rhythm_db.execute(
+        "UPDATE care_schedules SET next_due = ? WHERE id = 201",
+        (manually_changed_date,),
     )
     await rhythm_db.commit()
 
@@ -549,15 +840,6 @@ async def test_undo_rejects_later_manual_schedule_change(client, rhythm_db, auth
     )
 
     assert response.status_code == 409
-    current = (await rhythm_db.execute_fetchall(
-        "SELECT next_due, rhythm_opt_out FROM care_schedules WHERE id = 201"
-    ))[0]
-    assert current["rhythm_opt_out"] == 1
-    operation = (await rhythm_db.execute_fetchall(
-        "SELECT undone_at FROM care_rhythm_operations WHERE id = ?",
-        (operation_id,),
-    ))[0]
-    assert operation["undone_at"] is None
 
 
 @pytest.mark.asyncio
@@ -569,9 +851,9 @@ async def test_undo_rejects_later_care_even_when_due_date_matches_applied_date(
         "outdoor_weekdays": [1],
         "map_overrides": [],
     }
-    preview = await _preview(client, auth_header, config)
-    applied = await _apply(client, auth_header, config, preview["preview_hash"])
-    operation_id = applied.json()["operation_id"]
+    operation_id, _, applied_date = await _seed_legacy_rhythm_operation(
+        rhythm_db, config,
+    )
     await rhythm_db.execute(
         """UPDATE care_schedules
            SET last_done = '2026-07-20 09:00:00', last_done_by = 1
@@ -588,8 +870,39 @@ async def test_undo_rejects_later_care_even_when_due_date_matches_applied_date(
     current = (await rhythm_db.execute_fetchall(
         "SELECT next_due, last_done FROM care_schedules WHERE id = 201"
     ))[0]
-    assert current["next_due"] == preview["items"][0]["new_date"]
+    assert current["next_due"] == applied_date
     assert current["last_done"] == "2026-07-20 09:00:00"
+
+
+@pytest.mark.asyncio
+async def test_apply_and_undo_change_only_future_due_dates_transactionally(
+    client, rhythm_db, auth_header,
+):
+    config = {
+        "indoor_weekdays": [4],
+        "outdoor_weekdays": [1],
+        "map_overrides": [],
+    }
+    operation_id, previous_date, _ = await _seed_legacy_rhythm_operation(
+        rhythm_db, config,
+    )
+
+    response = await client.post(
+        f"/api/care-rhythm/{operation_id}/undo",
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    schedule = (await rhythm_db.execute_fetchall(
+        "SELECT next_due, rhythm_operation_id FROM care_schedules WHERE id = 201"
+    ))[0]
+    assert schedule == {
+        "next_due": previous_date,
+        "rhythm_operation_id": None,
+    }
+    assert await rhythm_db.execute_fetchall(
+        "SELECT household_id FROM household_care_rhythm_preferences"
+    ) == []
 
 
 @pytest.mark.asyncio
@@ -604,8 +917,7 @@ async def test_apply_rolls_back_operation_preferences_and_dates_on_failure(
     preview = await _preview(client, auth_header, config)
     await rhythm_db.execute("""
         CREATE TRIGGER fail_rhythm_apply
-        BEFORE UPDATE OF next_due ON care_schedules
-        WHEN OLD.id = 201
+        BEFORE INSERT ON household_care_rhythm_preferences
         BEGIN
             SELECT RAISE(ABORT, 'forced rhythm apply failure');
         END
@@ -619,11 +931,10 @@ async def test_apply_rolls_back_operation_preferences_and_dates_on_failure(
             config=config,
             preview_hash=preview["preview_hash"],
         )
-    schedule = (await rhythm_db.execute_fetchall(
-        "SELECT next_due, rhythm_operation_id FROM care_schedules WHERE id = 201"
-    ))[0]
-    assert schedule["next_due"] == preview["items"][0]["old_date"]
-    assert schedule["rhythm_operation_id"] is None
+    schedules = await rhythm_db.execute_fetchall(
+        "SELECT id, next_due, rhythm_operation_id FROM care_schedules ORDER BY id"
+    )
+    assert all(row["rhythm_operation_id"] is None for row in schedules)
     assert await rhythm_db.execute_fetchall("SELECT id FROM care_rhythm_operations") == []
     assert await rhythm_db.execute_fetchall(
         "SELECT household_id FROM household_care_rhythm_preferences"
@@ -665,7 +976,7 @@ async def test_undo_rolls_back_all_restores_when_finalize_fails(
         "SELECT next_due, rhythm_operation_id FROM care_schedules WHERE id = 201"
     ))[0]
     assert schedule["next_due"] == applied_date
-    assert schedule["rhythm_operation_id"] == operation_id
+    assert schedule["rhythm_operation_id"] is None
     preference = (await rhythm_db.execute_fetchall(
         "SELECT last_operation_id FROM household_care_rhythm_preferences "
         "WHERE household_id = 1"
