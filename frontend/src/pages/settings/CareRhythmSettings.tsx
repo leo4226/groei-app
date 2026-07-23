@@ -186,12 +186,22 @@ export default function CareRhythmSettings() {
 
   function reasonLabel(item: CareRhythmPreviewItem): string {
     switch (item.reason) {
+      case 'routine':
+        return item.status === 'moved'
+          ? t.settings.careRhythmReasonRoutineProjected
+          : t.settings.careRhythmReasonRoutineAligned
+      case 'too_frequent': return t.settings.careRhythmReasonTooFrequent
       case 'moved_earlier': return t.settings.careRhythmReasonMoved
       case 'aligned': return t.settings.careRhythmReasonAligned
       case 'outside_window': return t.settings.careRhythmReasonOutside
       case 'opted_out': return t.settings.careRhythmReasonOptedOut
       case 'not_future': return t.settings.careRhythmReasonNotFuture
-      default: return t.settings.careRhythmReasonNoRoutine
+      case 'no_routine': return t.settings.careRhythmReasonNoRoutine
+      default: {
+        const exhaustiveReason: never = item.reason
+        void exhaustiveReason
+        return t.settings.careRhythmReasonNoRoutine
+      }
     }
   }
 
@@ -375,8 +385,10 @@ export default function CareRhythmSettings() {
                         </div>
                         <div className="text-left sm:text-right">
                           <div className="font-mono text-xs text-text-soft">
-                            {isoToDisplay(item.old_date)}
-                            {item.old_date !== item.new_date && <> → {isoToDisplay(item.new_date)}</>}
+                            {t.settings.careRhythmPreviewTiming(
+                              isoToDisplay(item.old_date),
+                              isoToDisplay(item.new_date),
+                            )}
                           </div>
                           <div className={`text-[11px] ${item.status === 'exception' ? 'text-amber-700' : 'text-primary'}`}>
                             {reasonLabel(item)}
@@ -394,7 +406,7 @@ export default function CareRhythmSettings() {
           {appliedOperation && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary/10 px-3 py-2">
               <span className="text-sm font-semibold text-primary">
-                {t.settings.careRhythmApplied(appliedOperation.affected_count)}
+                {t.settings.careRhythmApplied}
               </span>
               <button
                 type="button"

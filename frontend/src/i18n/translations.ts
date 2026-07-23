@@ -431,6 +431,7 @@ export type Translations = {
     careRhythmOverride: string
     careRhythmWeekdays: [string, string, string, string, string, string, string]
     careRhythmPreviewTitle: string
+    careRhythmPreviewTiming: (canonicalDate: string, sessionDate: string) => string
     careRhythmMovedCount: (count: number) => string
     careRhythmUnchangedCount: (count: number) => string
     careRhythmExceptionCount: (count: number) => string
@@ -439,7 +440,7 @@ export type Translations = {
     careRhythmApplying: string
     careRhythmUndo: string
     careRhythmUndoing: string
-    careRhythmApplied: (count: number) => string
+    careRhythmApplied: string
     careRhythmNoSchedules: string
     careRhythmLoadError: string
     careRhythmPreviewError: string
@@ -453,6 +454,9 @@ export type Translations = {
     careRhythmReasonOptedOut: string
     careRhythmReasonNotFuture: string
     careRhythmReasonNoRoutine: string
+    careRhythmReasonRoutineProjected: string
+    careRhythmReasonRoutineAligned: string
+    careRhythmReasonTooFrequent: string
     digestTitle: string
     digestToggle: string
     digestToggleDesc: string
@@ -1203,6 +1207,7 @@ export type Translations = {
     sessionLoad: (n: number) => string  // "3 sessions"
     wateringRoundTitle: string
     wateringRoundDescription: string
+    wateringRoundDueDate: (date: string) => string
     wateringRoundSelectAll: string
     wateringRoundSelectNone: string
     wateringRoundCancel: string

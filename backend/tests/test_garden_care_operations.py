@@ -224,3 +224,155 @@ async def test_complete_garden_care_rejects_schedule_outside_selected_group(
     )
     assert after == before
     assert await selectable_garden_db.execute_fetchall('SELECT id FROM care_log') == []
+
+
+@pytest.mark.asyncio
+async def test_early_routine_completion_advances_from_canonical_due_and_undoes(
+    client, seeded_db, auth_header,
+):
+    db = seeded_db
+    await db.execute('PRAGMA foreign_keys = ON')
+    await db.executescript(EXTRA_SCHEMA)
+    await db.executescript("""
+        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO maps (id, name, map_type, household_id)
+        VALUES (1, 'Garden', 'outdoor', 1);
+        INSERT INTO plants (id, name, household_id, map_id, is_active)
+        VALUES (1, 'Rose', 1, 1, 1);
+        INSERT INTO care_schedules
+          (id, plant_id, care_type, interval_days, next_due, is_active)
+        VALUES (10, 1, 'water', 14, '2026-07-15', 1);
+        INSERT INTO household_care_rhythm_preferences
+          (household_id, indoor_weekdays, outdoor_weekdays)
+        VALUES (1, '[]', '[7]');
+    """)
+    await db.commit()
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-12',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    assert response.json()['affected_count'] == 1
+    schedule = (await db.execute_fetchall(
+        'SELECT next_due, last_done FROM care_schedules WHERE id = 10'
+    ))[0]
+    assert schedule['next_due'] == '2026-07-29'
+    assert schedule['last_done'] == '2026-07-12T00:00:00'
+
+    undo = await client.post(
+        f"/api/care/garden/{response.json()['operation_id']}/undo",
+        headers=auth_header,
+    )
+    assert undo.status_code == 200
+    restored = (await db.execute_fetchall(
+        'SELECT next_due, last_done FROM care_schedules WHERE id = 10'
+    ))[0]
+    assert restored == {'next_due': '2026-07-15', 'last_done': None}
+
+
+@pytest_asyncio.fixture
+async def mixed_routine_garden_db(seeded_db):
+    db = seeded_db
+    await db.execute('PRAGMA foreign_keys = ON')
+    await db.executescript(EXTRA_SCHEMA)
+    await db.executescript("""
+        INSERT INTO users (id, name, household_id) VALUES (1, 'Leon', 1);
+        INSERT INTO maps (id, name, map_type, household_id)
+        VALUES (1, 'Garden', 'outdoor', 1);
+        INSERT INTO plants (id, name, household_id, map_id, is_active) VALUES
+          (1, 'Rose', 1, 1, 1),
+          (2, 'Mint', 1, 1, 1),
+          (3, 'Exact', 1, 1, 1);
+        INSERT INTO care_schedules
+          (id, plant_id, care_type, interval_days, next_due,
+           rhythm_opt_out, is_active)
+        VALUES
+          (10, 1, 'water', 14, '2026-07-15', 0, 1),
+          (11, 2, 'water', 3, '2026-07-15', 0, 1),
+          (12, 3, 'water', 14, '2026-07-15', 1, 1);
+        INSERT INTO household_care_rhythm_preferences
+          (household_id, indoor_weekdays, outdoor_weekdays)
+        VALUES (1, '[]', '[7]');
+    """)
+    await db.commit()
+    return db
+
+
+@pytest.mark.asyncio
+async def test_late_routine_completion_advances_from_actual_date(
+    client, mixed_routine_garden_db, auth_header,
+):
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-17',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    schedule = (await mixed_routine_garden_db.execute_fetchall(
+        'SELECT next_due, last_done FROM care_schedules WHERE id = 10'
+    ))[0]
+    assert schedule == {
+        'next_due': '2026-07-31',
+        'last_done': '2026-07-17T00:00:00',
+    }
+
+
+@pytest.mark.asyncio
+async def test_routine_completion_excludes_frequent_and_opted_out_schedules(
+    client, mixed_routine_garden_db, auth_header,
+):
+    for schedule_id in (11, 12):
+        response = await client.post(
+            '/api/care/garden/complete',
+            json={
+                'care_type': 'water',
+                'completed_at': '2026-07-12',
+                'user_id': 1,
+                'map_id': 1,
+                'schedule_ids': [schedule_id],
+            },
+            headers=auth_header,
+        )
+        assert response.status_code == 422
+        assert response.json()['detail']['code'] == (
+            'invalid_grouped_schedule_selection'
+        )
+
+    completed = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-12',
+            'user_id': 1,
+            'map_id': 1,
+        },
+        headers=auth_header,
+    )
+    assert completed.status_code == 200
+    assert completed.json()['affected_count'] == 1
+    schedules = await mixed_routine_garden_db.execute_fetchall(
+        'SELECT id, next_due, last_done FROM care_schedules ORDER BY id'
+    )
+    assert schedules == [
+        {
+            'id': 10,
+            'next_due': '2026-07-29',
+            'last_done': '2026-07-12T00:00:00',
+        },
+        {'id': 11, 'next_due': '2026-07-15', 'last_done': None},
+        {'id': 12, 'next_due': '2026-07-15', 'last_done': None},
+    ]
