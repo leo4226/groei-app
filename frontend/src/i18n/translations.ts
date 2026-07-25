@@ -1448,6 +1448,25 @@ export type Translations = {
         rainwater: string // "Regenwater opvangen"
         peatFree: string  // "Turfvrij tuinieren"
       }
+      features: {
+        title: string          // "Voorzieningen"
+        hint: string           // "Schuilplaats, nestgelegenheid en water"
+        insectHotel: string    // "Insectenhotel"
+        birdHouse: string      // "Nestkast"
+        water: string          // "Water"
+        logPile: string        // "Takkenril"
+        stonePile: string      // "Steenhoop"
+        hedgehogHouse: string  // "Egelhuisje"
+        batBox: string         // "Vleermuiskast"
+        supportsLabel: string  // "Je ondersteunt"
+        missingLabel: string   // "Kansen"
+        faunaBees: string      // "solitaire bijen"
+        faunaInsects: string   // "insecten"
+        faunaBirds: string     // "vogels"
+        faunaHedgehogs: string // "egels"
+        faunaAmphibians: string // "amfibieën"
+        faunaBats: string      // "vleermuizen"
+      }
     }
     suggestions: {
       title: string        // "Verbeter je tuin"

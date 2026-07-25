@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
-import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut, CircularityFlags, PlantRecommendation } from '../types'
+import type { GardenBiodiversityOut, GardenSuggestionsOut, StreekSuggestionsOut, BeeSupportOut, CircularityFlags, GardenFeaturesOut, PlantRecommendation } from '../types'
 
 /** Soil-pH advice copy for a garden (advice-only, never scored). Returns '' when
  * there's no signal, so the caller can hide the line entirely. */
@@ -154,6 +154,81 @@ function MonthCoverage({ months, locale }: { months: boolean[]; locale: string }
 function monthsShort(months: number[], locale: string): string {
   const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
   return months.map(m => fmt.format(new Date(2026, m - 1, 1))).join(', ')
+}
+
+const FEATURE_KEYS = ['insect_hotel', 'bird_house', 'water', 'log_pile', 'stone_pile', 'hedgehog_house', 'bat_box'] as const
+const FEATURE_EMOJI: Record<(typeof FEATURE_KEYS)[number], string> = {
+  insect_hotel: '🐝', bird_house: '🐦', water: '💧', log_pile: '🪵',
+  stone_pile: '🪨', hedgehog_house: '🦔', bat_box: '🦇',
+}
+
+/** Physical garden features — shelter, nesting and water. Flowers bring fauna
+ * in; these decide whether they can stay. Tap to add one, tap again for more;
+ * long-press-free — a small − appears once you have any. Advice-only. */
+function FeaturesSection({ slug, initial }: { slug: string; initial?: GardenFeaturesOut }) {
+  const t = useT()
+  const f = t.garden.biodiversity.features
+  const [data, setData] = useState<GardenFeaturesOut>(initial ?? {})
+  const counts = data.counts ?? {}
+  const label: Record<(typeof FEATURE_KEYS)[number], string> = {
+    insect_hotel: f.insectHotel, bird_house: f.birdHouse, water: f.water, log_pile: f.logPile,
+    stone_pile: f.stonePile, hedgehog_house: f.hedgehogHouse, bat_box: f.batBox,
+  }
+  const groupLabel: Record<string, string> = {
+    solitary_bees: f.faunaBees, insects: f.faunaInsects, birds: f.faunaBirds,
+    hedgehogs: f.faunaHedgehogs, amphibians: f.faunaAmphibians, bats: f.faunaBats,
+  }
+
+  const setCount = (key: (typeof FEATURE_KEYS)[number], next: number) => {
+    const prev = data
+    // optimistic: reflect the new count immediately, revert if the call fails
+    setData({ ...data, counts: { ...counts, [key]: next } })
+    mapsApi.updateFeature(slug, key, next).then(setData).catch(() => setData(prev))
+  }
+
+  return (
+    <section className="pt-4 mt-4 border-t border-border/40">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">{f.title}</h3>
+        {(data.total ?? 0) > 0 && <span className="text-xs font-mono text-text-muted">{data.total}</span>}
+      </div>
+      <p className="text-[11px] text-text-muted mb-3">{f.hint}</p>
+
+      <div className="flex flex-wrap gap-2">
+        {FEATURE_KEYS.map(k => {
+          const n = counts[k] ?? 0
+          return (
+            <div key={k} className={`flex items-center gap-1.5 text-xs pl-2.5 pr-1.5 py-1.5 rounded-full border transition-colors ${
+              n > 0 ? 'border-good/50 bg-good/10 text-text' : 'border-border/50 text-text-muted'
+            }`}>
+              <span aria-hidden="true">{FEATURE_EMOJI[k]}</span>
+              <span>{label[k]}</span>
+              {n > 0 && <span className="font-mono text-[11px] text-good">×{n}</span>}
+              {n > 0 && (
+                <button onClick={() => setCount(k, n - 1)} aria-label={`${label[k]} −`}
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-text-muted hover:bg-bg/60">−</button>
+              )}
+              <button onClick={() => setCount(k, n + 1)} aria-label={`${label[k]} +`}
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-primary hover:bg-bg/60">+</button>
+            </div>
+          )
+        })}
+      </div>
+
+      {(data.supported_groups?.length ?? 0) > 0 && (
+        <p className="text-[11px] text-text-muted mt-3">
+          <span className="text-text-muted">{f.supportsLabel}:</span>{' '}
+          <span className="text-text">{data.supported_groups!.map(g => groupLabel[g] ?? g).join(' · ')}</span>
+        </p>
+      )}
+      {(data.missing?.length ?? 0) > 0 && (
+        <p className="text-[11px] text-text-muted mt-1.5">
+          <span className="text-amber-600 dark:text-amber-400 font-medium">{f.missingLabel}:</span>{' '}
+          <span className="text-text">{data.missing!.map(k => label[k as (typeof FEATURE_KEYS)[number]] ?? k).join(' · ')}</span>
+        </p>
+      )}
+    </section>
+  )
 }
 
 const CIRC_KEYS = ['compost', 'mulch', 'rainwater', 'peat_free'] as const
@@ -408,6 +483,9 @@ function GardenBiodiversityCardFull({ data, slug, embedded }: { data: GardenBiod
           <span className="flex items-center gap-1"><BioIcon name="native" size={12} /> {t.garden.biodiversity.componentStreek}: <span className="text-text font-mono">{data.components.streek ?? 0}/12</span></span>
         )}
       </div>
+
+      {/* Physical garden features (shelter, nesting, water) — advice-only */}
+      {slug && <FeaturesSection slug={slug} initial={data.features} />}
 
       {/* Circularity (kringloop) self-report — advice-only */}
       {slug && <CircularitySection slug={slug} initial={data.circularity} />}
