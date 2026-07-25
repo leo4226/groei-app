@@ -753,6 +753,22 @@ export type GardenBiodiversityOut = {
     ground_cover_examples?: string[]
   }
   circularity?: CircularityFlags
+  features?: GardenFeaturesOut
+}
+
+export type GardenFeatureType =
+  | 'insect_hotel' | 'bird_house' | 'water' | 'log_pile'
+  | 'stone_pile' | 'hedgehog_house' | 'bat_box'
+
+export type FaunaGroup =
+  | 'solitary_bees' | 'insects' | 'birds' | 'hedgehogs' | 'amphibians' | 'bats'
+
+export type GardenFeaturesOut = {
+  counts?: Partial<Record<GardenFeatureType, number>>
+  total?: number
+  distinct?: number
+  supported_groups?: FaunaGroup[]
+  missing?: GardenFeatureType[]
 }
 
 export type CircularityFlags = {

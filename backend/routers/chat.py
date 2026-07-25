@@ -958,6 +958,24 @@ async def _fetch_biodiversity_packet(
             done_str = ", ".join(circ_done) if circ_done else "nog niets aangegeven"
             lines.append(f"  Kringloop ({len(circ_done)}/4): doet {done_str}." + (f" Kansen: {', '.join(circ_todo)}." if circ_todo else ""))
 
+        # Physical garden features (shelter/nesting/water) — advice-only.
+        feat = bio.features or {}
+        _feat_nl = {
+            "insect_hotel": "insectenhotel", "bird_house": "nestkast", "water": "water",
+            "log_pile": "takkenril", "stone_pile": "steenhoop",
+            "hedgehog_house": "egelhuisje", "bat_box": "vleermuiskast",
+        }
+        feat_counts = feat.get("counts") or {}
+        if feat_counts:
+            have = ", ".join(f"{_feat_nl.get(k, k)} ({v})" for k, v in feat_counts.items())
+            lines.append(f"  Tuinvoorzieningen: {have}.")
+        if feat.get("missing"):
+            lines.append(
+                "  Ontbrekende voorzieningen: "
+                + ", ".join(_feat_nl.get(k, k) for k in feat["missing"])
+                + " — dit bepaalt of dieren er ook kúnnen blijven."
+            )
+
         try:
             suggestions, _ = await recommend_for_garden(db, map_id, limit=5)
             if suggestions:
@@ -995,6 +1013,7 @@ async def _fetch_biodiversity_packet(
                 "soil_ph": bio.soil_ph,
                 "growth_form": bio.growth_form,
                 "circularity": bio.circularity,
+                "features": bio.features,
             }
         )
 

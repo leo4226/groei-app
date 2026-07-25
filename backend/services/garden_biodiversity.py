@@ -52,6 +52,7 @@ class GardenBiodiversity:
     soil_ph: dict = field(default_factory=dict)  # advice-only: {advice_code, acid_count, …}
     growth_form: dict = field(default_factory=dict)  # advice-only: {carbon_level, ground_cover_advice, …}
     circularity: dict = field(default_factory=dict)  # self-reported kringloop practices {key: bool}
+    features: dict = field(default_factory=dict)  # physical garden features (shelter/water/nesting)
 
 
 def _streek_name(slug: str | None) -> str | None:
@@ -256,6 +257,18 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
     # Self-reported circularity (kringloop) practices — advice-only.
     circularity = await _circularity(db, map_id)
 
+    # Physical garden features (shelter, nesting, water) — advice-only. Flowers
+    # bring fauna in; these decide whether they can stay.
+    from services.garden_features import features_for_map
+    gf_feat = await features_for_map(db, map_id)
+    features = {
+        "counts": gf_feat.counts,
+        "total": gf_feat.total,
+        "distinct": gf_feat.distinct,
+        "supported_groups": gf_feat.supported_groups,
+        "missing": gf_feat.missing,
+    }
+
     if species_count == 0:
         return GardenBiodiversity(
             score=0,
@@ -272,6 +285,7 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
             soil_ph=soil_ph,
             growth_form=growth_form,
             circularity=circularity,
+            features=features,
         )
 
     # Truthy (not `is True`): asyncpg returns real booleans, but other drivers
@@ -348,4 +362,5 @@ async def compute_for_map(db, map_id: int) -> GardenBiodiversity:
         soil_ph=soil_ph,
         growth_form=growth_form,
         circularity=circularity,
+        features=features,
     )

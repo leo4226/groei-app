@@ -490,6 +490,7 @@ export const maps = {
   streken: ()                                                                                                    => api<import('../types').Streek[]>('GET', '/streken'),
   beeSupport: (slug: string)                                                                                     => api<import('../types').BeeSupportOut>('GET', `/maps/${slug}/bee-support`),
   updateCircularity: (slug: string, flags: import('../types').CircularityFlags)                                  => api<import('../types').CircularityFlags>('PUT', `/maps/${slug}/circularity`, { body: flags }),
+  updateFeature: (slug: string, featureType: import('../types').GardenFeatureType, count: number)                => api<import('../types').GardenFeaturesOut>('PUT', `/maps/${slug}/features`, { body: { feature_type: featureType, count } }),
   dismissRecommendation: (slug: string, speciesId: number)                                                       => api<{ dismissed: boolean; species_id: number }>('POST', `/maps/${slug}/dismiss-recommendation`, { body: { species_id: speciesId } }),
   undismissRecommendation: (slug: string, speciesId: number)                                                     => api<{ dismissed: boolean; species_id: number }>('DELETE', `/maps/${slug}/dismiss-recommendation/${speciesId}`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),

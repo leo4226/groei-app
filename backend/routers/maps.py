@@ -38,6 +38,7 @@ class GardenBiodiversityOut(BaseModel):
     soil_ph: dict = {}
     growth_form: dict = {}
     circularity: dict = {}   # self-reported kringloop practices (advice-only)
+    features: dict = {}      # physical garden features: shelter, nesting, water (advice-only)
 
 
 class StreekOut(BaseModel):
@@ -115,6 +116,7 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         soil_ph=profile.soil_ph,
         growth_form=profile.growth_form,
         circularity=profile.circularity,
+        features=profile.features,
     )
 
 
@@ -139,6 +141,59 @@ async def update_map_circularity(
     )
     await db.commit()
     return flags
+
+
+class GardenFeatureIn(BaseModel):
+    feature_type: str
+    count: int = 1
+
+
+@router.put("/maps/{slug}/features")
+async def update_map_feature(
+    slug: str,
+    data: GardenFeatureIn,
+    account = Depends(get_current_account),
+    db = Depends(db_dep),
+):
+    """Set the count of one physical garden feature (insectenhotel, nestkast,
+    water, …). count = 0 removes it. Advice-only, never scored."""
+    from services.garden_features import FEATURE_TYPES, features_for_map
+
+    if data.feature_type not in FEATURE_TYPES:
+        raise HTTPException(422, "Unknown feature type")
+    count = max(0, min(int(data.count), 99))   # clamp: a garden isn't a warehouse
+
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    if count == 0:
+        await db.execute(
+            "DELETE FROM garden_features WHERE map_id = ? AND feature_type = ?",
+            (map_id, data.feature_type),
+        )
+    else:
+        existing = await db.execute_fetchall(
+            "SELECT id FROM garden_features WHERE map_id = ? AND feature_type = ?",
+            (map_id, data.feature_type),
+        )
+        if existing:
+            await db.execute(
+                "UPDATE garden_features SET count = ? WHERE map_id = ? AND feature_type = ?",
+                (count, map_id, data.feature_type),
+            )
+        else:
+            await db.execute(
+                "INSERT INTO garden_features (map_id, feature_type, count) VALUES (?, ?, ?)",
+                (map_id, data.feature_type, count),
+            )
+    await db.commit()
+
+    summary = await features_for_map(db, map_id)
+    return {
+        "counts": summary.counts,
+        "total": summary.total,
+        "distinct": summary.distinct,
+        "supported_groups": summary.supported_groups,
+        "missing": summary.missing,
+    }
 
 
 class BeeSupportOut(BaseModel):
