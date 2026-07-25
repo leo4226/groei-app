@@ -17,22 +17,22 @@ const LOG_TAG: Record<string, { text: string; bg: string; border: string }> = {
 }
 
 /**
- * Recent-care feed for the Plants page. Reads the shared dashboardV2.recent_log
+ * Recent-care feed for the Plants page. Reads the shared recentLog
  * from the store (Phase 3 of map-as-home: care history belongs with plants,
  * not on a separate dashboard). Self-contained / Tailwind-styled so it doesn't
  * depend on the dashboard's page-scoped CSS. Renders nothing when empty.
  */
 export default function RecentCareSection() {
   const t = useT()
-  const dashboardV2 = useFloreren((s) => s.dashboardV2)
-  const loadDashboardV2 = useFloreren((s) => s.loadDashboardV2)
+  const recentLog = useFloreren((s) => s.recentLog)
+  const loadRecentLog = useFloreren((s) => s.loadRecentLog)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    if (!dashboardV2) loadDashboardV2()
-  }, [dashboardV2, loadDashboardV2])
+    if (recentLog.length === 0) loadRecentLog()
+  }, [recentLog, loadRecentLog])
 
-  const entries = dashboardV2?.recent_log ?? []
+  const entries = recentLog
   if (entries.length === 0) return null
 
   const latest = entries[0]

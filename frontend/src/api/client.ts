@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 import { indexIconUrls } from '../utils/icons'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -465,9 +465,6 @@ export const photos = {
       { body: { enabled, interval_days: intervalDays } }),
 }
 
-export const dashboard = {
-  v2: () => api<DashboardV2Data>('GET', '/dashboard/v2'),
-}
 
 export const species = {
   ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),

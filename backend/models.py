@@ -277,8 +277,6 @@ class CareLogOut(BaseModel):
     skipped: bool = False
 
 
-# --- Dashboard ---
-
 class CareTask(BaseModel):
     plant_id: int
     plant_name: str
@@ -295,17 +293,6 @@ class CareTask(BaseModel):
     is_ephemeral: bool = False
 
 
-class DashboardResponse(BaseModel):
-    overdue: list[CareTask] = []
-    due_today: list[CareTask] = []
-    upcoming: list[CareTask] = []
-
-
-class StatusCounts(BaseModel):
-    total: int
-    on_schedule: int
-    thirsty: int
-    dry: int
 
 
 class RecentLogEntry(BaseModel):
@@ -326,15 +313,6 @@ class PlantFactOut(BaseModel):
     fact_en: str = ""
     species_name_nl: str | None = None
     species_name_en: str | None = None
-
-
-class DashboardV2Response(BaseModel):
-    overdue: list[CareTask] = []
-    due_today: list[CareTask] = []
-    upcoming: list[CareTask] = []
-    status_counts: StatusCounts
-    recent_log: list[RecentLogEntry] = []
-    plant_fact: PlantFactOut | None = None
 
 
 # --- Maps ---
@@ -632,7 +610,7 @@ class SpeciesSearchResponse(BaseModel):
     per_page: int = 20
 
 
-# --- Home / Plant Fact (PlantFactOut defined above, before DashboardV2Response) ---
+# --- Home / Plant Fact ---
 
 
 # ── Weeds ──
