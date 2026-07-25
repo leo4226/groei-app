@@ -583,7 +583,9 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
   if (mode === 'pill') {
     if (loading || error || !data || data.species_count === 0) return null
 
-    const r = 9
+    // Metrics deliberately mirror WeatherPill (same padding, gap, icon size and
+    // type scale) so the two map pills stack as one consistent set.
+    const r = 7
     const c = 2 * Math.PI * r
     const dash = (data.score / 100) * c
 
@@ -591,18 +593,18 @@ export default function GardenBiodiversityCard({ slug, mode = 'card', onModalOpe
       <>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1 bg-surface/85 rounded-full border border-border/60 shadow-lg hover:bg-surface transition-colors"
+          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:py-2 bg-surface/85 rounded-full border border-border/60 shadow-lg text-sm md:text-base font-semibold text-text hover:bg-surface transition-colors"
           style={{ backdropFilter: 'blur(10px)' }}
           aria-label={t.garden.biodiversity.title}
         >
-          <svg width="22" height="22" viewBox="0 0 22 22" className="-rotate-90">
-            <circle cx="11" cy="11" r={r} fill="none" stroke="var(--color-border-soft)" strokeWidth="3" />
-            <circle cx="11" cy="11" r={r} fill="none" stroke={scoreColor(data.score)} strokeWidth="3"
+          <svg width="18" height="18" viewBox="0 0 18 18" className="-rotate-90">
+            <circle cx="9" cy="9" r={r} fill="none" stroke="var(--color-border-soft)" strokeWidth="3" />
+            <circle cx="9" cy="9" r={r} fill="none" stroke={scoreColor(data.score)} strokeWidth="3"
                     strokeDasharray={`${dash} ${c - dash}`}
                     strokeLinecap="round" />
           </svg>
-          <span className="text-xs md:text-sm font-semibold text-text">{data.score}</span>
-          <span className="text-xs md:text-sm text-text-muted">{t.garden.biodiversity.title}</span>
+          <span>{data.score}</span>
+          <span className="text-text-muted text-xs font-normal">{t.garden.biodiversity.title}</span>
         </button>
         {modalOpen && createPortal(
           <div
