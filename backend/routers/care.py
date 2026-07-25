@@ -1,7 +1,9 @@
+import json
+import random
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
 from models import (
-    CareAction, CareUndo, CareLogOut, RecentLogEntry,
+    CareAction, CareUndo, CareLogOut, RecentLogEntry, PlantFactOut,
     GardenCareCompleteIn, GardenCareOperationOut,
     MoistureCheckResolveIn, MoistureCheckResolveOut,
 )
@@ -351,3 +353,46 @@ async def update_schedule_interval(
     )
     await db.commit()
     return {"ok": True, "schedule_id": schedule_id, "interval_days": interval}
+
+
+
+async def _plant_fact_candidates(db, household_id: int) -> list[PlantFactOut]:
+    rows = await db.execute_fetchall("""
+        SELECT p.id, p.name, p.icon_key, ps.phenology_json, ps.common_name_nl, ps.common_name_en
+        FROM plants p
+        JOIN plant_species ps ON p.species_id = ps.id
+        WHERE p.is_active = 1 AND p.species_id IS NOT NULL AND p.household_id = ?
+    """, (household_id,))
+
+    candidates = []
+    for row in rows:
+        phen_str = row["phenology_json"]
+        if not phen_str:
+            continue
+        try:
+            phen = json.loads(phen_str) if isinstance(phen_str, str) else phen_str
+        except json.JSONDecodeError:
+            continue
+        fact_nl = phen.get("interesting_facts_nl", "").strip()
+        fact_en = phen.get("interesting_facts_en", "").strip()
+        if not fact_nl and not fact_en:
+            continue
+        candidates.append(PlantFactOut(
+            plant_id=row["id"],
+            plant_name=row["name"],
+            icon_key=row["icon_key"],
+            fact_nl=fact_nl,
+            fact_en=fact_en,
+            species_name_nl=row["common_name_nl"],
+            species_name_en=row.get("common_name_en") or None,
+        ))
+    return candidates
+
+
+@router.get("/plant-fact", response_model=PlantFactOut)
+async def get_plant_fact(db = Depends(db_dep), account = Depends(get_current_account)):
+    candidates = await _plant_fact_candidates(db, account["household_id"])
+    if not candidates:
+        from fastapi.responses import Response
+        return Response(status_code=404)
+    return random.choice(candidates)

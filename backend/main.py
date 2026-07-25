@@ -22,7 +22,7 @@ except ImportError:
     pass
 
 from database import init_pool, close_pool, get_db
-from routers import users, locations, plants, objects, care, dashboard, maps, ground_zones
+from routers import users, locations, plants, objects, care, maps, ground_zones
 from routers import plant_care, species, spots, icons
 from routers import admin, alerts, weed_catalog, weed_sightings, auth, calendar
 from routers import care_rhythm, calendar_subscription
@@ -123,7 +123,6 @@ app.include_router(locations.router, prefix="/api")
 app.include_router(plants.router, prefix="/api")
 app.include_router(objects.router, prefix="/api")
 app.include_router(care.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
 app.include_router(maps.router, prefix="/api")
 app.include_router(ground_zones.router, prefix="/api")
 app.include_router(plant_care.router, prefix="/api")
