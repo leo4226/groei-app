@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="Bovenaanzicht van een gewoon huis">
+  <title>Bovenaanzicht van een gewoon huis</title>
+  <defs>
+    <filter id="rough" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.015" numOctaves="3" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <!-- olive-green surroundings -->
+  <rect width="800" height="800" fill="#8B975E"/>
+
+  <g filter="url(#rough)" stroke-linejoin="round" stroke-linecap="round">
+    <!-- lawn patch (slightly lighter) -->
+    <rect x="60" y="60" width="680" height="680" rx="18" fill="#9CAA67" stroke="#67733F" stroke-width="8"/>
+
+    <!-- garden bed strip -->
+    <rect x="90" y="90" width="620" height="70" rx="10" fill="#7E8B4E"/>
+    <circle cx="150" cy="125" r="16" fill="#6E7C3E"/>
+    <circle cx="260" cy="125" r="16" fill="#6E7C3E"/>
+    <circle cx="560" cy="125" r="16" fill="#6E7C3E"/>
+    <circle cx="660" cy="125" r="16" fill="#6E7C3E"/>
+
+    <!-- garden path leading to the door -->
+    <rect x="365" y="560" width="70" height="180" rx="6" fill="#D8C7A0" stroke="#B7A87F" stroke-width="6"/>
+    <line x1="400" y1="600" x2="400" y2="600" stroke="#B7A87F" stroke-width="0"/>
+    <line x1="373" y1="620" x2="427" y2="620" stroke="#B7A87F" stroke-width="4"/>
+    <line x1="373" y1="670" x2="427" y2="670" stroke="#B7A87F" stroke-width="4"/>
+
+    <!-- ==== house: cream walls border seen at the eaves ==== -->
+    <rect x="230" y="250" width="340" height="310" rx="6" fill="#EAD9AC" stroke="#4A3B2A" stroke-width="9"/>
+
+    <!-- ==== peaked roof, aerial: two slopes meeting at a ridge ==== -->
+    <!-- left slope -->
+    <polygon points="250,270 400,270 400,540 250,540" fill="#BE5E45" stroke="#4A3B2A" stroke-width="9"/>
+    <!-- right slope (slightly darker so the ridge reads) -->
+    <polygon points="400,270 550,270 550,540 400,540" fill="#A94E38" stroke="#4A3B2A" stroke-width="9"/>
+    <!-- ridge line down the middle -->
+    <line x1="400" y1="266" x2="400" y2="544" stroke="#3B2C1C" stroke-width="8"/>
+    <!-- roof texture strokes -->
+    <line x1="270" y1="320" x2="380" y2="320" stroke="#A94E38" stroke-width="4"/>
+    <line x1="270" y1="430" x2="380" y2="430" stroke="#A94E38" stroke-width="4"/>
+    <line x1="420" y1="360" x2="530" y2="360" stroke="#8F4230" stroke-width="4"/>
+    <line x1="420" y1="470" x2="530" y2="470" stroke="#8F4230" stroke-width="4"/>
+
+    <!-- chimney -->
+    <rect x="470" y="300" width="46" height="46" rx="4" fill="#C2664A" stroke="#4A3B2A" stroke-width="7"/>
+
+    <!-- small windows peeking past the eaves (flat rectangles) -->
+    <rect x="244" y="360" width="18" height="46" rx="3" fill="#C9D6DA" stroke="#4A3B2A" stroke-width="5"/>
+    <rect x="244" y="440" width="18" height="46" rx="3" fill="#C9D6DA" stroke="#4A3B2A" stroke-width="5"/>
+    <rect x="538" y="360" width="18" height="46" rx="3" fill="#C9D6DA" stroke="#4A3B2A" stroke-width="5"/>
+    <rect x="538" y="440" width="18" height="46" rx="3" fill="#C9D6DA" stroke="#4A3B2A" stroke-width="5"/>
+
+    <!-- front door where the path meets the house -->
+    <rect x="378" y="540" width="44" height="24" rx="3" fill="#7E8B4E" stroke="#4A3B2A" stroke-width="6"/>
+
+    <!-- two little trees in the yard -->
+    <circle cx="150" cy="620" r="46" fill="#6E7C3E" stroke="#50592B" stroke-width="8"/>
+    <circle cx="150" cy="620" r="16" fill="#5C6832"/>
+    <circle cx="650" cy="620" r="40" fill="#6E7C3E" stroke="#50592B" stroke-width="8"/>
+    <circle cx="650" cy="620" r="14" fill="#5C6832"/>
+  </g>
+
+  <rect width="800" height="800" filter="url(#grain)" style="mix-blend-mode:overlay" opacity="0.32"/>
+</svg>

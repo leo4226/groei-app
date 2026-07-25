@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="Kind in kamer met verhuisdozen en een kameleon">
+  <title>Kind in kamer met verhuisdozen en een kameleon — bovenaanzicht</title>
+  <defs>
+    <!-- Uneven, hand-drawn crayon edges -->
+    <filter id="rough" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.015" numOctaves="3" seed="11" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- Grainy pastel grain, blended over the whole scene -->
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+
+  <!-- cream background -->
+  <rect width="800" height="800" fill="#F3EAD6"/>
+
+  <g filter="url(#rough)" stroke-linejoin="round" stroke-linecap="round">
+    <!-- room floor -->
+    <rect x="70" y="70" width="660" height="660" rx="8" fill="#ECE0C6" stroke="#4A3B2A" stroke-width="9"/>
+    <!-- walls (thick olive frame, seen from above) -->
+    <rect x="70" y="70" width="660" height="660" rx="8" fill="none" stroke="#808B57" stroke-width="30"/>
+    <rect x="70" y="70" width="660" height="660" rx="8" fill="none" stroke="#5F683F" stroke-width="9"/>
+    <!-- doorway gap in bottom wall -->
+    <rect x="345" y="700" width="110" height="46" fill="#ECE0C6"/>
+    <!-- a few floor planks (thin, uneven lines) -->
+    <line x1="120" y1="150" x2="680" y2="150" stroke="#DECDA9" stroke-width="4"/>
+    <line x1="120" y1="330" x2="680" y2="330" stroke="#DECDA9" stroke-width="4"/>
+    <line x1="120" y1="560" x2="680" y2="560" stroke="#DECDA9" stroke-width="4"/>
+
+    <!-- ===== moving boxes ===== -->
+
+    <!-- closed mustard box (top-left) -->
+    <g transform="rotate(-8 220 220)">
+      <rect x="140" y="140" width="150" height="150" rx="6" fill="#DBA33F" stroke="#4A3B2A" stroke-width="8"/>
+      <line x1="215" y1="140" x2="215" y2="290" stroke="#B07E22" stroke-width="6"/>
+      <rect x="185" y="150" width="60" height="130" fill="#EBC069" opacity="0.9"/>
+      <line x1="185" y1="215" x2="245" y2="215" stroke="#B07E22" stroke-width="5"/>
+    </g>
+
+    <!-- open terracotta box (top-right) -->
+    <g transform="rotate(7 560 210)">
+      <!-- outward flaps -->
+      <polygon points="470,150 650,150 620,120 500,120" fill="#D07E63"/>
+      <polygon points="470,270 650,270 620,300 500,300" fill="#D07E63"/>
+      <polygon points="470,150 470,270 440,300 440,120" fill="#B85B41"/>
+      <polygon points="650,150 650,270 680,300 680,120" fill="#B85B41"/>
+      <!-- box body + dark interior -->
+      <rect x="470" y="150" width="180" height="120" fill="#C2664A" stroke="#4A3B2A" stroke-width="8"/>
+      <rect x="492" y="170" width="136" height="80" fill="#8E4A33"/>
+    </g>
+
+    <!-- closed sage box (mid-left) -->
+    <g transform="rotate(5 210 470)">
+      <rect x="130" y="390" width="160" height="160" rx="6" fill="#9AAE6E" stroke="#4A3B2A" stroke-width="8"/>
+      <line x1="130" y1="470" x2="290" y2="470" stroke="#71844A" stroke-width="6"/>
+      <rect x="180" y="400" width="60" height="140" fill="#B4C489" opacity="0.9"/>
+    </g>
+
+    <!-- small closed terracotta box (bottom-mid) -->
+    <g transform="rotate(-6 430 615)">
+      <rect x="360" y="545" width="140" height="140" rx="6" fill="#C2664A" stroke="#4A3B2A" stroke-width="8"/>
+      <line x1="430" y1="545" x2="430" y2="685" stroke="#97472F" stroke-width="6"/>
+      <line x1="360" y1="615" x2="500" y2="615" stroke="#E0B79E" stroke-width="9"/>
+    </g>
+
+    <!-- open mustard box (bottom-right, chameleon sits on this) -->
+    <g transform="rotate(-4 600 560)">
+      <polygon points="520,510 680,510 655,485 545,485" fill="#E6B45B"/>
+      <polygon points="520,610 680,610 655,635 545,635" fill="#E6B45B"/>
+      <rect x="520" y="510" width="160" height="100" fill="#DBA33F" stroke="#4A3B2A" stroke-width="8"/>
+      <rect x="540" y="528" width="120" height="64" fill="#A9791E"/>
+    </g>
+
+    <!-- ===== child, sitting cross-legged (top-down) ===== -->
+    <g transform="translate(360 380)">
+      <!-- crossed legs (folded triangles in front) -->
+      <path d="M -78 20 Q -40 78 20 70 Q 30 30 -6 8 Z" fill="#8A6A3E" stroke="#4A3B2A" stroke-width="7"/>
+      <path d="M 78 20 Q 40 78 -20 70 Q -30 30 6 8 Z" fill="#7A5C34" stroke="#4A3B2A" stroke-width="7"/>
+      <!-- torso / shirt -->
+      <ellipse cx="0" cy="-8" rx="62" ry="58" fill="#C2664A" stroke="#4A3B2A" stroke-width="8"/>
+      <!-- little arm stubs -->
+      <ellipse cx="-58" cy="18" rx="20" ry="15" fill="#D9A06A" stroke="#4A3B2A" stroke-width="6" transform="rotate(30 -58 18)"/>
+      <ellipse cx="58" cy="18" rx="20" ry="15" fill="#D9A06A" stroke="#4A3B2A" stroke-width="6" transform="rotate(-30 58 18)"/>
+      <!-- head (top-down: hair with a little swirl) -->
+      <circle cx="0" cy="-14" r="40" fill="#7A4A2B" stroke="#4A3B2A" stroke-width="8"/>
+      <path d="M 0 -14 q 16 -6 12 10 q -3 12 -16 6" fill="none" stroke="#5C3720" stroke-width="6"/>
+    </g>
+
+    <!-- ===== chameleon on the mustard box ===== -->
+    <g transform="translate(600 545) rotate(-4)">
+      <!-- curled tail -->
+      <path d="M 70 6 q 46 4 40 -34 q -5 -30 -34 -20 q -20 8 -8 26 q 8 12 20 2"
+            fill="none" stroke="#4F6626" stroke-width="15" stroke-linecap="round"/>
+      <path d="M 70 6 q 46 4 40 -34 q -5 -30 -34 -20 q -20 8 -8 26 q 8 12 20 2"
+            fill="none" stroke="#6F8B3A" stroke-width="8" stroke-linecap="round"/>
+      <!-- body -->
+      <path d="M -70 6 Q -74 -34 -34 -40 Q 30 -46 70 -8 Q 78 8 60 20 Q 0 40 -46 30 Q -70 24 -70 6 Z"
+            fill="#6F8B3A" stroke="#4F6626" stroke-width="8"/>
+      <!-- belly highlight (flat) -->
+      <path d="M -50 22 Q 6 34 54 18 Q 20 34 -34 30 Z" fill="#86A24C"/>
+      <!-- legs -->
+      <path d="M -30 30 l -6 22" stroke="#4F6626" stroke-width="11" stroke-linecap="round"/>
+      <path d="M 24 30 l 8 22" stroke="#4F6626" stroke-width="11" stroke-linecap="round"/>
+      <!-- crest -->
+      <path d="M -60 -18 q -10 -14 4 -18 q 2 10 10 12 Z" fill="#4F6626"/>
+      <!-- eye turret -->
+      <circle cx="-52" cy="-4" r="15" fill="#86A24C" stroke="#4F6626" stroke-width="6"/>
+      <circle cx="-52" cy="-4" r="5" fill="#3A2A18"/>
+    </g>
+  </g>
+
+  <!-- grain overlay -->
+  <rect width="800" height="800" filter="url(#grain)" style="mix-blend-mode:overlay" opacity="0.32"/>
+</svg>
