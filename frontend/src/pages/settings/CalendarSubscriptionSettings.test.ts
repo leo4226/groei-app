@@ -11,6 +11,7 @@ vi.mock('../../api/client', () => ({
   calendarSubscription: {
     status: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     revoke: vi.fn(),
     downloadSnapshot: vi.fn(),
   },
@@ -81,8 +82,19 @@ describe('CalendarSubscriptionSettings', () => {
         map_ids: [],
         care_types: [],
         include_context: false,
-        privacy: true,
+        privacy: false,
       },
+    })
+    vi.mocked(calendarSubscription.update).mockResolvedValue({
+      active: true,
+      config: {
+        environment: 'all',
+        map_ids: [],
+        care_types: [],
+        include_context: false,
+        privacy: false,
+      },
+      created_at: '2026-07-27T12:00:00Z',
     })
     vi.mocked(calendarSubscription.revoke).mockResolvedValue(undefined)
     vi.mocked(calendarSubscription.downloadSnapshot).mockResolvedValue(new Blob(['ics']))
@@ -101,6 +113,8 @@ describe('CalendarSubscriptionSettings', () => {
     })
 
     expect(container.querySelector('[data-calendar-subscription-title]')?.tagName).toBe('H3')
+    expect(container.textContent).toContain('Live calendar subscription')
+    expect(container.textContent).toContain('Recommended')
     expect(container.textContent).toContain('Anyone with this private link')
     expect(container.textContent).toContain('Google Calendar')
     expect(container.textContent).toContain('Outlook')
@@ -108,10 +122,13 @@ describe('CalendarSubscriptionSettings', () => {
     const privacyToggle = [...container.querySelectorAll('label')]
       .find((label) => label.textContent?.includes('Hide plant and space names'))
       ?.querySelector('input') as HTMLInputElement
-    expect(privacyToggle.checked).toBe(true)
+    expect(privacyToggle.checked).toBe(false)
+    expect(container.textContent).toContain('Fertilize · Strawberry')
+    expect(container.textContent).toContain('For timely weather alerts, use push notifications below')
     expect(container.querySelector('fieldset[aria-label="Spaces"]')).not.toBeNull()
     expect(container.querySelector('fieldset[aria-label="Care types"]')).not.toBeNull()
-    expect(button(container, 'Download .ics')).not.toBeNull()
+    expect(container.querySelector('details')?.textContent).toContain('One-time snapshot')
+    expect(container.textContent).toContain('On a computer, open Google Calendar')
     expect(button(container, 'Create private subscription')).not.toBeNull()
   })
 
@@ -128,7 +145,7 @@ describe('CalendarSubscriptionSettings', () => {
 
     expect(calendarSubscription.create).toHaveBeenCalledWith(expect.objectContaining({
       include_context: false,
-      privacy: true,
+      privacy: false,
     }))
     expect(container.textContent).toContain('Save this link now')
     expect((container.querySelector('input[readonly]') as HTMLInputElement | null)?.value)
@@ -156,5 +173,72 @@ describe('CalendarSubscriptionSettings', () => {
     })
     expect(calendarSubscription.revoke).toHaveBeenCalledTimes(1)
     expect(container.querySelector('input[readonly]')).toBeNull()
+  })
+
+  it('saves active settings without rotating the private link', async () => {
+    vi.mocked(calendarSubscription.status).mockResolvedValue({
+      active: true,
+      config: {
+        environment: 'all',
+        map_ids: [],
+        care_types: [],
+        include_context: false,
+        privacy: true,
+      },
+      created_at: '2026-07-27T12:00:00Z',
+    })
+
+    vi.mocked(calendarSubscription.create).mockClear()
+
+    await act(async () => {
+      root.render(createElement(LanguageProvider, null, createElement(CalendarSubscriptionSettings)))
+      await flush()
+    })
+
+    const privacyToggle = [...container.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Hide plant and space names'))
+      ?.querySelector('input') as HTMLInputElement
+    await act(async () => {
+      privacyToggle.click()
+      button(container, 'Save calendar settings').click()
+      await flush()
+    })
+
+    expect(calendarSubscription.update).toHaveBeenCalledWith(expect.objectContaining({
+      privacy: false,
+    }))
+    expect(calendarSubscription.create).not.toHaveBeenCalled()
+  })
+
+  it('requires explicit confirmation before regenerating the private link', async () => {
+    vi.mocked(calendarSubscription.status).mockResolvedValue({
+      active: true,
+      config: {
+        environment: 'all',
+        map_ids: [],
+        care_types: [],
+        include_context: false,
+        privacy: false,
+      },
+      created_at: '2026-07-27T12:00:00Z',
+    })
+    vi.mocked(calendarSubscription.create).mockClear()
+
+    await act(async () => {
+      root.render(createElement(LanguageProvider, null, createElement(CalendarSubscriptionSettings)))
+      await flush()
+    })
+
+    await act(async () => {
+      button(container, 'Regenerate private link').click()
+    })
+    expect(container.textContent).toContain('Outlook and Google Calendar will stop updating')
+    expect(calendarSubscription.create).not.toHaveBeenCalled()
+
+    await act(async () => {
+      button(container, 'Regenerate now').click()
+      await flush()
+    })
+    expect(calendarSubscription.create).toHaveBeenCalledTimes(1)
   })
 })
