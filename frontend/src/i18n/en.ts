@@ -1261,6 +1261,7 @@ export const en: Translations = {
     wateringRoundConfirm: (n) => `Water ${n} ${n === 1 ? 'plant' : 'plants'}`,
     wateringRoundSelectAtLeastOne: 'Select at least one plant',
     moistureCheckTitle: 'Moisture check',
+    moistureCheckAction: 'Check moisture',
     moistureCheckDescription: 'Feel the soil for the selected plants. Record what you actually found; saved Water deadlines never move later.',
     moistureCheckStillMoist: (n) => `Still moist · ${n} ${n === 1 ? 'plant' : 'plants'}`,
     moistureCheckWatered: (n) => `Watered · ${n} ${n === 1 ? 'plant' : 'plants'}`,

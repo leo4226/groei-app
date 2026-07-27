@@ -984,6 +984,98 @@
   color: var(--color-text);
 }
 .cal-page .calendar-weather-action { margin-top: 3px; }
+.cal-page .calendar-moisture-advisory {
+  margin: 4px 0 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cal-green) 22%, var(--color-border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cal-green-pale) 45%, var(--color-paper));
+}
+.cal-page .calendar-moisture-advisory-copy { padding: 11px 13px 10px; }
+.cal-page .calendar-moisture-advisory-kicker {
+  margin: 0 0 3px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.cal-page .calendar-moisture-advisory h4 {
+  margin: 0 0 4px;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  color: var(--cal-green);
+}
+.cal-page .calendar-moisture-advisory-reason,
+.cal-page .calendar-moisture-advisory-action {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-soft);
+}
+.cal-page .calendar-moisture-advisory-action { margin-top: 4px; }
+.cal-page .calendar-moisture-map-list {
+  border-top: 1px solid color-mix(in srgb, var(--cal-green) 16%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-paper) 78%, transparent);
+}
+.cal-page .calendar-moisture-map-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-bottom: 1px dashed var(--color-border-soft);
+}
+.cal-page .calendar-moisture-map-row:last-child { border-bottom: 0; }
+.cal-page .calendar-moisture-map-identity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  min-width: 0;
+}
+.cal-page .calendar-moisture-map-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-underline-offset: 3px;
+}
+.cal-page .calendar-moisture-map-identity span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.cal-page .calendar-moisture-check-button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--cal-green) 65%, var(--color-border));
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--cal-green);
+  cursor: pointer;
+}
+.cal-page .calendar-moisture-check-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cal-green-pale) 80%, var(--color-paper));
+}
+.cal-page .calendar-moisture-check-button:disabled { cursor: default; opacity: .45; }
+@media (max-width: 480px) {
+  .cal-page .calendar-moisture-map-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 .cal-page .calendar-completion {
   position: relative;
   display: flex;
