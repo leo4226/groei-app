@@ -253,3 +253,32 @@ async def test_public_share_page_renders_in_sharers_language(client, discoveries
     assert "Shared from a personal field guide" in page
     assert "Gedeeld uit een persoonlijke veldgids" not in page
     assert "Discover Floreren" in page
+
+
+@pytest.mark.asyncio
+async def test_update_discovery_location_sets_coordinates_and_scopes_to_household(
+    client, discoveries_db, auth_header,
+):
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries (id, account_id, household_id, common_name)
+           VALUES (1, 1, 1, 'Hawaïaanse witte hibiscus'),
+                  (2, 9, 999, 'Private discovery')""",
+    )
+    await discoveries_db.commit()
+
+    response = await client.patch(
+        "/api/discover/1/location",
+        headers=auth_header,
+        json={"location_lat": 38.7223, "location_lon": -9.1393},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["location_lat"] == 38.7223
+    assert response.json()["location_lon"] == -9.1393
+
+    other_household = await client.patch(
+        "/api/discover/2/location",
+        headers=auth_header,
+        json={"location_lat": 38.7223, "location_lon": -9.1393},
+    )
+    assert other_household.status_code == 404
