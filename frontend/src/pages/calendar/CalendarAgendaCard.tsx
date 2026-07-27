@@ -6,6 +6,8 @@ import { agendaPlantName } from './workAgendaModel'
 import CalendarEventLink from './CalendarEventLink'
 import CalendarWeatherContext from './CalendarWeatherContext'
 import Glyph from '../../components/ui/Glyph'
+import MoistureAdvisory from './MoistureAdvisory'
+import { extractMoistureAdvisories } from './moistureAdvisoryModel'
 
 interface Props {
   selectedIso: string
@@ -25,6 +27,7 @@ export default function CalendarAgendaCard({
   events,
   completedEvents = [],
   todayIso,
+  saving,
   onDone,
   onSkip,
   undoMsg,
@@ -38,16 +41,20 @@ export default function CalendarAgendaCard({
   const dayName = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
   const monthShort = new Intl.DateTimeFormat(locale, { month: 'short' }).format(dateObj).replace('.', '')
   const [savingType, setSavingType] = useState<string | null>(null)
+  const { ordinaryEvents, advisories } = useMemo(
+    () => extractMoistureAdvisories(events),
+    [events],
+  )
 
   const groups = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {}
-    events.forEach(e => {
+    ordinaryEvents.forEach(e => {
       const groupId = e.grouped ? `${e.type}:${e.map_id}` : `event:${e.id}`
       if (!map[groupId]) map[groupId] = []
       map[groupId].push(e)
     })
     return map
-  }, [events])
+  }, [ordinaryEvents])
 
   const counts: Record<string, number> = {}
   events.forEach(e => { counts[e.type] = (counts[e.type] || 0) + 1 })
@@ -98,6 +105,16 @@ export default function CalendarAgendaCard({
             {' '}{t.calendar.gardenManagesItself}
           </div>
         )}
+        {advisories.map(advisory => (
+          <MoistureAdvisory
+            key={advisory.key}
+            advisory={advisory}
+            todayIso={todayIso}
+            saving={saving}
+            onCheck={onDone}
+            mapSlugs={mapSlugs}
+          />
+        ))}
         {Object.entries(groups).map(([groupId, groupEvents]) => {
           const firstEvent = groupEvents[0]
           const type = firstEvent.type

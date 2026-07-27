@@ -1263,6 +1263,7 @@ export const nl: Translations = {
     wateringRoundConfirm: (n) => `Geef ${n} ${n === 1 ? 'plant' : 'planten'} water`,
     wateringRoundSelectAtLeastOne: 'Selecteer minstens één plant',
     moistureCheckTitle: 'Vochtcontrole',
+    moistureCheckAction: 'Controleer vocht',
     moistureCheckDescription: 'Voel de grond bij de geselecteerde planten. Leg vast wat je echt aantrof; opgeslagen Water-deadlines schuiven nooit later.',
     moistureCheckStillMoist: (n) => `Nog vochtig · ${n} ${n === 1 ? 'plant' : 'planten'}`,
     moistureCheckWatered: (n) => `Water gegeven · ${n} ${n === 1 ? 'plant' : 'planten'}`,

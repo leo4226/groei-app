@@ -7,6 +7,8 @@ import { useT } from '../../context/LanguageContext'
 import CalendarEventLink from './CalendarEventLink'
 import CalendarWeatherContext from './CalendarWeatherContext'
 import Glyph from '../../components/ui/Glyph'
+import MoistureAdvisory from './MoistureAdvisory'
+import { extractMoistureAdvisories } from './moistureAdvisoryModel'
 
 const EMPTY_MAP_SLUGS = new Map<number, string>()
 
@@ -78,6 +80,7 @@ export default function MobileAgendaList({
       {grouped.map(([iso, list]) => {
         const [y, m, d] = iso.split('-').map(Number)
         const isToday = iso === todayIso
+        const { ordinaryEvents, advisories } = extractMoistureAdvisories(list)
         return (
           <section key={iso} style={{ marginTop: 18 }}>
             <h3 style={{
@@ -87,7 +90,17 @@ export default function MobileAgendaList({
               {(t.locale.startsWith('en') ? DAY_LONG_EN : DAY_LONG_NL)[dowMon(y, m, d)]} {d} {(t.locale.startsWith('en') ? MONTH_SHORT_EN : MONTH_SHORT_NL)[m - 1]}
               {isToday && <em style={{ marginLeft: 8, fontSize: 12, color: 'var(--color-secondary)' }}>{t.calendar.today}</em>}
             </h3>
-            {list.map(e => {
+            {advisories.map(advisory => (
+              <MoistureAdvisory
+                key={advisory.key}
+                advisory={advisory}
+                todayIso={todayIso}
+                saving={saving}
+                onCheck={onDone}
+                mapSlugs={mapSlugs}
+              />
+            ))}
+            {ordinaryEvents.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
               const busy = saving === e.id
               const completed = e.status === 'completed'

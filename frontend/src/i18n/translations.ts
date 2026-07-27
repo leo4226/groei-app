@@ -1222,6 +1222,7 @@ export type Translations = {
     wateringRoundConfirm: (n: number) => string
     wateringRoundSelectAtLeastOne: string
     moistureCheckTitle: string
+    moistureCheckAction: string
     moistureCheckDescription: string
     moistureCheckStillMoist: (n: number) => string
     moistureCheckWatered: (n: number) => string

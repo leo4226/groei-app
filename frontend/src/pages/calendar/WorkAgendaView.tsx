@@ -110,6 +110,7 @@ export default function WorkAgendaView({ env, environmentFilter, viewNavigation,
               undoMsg={undoMsg}
               onGardenUndo={handleGardenUndo}
               actionError={actionError}
+              mapSlugs={mapSlugs}
             />
           )}
         </div>
