@@ -135,6 +135,7 @@ def _aggregate_external_events(events: list) -> list[dict]:
             "grouped": len(ids) > 1,
             "group_count": len(ids),
             "group_member_event_ids": ids,
+            "group_members": None,
             "external_uid_key": (
                 f"{event_date}|{care_type}|"
                 f"{'map:' + str(map_id) if map_id is not None else 'unmapped'}"

@@ -307,6 +307,39 @@ def test_external_feed_aggregates_same_map_care_independent_of_calendar_grouping
     )
 
 
+def test_external_feed_clears_stale_group_member_objects():
+    events = [
+        {
+            "id": "garden:4:fertilize:2026-07-20",
+            "date": "2026-07-20",
+            "type": "fertilize",
+            "map_id": 4,
+            "map_name": "Back garden",
+            "group_member_event_ids": ["schedule:11", "schedule:12"],
+            "group_members": [
+                {"plant_id": 2, "plant_name": "Raspberry"},
+                {"plant_id": 3, "plant_name": "Blueberry"},
+            ],
+        },
+        {
+            "id": "schedule:10",
+            "date": "2026-07-20",
+            "type": "fertilize",
+            "plant_id": 1,
+            "plant_name": "Strawberry",
+            "map_id": 4,
+            "map_name": "Back garden",
+        },
+    ]
+
+    aggregated = calendar_subscription._aggregate_external_events(events)
+
+    assert aggregated[0]["group_members"] is None
+    assert aggregated[0]["plant_names"] == [
+        "Raspberry", "Blueberry", "Strawberry",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_authenticated_snapshot_is_english_private_and_needs_no_token(
     client, seeded_db, auth_header, monkeypatch
