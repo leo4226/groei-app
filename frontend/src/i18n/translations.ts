@@ -1718,6 +1718,9 @@ export type Translations = {
     journalNotes: string       // "Notes" / "Notities"
     journalLocation: string    // "Photo location" / "Fotolocatie"
     journalOpenMap: string     // "Open map" / "Open kaart"
+    journalAddLocation: string
+    journalAddingLocation: string
+    journalLocationError: string
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
     noPlantData: string        // "Geen plantdata beschikbaar."
     back: string               // "Terug"

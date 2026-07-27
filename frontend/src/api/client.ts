@@ -985,6 +985,10 @@ export const discoveries = {
   }) => api<PlantDiscovery>('POST', '/discover', { body: data }),
   updateNotes: (id: number, notes: string | null) =>
     api<PlantDiscovery>('PATCH', `/discover/${id}`, { body: { notes } }),
+  updateLocation: (id: number, location: { lat: number; lon: number }) =>
+    api<PlantDiscovery>('PATCH', `/discover/${id}/location`, {
+      body: { location_lat: location.lat, location_lon: location.lon },
+    }),
   share: (id: number) => api<{ share_url: string }>('POST', `/discover/${id}/share`),
   delete: (id: number) => api<void>('DELETE', `/discover/${id}`),
 }
