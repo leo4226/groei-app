@@ -386,6 +386,7 @@ export type Translations = {
     calendarGroupingSaveError: string
     calendarSubscriptionTitle: string
     calendarSubscriptionDescription: string
+    calendarSubscriptionRecommended: string
     calendarSubscriptionSecurity: string
     calendarSubscriptionEnvironment: string
     calendarSubscriptionEnvironmentAll: string
@@ -399,9 +400,16 @@ export type Translations = {
     calendarSubscriptionContextDescription: string
     calendarSubscriptionPrivacy: string
     calendarSubscriptionPrivacyDescription: string
+    calendarSubscriptionExampleLabel: string
+    calendarSubscriptionUsefulExample: string
+    calendarSubscriptionPrivateExample: string
     calendarSubscriptionCreate: string
     calendarSubscriptionRegenerate: string
+    calendarSubscriptionRegenerateWarning: string
+    calendarSubscriptionRegenerateConfirm: string
+    calendarSubscriptionManageLink: string
     calendarSubscriptionCreating: string
+    calendarSubscriptionSave: string
     calendarSubscriptionActive: string
     calendarSubscriptionSaveNow: string
     calendarSubscriptionCopy: string

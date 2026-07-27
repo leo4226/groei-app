@@ -72,6 +72,11 @@ def _fold_line(line: str) -> list[str]:
 
 
 def _stable_uid(event: Any) -> str:
+    external_uid_key = _value(event, "external_uid_key")
+    if external_uid_key:
+        identity = f"external|{external_uid_key}"
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:32]
+        return f"{digest}@calendar.floreren.app"
     child_ids = sorted(str(value) for value in (
         _value(event, "group_member_event_ids", None)
         or _value(event, "child_ids", [])
@@ -89,15 +94,28 @@ def _care_label(care_type: str, language: Language) -> str:
     return definition.get(f"label_{language}") or care_type.replace("_", " ").title()
 
 
+def _summary(event: Any, label: str, language: Language, privacy: bool) -> str:
+    plant_names = _value(event, "plant_names", []) or []
+    plant_name = _value(event, "plant_name") or (plant_names[0] if plant_names else None)
+    group_count = _value(event, "group_count", len(plant_names) or 1) or 1
+    if privacy:
+        if language == "nl":
+            plant_label = "plant" if group_count == 1 else "planten"
+        else:
+            plant_label = "plant" if group_count == 1 else "plants"
+        return f"{label} · {group_count} {plant_label}"
+    if not privacy and group_count == 1 and plant_name:
+        return f"{label} · {plant_name}"
+    map_name = _value(event, "map_name")
+    return label if not map_name else f"{label} · {map_name}"
+
+
 def _description(event: Any, language: Language, privacy: bool) -> str:
     link_text = (
         "Open Floreren om deze verzorgingssessie te bekijken."
         if language == "nl"
         else "Open Floreren to view this care session."
     )
-    if privacy:
-        return link_text
-
     plant_names = _value(event, "plant_names", []) or []
     if not plant_names:
         members = _value(event, "group_members", []) or []
@@ -110,19 +128,29 @@ def _description(event: Any, language: Language, privacy: bool) -> str:
         plant_names = [_value(event, "plant_name")]
     map_name = _value(event, "map_name")
     lines: list[str] = []
-    if plant_names:
+    group_count = _value(event, "group_count", len(plant_names) or 1) or 1
+    if group_count > 1:
+        noun = "planten" if language == "nl" else "plants"
+        lines.append(f"{group_count} {noun}")
+    if plant_names and not privacy:
         label = "Planten" if language == "nl" else "Plants"
-        lines.append(f"{label}: {', '.join(plant_names)}")
-    if map_name:
+        visible_names = plant_names[:8]
+        hidden_count = max(group_count - len(visible_names), 0)
+        if hidden_count:
+            more = "meer" if language == "nl" else "more"
+            visible_names.append(f"+{hidden_count} {more}")
+        lines.append(f"{label}: {', '.join(visible_names)}")
+    if map_name and not privacy:
         label = "Ruimte" if language == "nl" else "Space"
         lines.append(f"{label}: {map_name}")
 
-    reason = _value(event, f"reason_{language}")
-    action = _value(event, f"action_{language}")
-    if reason:
-        lines.append(str(reason))
-    if action:
-        lines.append(str(action))
+    if not privacy or _value(event, "weather_triggered", False):
+        reason = _value(event, f"reason_{language}")
+        action = _value(event, f"action_{language}")
+        if reason:
+            lines.append(str(reason))
+        if action:
+            lines.append(str(action))
     lines.append(link_text)
     return "\n".join(lines)
 
@@ -159,8 +187,7 @@ def serialize_calendar(
         event_date = _as_date(_value(event, "date"))
         care_type = str(_value(event, "type", _value(event, "care_type", "care")))
         label = _care_label(care_type, language)
-        map_name = _value(event, "map_name")
-        summary = label if privacy or not map_name else f"{label} · {map_name}"
+        summary = _summary(event, label, language, privacy)
         description = _description(event, language, privacy)
         deep_link = f"https://floreren.app/calendar?date={event_date.isoformat()}"
         lines.extend([

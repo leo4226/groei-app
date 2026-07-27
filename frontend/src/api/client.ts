@@ -931,6 +931,8 @@ export const calendarSubscription = {
   status: () => api<CalendarSubscriptionStatus>('GET', '/calendar/subscription'),
   create: (config: CalendarSubscriptionConfig) =>
     api<CalendarSubscriptionCreated>('POST', '/calendar/subscription', { body: config }),
+  update: (config: CalendarSubscriptionConfig) =>
+    api<CalendarSubscriptionStatus>('PATCH', '/calendar/subscription', { body: config }),
   revoke: () => api<void>('DELETE', '/calendar/subscription'),
   downloadSnapshot: async (config: CalendarSubscriptionConfig): Promise<Blob> => {
     const res = await fetch(buildUrl('/calendar/export.ics'), {
