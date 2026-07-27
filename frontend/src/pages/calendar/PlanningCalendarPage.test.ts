@@ -33,8 +33,6 @@ vi.mock('./PhenologyView', async () => {
   }
 })
 
-vi.mock('./useIsNarrow', () => ({ useIsNarrow: () => false }))
-
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 describe('PlanningCalendarPage view navigation', () => {
@@ -44,6 +42,11 @@ describe('PlanningCalendarPage view navigation', () => {
   beforeEach(() => {
     localStorage.clear()
     localStorage.setItem('floreren_lang', 'en')
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 1280,
+      writable: true,
+    })
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -84,5 +87,36 @@ describe('PlanningCalendarPage view navigation', () => {
     ) as HTMLButtonElement[]
     act(() => currentButtons[2].click())
     assertStableNavigation('year')
+  })
+
+  it('offers only Work Agenda and Garden Year on a phone', () => {
+    window.innerWidth = 720
+
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(PlanningCalendarPage)))
+    })
+
+    const navigation = container.querySelector('[data-calendar-view-navigation]')
+    const labels = Array.from(navigation?.querySelectorAll('button') ?? [])
+      .map((button) => button.textContent)
+
+    expect(labels).toEqual(['Work agenda', 'Garden Year'])
+    expect(container.querySelector('[data-active-calendar-view="work"]')).not.toBeNull()
+    expect(container.querySelector('.masthead-context')).toBeNull()
+  })
+
+  it('moves desktop Month to Work Agenda when the layout becomes narrow', () => {
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(PlanningCalendarPage)))
+    })
+    expect(container.querySelector('[data-active-calendar-view="month"]')).not.toBeNull()
+
+    act(() => {
+      window.innerWidth = 390
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(container.querySelector('[data-active-calendar-view="work"]')).not.toBeNull()
+    expect(container.querySelectorAll('[data-calendar-view-navigation] button')).toHaveLength(2)
   })
 })
