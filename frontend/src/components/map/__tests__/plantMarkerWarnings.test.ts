@@ -51,11 +51,16 @@ function plant(warnings: CareWarningOut[], alerts: TopAlert[]): MapPlant {
 }
 
 describe('PlantMarker warning badges', () => {
+  it('renders badges from unified care warnings instead of legacy alerts when warnings exist', () => {
+    const p = plant([warning('water', '💧'), warning('heat_protect', '🔥')], [alert('legacy_prune', '✂️')])
+
+    expect(markerBadgesForPlant(p, true).map(b => b.icon)).toEqual(['💧', '🔥'])
+  })
+
   it('hides grouped weather badges by default while preserving ordinary care', () => {
     const p = plant([warning('water', '💧'), warning('heat_protect', '🔥')], [alert('legacy_prune', '✂️')])
 
     expect(markerBadgesForPlant(p).map(b => b.icon)).toEqual(['💧'])
-    expect(markerBadgesForPlant(p, true).map(b => b.icon)).toEqual(['💧', '🔥'])
   })
 })
 
