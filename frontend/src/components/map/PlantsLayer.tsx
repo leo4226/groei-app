@@ -24,6 +24,7 @@ interface Props {
   movePlantId?: number | null
   labelMode?: LabelMode
   showWarnings?: boolean
+  highlightedWeatherPlantIds?: ReadonlySet<number>
   /** Hide the padlock badge on locked plants (public demo garden: everything
    *  is locked but the badges would read as clutter). */
   hideLockBadges?: boolean
@@ -41,7 +42,7 @@ const AVG_CHAR_WIDTH_RATIO = 0.55
 // a calm overview. At/above it, everything else is allowed to compete for space.
 const LABEL_DETAIL_ZOOM = 1.5
 
-export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, hideLockBadges = false, zoom = 1, onPointerDown, heatmapCells }: Props) {
+export default function PlantsLayer({ plants, mapType, dragPositions, draggingKey, selectedId, moveMode = false, movePlantId = null, labelMode = 'smart', showWarnings = true, highlightedWeatherPlantIds, hideLockBadges = false, zoom = 1, onPointerDown, heatmapCells }: Props) {
   const t = useT()
 
   // 'off' hides persistent labels entirely (selected plant still labels on tap);
@@ -121,6 +122,7 @@ export default function PlantsLayer({ plants, mapType, dragPositions, draggingKe
             labelPlacement={labelPlacements.get(plant.id) ?? 'below'}
             labelFontSize={effFont}
             showWarnings={showWarnings}
+            showWeatherWarnings={highlightedWeatherPlantIds?.has(plant.id) ?? false}
             hideLockBadge={hideLockBadges}
             displayName={plantDisplayName(plant, t.locale)}
             onPointerDown={onPointerDown}

@@ -101,6 +101,8 @@ export interface CalendarEvent {
     reason_en?: string | null
   }> | null
   weather_triggered: boolean
+  weather_warning_id?: string | null
+  acknowledged_at?: string | null
   reason_nl?: string | null
   reason_en?: string | null
   action_nl?: string | null

@@ -1,8 +1,48 @@
 """Ephemeral care schedules derived from weather and canonical care profiles."""
 from datetime import date
+import json
 
 from database import get_db
 from services.care_profile import environment_for_plant, load_care_profile
+from services.warnings import canonical_weather_warning_id_for_fields
+
+
+def weather_task_metadata(notes: str | None) -> dict | None:
+    if not notes:
+        return None
+    try:
+        metadata = json.loads(notes)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(metadata, dict) or not metadata.get("weather_warning_id"):
+        return None
+    return metadata
+
+
+def _weather_task_notes(
+    *,
+    household_id: int,
+    care_type: str,
+    forecast_date: date,
+    severity: str,
+    metric: str,
+    value: float,
+    threshold: float,
+) -> str:
+    return json.dumps({
+        "weather_warning_id": canonical_weather_warning_id_for_fields(
+            household_id,
+            care_type,
+            forecast_date,
+            severity,
+        ),
+        "care_type": care_type,
+        "forecast_date": forecast_date.isoformat(),
+        "severity": severity,
+        "metric": metric,
+        "value": value,
+        "threshold": threshold,
+    })
 
 
 async def _get_cached_weather() -> dict:
@@ -12,13 +52,21 @@ async def _get_cached_weather() -> dict:
     temp_data = await get_temp_data()
     days = temp_data.get("days", [])
     if not days:
-        return {"temp_days": [], "min_24h": None, "max_24h": None}
+        return {
+            "temp_days": [],
+            "min_24h": None,
+            "max_24h": None,
+            "forecast_date": None,
+        }
 
-    today = days[-1]
+    forecast = days[-1]
+    raw_date = forecast.get("date")
+    forecast_date = date.fromisoformat(raw_date) if raw_date else date.today()
     return {
         "temp_days": days,
-        "min_24h": today["min"],
-        "max_24h": today["max"],
+        "min_24h": forecast["min"],
+        "max_24h": forecast["max"],
+        "forecast_date": forecast_date,
     }
 
 
@@ -128,7 +176,7 @@ async def _sync_ephemeral_schedules(db) -> dict:
         return {"created": 0, "deleted": 0, "warning_weather": None}
 
     plant_rows = await db.execute_fetchall(
-        """SELECT p.id, p.container_id, p.ground_zone_id,
+        """SELECT p.id, p.household_id, p.container_id, p.ground_zone_id,
                   p.care_profile, p.care_thresholds, m.map_type
            FROM plants p
            JOIN maps m ON p.map_id = m.id
@@ -143,20 +191,33 @@ async def _sync_ephemeral_schedules(db) -> dict:
             environment_for_plant(plant),
         )
         plant_id = plant["id"]
+        household_id = plant["household_id"]
+        forecast_date = weather["forecast_date"] or today
 
         frost = profile.get("frost_protect") or {}
         frost_thresholds = frost.get("thresholds") or {}
         bring_inside = frost_thresholds.get("bring_inside_below_c")
+        min_temp = frost_thresholds.get("min_temp_c")
         frost_triggered = bool(
             frost.get("active")
             and bring_inside is not None
             and min_24h is not None
             and min_24h < bring_inside
         )
-        frost_notes = (
-            f"Min {min_24h}°C (grens {bring_inside}°C)"
-            if frost_triggered else None
+        frost_severity = (
+            "urgent"
+            if min_temp is not None and min_24h is not None and min_24h <= min_temp
+            else "warning"
         )
+        frost_notes = _weather_task_notes(
+            household_id=household_id,
+            care_type="frost_protect",
+            forecast_date=forecast_date,
+            severity=frost_severity,
+            metric="min_temp_c",
+            value=min_24h,
+            threshold=bring_inside,
+        ) if frost_triggered else None
         new_count, removed_count = await _sync_weather_type(
             db,
             plant_id=plant_id,
@@ -178,10 +239,15 @@ async def _sync_ephemeral_schedules(db) -> dict:
             and max_24h is not None
             and max_24h > max_temp
         )
-        heat_notes = (
-            f"Max {max_24h}°C (grens {max_temp}°C)"
-            if heat_triggered else None
-        )
+        heat_notes = _weather_task_notes(
+            household_id=household_id,
+            care_type="heat_protect",
+            forecast_date=forecast_date,
+            severity="urgent",
+            metric="max_temp_c",
+            value=max_24h,
+            threshold=max_temp,
+        ) if heat_triggered else None
         new_count, removed_count = await _sync_weather_type(
             db,
             plant_id=plant_id,

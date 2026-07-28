@@ -477,6 +477,7 @@ export interface CareWarningOut {
   action_en?: string | null
   weather_metric?: string | null
   weather_value_c?: number | null
+  forecast_date?: string | null
   forecast_day_label_nl?: string | null
   forecast_day_label_en?: string | null
 }
@@ -528,11 +529,20 @@ export interface WarningBucketsOut {
   komende_week: BucketPlantOut[]
 }
 
+export interface WeatherWarningGroupOut extends CareWarningOut {
+  warning_id: string
+  forecast_date: string
+  acknowledged_at: string | null
+  affected_plant_ids: number[]
+  map_names: string[]
+}
+
 export interface WarningSummaryOut {
   total_plants: number
   on_schedule: number
   kpis: CareTypeKPIOut[]
   buckets: WarningBucketsOut
+  weather_warnings: WeatherWarningGroupOut[]
 }
 
 // ── Plant identification (Pl@ntNet) ──

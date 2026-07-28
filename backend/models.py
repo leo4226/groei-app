@@ -1001,6 +1001,8 @@ class CalendarEventOut(BaseModel):
     group_member_event_ids: list[str] | None = None
     group_members: list[CalendarGroupMemberOut] | None = None
     weather_triggered: bool = False
+    weather_warning_id: str | None = None
+    acknowledged_at: datetime | None = None
     canonical_date: str | None = None
     routine_session: bool = False
     routine_reason: str | None = None

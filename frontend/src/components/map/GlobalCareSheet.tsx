@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useFloreren } from '../../store/useFloreren'
 import { useT } from '../../context/LanguageContext'
-import type { BucketPlantOut } from '../../types'
+import type { BucketPlantOut, WeatherWarningGroupOut } from '../../types'
 import {
   getCareTypeDisplay,
   isWeatherWarning,
@@ -9,6 +9,7 @@ import {
   localizedWeatherWarningCopy,
   type LocalizedWarningCopy,
 } from './careNeedsListModel'
+import { partitionWeatherWarnings } from './weatherWarningModel'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   currentMapName?: string | null
   /** Tap a plant — pan to it (same map) or navigate to its garden (other map). */
   onPlantTap?: (plantId: number, mapName: string | null) => void
+  highlightedWeatherWarningId?: string | null
+  onHighlightWeatherWarning?: (warning: WeatherWarningGroupOut | null) => void
 }
 
 /** One care action aggregated across every garden (e.g. "Water · 32 plants"). */
@@ -78,16 +81,24 @@ function groupByCareType(plants: BucketPlantOut[], doneIds: Set<string>): {
  * default; the rest of the week sits behind a quiet expander. Driven by the
  * global `warningSummary` so a user sees every garden without leaving the map.
  */
-export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
+export default function GlobalCareSheet({
+  currentMapName,
+  onPlantTap,
+  highlightedWeatherWarningId,
+  onHighlightWeatherWarning,
+}: Props) {
   const t = useT()
   const summary = useFloreren((s) => s.warningSummary)
   const markCareDone = useFloreren((s) => s.markCareDone)
   const skipCare = useFloreren((s) => s.skipCare)
+  const acknowledgeWeatherWarning = useFloreren((s) => s.acknowledgeWeatherWarning)
+  const restoreWeatherWarning = useFloreren((s) => s.restoreWeatherWarning)
 
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [laterOpen, setLaterOpen] = useState(false)
+  const [seenWeatherOpen, setSeenWeatherOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -145,17 +156,40 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
     }
   }
 
+  async function handleAcknowledgeWeather(warning: WeatherWarningGroupOut) {
+    setSaving(`weather_${warning.warning_id}`)
+    try {
+      await acknowledgeWeatherWarning(warning)
+      if (highlightedWeatherWarningId === warning.warning_id) {
+        onHighlightWeatherWarning?.(null)
+      }
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  async function handleRestoreWeather(warning: WeatherWarningGroupOut) {
+    setSaving(`weather_${warning.warning_id}`)
+    try {
+      await restoreWeatherWarning(warning.warning_id)
+    } finally {
+      setSaving(null)
+    }
+  }
+
   if (!summary) {
     return <div className="py-6 text-center text-xs text-text-muted">{t.maps.loading}</div>
   }
 
   const now = groupByCareType([...summary.buckets.nu, ...summary.buckets.vandaag], doneIds)
   const later = groupByCareType(summary.buckets.komende_week, doneIds)
+  const weather = partitionWeatherWarnings(summary.weather_warnings ?? [])
+  const hasActiveNow = now.count > 0 || weather.active.length > 0
 
   return (
     <div className="space-y-3 pt-1">
       {/* ── Needs you now (overdue + today) ── */}
-      {now.count === 0 ? (
+      {!hasActiveNow ? (
         <div className="py-5 flex flex-col items-center gap-2 text-text-muted">
           <CareIcon type="sprout" size={26} strokeWidth={1.6} />
           <span className="text-sm italic">{t.mapPage.sheetAllGoodGlobal}</span>
@@ -168,6 +202,19 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
             </span>
             <div className="flex-1 h-px bg-border/40" />
           </div>
+          {weather.active.map((warning) => (
+            <WeatherAdvisoryCard
+              key={warning.warning_id}
+              warning={warning}
+              t={t}
+              saving={saving === `weather_${warning.warning_id}`}
+              highlighted={highlightedWeatherWarningId === warning.warning_id}
+              onHighlight={() => onHighlightWeatherWarning?.(
+                highlightedWeatherWarningId === warning.warning_id ? null : warning,
+              )}
+              onAcknowledge={() => handleAcknowledgeWeather(warning)}
+            />
+          ))}
           {now.groups.map((g) => {
             const id = `now_${g.care_type}`
             return (
@@ -238,11 +285,120 @@ export default function GlobalCareSheet({ currentMapName, onPlantTap }: Props) {
         </div>
       )}
 
+      {weather.seen.length > 0 && (
+        <div>
+          <button
+            onClick={() => setSeenWeatherOpen((open) => !open)}
+            className="w-full flex items-center gap-2 py-1.5 group"
+            aria-expanded={seenWeatherOpen}
+          >
+            <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+              {t.mapPage.weatherSeenGuidance} · {weather.seen.length}
+            </span>
+            <div className="flex-1 h-px bg-border/40" />
+            <Chevron open={seenWeatherOpen} />
+          </button>
+          {seenWeatherOpen && (
+            <div className="space-y-2 mt-1.5">
+              {weather.seen.map((warning) => (
+                <SeenWeatherAdvisory
+                  key={warning.warning_id}
+                  warning={warning}
+                  t={t}
+                  saving={saving === `weather_${warning.warning_id}`}
+                  onRestore={() => handleRestoreWeather(warning)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {toast && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-[90px] z-[1000] bg-text text-surface px-5 py-2.5 rounded-full text-[13px] shadow-lg pointer-events-none whitespace-nowrap">
           {toast}
         </div>
       )}
+    </div>
+  )
+}
+
+function WeatherAdvisoryCard({ warning, t, saving, highlighted, onHighlight, onAcknowledge }: {
+  warning: WeatherWarningGroupOut
+  t: ReturnType<typeof useT>
+  saving: boolean
+  highlighted: boolean
+  onHighlight: () => void
+  onAcknowledge: () => void
+}) {
+  const copy = localizedWarningCopy(warning, t)
+  const subtitle = warning.map_names.length > 1
+    ? `${t.mapPage.sheetPlantCount(warning.affected_plant_ids.length)} · ${t.mapPage.sheetGardenCount(warning.map_names.length)}`
+    : warning.map_names[0]
+      ? `${t.mapPage.sheetPlantCount(warning.affected_plant_ids.length)} · ${warning.map_names[0]}`
+      : t.mapPage.sheetPlantCount(warning.affected_plant_ids.length)
+  const accent = warning.severity === 'urgent' ? 'var(--color-overdue)' : 'var(--color-due)'
+
+  return (
+    <div className={`rounded-xl border bg-surface overflow-hidden transition-opacity ${saving ? 'opacity-50' : ''}`} style={{ borderColor: `color-mix(in srgb, ${accent} 35%, var(--color-border))` }}>
+      <div className="flex items-start gap-2.5 px-3 pt-3">
+        <span className="shrink-0 mt-0.5" style={{ color: accent }}>
+          <CareIcon type={warning.care_type as CareIconType} size={20} strokeWidth={1.9} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-text">{copy.headline}</span>
+            <span className="px-2 py-0.5 rounded-full bg-aqua-glow/10 text-aqua-glow text-[9px] font-semibold uppercase tracking-wide shrink-0">
+              {t.mapPage.weatherWarningBadge}
+            </span>
+          </div>
+          <span className="block text-[11px] text-text-muted mt-0.5">{subtitle}</span>
+          <WeatherWarningInline copy={copy} t={t} />
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2 px-3 py-2.5 mt-1 border-t border-border/40">
+        <button
+          disabled={saving}
+          onClick={onHighlight}
+          className={`px-3 py-1.5 rounded-full text-[11px] font-semibold disabled:opacity-50 ${highlighted ? 'bg-primary text-white' : 'bg-aqua-glow/10 text-aqua-glow'}`}
+        >
+          {highlighted ? t.mapPage.weatherHidePlantMarkers : t.mapPage.weatherHighlightPlants}
+        </button>
+        <button
+          disabled={saving}
+          onClick={onAcknowledge}
+          className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold disabled:opacity-50"
+        >
+          {t.mapPage.weatherGotIt}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function SeenWeatherAdvisory({ warning, t, saving, onRestore }: {
+  warning: WeatherWarningGroupOut
+  t: ReturnType<typeof useT>
+  saving: boolean
+  onRestore: () => void
+}) {
+  const copy = localizedWarningCopy(warning, t)
+  return (
+    <div className={`flex items-center gap-2 rounded-xl border border-border/60 bg-surface px-3 py-2.5 ${saving ? 'opacity-50' : 'opacity-80'}`}>
+      <CareIcon type={warning.care_type as CareIconType} size={17} strokeWidth={1.8} className="text-text-muted shrink-0" />
+      <div className="min-w-0 flex-1">
+        <span className="block text-xs font-medium text-text truncate">{copy.headline}</span>
+        <span className="block text-[10px] text-text-muted truncate">
+          {t.mapPage.sheetPlantCount(warning.affected_plant_ids.length)}
+        </span>
+      </div>
+      <button
+        disabled={saving}
+        onClick={onRestore}
+        className="px-2.5 py-1 rounded-full bg-bg text-text text-[11px] font-semibold disabled:opacity-50"
+      >
+        {t.mapPage.weatherRestore}
+      </button>
     </div>
   )
 }

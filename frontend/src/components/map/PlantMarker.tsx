@@ -42,6 +42,7 @@ interface Props {
    *  stay in agreement. Defaults to the base size (zoom = 1). */
   labelFontSize?: number
   showWarnings?: boolean
+  showWeatherWarnings?: boolean
   /** Hide the padlock badge on locked plants (used by the public demo garden). */
   hideLockBadge?: boolean
   displayName?: string
@@ -51,12 +52,24 @@ interface Props {
 
 type MarkerBadge = { alert_type: string; severity: string; icon: string; care_type: string }
 
-export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
+const GROUPED_WEATHER_TYPES = new Set(['frost_protect', 'heat_protect'])
+
+function visibleMarkerWarnings(plant: MapPlant, showWeatherWarnings: boolean) {
   const warnings = plant.warnings?.length
     ? plant.warnings
     : plant.top_warning
       ? [plant.top_warning]
       : []
+  return showWeatherWarnings
+    ? warnings
+    : warnings.filter((warning) => !GROUPED_WEATHER_TYPES.has(warning.care_type))
+}
+
+export function markerBadgesForPlant(
+  plant: MapPlant,
+  showWeatherWarnings = false,
+): MarkerBadge[] {
+  const warnings = visibleMarkerWarnings(plant, showWeatherWarnings)
 
   return warnings.map((warning) => ({
     alert_type: `${warning.care_type}-${warning.trigger}`,
@@ -71,37 +84,62 @@ export function markerBadgesForPlant(plant: MapPlant): MarkerBadge[] {
  * falling back to the first warning. The full list lives in the tap sheet and
  * CareNeedsList; capping the canvas to one badge keeps a dense map legible.
  */
-export function topMarkerBadge(plant: MapPlant): MarkerBadge | null {
-  const w = plant.top_warning ?? plant.warnings?.[0] ?? null
+export function topMarkerBadge(plant: MapPlant, showWeatherWarnings = false): MarkerBadge | null {
+  const w = visibleMarkerWarnings(plant, showWeatherWarnings)[0] ?? null
   if (!w) return null
   return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon, care_type: w.care_type }
 }
 
-export function plantMarkerHaloColor(plant: MapPlant, mapType: 'outdoor' | 'indoor', showWarnings: boolean): string | null {
+export function plantMarkerHaloColor(
+  plant: MapPlant,
+  mapType: 'outdoor' | 'indoor',
+  showWarnings: boolean,
+  showWeatherWarnings = false,
+): string | null {
   if (!showWarnings) return null
 
   const isOutdoor = mapType === 'outdoor'
   const isContainer = plant.container_id != null
   // Outdoor ground plants: only weather halos. Indoor or container plants: full care halos.
-  return isOutdoor && !isContainer
-    ? (plant.temp_status === 'freezing' || plant.temp_status === 'chilling' || plant.temp_status === 'heatstress'
+  if (isOutdoor && !isContainer) {
+    if (!showWeatherWarnings) return null
+    return visibleMarkerWarnings(plant, true).find(
+      (warning) => GROUPED_WEATHER_TYPES.has(warning.care_type),
+    )?.color ?? (
+      plant.temp_status === 'freezing' || plant.temp_status === 'chilling' || plant.temp_status === 'heatstress'
         ? getHaloColor(plant)
-        : null)
-    : getHaloColor(plant)
+        : null
+    )
+  }
+
+  const visibleWarning = visibleMarkerWarnings(plant, showWeatherWarnings)[0]
+  if (visibleWarning) return visibleWarning.color
+  const hasHiddenWeatherWarning = !showWeatherWarnings
+    && visibleMarkerWarnings(plant, true).some((warning) => GROUPED_WEATHER_TYPES.has(warning.care_type))
+  return hasHiddenWeatherWarning ? null : getHaloColor(plant)
 }
 
-export function containedPlantHaloColor(plant: MapPlant, showWarnings: boolean): string | null {
-  return showWarnings ? getHaloColor(plant) : null
+export function containedPlantHaloColor(
+  plant: MapPlant,
+  showWarnings: boolean,
+  showWeatherWarnings = false,
+): string | null {
+  if (!showWarnings) return null
+  const visibleWarning = visibleMarkerWarnings(plant, showWeatherWarnings)[0]
+  if (visibleWarning) return visibleWarning.color
+  const hasHiddenWeatherWarning = !showWeatherWarnings
+    && visibleMarkerWarnings(plant, true).some((warning) => GROUPED_WEATHER_TYPES.has(warning.care_type))
+  return hasHiddenWeatherWarning ? null : getHaloColor(plant)
 }
 
 // Plant name label size in SVG units. Kept modest so labels don't dominate the
 // map; the layer's declutter (utils/labelDeclutter) uses this to estimate boxes.
 export const PLANT_LABEL_FONT_SIZE = 9
 
-export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, hideLockBadge = false, displayName = plant.name, onPointerDown, heatmapCells }: Props) {
+export default function PlantMarker({ plant, mapType, x, y, isDragging, canDrag = true, isSelected, showLabel = true, labelPlacement = 'below', labelFontSize = PLANT_LABEL_FONT_SIZE, showWarnings = true, showWeatherWarnings = false, hideLockBadge = false, displayName = plant.name, onPointerDown, heatmapCells }: Props) {
   const { badgeColor: color } = getCareDisplay(plant)
-  const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings)
-  const topBadge = showWarnings ? topMarkerBadge(plant) : null
+  const haloColor = plantMarkerHaloColor(plant, mapType, showWarnings, showWeatherWarnings)
+  const topBadge = showWarnings ? topMarkerBadge(plant, showWeatherWarnings) : null
 
   const { ringColor, ringDashed, badgeLabel, sunHoursAtPos } = (() => {
     if (!heatmapCells) return { ringColor: null, ringDashed: false, badgeLabel: null, sunHoursAtPos: null }
