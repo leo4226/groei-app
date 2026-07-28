@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { User, Location, Plant, RecentLogEntry, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
-import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi } from '../api/client'
+import type { User, Location, Plant, RecentLogEntry, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut, WeatherWarningGroupOut } from '../types'
+import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi, weatherWarnings as weatherWarningsApi } from '../api/client'
 import type { PageContext } from '../api/chat'
 
 interface FlorerStore {
@@ -31,6 +31,8 @@ interface FlorerStore {
   resetForNewSession: () => void
   loadRecentLog: () => Promise<void>
   loadWarningSummary: (env?: string) => Promise<void>
+  acknowledgeWeatherWarning: (warning: WeatherWarningGroupOut) => Promise<void>
+  restoreWeatherWarning: (warningId: string) => Promise<void>
   loadPlants: () => Promise<void>
   loadPlantFact: () => Promise<void>
   addPlant: (data: PlantCreateInput) => Promise<Plant>
@@ -148,6 +150,16 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     } catch (e) {
       set({ error: (e as Error).message })
     }
+  },
+
+  acknowledgeWeatherWarning: async (warning) => {
+    await weatherWarningsApi.acknowledge(warning)
+    await get().loadWarningSummary()
+  },
+
+  restoreWeatherWarning: async (warningId) => {
+    await weatherWarningsApi.restore(warningId)
+    await get().loadWarningSummary()
   },
 
   loadPlants: async () => {

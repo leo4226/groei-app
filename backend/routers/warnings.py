@@ -1,14 +1,23 @@
 """HTTP endpoint exposing the unified warning pipeline."""
 import logging
 logger = logging.getLogger(__name__)
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from database import db_dep
 from auth import get_current_account
-from services.warnings import compute_plant_warnings
+from services.warnings import (
+    canonical_weather_warning_id,
+    canonical_weather_warning_id_for_fields,
+    compute_plant_warnings,
+)
+from services.weather_warning_state import (
+    acknowledge_weather_warning,
+    restore_weather_warning,
+    weather_warning_states_for_account,
+)
 from services.care_profile import canonicalize_care_profile
 from care_types import CARE_TYPES, normalize_care_type
 
@@ -23,6 +32,67 @@ class PatchCareProfileIn(BaseModel):
     care_types: dict[str, CareProfileEntryIn]
 
 router = APIRouter(tags=["warnings"])
+
+
+class WeatherWarningAcknowledgmentIn(BaseModel):
+    care_type: str
+    forecast_date: date
+    severity: str
+
+
+class WeatherWarningAcknowledgmentOut(BaseModel):
+    warning_id: str
+    care_type: str
+    forecast_date: date
+    severity: str
+    acknowledged_at: datetime
+
+
+@router.post(
+    "/weather-warnings/{warning_id}/acknowledgment",
+    response_model=WeatherWarningAcknowledgmentOut,
+)
+async def acknowledge_warning(
+    warning_id: str,
+    payload: WeatherWarningAcknowledgmentIn,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    try:
+        expected_id = canonical_weather_warning_id_for_fields(
+            account["household_id"],
+            payload.care_type,
+            payload.forecast_date,
+            payload.severity,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if warning_id != expected_id:
+        raise HTTPException(status_code=422, detail="invalid_weather_warning_id")
+    return await acknowledge_weather_warning(
+        db,
+        account_id=account["account_id"],
+        warning_id=warning_id,
+        care_type=payload.care_type,
+        forecast_date=payload.forecast_date,
+        severity=payload.severity,
+    )
+
+
+@router.delete(
+    "/weather-warnings/{warning_id}/acknowledgment",
+    status_code=204,
+)
+async def restore_warning(
+    warning_id: str,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    await restore_weather_warning(
+        db,
+        account_id=account["account_id"],
+        warning_id=warning_id,
+    )
 
 
 class CareWarningOut(BaseModel):
@@ -40,6 +110,7 @@ class CareWarningOut(BaseModel):
     action_en: str | None = None
     weather_metric: str | None = None
     weather_value_c: float | None = None
+    forecast_date: date | None = None
     forecast_day_label_nl: str | None = None
     forecast_day_label_en: str | None = None
 
@@ -92,11 +163,19 @@ class WarningBucketsOut(BaseModel):
     komende_week: list[BucketPlantOut]
 
 
+class WeatherWarningGroupOut(CareWarningOut):
+    warning_id: str
+    acknowledged_at: datetime | None = None
+    affected_plant_ids: list[int]
+    map_names: list[str]
+
+
 class WarningSummaryOut(BaseModel):
     total_plants: int
     on_schedule: int
     kpis: list[CareTypeKPIOut]
     buckets: WarningBucketsOut
+    weather_warnings: list[WeatherWarningGroupOut] = Field(default_factory=list)
 
 
 async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dict | None:
@@ -174,7 +253,13 @@ async def get_warning_summary(
     household_id = account["household_id"]
 
     try:
-        return await _compute_warning_summary(db, household_id, env, today)
+        return await _compute_warning_summary(
+            db,
+            household_id,
+            account["account_id"],
+            env,
+            today,
+        )
     except Exception as exc:
         import logging
         logger.exception(
@@ -187,7 +272,7 @@ async def get_warning_summary(
 
 
 async def _compute_warning_summary(
-    db, household_id: int, env: str, today: date
+    db, household_id: int, account_id: int, env: str, today: date
 ) -> WarningSummaryOut:
     """Inner implementation — never throws, returns empty summary on error."""
     # 1. Fetch all active plants with map info
@@ -236,12 +321,14 @@ async def _compute_warning_summary(
 
     # 4. Fetch weather once (shared across all plants)
     weather = await _fetch_weather_safely(db, household_id)
+    account_weather_states = await weather_warning_states_for_account(db, account_id)
 
     # 5. Run compute_plant_warnings for each plant
     kpi_acc: dict[str, dict] = {}
     bucket_nu: list[BucketPlantOut] = []
     bucket_vandaag: list[BucketPlantOut] = []
     bucket_komende_week: list[BucketPlantOut] = []
+    weather_groups: dict[str, dict] = {}
     total_plants = len(plants)
     on_schedule = 0
 
@@ -250,11 +337,36 @@ async def _compute_warning_summary(
         schedules = schedules_by_plant.get(pid, [])
         state = compute_plant_warnings(plant, schedules, weather=weather, today=today)
 
-        has_overdue = any(w.severity in ("urgent", "warning") for w in state.warnings)
+        care_warnings = []
+        for warning in state.warnings:
+            is_grouped_weather = (
+                warning.care_type in {"frost_protect", "heat_protect"}
+                and warning.forecast_date is not None
+            )
+            if not is_grouped_weather:
+                care_warnings.append(warning)
+                continue
+
+            warning_id = canonical_weather_warning_id(household_id, warning)
+            if warning_id not in weather_groups:
+                projected = CareWarningOut(**warning.__dict__).model_dump()
+                account_state = account_weather_states.get(warning_id, {})
+                weather_groups[warning_id] = {
+                    **projected,
+                    "warning_id": warning_id,
+                    "acknowledged_at": account_state.get("acknowledged_at"),
+                    "affected_plant_ids": set(),
+                    "map_names": set(),
+                }
+            weather_groups[warning_id]["affected_plant_ids"].add(pid)
+            if plant.get("map_name"):
+                weather_groups[warning_id]["map_names"].add(plant["map_name"])
+
+        has_overdue = any(w.severity in ("urgent", "warning") for w in care_warnings)
         if not has_overdue:
             on_schedule += 1
 
-        for w in state.warnings:
+        for w in care_warnings:
             ct = w.care_type
             if ct not in kpi_acc:
                 ct_def = CARE_TYPES.get(ct, {})
@@ -276,9 +388,10 @@ async def _compute_warning_summary(
             else:
                 kpi_acc[ct]["info_count"] += 1
 
-        if state.top_warning is not None:
+        top_care_warning = care_warnings[0] if care_warnings else None
+        if top_care_warning is not None:
             matching_sched = next(
-                (s for s in schedules if s["care_type"] == state.top_warning.care_type), None
+                (s for s in schedules if s["care_type"] == top_care_warning.care_type), None
             )
             bp = BucketPlantOut(
                 plant_id=pid,
@@ -286,18 +399,18 @@ async def _compute_warning_summary(
                 plant_icon_variant=plant.get("icon_variant"),
                 environment=state.environment,
                 map_name=plant.get("map_name"),
-                care_type=state.top_warning.care_type,
-                top_warning=CareWarningOut(**state.top_warning.__dict__),
-                days_overdue=state.top_warning.days_overdue,
+                care_type=top_care_warning.care_type,
+                top_warning=CareWarningOut(**top_care_warning.__dict__),
+                days_overdue=top_care_warning.days_overdue,
                 schedule_id=matching_sched["schedule_id"] if matching_sched else None,
             )
-            trigger = state.top_warning.trigger
+            trigger = top_care_warning.trigger
             if trigger == "schedule_overdue":
                 bucket_nu.append(bp)
             elif trigger == "schedule_due_today":
                 bucket_vandaag.append(bp)
             elif trigger in ("weather_event", "seasonal"):
-                bucket_nu.append(bp) if state.top_warning.severity != "info" else bucket_komende_week.append(bp)
+                bucket_nu.append(bp) if top_care_warning.severity != "info" else bucket_komende_week.append(bp)
             else:
                 bucket_komende_week.append(bp)
 
@@ -334,11 +447,25 @@ async def _compute_warning_summary(
         key=lambda k: (-k.urgent_count, -k.count, k.care_type),
     )
 
+    weather_warnings = []
+    for group in weather_groups.values():
+        group["affected_plant_ids"] = sorted(group["affected_plant_ids"])
+        group["map_names"] = sorted(group["map_names"])
+        weather_warnings.append(WeatherWarningGroupOut(**group))
+    weather_warnings.sort(
+        key=lambda warning: (
+            warning.forecast_date or date.max,
+            0 if warning.severity == "urgent" else 1,
+            warning.care_type,
+        )
+    )
+
     return WarningSummaryOut(
         total_plants=total_plants,
         on_schedule=on_schedule,
         kpis=kpi_list,
         buckets=WarningBucketsOut(nu=bucket_nu, vandaag=bucket_vandaag, komende_week=bucket_komende_week),
+        weather_warnings=weather_warnings,
     )
 
 

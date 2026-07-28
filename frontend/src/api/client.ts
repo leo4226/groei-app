@@ -448,6 +448,32 @@ export const plants = {
   commitIdentify:    (scientificName: string, photoBase64: string, lang: 'nl' | 'en' = 'nl') => api<import('../types').IdentifyCommitResult>('POST', `/plants/identify/commit?lang=${lang}`, { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
 }
 
+export const weatherWarnings = {
+  acknowledge: (warning: import('../types').WeatherWarningGroupOut) =>
+    api<{
+      warning_id: string
+      care_type: string
+      forecast_date: string
+      severity: string
+      acknowledged_at: string
+    }>(
+      'POST',
+      `/weather-warnings/${encodeURIComponent(warning.warning_id)}/acknowledgment`,
+      {
+        body: {
+          care_type: warning.care_type,
+          forecast_date: warning.forecast_date,
+          severity: warning.severity,
+        },
+      },
+    ),
+  restore: (warningId: string) =>
+    api<void>(
+      'DELETE',
+      `/weather-warnings/${encodeURIComponent(warningId)}/acknowledgment`,
+    ),
+}
+
 export const photos = {
   list: (plantId: number) => api<import('../types').PlantPhoto[]>('GET', `/plants/${plantId}/photos`),
   upload: (plantId: number, image: Blob, opts: { note?: string; takenAt?: string; careLogId?: number } = {}) => {

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import type { MapPlant, MapObject, CanvasData, GroundZone } from '../types'
+import type { MapPlant, MapObject, CanvasData, GroundZone, WeatherWarningGroupOut } from '../types'
 import MapView from '../components/map/MapView'
 import type { LabelMode } from '../components/map/PlantsLayer'
 import Glyph from '../components/ui/Glyph'
@@ -120,6 +120,7 @@ export default function MapPage() {
   // Per-plant warning badges are capped to one (most-urgent) on the canvas; this
   // toggle hides them entirely. On by default. Full list lives in the sheets.
   const [showWarnings, setShowWarnings] = useState(true)
+  const [highlightedWeatherWarningId, setHighlightedWeatherWarningId] = useState<string | null>(null)
   const [biodiversityModalOpen, setBiodiversityModalOpen] = useState(false)
   const [showGameSetup, setShowGameSetup] = useState(false)
   const [showPotPicker, setShowPotPicker] = useState(false)
@@ -128,6 +129,22 @@ export default function MapPage() {
   const moveModeActive = moveMode || targetedMove !== null
   // Tap-to-place: the plant we're adding an extra spot for (null = not placing).
   const [placingPlant, setPlacingPlant] = useState<MapPlant | null>(null)
+
+  const highlightedWeatherWarning = useMemo(
+    () => warningSummary?.weather_warnings?.find(
+      (warning) => warning.warning_id === highlightedWeatherWarningId,
+    ) ?? null,
+    [warningSummary, highlightedWeatherWarningId],
+  )
+  const highlightedWeatherPlantIds = useMemo(
+    () => highlightedWeatherWarning
+      ? new Set(highlightedWeatherWarning.affected_plant_ids)
+      : undefined,
+    [highlightedWeatherWarning],
+  )
+  const handleHighlightWeatherWarning = useCallback((warning: WeatherWarningGroupOut | null) => {
+    setHighlightedWeatherWarningId(warning?.warning_id ?? null)
+  }, [])
 
   const handleAddPlacement = useCallback((plant: MapPlant) => {
     setSelectedPlant(null)
@@ -314,7 +331,14 @@ export default function MapPage() {
   const attentionCount = useMemo(() => {
     const containedPlants = objects.flatMap((o) => o.contained_plants ?? [])
     const all = [...plants, ...containedPlants]
-    return all.filter((p) => (p.warnings?.length ?? 0) > 0 || p.top_warning !== null).length
+    return all.filter((plant) => {
+      const warnings = plant.warnings?.length
+        ? plant.warnings
+        : plant.top_warning ? [plant.top_warning] : []
+      return warnings.some(
+        (warning) => warning.care_type !== 'heat_protect' && warning.care_type !== 'frost_protect',
+      )
+    }).length
   }, [plants, objects])
 
   // Once cross-garden warnings are loaded, the sheet shows every garden's
@@ -322,7 +346,12 @@ export default function MapPage() {
   const useGlobalCare = !!warningSummary
   const globalAttentionCount = useMemo(() => {
     if (!warningSummary) return attentionCount
-    return warningSummary.buckets.nu.length + warningSummary.buckets.vandaag.length
+    const activeWeatherWarnings = (warningSummary.weather_warnings ?? []).filter(
+      (warning) => !warning.acknowledged_at,
+    ).length
+    return warningSummary.buckets.nu.length
+      + warningSummary.buckets.vandaag.length
+      + activeWeatherWarnings
   }, [warningSummary, attentionCount])
 
   const sheetMode: SheetMode = sun.active && isOutdoor ? 'sun' : 'care'
@@ -501,6 +530,7 @@ export default function MapPage() {
           onSecondaryMarkerTap={handleSecondaryMarkerTap}
           labelMode={labelMode}
           showWarnings={showWarnings}
+          highlightedWeatherPlantIds={highlightedWeatherPlantIds}
           sunModeActive={sun.active}
           shadows={sun.shadows}
           sunPosition={sun.sunPosition}
@@ -622,7 +652,14 @@ export default function MapPage() {
           hidden={biodiversityModalOpen}
           careContent={
             useGlobalCare
-              ? <GlobalCareSheet currentMapName={map?.name ?? null} onPlantTap={handleGlobalPlantTap} />
+              ? (
+                <GlobalCareSheet
+                  currentMapName={map?.name ?? null}
+                  onPlantTap={handleGlobalPlantTap}
+                  highlightedWeatherWarningId={highlightedWeatherWarningId}
+                  onHighlightWeatherWarning={handleHighlightWeatherWarning}
+                />
+              )
               : <CareNeedsList plants={plants} objects={objects} onPlantTap={handlePlantTap} />
           }
           sunContent={

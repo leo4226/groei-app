@@ -14,7 +14,8 @@ from services.care_rhythm import (
 )
 from services.care_sessions import project_water_session
 from services.garden_care import schedule_interval_days
-from services.weather_task_service import sync_ephemeral_schedules
+from services.weather_task_service import sync_ephemeral_schedules, weather_task_metadata
+from services.weather_warning_state import weather_warning_states_for_account
 from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
 from services.moisture_check_service import sync_moisture_checks
@@ -658,6 +659,9 @@ async def list_calendar_events(
     # 4. Build enriched events — virtual occurrences for regular, one-shot for ephemeral
     events = []
     today = today_date
+    weather_states = await weather_warning_states_for_account(
+        db, account["account_id"],
+    )
 
     for r in rows:
         pid = r["plant_id"]
@@ -678,6 +682,9 @@ async def list_calendar_events(
             # One-shot — only show if in range (already guaranteed by query)
             sp_id = plant_species_map.get(pid)
             sp = species_names.get(sp_id, {}) if sp_id else {}
+            warning_metadata = weather_task_metadata(r.get("notes"))
+            warning_id = warning_metadata.get("weather_warning_id") if warning_metadata else None
+            warning_state = weather_states.get(warning_id, {}) if warning_id else {}
             if ct == "moisture_check":
                 metadata = _moisture_metadata(r.get("notes"))
                 enrichment = {
@@ -703,6 +710,8 @@ async def list_calendar_events(
                 overdue=next_due < today,
                 **enrichment,
                 weather_triggered=bool(CARE_TYPES.get(ct, {}).get("is_weather_triggered")),
+                weather_warning_id=warning_id,
+                acknowledged_at=warning_state.get("acknowledged_at"),
             ))
         else:
             # Recurring — generate all occurrences in [from_dt, to_dt]

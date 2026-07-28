@@ -20,6 +20,11 @@ from models import CareTask
 from services.care_task_service import fetch_household_schedule_rows, classify_care_tasks
 from services.email import send_email
 from services.push import send_push
+from services.weather_task_service import weather_task_metadata
+from services.weather_warning_state import (
+    mark_weather_warning_push_sent,
+    weather_warning_push_is_suppressed,
+)
 
 AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 
@@ -425,7 +430,8 @@ async def send_due_care_pushes(db) -> dict:
 
         due_rows = await db.execute_fetchall(
             """
-            SELECT cs.id, cs.next_due, cs.care_type, p.name AS plant_name
+            SELECT cs.id, cs.next_due, cs.care_type, cs.notes,
+                   cs.is_ephemeral, p.name AS plant_name
             FROM care_schedules cs
             JOIN plants p ON cs.plant_id = p.id
             WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
@@ -437,10 +443,25 @@ async def send_due_care_pushes(db) -> dict:
             """,
             (acc["household_id"], today, now_utc),
         )
+        due_rows = [dict(row) for row in due_rows]
         # Skip care types this account has muted.
         muted = set(parse_muted_care_types(acc["muted_care_types"]))
         if muted:
             due_rows = [r for r in due_rows if r["care_type"] not in muted]
+
+        account_due_rows = []
+        for row in due_rows:
+            metadata = weather_task_metadata(row.get("notes"))
+            if metadata:
+                if await weather_warning_push_is_suppressed(
+                    db,
+                    account_id=acc["account_id"],
+                    warning_id=metadata["weather_warning_id"],
+                ):
+                    continue
+                row["_weather_warning"] = metadata
+            account_due_rows.append(row)
+        due_rows = account_due_rows
         if not due_rows:
             continue
         push_checked += 1
@@ -453,7 +474,7 @@ async def send_due_care_pushes(db) -> dict:
             continue
 
         payload = build_care_push_payload(
-            [dict(r) for r in due_rows],
+            due_rows,
             snooze_token=make_snooze_token(acc["household_id"]),
             language=acc.get("language") or "nl",
         )
@@ -472,6 +493,17 @@ async def send_due_care_pushes(db) -> dict:
             # it won't re-ping until completion advances next_due. Only on a
             # real delivery — a transient failure stays eligible next hour.
             for row in due_rows:
+                metadata = row.get("_weather_warning")
+                if metadata:
+                    await mark_weather_warning_push_sent(
+                        db,
+                        account_id=acc["account_id"],
+                        warning_id=metadata["weather_warning_id"],
+                        care_type=metadata["care_type"],
+                        forecast_date=date.fromisoformat(metadata["forecast_date"]),
+                        severity=metadata["severity"],
+                    )
+                    continue
                 due = row["next_due"]
                 if isinstance(due, str):
                     due = date.fromisoformat(due[:10])

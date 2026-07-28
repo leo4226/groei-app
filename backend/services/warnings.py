@@ -6,6 +6,7 @@ output of `compute_plant_warnings()` — no consumer re-derives priority.
 """
 from dataclasses import dataclass, field
 from datetime import date
+import hashlib
 from typing import Literal
 
 def _as_date(val):
@@ -53,6 +54,7 @@ class CareWarning:
     action_en: str | None = None
     weather_metric: str | None = None
     weather_value_c: float | None = None
+    forecast_date: date | None = None
     forecast_day_label_nl: str | None = None
     forecast_day_label_en: str | None = None
 
@@ -173,6 +175,7 @@ def _weather_warning(
     metric: str,
     value: float | int,
     threshold: float | int | None,
+    forecast_date: date,
     days_until: int,
     action_nl: str,
     action_en: str,
@@ -200,8 +203,40 @@ def _weather_warning(
         action_en=action_en,
         weather_metric=metric,
         weather_value_c=value,
+        forecast_date=forecast_date,
         forecast_day_label_nl=day_label_nl,
         forecast_day_label_en=day_label_en,
+    )
+
+
+def canonical_weather_warning_id_for_fields(
+    household_id: int,
+    care_type: str,
+    forecast_date: date,
+    severity: str,
+) -> str:
+    """Return a stable identity for one household forecast severity tier."""
+    if care_type not in {"frost_protect", "heat_protect"}:
+        raise ValueError("unsupported_weather_warning_type")
+    if severity not in {"warning", "urgent"}:
+        raise ValueError("unsupported_weather_warning_severity")
+    raw = ":".join((
+        str(household_id),
+        care_type,
+        forecast_date.isoformat(),
+        severity,
+    ))
+    return f"weather:{hashlib.sha256(raw.encode()).hexdigest()[:24]}"
+
+
+def canonical_weather_warning_id(household_id: int, warning: CareWarning) -> str:
+    if warning.forecast_date is None:
+        raise ValueError("weather_warning_forecast_date_required")
+    return canonical_weather_warning_id_for_fields(
+        household_id,
+        warning.care_type,
+        warning.forecast_date,
+        warning.severity,
     )
 
 
@@ -384,6 +419,7 @@ def _weather_warnings_for_plant(
                     metric="min_temp_c",
                     value=val,
                     threshold=min_temp,
+                    forecast_date=_as_date(closest["date"]),
                     days_until=du,
                     action_nl=FROST_ACTION_NL,
                     action_en=FROST_ACTION_EN,
@@ -417,6 +453,7 @@ def _weather_warnings_for_plant(
                     metric="min_temp_c",
                     value=val,
                     threshold=bring_in,
+                    forecast_date=_as_date(closest["date"]),
                     days_until=du,
                     action_nl=FROST_ACTION_NL,
                     action_en=FROST_ACTION_EN,
@@ -454,6 +491,7 @@ def _weather_warnings_for_plant(
                     metric="max_temp_c",
                     value=val,
                     threshold=max_temp,
+                    forecast_date=_as_date(closest["date"]),
                     days_until=du,
                     action_nl=HEAT_ACTION_NL,
                     action_en=HEAT_ACTION_EN,
@@ -484,6 +522,7 @@ def _weather_warnings_for_plant(
                         metric="max_temp_c",
                         value=val,
                         threshold=max_temp,
+                        forecast_date=_as_date(closest["date"]),
                         days_until=du,
                         action_nl=HEAT_ACTION_NL,
                         action_en=HEAT_ACTION_EN,

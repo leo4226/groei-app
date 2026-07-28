@@ -15,6 +15,7 @@ interface Props {
   isHoverTarget?: boolean
   showLabel?: boolean
   showWarnings?: boolean
+  highlightedWeatherPlantIds?: ReadonlySet<number>
   heatmapCells?: HeatmapCell[]
   onTap?: (object: MapObject) => void
   onPointerDown?: (e: React.PointerEvent, object: MapObject) => void
@@ -80,7 +81,7 @@ function renderHardscapeShape(preset: HardscapePreset, color: string, w: number,
   }
 }
 
-export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, showWarnings = true, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
+export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = true, showWarnings = true, highlightedWeatherPlantIds, heatmapCells, onTap, onPointerDown, isDragging = false }: Props) {
   const color = object.color || '#888888'
   const effectiveRotation = object.rotation || 0
   const fill = color + '33'
@@ -146,8 +147,9 @@ export default function ObjectShape({ object, x, y, isHoverTarget, showLabel = t
       const sunFit = heatCell && plant.sun_requirement
         ? getSunFit(plant.sun_requirement, heatCell.sunHours)
         : null
-      const haloColor = containedPlantHaloColor(plant, showWarnings)
-      const topBadge = showWarnings ? topMarkerBadge(plant) : null
+      const showWeatherWarnings = highlightedWeatherPlantIds?.has(plant.id) ?? false
+      const haloColor = containedPlantHaloColor(plant, showWarnings, showWeatherWarnings)
+      const topBadge = showWarnings ? topMarkerBadge(plant, showWeatherWarnings) : null
       return (
         <g key={plant.id} transform={`translate(${pos.x}, ${pos.y})`}>
           {/* Status halo — extends beyond pot outline to shine through */}

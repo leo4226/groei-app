@@ -7,6 +7,7 @@ interface Props {
   hoveredContainerId: number | null
   showLabels?: boolean
   showWarnings?: boolean
+  highlightedWeatherPlantIds?: ReadonlySet<number>
   heatmapCells?: HeatmapCell[]
   dragPositions?: Record<string, { x: number; y: number }>
 }
@@ -16,6 +17,7 @@ export default function ObjectsLayer({
   hoveredContainerId,
   showLabels = true,
   showWarnings = true,
+  highlightedWeatherPlantIds,
   heatmapCells,
   dragPositions,
 }: Props) {
@@ -34,6 +36,7 @@ export default function ObjectsLayer({
             isHoverTarget={hoveredContainerId === obj.id}
             showLabel={showLabels}
             showWarnings={showWarnings}
+            highlightedWeatherPlantIds={highlightedWeatherPlantIds}
             heatmapCells={heatmapCells}
           />
         )
