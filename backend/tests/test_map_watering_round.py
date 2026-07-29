@@ -291,6 +291,7 @@ async def test_map_watering_round_rejects_mixed_map_selection_atomically(
 @pytest.mark.parametrize(
     ('schedule_ids', 'user_id'),
     [
+        ([], 1),
         ([201, 201], 1),
         ([207], 1),
         ([205], 1),
@@ -436,4 +437,53 @@ async def test_map_watering_round_undo_restores_schedule_and_previous_history(
     )
     assert refreshed.status_code == 200
     assert [row['operation_id'] for row in refreshed.json()['history']] == [301, 302, 306]
+    assert refreshed.json()['history'][0]['can_undo'] is False
+
+
+@pytest.mark.asyncio
+async def test_map_watering_round_undo_rejects_newer_schedule_mutation(
+    client, seeded_db, auth_header,
+):
+    await _seed_round(seeded_db)
+    completed = await client.post(
+        '/api/care/maps/1/watering-round/complete',
+        json={
+            'completed_at': '2026-07-23',
+            'user_id': 1,
+            'schedule_ids': [201],
+        },
+        headers=auth_header,
+    )
+    assert completed.status_code == 200
+    operation_id = completed.json()['operation_id']
+
+    await seeded_db.execute(
+        "UPDATE care_schedules SET next_due = '2026-08-12' WHERE id = 201"
+    )
+    await seeded_db.commit()
+
+    undo = await client.post(
+        f'/api/care/garden/{operation_id}/undo',
+        headers=auth_header,
+    )
+
+    assert undo.status_code == 409
+    assert undo.json()['detail']['code'] == 'garden_care_undo_conflict'
+    schedule = (await seeded_db.execute_fetchall(
+        'SELECT next_due FROM care_schedules WHERE id = 201'
+    ))[0]
+    assert schedule['next_due'] == '2026-08-12'
+    operation = (await seeded_db.execute_fetchall(
+        'SELECT undone_at FROM garden_care_operations WHERE id = ?',
+        (operation_id,),
+    ))[0]
+    assert operation['undone_at'] is None
+    assert len(await seeded_db.execute_fetchall('SELECT id FROM care_log')) == 1
+
+    refreshed = await client.get(
+        '/api/care/maps/1/watering-round',
+        headers=auth_header,
+    )
+    assert refreshed.status_code == 200
+    assert refreshed.json()['history'][0]['operation_id'] == operation_id
     assert refreshed.json()['history'][0]['can_undo'] is False
