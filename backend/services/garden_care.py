@@ -1,5 +1,6 @@
 """Server-side grouped map care operations with reversible schedule snapshots."""
 from datetime import date, datetime
+from typing import Literal
 
 from care_types import CARE_TYPES
 from services.calendar_grouping import get_calendar_grouping_preferences
@@ -51,30 +52,108 @@ def schedule_interval_days(schedule: dict, care_type: str) -> int | None:
     return default_interval if isinstance(default_interval, int) and default_interval > 0 else None
 
 
+async def _operation_members(db, operation_id: int, *, lock: bool) -> list[dict]:
+    return await db.execute_fetchall(
+        """SELECT gom.schedule_id, gom.previous_next_due,
+                  gom.previous_last_done, gom.previous_last_done_by,
+                  gom.care_log_id, gom.applied_next_due,
+                  gom.applied_last_done, cs.next_due AS current_next_due,
+                  cs.last_done AS current_last_done,
+                  cs.last_done_by AS current_last_done_by,
+                  cs.plant_id, cs.care_type
+           FROM garden_care_operation_members gom
+           JOIN care_schedules cs ON cs.id = gom.schedule_id
+           WHERE gom.operation_id = ?"""
+        + (for_update_clause(db) if lock else ""),
+        (operation_id,),
+    )
+
+
+async def _members_are_undoable(
+    db,
+    members: list[dict],
+    *,
+    completed_by: int | None,
+    lock: bool,
+) -> bool:
+    if not members:
+        return False
+    for member in members:
+        if member.get("care_log_id") is None:
+            return False
+        newer_logs = await db.execute_fetchall(
+            """SELECT id FROM care_log
+               WHERE plant_id = ? AND care_type = ? AND id > ?
+               ORDER BY id LIMIT 1"""
+            + (for_update_clause(db) if lock else ""),
+            (member["plant_id"], member["care_type"], member["care_log_id"]),
+        )
+        applied_matches = (
+            member.get("applied_next_due") is not None
+            and member.get("applied_last_done") is not None
+            and _comparable_db_value(member["current_next_due"])
+            == _comparable_db_value(member["applied_next_due"])
+            and _comparable_db_value(member["current_last_done"])
+            == _comparable_db_value(member["applied_last_done"])
+            and member.get("current_last_done_by") == completed_by
+        )
+        if newer_logs or not applied_matches:
+            return False
+    return True
+
+
+async def can_undo_outdoor_care(
+    db,
+    *,
+    household_id: int,
+    operation_id: int,
+) -> bool:
+    operations = await db.execute_fetchall(
+        """SELECT id, completed_by FROM garden_care_operations
+           WHERE id = ? AND household_id = ? AND undone_at IS NULL""",
+        (operation_id, household_id),
+    )
+    if not operations:
+        return False
+    members = await _operation_members(db, operation_id, lock=False)
+    return await _members_are_undoable(
+        db,
+        members,
+        completed_by=operations[0]["completed_by"],
+        lock=False,
+    )
+
+
 async def complete_outdoor_care(
     db, *, household_id: int, care_type: str, completed_at: date, user_id: int,
     map_id: int, schedule_ids: list[int] | None = None,
+    completion_mode: Literal["planned", "map_round"] = "planned",
 ) -> dict:
-    preferences = await get_calendar_grouping_preferences(db, household_id)
-    rhythm_config = await get_saved_care_rhythm_config(db, household_id)
-    routine_water = care_type == "water" and rhythm_config is not None
-    configured_types = next(
-        (
-            set(rule["care_types"])
-            for rule in preferences["rules"]
-            if rule["map_id"] == map_id
-        ),
-        set(),
-    )
-    if care_type not in configured_types and not routine_water:
-        return {"operation_id": None, "affected_count": 0}
-
     user_rows = await db.execute_fetchall(
         "SELECT id FROM users WHERE id = ? AND household_id = ?",
         (user_id, household_id),
     )
     if not user_rows:
         return {"operation_id": None, "affected_count": 0}
+
+    map_round = completion_mode == "map_round"
+    if map_round and care_type != "water":
+        raise GardenCareSelectionError
+
+    rhythm_config = await get_saved_care_rhythm_config(db, household_id)
+    routine_water = care_type == "water" and rhythm_config is not None
+    if not map_round:
+        preferences = await get_calendar_grouping_preferences(db, household_id)
+        configured_types = next(
+            (
+                set(rule["care_types"])
+                for rule in preferences["rules"]
+                if rule["map_id"] == map_id
+            ),
+            set(),
+        )
+        if care_type not in configured_types and not routine_water:
+            return {"operation_id": None, "affected_count": 0}
 
     async with database_transaction(db):
         schedules = await db.execute_fetchall(
@@ -90,10 +169,12 @@ async def complete_outdoor_care(
             (household_id, care_type, map_id),
         )
         if not schedules:
+            if map_round and schedule_ids is not None:
+                raise GardenCareSelectionError
             return {"operation_id": None, "affected_count": 0}
 
+        routine_schedule_ids: set[int] = set()
         if routine_water:
-            routine_schedules = []
             for schedule in schedules:
                 interval_days = schedule_interval_days(schedule, care_type)
                 if interval_days is None:
@@ -114,8 +195,12 @@ async def complete_outdoor_care(
                     opted_out=bool(schedule.get("rhythm_opt_out")),
                 )
                 if projection.is_routine:
-                    routine_schedules.append(schedule)
-            schedules = routine_schedules
+                    routine_schedule_ids.add(schedule["id"])
+            if not map_round:
+                schedules = [
+                    schedule for schedule in schedules
+                    if schedule["id"] in routine_schedule_ids
+                ]
 
         if schedule_ids is not None:
             requested_ids = set(schedule_ids)
@@ -148,7 +233,8 @@ async def complete_outdoor_care(
             canonical_due = _as_date(schedule["next_due"])
             recurrence_anchor = (
                 canonical_due
-                if routine_water and completed_at <= canonical_due
+                if schedule["id"] in routine_schedule_ids
+                and completed_at <= canonical_due
                 else completed_at
             )
             next_due = calculate_next_due(
@@ -185,39 +271,15 @@ async def undo_outdoor_care(db, *, household_id: int, operation_id: int) -> bool
         )
         if not operations:
             return False
-        members = await db.execute_fetchall(
-            """SELECT gom.schedule_id, gom.previous_next_due,
-                      gom.previous_last_done, gom.previous_last_done_by,
-                      gom.care_log_id, gom.applied_next_due,
-                      gom.applied_last_done, cs.next_due AS current_next_due,
-                      cs.last_done AS current_last_done,
-                      cs.last_done_by AS current_last_done_by,
-                      cs.plant_id, cs.care_type
-               FROM garden_care_operation_members gom
-               JOIN care_schedules cs ON cs.id = gom.schedule_id
-               WHERE gom.operation_id = ?""" + for_update_clause(db),
-            (operation_id,),
-        )
-
+        members = await _operation_members(db, operation_id, lock=True)
         completed_by = operations[0]["completed_by"]
-        for member in members:
-            newer_logs = await db.execute_fetchall(
-                """SELECT id FROM care_log
-                   WHERE plant_id = ? AND care_type = ? AND id > ?
-                   ORDER BY id LIMIT 1""" + for_update_clause(db),
-                (member["plant_id"], member["care_type"], member["care_log_id"]),
-            )
-            applied_matches = (
-                member.get("applied_next_due") is not None
-                and member.get("applied_last_done") is not None
-                and _comparable_db_value(member["current_next_due"])
-                == _comparable_db_value(member["applied_next_due"])
-                and _comparable_db_value(member["current_last_done"])
-                == _comparable_db_value(member["applied_last_done"])
-                and member.get("current_last_done_by") == completed_by
-            )
-            if newer_logs or not applied_matches:
-                raise GardenCareUndoConflict
+        if not await _members_are_undoable(
+            db,
+            members,
+            completed_by=completed_by,
+            lock=True,
+        ):
+            raise GardenCareUndoConflict
 
         for member in members:
             await db.execute(

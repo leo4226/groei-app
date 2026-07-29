@@ -243,6 +243,46 @@ class GardenCareOperationOut(BaseModel):
     affected_count: int
 
 
+class MapWateringRoundMemberOut(BaseModel):
+    schedule_id: int
+    plant_id: int
+    plant_name: str
+    plant_icon_variant: str | None = None
+    canonical_date: date
+    rhythm_opt_out: bool = False
+
+
+class MapWateringRoundHistoryOut(BaseModel):
+    operation_id: int
+    completed_at: date
+    completed_by: int | None = None
+    completed_by_name: str | None = None
+    affected_count: int
+    can_undo: bool = False
+
+
+class MapWateringRoundOut(BaseModel):
+    map_id: int
+    map_name: str
+    members: list[MapWateringRoundMemberOut]
+    history: list[MapWateringRoundHistoryOut]
+
+
+class MapWateringRoundCompleteIn(BaseModel):
+    completed_at: date | None = None
+    user_id: int
+    schedule_ids: list[int]
+
+    @field_validator('schedule_ids')
+    @classmethod
+    def validate_schedule_ids(cls, value: list[int]) -> list[int]:
+        if not value or any(schedule_id < 1 for schedule_id in value):
+            raise ValueError('schedule_ids_must_be_non_empty_positive_integers')
+        if len(value) != len(set(value)):
+            raise ValueError('duplicate_schedule_ids')
+        return value
+
+
 class MoistureCheckResolveIn(BaseModel):
     map_id: int
     check_schedule_ids: list[int]

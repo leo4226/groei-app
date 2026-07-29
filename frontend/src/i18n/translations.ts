@@ -1386,6 +1386,17 @@ export type Translations = {
     gardenWaterDelete: string               // "Delete watering"
     gardenFertilizeButton: string           // "Fertilize all plants"
     gardenFertilizeDelete: string           // "Delete fertilizing"
+    mapWateringDescription: string
+    mapWateringLastRound: string
+    mapWateringHistory: string
+    mapWateringRoundMeta: (date: string, member: string, plantCount: string) => string
+    mapWateringUnknownMember: string
+    mapWateringUndo: string
+    mapWateringLastWateredTitle: (date: string) => string
+    mapWateringNoHistoryTitle: string
+    mapWateringLoading: string
+    mapWateringLoadError: string
+    mapWateringError: string
     addPot: string                          // "Pot toevoegen"
     more: string                             // "Meer" / "More" (mobile overflow menu button)
     options: string                          // "Opties" / "Options" (mobile menu trigger)

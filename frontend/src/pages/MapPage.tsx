@@ -20,11 +20,13 @@ import SunControls from '../components/sun/SunControls'
 import GrowHereSheet from '../components/sheets/GrowHereSheet'
 import SpotInspectorSheet from '../components/sheets/SpotInspectorSheet'
 import WaterLogSheet from '../components/sheets/WaterLogSheet'
+import MapWateringRoundSheet from '../components/sheets/MapWateringRoundSheet'
 import { useSunVisualization } from '../hooks/useSunVisualization'
 import DebugSvfOverlay from '../components/sun/DebugSvfOverlay'
 import SunDebugOverlay from '../components/map/SunDebugOverlay'
 import { useMapData } from '../hooks/useMapData'
-import { useGardenWater, useGardenFertilize } from '../hooks/useGardenActions'
+import { useGardenFertilize } from '../hooks/useGardenActions'
+import { useMapWateringRound } from '../hooks/useMapWateringRound'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useFloreren } from '../store/useFloreren'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
@@ -33,6 +35,7 @@ import * as clientApis from '../api/client'
 import type { PageContext } from '../api/chat'
 import { useT } from '../context/LanguageContext'
 import { bucketFor } from '../utils/lightQuality'
+import { localIsoDate } from '../utils/dateFormat'
 import { isInsideZone } from '../utils/svgCoords'
 import UnplacedPlantsTray from '../components/map/UnplacedPlantsTray'
 import { selectUnplacedPlants, viewboxCenter } from '../components/map/unplacedPlants'
@@ -62,6 +65,21 @@ export default function MapPage() {
 
   const mapData = useMapData(slug)
   const { refresh: refreshMapData } = mapData
+  const { map, plants, objects, secondaryMarkers, groundZones, loading, patchPlant } = mapData
+  const {
+    data: wateringRoundData,
+    isOpen: wateringRoundOpen,
+    loading: wateringRoundLoading,
+    saving: wateringRoundSaving,
+    error: wateringRoundError,
+    open: openWateringRound,
+    close: closeWateringRound,
+    complete: completeWateringRound,
+    undo: undoWateringRound,
+  } = useMapWateringRound(map?.id ?? null)
+  const [wateringDate, setWateringDate] = useState(
+    () => localIsoDate(),
+  )
 
   // Persist last visited map so BottomNav can return here directly.
   useEffect(() => {
@@ -72,7 +90,6 @@ export default function MapPage() {
   useEffect(() => {
     refreshMapData()
   }, [location.key])
-  const water = useGardenWater()
   const fertilize = useGardenFertilize()
   const undo = useUndoableRemove()
 
@@ -81,9 +98,19 @@ export default function MapPage() {
     if (maps.length === 0) loadMaps()
   }, [loadMaps])
 
-  const { map, plants, objects, secondaryMarkers, groundZones, loading, patchPlant } = mapData
-
   const unplacedPlants = useMemo(() => selectUnplacedPlants(allPlants), [allPlants])
+
+  const mapWaterStatus = useMemo(() => {
+    const mappedPlants = [
+      ...plants,
+      ...objects.flatMap((object) => object.contained_plants ?? []),
+    ]
+    const waterWarnings = mappedPlants.flatMap((plant) => plant.warnings ?? [])
+      .filter((warning) => warning.care_type === 'water')
+    if (waterWarnings.some((warning) => warning.severity === 'urgent')) return 'dry' as const
+    if (waterWarnings.length > 0) return 'thirsty' as const
+    return 'hydrated' as const
+  }, [objects, plants])
 
   const handlePlaceUnplaced = useCallback(async (plantId: number) => {
     if (!map) return
@@ -250,7 +277,7 @@ export default function MapPage() {
         return {
           id: z.id,
           map_id: map!.id,
-          name: z.label || 'Grond',
+          name: z.label || t.mapPage.soilDefaultName,
           zone_type: 'soil' as const,
           polygon: JSON.stringify([
             [z.x, z.y],
@@ -261,7 +288,7 @@ export default function MapPage() {
           soil_note: z.soil_note ?? apiZone?.soil_note ?? null,
         }
       })
-  }, [canvasData, map, groundZones])
+  }, [canvasData, map, groundZones, t.mapPage.soilDefaultName])
 
   const sun = useSunVisualization({ isOutdoor, lat: mapLat, lon: mapLon, bearing: mapBearing, canvasData, plants, mapId: map?.id ?? null })
 
@@ -459,15 +486,40 @@ export default function MapPage() {
     await refresh()
   }, [refresh])
 
-  const handleWaterSave = useCallback(async () => {
-    await water.save()
-    await refresh()
-  }, [water, refresh])
+  const refreshCareSurfaces = useCallback(async () => {
+    await Promise.all([
+      refresh(),
+      loadPlantsStore(),
+      loadWarningSummary(),
+    ])
+  }, [loadPlantsStore, loadWarningSummary, refresh])
 
-  const handleWaterDelete = useCallback(async () => {
-    await water.deleteLast()
-    await refresh()
-  }, [water, refresh])
+  const handleWateringRoundOpen = useCallback(() => {
+    setWateringDate(localIsoDate())
+    void openWateringRound()
+  }, [openWateringRound])
+
+  const handleWateringRoundComplete = useCallback(async (
+    completedAt: string,
+    scheduleIds: number[],
+  ) => {
+    if (activeUserId == null) return
+    try {
+      await completeWateringRound(completedAt, activeUserId, scheduleIds)
+      await refreshCareSurfaces()
+    } catch {
+      // The hook keeps the sheet open and exposes its error state for retry.
+    }
+  }, [activeUserId, completeWateringRound, refreshCareSurfaces])
+
+  const handleWateringRoundUndo = useCallback(async (operationId: number) => {
+    try {
+      await undoWateringRound(operationId)
+      await refreshCareSurfaces()
+    } catch {
+      // Conflict-safe backend rejection leaves current care state unchanged.
+    }
+  }, [refreshCareSurfaces, undoWateringRound])
 
   const handleFertilizeSave = useCallback(async () => {
     await fertilize.save()
@@ -500,7 +552,7 @@ export default function MapPage() {
   if (!map) {
     return (
       <div className="p-4 text-center text-text-muted">
-        <p>Map not found</p>
+        <p>{t.mapSettings.notFound}</p>
       </div>
     )
   }
@@ -589,12 +641,13 @@ export default function MapPage() {
       <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 md:gap-3 landscape-action-bottom">
         <MapActionCluster
           isOutdoor={isOutdoor}
-          waterStatus={water.gardenWater?.status ?? 'dry'}
+          waterStatus={mapWaterStatus}
+          lastWateredAt={wateringRoundData?.history[0]?.completed_at ?? null}
           sunActive={sun.active}
           sunAvailable={sun.available}
           inspectorMode={sun.inspectorMode}
           moveModeActive={moveModeActive}
-          onWater={water.togglePicker}
+          onWater={handleWateringRoundOpen}
           onFertilize={fertilize.togglePicker}
           onToggleSun={sun.toggle}
           onToggleInspector={sun.toggleInspectorMode}
@@ -683,17 +736,18 @@ export default function MapPage() {
         />
       </div>
 
-      {/* Water sheet */}
-      {water.showPicker && (
-        <WaterLogSheet
-          actionType="water"
-          pickerDate={water.pickerDate}
-          onPickerDateChange={water.setPickerDate}
-          busy={water.watering}
-          hasExistingLog={!!water.gardenWater?.watered_at}
-          onSave={handleWaterSave}
-          onDelete={handleWaterDelete}
-          onClose={water.closePicker}
+      {wateringRoundOpen && (
+        <MapWateringRoundSheet
+          data={wateringRoundData}
+          completedAt={wateringDate}
+          loading={wateringRoundLoading}
+          saving={wateringRoundSaving}
+          error={wateringRoundError}
+          onCompletedAtChange={setWateringDate}
+          onConfirm={handleWateringRoundComplete}
+          onUndo={handleWateringRoundUndo}
+          onRetry={openWateringRound}
+          onCancel={closeWateringRound}
         />
       )}
 
