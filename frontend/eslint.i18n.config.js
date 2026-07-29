@@ -82,7 +82,7 @@ export default [
       // the account-driven catalog; it carries its own bilingual COPY dict with
       // an NL/EN toggle (Dutch default) — permanent exemption.
       'src/pages/LoginPage.tsx',
-      'src/pages/MapPage.tsx',
+
       'src/pages/MapSettingsPage.tsx',
       'src/pages/MapsListPage.tsx',
       'src/pages/PlantCareDetail.tsx',

@@ -4,10 +4,12 @@ import { WaterStatusIcon } from '../PlantStatusIcon'
 import CareIcon from '../ui/CareIcon'
 import Glyph from '../ui/Glyph'
 import type { GardenWaterStatus } from '../../api/client'
+import { isoToDisplay } from '../../utils/dateFormat'
 
 interface Props {
   isOutdoor: boolean
   waterStatus: GardenWaterStatus['status']
+  lastWateredAt: string | null
   sunActive: boolean
   sunAvailable: boolean
   inspectorMode: boolean
@@ -21,8 +23,21 @@ interface Props {
   onNewGame?: () => void
 }
 
+export function formatWaterRecency(
+  lastWateredAt: string | null,
+  now = new Date(),
+): string {
+  if (!lastWateredAt) return '—'
+  const [year, month, day] = lastWateredAt.split('-').map(Number)
+  if (!year || !month || !day) return '—'
+  const completed = Date.UTC(year, month - 1, day)
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const elapsed = Math.max(0, Math.floor((today - completed) / 86_400_000))
+  return elapsed > 99 ? '99+' : `${elapsed}d`
+}
+
 export default function MapActionCluster({
-  isOutdoor, waterStatus,
+  isOutdoor, waterStatus, lastWateredAt,
   sunActive, sunAvailable, inspectorMode, moveModeActive,
   onWater, onFertilize, onToggleSun, onToggleInspector, onToggleMoveMode,
   onAddPlant, onNewGame,
@@ -46,11 +61,26 @@ export default function MapActionCluster({
   }, [sunAvailable, onToggleSun, showGpsHintTemporarily])
 
   const iconBtn = "w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full transition-colors"
+  const waterTitle = lastWateredAt
+    ? t.mapPage.mapWateringLastWateredTitle(isoToDisplay(lastWateredAt))
+    : t.mapPage.mapWateringNoHistoryTitle
 
   return (
     <div className="flex items-center gap-0.5 md:gap-1 bg-surface/85 rounded-full border border-border/60 shadow-lg p-1 md:p-1.5" style={{ backdropFilter: 'blur(10px)' }}>
-      <button onClick={onWater} title={t.mapPage.water} className={`${iconBtn} text-blue-600 hover:bg-blue-500/15`}>
+      <button
+        onClick={onWater}
+        title={waterTitle}
+        aria-label={waterTitle}
+        className={`${iconBtn} relative text-blue-600 hover:bg-blue-500/15`}
+      >
         <WaterStatusIcon status={waterStatus} size={14} className="md:scale-110" />
+        <span
+          data-water-recency
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-blue-500/20 bg-paper px-0.5 text-[9px] font-bold leading-none text-blue-700 shadow-sm"
+        >
+          {formatWaterRecency(lastWateredAt)}
+        </span>
       </button>
       <button onClick={onFertilize} title={t.mapPage.fertilize} className={`${iconBtn} text-emerald-600 hover:bg-emerald-500/15`}>
         <CareIcon type="fertilize" size={15} className="md:scale-110" />

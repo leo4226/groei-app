@@ -626,6 +626,53 @@ export const gardenCare = {
   undo: (operationId: number) => api<{ ok: boolean }>('POST', `/care/garden/${operationId}/undo`),
 }
 
+export interface MapWateringRoundMember {
+  schedule_id: number
+  plant_id: number
+  plant_name: string
+  plant_icon_variant: string | null
+  canonical_date: string
+  rhythm_opt_out: boolean
+}
+
+export interface MapWateringRoundHistory {
+  operation_id: number
+  completed_at: string
+  completed_by: number | null
+  completed_by_name: string | null
+  affected_count: number
+  can_undo: boolean
+}
+
+export interface MapWateringRoundData {
+  map_id: number
+  map_name: string
+  members: MapWateringRoundMember[]
+  history: MapWateringRoundHistory[]
+}
+
+export const mapWateringRound = {
+  get: (mapId: number) =>
+    api<MapWateringRoundData>('GET', `/care/maps/${mapId}/watering-round`),
+  complete: (
+    mapId: number,
+    completedAt: string,
+    userId: number,
+    scheduleIds: number[],
+  ) => api<{
+    operation_id: number
+    care_type: string
+    completed_at: string
+    affected_count: number
+  }>('POST', `/care/maps/${mapId}/watering-round/complete`, {
+    body: {
+      completed_at: completedAt,
+      user_id: userId,
+      schedule_ids: scheduleIds,
+    },
+  }),
+}
+
 export const moistureChecks = {
   resolve: (
     mapId: number,

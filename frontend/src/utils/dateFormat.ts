@@ -8,6 +8,14 @@
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
 const DDMM_RE = /^(\d{2})[\/-](\d{2})[\/-](\d{4})$/
 
+/** Browser-local calendar date → ISO "2026-05-25". */
+export function localIsoDate(value = new Date()): string {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 /** ISO "2026-05-25" → "25-05-2026" (or "" if invalid) */
 export function isoToDisplay(iso: string): string {
   if (!iso || !ISO_RE.test(iso)) return ''

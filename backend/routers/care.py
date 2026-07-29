@@ -5,12 +5,14 @@ from database import db_dep
 from models import (
     CareAction, CareUndo, CareLogOut, RecentLogEntry, PlantFactOut,
     GardenCareCompleteIn, GardenCareOperationOut,
+    MapWateringRoundCompleteIn, MapWateringRoundOut,
     MoistureCheckResolveIn, MoistureCheckResolveOut,
 )
 from services.scheduling import calculate_next_due
 from services.garden_care import (
     GardenCareSelectionError,
     GardenCareUndoConflict,
+    can_undo_outdoor_care,
     complete_outdoor_care,
     schedule_interval_days,
     undo_outdoor_care,
@@ -23,6 +25,133 @@ from datetime import date, datetime, timedelta
 from auth import get_current_account
 
 router = APIRouter(tags=["care"])
+
+
+async def _get_household_map(db, *, map_id: int, household_id: int) -> dict:
+    maps = await db.execute_fetchall(
+        """SELECT id, name
+           FROM maps
+           WHERE id = ? AND household_id = ?""",
+        (map_id, household_id),
+    )
+    if not maps:
+        raise HTTPException(status_code=404, detail={"code": "map_not_found"})
+    return maps[0]
+
+
+@router.get(
+    "/care/maps/{map_id}/watering-round",
+    response_model=MapWateringRoundOut,
+)
+async def get_map_watering_round(
+    map_id: int,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    map_row = await _get_household_map(
+        db,
+        map_id=map_id,
+        household_id=account["household_id"],
+    )
+
+    members = await db.execute_fetchall(
+        """SELECT cs.id AS schedule_id,
+                  p.id AS plant_id,
+                  p.name AS plant_name,
+                  p.icon_key AS plant_icon_variant,
+                  cs.next_due AS canonical_date,
+                  cs.rhythm_opt_out
+           FROM care_schedules cs
+           JOIN plants p ON p.id = cs.plant_id
+           WHERE p.household_id = ?
+             AND p.map_id = ?
+             AND p.is_active = 1
+             AND cs.care_type = 'water'
+             AND cs.is_active = 1
+           ORDER BY LOWER(p.name), cs.id""",
+        (account["household_id"], map_id),
+    )
+    history_rows = await db.execute_fetchall(
+        """SELECT operation.id AS operation_id,
+                  operation.completed_at,
+                  operation.completed_by,
+                  completed_user.name AS completed_by_name,
+                  COUNT(member.schedule_id) AS affected_count
+           FROM garden_care_operations operation
+           LEFT JOIN garden_care_operation_members member
+             ON member.operation_id = operation.id
+           LEFT JOIN users completed_user
+             ON completed_user.id = operation.completed_by
+           WHERE operation.household_id = ?
+             AND operation.map_id = ?
+             AND operation.care_type = 'water'
+             AND operation.undone_at IS NULL
+           GROUP BY operation.id, operation.completed_at,
+                    operation.completed_by, completed_user.name
+           ORDER BY operation.completed_at DESC, operation.id DESC
+           LIMIT 3""",
+        (account["household_id"], map_id),
+    )
+    history = [
+        {**dict(row), "can_undo": False}
+        for row in history_rows
+    ]
+    if history:
+        history[0]["can_undo"] = await can_undo_outdoor_care(
+            db,
+            household_id=account["household_id"],
+            operation_id=history[0]["operation_id"],
+        )
+    return {
+        "map_id": map_row["id"],
+        "map_name": map_row["name"],
+        "members": members,
+        "history": history,
+    }
+
+
+@router.post(
+    "/care/maps/{map_id}/watering-round/complete",
+    response_model=GardenCareOperationOut,
+)
+async def complete_map_watering_round(
+    map_id: int,
+    body: MapWateringRoundCompleteIn,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    await _get_household_map(
+        db,
+        map_id=map_id,
+        household_id=account["household_id"],
+    )
+    completed_at = body.completed_at or date.today()
+    try:
+        result = await complete_outdoor_care(
+            db,
+            household_id=account["household_id"],
+            care_type="water",
+            completed_at=completed_at,
+            user_id=body.user_id,
+            map_id=map_id,
+            schedule_ids=body.schedule_ids,
+            completion_mode="map_round",
+        )
+    except GardenCareSelectionError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_map_watering_selection"},
+        ) from exc
+    if result["operation_id"] is None:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_map_watering_selection"},
+        )
+    return {
+        **result,
+        "care_type": "water",
+        "completed_at": completed_at,
+    }
 
 
 @router.post("/care/done")

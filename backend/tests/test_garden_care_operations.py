@@ -227,6 +227,33 @@ async def test_complete_garden_care_rejects_schedule_outside_selected_group(
 
 
 @pytest.mark.asyncio
+async def test_complete_garden_care_preserves_no_matching_schedules_response(
+    client, selectable_garden_db, auth_header,
+):
+    await selectable_garden_db.execute(
+        """INSERT INTO household_calendar_grouping_rules
+           (household_id, map_id, care_type) VALUES (1, 1, 'fertilize')"""
+    )
+    await selectable_garden_db.commit()
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'fertilize',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail']['code'] == 'no_eligible_grouped_schedules'
+    assert await selectable_garden_db.execute_fetchall('SELECT id FROM care_log') == []
+
+
+@pytest.mark.asyncio
 async def test_early_routine_completion_advances_from_canonical_due_and_undoes(
     client, seeded_db, auth_header,
 ):
