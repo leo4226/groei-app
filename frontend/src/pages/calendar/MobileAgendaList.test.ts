@@ -183,7 +183,8 @@ describe('MobileAgendaList care controls', () => {
     expect(container.textContent).toContain('Maximum 31°C verwacht vandaag')
     expect(container.textContent).toContain('Zet potten in de schaduw.')
     expect(container.textContent).not.toContain('Maximum 31°C expected today')
-    expect(container.querySelector('button')).toBeNull()
+    expect(container.querySelector('.calendar-weather-state-action')).toBeNull()
+    expect(container.querySelector('.calendar-weather-disclosure')?.textContent).toBe('Toon planten')
   })
 
   it('keeps completed Month history visible without care controls', () => {

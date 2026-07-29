@@ -111,6 +111,7 @@ export default function WorkAgendaView({ env, environmentFilter, viewNavigation,
               onGardenUndo={handleGardenUndo}
               actionError={actionError}
               mapSlugs={mapSlugs}
+              onWeatherChanged={retry}
             />
           )}
         </div>

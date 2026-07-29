@@ -2,6 +2,8 @@ import CalendarEvent from './CalendarEvent'
 import type { CalendarEvent as Ev } from './calendarTypes'
 import { moonPhaseFor } from './moon'
 import { useT } from '../../context/LanguageContext'
+import type { CalendarWeatherAdvisory } from './calendarWeatherAdvisoryModel'
+import { EVENT_TYPE_BY_ID, EVENT_TYPE_UTILITY_KEY } from './calendarTypes'
 
 interface Props {
   day: number
@@ -12,13 +14,14 @@ interface Props {
   isToday: boolean
   isSelected: boolean
   events: Ev[]
+  weatherAdvisories?: CalendarWeatherAdvisory[]
   load: number
   maxVisible: number
   onClick(): void
 }
 
 export default function CalendarDayCell({
-  day, month0, year, otherMonth, weekend, isToday, isSelected, events, load, maxVisible, onClick,
+  day, month0, year, otherMonth, weekend, isToday, isSelected, events, weatherAdvisories = [], load, maxVisible, onClick,
 }: Props) {
   const t = useT()
   const loadClass = load >= 5 ? 'load-high' : load >= 3 ? 'load-medium' : load > 0 ? 'load-low' : ''
@@ -34,7 +37,7 @@ export default function CalendarDayCell({
     !otherMonth ? loadClass : '',
   ].filter(Boolean).join(' ')
 
-  const shown = events.slice(0, maxVisible)
+  const shown = events.slice(0, Math.max(0, maxVisible - weatherAdvisories.length))
   const moreCount = events.length - shown.length
 
   let metaHtml: React.ReactNode = null
@@ -73,6 +76,13 @@ export default function CalendarDayCell({
         <span className="day-load" aria-label={sessionLabel}>{sessionLabel}</span>
       )}
       <div className="ev-list">
+        {weatherAdvisories.map(advisory => (
+          <div key={advisory.key} className={`ev ${EVENT_TYPE_BY_ID[advisory.type]?.cssClass ?? ''}`} data-weather-chip>
+            <span className="ev-label">
+              {t.utility[EVENT_TYPE_UTILITY_KEY[advisory.type]]} · {advisory.affectedPlantCount}
+            </span>
+          </div>
+        ))}
         {shown.map(e => <CalendarEvent key={e.id} ev={e} />)}
         {moreCount > 0 && <div className="ev-more">{t.calendar.more(moreCount)}</div>}
       </div>

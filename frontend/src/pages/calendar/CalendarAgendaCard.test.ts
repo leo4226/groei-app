@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CalendarAgendaCard from './CalendarAgendaCard'
 import type { CalendarEvent } from './calendarTypes'
+import type { CalendarWeatherAdvisory } from './calendarWeatherAdvisoryModel'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -141,5 +142,42 @@ describe('CalendarAgendaCard handoffs', () => {
     expect(history?.querySelector('button')).toBeNull()
     expect(Array.from(history?.querySelectorAll('a') ?? []).map(link => link.getAttribute('href')))
       .toEqual(['/plants/1', '/map/back-garden'])
+  })
+
+  it('does not call an active weather-only day a free day', () => {
+    const advisory: CalendarWeatherAdvisory = {
+      key: 'heat',
+      date: TODAY,
+      type: 'heat_protect',
+      severity: 'warning',
+      warningId: 'weather:heat',
+      acknowledgedAt: null,
+      reasonNl: 'Maximum 33°C verwacht.',
+      reasonEn: 'Maximum 33°C expected.',
+      actionNl: 'Geef schaduw.',
+      actionEn: 'Provide shade.',
+      color: null,
+      icon: null,
+      affectedPlantCount: 3,
+      locations: [],
+      sourceEvents: [],
+    }
+    const card = createElement(CalendarAgendaCard, {
+      selectedIso: TODAY,
+      events: [],
+      weatherAdvisories: [advisory],
+      todayIso: TODAY,
+      saving: null,
+      onDone: vi.fn(),
+      onSkip: vi.fn(),
+      undoMsg: null,
+      onGardenUndo: vi.fn(),
+      mapSlugs: new Map(),
+    })
+
+    act(() => root.render(createElement(MemoryRouter, null, card)))
+
+    expect(container.textContent).toContain('3 planten hebben bescherming tegen hitte nodig')
+    expect(container.querySelector('.agenda-empty')).toBeNull()
   })
 })

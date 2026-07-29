@@ -9,6 +9,8 @@ import CalendarWeatherContext from './CalendarWeatherContext'
 import Glyph from '../../components/ui/Glyph'
 import MoistureAdvisory from './MoistureAdvisory'
 import { extractMoistureAdvisories } from './moistureAdvisoryModel'
+import { buildCalendarPresentation } from './calendarWeatherAdvisoryModel'
+import CalendarWeatherAdvisories from './CalendarWeatherAdvisories'
 
 const EMPTY_MAP_SLUGS = new Map<number, string>()
 
@@ -22,6 +24,7 @@ interface Props {
   onGardenUndo: () => void
   actionError: string | null
   mapSlugs?: ReadonlyMap<number, string>
+  onWeatherChanged?(): Promise<void> | void
 }
 
 export default function MobileAgendaList({
@@ -34,6 +37,7 @@ export default function MobileAgendaList({
   onGardenUndo,
   actionError,
   mapSlugs = EMPTY_MAP_SLUGS,
+  onWeatherChanged = () => undefined,
 }: Props) {
   const t = useT()
   const grouped = useMemo(() => {
@@ -80,7 +84,8 @@ export default function MobileAgendaList({
       {grouped.map(([iso, list]) => {
         const [y, m, d] = iso.split('-').map(Number)
         const isToday = iso === todayIso
-        const { ordinaryEvents, advisories } = extractMoistureAdvisories(list)
+        const presentation = buildCalendarPresentation(list)
+        const { ordinaryEvents, advisories } = extractMoistureAdvisories(presentation.ordinaryEvents)
         return (
           <section key={iso} style={{ marginTop: 18 }}>
             <h3 style={{
@@ -100,6 +105,10 @@ export default function MobileAgendaList({
                 mapSlugs={mapSlugs}
               />
             ))}
+            <CalendarWeatherAdvisories
+              advisories={presentation.weatherAdvisories}
+              onChanged={onWeatherChanged}
+            />
             {ordinaryEvents.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
               const busy = saving === e.id

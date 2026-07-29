@@ -1212,6 +1212,9 @@ export type Translations = {
     undoGroup: string  // "Undo group"
     completedGroup: string  // "Watered and aligned"
     affectedPlants: (n: number) => string  // "3 affected plants"
+    weatherAffectedSummary: (n: number, type: 'heat_protect' | 'frost_protect') => string
+    showPlants: string
+    hidePlants: string
     sessionLoad: (n: number) => string  // "3 sessions"
     wateringRoundTitle: string
     wateringRoundDescription: string

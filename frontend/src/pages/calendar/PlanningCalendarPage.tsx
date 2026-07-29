@@ -124,7 +124,7 @@ export default function PlanningCalendarPage() {
   )
 
   return (
-    <div className="cal-page">
+    <div className={`cal-page cal-page--${view}`}>
       <CalendarPageMasthead
         view={view}
         year={displayedMonth.year}
