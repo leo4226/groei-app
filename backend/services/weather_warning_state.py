@@ -42,7 +42,7 @@ async def mark_weather_warning_push_sent(
     forecast_date: date,
     severity: str,
 ) -> None:
-    await db.execute(
+    await db.execute_fetchall(
         """
         INSERT INTO weather_warning_account_state (
             account_id,
@@ -57,6 +57,7 @@ async def mark_weather_warning_push_sent(
             forecast_date = excluded.forecast_date,
             severity = excluded.severity,
             push_sent_at = CURRENT_TIMESTAMP
+        RETURNING warning_id
         """,
         (account_id, warning_id, care_type, forecast_date, severity),
     )
@@ -71,7 +72,7 @@ async def acknowledge_weather_warning(
     forecast_date: date,
     severity: str,
 ) -> dict:
-    await db.execute(
+    await db.execute_fetchall(
         """
         INSERT INTO weather_warning_account_state (
             account_id,
@@ -86,6 +87,7 @@ async def acknowledge_weather_warning(
             forecast_date = excluded.forecast_date,
             severity = excluded.severity,
             acknowledged_at = CURRENT_TIMESTAMP
+        RETURNING warning_id
         """,
         (account_id, warning_id, care_type, forecast_date, severity),
     )
