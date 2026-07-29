@@ -29,16 +29,22 @@ router = APIRouter(tags=["care"])
 async def mark_care_done(action: CareAction, db = Depends(db_dep),
                          account = Depends(get_current_account)):
     # Find the matching schedule — scoped to the caller's household
-    cursor = await db.execute(
-        """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
-                  cs.next_due, cs.last_done, cs.last_done_by,
-                  p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
-           FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
-           LEFT JOIN maps m ON m.id = p.map_id
-           WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
-             AND p.household_id = ?""",
-        (action.plant_id, action.care_type, account["household_id"]),
+    schedule_query = """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
+                               cs.next_due, cs.last_done, cs.last_done_by,
+                               p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
+                        FROM care_schedules cs JOIN plants p ON cs.plant_id = p.id
+                        LEFT JOIN maps m ON m.id = p.map_id
+                        WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
+                          AND p.household_id = ?"""
+    schedule_params: tuple = (
+        action.plant_id,
+        action.care_type,
+        account["household_id"],
     )
+    if action.schedule_id is not None:
+        schedule_query += " AND cs.id = ?"
+        schedule_params += (action.schedule_id,)
+    cursor = await db.execute(schedule_query, schedule_params)
     schedule = await cursor.fetchone()
     if not schedule:
         raise HTTPException(status_code=404, detail="No active schedule found")

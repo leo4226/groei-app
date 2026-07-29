@@ -540,7 +540,7 @@ export const groundZones = {
 }
 
 export const care = {
-  done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number) => api<{ ok: boolean; next_due: string; care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null }>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount } }),
+  done:           (plantId: number, careType: string, userId: number, notes?: string, water_amount?: number, scheduleId?: number) => api<{ ok: boolean; next_due: string; care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null }>('POST', '/care/done', { body: { plant_id: plantId, care_type: careType, user_id: userId, notes, water_amount, schedule_id: scheduleId } }),
   skip:           (plantId: number, careType: string, userId: number)                  => api<void>('POST', '/care/skip', { body: { plant_id: plantId, care_type: careType, user_id: userId } }),
   undo:           (careLogId: number, previousNextDue: string | null, previousLastDone: string | null, previousLastDoneBy: number | null) => api<{ ok: boolean }>('POST', '/care/undo', { body: { care_log_id: careLogId, previous_next_due: previousNextDue, previous_last_done: previousLastDone, previous_last_done_by: previousLastDoneBy } }),
   deleteSchedule: (scheduleId: number)                                                  => api<void>('DELETE', `/care/schedules/${scheduleId}`),

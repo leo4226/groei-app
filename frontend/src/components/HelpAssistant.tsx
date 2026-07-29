@@ -14,6 +14,7 @@ import {
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
   bugQuestions,
+  careCompletionArgs,
   resolveNavigateHref,
   type AssistantSheetState,
 } from './helpAssistantModel'
@@ -288,7 +289,8 @@ export default function HelpAssistant() {
   async function confirmMarkCareDone(index: number, action: StekkieAction & { type: 'mark_care_done' }) {
     setActionPhase(prev => ({ ...prev, [index]: 'loading' }))
     try {
-      await markCareDone(action.payload.plant_id, action.payload.care_type)
+      const { plantId, careType, scheduleId } = careCompletionArgs(action.payload)
+      await markCareDone(plantId, careType, undefined, undefined, scheduleId)
       setActionPhase(prev => ({ ...prev, [index]: 'done' }))
     } catch {
       setActionPhase(prev => ({ ...prev, [index]: 'error' }))

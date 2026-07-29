@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import get_current_account
+from care_types import STEKKIE_ACTIONABLE_CARE_TYPES
 from database import db_dep
 from services.environment import get_rain_data, get_temp_data
 from services.care_task_service import classify_care_tasks, fetch_household_schedule_rows
@@ -19,6 +20,7 @@ from services.warnings import compute_plant_warnings
 router = APIRouter()
 
 CHATBOT_URL = os.getenv("CHATBOT_URL", "https://chatbot.floreren.app/chat")
+CHATBOT_WORKER_TOKEN = os.getenv("CHATBOT_WORKER_TOKEN", "")
 MAX_CONTEXT_PLANTS = int(os.getenv("STEKKIE_MAX_CONTEXT_PLANTS", "40"))
 
 
@@ -152,19 +154,30 @@ async def _validate_suggested_action(
         plant_id = payload.get("plant_id")
         schedule_id = payload.get("schedule_id")
         care_type = payload.get("care_type")
-        if not isinstance(plant_id, int) or not isinstance(care_type, str):
+        if (
+            type(plant_id) is not int
+            or not isinstance(care_type, str)
+            or care_type not in STEKKIE_ACTIONABLE_CARE_TYPES
+            or (schedule_id is not None and type(schedule_id) is not int)
+        ):
             return None
+
         rows = await db.execute_fetchall(
-            """SELECT cs.id FROM care_schedules cs
+            """SELECT cs.id, cs.is_ephemeral FROM care_schedules cs
                JOIN plants p ON cs.plant_id = p.id
                WHERE cs.plant_id = ? AND cs.care_type = ? AND cs.is_active = 1
                  AND p.household_id = ? AND p.is_active = 1""",
             (plant_id, care_type, household_id),
         )
-        if not rows:
-            return None
-        resolved_schedule_id = rows[0]["id"]
-        if isinstance(schedule_id, int) and schedule_id != resolved_schedule_id:
+        eligible_rows = [row for row in rows if not row["is_ephemeral"]]
+        if schedule_id is not None:
+            matching_rows = [row for row in eligible_rows if row["id"] == schedule_id]
+            if len(matching_rows) != 1:
+                return None
+            resolved_schedule_id = matching_rows[0]["id"]
+        elif len(eligible_rows) == 1:
+            resolved_schedule_id = eligible_rows[0]["id"]
+        else:
             return None
         return SuggestedAction(
             type="mark_care_done", label=label, requires_confirmation=True,
@@ -1189,10 +1202,13 @@ async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_c
                 garden_context=garden_context,
                 language=garden_context["language"],
             )
+            worker_headers = {"Content-Type": "application/json"}
+            if CHATBOT_WORKER_TOKEN:
+                worker_headers["X-Worker-Token"] = CHATBOT_WORKER_TOKEN
             resp = await client.post(
                 CHATBOT_URL,
                 json=bot_req.model_dump(),
-                headers={"Content-Type": "application/json"},
+                headers=worker_headers,
             )
             resp.raise_for_status()
             data = resp.json()

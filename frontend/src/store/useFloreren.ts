@@ -40,7 +40,7 @@ interface FlorerStore {
   archivePlant: (id: number) => Promise<void>
   bulkArchivePlants: (ids: number[]) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
-  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number) => Promise<{ care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null } | undefined>
+  markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number, scheduleId?: number) => Promise<{ care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null } | undefined>
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
@@ -201,10 +201,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     set((s) => ({ plants: s.plants.map((p) => (p.id === plantId ? updated : p)) }))
   },
 
-  markCareDone: async (plantId, careType, notes, water_amount) => {
+  markCareDone: async (plantId, careType, notes, water_amount, scheduleId) => {
     const userId = get().activeUserId
     if (!userId) throw new Error('No active user')
-    const result = await careApi.done(plantId, careType, userId, notes, water_amount)
+    const result = await careApi.done(plantId, careType, userId, notes, water_amount, scheduleId)
     // Surgical update: adjust the plant's care_status and remove task from dashboard
     set((s) => ({
       plants: s.plants.map((p) =>

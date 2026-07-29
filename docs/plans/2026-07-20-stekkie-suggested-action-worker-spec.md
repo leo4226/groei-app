@@ -1,198 +1,180 @@
-# Stekkie worker: emit `suggested_action` for issue #410
+# Stekkie suggested actions: implementation and production cutover
 
-> **Audience:** whoever/whatever edits `C:\Projects\leonnetje-server\app.py` (the Stekkie
-> chat worker, tunneled at `chatbot.floreren.app`). That code is **not** in the
-> `groei-app` repo, so this doc is the handoff — everything on the `groei-app` side
-> is already merged and waiting.
+## Status
 
-## What's already done (don't redo this)
+PR #739 now contains the implementation for issue #410. The worker is tracked in the Floreren repository instead of being maintained only in `C:\Projects\leonnetje-server`.
 
-Two PRs already merged into `groei-app`:
+Tracked files:
 
-1. **#736** — chat bubble markdown rendering, avatar/disclaimer cleanup (unrelated to this).
-2. **#738** — `backend/routers/chat.py` now accepts an optional `suggested_action` field on
-   the worker's response, validates it against the caller's own household, and forwards
-   the validated version to the frontend. `frontend/src/components/HelpAssistant.tsx`
-   already renders a button for it and wires it to the real app endpoints.
+- `backend/stekkie_worker.py`: FastAPI worker, model fallback, deterministic action resolver, token validation, and privacy-safe usage logging.
+- `backend/stekkie_knowledge_base.md`: concise feature and safety reference.
+- `backend/tests/test_stekkie_worker.py`: worker contract and intent tests.
+- `scripts/start-stekkie-worker.ps1`: foreground launcher for manual operation and diagnostics.
 
-**None of that does anything yet** because the worker doesn't send `suggested_action`.
-This doc describes exactly what the worker needs to add so the button starts appearing.
+The existing untracked worker under `C:\Projects\leonnetje-server` remains the live source until the coordinated cutover below. Do not delete it before the tracked worker has passed the production smoke checks.
 
-## The response contract
+## Response contract
 
-The worker's `POST /chat` response currently looks like:
-
-```json
-{ "response": "Basilicum is 2 dagen te laat met water." }
-```
-
-Add one optional field:
+`POST /chat` always returns prose and may include one action:
 
 ```json
 {
-  "response": "Basilicum is 2 dagen te laat met water.",
+  "response": "Goed bijgehouden.",
   "suggested_action": {
     "type": "mark_care_done",
-    "label": "Markeer Basilicum als water gegeven",
-    "payload": { "plant_id": 101, "schedule_id": 456, "care_type": "water" }
+    "label": "Markeer water voor Basilicum als gedaan",
+    "payload": {
+      "plant_id": 101,
+      "schedule_id": 456,
+      "care_type": "water"
+    }
   }
 }
 ```
 
-- `response` stays required, unchanged, backward compatible.
-- `suggested_action` — omit the key entirely (or send `null`) whenever there's nothing
-  safe/obvious to suggest. That's the common case — most replies won't have one.
-- `requires_confirmation` is accepted in the payload but **the backend ignores whatever
-  the worker sends and forces it itself** (`false` for `navigate`, `true` for
-  `mark_care_done`) — don't bother computing it, it has no effect.
+`suggested_action` is absent or `null` unless the worker can resolve one unambiguous action from the authenticated household context. The backend validates all IDs and overwrites `requires_confirmation`: navigation is immediate; care completion always requires confirmation.
 
-The backend (`backend/routers/chat.py::_validate_suggested_action`) **re-validates
-everything** against the caller's real household data before it ever reaches the
-frontend. If anything is malformed, unsupported, or references a plant/map/schedule
-that doesn't check out, the whole `suggested_action` is silently dropped and `response`
-is still returned normally. **This means the worker can be wrong or uncertain without
-breaking the reply** — worst case, no button shows up. Don't add try/catch gymnastics
-around this on the worker side; just do a reasonable best effort.
+## Deterministic v1 actions
 
-## The only two supported action types (v1 scope)
+The LLM produces prose only. `build_suggested_action()` independently resolves an action from the user's message and `garden_context`, so model output cannot invent IDs or arbitrary tools.
 
-Anything else in `type` gets silently dropped. Do not invent new types — `snooze_care_task`,
-schedule/threshold edits, deleting anything, etc. are explicitly **out of scope** for this
-round (see issue #410's own "Out of scope" section). Only these two:
+Supported navigation targets:
 
-### 1. `navigate` — no confirmation, safe to suggest freely
+- `plant`: requires one named active plant from `garden_context.plants`.
+- `map`: requires one named map and uses its ID or slug from `garden_context.maps`.
+- `calendar`: static `/calendar` target.
+- `add_plant`: static `/plants/add` target.
 
-```json
-{ "type": "navigate", "label": "Open de kalender", "payload": { "target": "calendar" } }
+Supported care completion types:
+
+- `water`
+- `fertilize`
+- `prune`
+- `repot`
+- `mist`
+- `rotate`
+- `pest_check`
+- `dust`
+
+The following types are deliberately excluded:
+
+- `frost_protect` and `heat_protect` are informational advisories with Seen/Restore semantics.
+- `moisture_check` requires the dedicated grouped outcome flow.
+- ephemeral tasks are never completed through a Stekkie action.
+
+Completion requires explicit past-tense completion intent and exactly one matching care task. Recommendations such as “I should water Basilicum” do not produce a completion button. Ambiguity produces prose without an action.
+
+## Execution safety
+
+The worker only suggests. The application backend remains authoritative:
+
+1. `backend/routers/chat.py` accepts only `navigate` and `mark_care_done`.
+2. Household ownership, active plant/map state, care type, and schedule ID are validated before a button is returned.
+3. The frontend requires confirmation for care completion.
+4. The frontend passes the validated `schedule_id` through the store and API client.
+5. `/care/done` targets that exact schedule while remaining backward compatible for callers that omit `schedule_id`.
+
+Malformed, stale, unsupported, or foreign actions are dropped while the prose response remains available.
+
+## Prompt and privacy behaviour
+
+- LLM configuration comes from `backend/llm_config.py`; the worker does not duplicate provider URLs or API keys.
+- Structured `garden_context` replaces legacy prose context when present, avoiding the previous duplicate prompt payload.
+- Message length, history length, and history-entry length are bounded.
+- The feature reference is tracked, concise, and describes current Calendar, Field Guide, weather advisory, and moisture-check behaviour.
+- Usage logs contain model, prompt version, token counts, estimated cost, latency, route, action type, and fallback reason.
+- Usage logs never contain user messages, replies, plant names, or raw garden context.
+- `backend/stekkie_usage.log*` is ignored by Git.
+
+## Worker authentication
+
+`/health` is public. `/chat` validates `X-Worker-Token` only when `CHATBOT_WORKER_TOKEN` is configured. This keeps local development usable while allowing production to reject direct unauthenticated model calls.
+
+The Fly backend sends the same header when its `CHATBOT_WORKER_TOKEN` secret is configured. Never commit or paste the token into source, documentation, logs, issues, or PR comments.
+
+## Local verification before merge
+
+From the repository root:
+
+```bash
+cd backend
+PYTHONNOUSERSITE=1 PYTHONPATH= .venv/Scripts/python -s -m pytest -q --tb=short
+
+cd ../frontend
+./node_modules/.bin/tsc -b --force
+npm run lint:i18n
+npm run build
 ```
 
-`payload.target` must be one of:
+Run the tracked worker on an isolated port rather than replacing production:
 
-| target | extra payload fields | validated against |
-|---|---|---|
-| `"plant"` | `id` (int, required) | an **active** plant in `garden_context.plants[].id` belonging to this household |
-| `"map"` | `slug` (string) **or** `id` (int) | `garden_context.maps[].slug` / `.id` |
-| `"calendar"` | none | static route, always valid |
-| `"add_plant"` | none | static route, always valid |
-
-Use the ids/slugs straight out of `garden_context.plants` / `garden_context.maps` —
-never guess or increment an id.
-
-### 2. `mark_care_done` — always requires confirmation, use conservatively
-
-```json
-{
-  "type": "mark_care_done",
-  "label": "Markeer Basilicum als water gegeven",
-  "payload": { "plant_id": 101, "care_type": "water", "schedule_id": 456 }
-}
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\start-stekkie-worker.ps1 -Port 8012
 ```
 
-- `plant_id` (int, required) and `care_type` (string, required).
-- `schedule_id` (int, optional but recommended when known) — if you include it, it must
-  match the plant's actual active schedule for that `care_type` or the whole action gets
-  dropped. Easiest: pull it straight from `garden_context.care_tasks.*[].schedule_id`
-  (see below) rather than inventing it.
-- `care_type` must be one of the canonical values already used throughout
-  `garden_context` (`plants[].care_overview` keys, `care_tasks.*[].care_type`):
-  `water`, `fertilize`, `frost_protect`, `heat_protect`, `moisture_check`, `prune`,
-  `repot`, `mist`, `rotate`, `pest_check`, `dust`. Don't use aliases like `feed` or
-  `protect_cold` — the backend matches this string exactly against the DB row.
+Test `/health`, authenticated Dutch completion intent, authenticated English navigation intent, and rejection without the token. Stop the isolated process after verification.
 
-## Where to get real ids from — `garden_context` already has everything
+## Coordinated production migration
 
-`chat.py` sends this in every request already; the worker doesn't need any new lookups,
-just needs to read what's already there:
+Perform this only after PR #739 is merged and the merged `master` is present at `C:\Users\leon_\Projects\Floreren`.
 
-- **`garden_context.plants[]`** — each has `id`, `name`, `active_warnings[]`,
-  `care_overview` (keyed by care_type with `.status`).
-- **`garden_context.maps[]`** — each has `id`, `slug`, `name`, `type`.
-- **`garden_context.care_tasks.overdue` / `.due_today` / `.upcoming_7_days`** — this is
-  the best source for `mark_care_done`. Each entry already has `plant_id`, `plant_name`,
-  `care_type`, `schedule_id`, `days_overdue`, `reason` — i.e. exactly the fields the
-  action payload needs, pre-resolved and pre-prioritized (overdue sorts before due_today
-  before upcoming).
+### 1. Prepare a shared token
 
-If a plant/schedule/map the model wants to reference **isn't present** in the current
-`garden_context` (e.g. it was truncated — see `bounds.truncated`), don't emit an action
-for it — the id may not resolve and the backend will drop it anyway, but it's cleaner to
-just not offer a button than to offer a dead one.
+Generate a fresh random token in Leon's shell and keep it only in a temporary shell variable. Do not print it into agent output or commit it.
 
-## How to actually produce the JSON (recommended approach)
+### 2. Configure Fly first
 
-Don't ask DeepSeek to emit strict JSON as its entire response — you'd lose the free-form
-prose `response` text, and LLM-generated JSON is exactly the kind of unreliable
-tool-calling issue #410 was trying to avoid in the first place ("The model should not
-directly call arbitrary backend endpoints" / "context grounding must be reliable before
-mutation affordances").
+Set `CHATBOT_WORKER_TOKEN` on `floreren-api` using `flyctl secrets set ... --remote-only`. This restarts the Fly application. The existing legacy worker does not enforce the token, so receiving the additional header is harmless during this first half of the cutover.
 
-Two workable patterns, pick one:
+Verify:
 
-**A. Deterministic, no LLM involvement in the action itself (recommended, most robust).**
-After getting the model's prose `response` back, run a small separate Python check:
-if the user's message plus `garden_context.care_tasks` clearly point at one specific
-plant+care_type (e.g. the model's reply mentions marking something as done, or the
-prompt was phrased like "ik heb X water gegeven" / "I watered X"), attach the
-`mark_care_done` action for that task using the already-classified `care_tasks` data.
-For `navigate`, this can be close to keyword matching ("open de kalender" → calendar,
-model referenced a specific plant by name that's in `garden_context.plants` → that
-plant's navigate action). This never touches the LLM for the action itself, so it can't
-hallucinate a bad id.
+- Fly deployment is healthy.
+- `https://api.floreren.app/health` succeeds.
+- Existing Stekkie chat still works through the app.
 
-**B. Ask the model for a small trailing structured block, parsed out of the prose.**
-Add one instruction to the system prompt: when (and only when) one clear action applies,
-end the reply with a fenced block like:
+### 3. Configure the Windows worker
 
-    ```stekkie_action
-    {"type": "mark_care_done", "label": "...", "payload": {...}}
-    ```
+Set the same value as the persistent Windows user environment variable `CHATBOT_WORKER_TOKEN`. New worker processes inherit it; an already-running process does not.
 
-Then in the worker: regex out the fenced block, `json.loads` it (wrap in try/except —
-on any parse failure just omit `suggested_action`, don't fail the request), strip the
-fence out of the visible `response` text before returning it, and pass the parsed object
-through as `suggested_action`. This keeps action-selection reasoning where the model has
-the context to make the call ("is this really the one right action to suggest"), while
-still being validated server-side afterward.
+Update the chatbot section in `C:\Users\leon_\Scripts\start-floreren-workers.ps1`:
 
-Either is fine — the backend's validation is the real safety net either way. (A) is
-safer/simpler to reason about; (B) captures intent better for free-form phrasing like
-"I already watered it." A hybrid (B for the action *type+label*, but always re-resolving
-`payload` ids from `garden_context` rather than trusting whatever ids the model wrote) is
-probably the sweet spot if you want both.
+- Python: `C:\Users\leon_\Projects\Floreren\backend\.venv\Scripts\python.exe`
+- Working directory: `C:\Users\leon_\Projects\Floreren\backend`
+- Command: `-m uvicorn stekkie_worker:app --host 127.0.0.1 --port 8002`
+- Preserve stdout/stderr redirection and the existing port-health guard.
 
-## Guardrails (from the issue, worth repeating)
+Do not change the BioCLIP block.
 
-- No arbitrary tool-calling — only `navigate` and `mark_care_done`, nothing else.
-- Never suggest an action with a guessed/invented id — always pull ids from `garden_context`.
-- One action per reply, at most. Don't attach multiple.
-- `label` must be a real string in the request's `language` (nl/en) — it's shown verbatim
-  as the button text, no further translation happens downstream.
-- If in doubt, omit `suggested_action` — an answer with no button is always safe; the
-  cost of a wrong button is a confusing UI, not a bad mutation (the backend still checks
-  household ownership, and the frontend still requires a confirm click for
-  `mark_care_done`), but "no button" is still the better default.
+### 4. Replace the worker
 
-## After the change: how to verify end-to-end
+Stop only the process listening on port 8002, run the updated worker launcher, and poll `http://127.0.0.1:8002/health` with short bounded requests. Do not run the old and new worker simultaneously.
 
-1. Restart the worker (`C:\Users\leon_\Scripts\start-floreren-workers.ps1` / whatever the
-   current launcher is) and confirm `curl https://chatbot.floreren.app/health` still
-   returns `{"status":"ok", ...}`.
-2. Manual test from the real app (not curl) — log in, open Stekkie, and try:
-   - `"Ik heb Basilicum water gegeven"` (with an overdue water task in context) → reply
-     text plus a `mark_care_done` button. Click it → confirm/cancel row appears → confirm
-     → button shows "✓ Gedaan!" and the plant's care status actually updates elsewhere
-     in the app (dashboard/care needs list).
-   - `"Waar kan ik de kalender vinden?"` → reply plus a `navigate` button with no
-     confirmation step → clicking it closes Stekkie and routes to `/calendar`.
-   - A vague question with no single obvious task ("Wat moet ik vandaag doen?" when
-     nothing is overdue) → reply text only, **no** button.
-   - Ask about something entirely out of the two supported types (e.g. "verander het
-     interval naar 10 dagen") → reply text only, no button — this is correctly
-     unsupported in v1.
-3. Confirm nothing crashed when the model doesn't produce a parseable action — the
-   worker should never 500 because an action was malformed; at worst it should log and
-   omit `suggested_action`.
+Verify:
 
-Once that manual pass looks right, issue **#410** can be closed — it's intentionally
-being kept open until this end-to-end flow is confirmed working, not just the repo-side
-plumbing.
+- local `/health` reports the new prompt version;
+- public `https://chatbot.floreren.app/health` succeeds;
+- direct public `POST /chat` without `X-Worker-Token` returns 401;
+- an authenticated request through `https://api.floreren.app/api/chat` succeeds.
+
+If the app proxy fails, immediately restore the legacy chatbot path in the launcher and restart port 8002. Leave the Fly token configured; the legacy worker ignores the header.
+
+### 5. Real in-app NL/EN smoke checks
+
+In Dutch mode:
+
+1. Ensure Basilicum has one ordinary water task in current context.
+2. Ask: `Ik heb Basilicum water gegeven`.
+3. Confirm a care button appears.
+4. Cancel once and verify no care state changes.
+5. Ask again, confirm, and verify the exact task advances elsewhere in the app.
+6. Ask: `Waar kan ik de kalender vinden?` and verify immediate navigation.
+
+In English mode:
+
+1. Ask: `I watered Basil` for a uniquely named task.
+2. Verify the English label and confirmation flow.
+3. Ask to open a named plant and named map; verify routes.
+4. Ask `Should I water Basil?`; verify that no completion button appears.
+5. Ask to complete a heat advisory or moisture check; verify that no generic Done button appears.
+
+After the successful smoke pass, archive `C:\Projects\leonnetje-server` as a rollback snapshot rather than deleting it immediately. Issue #410 can then be closed.

@@ -99,6 +99,37 @@ async def test_care_done_returns_care_log_id(client, care_db, auth_header):
 
 
 @pytest.mark.asyncio
+async def test_care_done_targets_the_requested_schedule(client, care_db, auth_header):
+    await care_db.execute(
+        """INSERT INTO care_schedules
+           (plant_id, care_type, interval_days, next_due, is_active)
+           VALUES (1, 'water', 10, '2026-06-11', 1)"""
+    )
+    await care_db.commit()
+    schedules = await care_db.execute_fetchall(
+        "SELECT id FROM care_schedules WHERE plant_id = 1 ORDER BY id"
+    )
+
+    response = await client.post(
+        "/api/care/done",
+        json={
+            "plant_id": 1,
+            "care_type": "water",
+            "user_id": 1,
+            "schedule_id": schedules[1]["id"],
+        },
+        headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    states = await care_db.execute_fetchall(
+        "SELECT id, last_done FROM care_schedules WHERE plant_id = 1 ORDER BY id"
+    )
+    assert states[0]["last_done"] is None
+    assert states[1]["last_done"] is not None
+
+
+@pytest.mark.asyncio
 async def test_care_done_and_skip_require_auth(client, care_db):
     for path in ("/api/care/done", "/api/care/skip"):
         res = await client.post(

@@ -93,6 +93,13 @@ CARE_TYPES: dict[str, CareTypeDef] = {
 }
 
 
+# Recurring care that Stekkie may offer to complete after explicit past-tense
+# user intent. Weather advisories and moisture checks use dedicated flows.
+STEKKIE_ACTIONABLE_CARE_TYPES = frozenset(
+    {"water", "fertilize", "prune", "repot", "mist", "rotate", "pest_check", "dust"}
+)
+
+
 # Priority bucket index (lower = higher priority).
 # Tiebreaker within a bucket: more days_overdue first, then alphabetical care_type.
 WARNING_PRIORITY: list[tuple[Trigger, Severity]] = [

@@ -11,16 +11,28 @@ async def _seed_plant(db, plant_id=101, household_id=1, is_active=1):
     await db.commit()
 
 
-async def _seed_schedule(db, plant_id=101, care_type="water", schedule_id=None, is_active=1, next_due="2026-07-01"):
+async def _seed_schedule(
+    db,
+    plant_id=101,
+    care_type="water",
+    schedule_id=None,
+    is_active=1,
+    is_ephemeral=0,
+    next_due="2026-07-01",
+):
     if schedule_id is not None:
         await db.execute(
-            "INSERT INTO care_schedules (id, plant_id, care_type, is_active, next_due) VALUES (?, ?, ?, ?, ?)",
-            (schedule_id, plant_id, care_type, is_active, next_due),
+            """INSERT INTO care_schedules
+               (id, plant_id, care_type, is_active, is_ephemeral, next_due)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (schedule_id, plant_id, care_type, is_active, is_ephemeral, next_due),
         )
     else:
         await db.execute(
-            "INSERT INTO care_schedules (plant_id, care_type, is_active, next_due) VALUES (?, ?, ?, ?)",
-            (plant_id, care_type, is_active, next_due),
+            """INSERT INTO care_schedules
+               (plant_id, care_type, is_active, is_ephemeral, next_due)
+               VALUES (?, ?, ?, ?, ?)""",
+            (plant_id, care_type, is_active, is_ephemeral, next_due),
         )
     await db.commit()
 
@@ -140,6 +152,78 @@ async def test_mark_care_done_resolves_schedule_id_when_omitted(seeded_db):
 
 
 @pytest.mark.asyncio
+async def test_mark_care_done_rejects_informational_weather_actions(seeded_db):
+    await _seed_plant(seeded_db)
+    await _seed_schedule(
+        seeded_db,
+        care_type="heat_protect",
+        schedule_id=456,
+    )
+
+    action = await chat_router._validate_suggested_action(
+        {
+            "type": "mark_care_done",
+            "label": "Markeer hittebescherming als gedaan",
+            "payload": {
+                "plant_id": 101,
+                "schedule_id": 456,
+                "care_type": "heat_protect",
+            },
+        },
+        seeded_db,
+        household_id=1,
+    )
+
+    assert action is None
+
+
+@pytest.mark.asyncio
+async def test_mark_care_done_rejects_ephemeral_schedule(seeded_db):
+    await _seed_plant(seeded_db)
+    await _seed_schedule(seeded_db, schedule_id=456, is_ephemeral=1)
+
+    action = await chat_router._validate_suggested_action(
+        {
+            "type": "mark_care_done",
+            "label": "Markeer water als gedaan",
+            "payload": {
+                "plant_id": 101,
+                "schedule_id": 456,
+                "care_type": "water",
+            },
+        },
+        seeded_db,
+        household_id=1,
+    )
+
+    assert action is None
+
+
+@pytest.mark.asyncio
+async def test_mark_care_done_accepts_requested_schedule_among_duplicates(seeded_db):
+    await _seed_plant(seeded_db)
+    await _seed_schedule(seeded_db, schedule_id=455)
+    await _seed_schedule(seeded_db, schedule_id=456)
+
+    action = await chat_router._validate_suggested_action(
+        {
+            "type": "mark_care_done",
+            "label": "Markeer water als gedaan",
+            "payload": {
+                "plant_id": 101,
+                "schedule_id": 456,
+                "care_type": "water",
+            },
+        },
+        seeded_db,
+        household_id=1,
+    )
+
+    assert action is not None
+    assert action.payload["schedule_id"] == 456
+
+
+@pytest.mark.asyncio
 async def test_mark_care_done_with_mismatched_schedule_id_is_dropped(seeded_db):
     await _seed_plant(seeded_db)
     await _seed_schedule(seeded_db, schedule_id=456)
@@ -220,6 +304,7 @@ async def test_chat_proxy_forwards_a_validated_suggested_action(client, seeded_d
     await _make_garden_context_queryable(seeded_db)
     await _seed_plant(seeded_db)
     await _seed_schedule(seeded_db, schedule_id=456)
+    monkeypatch.setattr(chat_router, "CHATBOT_WORKER_TOKEN", "worker-secret")
 
     class FakeResponse:
         def raise_for_status(self):
@@ -246,6 +331,7 @@ async def test_chat_proxy_forwards_a_validated_suggested_action(client, seeded_d
             return False
 
         async def post(self, url, json, headers):
+            assert headers["X-Worker-Token"] == "worker-secret"
             return FakeResponse()
 
     monkeypatch.setattr(chat_router.httpx, "AsyncClient", FakeAsyncClient)

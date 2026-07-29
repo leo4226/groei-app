@@ -1,5 +1,5 @@
 import type { Translations } from '../i18n/translations'
-import type { NavigateActionPayload } from '../api/chat'
+import type { MarkCareDoneActionPayload, NavigateActionPayload } from '../api/chat'
 
 export type AssistantSheetState = 'compact' | 'expanded'
 export type AssistantBackdrop = 'none' | 'soft' | 'scrim'
@@ -84,5 +84,13 @@ export function resolveNavigateHref(
       return '/plants/add'
     default:
       return null
+  }
+}
+
+export function careCompletionArgs(payload: MarkCareDoneActionPayload) {
+  return {
+    plantId: payload.plant_id,
+    careType: payload.care_type,
+    scheduleId: payload.schedule_id,
   }
 }
