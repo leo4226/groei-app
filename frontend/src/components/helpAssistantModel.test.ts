@@ -4,6 +4,7 @@ import {
   getAssistantPanelConfig,
   isBugReportReadyToSubmit,
   bugQuestions,
+  careCompletionArgs,
   resolveNavigateHref,
 } from './helpAssistantModel'
 
@@ -87,5 +88,19 @@ describe('resolveNavigateHref (#410 action buttons)', () => {
   it('links calendar and add_plant navigate actions to their static routes', () => {
     expect(resolveNavigateHref({ target: 'calendar' }, maps)).toBe('/calendar')
     expect(resolveNavigateHref({ target: 'add_plant' }, maps)).toBe('/plants/add')
+  })
+})
+
+describe('careCompletionArgs (#410 action buttons)', () => {
+  it('preserves the validated schedule id for execution', () => {
+    expect(careCompletionArgs({
+      plant_id: 101,
+      care_type: 'water',
+      schedule_id: 456,
+    })).toEqual({
+      plantId: 101,
+      careType: 'water',
+      scheduleId: 456,
+    })
   })
 })

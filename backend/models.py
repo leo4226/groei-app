@@ -192,6 +192,7 @@ class CareAction(BaseModel):
     plant_id: int
     care_type: str
     user_id: int
+    schedule_id: int | None = None
     notes: str | None = None
 
     @field_validator("care_type", mode="before")

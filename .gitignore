@@ -32,6 +32,9 @@ dist/
 backend/photos/*
 !backend/photos/.gitkeep
 
+# Local Stekkie usage logs
+backend/stekkie_usage.log*
+
 # Local databases & backups
 *.db
 *.db.bak*
