@@ -449,7 +449,12 @@ export const plants = {
 }
 
 export const weatherWarnings = {
-  acknowledge: (warning: import('../types').WeatherWarningGroupOut) =>
+  acknowledge: (warning: {
+    warning_id: string
+    care_type: string
+    forecast_date: string
+    severity: string
+  }) =>
     api<{
       warning_id: string
       care_type: string

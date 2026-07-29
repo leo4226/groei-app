@@ -8,6 +8,9 @@ import CalendarWeatherContext from './CalendarWeatherContext'
 import Glyph from '../../components/ui/Glyph'
 import MoistureAdvisory from './MoistureAdvisory'
 import { extractMoistureAdvisories } from './moistureAdvisoryModel'
+import CalendarWeatherAdvisories from './CalendarWeatherAdvisories'
+import type { CalendarWeatherAdvisory } from './calendarWeatherAdvisoryModel'
+import { partitionCalendarWeather } from './calendarWeatherAdvisoryModel'
 
 interface Props {
   selectedIso: string
@@ -20,6 +23,8 @@ interface Props {
   undoMsg: string | null
   onGardenUndo: () => void
   mapSlugs: ReadonlyMap<number, string>
+  weatherAdvisories?: CalendarWeatherAdvisory[]
+  onWeatherChanged?(): Promise<void> | void
 }
 
 export default function CalendarAgendaCard({
@@ -33,6 +38,8 @@ export default function CalendarAgendaCard({
   undoMsg,
   onGardenUndo,
   mapSlugs,
+  weatherAdvisories = [],
+  onWeatherChanged = () => undefined,
 }: Props) {
   const t = useT()
   const locale = t.locale || 'nl-NL'
@@ -56,12 +63,20 @@ export default function CalendarAgendaCard({
     return map
   }, [ordinaryEvents])
 
-  const counts: Record<string, number> = {}
-  events.forEach(e => { counts[e.type] = (counts[e.type] || 0) + 1 })
-  const summary = Object.entries(counts).map(([k, v]) => {
-    const lbl = t.utility[EVENT_TYPE_UTILITY_KEY[k as EventTypeId]] ?? k
-    return `${v} ${lbl.toLowerCase()}`
-  }).join(' · ')
+  const activeWeather = partitionCalendarWeather(weatherAdvisories).active
+  const careTaskCount = ordinaryEvents.length
+  const summaryParts = [
+    careTaskCount > 0
+      ? `${careTaskCount} ${careTaskCount === 1 ? t.calendar.taskSingular! : t.calendar.tasks}`
+      : null,
+    ...activeWeather.map(advisory => t.calendar.weatherAffectedSummary(
+      advisory.affectedPlantCount,
+      advisory.type,
+    )),
+    advisories.length > 0
+      ? `${advisories.length} ${t.utility.eventMoistureCheck.toLowerCase()}`
+      : null,
+  ].filter(Boolean).join(' · ')
 
   async function handleBatchDone(groupId: string, groupEvents: CalendarEvent[]) {
     setSavingType(groupId)
@@ -93,13 +108,13 @@ export default function CalendarAgendaCard({
         <div className="sc-eye">{t.calendar.agendaSelectedDay}</div>
         <h2 className="sc-title">{dayName} <em>{d} {monthShort}</em></h2>
         <p className="sc-sub">
-          {events.length
-            ? `${events.length} ${events.length === 1 ? t.calendar.taskSingular! : t.calendar.tasks} · ${summary}.`
+          {summaryParts
+            ? `${summaryParts}.`
             : t.calendar.noTasksRest}
         </p>
       </div>
       <div className="agenda-list">
-        {events.length === 0 && (
+        {!summaryParts && (
           <div className="agenda-empty">
             <span className="em">{t.calendar.freeDay}</span>
             {' '}{t.calendar.gardenManagesItself}
@@ -115,6 +130,10 @@ export default function CalendarAgendaCard({
             mapSlugs={mapSlugs}
           />
         ))}
+        <CalendarWeatherAdvisories
+          advisories={weatherAdvisories}
+          onChanged={onWeatherChanged}
+        />
         {Object.entries(groups).map(([groupId, groupEvents]) => {
           const firstEvent = groupEvents[0]
           const type = firstEvent.type
