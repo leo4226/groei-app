@@ -102,27 +102,27 @@ async def _validate_suggested_action(
 
     if action_type == "navigate":
         target = payload.get("target")
-        map_id = payload.get("id")
+        entity_id = payload.get("id")
         slug = payload.get("slug")
         if target not in ("plant", "map", "calendar", "add_plant"):
             return None
 
         if target == "plant":
-            if not isinstance(map_id, int):
+            if not isinstance(entity_id, int):
                 return None
             rows = await db.execute_fetchall(
                 "SELECT 1 FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
-                (map_id, household_id),
+                (entity_id, household_id),
             )
             if not rows:
                 return None
             return SuggestedAction(
                 type="navigate", label=label, requires_confirmation=False,
-                payload={"target": "plant", "id": map_id},
+                payload={"target": "plant", "id": entity_id},
             )
 
         if target == "map":
-            if not isinstance(map_id, int) and not isinstance(slug, str):
+            if not isinstance(entity_id, int) and not isinstance(slug, str):
                 return None
             if isinstance(slug, str):
                 rows = await db.execute_fetchall(
@@ -132,15 +132,15 @@ async def _validate_suggested_action(
             else:
                 rows = await db.execute_fetchall(
                     "SELECT 1 FROM maps WHERE id = ? AND household_id = ?",
-                    (map_id, household_id),
+                    (entity_id, household_id),
                 )
             if not rows:
                 return None
             map_payload: dict[str, Any] = {"target": "map"}
             if isinstance(slug, str):
                 map_payload["slug"] = slug
-            if isinstance(map_id, int):
-                map_payload["id"] = map_id
+            if isinstance(entity_id, int):
+                map_payload["id"] = entity_id
             return SuggestedAction(
                 type="navigate", label=label, requires_confirmation=False, payload=map_payload,
             )

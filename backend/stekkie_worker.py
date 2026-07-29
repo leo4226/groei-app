@@ -14,7 +14,7 @@ import time
 from datetime import date, datetime, timezone
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -96,7 +96,7 @@ KNOWLEDGE_BASE = Path(__file__).with_name("stekkie_knowledge_base.md").read_text
 
 
 class ChatMessage(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str = Field(max_length=4_000)
 
 
@@ -415,9 +415,20 @@ def _deterministic_fallback(request: ChatRequest) -> str:
     language = _language(request)
     action = build_suggested_action(request)
     if action and action["type"] == "mark_care_done":
-        plant_name = action["label"].split(" voor ", 1)[-1].removesuffix(" als gedaan")
-        if language == "en":
-            plant_name = action["label"].split(" for ", 1)[-1].removesuffix(" as done")
+        payload = action["payload"]
+        matching_task = next(
+            (
+                task
+                for task in _care_tasks(request.garden_context or {})
+                if task.get("plant_id") == payload.get("plant_id")
+                and task.get("schedule_id") == payload.get("schedule_id")
+                and task.get("care_type") == payload.get("care_type")
+            ),
+            None,
+        )
+        plant_name = str((matching_task or {}).get("plant_name") or "the plant")
+        if language == "nl" and matching_task is None:
+            plant_name = "de plant"
         return (
             f"I understood that you completed care for {plant_name}. Confirm it below to update Floreren."
             if language == "en"
