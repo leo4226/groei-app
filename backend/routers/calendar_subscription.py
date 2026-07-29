@@ -89,6 +89,62 @@ def _filter_events(events: list, config: CalendarSubscriptionConfig) -> list:
     return filtered
 
 
+def _aggregate_external_events(events: list) -> list[dict]:
+    """Group external work by date, care type and map, regardless of app preferences."""
+    grouped: dict[tuple[str, str, int | None], dict] = {}
+    member_ids: dict[tuple[str, str, int | None], set[str]] = {}
+    plant_names: dict[tuple[str, str, int | None], list[str]] = {}
+
+    for event in events:
+        event_date = str(_event_value(event, "date"))
+        care_type = str(_event_value(event, "type", _event_value(event, "care_type", "")))
+        map_id = _event_value(event, "map_id")
+        key = (event_date, care_type, map_id)
+        if key not in grouped:
+            grouped[key] = dict(event) if isinstance(event, dict) else event.model_dump()
+            member_ids[key] = set()
+            plant_names[key] = []
+
+        ids = (
+            _event_value(event, "group_member_event_ids", None)
+            or _event_value(event, "child_ids", None)
+            or [_event_value(event, "id")]
+        )
+        member_ids[key].update(str(value) for value in ids if value is not None)
+
+        names = [
+            _event_value(member, "plant_name")
+            for member in (_event_value(event, "group_members", None) or [])
+            if _event_value(member, "plant_name")
+        ]
+        if not names and _event_value(event, "plant_name"):
+            names = [str(_event_value(event, "plant_name"))]
+        for name in names:
+            if name not in plant_names[key]:
+                plant_names[key].append(name)
+
+    result = []
+    for (event_date, care_type, map_id), event in grouped.items():
+        ids = sorted(member_ids[(event_date, care_type, map_id)])
+        names = plant_names[(event_date, care_type, map_id)]
+        event.update({
+            "id": f"external:{event_date}:{care_type}:{map_id if map_id is not None else 'none'}",
+            "plant_id": _event_value(event, "plant_id") if len(ids) == 1 else None,
+            "plant_name": names[0] if len(names) == 1 else None,
+            "plant_names": names,
+            "grouped": len(ids) > 1,
+            "group_count": len(ids),
+            "group_member_event_ids": ids,
+            "group_members": None,
+            "external_uid_key": (
+                f"{event_date}|{care_type}|"
+                f"{'map:' + str(map_id) if map_id is not None else 'unmapped'}"
+            ),
+        })
+        result.append(event)
+    return result
+
+
 async def _project_events(db, household_id: int, config: CalendarSubscriptionConfig):
     environment = {"all": None, "outdoor": "tuin", "indoor": "huis"}[config.environment]
     today = _amsterdam_today()
@@ -101,7 +157,7 @@ async def _project_events(db, household_id: int, config: CalendarSubscriptionCon
         account={"household_id": household_id},
         db=db,
     )
-    return _filter_events(events, config)
+    return _aggregate_external_events(_filter_events(events, config))
 
 
 def _calendar_response(
@@ -163,6 +219,37 @@ async def get_subscription_status(
         config=CalendarSubscriptionConfig.model_validate(config),
         created_at=row["created_at"],
     )
+
+
+@router.patch("/subscription", response_model=CalendarSubscriptionStatus)
+async def update_subscription_config(
+    config: CalendarSubscriptionConfig,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    await _validate_maps(db, account["household_id"], config.map_ids)
+    rows = await db.execute_fetchall(
+        """SELECT id FROM calendar_subscriptions
+           WHERE account_id = ? AND household_id = ? AND revoked_at IS NULL""",
+        (account["account_id"], account["household_id"]),
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "calendar_subscription_not_found"},
+        )
+    await db.execute(
+        """UPDATE calendar_subscriptions
+           SET config_json = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE account_id = ? AND household_id = ? AND revoked_at IS NULL""",
+        (
+            config.model_dump_json(),
+            account["account_id"],
+            account["household_id"],
+        ),
+    )
+    await db.commit()
+    return await get_subscription_status(db=db, account=account)
 
 
 @router.post(

@@ -10,6 +10,7 @@ export function useCalendarEventRange(
   to: string,
   env?: string,
   pinOverdue = false,
+  includeHistory = false,
 ) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +28,7 @@ export function useCalendarEventRange(
     [careVersions],
   )
   const retry = useCallback(() => setReloadVersion(version => version + 1), [])
-  const rangeKey = `${from}|${to}|${env ?? ''}|${pinOverdue}`
+  const rangeKey = `${from}|${to}|${env ?? ''}|${pinOverdue}|${includeHistory}`
 
   useEffect(() => {
     window.addEventListener(CARE_RHYTHM_CHANGED_EVENT, retry)
@@ -41,7 +42,7 @@ export function useCalendarEventRange(
     setRefreshing(backgroundRefresh)
     setError(null)
     setRefreshError(null)
-    calendar.events(from, to, env, pinOverdue)
+    calendar.events(from, to, env, pinOverdue, includeHistory)
       .then(data => {
         if (!cancelled) {
           loadedRangeRef.current = rangeKey
@@ -60,7 +61,7 @@ export function useCalendarEventRange(
         }
       })
     return () => { cancelled = true }
-  }, [from, to, env, pinOverdue, rangeKey, careVersionsSum, reloadVersion, refreshTick])
+  }, [from, to, env, pinOverdue, includeHistory, rangeKey, careVersionsSum, reloadVersion, refreshTick])
 
   return { events, loading, refreshing, error, refreshError, retry }
 }
@@ -70,5 +71,7 @@ export function useCalendarEvents(year: number, month1: number, env?: string) {
     firstOfMonth(year, month1),
     lastOfMonth(year, month1),
     env,
+    false,
+    true,
   )
 }

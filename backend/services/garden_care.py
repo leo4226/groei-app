@@ -3,9 +3,14 @@ from datetime import date, datetime
 
 from care_types import CARE_TYPES
 from services.calendar_grouping import get_calendar_grouping_preferences
+from services.care_rhythm import (
+    effective_weekdays_for_map,
+    get_saved_care_rhythm_config,
+)
+from services.care_sessions import project_water_session
 from services.care_profile import environment_for_plant
 from services.db_transactions import database_transaction, for_update_clause
-from services.scheduling import calculate_next_due
+from services.scheduling import calculate_effective_interval, calculate_next_due
 
 
 class GardenCareUndoConflict(Exception):
@@ -24,6 +29,10 @@ def _comparable_db_value(value) -> str | None:
     if isinstance(value, date):
         return value.isoformat()
     return str(value)
+
+
+def _as_date(value) -> date:
+    return value if isinstance(value, date) else date.fromisoformat(value)
 
 
 def schedule_interval_days(schedule: dict, care_type: str) -> int | None:
@@ -47,6 +56,8 @@ async def complete_outdoor_care(
     map_id: int, schedule_ids: list[int] | None = None,
 ) -> dict:
     preferences = await get_calendar_grouping_preferences(db, household_id)
+    rhythm_config = await get_saved_care_rhythm_config(db, household_id)
+    routine_water = care_type == "water" and rhythm_config is not None
     configured_types = next(
         (
             set(rule["care_types"])
@@ -55,7 +66,7 @@ async def complete_outdoor_care(
         ),
         set(),
     )
-    if care_type not in configured_types:
+    if care_type not in configured_types and not routine_water:
         return {"operation_id": None, "affected_count": 0}
 
     user_rows = await db.execute_fetchall(
@@ -69,6 +80,7 @@ async def complete_outdoor_care(
         schedules = await db.execute_fetchall(
             """SELECT cs.id, cs.plant_id, cs.interval_days, cs.season_adjust,
                       cs.next_due, cs.last_done, cs.last_done_by,
+                      cs.rhythm_opt_out,
                       p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
                FROM care_schedules cs
                JOIN plants p ON p.id = cs.plant_id
@@ -80,12 +92,40 @@ async def complete_outdoor_care(
         if not schedules:
             return {"operation_id": None, "affected_count": 0}
 
+        if routine_water:
+            routine_schedules = []
+            for schedule in schedules:
+                interval_days = schedule_interval_days(schedule, care_type)
+                if interval_days is None:
+                    continue
+                canonical_due = _as_date(schedule["next_due"])
+                projection = project_water_session(
+                    canonical_due=canonical_due,
+                    effective_interval=calculate_effective_interval(
+                        interval_days,
+                        schedule.get("season_adjust"),
+                        canonical_due,
+                    ),
+                    preferred_weekdays=effective_weekdays_for_map(
+                        rhythm_config,
+                        map_id=map_id,
+                        map_type=schedule.get("map_type"),
+                    ),
+                    opted_out=bool(schedule.get("rhythm_opt_out")),
+                )
+                if projection.is_routine:
+                    routine_schedules.append(schedule)
+            schedules = routine_schedules
+
         if schedule_ids is not None:
             requested_ids = set(schedule_ids)
             eligible_by_id = {schedule["id"]: schedule for schedule in schedules}
             if len(requested_ids) != len(schedule_ids) or not requested_ids.issubset(eligible_by_id):
                 raise GardenCareSelectionError
             schedules = [eligible_by_id[schedule_id] for schedule_id in schedule_ids]
+
+        if not schedules:
+            return {"operation_id": None, "affected_count": 0}
 
         operation = await db.execute_fetchall(
             """INSERT INTO garden_care_operations
@@ -105,8 +145,14 @@ async def complete_outdoor_care(
             interval_days = schedule_interval_days(schedule, care_type)
             if interval_days is None:
                 raise GardenCareSelectionError
+            canonical_due = _as_date(schedule["next_due"])
+            recurrence_anchor = (
+                canonical_due
+                if routine_water and completed_at <= canonical_due
+                else completed_at
+            )
             next_due = calculate_next_due(
-                completed_at, interval_days, schedule["season_adjust"],
+                recurrence_anchor, interval_days, schedule["season_adjust"],
             )
             await db.execute_fetchall(
                 """INSERT INTO garden_care_operation_members

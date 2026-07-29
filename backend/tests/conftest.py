@@ -157,6 +157,16 @@ SCHEMA = """
         auth TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE weather_warning_account_state (
+        account_id INTEGER NOT NULL,
+        warning_id TEXT NOT NULL,
+        care_type TEXT NOT NULL CHECK (care_type IN ('frost_protect', 'heat_protect')),
+        forecast_date DATE NOT NULL,
+        severity TEXT NOT NULL CHECK (severity IN ('warning', 'urgent')),
+        acknowledged_at TIMESTAMP,
+        push_sent_at TIMESTAMP,
+        PRIMARY KEY (account_id, warning_id)
+    );
     CREATE TABLE locations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -180,6 +190,18 @@ SCHEMA = """
         map_id INTEGER NOT NULL,
         care_type TEXT NOT NULL,
         PRIMARY KEY (household_id, map_id, care_type)
+    );
+    CREATE TABLE household_care_rhythm_preferences (
+        household_id INTEGER PRIMARY KEY,
+        indoor_weekdays TEXT NOT NULL,
+        outdoor_weekdays TEXT NOT NULL,
+        last_operation_id INTEGER
+    );
+    CREATE TABLE map_care_rhythm_overrides (
+        household_id INTEGER NOT NULL,
+        map_id INTEGER NOT NULL,
+        weekdays TEXT NOT NULL,
+        PRIMARY KEY (household_id, map_id)
     );
     CREATE TABLE calendar_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

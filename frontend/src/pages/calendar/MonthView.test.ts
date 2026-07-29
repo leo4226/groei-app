@@ -199,4 +199,46 @@ describe('MonthView desktop rail', () => {
     act(() => (container.querySelector('[role="alert"] button') as HTMLButtonElement).click())
     expect(calendarHookMocks.retry).toHaveBeenCalledOnce()
   })
+
+  it('shows durable completed care as history without making it actionable', () => {
+    calendarHookMocks.events = [{
+      id: 'care-log:42',
+      date: new Date().toISOString().slice(0, 10),
+      type: 'water',
+      status: 'completed',
+      plant_id: 42,
+      plant_name: 'Rose',
+      plant_icon_variant: null,
+      schedule_id: null,
+      map_id: 1,
+      map_name: 'Garden',
+      overdue: false,
+      severity: null,
+      color: null,
+      icon: null,
+      grouped: false,
+      group_count: null,
+      group_member_schedule_ids: null,
+      weather_triggered: false,
+    }]
+
+    act(() => root.render(
+      createElement(LanguageProvider, null,
+        createElement(MonthView, {
+          onSetView: vi.fn(),
+          env: 'all',
+          environmentFilter: null,
+          viewNavigation: null,
+          year: 2026,
+          month1: 7,
+          onMonthChange: vi.fn(),
+        }),
+      ),
+    ))
+
+    expect(container.querySelector('[data-calendar-context="grid"]')?.getAttribute('data-event-count'))
+      .toBe('1')
+    expect(container.querySelector('.sc-sub')?.textContent).toContain('No tasks')
+    expect(container.querySelector('[data-calendar-history]')?.textContent).toContain('Rose')
+  })
 })

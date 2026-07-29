@@ -277,8 +277,6 @@ class CareLogOut(BaseModel):
     skipped: bool = False
 
 
-# --- Dashboard ---
-
 class CareTask(BaseModel):
     plant_id: int
     plant_name: str
@@ -295,17 +293,6 @@ class CareTask(BaseModel):
     is_ephemeral: bool = False
 
 
-class DashboardResponse(BaseModel):
-    overdue: list[CareTask] = []
-    due_today: list[CareTask] = []
-    upcoming: list[CareTask] = []
-
-
-class StatusCounts(BaseModel):
-    total: int
-    on_schedule: int
-    thirsty: int
-    dry: int
 
 
 class RecentLogEntry(BaseModel):
@@ -326,15 +313,6 @@ class PlantFactOut(BaseModel):
     fact_en: str = ""
     species_name_nl: str | None = None
     species_name_en: str | None = None
-
-
-class DashboardV2Response(BaseModel):
-    overdue: list[CareTask] = []
-    due_today: list[CareTask] = []
-    upcoming: list[CareTask] = []
-    status_counts: StatusCounts
-    recent_log: list[RecentLogEntry] = []
-    plant_fact: PlantFactOut | None = None
 
 
 # --- Maps ---
@@ -632,7 +610,7 @@ class SpeciesSearchResponse(BaseModel):
     per_page: int = 20
 
 
-# --- Home / Plant Fact (PlantFactOut defined above, before DashboardV2Response) ---
+# --- Home / Plant Fact ---
 
 
 # ── Weeds ──
@@ -988,12 +966,14 @@ class CalendarGroupMemberOut(BaseModel):
     plant_icon_variant: str | None = None
     reason_nl: str | None = None
     reason_en: str | None = None
+    canonical_date: str | None = None
 
 
 class CalendarEventOut(BaseModel):
     id: str                  # composite e.g. "schedule:42:water"
     date: str                # ISO date YYYY-MM-DD
     type: str                # 'water' | 'fertilize' | etc.
+    status: Literal['scheduled', 'completed'] = 'scheduled'
     plant_id: int | None
     plant_name: str | None
     plant_icon_variant: str | None
@@ -1021,6 +1001,11 @@ class CalendarEventOut(BaseModel):
     group_member_event_ids: list[str] | None = None
     group_members: list[CalendarGroupMemberOut] | None = None
     weather_triggered: bool = False
+    weather_warning_id: str | None = None
+    acknowledged_at: datetime | None = None
+    canonical_date: str | None = None
+    routine_session: bool = False
+    routine_reason: str | None = None
 
 
 class WaterPressurePlantOut(BaseModel):
@@ -1086,6 +1071,10 @@ class PlantRecommendationOut(BaseModel):
     fills_forage_gap: bool = False   # a drachtplant blooming in a bee forage-gap month
     is_moth_plant: bool = False      # night-flowering / moth-forage (nachtvlinder)
     supports_moth_gap: bool = False  # moth plant in a garden that has none yet
+    habit: str | None = None         # tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+    mature_height_cm: int | None = None
+    size_fit: str = "unknown"        # 'fits' | 'large_for_space' | 'unknown' (vs garden area)
+    alternatives: dict | None = None # smaller same-function swaps when oversized
 
 
 class RecommendationsOut(BaseModel):

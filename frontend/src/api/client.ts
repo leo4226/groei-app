@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, DashboardV2Data, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 import { indexIconUrls } from '../utils/icons'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -448,6 +448,37 @@ export const plants = {
   commitIdentify:    (scientificName: string, photoBase64: string, lang: 'nl' | 'en' = 'nl') => api<import('../types').IdentifyCommitResult>('POST', `/plants/identify/commit?lang=${lang}`, { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
 }
 
+export const weatherWarnings = {
+  acknowledge: (warning: {
+    warning_id: string
+    care_type: string
+    forecast_date: string
+    severity: string
+  }) =>
+    api<{
+      warning_id: string
+      care_type: string
+      forecast_date: string
+      severity: string
+      acknowledged_at: string
+    }>(
+      'POST',
+      `/weather-warnings/${encodeURIComponent(warning.warning_id)}/acknowledgment`,
+      {
+        body: {
+          care_type: warning.care_type,
+          forecast_date: warning.forecast_date,
+          severity: warning.severity,
+        },
+      },
+    ),
+  restore: (warningId: string) =>
+    api<void>(
+      'DELETE',
+      `/weather-warnings/${encodeURIComponent(warningId)}/acknowledgment`,
+    ),
+}
+
 export const photos = {
   list: (plantId: number) => api<import('../types').PlantPhoto[]>('GET', `/plants/${plantId}/photos`),
   upload: (plantId: number, image: Blob, opts: { note?: string; takenAt?: string; careLogId?: number } = {}) => {
@@ -465,9 +496,6 @@ export const photos = {
       { body: { enabled, interval_days: intervalDays } }),
 }
 
-export const dashboard = {
-  v2: () => api<DashboardV2Data>('GET', '/dashboard/v2'),
-}
 
 export const species = {
   ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),
@@ -490,6 +518,9 @@ export const maps = {
   streken: ()                                                                                                    => api<import('../types').Streek[]>('GET', '/streken'),
   beeSupport: (slug: string)                                                                                     => api<import('../types').BeeSupportOut>('GET', `/maps/${slug}/bee-support`),
   updateCircularity: (slug: string, flags: import('../types').CircularityFlags)                                  => api<import('../types').CircularityFlags>('PUT', `/maps/${slug}/circularity`, { body: flags }),
+  updateFeature: (slug: string, featureType: import('../types').GardenFeatureType, count: number)                => api<import('../types').GardenFeaturesOut>('PUT', `/maps/${slug}/features`, { body: { feature_type: featureType, count } }),
+  dismissRecommendation: (slug: string, speciesId: number)                                                       => api<{ dismissed: boolean; species_id: number }>('POST', `/maps/${slug}/dismiss-recommendation`, { body: { species_id: speciesId } }),
+  undismissRecommendation: (slug: string, speciesId: number)                                                     => api<{ dismissed: boolean; species_id: number }>('DELETE', `/maps/${slug}/dismiss-recommendation/${speciesId}`),
   plants:  (slug: string)                                                                                        => api<MapPlant[]>('GET', `/maps/${slug}/plants`),
   items:   (slug: string)                                                                                        => api<MapItems>('GET', `/maps/${slug}/items`),
   uploadUnderlay: (id: number, file: File) => { const f = new FormData(); f.append('file', file); return api<{ url: string }>('POST', `/maps/${id}/underlay`, { form: f }) },
@@ -548,10 +579,17 @@ import type { CalendarEvent } from '../pages/calendar/calendarTypes'
 import type { WaterOutlook } from '../pages/calendar/waterOutlookTypes'
 
 export const calendar = {
-  events: (from: string, to: string, env?: string, pinOverdue = false) => {
+  events: (
+    from: string,
+    to: string,
+    env?: string,
+    pinOverdue = false,
+    includeHistory = false,
+  ) => {
     const params: Record<string, string> = { from, to }
     if (env && env !== 'all') params.env = env
     if (pinOverdue) params.pin_overdue = 'true'
+    if (includeHistory) params.include_history = 'true'
     return api<CalendarEvent[]>('GET', '/calendar/events', { params })
   },
   waterOutlook: () => api<WaterOutlook>('GET', '/calendar/water-outlook'),
@@ -829,6 +867,16 @@ export interface CareRhythmSettings {
   maps: Array<{ id: number; name: string; map_type: 'outdoor' | 'indoor' }>
 }
 
+export type CareRhythmPreviewReason =
+  | 'routine'
+  | 'too_frequent'
+  | 'opted_out'
+  | 'no_routine'
+  | 'not_future'
+  | 'moved_earlier'
+  | 'aligned'
+  | 'outside_window'
+
 export interface CareRhythmPreviewItem {
   schedule_id: number
   plant_id: number
@@ -843,7 +891,7 @@ export interface CareRhythmPreviewItem {
   new_date: string
   movement_days: number
   status: 'moved' | 'unchanged' | 'exception'
-  reason: string
+  reason: CareRhythmPreviewReason
 }
 
 export interface CareRhythmSummary {
@@ -914,6 +962,8 @@ export const calendarSubscription = {
   status: () => api<CalendarSubscriptionStatus>('GET', '/calendar/subscription'),
   create: (config: CalendarSubscriptionConfig) =>
     api<CalendarSubscriptionCreated>('POST', '/calendar/subscription', { body: config }),
+  update: (config: CalendarSubscriptionConfig) =>
+    api<CalendarSubscriptionStatus>('PATCH', '/calendar/subscription', { body: config }),
   revoke: () => api<void>('DELETE', '/calendar/subscription'),
   downloadSnapshot: async (config: CalendarSubscriptionConfig): Promise<Blob> => {
     const res = await fetch(buildUrl('/calendar/export.ics'), {
@@ -968,6 +1018,10 @@ export const discoveries = {
   }) => api<PlantDiscovery>('POST', '/discover', { body: data }),
   updateNotes: (id: number, notes: string | null) =>
     api<PlantDiscovery>('PATCH', `/discover/${id}`, { body: { notes } }),
+  updateLocation: (id: number, location: { lat: number; lon: number }) =>
+    api<PlantDiscovery>('PATCH', `/discover/${id}/location`, {
+      body: { location_lat: location.lat, location_lon: location.lon },
+    }),
   share: (id: number) => api<{ share_url: string }>('POST', `/discover/${id}/share`),
   delete: (id: number) => api<void>('DELETE', `/discover/${id}`),
 }

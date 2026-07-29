@@ -8,8 +8,14 @@ from models import CalendarEventOut, WaterOutlookOut
 from services.warnings import compute_plant_warnings, CareWarning
 from services.scheduling import calculate_effective_interval
 from services.calendar_grouping import get_calendar_grouping_preferences
+from services.care_rhythm import (
+    effective_weekdays_for_map,
+    get_saved_care_rhythm_config,
+)
+from services.care_sessions import project_water_session
 from services.garden_care import schedule_interval_days
-from services.weather_task_service import sync_ephemeral_schedules
+from services.weather_task_service import sync_ephemeral_schedules, weather_task_metadata
+from services.weather_warning_state import weather_warning_states_for_account
 from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
 from services.moisture_check_service import sync_moisture_checks
@@ -22,10 +28,13 @@ router = APIRouter(tags=["calendar"])
 # Safety caps
 MAX_RANGE_DAYS = 366   # refuse ranges longer than a year
 MAX_OCCURRENCES = 200  # per schedule
+MAX_ROUTINE_LOOKAHEAD_DAYS = 6  # latest preferred day before a due date
+AMSTERDAM_TZ = ZoneInfo("Europe/Amsterdam")
+UTC_TZ = ZoneInfo("UTC")
 
 
 def _water_pressure_today() -> date:
-    return datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+    return datetime.now(AMSTERDAM_TZ).date()
 
 
 def _as_date(value) -> date:
@@ -249,9 +258,16 @@ def _group_outdoor_events(
     grouped: dict[tuple[str, str, int], list[CalendarEventOut]] = {}
     retained: list[CalendarEventOut] = []
     for event in events:
+        configured = (
+            event.routine_session
+            or (
+                event.routine_reason is None
+                and event.type in rules.get(event.map_id, set())
+            )
+        )
         if (
             event.map_id is not None
-            and event.type in rules.get(event.map_id, set())
+            and configured
             and not event.weather_triggered
         ):
             grouped.setdefault((event.date, event.type, event.map_id), []).append(event)
@@ -273,6 +289,7 @@ def _group_outdoor_events(
                     "plant_id": member.plant_id,
                     "plant_name": member.plant_name,
                     "plant_icon_variant": member.plant_icon_variant,
+                    "canonical_date": member.canonical_date,
                 }
                 for member in members
                 if (
@@ -281,6 +298,10 @@ def _group_outdoor_events(
                     and member.plant_name is not None
                 )
             ],
+            routine_session=any(member.routine_session for member in members),
+            routine_reason=(
+                "routine" if any(member.routine_session for member in members) else None
+            ),
         ))
     return retained
 
@@ -342,6 +363,110 @@ def _group_moisture_check_events(
     return retained
 
 
+def _history_date(value) -> date:
+    if isinstance(value, datetime):
+        timestamp = value if value.tzinfo else value.replace(tzinfo=UTC_TZ)
+        return timestamp.astimezone(AMSTERDAM_TZ).date()
+    if isinstance(value, date):
+        return value
+    return _history_date(datetime.fromisoformat(value))
+
+
+async def _completion_history(
+    db,
+    *,
+    household_id: int,
+    from_dt: date,
+    to_dt: date,
+    env: str | None,
+) -> list[CalendarEventOut]:
+    """Project successful care logs and grouped operations into Month history."""
+    env_where = ""
+    if env == "tuin":
+        env_where = " AND (m.map_type IS NULL OR m.map_type <> 'indoor')"
+    elif env == "huis":
+        env_where = " AND m.map_type = 'indoor'"
+
+    log_rows = await db.execute_fetchall(
+        """
+        SELECT cl.id AS care_log_id, cl.plant_id, cl.care_type, cl.done_at,
+               p.name AS plant_name, p.icon_key AS plant_icon_variant,
+               p.map_id, m.name AS map_name
+        FROM care_log cl
+        JOIN plants p ON p.id = cl.plant_id
+        LEFT JOIN maps m ON m.id = p.map_id
+        LEFT JOIN garden_care_operation_members member
+          ON member.care_log_id = cl.id
+        WHERE p.household_id = ?
+          AND cl.skipped = FALSE
+          AND cl.care_type <> 'photo'
+          AND member.care_log_id IS NULL
+          AND DATE(cl.done_at) BETWEEN ? AND ?
+        """ + env_where + """
+        ORDER BY cl.done_at, cl.id
+        """,
+        (household_id, from_dt - timedelta(days=1), to_dt + timedelta(days=1)),
+    )
+
+    operation_rows = await db.execute_fetchall(
+        """
+        SELECT operation.id AS operation_id, operation.care_type,
+               operation.completed_at, operation.map_id,
+               m.name AS map_name, COUNT(member.schedule_id) AS member_count
+        FROM garden_care_operations operation
+        JOIN garden_care_operation_members member
+          ON member.operation_id = operation.id
+        LEFT JOIN maps m ON m.id = operation.map_id
+        WHERE operation.household_id = ?
+          AND operation.undone_at IS NULL
+          AND operation.completed_at BETWEEN ? AND ?
+        """ + env_where + """
+        GROUP BY operation.id, operation.care_type, operation.completed_at,
+                 operation.map_id, m.name
+        ORDER BY operation.completed_at, operation.id
+        """,
+        (household_id, from_dt, to_dt),
+    )
+
+    history: list[CalendarEventOut] = []
+    for row in log_rows:
+        completed_date = _history_date(row["done_at"])
+        if completed_date < from_dt or completed_date > to_dt:
+            continue
+        history.append(CalendarEventOut(
+            id=f"care-log:{row['care_log_id']}",
+            date=completed_date.isoformat(),
+            type=normalize_care_type(row["care_type"]),
+            status="completed",
+            plant_id=row["plant_id"],
+            plant_name=row["plant_name"],
+            plant_icon_variant=row["plant_icon_variant"],
+            schedule_id=None,
+            map_id=row["map_id"],
+            map_name=row["map_name"],
+            overdue=False,
+        ))
+    history.extend(
+        CalendarEventOut(
+            id=f"garden-operation:{row['operation_id']}",
+            date=_history_date(row["completed_at"]).isoformat(),
+            type=normalize_care_type(row["care_type"]),
+            status="completed",
+            plant_id=None,
+            plant_name=None,
+            plant_icon_variant=None,
+            schedule_id=None,
+            map_id=row["map_id"],
+            map_name=row["map_name"],
+            overdue=False,
+            grouped=True,
+            group_count=int(row["member_count"]),
+        )
+        for row in operation_rows
+    )
+    return sorted(history, key=lambda event: (event.date, event.id))
+
+
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
 async def list_calendar_events(
     from_: str = Query(..., alias="from"),
@@ -349,6 +474,7 @@ async def list_calendar_events(
     env: str | None = Query(None),
     group_outdoor: bool = Query(False),
     pin_overdue: bool = Query(False),
+    include_history: bool = Query(False),
     account = Depends(get_current_account),
     db = Depends(db_dep),
 ):
@@ -365,6 +491,15 @@ async def list_calendar_events(
     # Validate env filter
     if env and env not in ('tuin', 'huis'):
         raise HTTPException(400, "env must be 'tuin' or 'huis'")
+
+    rhythm_config = await get_saved_care_rhythm_config(
+        db, account["household_id"],
+    )
+    planning_to = (
+        to_dt + timedelta(days=MAX_ROUTINE_LOOKAHEAD_DAYS)
+        if rhythm_config
+        else to_dt
+    )
 
     # Refresh weather-driven one-shot tasks on the Calendar path itself. This is
     # best-effort: cached-weather or sync failures must never turn Calendar into
@@ -424,14 +559,28 @@ async def list_calendar_events(
     #    Regular schedules: next_due <= to_dt (they recur forward from next_due)
     #    Ephemeral: next_due BETWEEN from_dt AND to_dt (one-shot, no recurrence)
     if env and not plants:
+        if include_history:
+            return await _completion_history(
+                db,
+                household_id=account["household_id"],
+                from_dt=from_dt,
+                to_dt=to_dt,
+                env=env,
+            )
         return []
 
     if env:
         placeholders = ','.join('?' * len(plants))
-        sched_params = (account["household_id"],) + tuple(p["id"] for p in plants) + (to_dt, from_dt, to_dt)
+        sched_params = (
+            (account["household_id"],)
+            + tuple(p["id"] for p in plants)
+            + (planning_to, to_dt, from_dt, to_dt)
+        )
         extra_where = f" AND cs.plant_id IN ({placeholders})"
     else:
-        sched_params = (account["household_id"], to_dt, from_dt, to_dt)
+        sched_params = (
+            account["household_id"], planning_to, to_dt, from_dt, to_dt,
+        )
         extra_where = ""
 
     rows = await db.execute_fetchall(
@@ -444,6 +593,7 @@ async def list_calendar_events(
             cs.last_done    AS last_done,
             cs.interval_days AS interval_days,
             cs.season_adjust AS season_adjust,
+            cs.rhythm_opt_out AS rhythm_opt_out,
             cs.is_ephemeral AS is_ephemeral,
             cs.notes        AS notes,
             p.name          AS plant_name,
@@ -456,7 +606,11 @@ async def list_calendar_events(
           AND cs.care_type <> 'photo'
           """ + extra_where + """
           AND (
-            (cs.is_ephemeral = 0 AND cs.next_due <= ?)
+            (cs.is_ephemeral = 0 AND (
+              (LOWER(cs.care_type) = 'water' AND cs.next_due <= ?)
+              OR
+              (LOWER(cs.care_type) <> 'water' AND cs.next_due <= ?)
+            ))
             OR
             (cs.is_ephemeral = 1 AND cs.next_due BETWEEN ? AND ?)
           )
@@ -467,7 +621,7 @@ async def list_calendar_events(
 
     # 3. Group raw schedule rows by plant for warning computation
     from collections import defaultdict
-    today_date = date.today()
+    today_date = _water_pressure_today()
 
     # Build enrichment cache from ALL raw schedules per plant. The SQL row uses
     # event-friendly aliases (`type`, `due_date`); normalize back to the shape
@@ -505,6 +659,9 @@ async def list_calendar_events(
     # 4. Build enriched events — virtual occurrences for regular, one-shot for ephemeral
     events = []
     today = today_date
+    weather_states = await weather_warning_states_for_account(
+        db, account["account_id"],
+    )
 
     for r in rows:
         pid = r["plant_id"]
@@ -525,6 +682,9 @@ async def list_calendar_events(
             # One-shot — only show if in range (already guaranteed by query)
             sp_id = plant_species_map.get(pid)
             sp = species_names.get(sp_id, {}) if sp_id else {}
+            warning_metadata = weather_task_metadata(r.get("notes"))
+            warning_id = warning_metadata.get("weather_warning_id") if warning_metadata else None
+            warning_state = weather_states.get(warning_id, {}) if warning_id else {}
             if ct == "moisture_check":
                 metadata = _moisture_metadata(r.get("notes"))
                 enrichment = {
@@ -550,6 +710,8 @@ async def list_calendar_events(
                 overdue=next_due < today,
                 **enrichment,
                 weather_triggered=bool(CARE_TYPES.get(ct, {}).get("is_weather_triggered")),
+                weather_warning_id=warning_id,
+                acknowledged_at=warning_state.get("acknowledged_at"),
             ))
         else:
             # Recurring — generate all occurrences in [from_dt, to_dt]
@@ -560,29 +722,73 @@ async def list_calendar_events(
                     r["schedule_id"], ct,
                 )
                 continue
+            occurrence_to = (
+                planning_to if rhythm_config and ct == "water" else to_dt
+            )
             occurrences = _generate_occurrences(
                 next_due,
                 interval_days,
                 r.get("season_adjust"),
                 from_dt,
-                to_dt,
+                occurrence_to,
             )
-            # Pin the real outstanding job at the start of agenda windows.
-            # Month keeps the legacy behavior unless the opt-in flag is set.
-            should_clamp = next_due < from_dt and (pin_overdue or not occurrences)
-            if should_clamp and from_dt <= to_dt and from_dt not in occurrences:
+            # A pinned agenda shows the stored outstanding job once. Future
+            # recurrences are speculative until that job is completed.
+            if rhythm_config and pin_overdue and next_due < from_dt:
+                occurrences = [next_due]
+            elif (
+                next_due < from_dt
+                and (pin_overdue or not occurrences)
+                and from_dt <= to_dt
+                and from_dt not in occurrences
+            ):
+                # Month retains the legacy fallback when no recurrence lands
+                # in the requested range.
                 occurrences.insert(0, from_dt)
             sp_id = plant_species_map.get(pid)
             sp = species_names.get(sp_id, {}) if sp_id else {}
+            routine_weekdays = (
+                effective_weekdays_for_map(
+                    rhythm_config,
+                    map_id=plant.get("map_id"),
+                    map_type=plant.get("map_type"),
+                )
+                if rhythm_config and ct == "water"
+                else []
+            )
             for i, occ in enumerate(occurrences):
+                display_date = occ
+                routine_session = False
+                routine_reason = None
+                if rhythm_config and ct == "water":
+                    projection = project_water_session(
+                        canonical_due=occ,
+                        effective_interval=calculate_effective_interval(
+                            interval_days, r.get("season_adjust"), occ,
+                        ),
+                        preferred_weekdays=routine_weekdays,
+                        opted_out=bool(r.get("rhythm_opt_out")),
+                    )
+                    display_date = projection.session_date
+                    routine_session = projection.is_routine
+                    routine_reason = projection.reason
+                if display_date < from_dt:
+                    if pin_overdue and (
+                        routine_session or occ == next_due
+                    ):
+                        display_date = from_dt
+                    else:
+                        continue
+                if display_date > to_dt:
+                    continue
                 # overdue if: occurrence is before today, or it's the clamped
                 # first occurrence of an already-overdue schedule
                 is_overdue = occ < today or (
                     i == 0 and next_due < today and occ == from_dt
                 )
                 events.append(CalendarEventOut(
-                    id=f"schedule:{r['schedule_id']}:{ct}:{i}",
-                    date=occ.isoformat(),
+                    id=f"schedule:{r['schedule_id']}:{ct}:{occ.isoformat()}",
+                    date=display_date.isoformat(),
                     type=ct,
                     plant_id=pid,
                     plant_name=r["plant_name"],
@@ -593,6 +799,9 @@ async def list_calendar_events(
                     map_name=plant.get("map_name"),
                     schedule_id=r["schedule_id"],
                     overdue=is_overdue,
+                    canonical_date=occ.isoformat(),
+                    routine_session=routine_session,
+                    routine_reason=routine_reason,
                     **enrichment,
                 ))
 
@@ -607,5 +816,14 @@ async def list_calendar_events(
             for rule in preferences["rules"]
         },
     )
+
+    if include_history:
+        events.extend(await _completion_history(
+            db,
+            household_id=account["household_id"],
+            from_dt=from_dt,
+            to_dt=to_dt,
+            env=env,
+        ))
 
     return events

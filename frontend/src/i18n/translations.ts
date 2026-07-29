@@ -386,6 +386,7 @@ export type Translations = {
     calendarGroupingSaveError: string
     calendarSubscriptionTitle: string
     calendarSubscriptionDescription: string
+    calendarSubscriptionRecommended: string
     calendarSubscriptionSecurity: string
     calendarSubscriptionEnvironment: string
     calendarSubscriptionEnvironmentAll: string
@@ -399,9 +400,16 @@ export type Translations = {
     calendarSubscriptionContextDescription: string
     calendarSubscriptionPrivacy: string
     calendarSubscriptionPrivacyDescription: string
+    calendarSubscriptionExampleLabel: string
+    calendarSubscriptionUsefulExample: string
+    calendarSubscriptionPrivateExample: string
     calendarSubscriptionCreate: string
     calendarSubscriptionRegenerate: string
+    calendarSubscriptionRegenerateWarning: string
+    calendarSubscriptionRegenerateConfirm: string
+    calendarSubscriptionManageLink: string
     calendarSubscriptionCreating: string
+    calendarSubscriptionSave: string
     calendarSubscriptionActive: string
     calendarSubscriptionSaveNow: string
     calendarSubscriptionCopy: string
@@ -431,6 +439,7 @@ export type Translations = {
     careRhythmOverride: string
     careRhythmWeekdays: [string, string, string, string, string, string, string]
     careRhythmPreviewTitle: string
+    careRhythmPreviewTiming: (canonicalDate: string, sessionDate: string) => string
     careRhythmMovedCount: (count: number) => string
     careRhythmUnchangedCount: (count: number) => string
     careRhythmExceptionCount: (count: number) => string
@@ -439,7 +448,7 @@ export type Translations = {
     careRhythmApplying: string
     careRhythmUndo: string
     careRhythmUndoing: string
-    careRhythmApplied: (count: number) => string
+    careRhythmApplied: string
     careRhythmNoSchedules: string
     careRhythmLoadError: string
     careRhythmPreviewError: string
@@ -453,6 +462,9 @@ export type Translations = {
     careRhythmReasonOptedOut: string
     careRhythmReasonNotFuture: string
     careRhythmReasonNoRoutine: string
+    careRhythmReasonRoutineProjected: string
+    careRhythmReasonRoutineAligned: string
+    careRhythmReasonTooFrequent: string
     digestTitle: string
     digestToggle: string
     digestToggleDesc: string
@@ -606,6 +618,8 @@ export type Translations = {
     ecologyForageGap: string     // "🐝 Vult drachtgat" / "🐝 Fills bee gap"
     ecologyMoth: string          // "🌙 Nachtvlinder" / "🌙 Moth plant"
     ecologyMothGap: string       // "🌙 Trekt nachtvlinders" / "🌙 Attracts moths"
+    sizeLargeForSpace: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+    altPrefix: string            // "Geen ruimte?" / "No room?"
     sunFitPerfect: string        // "Ideaal licht"
     sunFitAcceptable: string     // "Geschikt licht"
     sunFitMarginal: string       // "Krap licht"
@@ -1141,6 +1155,7 @@ export type Translations = {
     taskSingular: string  // "task"
     bloom: string  // "Bloom"
     open: string  // "Open"
+    completedHistory: string
     seasonalThisMonth: string
     seasonalScope: string
     seasonalMissing: (n: number) => string
@@ -1197,15 +1212,20 @@ export type Translations = {
     undoGroup: string  // "Undo group"
     completedGroup: string  // "Watered and aligned"
     affectedPlants: (n: number) => string  // "3 affected plants"
+    weatherAffectedSummary: (n: number, type: 'heat_protect' | 'frost_protect') => string
+    showPlants: string
+    hidePlants: string
     sessionLoad: (n: number) => string  // "3 sessions"
     wateringRoundTitle: string
     wateringRoundDescription: string
+    wateringRoundDueDate: (date: string) => string
     wateringRoundSelectAll: string
     wateringRoundSelectNone: string
     wateringRoundCancel: string
     wateringRoundConfirm: (n: number) => string
     wateringRoundSelectAtLeastOne: string
     moistureCheckTitle: string
+    moistureCheckAction: string
     moistureCheckDescription: string
     moistureCheckStillMoist: (n: number) => string
     moistureCheckWatered: (n: number) => string
@@ -1341,6 +1361,12 @@ export type Translations = {
     warningsHide: string      // "Verberg waarschuwingen"
     weatherWarningBadge: string
     weatherWarningAction: string
+    weatherGuidance: string
+    weatherGotIt: string
+    weatherHighlightPlants: string
+    weatherHidePlantMarkers: string
+    weatherSeenGuidance: string
+    weatherRestore: string
     water: string             // "Bewater" (garden watering button)
     fertilize: string         // "Bemest" (garden fertilize button)
     sun: string               // "Zon"
@@ -1440,6 +1466,25 @@ export type Translations = {
         rainwater: string // "Regenwater opvangen"
         peatFree: string  // "Turfvrij tuinieren"
       }
+      features: {
+        title: string          // "Voorzieningen"
+        hint: string           // "Schuilplaats, nestgelegenheid en water"
+        insectHotel: string    // "Insectenhotel"
+        birdHouse: string      // "Nestkast"
+        water: string          // "Water"
+        logPile: string        // "Takkenril"
+        stonePile: string      // "Steenhoop"
+        hedgehogHouse: string  // "Egelhuisje"
+        batBox: string         // "Vleermuiskast"
+        supportsLabel: string  // "Je ondersteunt"
+        missingLabel: string   // "Kansen"
+        faunaBees: string      // "solitaire bijen"
+        faunaInsects: string   // "insecten"
+        faunaBirds: string     // "vogels"
+        faunaHedgehogs: string // "egels"
+        faunaAmphibians: string // "amfibieën"
+        faunaBats: string      // "vleermuizen"
+      }
     }
     suggestions: {
       title: string        // "Verbeter je tuin"
@@ -1450,6 +1495,17 @@ export type Translations = {
       sunShade: string     // "🌿 Schaduw"
       nativeBadge: string  // "Inheems 🇳🇱" / "Native 🇳🇱"
       streekBadge: string  // "Streekeigen" / "Regional"
+      sizeBadge: string    // "🌳 Grote plant" / "🌳 Large — needs space"
+      altPrefix: string    // "Geen ruimte?" / "No room?"
+      dismiss: string      // "Niet tonen" / "Not for me"
+      dismissUndo: string  // "Ongedaan maken" / "Undo"
+      lanes: {
+        gap: string      // "Vult je bloeigat: {months}" / "Fills your bloom gap: {months}"
+        impact: string   // "Grootste impact" / "Biggest impact"
+        easy: string     // "Klein & makkelijk" / "Small & easy"
+        moth: string     // "Voor nachtvlinders" / "For night moths"
+        more: string     // "Meer opties" / "More options"
+      }
     }
     streek: {
       sectionTitle: string          // "Planten uit jouw streek"
@@ -1680,6 +1736,9 @@ export type Translations = {
     journalNotes: string       // "Notes" / "Notities"
     journalLocation: string    // "Photo location" / "Fotolocatie"
     journalOpenMap: string     // "Open map" / "Open kaart"
+    journalAddLocation: string
+    journalAddingLocation: string
+    journalLocationError: string
     saveError: string          // "Opslaan mislukt, probeer opnieuw"
     noPlantData: string        // "Geen plantdata beschikbaar."
     back: string               // "Terug"

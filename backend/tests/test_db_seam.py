@@ -219,15 +219,6 @@ def test_archive_plant(client):
     assert resp2.status_code == 404
 
 
-def test_dashboard_empty(client):
-    """GET /api/dashboard with no data returns empty buckets."""
-    resp = client.get("/api/dashboard")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["overdue"] == []
-    assert data["due_today"] == []
-    assert data["upcoming"] == []
-
 
 # ── Auth helpers ──
 

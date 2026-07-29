@@ -4,6 +4,7 @@ import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import { species as speciesApi, plants as plantsApi, discoveries } from '../api/client'
 import { resolveIconUrl } from '../utils/icons'
+import { captureDiscoveryLocation } from '../utils/discoveryLocation'
 import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
 
@@ -60,6 +61,7 @@ export default function DiscoveryCard() {
     lat: state?.location_lat,
     lon: state?.location_lon,
   })
+  const [locationPending, setLocationPending] = useState(false)
 
   // Optimistic flow: the identify page navigated here immediately; run the
   // commit (species link, localized name, photo upload) and the geolocation
@@ -68,18 +70,18 @@ export default function DiscoveryCard() {
     if (!state?.pendingCommit || !state.candidate.scientific_name) return
     let cancelled = false
     if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { if (!cancelled) setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude }) },
-        () => { /* denied or unavailable — save without location */ },
-        { timeout: 5000, maximumAge: 60000 },
-      )
+      setLocationPending(true)
+      void captureDiscoveryLocation(navigator.geolocation).then((location) => {
+        if (cancelled) return
+        if (location) setGeo(location)
+        setLocationPending(false)
+      })
     }
     plantsApi.commitIdentify(state.candidate.scientific_name, state.thumbnail, activeLang)
       .then((r) => { if (!cancelled) setCommitResult(r) })
       .catch(() => { /* species not found / offline: candidate data still works */ })
       .finally(() => { if (!cancelled) setCommitting(false) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const candidate = { ...state?.candidate, ...(commitResult ?? {}) }
@@ -329,16 +331,16 @@ export default function DiscoveryCard() {
       <div style={{ margin: '24px 20px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <button
           onClick={handleSave}
-          disabled={saving || !!savedId || committing}
+          disabled={saving || !!savedId || committing || locationPending}
           style={{
             padding: '14px 24px', borderRadius: 12, border: '2px solid var(--color-primary)',
             background: savedId ? 'var(--color-primary)' : 'transparent',
             color: savedId ? '#fff' : 'var(--color-primary)',
             fontSize: 15, fontWeight: 600, cursor: savedId ? 'default' : 'pointer',
-            opacity: saving || committing ? 0.6 : 1,
+            opacity: saving || committing || locationPending ? 0.6 : 1,
           }}
         >
-          {savedId ? t.discovery.savedToJournal : (saving || committing) ? '...' : t.discovery.saveToJournal}
+          {savedId ? t.discovery.savedToJournal : (saving || committing || locationPending) ? '...' : t.discovery.saveToJournal}
         </button>
         {saveError && (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-overdue)', textAlign: 'center' }}>

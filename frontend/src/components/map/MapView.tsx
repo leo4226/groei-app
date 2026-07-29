@@ -60,6 +60,7 @@ interface Props {
   onFixedPlantTap?: (plant: FixedPlant) => void
   labelMode?: LabelMode
   showWarnings?: boolean
+  highlightedWeatherPlantIds?: ReadonlySet<number>
   /** Hide padlock badges on locked plants (public demo garden). */
   hideLockBadges?: boolean
   sunModeActive?: boolean
@@ -88,7 +89,7 @@ interface Props {
   gardenViewBox?: string
 }
 
-export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, hideLockBadges = false, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
+export default function MapView({ map, plants, objects, onPlantTap, onObjectTap, onMapTap, onPositionUpdate, onOpenDetails, onRemoveItem, onFixedPlantTap, labelMode = 'smart', showWarnings = true, highlightedWeatherPlantIds, hideLockBadges = false, sunModeActive, shadows, sunPosition, heatmapCells, heatmapCalculating, heatmapLayer = 'sun_hours', heatmapProfile, onHeatmapCellTap, debugOverlay, moveMode = false, movePlantId = null, onPlantMoveComplete, onPlantUpdated, placingPlantId = null, onPlacementTap, secondaryMarkers = EMPTY_SECONDARY_MARKERS, onSecondaryMarkerTap, gardenPerimeter, gardenBounds, gardenViewBox }: Props) {
   const svgRef = useRef<SVGSVGElement>(null) as React.RefObject<SVGSVGElement>
   const t = useT()
   // Object labels (containers/pots) follow the same on/off split as plant
@@ -680,6 +681,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             hoveredContainerId={hoveredContainerId}
             showLabels={showLabels}
             showWarnings={showWarnings}
+            highlightedWeatherPlantIds={highlightedWeatherPlantIds}
             heatmapCells={heatmapCells}
             dragPositions={dragPositions}
           />
@@ -694,6 +696,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
             movePlantId={movePlantId}
             labelMode={labelMode}
             showWarnings={showWarnings}
+            highlightedWeatherPlantIds={highlightedWeatherPlantIds}
             hideLockBadges={hideLockBadges}
             zoom={zoom}
             onPointerDown={handlePlantPointerDown}

@@ -50,7 +50,7 @@ function makePreview(hash: string): CareRhythmPreview {
         new_date: '2026-07-20',
         movement_days: -1,
         status: 'moved' as const,
-        reason: 'moved_earlier',
+        reason: 'routine',
       },
       {
         schedule_id: 11,
@@ -66,7 +66,7 @@ function makePreview(hash: string): CareRhythmPreview {
         new_date: '2026-07-22',
         movement_days: 0,
         status: 'exception' as const,
-        reason: 'outside_window',
+        reason: 'too_frequent',
       },
     ],
     groups: [
@@ -117,7 +117,7 @@ describe('CareRhythmSettings', () => {
     }))
     vi.mocked(careRhythm.apply).mockResolvedValue({
       operation_id: 9,
-      affected_count: 1,
+      affected_count: 0,
       preview_hash: 'hash-3',
       summary: { total: 2, moved: 1, unchanged: 0, exceptions: 1, group_count: 1 },
     })
@@ -150,9 +150,12 @@ describe('CareRhythmSettings', () => {
       await flush()
     })
     expect(careRhythm.preview).toHaveBeenCalledWith(settings.config)
-    expect(container.textContent).toContain('1 moved')
-    expect(container.textContent).toContain('1 exception')
+    expect(container.textContent).toContain('1 planned earlier')
+    expect(container.textContent).toContain('1 exact schedule')
     expect(container.textContent).toContain('Rose')
+    expect(container.textContent).toContain('Routine visit before the deadline')
+    expect(container.textContent).toContain('Needs care more often; stays exact')
+    expect(container.textContent).toContain('Due 21-07-2026 · visit 20-07-2026')
 
     const outdoor = container.querySelector('[data-care-rhythm-environment="outdoor"]') as HTMLElement
     await act(async () => {
@@ -177,7 +180,7 @@ describe('CareRhythmSettings', () => {
     })
 
     await act(async () => {
-      buttonWithText(container, 'Apply rhythm').click()
+      buttonWithText(container, 'Save routine').click()
       await flush()
     })
     expect(careRhythm.apply).toHaveBeenCalledWith(expect.objectContaining({
@@ -187,7 +190,7 @@ describe('CareRhythmSettings', () => {
         map_overrides: [{ map_id: 1, weekdays: [1, 3] }],
       },
     }))
-    expect(container.textContent).toContain('Rhythm applied to 1 schedule')
+    expect(container.textContent).toContain('Routine saved')
     expect(rhythmChangedCount).toBe(1)
 
     await act(async () => {
@@ -221,7 +224,7 @@ describe('CareRhythmSettings', () => {
       await flush()
     })
     await act(async () => {
-      buttonWithText(container, 'Apply rhythm').click()
+      buttonWithText(container, 'Save routine').click()
       await flush()
     })
     await act(async () => {
@@ -229,7 +232,9 @@ describe('CareRhythmSettings', () => {
     })
 
     expect(careRhythm.preview).toHaveBeenCalledTimes(2)
-    expect(container.textContent).toContain('The schedules changed. Review the refreshed preview.')
+    expect(container.textContent).toContain(
+      'The Water schedules changed. Review the refreshed session preview.',
+    )
   })
 
   it('explains an empty routine and disables map overrides until a day is selected', async () => {
@@ -267,7 +272,7 @@ describe('CareRhythmSettings', () => {
         new_date: '2026-07-20',
         movement_days: 0,
         status: 'unchanged',
-        reason: 'aligned',
+        reason: 'routine',
       },
       {
         ...preview.items[1],
@@ -285,8 +290,8 @@ describe('CareRhythmSettings', () => {
       await flush()
     })
 
-    expect(container.textContent).toContain('Already on a preferred day')
-    expect(container.textContent).toContain('No routine selected')
+    expect(container.textContent).toContain('Already on this routine day')
+    expect(container.textContent).toContain('No routine day for this space')
   })
 
   it('renders the aligned reason in Dutch', async () => {
@@ -298,7 +303,7 @@ describe('CareRhythmSettings', () => {
       new_date: '2026-07-20',
       movement_days: 0,
       status: 'unchanged',
-      reason: 'aligned',
+      reason: 'routine',
     }]
     vi.mocked(careRhythm.preview).mockResolvedValue(preview)
 
@@ -308,6 +313,6 @@ describe('CareRhythmSettings', () => {
       await flush()
     })
 
-    expect(container.textContent).toContain('Valt al op een voorkeursdag')
+    expect(container.textContent).toContain('Valt al op deze rondedag')
   })
 })

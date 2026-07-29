@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { User, Location, Plant, DashboardV2Data, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut } from '../types'
-import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, dashboard as dashboardApi, icons as iconsApi } from '../api/client'
+import type { User, Location, Plant, RecentLogEntry, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut, WeatherWarningGroupOut } from '../types'
+import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi, weatherWarnings as weatherWarningsApi } from '../api/client'
 import type { PageContext } from '../api/chat'
 
 interface FlorerStore {
@@ -8,7 +8,7 @@ interface FlorerStore {
   locations: Location[]
   maps: MapInfo[]
   plants: Plant[]
-  dashboardV2: DashboardV2Data | null
+  recentLog: RecentLogEntry[]
   warningSummary: WarningSummaryOut | null
   plantFact: PlantFactOut | null
   assistantPageContext: Partial<PageContext> | null
@@ -29,8 +29,10 @@ interface FlorerStore {
   refreshAll: () => Promise<void>
   loadMaps: () => Promise<void>
   resetForNewSession: () => void
-  loadDashboardV2: () => Promise<void>
+  loadRecentLog: () => Promise<void>
   loadWarningSummary: (env?: string) => Promise<void>
+  acknowledgeWeatherWarning: (warning: WeatherWarningGroupOut) => Promise<void>
+  restoreWeatherWarning: (warningId: string) => Promise<void>
   loadPlants: () => Promise<void>
   loadPlantFact: () => Promise<void>
   addPlant: (data: PlantCreateInput) => Promise<Plant>
@@ -57,24 +59,13 @@ function getSavedUserId(): number | null {
   return saved ? parseInt(saved, 10) : null
 }
 
-function _removeTask(dashboard: DashboardV2Data | null, plantId: number, careType: string): DashboardV2Data | null {
-  if (!dashboard) return null
-  const remove = (tasks: DashboardV2Data['overdue']) =>
-    tasks.filter(t => !(t.plant_id === plantId && t.care_type === careType))
-  return {
-    ...dashboard,
-    overdue: remove(dashboard.overdue),
-    due_today: remove(dashboard.due_today),
-    upcoming: remove(dashboard.upcoming),
-  }
-}
 
 export const useFloreren = create<FlorerStore>((set, get) => ({
   users: [],
   locations: [],
   maps: [],
   plants: [],
-  dashboardV2: null,
+  recentLog: [],
   warningSummary: null,
   plantFact: null,
   assistantPageContext: null,
@@ -92,7 +83,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   resetForNewSession: () => set({
     hasLoaded: false, isLoading: false, error: null,
     plants: [], maps: [], users: [], locations: [],
-    dashboardV2: null, warningSummary: null, plantFact: null,
+    recentLog: [], warningSummary: null, plantFact: null,
   }),
 
   load: async () => {
@@ -128,7 +119,7 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     await Promise.allSettled([
       get().loadPlants(),
       get().loadMaps(),
-      get().loadDashboardV2(),
+      get().loadRecentLog(),
       get().loadWarningSummary(),
     ])
   },
@@ -143,10 +134,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     }
   },
 
-  loadDashboardV2: async () => {
+  loadRecentLog: async () => {
     try {
-      const dashboardV2 = await dashboardApi.v2()
-      set({ dashboardV2 })
+      const recentLog = await careApi.householdLog(5)
+      set({ recentLog })
     } catch (e) {
       set({ error: (e as Error).message })
     }
@@ -159,6 +150,16 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     } catch (e) {
       set({ error: (e as Error).message })
     }
+  },
+
+  acknowledgeWeatherWarning: async (warning) => {
+    await weatherWarningsApi.acknowledge(warning)
+    await get().loadWarningSummary()
+  },
+
+  restoreWeatherWarning: async (warningId) => {
+    await weatherWarningsApi.restore(warningId)
+    await get().loadWarningSummary()
   },
 
   loadPlants: async () => {
@@ -209,11 +210,11 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
       plants: s.plants.map((p) =>
         p.id === plantId ? { ...p, care_status: 'good' as const, most_urgent: undefined } : p,
       ),
-      dashboardV2: _removeTask(s.dashboardV2, plantId, careType),
+
       careVersions: { ...s.careVersions, [plantId]: (s.careVersions[plantId] ?? 0) + 1 },
     }))
     // Refetch to get correct status_counts and warning summary
-    get().loadDashboardV2()
+    get().loadRecentLog()
     get().loadWarningSummary()
     return {
       care_log_id: result.care_log_id,
@@ -228,10 +229,10 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     if (!userId) throw new Error('No active user')
     await careApi.skip(plantId, careType, userId)
     set((s) => ({
-      dashboardV2: _removeTask(s.dashboardV2, plantId, careType),
+
       careVersions: { ...s.careVersions, [plantId]: (s.careVersions[plantId] ?? 0) + 1 },
     }))
-    get().loadDashboardV2()
+    get().loadRecentLog()
     get().loadWarningSummary()
   },
 

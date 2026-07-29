@@ -110,6 +110,7 @@ function EcologyBadges({ rec, t, locale }: { rec: PlantRecommendation; t: Transl
   else if ((rec.pollinator_value ?? 0) === 2) badges.push({ label: t.ecologyPollinatorGood, cls: 'bg-amber-400/10 text-amber-600' })
   if (rec.supports_moth_gap) badges.push({ label: t.ecologyMothGap, cls: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' })
   else if (rec.is_moth_plant) badges.push({ label: t.ecologyMoth, cls: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' })
+  if (rec.size_fit === 'large_for_space') badges.push({ label: t.sizeLargeForSpace, cls: 'bg-orange-500/15 text-orange-700 dark:text-orange-400' })
   const fitBadge: Record<string, { label: string; cls: string }> = {
     perfect:    { label: t.sunFitPerfect,    cls: 'bg-primary/10 text-primary' },
     acceptable: { label: t.sunFitAcceptable, cls: 'bg-good/10 text-good' },
@@ -165,7 +166,25 @@ function RecommendationCard({
       {rec.caveat && (
         <p className="text-xs text-amber-500/80 leading-relaxed"><Glyph name="alert" size={12} className="inline-block align-[-1px] mr-1" />{rec.caveat}</p>
       )}
+      <AlternativesLine rec={rec} t={t} locale={locale} />
     </div>
+  )
+}
+
+/** "Geen ruimte? Zelfde functie: …" — smaller same-function swaps for an
+ * oversized pick. Renders nothing unless the backend attached alternatives. */
+function AlternativesLine({ rec, t, locale }: { rec: PlantRecommendation; t: Translations['growHere']; locale: string }) {
+  const alt = rec.alternatives
+  if (!alt || !alt.picks || alt.picks.length === 0) return null
+  const en = locale.startsWith('en')
+  const fn = (en ? alt.function_en : alt.function_nl) || ''
+  const swaps = alt.picks.map(p => p.dutch_name).join(' · ')
+  return (
+    <p className="text-[11px] leading-relaxed text-text-muted border-t border-border/40 pt-1.5">
+      <span className="text-amber-600 dark:text-amber-400 font-medium">{t.altPrefix}</span>{' '}
+      {fn && <span className="italic">({fn}) </span>}
+      <span className="text-text">{swaps}</span>
+    </p>
   )
 }
 

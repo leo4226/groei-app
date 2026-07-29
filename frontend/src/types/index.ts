@@ -77,26 +77,7 @@ export interface CareLogEntry {
   water_amount: number | null
 }
 
-export interface CareTask {
-  plant_id: number
-  plant_name: string
-  plant_photo: string | null
-  location: string | null
-  map_type: string | null
-  care_type: string
-  days_overdue: number
-  last_done_by: string | null
-  last_done_at: string | null
-  schedule_id: number
-  is_ephemeral: boolean
-}
 
-export interface StatusCounts {
-  total: number
-  on_schedule: number
-  thirsty: number
-  dry: number
-}
 
 export interface RecentLogEntry {
   id: number
@@ -108,14 +89,6 @@ export interface RecentLogEntry {
   notes: string | null
 }
 
-export interface DashboardV2Data {
-  overdue: CareTask[]
-  due_today: CareTask[]
-  upcoming: CareTask[]
-  status_counts: StatusCounts
-  recent_log: RecentLogEntry[]
-  plant_fact: PlantFactOut | null
-}
 
 export type CareType = 'water' | 'fertilize' | 'mist' | 'rotate' | 'repot' | 'prune' | 'pest_check' | 'dust' | 'frost_protect' | 'heat_protect' | 'photo'
 
@@ -504,6 +477,7 @@ export interface CareWarningOut {
   action_en?: string | null
   weather_metric?: string | null
   weather_value_c?: number | null
+  forecast_date?: string | null
   forecast_day_label_nl?: string | null
   forecast_day_label_en?: string | null
 }
@@ -555,11 +529,20 @@ export interface WarningBucketsOut {
   komende_week: BucketPlantOut[]
 }
 
+export interface WeatherWarningGroupOut extends CareWarningOut {
+  warning_id: string
+  forecast_date: string
+  acknowledged_at: string | null
+  affected_plant_ids: number[]
+  map_names: string[]
+}
+
 export interface WarningSummaryOut {
   total_plants: number
   on_schedule: number
   kpis: CareTypeKPIOut[]
   buckets: WarningBucketsOut
+  weather_warnings: WeatherWarningGroupOut[]
 }
 
 // ── Plant identification (Pl@ntNet) ──
@@ -669,6 +652,16 @@ export type PlantRecommendation = {
   fills_forage_gap?: boolean           // a drachtplant blooming in a bee forage-gap month
   is_moth_plant?: boolean              // night-flowering / moth-forage (nachtvlinder)
   supports_moth_gap?: boolean          // moth plant in a garden that has none yet
+  habit?: string | null                // tree|large_shrub|shrub|climber|perennial|grass|groundcover|bulb|annual
+  mature_height_cm?: number | null
+  size_fit?: 'fits' | 'large_for_space' | 'unknown'  // vs garden area
+  alternatives?: PlantAlternatives | null   // smaller same-function swaps when oversized
+}
+
+export type PlantAlternatives = {
+  function_nl?: string
+  function_en?: string
+  picks?: { dutch_name: string; latin_name: string; note_nl?: string; note_en?: string }[]
 }
 
 export type StreekSuggestionsOut = {
@@ -743,6 +736,22 @@ export type GardenBiodiversityOut = {
     ground_cover_examples?: string[]
   }
   circularity?: CircularityFlags
+  features?: GardenFeaturesOut
+}
+
+export type GardenFeatureType =
+  | 'insect_hotel' | 'bird_house' | 'water' | 'log_pile'
+  | 'stone_pile' | 'hedgehog_house' | 'bat_box'
+
+export type FaunaGroup =
+  | 'solitary_bees' | 'insects' | 'birds' | 'hedgehogs' | 'amphibians' | 'bats'
+
+export type GardenFeaturesOut = {
+  counts?: Partial<Record<GardenFeatureType, number>>
+  total?: number
+  distinct?: number
+  supported_groups?: FaunaGroup[]
+  missing?: GardenFeatureType[]
 }
 
 export type CircularityFlags = {

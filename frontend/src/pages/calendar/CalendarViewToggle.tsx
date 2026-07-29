@@ -3,20 +3,21 @@ import type { CalendarViewMode } from './calendarViewModel'
 
 interface Props {
   view: CalendarViewMode
+  availableModes: readonly CalendarViewMode[]
   onSet(view: CalendarViewMode): void
 }
 
-export default function CalendarViewToggle({ view, onSet }: Props) {
+export default function CalendarViewToggle({ view, availableModes, onSet }: Props) {
   const t = useT()
-  const options: Array<[CalendarViewMode, string]> = [
-    ['month', t.calendar.month],
-    ['work', t.calendar.agenda],
-    ['year', t.calendar.gardenYear],
-  ]
+  const labels: Record<CalendarViewMode, string> = {
+    month: t.calendar.month,
+    work: t.calendar.agenda,
+    year: t.calendar.gardenYear,
+  }
 
   return (
     <div className="view-toggle" role="group" aria-label={t.calendar.heading}>
-      {options.map(([id, label]) => (
+      {availableModes.map((id) => (
         <button
           key={id}
           type="button"
@@ -24,7 +25,7 @@ export default function CalendarViewToggle({ view, onSet }: Props) {
           aria-pressed={view === id}
           onClick={() => onSet(id)}
         >
-          {label}
+          {labels[id]}
         </button>
       ))}
     </div>

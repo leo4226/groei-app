@@ -4,6 +4,7 @@ import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
 import { buildDiscoveryJournalEntry, discoveryDisplayName, discoveryFunFact } from '../../utils/discoveryJournal'
+import { captureDiscoveryLocation } from '../../utils/discoveryLocation'
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
 import type { EcologyOut } from '../../types'
 import ExpeditionMap from './ExpeditionMap'
@@ -121,6 +122,8 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesDraft, setNotesDraft] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
+  const [locationCapturing, setLocationCapturing] = useState(false)
+  const [locationError, setLocationError] = useState(false)
 
   // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh. Only
   // the initial run shows the loading state; refreshes swap data in place.
@@ -219,12 +222,13 @@ export default function DiscoveriesSection({ onStats }: Props) {
       })
       .catch(() => {})
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId])
 
   function openEntry(id: number) {
     setSelectedId(id)
     setEditingNotes(false)
+    setLocationCapturing(false)
+    setLocationError(false)
   }
 
   function handleMapSelect(ids: number[]) {
@@ -287,6 +291,24 @@ export default function DiscoveriesSection({ onStats }: Props) {
       // keep the editor open so the text isn't lost
     } finally {
       setNotesSaving(false)
+    }
+  }
+
+  async function handleCaptureLocation(item: PlantDiscovery) {
+    setLocationCapturing(true)
+    setLocationError(false)
+    try {
+      const location = await captureDiscoveryLocation()
+      if (!location) {
+        setLocationError(true)
+        return
+      }
+      const updated = await discoveriesApi.updateLocation(item.id, location)
+      setItems(prev => prev.map(d => d.id === item.id ? updated : d))
+    } catch {
+      setLocationError(true)
+    } finally {
+      setLocationCapturing(false)
     }
   }
 
@@ -502,7 +524,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                     </span>
                   )}
                 </div>
-                {entry.location && (
+                {entry.location ? (
                   <div className="border-t border-dashed border-border">
                     <ExpeditionMap
                       entries={[{ id: selected.id, lat: entry.location.lat, lon: entry.location.lon, index: nr ?? 1 }]}
@@ -515,6 +537,24 @@ export default function DiscoveriesSection({ onStats }: Props) {
                     >
                       {placeLabel(selected) ? `${placeLabel(selected)} · ` : ''}{formatCoords(entry.location.lat, entry.location.lon, isEN)} → {t.discovery.journalOpenMap}
                     </a>
+                  </div>
+                ) : (
+                  <div className="border-t border-dashed border-border px-4 py-4">
+                    <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+                      {t.discovery.journalLocation}
+                    </p>
+                    <button
+                      onClick={() => void handleCaptureLocation(selected)}
+                      disabled={locationCapturing}
+                      className="cursor-pointer rounded-full border border-primary/35 bg-primary/8 px-3 py-1.5 text-xs font-semibold text-primary disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {locationCapturing ? t.discovery.journalAddingLocation : t.discovery.journalAddLocation}
+                    </button>
+                    {locationError && (
+                      <p role="alert" className="mb-0 mt-2 text-xs leading-snug text-overdue">
+                        {t.discovery.journalLocationError}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -529,7 +569,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                   <button
                     onClick={() => setSelectedId(null)}
                     className="cursor-pointer border-none bg-transparent text-2xl leading-none text-text-muted"
-                    aria-label="Sluiten"
+                    aria-label={t.common.cancel}
                   >
                     ×
                   </button>
@@ -616,7 +656,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                   <button
                     onClick={(e) => stopAction(e, () => void handleDelete(selected.id))}
                     className="cursor-pointer rounded-full border border-overdue/25 bg-transparent px-4 py-2.5 text-sm text-overdue/70 hover:bg-overdue/5"
-                    aria-label="Verwijder"
+                    aria-label={t.common.delete}
                   >
                     ×
                   </button>

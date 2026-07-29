@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import CalendarMasthead from './CalendarMasthead'
-import CalendarLegend from './CalendarLegend'
 import CalendarGrid from './CalendarGrid'
 import CalendarAgendaCard from './CalendarAgendaCard'
 import MobileAgendaList from './MobileAgendaList'
@@ -14,12 +13,12 @@ import MoistureCheckDialog from './MoistureCheckDialog'
 import { useCalendarEvents } from './useCalendarEvents'
 import { useCalendarActions } from './useCalendarActions'
 import { useIsNarrow } from './useIsNarrow'
-import { EVENT_TYPES, type EventTypeId } from './calendarTypes'
 import { isoDate } from './dateUtils'
 import { moveCalendarMonth, summarizeMonthWorkload } from './monthWorkloadModel'
 import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
 import type { CalendarViewMode } from './calendarViewModel'
 import { useFloreren } from '../../store/useFloreren'
+import { buildCalendarPresentation } from './calendarWeatherAdvisoryModel'
 
 interface Props {
   onSetView(v: CalendarViewMode): void
@@ -39,9 +38,7 @@ export default function MonthView({
   const todayIso = isoDate(now)
   const showingCurrentMonth = year === now.getFullYear() && month1 === now.getMonth() + 1
   const [selectedIso, setSelectedIso] = useState(todayIso)
-  const [activeTypes, setActiveTypes] = useState<Set<EventTypeId>>(
-    () => new Set(EVENT_TYPES.map(t => t.id)),
-  )
+
   const maps = useFloreren(state => state.maps)
   const plants = useFloreren(state => state.plants)
   const mapSlugs = useMemo(
@@ -74,17 +71,22 @@ export default function MonthView({
 
   const isNarrow = useIsNarrow(1200)
 
-  const visibleEvents = useMemo(
-    () => events.filter(e => activeTypes.has(e.type)),
-    [events, activeTypes],
-  )
+  const presentation = useMemo(() => buildCalendarPresentation(events), [events])
   const agendaEvents = useMemo(
-    () => visibleEvents.filter(e => !doneIds.has(e.id)),
-    [visibleEvents, doneIds],
+    () => presentation.ordinaryEvents.filter(e => e.status !== 'completed' && !doneIds.has(e.id)),
+    [presentation.ordinaryEvents, doneIds],
   )
   const selectedEvents = useMemo(
     () => agendaEvents.filter(e => e.date === selectedIso),
     [agendaEvents, selectedIso],
+  )
+  const selectedCompletedEvents = useMemo(
+    () => presentation.ordinaryEvents.filter(e => e.status === 'completed' && e.date === selectedIso),
+    [presentation.ordinaryEvents, selectedIso],
+  )
+  const selectedWeatherAdvisories = useMemo(
+    () => presentation.weatherAdvisories.filter(advisory => advisory.date === selectedIso),
+    [presentation.weatherAdvisories, selectedIso],
   )
   const workload = useMemo(() => summarizeMonthWorkload(agendaEvents), [agendaEvents])
 
@@ -95,14 +97,6 @@ export default function MonthView({
   }
   function prev() { moveMonth(-1) }
   function next() { moveMonth(1) }
-  function toggle(id: EventTypeId) {
-    setActiveTypes(curr => {
-      const n = new Set(curr)
-      if (n.has(id)) n.delete(id); else n.add(id)
-      return n
-    })
-  }
-
   return (
     <>
       <CalendarMasthead
@@ -117,7 +111,6 @@ export default function MonthView({
       ) : (
         <>
           <CalendarRefreshNotice error={refreshError} onRetry={retry} />
-          <CalendarLegend events={events} activeTypes={activeTypes} onToggle={toggle} />
           <CalendarCompletionNotice
             completion={completion}
             mapSlugs={mapSlugs}
@@ -131,7 +124,7 @@ export default function MonthView({
           {isNarrow ? (
             <>
               <MobileAgendaList
-                events={agendaEvents}
+                events={events.filter(e => !doneIds.has(e.id))}
                 todayIso={todayIso}
                 saving={saving}
                 onDone={handleDone}
@@ -140,6 +133,7 @@ export default function MonthView({
                 onGardenUndo={handleGardenUndo}
                 actionError={actionError}
                 mapSlugs={mapSlugs}
+                onWeatherChanged={retry}
               />
               <div className="seasonal-mobile-wrap">
                 {showingCurrentMonth && <WaterOutlookPanel env={env} />}
@@ -154,14 +148,15 @@ export default function MonthView({
             <main>
               <CalendarGrid
                 year={year} month1={month1}
-                events={visibleEvents}
+                events={presentation.ordinaryEvents}
+                weatherAdvisories={presentation.weatherAdvisories}
                 loadByDate={workload.byDate}
                 todayIso={todayIso}
                 selectedIso={selectedIso}
                 onSelect={setSelectedIso}
               />
               <aside className="col-side">
-                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} completedEvents={selectedCompletedEvents} weatherAdvisories={selectedWeatherAdvisories} onWeatherChanged={retry} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
                 {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <MonthSeasonalPanel
                   month1={month1}

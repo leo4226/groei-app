@@ -21,12 +21,15 @@ const CARE_TYPES: readonly CalendarGroupingCareType[] = [
   'dust',
 ]
 
+const PRIMARY_BUTTON_CLASS = 'inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50'
+const SECONDARY_BUTTON_CLASS = 'inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text transition-colors hover:border-primary/50 disabled:opacity-50'
+
 const DEFAULT_CONFIG: CalendarSubscriptionConfig = {
   environment: 'all',
   map_ids: [],
   care_types: [],
   include_context: false,
-  privacy: true,
+  privacy: false,
 }
 
 export default function CalendarSubscriptionSettings() {
@@ -36,9 +39,10 @@ export default function CalendarSubscriptionSettings() {
   const [maps, setMaps] = useState<CalendarGroupingMap[]>([])
   const [created, setCreated] = useState<CalendarSubscriptionCreated | null>(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState<'create' | 'revoke' | 'download' | null>(null)
+  const [busy, setBusy] = useState<'create' | 'save' | 'regenerate' | 'revoke' | 'download' | null>(null)
   const [error, setError] = useState<'load' | 'action' | null>(null)
   const [copied, setCopied] = useState(false)
+  const [confirmingRegeneration, setConfirmingRegeneration] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -93,8 +97,8 @@ export default function CalendarSubscriptionSettings() {
     }))
   }
 
-  async function createSubscription() {
-    setBusy('create')
+  async function createSubscription(mode: 'create' | 'regenerate' = 'create') {
+    setBusy(mode)
     setError(null)
     setCopied(false)
     try {
@@ -102,6 +106,21 @@ export default function CalendarSubscriptionSettings() {
       setCreated(result)
       setConfig(result.config)
       setActive(true)
+      setConfirmingRegeneration(false)
+    } catch {
+      setError('action')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function saveSubscription() {
+    setBusy('save')
+    setError(null)
+    try {
+      const result = await calendarSubscription.update(config)
+      if (result.config) setConfig(result.config)
+      setActive(result.active)
     } catch {
       setError('action')
     } finally {
@@ -173,12 +192,17 @@ export default function CalendarSubscriptionSettings() {
             {t.settings.calendarSubscriptionDescription}
           </p>
         </div>
-        {active && (
-          <span className="inline-flex self-start items-center gap-1.5 text-xs font-medium text-primary">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-            {t.settings.calendarSubscriptionActive}
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+            {t.settings.calendarSubscriptionRecommended}
           </span>
-        )}
+          {active && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+              {t.settings.calendarSubscriptionActive}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-relaxed text-text-soft" role="note">
@@ -287,6 +311,17 @@ export default function CalendarSubscriptionSettings() {
             </label>
           </div>
 
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">
+              {t.settings.calendarSubscriptionExampleLabel}
+            </p>
+            <p className="mt-1 font-heading text-base font-semibold text-text">
+              {config.privacy
+                ? t.settings.calendarSubscriptionPrivateExample
+                : t.settings.calendarSubscriptionUsefulExample}
+            </p>
+          </div>
+
           {created && (
             <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3">
               <p className="text-xs font-semibold text-primary">{t.settings.calendarSubscriptionSaveNow}</p>
@@ -297,7 +332,7 @@ export default function CalendarSubscriptionSettings() {
                   aria-label={t.settings.calendarSubscriptionCopy}
                   className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 font-mono text-xs text-text"
                 />
-                <button type="button" className="btn-secondary min-h-11" onClick={() => void copyLink()}>
+                <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => void copyLink()}>
                   {copied ? t.settings.calendarSubscriptionCopied : t.settings.calendarSubscriptionCopy}
                 </button>
               </div>
@@ -308,35 +343,84 @@ export default function CalendarSubscriptionSettings() {
             <button
               type="button"
               disabled={busy !== null}
-              className="btn-primary min-h-11"
-              onClick={() => void createSubscription()}
+              className={`${PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+              onClick={() => void (active ? saveSubscription() : createSubscription())}
             >
               {busy === 'create'
                 ? t.settings.calendarSubscriptionCreating
-                : active
-                  ? t.settings.calendarSubscriptionRegenerate
-                  : t.settings.calendarSubscriptionCreate}
+                : busy === 'save'
+                  ? t.common.saving
+                  : active
+                    ? t.settings.calendarSubscriptionSave
+                    : t.settings.calendarSubscriptionCreate}
             </button>
+          </div>
+
+          {active && (
+            <details className="rounded-2xl border border-border bg-paper px-3 py-2.5">
+              <summary className="cursor-pointer text-sm font-semibold text-text-soft">
+                {t.settings.calendarSubscriptionManageLink}
+              </summary>
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  className={SECONDARY_BUTTON_CLASS}
+                  onClick={() => setConfirmingRegeneration(true)}
+                >
+                  {t.settings.calendarSubscriptionRegenerate}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  className="min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/20"
+                  onClick={() => void revokeSubscription()}
+                >
+                  {t.settings.calendarSubscriptionRevoke}
+                </button>
+              </div>
+            </details>
+          )}
+          {confirmingRegeneration && (
+            <div className="rounded-2xl border border-red-400/30 bg-red-50 p-3 dark:bg-red-950/20" role="alert">
+              <p className="text-xs leading-relaxed text-red-800 dark:text-red-200">
+                {t.settings.calendarSubscriptionRegenerateWarning}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  className={`${PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+                  onClick={() => void createSubscription('regenerate')}
+                >
+                  {busy === 'regenerate'
+                    ? t.settings.calendarSubscriptionCreating
+                    : t.settings.calendarSubscriptionRegenerateConfirm}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  className={SECONDARY_BUTTON_CLASS}
+                  onClick={() => setConfirmingRegeneration(false)}
+                >
+                  {t.common.cancel}
+                </button>
+              </div>
+            </div>
+          )}
+          <details className="rounded-2xl border border-border bg-paper px-3 py-2.5">
+            <summary className="cursor-pointer text-sm font-semibold text-text-soft">
+              {t.settings.calendarSubscriptionDownloadDescription}
+            </summary>
             <button
               type="button"
               disabled={busy !== null}
-              className="btn-secondary min-h-11"
+              className={`${SECONDARY_BUTTON_CLASS} mt-3`}
               onClick={() => void downloadSnapshot()}
             >
               {t.settings.calendarSubscriptionDownload}
             </button>
-            {active && (
-              <button
-                type="button"
-                disabled={busy !== null}
-                className="min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/20"
-                onClick={() => void revokeSubscription()}
-              >
-                {t.settings.calendarSubscriptionRevoke}
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-text-muted">{t.settings.calendarSubscriptionDownloadDescription}</p>
+          </details>
 
           <div className="rounded-2xl border border-border bg-paper p-3">
             <div className="flex flex-wrap gap-x-4 gap-y-1 font-heading text-sm font-semibold text-text">

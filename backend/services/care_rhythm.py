@@ -1,8 +1,4 @@
-"""Deterministic Water Care-rhythm planning.
-
-This module keeps convenience alignment separate from care completion and weather.
-The initial safety policy may move a due date exactly one day earlier, never later.
-"""
+"""Deterministic Water Care-rhythm preference and session planning."""
 import hashlib
 import json
 from datetime import date, timedelta
@@ -11,7 +7,9 @@ from typing import Iterable
 
 from fastapi import HTTPException
 
+from services.care_sessions import project_water_session
 from services.db_transactions import database_transaction, for_update_clause
+from services.scheduling import calculate_effective_interval
 
 
 ISO_WEEKDAYS = tuple(range(1, 8))
@@ -132,6 +130,19 @@ def _effective_weekdays(row: dict, config: dict) -> list[int]:
     return config["outdoor_weekdays"]
 
 
+def effective_weekdays_for_map(
+    config: dict,
+    *,
+    map_id: int | None,
+    map_type: str | None,
+) -> list[int]:
+    """Resolve a map override before its indoor or outdoor default."""
+    return _effective_weekdays(
+        {"map_id": map_id, "map_type": map_type},
+        config,
+    )
+
+
 def _hashable_schedule_state(row: dict) -> dict:
     return {
         "schedule_id": row["schedule_id"],
@@ -140,6 +151,7 @@ def _hashable_schedule_state(row: dict) -> dict:
         "map_type": row.get("map_type"),
         "next_due": _as_date(row["next_due"]).isoformat(),
         "interval_days": row.get("interval_days"),
+        "season_adjust": row.get("season_adjust"),
         "rhythm_opt_out": bool(row.get("rhythm_opt_out")),
         "rhythm_operation_id": row.get("rhythm_operation_id"),
         "last_done": _canonical_timestamp(row.get("last_done")),
@@ -186,18 +198,23 @@ def build_rhythm_preview(
         weekdays = _effective_weekdays(row, canonical)
         if due <= today:
             new_due, movement, status, reason = due, 0, "exception", "not_future"
-        elif row.get("rhythm_opt_out"):
-            new_due, movement, status, reason = due, 0, "exception", "opted_out"
-        elif not weekdays:
-            new_due, movement, status, reason = due, 0, "exception", "no_routine"
         else:
-            new_due, movement, alignment_reason = align_due_date(due, weekdays)
-            if alignment_reason == "moved_earlier":
-                status, reason = "moved", alignment_reason
-            elif alignment_reason == "aligned":
-                status, reason = "unchanged", alignment_reason
+            projection = project_water_session(
+                canonical_due=due,
+                effective_interval=calculate_effective_interval(
+                    row["interval_days"], row.get("season_adjust"), due,
+                ),
+                preferred_weekdays=weekdays,
+                opted_out=bool(row.get("rhythm_opt_out")),
+            )
+            if projection.is_routine:
+                new_due = projection.session_date
+                movement = (new_due - due).days
+                status = "moved" if movement else "unchanged"
+                reason = projection.reason
             else:
-                status, reason = "exception", alignment_reason
+                new_due, movement = due, 0
+                status, reason = "exception", projection.reason
 
         if status == "moved":
             moved += 1
@@ -316,7 +333,8 @@ async def fetch_rhythm_schedule_rows(
 ) -> list[dict]:
     query = """
         SELECT cs.id AS schedule_id, cs.plant_id, cs.next_due,
-               cs.interval_days, cs.rhythm_opt_out, cs.rhythm_operation_id,
+               cs.interval_days, cs.season_adjust,
+               cs.rhythm_opt_out, cs.rhythm_operation_id,
                cs.last_done, cs.last_done_by,
                p.name AS plant_name, p.icon_key AS plant_icon_variant,
                p.map_id, m.name AS map_name,
@@ -513,6 +531,25 @@ async def _config_snapshot(db, household_id: int, *, lock: bool = False) -> dict
     }
 
 
+async def get_saved_care_rhythm_config(
+    db,
+    household_id: int,
+) -> dict | None:
+    """Return the persisted Care Rhythm config for a household, or None if
+    no saved preferences row exists.
+
+    Calls ``_config_snapshot`` exactly once and uses its existing decoding
+    and normalization behaviour (``_decode_weekdays`` / ``normalize_rhythm_config``).
+    Never writes to the database. Does not leak another household's config.
+    Returns ``None`` even when ``get_care_rhythm_settings`` would dynamically
+    propose weekdays for an unsaved household.
+    """
+    snapshot = await _config_snapshot(db, household_id)
+    if not snapshot["saved"]:
+        return None
+    return snapshot["config"]
+
+
 async def _write_config(
     db,
     *,
@@ -594,38 +631,6 @@ async def apply_care_rhythm(
             ),
         )
         operation_id = operation_rows[0]["id"]
-        schedules_by_id = {row["schedule_id"]: row for row in schedules}
-        moved_items = [item for item in plan["items"] if item["status"] == "moved"]
-
-        for item in moved_items:
-            schedule = schedules_by_id[item["schedule_id"]]
-            await db.execute_fetchall(
-                """INSERT INTO care_rhythm_operation_members
-                   (operation_id, schedule_id, previous_next_due,
-                    applied_next_due, previous_rhythm_operation_id,
-                    previous_last_done, previous_last_done_by)
-                   VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING operation_id""",
-                (
-                    operation_id,
-                    item["schedule_id"],
-                    schedule["next_due"],
-                    date.fromisoformat(item["new_date"]),
-                    schedule.get("rhythm_operation_id"),
-                    schedule.get("last_done"),
-                    schedule.get("last_done_by"),
-                ),
-            )
-            await db.execute(
-                """UPDATE care_schedules
-                   SET next_due = ?, rhythm_operation_id = ?
-                   WHERE id = ?""",
-                (
-                    date.fromisoformat(item["new_date"]),
-                    operation_id,
-                    item["schedule_id"],
-                ),
-            )
-
         await _write_config(
             db,
             household_id=household_id,
@@ -635,7 +640,7 @@ async def apply_care_rhythm(
 
     return {
         "operation_id": operation_id,
-        "affected_count": len(moved_items),
+        "affected_count": 0,
         "preview_hash": preview_hash,
         "summary": plan["summary"],
     }

@@ -38,6 +38,7 @@ class GardenBiodiversityOut(BaseModel):
     soil_ph: dict = {}
     growth_form: dict = {}
     circularity: dict = {}   # self-reported kringloop practices (advice-only)
+    features: dict = {}      # physical garden features: shelter, nesting, water (advice-only)
 
 
 class StreekOut(BaseModel):
@@ -115,6 +116,7 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
         soil_ph=profile.soil_ph,
         growth_form=profile.growth_form,
         circularity=profile.circularity,
+        features=profile.features,
     )
 
 
@@ -139,6 +141,59 @@ async def update_map_circularity(
     )
     await db.commit()
     return flags
+
+
+class GardenFeatureIn(BaseModel):
+    feature_type: str
+    count: int = 1
+
+
+@router.put("/maps/{slug}/features")
+async def update_map_feature(
+    slug: str,
+    data: GardenFeatureIn,
+    account = Depends(get_current_account),
+    db = Depends(db_dep),
+):
+    """Set the count of one physical garden feature (insectenhotel, nestkast,
+    water, …). count = 0 removes it. Advice-only, never scored."""
+    from services.garden_features import FEATURE_TYPES, features_for_map
+
+    if data.feature_type not in FEATURE_TYPES:
+        raise HTTPException(422, "Unknown feature type")
+    count = max(0, min(int(data.count), 99))   # clamp: a garden isn't a warehouse
+
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    if count == 0:
+        await db.execute(
+            "DELETE FROM garden_features WHERE map_id = ? AND feature_type = ?",
+            (map_id, data.feature_type),
+        )
+    else:
+        existing = await db.execute_fetchall(
+            "SELECT id FROM garden_features WHERE map_id = ? AND feature_type = ?",
+            (map_id, data.feature_type),
+        )
+        if existing:
+            await db.execute(
+                "UPDATE garden_features SET count = ? WHERE map_id = ? AND feature_type = ?",
+                (count, map_id, data.feature_type),
+            )
+        else:
+            await db.execute(
+                "INSERT INTO garden_features (map_id, feature_type, count) VALUES (?, ?, ?)",
+                (map_id, data.feature_type, count),
+            )
+    await db.commit()
+
+    summary = await features_for_map(db, map_id)
+    return {
+        "counts": summary.counts,
+        "total": summary.total,
+        "distinct": summary.distinct,
+        "supported_groups": summary.supported_groups,
+        "missing": summary.missing,
+    }
 
 
 class BeeSupportOut(BaseModel):
@@ -184,7 +239,9 @@ async def get_plant_suggestions(
     if (m.get("map_type") or "outdoor") != "outdoor":
         raise HTTPException(status_code=400, detail="Plant suggestions only available for outdoor maps")
 
-    recs, gap_months = await recommend_for_garden(db, m["id"])
+    # A bit deeper than the default 8 so the frontend's function lanes
+    # (fills-a-gap / biggest-impact / small-&-easy / …) each have content.
+    recs, gap_months = await recommend_for_garden(db, m["id"], limit=14)
     bio = await compute_biodiversity(db, m["id"])
 
     return GardenSuggestionsOut(
@@ -192,6 +249,53 @@ async def get_plant_suggestions(
         gap_months=gap_months,
         biodiversity_score=bio.score,
     )
+
+
+class DismissIn(BaseModel):
+    species_id: int
+
+
+async def _owned_map_id(db, slug: str, household_id: int) -> int:
+    rows = await db.execute_fetchall(
+        "SELECT id FROM maps WHERE slug = ? AND household_id = ?", (slug, household_id)
+    )
+    if not rows:
+        raise HTTPException(404, "Map not found")
+    return rows[0]["id"]
+
+
+@router.post("/maps/{slug}/dismiss-recommendation")
+async def dismiss_recommendation(
+    slug: str, data: DismissIn, account = Depends(get_current_account), db = Depends(db_dep)
+):
+    """Wave off a recommended species for this garden — it won't be suggested
+    here again until un-dismissed. Idempotent."""
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    exists = await db.execute_fetchall(
+        "SELECT 1 FROM dismissed_recommendations WHERE map_id = ? AND species_id = ?",
+        (map_id, data.species_id),
+    )
+    if not exists:
+        await db.execute(
+            "INSERT INTO dismissed_recommendations (map_id, species_id) VALUES (?, ?)",
+            (map_id, data.species_id),
+        )
+        await db.commit()
+    return {"dismissed": True, "species_id": data.species_id}
+
+
+@router.delete("/maps/{slug}/dismiss-recommendation/{species_id}")
+async def undismiss_recommendation(
+    slug: str, species_id: int, account = Depends(get_current_account), db = Depends(db_dep)
+):
+    """Undo a dismissal — the species can be recommended here again."""
+    map_id = await _owned_map_id(db, slug, account["household_id"])
+    await db.execute(
+        "DELETE FROM dismissed_recommendations WHERE map_id = ? AND species_id = ?",
+        (map_id, species_id),
+    )
+    await db.commit()
+    return {"dismissed": False, "species_id": species_id}
 
 
 class StreekSuggestionsOut(BaseModel):

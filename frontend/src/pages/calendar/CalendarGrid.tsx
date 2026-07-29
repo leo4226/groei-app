@@ -1,12 +1,15 @@
+import type { CSSProperties } from 'react'
 import CalendarDayCell from './CalendarDayCell'
 import type { CalendarEvent } from './calendarTypes'
 import { daysInMonth, dowMon, isoWeek, isoDate, DAY_LETTERS_NL, DAY_LETTERS_EN } from './dateUtils'
 import { useT } from '../../context/LanguageContext'
+import type { CalendarWeatherAdvisory } from './calendarWeatherAdvisoryModel'
 
 interface Props {
   year: number
   month1: number
   events: CalendarEvent[]
+  weatherAdvisories?: CalendarWeatherAdvisory[]
   loadByDate: ReadonlyMap<string, number>
   todayIso: string
   selectedIso: string
@@ -27,7 +30,7 @@ function getWeekdayHeaders(locale: string) {
 }
 
 export default function CalendarGrid({
-  year, month1, events, loadByDate, todayIso, selectedIso, onSelect,
+  year, month1, events, weatherAdvisories = [], loadByDate, todayIso, selectedIso, onSelect,
 }: Props) {
   const t = useT()
   const weekdayHeaders = getWeekdayHeaders(t.locale)
@@ -50,6 +53,12 @@ export default function CalendarGrid({
     const arr = byDate.get(e.date) ?? []
     arr.push(e)
     byDate.set(e.date, arr)
+  })
+  const weatherByDate = new Map<string, CalendarWeatherAdvisory[]>()
+  weatherAdvisories.filter(advisory => !advisory.acknowledgedAt).forEach(advisory => {
+    const dateAdvisories = weatherByDate.get(advisory.date) ?? []
+    dateAdvisories.push(advisory)
+    weatherByDate.set(advisory.date, dateAdvisories)
   })
 
   function cellInfo(idx: number) {
@@ -82,7 +91,7 @@ export default function CalendarGrid({
       const isSelected = iso === selectedIso
       const weekend = c >= 5
       const dayEvents = (byDate.get(iso) ?? [])
-      const maxVisible = isToday ? 5 : 3
+      const maxVisible = rows >= 6 ? 1 : isToday ? 3 : 2
       cells.push(
         <CalendarDayCell
           key={`d-${iso}`}
@@ -94,6 +103,7 @@ export default function CalendarGrid({
           isToday={isToday}
           isSelected={isSelected}
           events={otherMonth ? [] : dayEvents}
+          weatherAdvisories={otherMonth ? [] : (weatherByDate.get(iso) ?? [])}
           load={otherMonth ? 0 : (loadByDate.get(iso) ?? 0)}
           maxVisible={maxVisible}
           onClick={() => { if (!otherMonth) onSelect(iso) }}
@@ -110,7 +120,12 @@ export default function CalendarGrid({
           <div key={h.label} className={`wh-cell ${h.weekend ? 'weekend' : ''}`}>{h.label}</div>
         ))}
       </div>
-      <div className="cal-grid">{cells}</div>
+      <div
+        className="cal-grid"
+        style={{ '--calendar-week-rows': rows } as CSSProperties}
+      >
+        {cells}
+      </div>
     </section>
   )
 }

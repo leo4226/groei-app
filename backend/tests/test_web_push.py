@@ -342,7 +342,17 @@ async def test_care_push_driven_by_subscription_not_account_flag(
 
 # ── weather-driven frost/heat push (#181) ───────────────────────────────
 
-async def _seed_outdoor_plant_with_threshold(db, *, bring_inside=5, household_id=1):
+async def _seed_outdoor_plant_with_threshold(
+    db,
+    *,
+    bring_inside=5,
+    min_temp=None,
+    household_id=1,
+):
+    thresholds = f'{{"bring_inside_below_c": {bring_inside}'
+    if min_temp is not None:
+        thresholds += f', "min_temp_c": {min_temp}'
+    thresholds += "}"
     await db.execute(
         "INSERT INTO maps (id, name, map_type, household_id) VALUES (5, 'Tuin', 'outdoor', ?)",
         (household_id,),
@@ -350,7 +360,7 @@ async def _seed_outdoor_plant_with_threshold(db, *, bring_inside=5, household_id
     await db.execute(
         "INSERT INTO plants (id, name, is_active, household_id, map_id, care_thresholds) "
         "VALUES (20, 'Avocado', 1, ?, 5, ?)",
-        (household_id, f'{{"bring_inside_below_c": {bring_inside}}}'),
+        (household_id, thresholds),
     )
     await db.commit()
 
@@ -402,6 +412,93 @@ async def test_frost_alert_creates_ephemeral_task_and_pushes(
     # Weather care types get a friendly NL label, not the raw key.
     assert "beschermen tegen kou" in payload_body
     assert "frost_protect" not in payload_body
+
+
+async def test_acknowledged_weather_warning_suppresses_account_push(
+    client,
+    seeded_db,
+    cron_secret,
+    sent_pushes,
+    at_send_hour_today,
+    cold_forecast,
+    auth_header,
+):
+    from services.warnings import canonical_weather_warning_id_for_fields
+
+    await _seed_outdoor_plant_with_threshold(seeded_db, bring_inside=5)
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+    warning_id = canonical_weather_warning_id_for_fields(
+        1,
+        "frost_protect",
+        date.today(),
+        "warning",
+    )
+    acknowledged = await client.post(
+        f"/api/weather-warnings/{warning_id}/acknowledgment",
+        json={
+            "care_type": "frost_protect",
+            "forecast_date": date.today().isoformat(),
+            "severity": "warning",
+        },
+        headers=auth_header,
+    )
+    assert acknowledged.status_code == 200
+
+    response = await client.post("/api/internal/send-digests", headers=cron_secret)
+
+    assert response.status_code == 200
+    assert response.json()["weather_created"] == 1
+    assert response.json()["push_sent"] == 0
+    assert sent_pushes == []
+
+
+async def test_weather_push_stays_quiet_within_tier_and_renotifies_on_escalation(
+    client,
+    seeded_db,
+    cron_secret,
+    sent_pushes,
+    at_send_hour_today,
+    auth_header,
+    monkeypatch,
+):
+    forecast = {"min": 3.0}
+
+    async def mutable_forecast():
+        return {"days": [{"min": forecast["min"], "max": 12.0}]}
+
+    import services.environment as environment
+    monkeypatch.setattr(environment, "get_temp_data", mutable_forecast)
+    await _seed_outdoor_plant_with_threshold(
+        seeded_db,
+        bring_inside=5,
+        min_temp=0,
+    )
+    await client.post("/api/push/subscription", json=SUB, headers=auth_header)
+
+    first = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert first.json()["push_sent"] == 1
+    assert len(sent_pushes) == 1
+
+    forecast["min"] = 2.0
+    same_tier = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert same_tier.json()["push_sent"] == 0
+    assert len(sent_pushes) == 1
+
+    forecast["min"] = -2.0
+    escalated = await client.post("/api/internal/send-digests", headers=cron_secret)
+    assert escalated.json()["push_sent"] == 1
+    assert len(sent_pushes) == 2
+    states = await seeded_db.execute_fetchall(
+        """
+        SELECT severity, push_sent_at
+        FROM weather_warning_account_state
+        WHERE account_id = ?
+        ORDER BY severity
+        """,
+        (1,),
+    )
+    assert {row["severity"] for row in states} == {"warning", "urgent"}
+    assert all(row["push_sent_at"] is not None for row in states)
 
 
 async def test_no_frost_task_when_forecast_mild(

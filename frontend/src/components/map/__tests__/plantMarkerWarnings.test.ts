@@ -51,10 +51,11 @@ function plant(warnings: CareWarningOut[], alerts: TopAlert[]): MapPlant {
 }
 
 describe('PlantMarker warning badges', () => {
-  it('renders badges from unified care warnings instead of legacy alerts when warnings exist', () => {
+  it('hides grouped weather badges by default while preserving ordinary care', () => {
     const p = plant([warning('water', '💧'), warning('heat_protect', '🔥')], [alert('legacy_prune', '✂️')])
 
-    expect(markerBadgesForPlant(p).map(b => b.icon)).toEqual(['💧', '🔥'])
+    expect(markerBadgesForPlant(p).map(b => b.icon)).toEqual(['💧'])
+    expect(markerBadgesForPlant(p, true).map(b => b.icon)).toEqual(['💧', '🔥'])
   })
 })
 
@@ -66,6 +67,13 @@ describe('topMarkerBadge (canvas cap)', () => {
 
   it('returns null when there are no warnings', () => {
     expect(topMarkerBadge(plant([], []))).toBeNull()
+  })
+
+  it('falls through a weather top warning unless highlight mode is active', () => {
+    const p = plant([warning('heat_protect', '🔥'), warning('water', '💧')], [])
+
+    expect(topMarkerBadge(p)?.icon).toBe('💧')
+    expect(topMarkerBadge(p, true)?.icon).toBe('🔥')
   })
 })
 
@@ -86,5 +94,15 @@ describe('plant warning halos', () => {
     const p = { ...plant([warning('water', '💧')], []), container_id: 42 }
 
     expect(containedPlantHaloColor(p, false)).toBeNull()
+  })
+
+  it('hides heat-only halos until the affected plant is highlighted', () => {
+    const p: MapPlant = {
+      ...plant([warning('heat_protect', '🔥')], []),
+      temp_status: 'heatstress',
+    }
+
+    expect(plantMarkerHaloColor(p, 'outdoor', true)).toBeNull()
+    expect(plantMarkerHaloColor(p, 'outdoor', true, true)).toBe('#FFC233')
   })
 })

@@ -4,7 +4,11 @@ import json
 from services.warnings import PlantWarningState, CareWarning, CareTypeStatus
 from services.warnings import _environment_for_plant, _load_care_profile
 from services.warnings import _schedule_warning_for_type
-from services.warnings import _weather_warnings_for_plant, compute_plant_warnings
+from services.warnings import (
+    _weather_warnings_for_plant,
+    canonical_weather_warning_id,
+    compute_plant_warnings,
+)
 from care_types import CARE_TYPES
 
 
@@ -247,6 +251,32 @@ def test_heat_urgent_when_max_above_threshold():
     temp = {"days": [{"date": "2026-05-17", "min": 18, "max": 32}]}
     warns = _weather_warnings_for_plant(profile, temp_data=temp, today=date(2026, 5, 17))
     assert any(w.care_type == "heat_protect" and w.severity == "urgent" for w in warns)
+
+
+def test_weather_warning_identity_is_stable_within_same_severity_tier():
+    profile = {
+        "heat_protect": {
+            "active": True,
+            "thresholds": {"max_temp_c": 35},
+        }
+    }
+    forecast_date = date(2026, 7, 30)
+
+    first = _weather_warnings_for_plant(
+        profile,
+        temp_data={"days": [{"date": forecast_date.isoformat(), "min": 18, "max": 32}]},
+        today=date(2026, 7, 28),
+    )[0]
+    revised = _weather_warnings_for_plant(
+        profile,
+        temp_data={"days": [{"date": forecast_date.isoformat(), "min": 18, "max": 33}]},
+        today=date(2026, 7, 28),
+    )[0]
+
+    assert first.forecast_date == forecast_date
+    assert revised.forecast_date == forecast_date
+    assert first.severity == revised.severity == "warning"
+    assert canonical_weather_warning_id(7, first) == canonical_weather_warning_id(7, revised)
 
 
 def test_heat_warning_explains_reason_action_and_metric():
