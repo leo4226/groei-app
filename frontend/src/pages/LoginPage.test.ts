@@ -42,6 +42,34 @@ describe('public landing page', () => {
     expect(container.querySelector('#auth-card')).toBeNull()
   })
 
+  it('uses one high-priority, media-selected decorative hero composition', async () => {
+    await act(async () => {
+      root.render(createElement(
+        MemoryRouter,
+        { initialEntries: ['/'] },
+        createElement(LoginPage, { publicHome: true }),
+      ))
+    })
+
+    const hero = container.querySelector('[data-testid="landing-hero-art"]')
+    const sources = Array.from(hero?.querySelectorAll('source') ?? [])
+    const heroImage = hero?.querySelector('img')
+
+    expect(sources).toHaveLength(4)
+    expect(sources.map((source) => source.getAttribute('srcset'))).toEqual([
+      '/landing/botanical-sun-atlas-mobile.avif',
+      '/landing/botanical-sun-atlas-mobile.webp',
+      '/landing/botanical-sun-atlas-desktop.avif',
+      '/landing/botanical-sun-atlas-desktop.webp',
+    ])
+    expect(sources.slice(0, 2).every((source) => source.getAttribute('media') === '(max-width: 767px)')).toBe(true)
+    expect(heroImage?.getAttribute('alt')).toBe('')
+    expect(heroImage?.getAttribute('width')).toBe('1024')
+    expect(heroImage?.getAttribute('height')).toBe('576')
+    expect(heroImage?.getAttribute('fetchpriority')).toBe('high')
+    expect(heroImage?.getAttribute('loading')).toBeNull()
+  })
+
   it('switches the public landing copy to English and persists the choice', async () => {
     await act(async () => {
       root.render(createElement(
