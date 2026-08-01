@@ -100,6 +100,13 @@ button, a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Tailwind's reset removes the browser default. Keep keyboard focus visible
+   on the public landing page without changing signed-in app controls. */
+.landing-focus :where(a, button):focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 4px;
+}
+
 /* Input focus styles */
 input:focus, select:focus, textarea:focus {
   outline: none;
