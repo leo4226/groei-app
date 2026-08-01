@@ -9,6 +9,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Hero art is the landing LCP element. Preload exactly one composition:
+         media queries are mutually exclusive and type=image/avif is ignored by
+         non-AVIF browsers, so only the active hero asset is fetched (the
+         <picture> in LoginPage.tsx selects the same URL). No WebP preload —
+         AVIF-capable browsers must not download a second copy. -->
+    <link rel="preload" as="image" href="/landing/botanical-sun-atlas-desktop.avif" type="image/avif" media="(min-width: 768px)" />
+    <link rel="preload" as="image" href="/landing/botanical-sun-atlas-mobile.avif" type="image/avif" media="(max-width: 767.98px)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-180.png" />

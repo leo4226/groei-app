@@ -42,6 +42,42 @@ describe('public landing page', () => {
     expect(container.querySelector('#auth-card')).toBeNull()
   })
 
+  it('renders the responsive hero art with one composition per breakpoint', async () => {
+    await act(async () => {
+      root.render(createElement(
+        MemoryRouter,
+        { initialEntries: ['/'] },
+        createElement(LoginPage, { publicHome: true }),
+      ))
+    })
+
+    const picture = container.querySelector('picture')
+    expect(picture).not.toBeNull()
+    const sources = Array.from(picture?.querySelectorAll('source') ?? [])
+    // Desktop/tablet (≥768px) → A1.5 Shadow; AVIF first, WebP fallback.
+    const desktopSources = sources.filter((s) => s.getAttribute('media') === '(min-width: 768px)')
+    expect(desktopSources.map((s) => [s.getAttribute('type'), s.getAttribute('srcSet'), s.getAttribute('width'), s.getAttribute('height')])).toEqual([
+      ['image/avif', '/landing/botanical-sun-atlas-desktop.avif', '1024', '576'],
+      ['image/webp', '/landing/botanical-sun-atlas-desktop.webp', '1024', '576'],
+    ])
+    // Mobile (<768px) → Mobile A; AVIF first, WebP fallback.
+    const mobileSources = sources.filter((s) => s.getAttribute('media') === null)
+    expect(mobileSources.map((s) => [s.getAttribute('type'), s.getAttribute('srcSet'), s.getAttribute('width'), s.getAttribute('height')])).toEqual([
+      ['image/avif', '/landing/botanical-sun-atlas-mobile.avif', '576', '1024'],
+      ['image/webp', '/landing/botanical-sun-atlas-mobile.webp', '576', '1024'],
+    ])
+
+    const img = picture?.querySelector('img')
+    // Decorative atmospheric art: empty alt, no caption in the hero figure.
+    expect(img?.getAttribute('alt')).toBe('')
+    // Hero is the LCP element: high fetch priority, never lazy-loaded, and
+    // explicit intrinsic dimensions so the box is reserved before load (no CLS).
+    expect(img?.getAttribute('fetchpriority')).toBe('high')
+    expect(img?.getAttribute('loading')).toBeNull()
+    expect(img?.getAttribute('width')).toBe('576')
+    expect(img?.getAttribute('height')).toBe('1024')
+  })
+
   it('switches the public landing copy to English and persists the choice', async () => {
     await act(async () => {
       root.render(createElement(

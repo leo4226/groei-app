@@ -577,19 +577,54 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
             <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">{t.demoNote}</p>
           </div>
 
-          <figure className="m-0 mx-auto w-full max-w-[320px] overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_22px_56px_rgba(31,42,30,0.14)] lg:mx-0">
-            <img
-              src="/landing/sunmap-demo-poster.jpg"
-              alt=""
-              width="700"
-              height="1000"
-              fetchPriority="high"
-              className="block h-auto w-full"
-            />
-            <figcaption className="border-t border-border bg-surface px-4 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-              {t.previewKicker}
-            </figcaption>
-          </figure>
+          {/* Hero art: approved Botanical Sun Atlas compositions (decorative).
+              Desktop/tablet (≥768px): A1.5 Shadow landscape 1024×576.
+              Mobile (<768px): Mobile A portrait 576×1024.
+              <picture> media selection downloads exactly one composition per
+              viewport (AVIF preferred, WebP fallback). Hero is the LCP element:
+              fetchPriority="high", never lazy-loaded, preloaded via index.html
+              <link rel="preload"> media-matched to the same breakpoint so only
+              the active composition is fetched. width/height + aspect-ratio
+              reserve the box to prevent CLS. Art is decorative: alt="" and no
+              caption (the previous "sun heatmap" label would mislabel it). */}
+          <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_22px_56px_rgba(31,42,30,0.14)] lg:mx-0 lg:max-w-[360px]">
+            <picture>
+              <source
+                media="(min-width: 768px)"
+                srcSet="/landing/botanical-sun-atlas-desktop.avif"
+                type="image/avif"
+                width={1024}
+                height={576}
+              />
+              <source
+                media="(min-width: 768px)"
+                srcSet="/landing/botanical-sun-atlas-desktop.webp"
+                type="image/webp"
+                width={1024}
+                height={576}
+              />
+              <source
+                srcSet="/landing/botanical-sun-atlas-mobile.avif"
+                type="image/avif"
+                width={576}
+                height={1024}
+              />
+              <source
+                srcSet="/landing/botanical-sun-atlas-mobile.webp"
+                type="image/webp"
+                width={576}
+                height={1024}
+              />
+              <img
+                src="/landing/botanical-sun-atlas-mobile.webp"
+                alt=""
+                width={576}
+                height={1024}
+                fetchPriority="high"
+                className="block aspect-[9/16] h-auto w-full md:aspect-[16/9]"
+              />
+            </picture>
+          </div>
         </section>
 
         <section className="mt-20 border-t border-border pt-10">
