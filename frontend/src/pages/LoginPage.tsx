@@ -404,6 +404,26 @@ function SunProof({ motionAllowed, label }: { motionAllowed: boolean; label: str
   )
 }
 
+function HeroArtwork() {
+  return (
+    <picture aria-hidden="true" data-testid="landing-hero-art" className="absolute inset-0 block">
+      <source media="(max-width: 767px)" srcSet="/landing/botanical-sun-atlas-mobile.avif" type="image/avif" />
+      <source media="(max-width: 767px)" srcSet="/landing/botanical-sun-atlas-mobile.webp" type="image/webp" />
+      <source srcSet="/landing/botanical-sun-atlas-desktop.avif" type="image/avif" />
+      <source srcSet="/landing/botanical-sun-atlas-desktop.webp" type="image/webp" />
+      <img
+        src="/landing/botanical-sun-atlas-desktop.webp"
+        alt=""
+        width="1024"
+        height="576"
+        fetchPriority="high"
+        decoding="async"
+        className="block h-full w-full"
+      />
+    </picture>
+  )
+}
+
 function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang: Lang; motionAllowed: boolean }) {
   return (
     <>
@@ -534,13 +554,6 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
 
   return (
     <div className="landing-focus relative min-h-dvh overflow-hidden">
-      <PageDecor variant="landing" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: 'radial-gradient(ellipse 60% 44% at 50% 18%, var(--color-bg) 12%, transparent 72%)' }}
-      />
-
       <LangToggle lang={lang} onChange={onChangeLanguage} />
       <header className="relative z-10 mx-auto flex w-full max-w-[1060px] items-center px-5 pt-5">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
@@ -549,47 +562,34 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
         </Link>
       </header>
 
-      <div className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-20 pt-16 lg:pt-24">
-        <section className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:gap-20">
-          <div>
-            <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
-              <span className="h-px w-7 flex-none bg-border" />
+      <div className="relative z-10 mx-auto w-full max-w-[1064px] px-5 pb-20 pt-10 md:pt-12">
+        <section className="relative isolate mx-auto aspect-[9/16] w-full max-w-[1024px] overflow-hidden rounded-[28px] border border-border bg-[#fffef9] shadow-[0_22px_56px_rgba(31,42,30,0.14)] md:aspect-[16/9]">
+          <HeroArtwork />
+          <div className="relative z-10 flex h-full w-full max-w-[92%] flex-col items-start px-5 py-6 sm:px-8 sm:py-8 md:max-w-[50%] md:px-6 md:py-6 lg:max-w-[44%] lg:px-10 lg:py-10">
+            <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#5a6553]">
+              <span className="h-px w-7 flex-none bg-[#8a9482]" />
               {t.kicker}
             </p>
-            <h1 className="m-0 mt-5 max-w-[680px] font-heading text-[clamp(44px,7vw,76px)] font-medium leading-[0.98] tracking-[-0.035em] text-primary">
+            <h1 className="m-0 mt-3 font-heading text-[clamp(30px,8vw,70px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#2F5D3A] md:mt-4 md:text-[36px] lg:mt-5 lg:text-[clamp(44px,6vw,70px)]">
               {t.heroTitle}
             </h1>
-            <p className="mb-0 mt-5 max-w-[560px] text-[17px] leading-[1.6] text-text-soft">
+            <p className="mb-0 mt-4 text-[14px] leading-[1.45] text-[#43503e] md:mt-3 md:text-[13px] md:leading-[1.4] lg:mt-5 lg:text-[16px] lg:leading-[1.55]">
               {t.heroSubtitle}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-5 flex flex-wrap items-center gap-4 md:mt-4 md:gap-3 lg:mt-8 lg:gap-4">
               <Link
                 to="/login?mode=register"
                 data-testid="landing-primary-cta"
-                className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-bg shadow-md transition-transform active:scale-95"
+                className="rounded-full bg-[#2F5D3A] px-5 py-3 text-sm font-semibold text-[#fffef9] shadow-md transition-transform active:scale-95 md:px-4 md:py-2.5 md:text-[13px] lg:px-5 lg:py-3 lg:text-sm"
               >
                 {t.primaryCta}
               </Link>
-              <Link to="/demo" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+              <Link to="/demo" className="rounded-full border border-[#8a9482] bg-[#fffef9]/90 px-4 py-3 text-sm font-semibold text-[#2F5D3A] shadow-sm md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[12px] md:shadow-none lg:text-sm">
                 {t.demoCta}
               </Link>
             </div>
-            <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">{t.demoNote}</p>
+            <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#5a6553]">{t.demoNote}</p>
           </div>
-
-          <figure className="m-0 mx-auto w-full max-w-[320px] overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_22px_56px_rgba(31,42,30,0.14)] lg:mx-0">
-            <img
-              src="/landing/sunmap-demo-poster.jpg"
-              alt=""
-              width="700"
-              height="1000"
-              fetchPriority="high"
-              className="block h-auto w-full"
-            />
-            <figcaption className="border-t border-border bg-surface px-4 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-              {t.previewKicker}
-            </figcaption>
-          </figure>
         </section>
 
         <section className="mt-20 border-t border-border pt-10">
