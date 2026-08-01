@@ -171,6 +171,7 @@ export default function App() {
   const setShowPlantPicker = useFloreren((s) => s.setShowPlantPicker)
   const navigate = useNavigate()
   const location = useLocation()
+  const isPublicHome = location.pathname === '/'
   const isLoginPage = location.pathname === '/login'
   // The public demo garden (/demo) is pre-auth like the login page: no app chrome.
   const isDemoPage = location.pathname === '/demo'
@@ -186,10 +187,10 @@ export default function App() {
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
   useEffect(() => {
-    if (getToken() && !isLoginPage && !hasLoaded && !isLoading) {
+    if (getToken() && !isLoginPage && !isPublicHome && !hasLoaded && !isLoading) {
       load()
     }
-  }, [load, isLoginPage, hasLoaded, isLoading])
+  }, [load, isLoginPage, isPublicHome, hasLoaded, isLoading])
 
   // Prime the icon URL index once so generated (R2) icons resolve app-wide.
   useEffect(() => { icons.catalog().catch(() => {}) }, [])
@@ -225,7 +226,7 @@ export default function App() {
   return (
     <LanguageProvider>
       <div className="flex flex-col h-dvh bg-bg overflow-hidden">
-      {error && (
+      {!isPublicHome && error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
           <span>{error}</span>
           <button onClick={clearError} className="font-bold ml-2 inline-flex items-center"><Glyph name="x" size={15} /></button>
@@ -240,7 +241,7 @@ export default function App() {
               <Route
                 path="/"
                 element={
-                  <Navigate to={getToken() ? '/maps' : '/login'} replace />
+                  getToken() ? <Navigate to="/maps" replace /> : <LoginPage publicHome />
                 }
               />
               <Route path="/login" element={<LoginPage />} />
@@ -400,15 +401,15 @@ export default function App() {
         </PullToRefresh>
       </main>
 
-      {!isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
+      {!isPublicHome && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
+      {!isPublicHome && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
 
-      {!isLoginPage && !isDemoPage && <UpdateToast />}
+      {!isPublicHome && !isLoginPage && !isDemoPage && <UpdateToast />}
 
       {showPlantPicker && (
         <PlantPickerSheet

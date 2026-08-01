@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { login, register, forgotPassword, saveToken } from '../api/auth'
 import { household } from '../api/client'
 import { useFloreren } from '../store/useFloreren'
@@ -35,7 +35,12 @@ interface FeatureCopy {
 
 interface LandingCopy {
   kicker: string
+  heroTitle: string
   heroSubtitle: string
+  heroProof: string
+  primaryCta: string
+  loginLink: string
+  homeLink: string
   mobileTagline: string
   stampText: string
   features: readonly FeatureCopy[]
@@ -70,11 +75,9 @@ interface LandingCopy {
   previewText: string
   demoCta: string
   demoNote: string
-  scrollHint: string
   bioKicker: string
   bioTitle: string
   bioText: string
-  bioCta: string
   scoreLabel: string
   bioSpecies: (n: number) => string
   bioNative: (n: number) => string
@@ -84,13 +87,22 @@ interface LandingCopy {
   suggTitle: string
   badgeNative: string
   badgeStreek: string
+  bioScope: string
+  trustKicker: string
+  trustTitle: string
+  trustItems: readonly string[]
 }
 
 const COPY: Record<Lang, LandingCopy> = {
   nl: {
     kicker: 'Veldgids & plantenzorg',
+    heroTitle: 'Stop met gokken waar een plant moet staan.',
     heroSubtitle:
       'Een veldjournaal en tuinhulp. Herken planten, plan op zon en schaduw, en laat de biodiversiteit in je tuin floreren.',
+    heroProof: 'Zie het licht door je tuin bewegen.',
+    primaryCta: 'Maak een account',
+    loginLink: 'Inloggen',
+    homeLink: 'Terug naar Floreren',
     mobileTagline: 'Laat je tuin floreren',
     stampText: 'FLOREREN · VELDGIDS · PLANTENZORG ·',
     features: [
@@ -151,12 +163,10 @@ const COPY: Record<Lang, LandingCopy> = {
       'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
     demoCta: 'Bekijk de voorbeeldtuin',
     demoNote: 'Geen account nodig',
-    scrollHint: 'Zo werkt het',
     bioKicker: 'De biodiversiteitshulp',
     bioTitle: 'Weet wat je tuin voor bijen doet',
     bioText:
       'Floreren kent de bloeimaanden en de waarde voor bestuivers van je planten. Je ziet je bloeiboog, hoeveel wilde bijensoorten je tuin kan ondersteunen, en welke inheemse en streekeigen planten de gaten vullen.',
-    bioCta: 'Maak je eigen tuin',
     scoreLabel: 'Biodiversiteit',
     bioSpecies: (n) => `${n} soorten`,
     bioNative: (n) => `${n} inheems`,
@@ -166,11 +176,24 @@ const COPY: Record<Lang, LandingCopy> = {
     suggTitle: 'Aanbevolen voor deze tuin',
     badgeNative: 'Inheems',
     badgeStreek: 'Streekeigen',
+    bioScope: 'De biodiversiteitsgegevens en aanbevelingen zijn momenteel afgestemd op Nederland.',
+    trustKicker: 'Op jouw voorwaarden',
+    trustTitle: 'Vrij te gebruiken. Open om te blijven.',
+    trustItems: [
+      'Gratis te gebruiken',
+      'Exporteer je gegevens wanneer je wilt',
+      'Open source onder de AGPL-3.0-licentie',
+    ],
   },
   en: {
     kicker: 'Field guide & plant care',
+    heroTitle: 'Stop guessing where a plant should go.',
     heroSubtitle:
       'A field journal and plant-care companion. Identify plants, plan around sun and shade, and let your garden’s biodiversity flourish.',
+    heroProof: 'Watch light move through your garden.',
+    primaryCta: 'Create an account',
+    loginLink: 'Log in',
+    homeLink: 'Back to Floreren',
     mobileTagline: 'Let your garden flourish',
     stampText: 'FLOREREN · FIELD GUIDE · PLANT CARE ·',
     features: [
@@ -231,12 +254,10 @@ const COPY: Record<Lang, LandingCopy> = {
       'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
     demoCta: 'Explore the example garden',
     demoNote: 'No account needed',
-    scrollHint: 'See how it works',
     bioKicker: 'The biodiversity helper',
     bioTitle: 'Know what your garden does for bees',
     bioText:
       'Floreren knows the flowering months and pollinator value of your plants. See your bloom arc, how many wild bee species your garden can support, and which native and regional plants fill the gaps.',
-    bioCta: 'Create your own garden',
     scoreLabel: 'Biodiversity',
     bioSpecies: (n) => `${n} species`,
     bioNative: (n) => `${n} native`,
@@ -246,6 +267,14 @@ const COPY: Record<Lang, LandingCopy> = {
     suggTitle: 'Recommended for this garden',
     badgeNative: 'Native',
     badgeStreek: 'Regional',
+    bioScope: 'Biodiversity data and recommendations are currently tailored to the Netherlands.',
+    trustKicker: 'On your terms',
+    trustTitle: 'Free to use. Open to keep.',
+    trustItems: [
+      'Free to use',
+      'Export your data whenever you want',
+      'Open source under the AGPL-3.0 licence',
+    ],
   },
 }
 
@@ -291,39 +320,6 @@ function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
   )
 }
 
-/** Soft fade-up when the element scrolls into view. Content is never hidden
- * for keyboard/reduced-motion users: the pre-reveal opacity/translate only
- * apply under motion-safe, so with reduced motion everything is simply
- * visible. */
-function Reveal({ children, className = '', delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [shown, setShown] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setShown(true)
-          io.disconnect()
-        }
-      },
-      { threshold: 0.15 },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-  return (
-    <div
-      ref={ref}
-      style={delayMs ? { transitionDelay: `${delayMs}ms` } : undefined}
-      className={`${className} motion-safe:transition-all motion-safe:duration-700 motion-safe:ease-out ${shown ? 'translate-y-0 opacity-100' : 'motion-safe:translate-y-8 motion-safe:opacity-0'}`}
-    >
-      {children}
-    </div>
-  )
-}
-
 function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
   return (
     <div className="absolute right-4 top-4 z-20 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 font-mono text-[10px] uppercase tracking-[0.14em] shadow-[0_2px_8px_rgba(31,42,30,0.06)]">
@@ -334,7 +330,7 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
           onClick={() => onChange(l)}
           aria-pressed={lang === l}
           className={`rounded-full px-2.5 py-1 transition-colors ${
-            lang === l ? 'bg-primary text-white' : 'bg-transparent text-text-muted hover:text-text'
+            lang === l ? 'bg-primary text-bg' : 'bg-transparent text-text-soft hover:text-text'
           }`}
           style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
@@ -345,7 +341,270 @@ function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => voi
   )
 }
 
-export default function LoginPage() {
+function useMotionAllowed() {
+  const [motionAllowed, setMotionAllowed] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setMotionAllowed(!media.matches)
+    update()
+    media.addEventListener?.('change', update)
+    return () => media.removeEventListener?.('change', update)
+  }, [])
+
+  return motionAllowed
+}
+
+function SunProof({ motionAllowed, label }: { motionAllowed: boolean; label: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!motionAllowed || !el || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsVisible(true)
+        observer.disconnect()
+      }
+    }, { rootMargin: '160px 0px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [motionAllowed])
+
+  return (
+    <div ref={ref} data-testid="landing-sun-proof" className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_22px_56px_rgba(31,42,30,0.14)]">
+      {motionAllowed && isVisible ? (
+        <video
+          src="/landing/sunmap-demo.mp4"
+          poster="/landing/sunmap-demo-poster.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="none"
+          aria-hidden="true"
+          className="block h-auto w-full"
+        />
+      ) : (
+        <img
+          src="/landing/sunmap-demo-poster.jpg"
+          alt=""
+          width="700"
+          height="1000"
+          className="block h-auto w-full"
+        />
+      )}
+      <p className="m-0 border-t border-border bg-surface px-4 py-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        {label}
+      </p>
+    </div>
+  )
+}
+
+function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang: Lang; motionAllowed: boolean }) {
+  return (
+    <>
+      <section id="product-preview" className="mx-auto w-full max-w-[1060px] scroll-mt-6 px-5 py-20">
+        <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.previewKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[28px] font-medium leading-[1.12] tracking-[-0.01em] text-primary">
+              {t.previewTitle}
+            </h2>
+            <p className="mt-3 max-w-[420px] text-[15px] leading-[1.6] text-text-soft">
+              {t.previewText}
+            </p>
+            <div className="mt-6 w-full max-w-[320px]">
+              <SunProof motionAllowed={motionAllowed} label={t.heroProof} />
+            </div>
+            <div className="mt-auto flex flex-col items-center gap-2 pt-6 lg:items-start">
+              <Link
+                to="/demo"
+                data-testid="landing-demo-cta"
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-bg shadow-md transition-transform active:scale-95"
+              >
+                {t.demoCta}
+              </Link>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+                {t.demoNote}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              {t.bioKicker}
+            </p>
+            <h2 className="m-0 font-heading text-[28px] font-medium leading-[1.12] tracking-[-0.01em] text-primary">
+              {t.bioTitle}
+            </h2>
+            <p className="mt-3 max-w-[420px] text-[15px] leading-[1.6] text-text-soft">
+              {t.bioText}
+            </p>
+            <p className="m-0 mt-3 max-w-[420px] text-[12px] leading-[1.5] text-text-muted">
+              {t.bioScope}
+            </p>
+            <div className="mt-6 flex w-full max-w-[320px] flex-col gap-3">
+              <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-text">{t.scoreLabel}</span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary">{DEMO_BIODIVERSITY.score}</span>
+                </div>
+                <p className="m-0 mt-1.5 text-[12px] leading-[1.5] text-text-soft">
+                  {t.bioSpecies(DEMO_BIODIVERSITY.speciesCount)} · {t.bioNative(DEMO_BIODIVERSITY.nativeCount)}
+                </p>
+                <p className="m-0 text-[12px] leading-[1.5] text-text-soft">
+                  {t.bioDracht(DEMO_BIODIVERSITY.drachtplantCount)}
+                </p>
+                <p className="m-0 mt-1 text-[12px] font-medium leading-[1.5] text-primary">
+                  {t.bioBees(DEMO_BIODIVERSITY.beeSpecies)}
+                </p>
+                <div className="mt-2.5">
+                  <p className="m-0 mb-1 text-[10px] uppercase tracking-wide text-text-muted">{t.bloomLabel}</p>
+                  <div className="flex h-8 items-end gap-[3px]">
+                    {DEMO_BIODIVERSITY.bloomMonths.map((v, i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-sm ${v > 0 ? 'bg-primary/70' : 'bg-border'}`}
+                        style={{ height: `${Math.max(9, (v / Math.max(...DEMO_BIODIVERSITY.bloomMonths)) * 100)}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
+                <p className="m-0 mb-2.5 text-[13px] font-semibold text-text">{t.suggTitle}</p>
+                <div className="flex flex-col gap-2.5">
+                  {DEMO_SUGGESTIONS.map((s) => (
+                    <div key={s.icon} className="flex items-start gap-2.5">
+                      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-bg">
+                        <img src={resolveIconUrl(s.icon)!} alt="" className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="m-0 text-[12.5px] font-semibold leading-tight text-text">
+                          {lang === 'nl' ? s.name_nl : s.name_en}{' '}
+                          <span className={`ml-1 inline-block rounded-full px-1.5 py-px align-[1px] text-[9px] font-bold uppercase tracking-wide ${s.badge === 'native' ? 'bg-primary/10 text-primary' : 'bg-amber-400/25 text-amber-800'}`}>
+                            {s.badge === 'native' ? t.badgeNative : t.badgeStreek}
+                          </span>
+                        </p>
+                        <p className="m-0 mt-0.5 text-[11.5px] leading-[1.45] text-text-soft">
+                          {lang === 'nl' ? s.reason_nl : s.reason_en}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-surface/70 px-5 py-16">
+        <div className="mx-auto max-w-[840px] text-center">
+          <p className="m-0 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">{t.trustKicker}</p>
+          <h2 className="m-0 mt-3 font-heading text-[clamp(30px,4vw,46px)] font-medium leading-[1.02] text-primary">{t.trustTitle}</h2>
+          <ul className="m-0 mt-8 grid list-none gap-3 p-0 text-left sm:grid-cols-3">
+            {t.trustItems.map((item) => (
+              <li key={item} className="rounded-2xl border border-border bg-bg/70 px-4 py-4 text-sm leading-[1.45] text-text-soft">
+                {item}
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/login?mode=register"
+            className="mt-8 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-bg shadow-md transition-transform active:scale-95"
+          >
+            {t.primaryCta}
+          </Link>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang; onChangeLanguage: (lang: Lang) => void }) {
+  const motionAllowed = useMotionAllowed()
+
+  return (
+    <div className="landing-focus relative min-h-dvh overflow-hidden">
+      <PageDecor variant="landing" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ background: 'radial-gradient(ellipse 60% 44% at 50% 18%, var(--color-bg) 12%, transparent 72%)' }}
+      />
+
+      <LangToggle lang={lang} onChange={onChangeLanguage} />
+      <header className="relative z-10 mx-auto flex w-full max-w-[1060px] items-center px-5 pt-5">
+        <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
+        <Link to="/login" className="ml-auto mr-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
+          {t.loginLink}
+        </Link>
+      </header>
+
+      <div className="relative z-10 mx-auto w-full max-w-[1060px] px-5 pb-20 pt-16 lg:pt-24">
+        <section className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:gap-20">
+          <div>
+            <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              <span className="h-px w-7 flex-none bg-border" />
+              {t.kicker}
+            </p>
+            <h1 className="m-0 mt-5 max-w-[680px] font-heading text-[clamp(44px,7vw,76px)] font-medium leading-[0.98] tracking-[-0.035em] text-primary">
+              {t.heroTitle}
+            </h1>
+            <p className="mb-0 mt-5 max-w-[560px] text-[17px] leading-[1.6] text-text-soft">
+              {t.heroSubtitle}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link
+                to="/login?mode=register"
+                data-testid="landing-primary-cta"
+                className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-bg shadow-md transition-transform active:scale-95"
+              >
+                {t.primaryCta}
+              </Link>
+              <Link to="/demo" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                {t.demoCta}
+              </Link>
+            </div>
+            <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">{t.demoNote}</p>
+          </div>
+
+          <figure className="m-0 mx-auto w-full max-w-[320px] overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_22px_56px_rgba(31,42,30,0.14)] lg:mx-0">
+            <img
+              src="/landing/sunmap-demo-poster.jpg"
+              alt=""
+              width="700"
+              height="1000"
+              fetchPriority="high"
+              className="block h-auto w-full"
+            />
+            <figcaption className="border-t border-border bg-surface px-4 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              {t.previewKicker}
+            </figcaption>
+          </figure>
+        </section>
+
+        <section className="mt-20 border-t border-border pt-10">
+          <div className="grid gap-7 md:grid-cols-2">
+            {t.features.map((f) => <SpecimenEntry key={f.no} f={f} />)}
+          </div>
+        </section>
+      </div>
+
+      <LandingProofSections t={t} lang={lang} motionAllowed={motionAllowed} />
+    </div>
+  )
+}
+
+export default function LoginPage({ publicHome = false }: { publicHome?: boolean }) {
   const [lang, setLang] = useState<Lang>(initialLang)
   // ?mode=register opens the register tab directly (the demo garden's
   // "create your own garden" CTA links here).
@@ -375,6 +634,10 @@ export default function LoginPage() {
     } catch {
       // ignore storage failures (private mode)
     }
+  }
+
+  if (publicHome) {
+    return <PublicHome t={t} lang={lang} onChangeLanguage={changeLang} />
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -440,6 +703,9 @@ export default function LoginPage() {
       />
 
       <LangToggle lang={lang} onChange={changeLang} />
+      <Link to="/" className="absolute left-4 top-4 z-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
+        {t.homeLink}
+      </Link>
 
       <div className="relative z-10 mx-auto flex min-h-[80dvh] w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">
         {/* ── Left: field-guide cover hero (desktop) ── */}
@@ -553,8 +819,9 @@ export default function LoginPage() {
                 {mode === 'register' && (
                   <>
                     <div>
-                      <label style={labelStyle}>{t.yourName}</label>
+                      <label htmlFor="register-name" style={labelStyle}>{t.yourName}</label>
                       <input
+                        id="register-name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -564,11 +831,12 @@ export default function LoginPage() {
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>
+                      <label htmlFor="register-household" style={labelStyle}>
                         {t.householdName}{' '}
                         <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{t.optional}</span>
                       </label>
                       <input
+                        id="register-household"
                         type="text"
                         value={householdName}
                         onChange={(e) => setHouseholdName(e.target.value)}
@@ -585,8 +853,9 @@ export default function LoginPage() {
                 {mode === 'join' && (
                   <>
                     <div>
-                      <label style={labelStyle}>{t.inviteCode}</label>
+                      <label htmlFor="join-code" style={labelStyle}>{t.inviteCode}</label>
                       <input
+                        id="join-code"
                         type="text"
                         value={code}
                         onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -596,8 +865,9 @@ export default function LoginPage() {
                       />
                     </div>
                     <div>
-                      <label style={labelStyle}>{t.yourName}</label>
+                      <label htmlFor="join-name" style={labelStyle}>{t.yourName}</label>
                       <input
+                        id="join-name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -610,8 +880,9 @@ export default function LoginPage() {
                 )}
 
                 <div>
-                  <label style={labelStyle}>{t.email}</label>
+                  <label htmlFor="auth-email" style={labelStyle}>{t.email}</label>
                   <input
+                    id="auth-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -623,9 +894,10 @@ export default function LoginPage() {
 
                 {mode !== 'forgot' && (
                   <div>
-                    <label style={labelStyle}>{t.password}</label>
+                    <label htmlFor="auth-password" style={labelStyle}>{t.password}</label>
                     <div style={{ position: 'relative' }}>
                       <input
+                        id="auth-password"
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -722,158 +994,8 @@ export default function LoginPage() {
               </form>
             )}
           </div>
-
-          {/* Try-before-you-register: read-only demo garden */}
-          <p className="m-0 mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => navigate('/demo')}
-              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-            >
-              {t.demoCta} →
-            </button>
-          </p>
-
-          {/* Compact specimen entries under the card (mobile) */}
-          <div className="mt-8 flex flex-col gap-4 lg:hidden">
-            {t.features.map((f) => (
-              <SpecimenEntry key={f.no} f={f} compact />
-            ))}
-          </div>
         </div>
-
-        {/* Scroll cue: the previews live below the fold */}
-        <button
-          type="button"
-          aria-label={t.scrollHint}
-          onClick={() => document.getElementById('product-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          className="absolute bottom-1 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-1 text-text-muted transition-colors hover:text-text lg:flex"
-        >
-          <span className="font-mono text-[9px] uppercase tracking-[0.22em]">{t.scrollHint}</span>
-          <Glyph name="chevron-down" size={16} className="motion-safe:animate-bounce" />
-        </button>
       </div>
-
-      {/* ── Product previews: zonnekaart & biodiversiteitshulp side by side ── */}
-      <section id="product-preview" className="relative z-10 mx-auto w-full max-w-[1060px] scroll-mt-6 px-5 pb-16 pt-2 lg:pt-10">
-        <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
-          {/* Zonnekaart */}
-          <Reveal className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
-              {t.previewKicker}
-            </p>
-            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
-              {t.previewTitle}
-            </h2>
-            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
-              {t.previewText}
-            </p>
-            <div className="mt-6 w-full max-w-[320px] overflow-hidden rounded-[22px] border border-border bg-surface shadow-[0_18px_50px_rgba(31,42,30,0.12)]">
-              <video
-                src="/landing/sunmap-demo.mp4"
-                poster="/landing/sunmap-demo-poster.jpg"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                className="block h-auto w-full"
-              />
-            </div>
-            <div className="mt-auto flex flex-col items-center gap-2 pt-6 lg:items-start">
-              <button
-                type="button"
-                onClick={() => navigate('/demo')}
-                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
-              >
-                {t.demoCta}
-              </button>
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                {t.demoNote}
-              </span>
-            </div>
-          </Reveal>
-
-          {/* Biodiversiteitshulp */}
-          <Reveal delayMs={150} className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
-              {t.bioKicker}
-            </p>
-            <h2 className="m-0 font-heading text-[26px] font-medium leading-[1.15] tracking-[-0.01em] text-primary">
-              {t.bioTitle}
-            </h2>
-            <p className="mt-3 max-w-[420px] text-[14px] leading-[1.6] text-text-soft">
-              {t.bioText}
-            </p>
-            <div className="mt-6 flex w-full max-w-[320px] flex-col gap-3">
-            <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-text">{t.scoreLabel}</span>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary">{DEMO_BIODIVERSITY.score}</span>
-              </div>
-              <p className="m-0 mt-1.5 text-[12px] leading-[1.5] text-text-soft">
-                {t.bioSpecies(DEMO_BIODIVERSITY.speciesCount)} · {t.bioNative(DEMO_BIODIVERSITY.nativeCount)}
-              </p>
-              <p className="m-0 text-[12px] leading-[1.5] text-text-soft">
-                {t.bioDracht(DEMO_BIODIVERSITY.drachtplantCount)}
-              </p>
-              <p className="m-0 mt-1 text-[12px] font-medium leading-[1.5] text-primary">
-                {t.bioBees(DEMO_BIODIVERSITY.beeSpecies)}
-              </p>
-              <div className="mt-2.5">
-                <p className="m-0 mb-1 text-[10px] uppercase tracking-wide text-text-muted">{t.bloomLabel}</p>
-                <div className="flex h-8 items-end gap-[3px]">
-                  {DEMO_BIODIVERSITY.bloomMonths.map((v, i) => (
-                    <div
-                      key={i}
-                      className={`flex-1 rounded-sm ${v > 0 ? 'bg-primary/70' : 'bg-border'}`}
-                      style={{ height: `${Math.max(9, (v / Math.max(...DEMO_BIODIVERSITY.bloomMonths)) * 100)}%` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-surface p-4 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
-              <p className="m-0 mb-2.5 text-[13px] font-semibold text-text">{t.suggTitle}</p>
-              <div className="flex flex-col gap-2.5">
-                {DEMO_SUGGESTIONS.map((s) => (
-                  <div key={s.icon} className="flex items-start gap-2.5">
-                    <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-border bg-bg">
-                      <img src={resolveIconUrl(s.icon)!} alt="" className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="m-0 text-[12.5px] font-semibold leading-tight text-text">
-                        {lang === 'nl' ? s.name_nl : s.name_en}{' '}
-                        <span className={`ml-1 inline-block rounded-full px-1.5 py-px align-[1px] text-[9px] font-bold uppercase tracking-wide ${s.badge === 'native' ? 'bg-primary/10 text-primary' : 'bg-amber-400/25 text-amber-800'}`}>
-                          {s.badge === 'native' ? t.badgeNative : t.badgeStreek}
-                        </span>
-                      </p>
-                      <p className="m-0 mt-0.5 text-[11.5px] leading-[1.45] text-text-soft">
-                        {lang === 'nl' ? s.reason_nl : s.reason_en}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-            <div className="mt-auto flex justify-center pt-6 lg:justify-start">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('register')
-                  document.getElementById('auth-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }}
-                className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
-              >
-                {t.bioCta}
-              </button>
-            </div>
-          </Reveal>
-        </div>
-      </section>
     </div>
   )
 }
