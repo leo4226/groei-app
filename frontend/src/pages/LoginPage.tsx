@@ -427,7 +427,7 @@ function HeroArtwork() {
 function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang: Lang; motionAllowed: boolean }) {
   return (
     <>
-      <section id="product-preview" className="mx-auto w-full max-w-[1060px] scroll-mt-6 px-5 py-20">
+      <section id="product-preview" className="mx-auto w-full max-w-[1024px] scroll-mt-6 px-5 py-20">
         <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
@@ -555,7 +555,7 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
   return (
     <div className="landing-focus relative min-h-dvh overflow-hidden">
       <LangToggle lang={lang} onChange={onChangeLanguage} />
-      <header className="relative z-10 mx-auto flex w-full max-w-[1060px] items-center px-5 pt-5">
+      <header className="relative z-10 mx-auto flex w-full max-w-[1024px] items-center px-5 pt-5">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
         <Link to="/login" className="ml-auto mr-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
           {t.loginLink}
@@ -570,7 +570,7 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
               <span className="h-px w-7 flex-none bg-[#8a9482]" />
               {t.kicker}
             </p>
-            <h1 className="m-0 mt-3 font-heading text-[clamp(30px,8vw,70px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#2F5D3A] md:mt-4 md:text-[36px] lg:mt-5 lg:text-[clamp(44px,6vw,70px)]">
+            <h1 className="m-0 mt-3 font-heading text-[clamp(30px,8vw,70px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#2F5D3A] md:mt-4 md:text-[36px] lg:mt-5 lg:text-[clamp(40px,5vw,56px)]">
               {t.heroTitle}
             </h1>
             <p className="mb-0 mt-4 text-[14px] leading-[1.45] text-[#43503e] md:mt-3 md:text-[13px] md:leading-[1.4] lg:mt-5 lg:text-[16px] lg:leading-[1.55]">
@@ -593,7 +593,7 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
         </section>
 
         <section className="mt-20 border-t border-border pt-10">
-          <div className="grid gap-7 md:grid-cols-2">
+          <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
             {t.features.map((f) => <SpecimenEntry key={f.no} f={f} />)}
           </div>
         </section>
