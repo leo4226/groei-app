@@ -74,7 +74,6 @@ interface LandingCopy {
   previewTitle: string
   previewText: string
   demoCta: string
-  demoNote: string
   bioKicker: string
   bioTitle: string
   bioText: string
@@ -164,7 +163,6 @@ const COPY: Record<Lang, LandingCopy> = {
     previewText:
       'Elke tuin heeft zijn eigen licht. Floreren berekent per uur waar zon en schaduw vallen — en laat zien waar elke plant het beste staat. Speel er zelf mee in de voorbeeldtuin.',
     demoCta: 'Bekijk de voorbeeldtuin',
-    demoNote: 'Geen account nodig',
     bioKicker: 'De biodiversiteitshulp',
     bioTitle: 'Weet wat je tuin voor bijen doet',
     bioText:
@@ -257,7 +255,6 @@ const COPY: Record<Lang, LandingCopy> = {
     previewText:
       'Every garden has its own light. Floreren computes where sun and shade fall hour by hour — and shows where each plant thrives. Try it yourself in the example garden.',
     demoCta: 'Explore the example garden',
-    demoNote: 'No account needed',
     bioKicker: 'The biodiversity helper',
     bioTitle: 'Know what your garden does for bees',
     bioText:
@@ -483,7 +480,7 @@ function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang
             <div className="mt-6 w-full max-w-[320px]">
               <SunProof motionAllowed={motionAllowed} label={t.heroProof} />
             </div>
-            <div className="mt-auto flex flex-col items-center gap-2 pt-6 lg:items-start">
+            <div className="mt-auto flex flex-col items-center pt-6 lg:items-start">
               <Link
                 to="/demo"
                 data-testid="landing-demo-cta"
@@ -491,9 +488,6 @@ function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang
               >
                 {t.demoCta}
               </Link>
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-                {t.demoNote}
-              </span>
             </div>
           </div>
 
@@ -649,7 +643,6 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
               {t.demoCta}
             </Link>
           </div>
-          <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#5a6553]">{t.demoNote}</p>
         </div>
       </main>
 
