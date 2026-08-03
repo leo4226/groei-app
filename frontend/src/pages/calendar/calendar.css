@@ -1687,7 +1687,11 @@
     position: static;
     height: 100%;
     min-height: 0;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    /* Agenda keeps a guaranteed floor (min(320px, 45dvh) ≈ 320px on typical
+       laptops, scaled down on short viewports); the seasonal card gets the
+       shrinkable 1fr row so it scrolls internally instead of squeezing the
+       agenda to nothing. Row 2 (WaterOutlookPanel) stays auto. */
+    grid-template-rows: minmax(min(320px, 45dvh), 1fr) auto minmax(0, 1fr);
     overflow: hidden;
   }
   .cal-page--month .col-side > .side-card:first-child {
@@ -1700,6 +1704,16 @@
     top: 0;
     z-index: 2;
     background: var(--color-paper);
+  }
+  /* Seasonal reference card: pinned to the shrinkable last row so it scrolls
+     internally instead of stealing the agenda's space. grid-row: 3 keeps it in
+     the 1fr row even when WaterOutlookPanel is absent (non-current months),
+     where it would otherwise auto-place into the auto row and grow unbounded. */
+  .cal-page--month .col-side .seasonal-card {
+    grid-row: 3;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 
