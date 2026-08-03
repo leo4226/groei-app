@@ -40,9 +40,6 @@ interface LandingCopy {
   heroProof: string
   primaryCta: string
   loginLink: string
-  homeLink: string
-  mobileTagline: string
-  stampText: string
   features: readonly FeatureCopy[]
   signIn: string
   tabLogin: string
@@ -103,9 +100,6 @@ const COPY: Record<Lang, LandingCopy> = {
     heroProof: 'Zie het licht door je tuin bewegen.',
     primaryCta: 'Maak een account',
     loginLink: 'Inloggen',
-    homeLink: 'Terug naar Floreren',
-    mobileTagline: 'Laat je tuin floreren',
-    stampText: 'FLOREREN · VELDGIDS · PLANTENZORG ·',
     features: [
       {
         no: '01',
@@ -195,9 +189,6 @@ const COPY: Record<Lang, LandingCopy> = {
     heroProof: 'Watch light move through your garden.',
     primaryCta: 'Create an account',
     loginLink: 'Log in',
-    homeLink: 'Back to Floreren',
-    mobileTagline: 'Let your garden flourish',
-    stampText: 'FLOREREN · FIELD GUIDE · PLANT CARE ·',
     features: [
       {
         no: '01',
@@ -279,28 +270,6 @@ const COPY: Record<Lang, LandingCopy> = {
       'Open source under the AGPL-3.0 licence',
     ],
   },
-}
-
-const MRZ_LINE = 'V<FLO<<FIELD<GUIDE<<PLANT<CARE<<<<<<<<<<<<'
-
-/** Faded circular herbarium stamp, echoing the specimen-card motif. */
-function HerbariumStamp({ text, className }: { text: string; className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      aria-hidden="true"
-      className={`motion-safe:animate-[spin_120s_linear_infinite] ${className ?? ''}`}
-    >
-      <defs>
-        <path id="stamp-ring" d="M100,100 m-76,0 a76,76 0 1,1 152,0 a76,76 0 1,1 -152,0" fill="none" />
-      </defs>
-      <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 4" />
-      <text fontSize="13" letterSpacing="5.5" fill="currentColor" style={{ fontFamily: 'var(--font-mono)' }}>
-        <textPath href="#stamp-ring">{text}</textPath>
-      </text>
-    </svg>
-  )
 }
 
 function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
@@ -465,6 +434,72 @@ function HeroScrim() {
   )
 }
 
+/**
+ * The plate mark — a delicate inset rule, the way a botanical print is framed.
+ * This is the signature every pre-login page shares; repeating it (rather than
+ * the artwork itself) is what makes the set read as one publication. Fixed, not
+ * absolute, so it frames the viewport on scrolling pages like /tour instead of
+ * stretching into one enormous rectangle.
+ */
+function PlateMark() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-3 z-10 rounded-[6px] border border-[#8a9482]/25 sm:inset-5"
+    />
+  )
+}
+
+/**
+ * A tall crop of the portrait plate for the login page's split layout. Reusing
+ * the same (already cached) file as a *detail* keeps the login page in the same
+ * book as the cover without reprinting it — a full-bleed repeat would turn the
+ * illustration into wallpaper and compete with the form.
+ */
+function LoginPlate() {
+  return (
+    <picture className="block h-full w-full">
+      <source srcSet="/landing/botanical-sun-atlas-mobile.avif" type="image/avif" />
+      <source srcSet="/landing/botanical-sun-atlas-mobile.webp" type="image/webp" />
+      <img
+        src="/landing/botanical-sun-atlas-mobile.webp"
+        alt=""
+        decoding="async"
+        // object-bottom keeps the garden in frame; the plate's cream top band is
+        // deep enough that the logo still lands on paper, not on brick.
+        className="h-full w-full object-cover object-bottom"
+      />
+    </picture>
+  )
+}
+
+function LoginArtworkPanel() {
+  return (
+    <>
+      {/* Desktop: a tall crop down the left side */}
+      <div aria-hidden="true" className="absolute inset-y-0 left-0 hidden w-[42%] lg:block">
+        <LoginPlate />
+        {/* Melt the panel into the paper — a hard vertical seam would read as a
+            pasted-in image rather than one continuous page. */}
+        <div
+          className="absolute inset-y-0 right-0 w-28"
+          style={{ background: 'linear-gradient(90deg, rgba(255,254,249,0) 0%, rgba(255,254,249,0.6) 45%, #fffef9 96%)' }}
+        />
+      </div>
+
+      {/* Mobile: a band along the bottom, mirroring the portrait homepage —
+          paper at the top where the content sits, garden below it. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[210px] lg:hidden">
+        <LoginPlate />
+        <div
+          className="absolute inset-x-0 top-0 h-28"
+          style={{ background: 'linear-gradient(180deg, #fffef9 0%, rgba(255,254,249,0.75) 45%, rgba(255,254,249,0) 100%)' }}
+        />
+      </div>
+    </>
+  )
+}
+
 function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang: Lang; motionAllowed: boolean }) {
   return (
     <>
@@ -601,8 +636,7 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
     <div className="landing-focus relative flex min-h-dvh flex-col overflow-hidden bg-[#fffef9]">
       <HeroArtwork />
       <HeroScrim />
-      {/* Plate mark: a delicate inset rule, the way a botanical print is framed */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-3 z-10 rounded-[6px] border border-[#8a9482]/25 sm:inset-5" />
+      <PlateMark />
 
       <header className="relative z-20 flex w-full items-center gap-3 px-7 pt-7 sm:px-10 sm:pt-9">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-[#2F5D3A]">Floreren.</Link>
@@ -681,6 +715,7 @@ export function LandingTour() {
   return (
     <div className="landing-focus relative min-h-dvh overflow-hidden">
       <PageDecor variant="sparse" />
+      <PlateMark />
 
       <header className="relative z-20 mx-auto flex w-full max-w-[1024px] items-center gap-3 px-5 pt-5">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
@@ -796,67 +831,28 @@ export default function LoginPage({ publicHome = false }: { publicHome?: boolean
   }
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
-      {/* Botanical garden-bed decor + a calm wash behind the content */}
-      <PageDecor variant="landing" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{ background: 'radial-gradient(ellipse 60% 44% at 50% 50%, var(--color-bg) 12%, transparent 72%)' }}
-      />
+    // Split composition: a crop of the cover plate down one side, the form on
+    // the other. The four steps and the tagline that used to fill this page are
+    // deliberately gone — anyone arriving here has already read them on / or
+    // /tour, and repeating them on a task page is noise.
+    <div className="landing-focus relative flex min-h-dvh flex-col overflow-hidden bg-[#fffef9]">
+      <LoginArtworkPanel />
+      <PlateMark />
 
-      <LangToggle lang={lang} onChange={changeLang} />
-      <Link to="/" className="absolute left-4 top-4 z-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
-        {t.homeLink}
-      </Link>
+      <header className="relative z-20 flex w-full items-center gap-3 px-7 pt-7 sm:px-10 sm:pt-9">
+        <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-[#2F5D3A]">Floreren.</Link>
+        <div className="ml-auto">
+          <LangToggle lang={lang} onChange={changeLang} inline />
+        </div>
+      </header>
 
-      <div className="relative z-10 mx-auto flex min-h-[80dvh] w-full max-w-[1060px] flex-col items-center justify-center gap-8 px-5 py-10 lg:flex-row lg:items-center lg:gap-20">
-        {/* ── Left: field-guide cover hero (desktop) ── */}
-        <section className="relative hidden max-w-[520px] flex-1 lg:block">
-          <HerbariumStamp text={t.stampText} className="absolute -left-16 -top-24 h-52 w-52 text-primary opacity-[0.07]" />
-
-          <p className="relative m-0 mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+      <main className="relative z-10 flex flex-1 items-center justify-center px-5 pb-[230px] pt-10 lg:pb-10 lg:pl-[42%]">
+        <div className="w-full max-w-[380px]">
+          <p className="m-0 mb-5 flex items-center justify-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
             <span className="h-px w-7 flex-none bg-border" />
             {t.kicker}
-            <span className="h-px min-w-[24px] max-w-[70px] flex-1 bg-border" />
+            <span className="h-px w-7 flex-none bg-border" />
           </p>
-
-          <h1 className="relative m-0 font-heading text-[clamp(52px,6.5vw,76px)] font-medium leading-[0.98] tracking-[-0.02em] text-primary">
-            Floreren<span className="text-text">.</span>
-          </h1>
-
-          <p className="relative mt-4 max-w-[440px] font-heading text-[16px] italic leading-[1.55] text-text-soft">
-            {t.heroSubtitle}
-          </p>
-
-          <div className="relative mt-9 flex flex-col gap-5">
-            {t.features.map((f) => (
-              <SpecimenEntry key={f.no} f={f} />
-            ))}
-          </div>
-
-          <p
-            aria-hidden="true"
-            className="relative m-0 mt-9 overflow-hidden whitespace-nowrap border-t border-dashed border-border pt-4 font-mono text-[11px] tracking-[0.24em] text-text-muted opacity-50"
-          >
-            {MRZ_LINE}
-          </p>
-        </section>
-
-        {/* ── Right: auth column ── */}
-        <div className="w-full max-w-[380px] flex-none">
-          {/* Brand block (mobile shows the full tagline here) */}
-          <div className="mb-7 text-center lg:hidden">
-            <h1 className="m-0 font-heading text-[44px] font-medium leading-none tracking-[-0.02em] text-primary">
-              Floreren
-            </h1>
-            <p className="m-0 mt-2 font-heading text-[15px] italic text-text-soft">
-              {t.mobileTagline}
-            </p>
-            <p className="m-0 mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-              {t.kicker}
-            </p>
-          </div>
 
           <div id="auth-card" className="rounded-[18px] border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(31,42,30,0.10)]">
             <p className="m-0 mb-5 flex items-center gap-2.5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-text-muted">
@@ -1098,7 +1094,7 @@ export default function LoginPage({ publicHome = false }: { publicHome?: boolean
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
