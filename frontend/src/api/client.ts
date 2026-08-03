@@ -1,5 +1,6 @@
 import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
 import { indexIconUrls } from '../utils/icons'
+import { withNetworkRetry } from './retry'
 
 const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -94,21 +95,7 @@ async function apiWithTimeout<T>(method: string, path: string, options: ApiOptio
 }
 
 async function api<T>(method: string, path: string, options: ApiOptions = {}): Promise<T> {
-  const MAX_RETRIES = 2
-  let lastError: unknown
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      return await apiRequest<T>(method, path, options)
-    } catch (e) {
-      const isNetworkError = e instanceof TypeError
-      if (!isNetworkError || attempt === MAX_RETRIES) throw e
-      lastError = e
-      await new Promise(r => setTimeout(r, (attempt + 1) * 1000))
-    }
-  }
-
-  throw lastError
+  return withNetworkRetry(() => apiRequest<T>(method, path, options))
 }
 
 // ── Exported local types ──
