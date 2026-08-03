@@ -323,9 +323,12 @@ function SpecimenEntry({ f, compact }: { f: FeatureCopy; compact?: boolean }) {
   )
 }
 
-function LangToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
+/** `inline` places the toggle in a header row instead of floating it in the
+ *  corner — the floating variant forced neighbouring links into an arbitrary
+ *  right margin and left the two controls on different baselines. */
+function LangToggle({ lang, onChange, inline = false }: { lang: Lang; onChange: (l: Lang) => void; inline?: boolean }) {
   return (
-    <div className="absolute right-4 top-4 z-20 flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 font-mono text-[10px] uppercase tracking-[0.14em] shadow-[0_2px_8px_rgba(31,42,30,0.06)]">
+    <div className={`${inline ? 'relative' : 'absolute right-4 top-4 z-20'} flex items-center gap-0.5 rounded-full border border-border bg-surface p-0.5 font-mono text-[10px] uppercase tracking-[0.14em] shadow-[0_2px_8px_rgba(31,42,30,0.06)]`}>
       {(['nl', 'en'] as const).map((l) => (
         <button
           key={l}
@@ -601,16 +604,16 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
       {/* Plate mark: a delicate inset rule, the way a botanical print is framed */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-3 z-10 rounded-[6px] border border-[#8a9482]/25 sm:inset-5" />
 
-      <LangToggle lang={lang} onChange={onChangeLanguage} />
-      <header className="relative z-10 flex w-full items-center px-7 pt-7 sm:px-10 sm:pt-9">
+      <header className="relative z-20 flex w-full items-center gap-3 px-7 pt-7 sm:px-10 sm:pt-9">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-[#2F5D3A]">Floreren.</Link>
         {/* Paper chip: top-right sits over foliage, where bare text would vanish */}
         <Link
           to="/login"
-          className="ml-auto mr-20 rounded-full border border-[#8a9482]/40 bg-[#fffef9]/85 px-4 py-1.5 text-sm font-semibold text-[#2F5D3A] shadow-[0_2px_8px_rgba(31,42,30,0.06)] backdrop-blur-sm"
+          className="ml-auto rounded-full border border-[#8a9482]/40 bg-[#fffef9]/85 px-4 py-1.5 text-sm font-semibold text-[#2F5D3A] shadow-[0_2px_8px_rgba(31,42,30,0.06)] backdrop-blur-sm"
         >
           {t.loginLink}
         </Link>
+        <LangToggle lang={lang} onChange={onChangeLanguage} inline />
       </header>
 
       {/* Landscape: copy sits beside the garden, optically centred. Portrait:
@@ -678,13 +681,13 @@ export function LandingTour() {
   return (
     <div className="landing-focus relative min-h-dvh overflow-hidden">
       <PageDecor variant="sparse" />
-      <LangToggle lang={lang} onChange={changeLang} />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-[1024px] items-center px-5 pt-5">
+      <header className="relative z-20 mx-auto flex w-full max-w-[1024px] items-center gap-3 px-5 pt-5">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
-        <Link to="/login" className="ml-auto mr-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
+        <Link to="/login" className="ml-auto text-sm font-semibold text-primary underline-offset-4 hover:underline">
           {t.loginLink}
         </Link>
+        <LangToggle lang={lang} onChange={changeLang} inline />
       </header>
 
       <section className="relative z-10 mx-auto w-full max-w-[1024px] px-5 pb-4 pt-12">
