@@ -3,7 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import LoginPage from './LoginPage'
+import LoginPage, { LandingTour } from './LoginPage'
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const originalMatchMedia = window.matchMedia
@@ -38,8 +38,37 @@ describe('public landing page', () => {
 
     expect(container.querySelector('[data-testid="landing-primary-cta"]')?.getAttribute('href')).toBe('/login?mode=register')
     expect(container.querySelector('[data-testid="landing-demo-cta"]')?.getAttribute('href')).toBe('/demo')
-    expect(container.querySelector('[data-testid="landing-sun-proof"]')).not.toBeNull()
     expect(container.querySelector('#auth-card')).toBeNull()
+  })
+
+  it('keeps the homepage to a single screen and links the long form to /tour', async () => {
+    await act(async () => {
+      root.render(createElement(
+        MemoryRouter,
+        { initialEntries: ['/'] },
+        createElement(LoginPage, { publicHome: true }),
+      ))
+    })
+
+    // The proof, the four steps and the trust block moved to /tour, so the
+    // homepage stays one composed screen instead of the top of a scroll.
+    expect(container.querySelector('[data-testid="landing-tour-link"]')?.getAttribute('href')).toBe('/tour')
+    expect(container.querySelector('[data-testid="landing-sun-proof"]')).toBeNull()
+    expect(container.textContent).not.toContain('Weet wat je tuin voor bijen doet')
+  })
+
+  it('carries the long-form proof on the tour route', async () => {
+    await act(async () => {
+      root.render(createElement(
+        MemoryRouter,
+        { initialEntries: ['/tour'] },
+        createElement(LandingTour),
+      ))
+    })
+
+    expect(container.querySelector('[data-testid="landing-sun-proof"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="landing-demo-cta"]')?.getAttribute('href')).toBe('/demo')
+    expect(container.textContent).toContain('Weet wat je tuin voor bijen doet')
   })
 
   it('uses one high-priority, media-selected decorative hero composition', async () => {
@@ -62,7 +91,9 @@ describe('public landing page', () => {
       '/landing/botanical-sun-atlas-desktop.avif',
       '/landing/botanical-sun-atlas-desktop.webp',
     ])
-    expect(sources.slice(0, 2).every((source) => source.getAttribute('media') === '(max-width: 767px)')).toBe(true)
+    // Full-bleed art is picked by viewport SHAPE, not width: a portrait
+    // desktop window needs the portrait plate or the garden crops away.
+    expect(sources.slice(0, 2).every((source) => source.getAttribute('media') === '(max-aspect-ratio: 1/1)')).toBe(true)
     expect(heroImage?.getAttribute('alt')).toBe('')
     expect(heroImage?.getAttribute('width')).toBe('1024')
     expect(heroImage?.getAttribute('height')).toBe('576')
@@ -119,8 +150,8 @@ describe('public landing page', () => {
     await act(async () => {
       root.render(createElement(
         MemoryRouter,
-        { initialEntries: ['/'] },
-        createElement(LoginPage, { publicHome: true }),
+        { initialEntries: ['/tour'] },
+        createElement(LandingTour),
       ))
     })
 
@@ -151,8 +182,8 @@ describe('public landing page', () => {
     await act(async () => {
       root.render(createElement(
         MemoryRouter,
-        { initialEntries: ['/'] },
-        createElement(LoginPage, { publicHome: true }),
+        { initialEntries: ['/tour'] },
+        createElement(LandingTour),
       ))
     })
 
