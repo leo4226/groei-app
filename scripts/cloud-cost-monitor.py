@@ -296,6 +296,36 @@ def collect_neon(api_key, env_file):
             raise
 
     cons = result["consumption"]
+
+    # Honesty flag for the Free-plan fallback: the project usage summary may
+    # return unpopulated ZEROS for the compute fields (compute_time_seconds,
+    # active_time_seconds, cpu_used_sec) even while endpoints are active in this
+    # period — the V2 consumption API (which does populate these) is Launch+ and
+    # 403s on Free. A bare "0.00 CU-h" would read as measured-zero, so flag it.
+    # Storage (synthetic_storage_size) IS measured and stays authoritative.
+    if not cons["source"].startswith("v2"):
+        eps = result["inventory"]["endpoints"]
+        any_active = any(
+            e.get("current_state") not in (None, "idle", "suspended", "broken", "deleted")
+            for e in eps
+        )
+        compute_unmeasured = (
+            (cons.get("compute_cu_seconds") or 0) == 0
+            and (cons.get("active_time_seconds") or 0) == 0
+            and (cons.get("cpu_used_sec") or 0) == 0
+            and (bool(cons.get("compute_last_active_at")) or any_active)
+        )
+        cons["compute_available"] = not compute_unmeasured
+        if compute_unmeasured:
+            cons["compute_note"] = (
+                "compute usage niet beschikbaar via API op Free: V2 consumption is "
+                "Launch+ (403) en de project summary rapporteert 0 CU-h terwijl de "
+                "endpoints actief zijn (metrics kunnen tot ~1h achterlopen). Check de "
+                "Neon console voor live verbruik. Storage hieronder is wél gemeten."
+            )
+    else:
+        cons["compute_available"] = True
+
     if cons["source"].startswith("v2"):
         cu_hours = cons["compute_cu_seconds"] / 3600.0
         storage_gb = (
@@ -515,7 +545,7 @@ def _fmt_usd(x):
     return f"${x:.2f}"
 
 
-def format_report(results, since):
+def format_report(results, since, since_explicit=False):
     lines = []
     lines.append(f"📊 **Floreren Cloud Cost Monitor** — vanaf `{since[:10]}`")
     lines.append("")
@@ -537,17 +567,29 @@ def format_report(results, since):
             plan_label = periods[0].get("period_plan") if periods else None
             lines.append(f"`{p_start}` → `{p_end}` (bron: V2 Consumption API, plan `{plan_label or '?'}`)")
         else:
-            lines.append(
-                f"`{(cons.get('consumption_period_start') or since)[:10]}` → "
-                f"`{(cons.get('consumption_period_end') or '')[:10]}` (bron: project usage summary)"
-            )
+            p_start = (cons.get("consumption_period_start") or "")[:10]
+            p_end = (cons.get("consumption_period_end") or "")[:10]
+            if p_start:
+                lines.append(f"`{p_start}` → `{p_end}` (bron: project usage summary)")
+            else:
+                lines.append("(periode: onbekend — project usage summary toont geen verbruiksperiode)")
+            if since_explicit:
+                lines.append(
+                    f"ℹ️ `--since {since[:10]}` is niet van toepassing op de project "
+                    "usage summary — die rapporteert altijd de huidige verbruiksperiode van Neon."
+                )
             if cons.get("v2_note"):
                 lines.append(f"ℹ️ {cons['v2_note']}")
 
         u = neon["usage"]
         a = neon["allowances"]
         lines.append(f"Plan: **{neon['plan']}** — {a['compute_hours']:.0f} CU-h / {a['storage_gb']:.2f} GB / {a['extra_branches']:.0f} branches inbegrepen, autoscale max {a['autoscale_max_cu']:.0f} CU, scale-to-zero na {a['scale_to_zero_min']} min")
-        lines.append(f"Compute: `{u['cu_hours']:.2f}` CU-h gebruikt (inclusief {a['compute_hours']:.0f}) → overage `{u['overage_cu_hours']:.2f}` CU-h ({_fmt_usd(u['compute_cost'])})")
+        if cons.get("compute_available") is False:
+            lines.append(
+                f"Compute: ⚠️ **niet meetbaar via API op Free** — {cons.get('compute_note', 'zie Neon console')}"
+            )
+        else:
+            lines.append(f"Compute: `{u['cu_hours']:.2f}` CU-h gebruikt (inclusief {a['compute_hours']:.0f}) → overage `{u['overage_cu_hours']:.2f}` CU-h ({_fmt_usd(u['compute_cost'])})")
         lines.append(f"Storage: `{u['storage_gb']:.4f}` GB gebruikt (inclusief {a['storage_gb']:.2f}) → overage `{u['overage_storage_gb']:.4f}` GB ({_fmt_usd(u['storage_cost'])})")
         lines.append(f"Extra branches: `{u['branch_months']:.3f}` branch-maanden (inclusief {a['extra_branches']:.0f}) → overage `{u['overage_branches']:.3f}` ({_fmt_usd(u['branch_cost'])})")
         lines.append(f"Neon totaal: **{_fmt_usd(u['total_cost'])}** (onder tier → $0.00)")
@@ -566,7 +608,7 @@ def format_report(results, since):
                 f"— state `{e['current_state']}`, autoscale {e['autoscaling_limit_min_cu']}–{e['autoscaling_limit_max_cu']} CU"
             )
         for b in inv["branches"]:
-            if not b["has_endpoint"]:
+            if not b.get("has_endpoint", True):
                 lines.append(
                     f"  • branch `{b['id']}` (`{b['name']}`) — GEEN endpoint (endpoint was deleted; data remains)"
                 )
@@ -663,7 +705,7 @@ def main():
     if args.json:
         print(json.dumps(results, indent=2, default=str))
     else:
-        print(format_report(results, since))
+        print(format_report(results, since, since_explicit=bool(args.since)))
     # Exit 0: all providers were attempted; per-provider issues are reported inline.
     sys.exit(0)
 
