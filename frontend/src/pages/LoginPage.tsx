@@ -91,6 +91,8 @@ interface LandingCopy {
   trustKicker: string
   trustTitle: string
   trustItems: readonly string[]
+  tourCta: string
+  tourIntro: string
 }
 
 const COPY: Record<Lang, LandingCopy> = {
@@ -177,6 +179,8 @@ const COPY: Record<Lang, LandingCopy> = {
     badgeNative: 'Inheems',
     badgeStreek: 'Streekeigen',
     bioScope: 'De biodiversiteitsgegevens en aanbevelingen zijn momenteel afgestemd op Nederland.',
+    tourCta: 'Zo werkt het',
+    tourIntro: 'Vier dingen die Floreren voor je tuin doet.',
     trustKicker: 'Op jouw voorwaarden',
     trustTitle: 'Vrij te gebruiken. Open om te blijven.',
     trustItems: [
@@ -268,6 +272,8 @@ const COPY: Record<Lang, LandingCopy> = {
     badgeNative: 'Native',
     badgeStreek: 'Regional',
     bioScope: 'Biodiversity data and recommendations are currently tailored to the Netherlands.',
+    tourCta: 'See how it works',
+    tourIntro: 'Four things Floreren does for your garden.',
     trustKicker: 'On your terms',
     trustTitle: 'Free to use. Open to keep.',
     trustItems: [
@@ -404,11 +410,19 @@ function SunProof({ motionAllowed, label }: { motionAllowed: boolean; label: str
   )
 }
 
+// The hero art bleeds to the viewport edges, so the variant is chosen by the
+// viewport's SHAPE rather than its width: the 9:16 plate (garden along the
+// bottom) for portrait, the 16:9 plate (garden on the right) for landscape.
+// A width breakpoint would hand a portrait desktop window the landscape plate
+// and crop the garden away. object-position keeps the garden — not the empty
+// paper the copy sits on — inside the crop.
+const PORTRAIT_ART = '(max-aspect-ratio: 1/1)'
+
 function HeroArtwork() {
   return (
     <picture aria-hidden="true" data-testid="landing-hero-art" className="absolute inset-0 block">
-      <source media="(max-width: 767px)" srcSet="/landing/botanical-sun-atlas-mobile.avif" type="image/avif" />
-      <source media="(max-width: 767px)" srcSet="/landing/botanical-sun-atlas-mobile.webp" type="image/webp" />
+      <source media={PORTRAIT_ART} srcSet="/landing/botanical-sun-atlas-mobile.avif" type="image/avif" />
+      <source media={PORTRAIT_ART} srcSet="/landing/botanical-sun-atlas-mobile.webp" type="image/webp" />
       <source srcSet="/landing/botanical-sun-atlas-desktop.avif" type="image/avif" />
       <source srcSet="/landing/botanical-sun-atlas-desktop.webp" type="image/webp" />
       <img
@@ -418,9 +432,36 @@ function HeroArtwork() {
         height="576"
         fetchPriority="high"
         decoding="async"
-        className="block h-full w-full"
+        className="block h-full w-full object-cover object-[50%_45%] [@media(max-aspect-ratio:1/1)]:object-bottom"
       />
     </picture>
+  )
+}
+
+/** Paper wash over the artwork so the copy keeps its contrast at every crop:
+ *  from the left in landscape, from the top in portrait — in both cases from
+ *  the side the copy sits on. */
+function HeroScrim() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 [@media(max-aspect-ratio:1/1)]:hidden"
+        style={{ background: 'linear-gradient(100deg, #fffef9 0%, rgba(255,254,249,0.97) 30%, rgba(255,254,249,0.72) 45%, rgba(255,254,249,0.12) 62%, rgba(255,254,249,0) 74%)' }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 [@media(min-aspect-ratio:1/1)]:hidden"
+        style={{ background: 'linear-gradient(180deg, #fffef9 0%, rgba(255,254,249,0.99) 40%, rgba(255,254,249,0.72) 54%, rgba(255,254,249,0.06) 70%)' }}
+      />
+      {/* Portrait only: the copy runs to the top and the tour link sits at the
+          bottom, so the plate needs paper at both ends and garden in between. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-36 [@media(min-aspect-ratio:1/1)]:hidden"
+        style={{ background: 'linear-gradient(0deg, #fffef9 0%, rgba(255,254,249,0.72) 45%, rgba(255,254,249,0) 100%)' }}
+      />
+    </>
   )
 }
 
@@ -549,12 +590,103 @@ function LandingProofSections({ t, lang, motionAllowed }: { t: LandingCopy; lang
   )
 }
 
+/**
+ * The public homepage is deliberately ONE screen: full-bleed artwork, the
+ * promise, and the two ways in (account / demo garden). Everything that used
+ * to stack below it — the four steps, the sun + biodiversity proof, the trust
+ * block — now lives one click away on /tour, so the first thing a visitor
+ * sees is a composition rather than the top of a scroll.
+ */
 function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang; onChangeLanguage: (lang: Lang) => void }) {
+  return (
+    // min-h-dvh (not h-dvh): one screen by design, but short landscape windows
+    // grow rather than clip the copy.
+    <div className="landing-focus relative flex min-h-dvh flex-col overflow-hidden bg-[#fffef9]">
+      <HeroArtwork />
+      <HeroScrim />
+      {/* Plate mark: a delicate inset rule, the way a botanical print is framed */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-3 z-10 rounded-[6px] border border-[#8a9482]/25 sm:inset-5" />
+
+      <LangToggle lang={lang} onChange={onChangeLanguage} />
+      <header className="relative z-10 flex w-full items-center px-7 pt-7 sm:px-10 sm:pt-9">
+        <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-[#2F5D3A]">Floreren.</Link>
+        {/* Paper chip: top-right sits over foliage, where bare text would vanish */}
+        <Link
+          to="/login"
+          className="ml-auto mr-20 rounded-full border border-[#8a9482]/40 bg-[#fffef9]/85 px-4 py-1.5 text-sm font-semibold text-[#2F5D3A] shadow-[0_2px_8px_rgba(31,42,30,0.06)] backdrop-blur-sm"
+        >
+          {t.loginLink}
+        </Link>
+      </header>
+
+      {/* Landscape: copy sits beside the garden, optically centred. Portrait:
+          the plate's paper is at the TOP, so the copy anchors there instead. */}
+      <main className="relative z-10 flex flex-1 items-center px-7 sm:px-10 [@media(max-aspect-ratio:1/1)]:items-start [@media(max-aspect-ratio:1/1)]:pt-6">
+        <div className="w-full max-w-[560px] py-6">
+          <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#5a6553]">
+            <span className="h-px w-7 flex-none bg-[#8a9482]" />
+            {t.kicker}
+          </p>
+          <h1 className="m-0 mt-4 font-heading text-[clamp(34px,6.6vw,64px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#2F5D3A]">
+            {t.heroTitle}
+          </h1>
+          <p className="mb-0 mt-5 max-w-[460px] text-[15px] leading-[1.55] text-[#43503e] sm:text-[16px]">
+            {t.heroSubtitle}
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              to="/login?mode=register"
+              data-testid="landing-primary-cta"
+              className="rounded-full bg-[#2F5D3A] px-6 py-3 text-sm font-semibold text-[#fffef9] shadow-md transition-transform active:scale-95"
+            >
+              {t.primaryCta}
+            </Link>
+            <Link
+              to="/demo"
+              data-testid="landing-demo-cta"
+              className="rounded-full border border-[#8a9482] bg-[#fffef9]/80 px-5 py-3 text-sm font-semibold text-[#2F5D3A] backdrop-blur-sm transition-transform active:scale-95"
+            >
+              {t.demoCta}
+            </Link>
+          </div>
+          <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#5a6553]">{t.demoNote}</p>
+        </div>
+      </main>
+
+      {/* The rest of the story is a click, not a scroll */}
+      <footer className="relative z-10 px-7 pb-8 sm:px-10 sm:pb-10">
+        <Link
+          to="/tour"
+          data-testid="landing-tour-link"
+          className="group inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#5a6553] transition-colors hover:text-[#2F5D3A]"
+        >
+          <span className="h-px w-7 flex-none bg-[#8a9482] transition-all group-hover:w-10" />
+          {t.tourCta}
+        </Link>
+      </footer>
+    </div>
+  )
+}
+
+/** /tour — the long-form counterpart to the one-screen homepage. */
+export function LandingTour() {
+  const [lang, setLang] = useState<Lang>(initialLang)
   const motionAllowed = useMotionAllowed()
+  const t = COPY[lang]
+
+  function changeLang(l: Lang) {
+    setLang(l)
+    try {
+      localStorage.setItem(LANG_KEY, l)
+      localStorage.setItem('floreren_lang', l)
+    } catch { /* private mode — ignore */ }
+  }
 
   return (
     <div className="landing-focus relative min-h-dvh overflow-hidden">
-      <LangToggle lang={lang} onChange={onChangeLanguage} />
+      <PageDecor variant="sparse" />
+      <LangToggle lang={lang} onChange={changeLang} />
+
       <header className="relative z-10 mx-auto flex w-full max-w-[1024px] items-center px-5 pt-5">
         <Link to="/" className="font-heading text-[24px] font-medium tracking-[-0.02em] text-primary">Floreren.</Link>
         <Link to="/login" className="ml-auto mr-20 text-sm font-semibold text-primary underline-offset-4 hover:underline">
@@ -562,44 +694,19 @@ function PublicHome({ t, lang, onChangeLanguage }: { t: LandingCopy; lang: Lang;
         </Link>
       </header>
 
-      <div className="relative z-10 mx-auto w-full max-w-[1064px] px-5 pb-20 pt-10 md:pt-12">
-        <section className="relative isolate mx-auto aspect-[9/16] w-full max-w-[1024px] overflow-hidden rounded-[28px] border border-border bg-[#fffef9] shadow-[0_22px_56px_rgba(31,42,30,0.14)] md:aspect-[16/9]">
-          <HeroArtwork />
-          <div className="relative z-10 flex h-full w-full max-w-[92%] flex-col items-start px-5 py-6 sm:px-8 sm:py-8 md:max-w-[50%] md:px-6 md:py-6 lg:max-w-[44%] lg:px-10 lg:py-10">
-            <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#5a6553]">
-              <span className="h-px w-7 flex-none bg-[#8a9482]" />
-              {t.kicker}
-            </p>
-            <h1 className="m-0 mt-3 font-heading text-[clamp(30px,8vw,70px)] font-medium leading-[0.98] tracking-[-0.035em] text-[#2F5D3A] md:mt-4 md:text-[36px] lg:mt-5 lg:text-[clamp(40px,5vw,56px)]">
-              {t.heroTitle}
-            </h1>
-            <p className="mb-0 mt-4 text-[14px] leading-[1.45] text-[#43503e] md:mt-3 md:text-[13px] md:leading-[1.4] lg:mt-5 lg:text-[16px] lg:leading-[1.55]">
-              {t.heroSubtitle}
-            </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4 md:mt-4 md:gap-3 lg:mt-8 lg:gap-4">
-              <Link
-                to="/login?mode=register"
-                data-testid="landing-primary-cta"
-                className="rounded-full bg-[#2F5D3A] px-5 py-3 text-sm font-semibold text-[#fffef9] shadow-md transition-transform active:scale-95 md:px-4 md:py-2.5 md:text-[13px] lg:px-5 lg:py-3 lg:text-sm"
-              >
-                {t.primaryCta}
-              </Link>
-              <Link to="/demo" className="rounded-full border border-[#8a9482] bg-[#fffef9]/90 px-4 py-3 text-sm font-semibold text-[#2F5D3A] shadow-sm md:rounded-none md:border-0 md:bg-transparent md:px-0 md:py-0 md:text-[12px] md:shadow-none lg:text-sm">
-                {t.demoCta}
-              </Link>
-            </div>
-            <p className="m-0 mt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#5a6553]">{t.demoNote}</p>
-          </div>
-        </section>
+      <section className="relative z-10 mx-auto w-full max-w-[1024px] px-5 pb-4 pt-12">
+        <p className="m-0 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">{t.tourCta}</p>
+        <h1 className="m-0 mt-3 max-w-[720px] font-heading text-[clamp(30px,4.4vw,46px)] font-medium leading-[1.04] tracking-[-0.02em] text-primary">
+          {t.tourIntro}
+        </h1>
+        <div className="mt-10 grid gap-x-10 gap-y-8 border-t border-border pt-10 md:grid-cols-2">
+          {t.features.map((f) => <SpecimenEntry key={f.no} f={f} />)}
+        </div>
+      </section>
 
-        <section className="mt-20 border-t border-border pt-10">
-          <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
-            {t.features.map((f) => <SpecimenEntry key={f.no} f={f} />)}
-          </div>
-        </section>
+      <div className="relative z-10">
+        <LandingProofSections t={t} lang={lang} motionAllowed={motionAllowed} />
       </div>
-
-      <LandingProofSections t={t} lang={lang} motionAllowed={motionAllowed} />
     </div>
   )
 }

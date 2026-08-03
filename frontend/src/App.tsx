@@ -22,6 +22,7 @@ import { defaultMapRedirectSlug } from './appMapRedirectModel'
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const DemoGardenPage = lazy(() => import('./pages/DemoGardenPage'))
+const LandingTour = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LandingTour })))
 const MapPage = lazy(() => import('./pages/MapPage'))
 const Plants = lazy(() => import('./pages/Plants'))
 const AddPlant = lazy(() => import('./pages/AddPlant'))
@@ -175,6 +176,8 @@ export default function App() {
   const isLoginPage = location.pathname === '/login'
   // The public demo garden (/demo) is pre-auth like the login page: no app chrome.
   const isDemoPage = location.pathname === '/demo'
+  // /tour is the homepage's long-form counterpart — also pre-auth, also no chrome.
+  const isTourPage = location.pathname === '/tour'
   const isAdminPage = location.pathname.startsWith('/admin')
   // Hide Stekkie during the identify flow — it overlaps the full-screen camera.
   const isIdentifyPage = location.pathname.startsWith('/identify')
@@ -187,10 +190,10 @@ export default function App() {
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
   useEffect(() => {
-    if (getToken() && !isLoginPage && !isPublicHome && !hasLoaded && !isLoading) {
+    if (getToken() && !isLoginPage && !isPublicHome && !isTourPage && !hasLoaded && !isLoading) {
       load()
     }
-  }, [load, isLoginPage, isPublicHome, hasLoaded, isLoading])
+  }, [load, isLoginPage, isPublicHome, isTourPage, hasLoaded, isLoading])
 
   // Prime the icon URL index once so generated (R2) icons resolve app-wide.
   useEffect(() => { icons.catalog().catch(() => {}) }, [])
@@ -246,6 +249,7 @@ export default function App() {
               />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/demo" element={<DemoGardenPage />} />
+              <Route path="/tour" element={<LandingTour />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route
                 path="/maps"
@@ -401,15 +405,15 @@ export default function App() {
         </PullToRefresh>
       </main>
 
-      {!isPublicHome && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isPublicHome && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
 
-      {!isPublicHome && !isLoginPage && !isDemoPage && <UpdateToast />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && <UpdateToast />}
 
       {showPlantPicker && (
         <PlantPickerSheet
