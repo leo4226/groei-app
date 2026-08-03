@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login, register, forgotPassword, saveToken } from '../api/auth'
+import { login, register, forgotPassword, saveToken, warmBackend } from '../api/auth'
 import { household } from '../api/client'
 import { useFloreren } from '../store/useFloreren'
 import PageDecor from '../components/PageDecor'
@@ -704,6 +704,9 @@ export function LandingTour() {
   const motionAllowed = useMotionAllowed()
   const t = COPY[lang]
 
+  // Same reason as the homepage: "Inloggen" is one click away from here.
+  useEffect(() => { warmBackend() }, [])
+
   function changeLang(l: Lang) {
     setLang(l)
     try {
@@ -759,6 +762,11 @@ export default function LoginPage({ publicHome = false }: { publicHome?: boolean
   const [loading, setLoading] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
   const navigate = useNavigate()
+
+  // Wake the (auto-stopped) backend while the visitor reads the page, so the
+  // cold start doesn't land on their login submit. Covers both / and /login,
+  // which are the same component.
+  useEffect(() => { warmBackend() }, [])
 
   const t = COPY[lang]
 
