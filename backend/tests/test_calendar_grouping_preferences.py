@@ -14,7 +14,8 @@ CREATE TABLE care_log (
 );
 CREATE TABLE garden_care_operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT, household_id INTEGER, care_type TEXT,
-    map_id INTEGER, completed_at DATE, completed_by INTEGER, created_at TEXT, undone_at TEXT
+    map_id INTEGER, completed_at DATE, completed_by INTEGER, created_at TEXT, undone_at TEXT,
+    previous_watered_at DATE, previous_watered_by INTEGER, previous_water_amount DOUBLE PRECISION
 );
 CREATE TABLE garden_care_operation_members (
     operation_id INTEGER, schedule_id INTEGER, previous_next_due DATE,

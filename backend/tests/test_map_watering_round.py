@@ -21,7 +21,10 @@ CREATE TABLE garden_care_operations (
     completed_at DATE,
     completed_by INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    undone_at TEXT
+    undone_at TEXT,
+    previous_watered_at DATE,
+    previous_watered_by INTEGER,
+    previous_water_amount DOUBLE PRECISION
 );
 CREATE TABLE garden_care_operation_members (
     operation_id INTEGER,

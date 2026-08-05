@@ -3,6 +3,8 @@ from datetime import date
 import pytest
 import pytest_asyncio
 
+from services.garden_log import get_last_garden_watered
+
 
 EXTRA_SCHEMA = """
 CREATE TABLE care_log (
@@ -11,7 +13,8 @@ CREATE TABLE care_log (
 );
 CREATE TABLE garden_care_operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT, household_id INTEGER, care_type TEXT,
-    map_id INTEGER, completed_at DATE, completed_by INTEGER, created_at TEXT, undone_at TEXT
+    map_id INTEGER, completed_at DATE, completed_by INTEGER, created_at TEXT, undone_at TEXT,
+    previous_watered_at DATE, previous_watered_by INTEGER, previous_water_amount DOUBLE PRECISION
 );
 CREATE TABLE garden_care_operation_members (
     operation_id INTEGER, schedule_id INTEGER, previous_next_due DATE,
@@ -403,3 +406,123 @@ async def test_routine_completion_excludes_frequent_and_opted_out_schedules(
         {'id': 11, 'next_due': '2026-07-15', 'last_done': None},
         {'id': 12, 'next_due': '2026-07-15', 'last_done': None},
     ]
+
+
+@pytest.mark.asyncio
+async def test_complete_water_round_writes_garden_water_log(
+    client, selectable_garden_db, auth_header,
+):
+    db = selectable_garden_db
+    assert await get_last_garden_watered(1, db=db) is None
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    assert response.json()['affected_count'] == 1
+
+    assert await get_last_garden_watered(1, db=db) == date(2026, 7, 10)
+    rows = await db.execute_fetchall(
+        'SELECT watered_at, watered_by, water_amount, household_id FROM garden_water_log'
+    )
+    assert rows == [
+        {'watered_at': '2026-07-10', 'watered_by': 1, 'water_amount': None, 'household_id': 1}
+    ]
+    operation = (await db.execute_fetchall(
+        'SELECT previous_watered_at, previous_watered_by, previous_water_amount '
+        'FROM garden_care_operations WHERE id = ?',
+        (response.json()['operation_id'],),
+    ))[0]
+    assert operation == {
+        'previous_watered_at': None,
+        'previous_watered_by': None,
+        'previous_water_amount': None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_undo_water_round_restores_previous_garden_water_log(
+    client, selectable_garden_db, auth_header,
+):
+    db = selectable_garden_db
+    await db.execute(
+        """INSERT INTO garden_water_log
+           (watered_at, watered_by, water_amount, household_id)
+           VALUES ('2026-07-01', 2, 12.5, 1)"""
+    )
+    await db.commit()
+
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    assert await get_last_garden_watered(1, db=db) == date(2026, 7, 10)
+    operation = (await db.execute_fetchall(
+        'SELECT previous_watered_at, previous_watered_by, previous_water_amount '
+        'FROM garden_care_operations WHERE id = ?',
+        (response.json()['operation_id'],),
+    ))[0]
+    assert operation == {
+        'previous_watered_at': '2026-07-01',
+        'previous_watered_by': 2,
+        'previous_water_amount': 12.5,
+    }
+
+    undo = await client.post(
+        f"/api/care/garden/{response.json()['operation_id']}/undo",
+        headers=auth_header,
+    )
+    assert undo.status_code == 200
+
+    assert await get_last_garden_watered(1, db=db) == date(2026, 7, 1)
+    rows = await db.execute_fetchall(
+        'SELECT watered_at, watered_by, water_amount, household_id FROM garden_water_log'
+    )
+    assert rows == [
+        {'watered_at': '2026-07-01', 'watered_by': 2, 'water_amount': 12.5, 'household_id': 1}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_undo_water_round_without_prior_log_leaves_garden_water_log_empty(
+    client, selectable_garden_db, auth_header,
+):
+    db = selectable_garden_db
+    response = await client.post(
+        '/api/care/garden/complete',
+        json={
+            'care_type': 'water',
+            'completed_at': '2026-07-10',
+            'user_id': 1,
+            'map_id': 1,
+            'schedule_ids': [10],
+        },
+        headers=auth_header,
+    )
+    assert response.status_code == 200
+    assert await get_last_garden_watered(1, db=db) == date(2026, 7, 10)
+
+    undo = await client.post(
+        f"/api/care/garden/{response.json()['operation_id']}/undo",
+        headers=auth_header,
+    )
+    assert undo.status_code == 200
+
+    assert await get_last_garden_watered(1, db=db) is None
+    assert await db.execute_fetchall('SELECT id FROM garden_water_log') == []

@@ -221,6 +221,42 @@ async def complete_outdoor_care(
         operation_id = operation[0]["id"]
         done_at = datetime.combine(completed_at, datetime.min.time())
 
+        if care_type == "water":
+            # Snapshot the household's current garden_water_log row onto the
+            # operation so undo can restore it, then upsert the watering round
+            # as the latest entry (single row per household, log_garden_water
+            # semantics: DELETE then INSERT).
+            previous = await db.execute_fetchall(
+                """SELECT watered_at, watered_by, water_amount
+                   FROM garden_water_log
+                   WHERE household_id = ?
+                   ORDER BY watered_at DESC LIMIT 1""",
+                (household_id,),
+            )
+            if previous:
+                prev_watered_at = previous[0]["watered_at"]
+                prev_watered_by = previous[0]["watered_by"]
+                prev_water_amount = previous[0]["water_amount"]
+            else:
+                prev_watered_at = prev_watered_by = prev_water_amount = None
+            await db.execute(
+                """UPDATE garden_care_operations
+                   SET previous_watered_at = ?, previous_watered_by = ?,
+                       previous_water_amount = ?
+                   WHERE id = ?""",
+                (prev_watered_at, prev_watered_by, prev_water_amount, operation_id),
+            )
+            await db.execute(
+                "DELETE FROM garden_water_log WHERE household_id = ?",
+                (household_id,),
+            )
+            await db.execute(
+                """INSERT INTO garden_water_log
+                   (watered_at, watered_by, water_amount, household_id)
+                   VALUES (?, ?, NULL, ?)""",
+                (completed_at, user_id, household_id),
+            )
+
         for schedule in schedules:
             log = await db.execute_fetchall(
                 """INSERT INTO care_log (plant_id, care_type, done_by, done_at, skipped)
@@ -264,7 +300,9 @@ async def complete_outdoor_care(
 async def undo_outdoor_care(db, *, household_id: int, operation_id: int) -> bool:
     async with database_transaction(db):
         operations = await db.execute_fetchall(
-            """SELECT id, completed_by FROM garden_care_operations
+            """SELECT id, completed_by, care_type, previous_watered_at,
+                      previous_watered_by, previous_water_amount
+               FROM garden_care_operations
                WHERE id = ? AND household_id = ? AND undone_at IS NULL"""
             + for_update_clause(db),
             (operation_id, household_id),
@@ -297,6 +335,25 @@ async def undo_outdoor_care(db, *, household_id: int, operation_id: int) -> bool
                     (operation_id, member["schedule_id"]),
                 )
                 await db.execute("DELETE FROM care_log WHERE id = ?", (member["care_log_id"],))
+        if operations[0]["care_type"] == "water":
+            # Restore the garden_water_log row the round overwrote (or leave
+            # the table empty if no row existed before the round).
+            await db.execute(
+                "DELETE FROM garden_water_log WHERE household_id = ?",
+                (household_id,),
+            )
+            if operations[0].get("previous_watered_at") is not None:
+                await db.execute(
+                    """INSERT INTO garden_water_log
+                       (watered_at, watered_by, water_amount, household_id)
+                       VALUES (?, ?, ?, ?)""",
+                    (
+                        operations[0]["previous_watered_at"],
+                        operations[0].get("previous_watered_by"),
+                        operations[0].get("previous_water_amount"),
+                        household_id,
+                    ),
+                )
         await db.execute(
             "UPDATE garden_care_operations SET undone_at = CURRENT_TIMESTAMP WHERE id = ?",
             (operation_id,),
