@@ -21,7 +21,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from care_types import STEKKIE_ACTIONABLE_CARE_TYPES
-from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_PHENOLOGY_MODEL
+from llm_config import LLM_API_KEY, LLM_CHAT_URL
 
 
 _CARE_COMPLETION_TERMS = {
@@ -65,7 +65,7 @@ _CARE_LABELS_EN = {
     "dust": "leaf cleaning",
 }
 
-STEKKIE_MODEL = os.getenv("STEKKIE_MODEL", LLM_PHENOLOGY_MODEL)
+STEKKIE_MODEL = os.getenv("STEKKIE_MODEL", "deepseek/deepseek-v4-flash-0731")
 STEKKIE_TEMPERATURE = float(os.getenv("STEKKIE_TEMPERATURE", "0.45"))
 STEKKIE_MAX_TOKENS = int(os.getenv("STEKKIE_MAX_TOKENS", "800"))
 STEKKIE_TIMEOUT_SECONDS = float(os.getenv("STEKKIE_TIMEOUT_SECONDS", "45"))
