@@ -88,6 +88,7 @@ describe('MonthView desktop rail', () => {
   })
 
   it('does not mount redundant Upcoming or permanent Almanac cards', () => {
+    const now = new Date()
     act(() => root.render(
       createElement(LanguageProvider, null,
         createElement(MonthView, {
@@ -95,8 +96,8 @@ describe('MonthView desktop rail', () => {
           env: 'all',
           environmentFilter: null,
           viewNavigation: createElement('nav', { 'data-calendar-view-navigation': true }),
-          year: 2026,
-          month1: 7,
+          year: now.getFullYear(),
+          month1: now.getMonth() + 1,
           onMonthChange: vi.fn(),
         }),
       ),

@@ -21,7 +21,7 @@ export interface CalendarWeatherLocation {
 export interface CalendarWeatherAdvisory {
   key: string
   date: string
-  type: 'frost_protect' | 'heat_protect'
+  type: 'frost_protect' | 'heat_protect' | 'water'
   severity: string | null
   warningId: string | null
   acknowledgedAt: string | null
@@ -54,7 +54,16 @@ interface MutableAdvisory extends Omit<CalendarWeatherAdvisory, 'affectedPlantCo
 }
 
 export function isInformationalWeather(event: CalendarEvent): boolean {
-  return event.status !== 'completed' && INFORMATIONAL_WEATHER_TYPES.has(event.type)
+  if (event.status === 'completed') return false
+  if (INFORMATIONAL_WEATHER_TYPES.has(event.type)) return true
+  // Heat-triggered extra watering moments (#785) render as informational
+  // advisories: they explain WHY an extra watering moment exists and must not
+  // offer completion (the underlying water schedule is the completable work).
+  return (
+    event.type === 'water'
+    && event.weather_triggered === true
+    && Boolean(event.reason_nl || event.reason_en)
+  )
 }
 
 function advisoryKey(event: CalendarEvent): string {

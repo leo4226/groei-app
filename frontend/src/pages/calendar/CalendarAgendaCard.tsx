@@ -69,10 +69,18 @@ export default function CalendarAgendaCard({
     careTaskCount > 0
       ? `${careTaskCount} ${careTaskCount === 1 ? t.calendar.taskSingular! : t.calendar.tasks}`
       : null,
-    ...activeWeather.map(advisory => t.calendar.weatherAffectedSummary(
-      advisory.affectedPlantCount,
-      advisory.type,
-    )),
+    ...activeWeather
+      .filter((
+        advisory,
+      ): advisory is CalendarWeatherAdvisory & (
+        { type: 'frost_protect' | 'heat_protect' }
+      ) => (
+        advisory.type === 'frost_protect' || advisory.type === 'heat_protect'
+      ))
+      .map(advisory => t.calendar.weatherAffectedSummary(
+        advisory.affectedPlantCount,
+        advisory.type,
+      )),
     advisories.length > 0
       ? `${advisories.length} ${t.utility.eventMoistureCheck.toLowerCase()}`
       : null,

@@ -156,6 +156,9 @@ async def complete_outdoor_care(
             return {"operation_id": None, "affected_count": 0}
 
     async with database_transaction(db):
+        # Ephemeral water rows are informational heat-water reminders (#785),
+        # never completable as regular water work.
+        ephemeral_guard = "AND cs.is_ephemeral = 0" if care_type == "water" else ""
         schedules = await db.execute_fetchall(
             """SELECT cs.id, cs.plant_id, cs.interval_days, cs.season_adjust,
                       cs.next_due, cs.last_done, cs.last_done_by,
@@ -165,7 +168,8 @@ async def complete_outdoor_care(
                JOIN plants p ON p.id = cs.plant_id
                JOIN maps m ON m.id = p.map_id
                WHERE p.household_id = ? AND p.is_active = 1 AND cs.is_active = 1
-                 AND cs.care_type = ? AND m.id = ?""" + for_update_clause(db),
+                 AND cs.care_type = ? AND m.id = ?
+               """ + ephemeral_guard + for_update_clause(db),
             (household_id, care_type, map_id),
         )
         if not schedules:

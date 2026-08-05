@@ -77,14 +77,21 @@ def _filter_events(events: list, config: CalendarSubscriptionConfig) -> list:
     filtered = []
     for event in events:
         weather_triggered = bool(_event_value(event, "weather_triggered", False))
-        if weather_triggered and not config.include_context:
+        care_type = str(_event_value(event, "type", _event_value(event, "care_type", "")))
+        is_water = care_type == "water"
+        # Water moments (regular and heat-triggered extras) are real care work
+        # and always sync. Other weather context (frost/heat/moisture) needs
+        # the explicit include_context opt-in.
+        if weather_triggered and not is_water and not config.include_context:
             continue
         map_id = _event_value(event, "map_id")
         if config.map_ids and map_id not in config.map_ids:
             continue
-        care_type = str(_event_value(event, "type", _event_value(event, "care_type", "")))
-        if not weather_triggered and config.care_types and care_type not in config.care_types:
-            continue
+        if config.care_types and care_type not in config.care_types:
+            # Context events ignore the care-type selection so a warning can
+            # never be hidden by a narrow filter; water respects the filter.
+            if not (weather_triggered and not is_water):
+                continue
         filtered.append(event)
     return filtered
 
@@ -145,7 +152,7 @@ def _aggregate_external_events(events: list) -> list[dict]:
     return result
 
 
-async def _project_events(db, household_id: int, config: CalendarSubscriptionConfig):
+async def _project_events(db, account: dict, config: CalendarSubscriptionConfig):
     environment = {"all": None, "outdoor": "tuin", "indoor": "huis"}[config.environment]
     today = _amsterdam_today()
     events = await list_calendar_events(
@@ -154,7 +161,8 @@ async def _project_events(db, household_id: int, config: CalendarSubscriptionCon
         env=environment,
         group_outdoor=True,
         pin_overdue=True,
-        account={"household_id": household_id},
+        include_history=False,
+        account=account,
         db=db,
     )
     return _aggregate_external_events(_filter_events(events, config))
@@ -313,7 +321,7 @@ async def public_calendar_feed(
     db=Depends(db_dep),
 ):
     rows = await db.execute_fetchall(
-        """SELECT s.household_id, s.config_json, a.language
+        """SELECT s.household_id, s.account_id, s.config_json, a.language
            FROM calendar_subscriptions s
            JOIN accounts a ON a.id = s.account_id AND a.household_id = s.household_id
            WHERE s.token_hash = ? AND s.revoked_at IS NULL""",
@@ -328,7 +336,11 @@ async def public_calendar_feed(
     )
     language = row.get("language") if isinstance(row, dict) else row["language"]
     language = language if language in ("nl", "en") else "nl"
-    events = await _project_events(db, row["household_id"], config)
+    account = {
+        "account_id": row["account_id"],
+        "household_id": row["household_id"],
+    }
+    events = await _project_events(db, account, config)
     payload = serialize_calendar(
         events,
         language=language,
@@ -356,7 +368,11 @@ async def download_calendar_snapshot(
     )
     language = language_rows[0].get("language") if language_rows else "nl"
     language = language if language in ("nl", "en") else "nl"
-    events = await _project_events(db, account["household_id"], config)
+    account = {
+        "account_id": account["account_id"],
+        "household_id": account["household_id"],
+    }
+    events = await _project_events(db, account, config)
     payload = serialize_calendar(
         events,
         language=language,
