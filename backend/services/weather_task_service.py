@@ -1,10 +1,18 @@
 """Ephemeral care schedules derived from weather and canonical care profiles."""
-from datetime import date
+from datetime import date, datetime
 import json
 
 from database import get_db
 from services.care_profile import environment_for_plant, load_care_profile
 from services.warnings import canonical_weather_warning_id_for_fields
+
+
+def _as_date(value) -> date:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value)[:10])
 
 
 def weather_task_metadata(notes: str | None) -> dict | None:
@@ -45,6 +53,40 @@ def _weather_task_notes(
     })
 
 
+# Heat-triggered extra watering moments (#785). The bar is the Dutch heatwave
+# level; indoor plants use the outdoor forecast as a proxy because there is no
+# indoor sensor (same convention as the Water pressure model).
+HEAT_WATER_MAX_TEMP_C = 30.0
+HEAT_WATER_KIND = "heat_water"
+
+
+def heat_water_notes(
+    *,
+    forecast_date: date,
+    max_temp_c: float,
+) -> str:
+    return json.dumps({
+        "kind": HEAT_WATER_KIND,
+        "care_type": "water",
+        "forecast_date": forecast_date.isoformat(),
+        "max_temp_c": max_temp_c,
+        "threshold_c": HEAT_WATER_MAX_TEMP_C,
+    })
+
+
+def heat_water_metadata(notes: str | None) -> dict | None:
+    """Return parsed heat-water metadata, or None when notes are not ours."""
+    if not notes:
+        return None
+    try:
+        metadata = json.loads(notes)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(metadata, dict) or metadata.get("kind") != HEAT_WATER_KIND:
+        return None
+    return metadata
+
+
 async def _get_cached_weather() -> dict:
     """Return today's cached min/max temperature values."""
     from services.environment import get_temp_data
@@ -59,7 +101,11 @@ async def _get_cached_weather() -> dict:
             "forecast_date": None,
         }
 
-    forecast = days[-1]
+    # The cached forecast is ordered chronologically (index 0 = today, from
+    # Open-Meteo with past_days=0). The heat/frost task for "today" must use
+    # today's values; picking the last day used to anchor tasks to the far end
+    # of the 7-day window (#785).
+    forecast = days[0]
     raw_date = forecast.get("date")
     forecast_date = date.fromisoformat(raw_date) if raw_date else date.today()
     return {
@@ -273,6 +319,110 @@ async def _sync_ephemeral_schedules(db) -> dict:
              AND (p.is_active = 0 OR COALESCE(m.map_type, 'outdoor') = 'indoor')"""
     )
     for row in stale_rows:
+        await db.execute(
+            "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+            (row["id"],),
+        )
+        deleted += 1
+
+    # ── Heat-triggered extra watering moments (#785) ────────────────────
+    # One active ephemeral `water` row per plant (partial unique index in
+    # migration 0061). The row is an informational extra watering moment in
+    # the Calendar and the synced agenda: it never alters the regular water
+    # interval or deadline, and completing the plant's regular water advances
+    # the canonical schedule from the actual date as usual.
+    eligible_water = await db.execute_fetchall(
+        """SELECT p.id AS plant_id,
+                  reg.next_due AS water_next_due,
+                  reg.last_done AS water_last_done
+           FROM plants p
+           JOIN maps m ON p.map_id = m.id
+           JOIN care_schedules reg
+             ON reg.plant_id = p.id AND reg.care_type = 'water'
+            AND reg.is_active = 1 AND reg.is_ephemeral = 0
+           WHERE p.is_active = 1
+             AND m.map_type IN ('outdoor', 'indoor')
+           ORDER BY p.id"""
+    )
+
+    temp_days = weather.get("temp_days") or []
+    qualifying = [
+        day for day in temp_days
+        if day.get("date") is not None
+        and _as_date(day["date"]) >= today
+        and day["max"] >= HEAT_WATER_MAX_TEMP_C
+    ]
+    nearest = min(qualifying, key=lambda day: day["date"]) if qualifying else None
+    target_date = _as_date(nearest["date"]) if nearest else None
+
+    existing_water = await db.execute_fetchall(
+        """SELECT id, plant_id FROM care_schedules
+           WHERE is_ephemeral = 1 AND is_active = 1 AND care_type = 'water'"""
+    )
+    existing_by_plant = {row["plant_id"]: row for row in existing_water}
+
+    for row in eligible_water:
+        plant_id = row["plant_id"]
+        target = target_date
+        if target is not None:
+            # No extra moment on the plant's own regular watering day, and none
+            # once the plant has already been watered on/after the hot day.
+            if row["water_next_due"] is not None and _as_date(row["water_next_due"]) == target:
+                target = None
+            elif row["water_last_done"] is not None and _as_date(row["water_last_done"]) >= target:
+                target = None
+        active = existing_by_plant.get(plant_id)
+        if target is None:
+            if active is not None:
+                await db.execute(
+                    "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
+                    (active["id"],),
+                )
+                deleted += 1
+            continue
+        notes = heat_water_notes(
+            forecast_date=target,
+            max_temp_c=float(nearest["max"]),
+        )
+        if active is not None:
+            await db.execute(
+                """UPDATE care_schedules
+                   SET next_due = ?, notes = ?
+                   WHERE id = ?""",
+                (target, notes, active["id"]),
+            )
+            continue
+        inserted = await db.execute_fetchall(
+            """INSERT INTO care_schedules
+               (plant_id, care_type, interval_days, next_due, is_ephemeral,
+                rhythm_opt_out, notes)
+               VALUES (?, 'water', 1, ?, 1, 1, ?)
+               ON CONFLICT DO NOTHING
+               RETURNING id""",
+            (plant_id, target, notes),
+        )
+        if inserted:
+            created += 1
+
+    # Clean up heat-water rows for plants that lost their regular water
+    # schedule or moved to an unsupported map.
+    stale_water = await db.execute_fetchall(
+        """SELECT cs.id FROM care_schedules cs
+           JOIN plants p ON cs.plant_id = p.id
+           LEFT JOIN maps m ON p.map_id = m.id
+           WHERE cs.is_ephemeral = 1 AND cs.is_active = 1
+             AND cs.care_type = 'water'
+             AND (
+               p.is_active = 0
+               OR COALESCE(m.map_type, 'outdoor') NOT IN ('outdoor', 'indoor')
+               OR NOT EXISTS (
+                   SELECT 1 FROM care_schedules reg
+                   WHERE reg.plant_id = p.id AND reg.care_type = 'water'
+                     AND reg.is_active = 1 AND reg.is_ephemeral = 0
+               )
+             )"""
+    )
+    for row in stale_water:
         await db.execute(
             "UPDATE care_schedules SET is_active = FALSE WHERE id = ?",
             (row["id"],),

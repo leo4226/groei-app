@@ -187,6 +187,9 @@ def serialize_calendar(
         event_date = _as_date(_value(event, "date"))
         care_type = str(_value(event, "type", _value(event, "care_type", "care")))
         label = _care_label(care_type, language)
+        if care_type == "water" and _value(event, "weather_triggered"):
+            # Heat-triggered extra watering moments stand out in the agenda.
+            label = "Water geven (extra)" if language == "nl" else "Water (extra)"
         summary = _summary(event, label, language, privacy)
         description = _description(event, language, privacy)
         deep_link = f"https://floreren.app/calendar?date={event_date.isoformat()}"

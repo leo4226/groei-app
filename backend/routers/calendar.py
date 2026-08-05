@@ -14,12 +14,17 @@ from services.care_rhythm import (
 )
 from services.care_sessions import project_water_session
 from services.garden_care import schedule_interval_days
-from services.weather_task_service import sync_ephemeral_schedules, weather_task_metadata
+from services.weather_task_service import (
+    sync_ephemeral_schedules,
+    weather_task_metadata,
+    heat_water_metadata,
+    HEAT_WATER_MAX_TEMP_C,
+)
 from services.weather_warning_state import weather_warning_states_for_account
 from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
 from services.moisture_check_service import sync_moisture_checks
-from care_types import CARE_TYPES, normalize_care_type
+from care_types import CARE_TYPES, WEATHER_COLDHEAT_COLORS, normalize_care_type
 
 import logging
 logger = logging.getLogger(__name__)
@@ -363,6 +368,66 @@ def _group_moisture_check_events(
     return retained
 
 
+def _group_heat_water_events(
+    events: list[CalendarEventOut],
+) -> list[CalendarEventOut]:
+    """Collapse per-plant heat-water reminders into one card per map and day."""
+    grouped: dict[tuple[str, int], list[CalendarEventOut]] = {}
+    retained: list[CalendarEventOut] = []
+    for event in events:
+        if event.type == "water" and event.weather_triggered and event.map_id is not None:
+            grouped.setdefault((event.date, event.map_id), []).append(event)
+        else:
+            retained.append(event)
+
+    for (event_date, map_id), members in grouped.items():
+        first = members[0]
+        retained.append(CalendarEventOut(
+            id=f"heat-water:{map_id}:{event_date}",
+            date=event_date,
+            type="water",
+            plant_id=None,
+            plant_name=None,
+            plant_icon_variant=None,
+            schedule_id=None,
+            map_id=map_id,
+            map_name=first.map_name,
+            overdue=any(member.overdue for member in members),
+            grouped=True,
+            group_count=len(members),
+            group_member_schedule_ids=[
+                member.schedule_id for member in members
+                if member.schedule_id is not None
+            ],
+            group_member_event_ids=[member.id for member in members],
+            group_members=[
+                {
+                    "schedule_id": member.schedule_id,
+                    "plant_id": member.plant_id,
+                    "plant_name": member.plant_name,
+                    "plant_icon_variant": member.plant_icon_variant,
+                    "reason_nl": member.reason_nl,
+                    "reason_en": member.reason_en,
+                }
+                for member in members
+                if (
+                    member.schedule_id is not None
+                    and member.plant_id is not None
+                    and member.plant_name is not None
+                )
+            ],
+            severity=first.severity or "warning",
+            reason_nl=first.reason_nl,
+            reason_en=first.reason_en,
+            action_nl=first.action_nl,
+            action_en=first.action_en,
+            color=first.color,
+            icon=first.icon,
+            weather_triggered=True,
+        ))
+    return retained
+
+
 def _history_date(value) -> date:
     if isinstance(value, datetime):
         timestamp = value if value.tzinfo else value.replace(tzinfo=UTC_TZ)
@@ -695,6 +760,20 @@ async def list_calendar_events(
                     "action_nl": "Voel de grond en geef alleen water als die droog aanvoelt.",
                     "action_en": "Feel the soil and water only when it feels dry.",
                 }
+            elif ct == "water":
+                heat = heat_water_metadata(r.get("notes"))
+                if heat is not None:
+                    max_c = float(heat.get("max_temp_c", HEAT_WATER_MAX_TEMP_C))
+                    enrichment = {
+                        **enrichment,
+                        "severity": "warning",
+                        "reason_nl": f"Extra water geven vanwege hitte — max {max_c:.0f}°C",
+                        "reason_en": f"Extra watering due to heat — max {max_c:.0f}°C",
+                        "action_nl": "Geef extra water of controleer de grond; potten drogen sneller uit.",
+                        "action_en": "Water extra or check the soil; containers dry out faster.",
+                        "color": WEATHER_COLDHEAT_COLORS["heat_protect_warning"],
+                        "icon": CARE_TYPES["water"]["icon"],
+                    }
             events.append(CalendarEventOut(
                 id=f"schedule:{r['schedule_id']}:{ct}",
                 date=next_due.isoformat(),
@@ -709,7 +788,7 @@ async def list_calendar_events(
                 schedule_id=r["schedule_id"],
                 overdue=next_due < today,
                 **enrichment,
-                weather_triggered=bool(CARE_TYPES.get(ct, {}).get("is_weather_triggered")),
+                weather_triggered=True,
                 weather_warning_id=warning_id,
                 acknowledged_at=warning_state.get("acknowledged_at"),
             ))
@@ -805,6 +884,7 @@ async def list_calendar_events(
                     **enrichment,
                 ))
 
+    events = _group_heat_water_events(events)
     events = _group_moisture_check_events(events)
 
     # Shared household preferences supersede the legacy browser-local query flag.

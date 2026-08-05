@@ -96,4 +96,52 @@ describe('buildCalendarPresentation', () => {
     expect(advisory.affectedPlantCount).toBe(7)
     expect(advisory.locations[0]).toMatchObject({ affectedPlantCount: 7, plants: [] })
   })
+
+  it('renders heat-triggered water moments as informational advisories', () => {
+    const heatWater = event({
+      id: 'heat-water:4:2026-07-30',
+      type: 'water',
+      schedule_id: 20,
+      weather_warning_id: null,
+      reason_nl: 'Extra water geven vanwege hitte — max 31°C',
+      reason_en: 'Extra watering due to heat — max 31°C',
+      action_nl: 'Geef extra water of controleer de grond.',
+      action_en: 'Water extra or check the soil.',
+    })
+    const regularWater = event({
+      id: 'water-regular',
+      type: 'water',
+      plant_id: 5,
+      plant_name: 'Mint',
+      schedule_id: 21,
+      weather_triggered: false,
+    })
+
+    const presentation = buildCalendarPresentation([heatWater, regularWater])
+
+    expect(presentation.ordinaryEvents).toEqual([regularWater])
+    expect(presentation.weatherAdvisories).toHaveLength(1)
+    expect(presentation.weatherAdvisories[0]).toMatchObject({
+      type: 'water',
+      affectedPlantCount: 1,
+      warningId: null,
+      acknowledgedAt: null,
+    })
+    expect(presentation.weatherAdvisories[0].reasonEn).toContain('Extra watering')
+  })
+
+  it('keeps water events without heat guidance in the ordinary list', () => {
+    const bareWeatherWater = event({
+      id: 'water-odd',
+      type: 'water',
+      weather_triggered: true,
+      reason_nl: null,
+      reason_en: null,
+    })
+
+    const presentation = buildCalendarPresentation([bareWeatherWater])
+
+    expect(presentation.ordinaryEvents).toEqual([bareWeatherWater])
+    expect(presentation.weatherAdvisories).toHaveLength(0)
+  })
 })

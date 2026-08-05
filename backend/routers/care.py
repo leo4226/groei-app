@@ -68,6 +68,7 @@ async def get_map_watering_round(
              AND p.is_active = 1
              AND cs.care_type = 'water'
              AND cs.is_active = 1
+             AND cs.is_ephemeral = 0
            ORDER BY LOWER(p.name), cs.id""",
         (account["household_id"], map_id),
     )
