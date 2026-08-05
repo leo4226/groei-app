@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
-import type { Feature, FeatureCollection, Point } from 'geojson'
+import type { FeatureCollection, Point } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { GeoEntry } from '../../utils/expeditionGeo'
 import ExpeditionMap from './ExpeditionMap'
@@ -31,17 +31,6 @@ function toGeoJSON(entries: GeoEntry[]): FeatureCollection {
   }
 }
 
-function routeGeoJSON(entries: GeoEntry[]): Feature {
-  return {
-    type: 'Feature',
-    geometry: {
-      type: 'LineString',
-      coordinates: [...entries].sort((a, b) => a.index - b.index).map(e => [e.lon, e.lat]),
-    },
-    properties: {},
-  }
-}
-
 function boundsOf(entries: GeoEntry[]): maplibregl.LngLatBounds {
   const b = new maplibregl.LngLatBounds()
   for (const e of entries) b.extend([e.lon, e.lat])
@@ -50,9 +39,9 @@ function boundsOf(entries: GeoEntry[]): maplibregl.LngLatBounds {
 
 /**
  * Street-level expedition map: MapLibre GL over OpenFreeMap vector tiles with
- * the custom herbarium style. Pins, clusters, and the dashed discovery route
- * are GeoJSON layers on top. Falls back to the bundled-coastline SVG map when
- * WebGL or the style/tiles are unavailable (e.g. offline PWA).
+ * the custom herbarium style. Pins and clusters are GeoJSON layers on top.
+ * Falls back to the bundled-coastline SVG map when WebGL or the style/tiles
+ * are unavailable (e.g. offline PWA).
  */
 export default function ExpeditionMapGL({ entries, onSelect, compass }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -95,7 +84,6 @@ export default function ExpeditionMapGL({ entries, onSelect, compass }: Props) {
       window.clearTimeout(failTimer)
       setReady(true)
 
-      map.addSource('route', { type: 'geojson', data: routeGeoJSON(entriesRef.current) })
       map.addSource('finds', {
         type: 'geojson',
         data: toGeoJSON(entriesRef.current),
@@ -104,14 +92,6 @@ export default function ExpeditionMapGL({ entries, onSelect, compass }: Props) {
         clusterRadius: 44,
       })
 
-      map.addLayer({
-        id: 'route', type: 'line', source: 'route',
-        paint: {
-          'line-color': TERRA, 'line-width': 1.6, 'line-opacity': 0.7,
-          'line-dasharray': [2, 2.5],
-        },
-        layout: { 'line-cap': 'round' },
-      })
       map.addLayer({
         id: 'clusters', type: 'circle', source: 'finds',
         filter: ['has', 'point_count'],
@@ -174,9 +154,7 @@ export default function ExpeditionMapGL({ entries, onSelect, compass }: Props) {
     const map = mapRef.current
     if (!map || !ready) return
     const finds = map.getSource('finds') as maplibregl.GeoJSONSource | undefined
-    const route = map.getSource('route') as maplibregl.GeoJSONSource | undefined
     finds?.setData(toGeoJSON(entries))
-    route?.setData(routeGeoJSON(entries))
   }, [entries, ready])
 
   if (failed || entries.length === 0) {

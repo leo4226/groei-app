@@ -11,7 +11,7 @@ import os
 import secrets
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from pydantic import BaseModel, Field
@@ -107,15 +107,21 @@ async def list_discoveries(
     background: BackgroundTasks,
     account=Depends(get_current_account),
     db=Depends(db_dep),
+    scope: Literal["all", "mine"] = "all",
 ):
+    where = "household_id = ?"
+    params: list = [account["household_id"]]
+    if scope == "mine":
+        where += " AND account_id = ?"
+        params.append(account["account_id"])
     rows = await db.execute_fetchall(
-        """SELECT id, species_id, common_name, latin_name, thumbnail_url,
+        f"""SELECT id, species_id, common_name, latin_name, thumbnail_url,
                   notes, location_lat, location_lon, place_name, country_code,
                   discovered_at
            FROM plant_discoveries
-           WHERE household_id = ?
+           WHERE {where}
            ORDER BY discovered_at DESC""",
-        (account["household_id"],),
+        tuple(params),
     )
     # Rows saved before the place columns existed backfill in the background
     # (Nominatim policy: 1 req/s, so the task sleeps between lookups).

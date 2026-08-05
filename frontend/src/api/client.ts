@@ -1039,7 +1039,9 @@ export interface PlantDiscovery {
 }
 
 export const discoveries = {
-  list: () => api<PlantDiscovery[]>('GET', '/discover'),
+  /** `scope='mine'` limits the list to the calling account's own finds. */
+  list: (scope?: 'all' | 'mine') =>
+    api<PlantDiscovery[]>('GET', scope === 'mine' ? '/discover?scope=mine' : '/discover'),
   save: (data: {
     species_id?: number
     common_name: string

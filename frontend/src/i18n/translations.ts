@@ -1763,7 +1763,9 @@ export type Translations = {
     statPlaces: string
     expeditionMap: string
     mapClickHint: string
-    mapRouteLegend: string
+    scopeAll: string      // "Alle waarnemingen" — household-wide view
+    scopeMine: string     // "Mijn waarnemingen" — viewer's own finds
+    journalEmptyMine: string  // empty state when scope=mine has no finds yet
     filterAll: string
     filterNative: string
     entryNoPrefix: string   // "Waarneming nr." — number appended in code

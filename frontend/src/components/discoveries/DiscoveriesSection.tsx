@@ -31,6 +31,8 @@ interface Props {
 
 const FIT_RANK: Record<string, number> = { perfect: 4, acceptable: 3, marginal: 2, tolerated: 1 }
 const FIT_COLOR: Record<string, string> = { perfect: '#24e34c', acceptable: '#a3e635', marginal: '#f59e0b', tolerated: '#6b7280' }
+/** Device-local view scope for the field journal: all household finds or mine. */
+const SCOPE_KEY = 'floreren-fieldguide-scope'
 
 type FitVerdicts = Array<{ sun_fit: string | null }>
 
@@ -119,6 +121,11 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  // View scope for the whole section (list, map pins, stats): all household
+  // finds or only the calling account's own. Persisted per device.
+  const [scope, setScope] = useState<'all' | 'mine'>(() =>
+    localStorage.getItem(SCOPE_KEY) === 'mine' ? 'mine' : 'all'
+  )
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesDraft, setNotesDraft] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
@@ -127,12 +134,16 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
   // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh. Only
   // the initial run shows the loading state; refreshes swap data in place.
+  // Scope changes refetch too; a cancelled guard drops stale responses so a
+  // quick all→mine→all toggle can't land out of order.
   useEffect(() => {
-    discoveriesApi.list()
-      .then(setItems)
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false))
-  }, [refreshTick])
+    let cancelled = false
+    discoveriesApi.list(scope)
+      .then(items => { if (!cancelled) setItems(items) })
+      .catch(() => { if (!cancelled) setItems([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [refreshTick, scope])
 
   useEffect(() => {
     const ids = [...new Set(items.flatMap(i => i.species_id != null ? [i.species_id] : []))]
@@ -341,6 +352,38 @@ export default function DiscoveriesSection({ onStats }: Props) {
     URL.revokeObjectURL(url)
   }
 
+  const scopeOptions = [
+    { id: 'all', label: t.discovery.scopeAll },
+    { id: 'mine', label: t.discovery.scopeMine },
+  ] as const
+
+  function handleScopeChange(next: 'all' | 'mine') {
+    setScope(next)
+    localStorage.setItem(SCOPE_KEY, next)
+  }
+
+  const scopeToggle = (
+    <div className="mb-5 flex justify-center">
+      <div className="flex items-center gap-1 rounded-full border border-border bg-paper p-1">
+        {scopeOptions.map(opt => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => handleScopeChange(opt.id)}
+            aria-pressed={scope === opt.id}
+            className={`cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              scope === opt.id
+                ? 'bg-primary text-white'
+                : 'text-text-soft hover:text-primary'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="px-6 py-10 text-center">
@@ -350,6 +393,19 @@ export default function DiscoveriesSection({ onStats }: Props) {
   }
 
   if (items.length === 0) {
+    // scope=mine with no own finds yet: keep the toggle visible so the user
+    // can switch back to the household-wide view. scope=all empty is the true
+    // empty state (there is nothing to switch to).
+    if (scope === 'mine') {
+      return (
+        <>
+          {scopeToggle}
+          <div className="px-6 py-10 text-center">
+            <p className="m-0 font-heading text-[15px] italic text-text-soft">{t.discovery.journalEmptyMine}</p>
+          </div>
+        </>
+      )
+    }
     return (
       <div className="relative overflow-hidden px-6 py-14 text-center min-h-[340px] flex flex-col items-center justify-center">
         <PageDecor variant="sparse" />
@@ -364,6 +420,9 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
   return (
     <>
+      {/* ── Scope switch: my finds vs all household finds ── */}
+      {scopeToggle}
+
       {/* ── Expedition map ── */}
       {geoEntries.length > 0 && (
         <section className="mb-8">
@@ -391,7 +450,6 @@ export default function DiscoveriesSection({ onStats }: Props) {
             })()}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
               <span>{t.discovery.mapClickHint}</span>
-              <span className="text-secondary">— — {t.discovery.mapRouteLegend}</span>
             </div>
           </div>
         </section>
