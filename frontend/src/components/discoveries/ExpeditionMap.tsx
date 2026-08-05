@@ -27,10 +27,9 @@ const SPLITTABLE_SPAN_DEG = 0.002
 
 /**
  * Expedition map — paper-toned SVG with real (simplified) coastlines that
- * auto-zooms to the discovery pins, clusters nearby finds, and draws a
- * dashed route through them in order of discovery. Interactive unless
- * `compact`: drag to pan, wheel/pinch/buttons to zoom; clusters recompute
- * per zoom level and clicking a splittable cluster zooms into it.
+ * auto-zooms to the discovery pins and clusters nearby finds. Interactive
+ * unless `compact`: drag to pan, wheel/pinch/buttons to zoom; clusters
+ * recompute per zoom level and clicking a splittable cluster zooms into it.
  */
 export default function ExpeditionMap({
   entries,
@@ -146,7 +145,7 @@ export default function ExpeditionMap({
     pointers.current.delete(e.pointerId)
   }
 
-  const { landPaths, latLines, lonLines, clusters, routeD, newestClusterIdx } = useMemo(() => {
+  const { landPaths, latLines, lonLines, clusters, newestClusterIdx } = useMemo(() => {
     const t = viewToTransform(view, width, height)
 
     // Land — only rings that intersect the visible window (cheap bbox test)
@@ -188,17 +187,11 @@ export default function ExpeditionMap({
     })
     const clusters = clusterEntries(projected, compact ? 18 : 32)
 
-    // Route through cluster centroids in order of each cluster's first find
-    const ordered = [...clusters].sort((a, b) => a.indices[0] - b.indices[0])
-    const routeD = ordered.length > 1
-      ? ordered.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ')
-      : null
-
     // Highlight the cluster containing the newest find
     const maxIndex = Math.max(...entries.map(e => e.index), 0)
     const newestClusterIdx = clusters.findIndex(c => c.indices.includes(maxIndex))
 
-    return { landPaths, latLines, lonLines, clusters, routeD, newestClusterIdx }
+    return { landPaths, latLines, lonLines, clusters, newestClusterIdx }
   }, [entries, view, width, height, compact, compass])
 
   function pinLabel(c: PinCluster): string {
@@ -262,12 +255,6 @@ export default function ExpeditionMap({
           {latLines.map((l, i) => <text key={`lal${i}`} x={5} y={l.y - 3}>{l.label}</text>)}
           {lonLines.map((l, i) => <text key={`lol${i}`} x={l.x + 3} y={height - 6}>{l.label}</text>)}
         </g>
-      )}
-
-      {/* route */}
-      {!compact && routeD && (
-        <path d={routeD} fill="none" stroke={TERRA} strokeWidth="1.6"
-              strokeDasharray="5 6" strokeLinecap="round" opacity="0.7" />
       )}
 
       {/* pins */}

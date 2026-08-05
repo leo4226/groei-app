@@ -160,6 +160,56 @@ async def test_list_prefers_cached_fun_fact_columns_over_empty_phenology(client,
 
 
 @pytest.mark.asyncio
+async def test_list_scope_mine_filters_to_calling_account(client, discoveries_db, auth_header):
+    """scope=mine returns only the caller's own discoveries; the default
+    (all) returns every find in the household (#789)."""
+    await discoveries_db.execute(
+        "INSERT INTO accounts (id, household_id, email, name, password_hash) "
+        "VALUES (2, 1, 'lissy@example.com', 'Lissy', 'x')"
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries (id, account_id, household_id, common_name, discovered_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (11, 1, 1, "Leon's find", "2026-08-01 10:00:00"),
+    )
+    await discoveries_db.execute(
+        """INSERT INTO plant_discoveries (id, account_id, household_id, common_name, discovered_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (12, 2, 1, "Lissy's find", "2026-08-02 10:00:00"),
+    )
+    await discoveries_db.commit()
+
+    # Default scope: every find in the household
+    res = await client.get("/api/discover", headers=auth_header)
+    assert res.status_code == 200
+    assert {d["common_name"] for d in res.json()} == {"Leon's find", "Lissy's find"}
+
+    # scope=all: explicit form of the default
+    res = await client.get("/api/discover?scope=all", headers=auth_header)
+    assert res.status_code == 200
+    assert len(res.json()) == 2
+
+    # scope=mine: only the calling account's find
+    res = await client.get("/api/discover?scope=mine", headers=auth_header)
+    assert res.status_code == 200
+    assert [d["common_name"] for d in res.json()] == ["Leon's find"]
+
+    # The other household member sees only her own find
+    from auth import create_token
+
+    lissy_header = {"Authorization": f"Bearer {create_token(account_id=2, household_id=1)}"}
+    res = await client.get("/api/discover?scope=mine", headers=lissy_header)
+    assert res.status_code == 200
+    assert [d["common_name"] for d in res.json()] == ["Lissy's find"]
+
+
+@pytest.mark.asyncio
+async def test_list_scope_rejects_unknown_values(client, discoveries_db, auth_header):
+    res = await client.get("/api/discover?scope=everyone", headers=auth_header)
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_share_mints_stable_token_and_scopes_to_household(client, discoveries_db, auth_header):
     await discoveries_db.execute(
         """INSERT INTO plant_discoveries (id, account_id, household_id, common_name)
