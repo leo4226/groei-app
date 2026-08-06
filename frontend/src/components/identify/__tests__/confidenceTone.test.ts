@@ -11,25 +11,25 @@ describe('confidenceTone', () => {
       plantnetCtaProminent: false,
     })
   })
-  it('encourages verification and second opinion for medium', () => {
+  it('encourages verification but keeps PlantNet secondary for medium', () => {
     expect(confidenceTone('medium')).toEqual({
       showBanner: false,
       showMediumSubtitle: true,
       showDetailedNoMatch: false,
       showCompareCandidates: true,
-      plantnetCtaProminent: true,
+      plantnetCtaProminent: false,
     })
   })
-  it('shows low-confidence warning and prominent second opinion for low', () => {
+  it('shows low-confidence warning but keeps PlantNet secondary for low', () => {
     expect(confidenceTone('low')).toEqual({
       showBanner: true,
       showMediumSubtitle: false,
       showDetailedNoMatch: false,
       showCompareCandidates: true,
-      plantnetCtaProminent: true,
+      plantnetCtaProminent: false,
     })
   })
-  it('shows detailed body and prominent second opinion for no_match', () => {
+  it('promotes PlantNet only on genuine no_match', () => {
     expect(confidenceTone('no_match')).toEqual({
       showBanner: false,
       showMediumSubtitle: false,
