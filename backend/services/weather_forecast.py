@@ -19,7 +19,8 @@ CACHE_TTL = timedelta(hours=1)
 
 _DAILY_FIELDS = (
     "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,"
-    "et0_fao_evapotranspiration,wind_speed_10m_max,sunrise,sunset,cloud_cover_mean"
+    "et0_fao_evapotranspiration,wind_speed_10m_max,sunrise,sunset,cloud_cover_mean,"
+    "relative_humidity_2m_max,soil_moisture_0_to_7cm_mean"
 )
 _EMPTY_DAILY = {
     "time": [],
@@ -32,6 +33,8 @@ _EMPTY_DAILY = {
     "sunrise": [],
     "sunset": [],
     "cloud_cover_mean": [],
+    "relative_humidity_2m_max": [],
+    "soil_moisture_0_to_7cm_mean": [],
 }
 _cache: dict[str, dict[str, Any]] = {}
 
@@ -51,6 +54,13 @@ def _value(values: list, index: int, default: float = 0.0) -> float:
     return float(values[index])
 
 
+def _optional_value(values: list, index: int) -> float | None:
+    """Like ``_value`` but keeps missing readings as None (neutral downstream)."""
+    if index >= len(values) or values[index] is None:
+        return None
+    return float(values[index])
+
+
 def _normalize(
     raw: dict,
     *,
@@ -65,6 +75,8 @@ def _normalize(
     precipitation = daily.get("precipitation_sum") or []
     et0 = daily.get("et0_fao_evapotranspiration") or []
     cloud_cover = daily.get("cloud_cover_mean") or []
+    humidity = daily.get("relative_humidity_2m_max") or []
+    soil_moisture = daily.get("soil_moisture_0_to_7cm_mean") or []
     days = [
         {
             "date": day,
@@ -73,6 +85,8 @@ def _normalize(
             "precipitation_mm": _value(precipitation, index),
             "et0_mm": _value(et0, index),
             "cloud_cover_mean_pct": _value(cloud_cover, index),
+            "humidity_pct": _optional_value(humidity, index),
+            "soil_moisture_pct": _optional_value(soil_moisture, index),
         }
         for index, day in enumerate(times)
     ]

@@ -8,14 +8,25 @@ from services.water_pressure import WeatherDay, calculate_water_pressure
 TODAY = date(2026, 7, 16)
 
 
-def _days(*, max_temp: float, et0: float, rain: dict[int, float] | None = None):
+def _days(
+    *,
+    max_temp: float,
+    et0: float,
+    rain: dict[int, float] | None = None,
+    humidity: dict[int, float] | None = None,
+    soil: dict[int, float] | None = None,
+):
     rain = rain or {}
+    humidity = humidity or {}
+    soil = soil or {}
     return [
         WeatherDay(
             date=TODAY + timedelta(days=offset),
             max_temp_c=max_temp,
             precipitation_mm=rain.get(offset, 0.0),
             et0_mm=et0,
+            humidity_pct=humidity.get(offset),
+            soil_moisture_pct=soil.get(offset),
         )
         for offset in range(-3, 4)
     ]
@@ -303,6 +314,108 @@ def test_mulch_never_moves_recommendation_later(environment):
         next_due=due,
         weather_days=_days(max_temp=34, et0=7.0),
         mulch=True,
+    )
+
+    assert result.recommended_check_date <= due
+
+
+def test_dry_air_raises_pressure_more_than_humid_day():
+    humid = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=28, et0=4.0, humidity={i: 70.0 for i in range(-3, 4)}),
+    )
+    dry = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=28, et0=4.0, humidity={i: 35.0 for i in range(-3, 4)}),
+    )
+
+    assert dry.score > humid.score
+    assert dry.factors["humidity_boost_mm"] > 0.0
+    assert humid.factors["humidity_boost_mm"] == 0.0
+    assert "dry air" in dry.reason_en.lower()
+    assert "droge lucht" in dry.reason_nl.lower()
+
+
+def test_wet_soil_suppresses_ground_deficit():
+    dry_soil = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=5),
+        weather_days=_days(max_temp=28, et0=4.5, soil={i: 15.0 for i in range(-3, 4)}),
+    )
+    wet_soil = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=5),
+        weather_days=_days(max_temp=28, et0=4.5, soil={i: 45.0 for i in range(-3, 4)}),
+    )
+
+    assert wet_soil.score < dry_soil.score
+    assert wet_soil.factors["soil_suppression_factor"] > 0.0
+    assert dry_soil.factors["soil_suppression_factor"] == 0.0
+    assert "moist soil" in wet_soil.reason_en.lower()
+    assert "vochtige grond" in wet_soil.reason_nl.lower()
+
+
+def test_soil_moisture_does_not_suppress_container_pressure():
+    result = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=28, et0=4.0, soil={i: 45.0 for i in range(-3, 4)}),
+    )
+
+    assert result.factors["soil_suppression_factor"] == 0.0
+    assert result.reason_en == "Warm, dry weather is making this outdoor container dry out faster."
+
+
+def test_missing_humidity_and_soil_are_neutral():
+    baseline = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+    )
+    explicit_none = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=[
+            WeatherDay(
+                date=TODAY + timedelta(days=offset),
+                max_temp_c=31.0,
+                precipitation_mm=0.0,
+                et0_mm=5.0,
+                humidity_pct=None,
+                soil_moisture_pct=None,
+            )
+            for offset in range(-3, 4)
+        ],
+    )
+
+    assert baseline.factors["humidity_boost_mm"] == 0.0
+    assert baseline.factors["soil_suppression_factor"] == 0.0
+    assert baseline.factors["avg_humidity_pct"] == 0.0
+    assert explicit_none == baseline
+
+
+@pytest.mark.parametrize("days_until_due", [-2, 0, 1, 7])
+def test_recommendation_never_moves_later_than_saved_due_with_new_factors(days_until_due: int):
+    due = TODAY + timedelta(days=days_until_due)
+    result = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=due,
+        weather_days=_days(
+            max_temp=34,
+            et0=7.0,
+            humidity={i: 30.0 for i in range(-3, 4)},
+            soil={i: 12.0 for i in range(-3, 4)},
+        ),
     )
 
     assert result.recommended_check_date <= due

@@ -55,6 +55,8 @@ def _pressure_weather_days(forecast: dict, *, usable: bool) -> list[WeatherDay]:
             max_temp_c=float(day["max_temp_c"]),
             precipitation_mm=float(day["precipitation_mm"]),
             et0_mm=float(day["et0_mm"]),
+            humidity_pct=day.get("humidity_pct"),
+            soil_moisture_pct=day.get("soil_moisture_pct"),
         )
         for day in forecast.get("days", [])
     ]

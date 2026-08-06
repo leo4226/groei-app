@@ -35,11 +35,23 @@ _OUTDOOR_COEFFICIENTS = {
         "rain_capture": 0.55,
         "demand": 1.15,
         "high_deficit_mm": 8.0,
+        # Relative humidity below this threshold counts as dry air and adds
+        # flat drying demand per 10 percentage points below it.
+        "humidity_threshold_pct": 50.0,
+        "humidity_boost_per_10pct_mm": 0.3,
+        # Soil-moisture terms exist for a uniform shape; only outdoor_ground
+        # applies them (potting mix has no open-ground 0-7cm sensor reading).
+        "soil_moisture_threshold_pct": 25.0,
+        "soil_moisture_suppression_fraction": 0.35,
     },
     "outdoor_ground": {
         "rain_capture": 0.85,
         "demand": 0.85,
         "high_deficit_mm": 12.0,
+        "humidity_threshold_pct": 50.0,
+        "humidity_boost_per_10pct_mm": 0.3,
+        "soil_moisture_threshold_pct": 25.0,
+        "soil_moisture_suppression_fraction": 0.35,
     },
 }
 
@@ -59,6 +71,9 @@ class WeatherDay:
     max_temp_c: float
     precipitation_mm: float
     et0_mm: float
+    # None means "no reading" and is treated as neutral by the pressure engine.
+    humidity_pct: float | None = None
+    soil_moisture_pct: float | None = None
 
 
 @dataclass(frozen=True)
@@ -177,11 +192,49 @@ def calculate_water_pressure(
         mulch_demand_factor = float(_MULCH_DEMAND_FACTORS[environment])
     exposure_multiplier = float(_EXPOSURE_MULTIPLIERS.get(exposure, 1.0)) \
         if environment != "indoor" else 1.0
+
+    # Dry air accelerates drying: average the upcoming humidity and add flat
+    # demand per 10 pct below the threshold. Missing readings stay neutral.
+    humidity_values = [
+        day.humidity_pct for day in upcoming if day.humidity_pct is not None
+    ]
+    avg_humidity = (
+        sum(humidity_values) / len(humidity_values) if humidity_values else None
+    )
+    humidity_boost = 0.0
+    if avg_humidity is not None:
+        humidity_threshold = float(coefficients["humidity_threshold_pct"])
+        if avg_humidity < humidity_threshold:
+            humidity_boost = (
+                (humidity_threshold - avg_humidity) / 10.0
+                * float(coefficients["humidity_boost_per_10pct_mm"])
+            )
+
+    # Wet open ground buffers drying for outdoor_ground plants only; the 0-7cm
+    # reading is ground truth there, not for containers or indoor potting mix.
+    soil_values = [
+        day.soil_moisture_pct for day in upcoming if day.soil_moisture_pct is not None
+    ]
+    avg_soil_moisture = (
+        sum(soil_values) / len(soil_values) if soil_values else None
+    )
+    soil_suppression = 0.0
+    if environment == "outdoor_ground" and avg_soil_moisture is not None:
+        soil_threshold = float(coefficients["soil_moisture_threshold_pct"])
+        if avg_soil_moisture > soil_threshold:
+            wetness = min(
+                1.0, (avg_soil_moisture - soil_threshold) / 20.0
+            )
+            soil_suppression = wetness * float(
+                coefficients["soil_moisture_suppression_fraction"]
+            )
+
     drying_demand = (
         et0 * float(coefficients["demand"]) * mulch_demand_factor * exposure_multiplier
         + heat_boost
+        + humidity_boost
     )
-    deficit = max(0.0, drying_demand - effective_rain)
+    deficit = max(0.0, drying_demand - effective_rain) * (1.0 - soil_suppression)
     score = deficit / float(coefficients["high_deficit_mm"])
     level = _level(score)
 
@@ -214,6 +267,13 @@ def calculate_water_pressure(
         reason_nl += " De plant staat in halfschaduw en droogt iets minder snel."
         reason_en += " This plant is in partial shade and dries a little more slowly."
 
+    if humidity_boost > 0.0:
+        reason_nl += " Droge lucht versnelt de uitdroging."
+        reason_en += " Dry air speeds up drying."
+    if soil_suppression > 0.0:
+        reason_nl += " Vochtige grond remt de uitdroging."
+        reason_en += " Moist soil slows drying."
+
     return WaterPressureResult(
         level=level,
         score=round(score, 2),
@@ -227,6 +287,10 @@ def calculate_water_pressure(
             "effective_rain_mm": round(effective_rain, 1),
             "et0_mm": round(et0, 1),
             "heat_boost_mm": round(heat_boost, 1),
+            "avg_humidity_pct": round(avg_humidity, 1) if avg_humidity is not None else 0.0,
+            "humidity_boost_mm": round(humidity_boost, 2),
+            "avg_soil_moisture_pct": round(avg_soil_moisture, 1) if avg_soil_moisture is not None else 0.0,
+            "soil_suppression_factor": round(soil_suppression, 2),
             "drying_demand_mm": round(drying_demand, 1),
             "deficit_mm": round(deficit, 1),
             "mulch": bool(mulch or False),
