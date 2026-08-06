@@ -37,3 +37,84 @@ def test_delete_calls_delete_object():
     storage = Storage(client=client, bucket="b", public_base_url="https://cdn.x")
     storage.delete("photos/1/2/3.jpg")
     assert client.deleted == [("b", "photos/1/2/3.jpg")]
+
+
+# --- Storage.get() graceful degradation (#617) ---
+import io
+from botocore.exceptions import ClientError
+
+
+def _client_error(code: str) -> ClientError:
+    """A real botocore ClientError carrying the given AWS/R2 error Code."""
+    return ClientError(
+        error_response={
+            "Error": {"Code": code, "Message": "boom"},
+            "ResponseMetadata": {"HTTPStatusCode": 503},
+        },
+        operation_name="GetObject",
+    )
+
+
+class _RaisingClient:
+    def __init__(self, error):
+        self.error = error
+
+    def get_object(self, Bucket, Key):
+        raise self.error
+
+
+def test_get_returns_bytes_on_success():
+    class FakeClient:
+        def get_object(self, Bucket, Key):
+            return {"Body": io.BytesIO(b"photo-bytes")}
+
+    storage = Storage(client=FakeClient(), bucket="b", public_base_url="https://cdn.x")
+    assert storage.get("photos/1.jpg") == b"photo-bytes"
+
+
+def test_get_returns_none_on_no_such_key():
+    storage = Storage(
+        client=_RaisingClient(_client_error("NoSuchKey")),
+        bucket="b",
+        public_base_url="https://cdn.x",
+    )
+    assert storage.get("photos/1.jpg") is None
+
+
+def test_get_returns_none_on_service_unavailable():
+    """Transient R2 outage must degrade to 'no image', not raise (#617)."""
+    storage = Storage(
+        client=_RaisingClient(_client_error("ServiceUnavailable")),
+        bucket="b",
+        public_base_url="https://cdn.x",
+    )
+    assert storage.get("photos/1.jpg") is None
+
+
+def test_get_returns_none_on_slow_down():
+    storage = Storage(
+        client=_RaisingClient(_client_error("SlowDown")),
+        bucket="b",
+        public_base_url="https://cdn.x",
+    )
+    assert storage.get("photos/1.jpg") is None
+
+
+def test_get_returns_none_on_throttling():
+    storage = Storage(
+        client=_RaisingClient(_client_error("Throttling")),
+        bucket="b",
+        public_base_url="https://cdn.x",
+    )
+    assert storage.get("photos/1.jpg") is None
+
+
+def test_get_re_raises_other_client_errors():
+    """Non-transient errors (e.g. AccessDenied) must still propagate."""
+    storage = Storage(
+        client=_RaisingClient(_client_error("AccessDenied")),
+        bucket="b",
+        public_base_url="https://cdn.x",
+    )
+    with pytest.raises(ClientError):
+        storage.get("photos/1.jpg")

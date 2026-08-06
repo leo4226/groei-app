@@ -25,12 +25,18 @@ class Storage:
         return self.public_url(key)
 
     def get(self, key: str) -> bytes | None:
-        """Return an object's bytes, or None if it doesn't exist."""
+        """Return an object's bytes, or None if it doesn't exist or the
+        storage backend is transiently unavailable (callers treat that like
+        a missing image instead of failing the whole request)."""
         try:
             resp = self._client.get_object(Bucket=self.bucket, Key=key.lstrip("/"))
             return resp["Body"].read()
         except ClientError as e:
-            if e.response.get("Error", {}).get("Code") in ("NoSuchKey", "NotFound", "404"):
+            code = e.response.get("Error", {}).get("Code")
+            if code in ("NoSuchKey", "NotFound", "404"):
+                return None
+            if code in ("ServiceUnavailable", "SlowDown", "Throttling"):
+                # Transient R2/S3 outage — degrade gracefully to "no image".
                 return None
             raise
 
