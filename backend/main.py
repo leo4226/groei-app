@@ -40,6 +40,7 @@ from routers import export as export_router
 from routers import game as game_router
 from routers import discoveries as discoveries_router
 from routers import share as share_router
+from routers import atlas as atlas_router
 
 
 @asynccontextmanager
@@ -152,6 +153,8 @@ app.include_router(game_router.router, prefix="/api")
 app.include_router(discoveries_router.router, prefix="/api")
 # Public share pages live at the root (floreren.app/s/* rewrites here), not /api.
 app.include_router(share_router.router)
+# Public garden atlas — anonymous browse surface for opt-in gardens (/api/atlas).
+app.include_router(atlas_router.router, prefix="/api")
 
 # Serve the built frontend (production mode)
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
