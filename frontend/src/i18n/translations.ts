@@ -1011,10 +1011,16 @@ export type Translations = {
       capture: string   // "Capture"
       cancel: string    // "Cancel"
       noAccess: string  // "No camera access"
-      hint: string      // "Photograph a leaf or flower close-up, in good light" — dismissible pre-capture coaching
-      hintDismiss: string // "Dismiss tip" — aria-label for the hint close button
+      hint: string      // "Photograph a leaf or flower close-up, in good light"
+      hintDismiss: string // "Dismiss tip"
       retakeTipNoMatch: string        // "Move closer — fill the frame with a single leaf or flower"
       retakeTipLowConfidence: string  // "Avoid harsh shadows; find even light"
+    }
+    multiAngle: {
+      addAngle: string   // "Add another angle"
+      hint: string       // "Two or three angles give a more reliable match."
+      identify: string   // "Identify with {count} photos"
+      identifyOne: string // "Identify with this photo"
     }
     identifying: string  // "Identifying..."
     newPhoto: string     // "📷 Take new photo"

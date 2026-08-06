@@ -124,6 +124,27 @@ def _identify_image(image: Image.Image, top_k: int = 5) -> tuple[list[dict], np.
     return results, image_emb
 
 
+def _identify_multi(images: list[Image.Image], top_k: int = 5) -> tuple[list[dict], np.ndarray]:
+    """Embed several angles, average the L2-normed embeddings (multi-angle
+    ensemble, audit §3.2 / #807), then match against text embeddings."""
+    from services.bioclip_id import average_embeddings
+
+    _load_model()
+    embeddings = [_embed_pil_to_float32(img) for img in images]
+    image_emb = average_embeddings(embeddings)
+
+    similarities = _text_embeddings @ image_emb
+    top_indices = np.argsort(similarities)[-top_k:][::-1]
+
+    results = []
+    for idx in top_indices:
+        results.append({
+            "species_id": int(_species_ids[idx]),
+            "confidence": round(float(similarities[idx]), 4),
+        })
+    return results, image_emb
+
+
 # --- FastAPI app ---
 
 @asynccontextmanager
@@ -148,18 +169,37 @@ async def _require_token(x_worker_token: str | None = Header(default=None)):
 
 
 @app.post("/identify", dependencies=[Depends(_require_token)])
-async def identify(image: UploadFile = File(...)):
-    """Accept an image file, return BioCLIP top-5 matches + the query embedding."""
+async def identify(
+    image: UploadFile = File(...),
+    extra_images: list[UploadFile] = File(default=[]),
+):
+    """Accept one image, or 1-2 extra angles alongside it (multi-angle
+    ensemble, #807). Single-image behavior is unchanged when extra_images
+    is empty."""
     if _model is None:
         raise HTTPException(status_code=503, detail="BioCLIP model not loaded")
     if _text_embeddings is None:
         raise HTTPException(status_code=503, detail="Embeddings not loaded")
+    if len(extra_images) > 2:
+        raise HTTPException(status_code=400, detail="At most 3 images per request")
 
-    pil_image = await _read_upload_to_pil(image)
+    uploads = [image, *extra_images]
+    pil_images = []
+    for up in uploads:
+        try:
+            pil_images.append(await _read_upload_to_pil(up))
+        except HTTPException as exc:
+            logger.warning("Skipping unusable angle: %s", exc.detail)
+
+    if not pil_images:
+        raise HTTPException(status_code=400, detail="Could not decode any image")
 
     try:
         async with _infer_lock:
-            matches, image_emb = await anyio.to_thread.run_sync(_identify_image, pil_image)
+            if len(pil_images) == 1:
+                matches, image_emb = await anyio.to_thread.run_sync(_identify_image, pil_images[0])
+            else:
+                matches, image_emb = await anyio.to_thread.run_sync(_identify_multi, pil_images)
     except Exception as e:
         logger.error("Inference error: %s", e)
         raise HTTPException(status_code=500, detail="Inference failed")

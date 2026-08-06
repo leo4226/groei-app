@@ -391,10 +391,14 @@ def _elapsed_ms(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 1)
 
 
-async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> IdentifyResponse | None:
+async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl") -> IdentifyResponse | None:
     """Identify a plant image using BioCLIP worker (remote or local).
 
-    When BIOCLIP_WORKER_URL is set, POSTs the image to the worker over HTTP.
+    Accepts 1-3 image byte blobs (multi-angle ensemble, #807). When multiple
+    images are given, the worker averages their L2-normed embeddings before
+    cosine matching; single-image behavior is unchanged.
+
+    When BIOCLIP_WORKER_URL is set, POSTs the image(s) to the worker over HTTP.
     Otherwise falls back to local BioCLIP (requires open_clip_torch + GPU).
     `lang` controls which common name bucket to populate (NL or EN).
     """
@@ -407,13 +411,16 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
     matches = None
 
     if worker_url:
-        # Remote worker: POST image, get species_id + confidence back
+        # Remote worker: POST image(s), get species_id + confidence back
         try:
             engine_started = time.perf_counter()
+            files = [("image", ("plant.jpg", image_bytes_list[0], "image/jpeg"))]
+            for i, extra in enumerate(image_bytes_list[1:], start=2):
+                files.append(("extra_images", (f"angle-{i}.jpg", extra, "image/jpeg")))
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
                     f"{worker_url.rstrip('/')}/identify",
-                    files={"image": ("plant.jpg", image_bytes, "image/jpeg")},
+                    files=files,
                     headers=_worker_headers(),
                 )
                 engine_ms = _elapsed_ms(engine_started)
@@ -452,14 +459,29 @@ async def _bioclip_identify(image_bytes: bytes, db, lang: str = "nl") -> Identif
             return None
 
         try:
-            pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            pil_images = []
+            for ib in image_bytes_list:
+                try:
+                    pil_images.append(Image.open(io.BytesIO(ib)).convert("RGB"))
+                except Exception:
+                    logger.warning("Skipping unusable angle in local fallback")
         except Exception:
             raise HTTPException(
                 status_code=400,
                 detail=_msg(lang, nl="Kon afbeelding niet verwerken", en="Could not process image"),
             )
 
-        image_emb = bioclip.embed_image(pil_image)
+        if not pil_images:
+            raise HTTPException(
+                status_code=400,
+                detail=_msg(lang, nl="Kon afbeelding niet verwerken", en="Could not process image"),
+            )
+
+        if len(pil_images) == 1:
+            image_emb = bioclip.embed_image(pil_images[0])
+        else:
+            from services.bioclip_id import average_embeddings
+            image_emb = average_embeddings([bioclip.embed_image(p) for p in pil_images])
         matches = bioclip.identify(image_emb, top_k=5)
         engine_ms = _elapsed_ms(engine_started)
 
@@ -582,40 +604,50 @@ _SUPPORTED_PLANTNET_LANGS = {"en", "nl", "fr", "de", "es", "it", "pt"}
 @router.post("/identify", response_model=IdentifyResponse)
 async def identify_endpoint(
     image: UploadFile = File(...),
+    extra_images: list[UploadFile] = File(default=[]),
     engine: str = Query("bioclip"),
     lang: str = Query("en"),
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
     lang = lang if lang in _SUPPORTED_PLANTNET_LANGS else "en"
-    # 1. Validate image
-    image_bytes = await image.read()
-    if len(image_bytes) > _MAX_IMAGE_BYTES:
+    # 1. Validate images: 1 primary + up to 2 extra angles (multi-angle ensemble #807)
+    uploads = [image, *extra_images]
+    if len(uploads) > 3:
         raise HTTPException(
             status_code=400,
-            detail=_msg(lang, nl="Afbeelding te groot (max 5 MB)", en="Image too large (max 5 MB)"),
+            detail=_msg(lang, nl="Maximaal 3 foto's per identificatie", en="At most 3 photos per identification"),
         )
-    if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
-        raise HTTPException(
-            status_code=400,
-            detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
-        )
+    image_bytes_list = []
+    for up in uploads:
+        image_bytes = await up.read()
+        if len(image_bytes) > _MAX_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=_msg(lang, nl="Afbeelding te groot (max 5 MB)", en="Image too large (max 5 MB)"),
+            )
+        if up.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise HTTPException(
+                status_code=400,
+                detail=_msg(lang, nl="Onbekend afbeeldingsformaat", en="Unknown image format"),
+            )
+        image_bytes_list.append(image_bytes)
 
     # 2. Try BioCLIP first (self-hosted, no quota) — unless user explicitly chose PlantNet
     if engine != "plantnet":
         try:
-            result = await _bioclip_identify(image_bytes, db, lang)
+            result = await _bioclip_identify(image_bytes_list, db, lang)
             if result is not None:
                 await _log_identify(db, account, result.source, result.confidence)
                 return result
         except Exception as exc:
             logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
 
-    # 3. Fallback: Pl@ntNet API
+    # 3. Fallback: Pl@ntNet API (single image — PlantNet takes one photo)
     await _check_quota(db, account, lang)
 
     try:
-        candidates = await identify(image_bytes, lang=lang)
+        candidates = await identify(image_bytes_list[0], lang=lang)
     except PlantIdQuotaExceeded:
         raise HTTPException(
             status_code=503,

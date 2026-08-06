@@ -141,6 +141,82 @@ async def test_identify_endpoint_attaches_species_id_if_known(client, seeded_db,
 
 
 @pytest.mark.asyncio
+async def test_identify_endpoint_passes_all_images_to_bioclip(client, seeded_db, auth_header):
+    """Multi-angle: the endpoint forwards every uploaded image to _bioclip_identify."""
+    from routers.plant_id import IdentifyResponse
+
+    async def fake_bioclip(image_bytes_list, db, lang="nl"):
+        assert isinstance(image_bytes_list, list)
+        assert len(image_bytes_list) == 3
+        return IdentifyResponse(candidates=[], confidence="no_match", low_confidence=False, source="bioclip")
+
+    with patch("routers.plant_id._bioclip_identify", new=fake_bioclip):
+        resp = await client.post(
+            "/api/plants/identify",
+            files=[
+                ("image", ("plant.jpg", b"img1", "image/jpeg")),
+                ("extra_images", ("angle-2.jpg", b"img2", "image/jpeg")),
+                ("extra_images", ("angle-3.jpg", b"img3", "image/jpeg")),
+            ],
+            headers=auth_header,
+        )
+    assert resp.status_code == 200
+    assert resp.json()["source"] == "bioclip"
+
+
+@pytest.mark.asyncio
+async def test_identify_endpoint_single_image_still_one_element(client, seeded_db, auth_header):
+    """Single-image behavior is unchanged: exactly one element in the list."""
+    from routers.plant_id import IdentifyResponse
+
+    async def fake_bioclip(image_bytes_list, db, lang="nl"):
+        assert isinstance(image_bytes_list, list)
+        assert len(image_bytes_list) == 1
+        return IdentifyResponse(candidates=[], confidence="no_match", low_confidence=False, source="bioclip")
+
+    with patch("routers.plant_id._bioclip_identify", new=fake_bioclip):
+        resp = await client.post(
+            "/api/plants/identify",
+            files={"image": ("plant.jpg", b"img1", "image/jpeg")},
+            headers=auth_header,
+        )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_identify_endpoint_rejects_more_than_three_images(client, seeded_db, auth_header):
+    """At most 3 photos per identification — the 4th is rejected with 400."""
+    resp = await client.post(
+        "/api/plants/identify",
+        files=[
+            ("image", ("plant.jpg", b"img1", "image/jpeg")),
+            ("extra_images", ("angle-2.jpg", b"img2", "image/jpeg")),
+            ("extra_images", ("angle-3.jpg", b"img3", "image/jpeg")),
+            ("extra_images", ("angle-4.jpg", b"img4", "image/jpeg")),
+        ],
+        headers=auth_header,
+    )
+    assert resp.status_code == 400
+    assert "3 photos" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_identify_endpoint_validates_each_image(client, seeded_db, auth_header):
+    """Validation applies to every upload, not just the first: a bad extra
+    angle (oversized or wrong content type) is rejected."""
+    resp = await client.post(
+        "/api/plants/identify",
+        files=[
+            ("image", ("plant.jpg", b"img1", "image/jpeg")),
+            ("extra_images", ("angle-2.txt", b"img2", "text/plain")),
+        ],
+        headers=auth_header,
+    )
+    assert resp.status_code == 400
+    assert "Unknown image format" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_commit_returns_prefill_for_known_species(client, seeded_db, auth_header, tmp_path, monkeypatch):
     """When species is in catalog, commit returns enriched payload from cache (no external lookup)."""
     monkeypatch.setattr("routers.plant_id._save_identify_photo", lambda image_bytes: "photos/test.jpg")
