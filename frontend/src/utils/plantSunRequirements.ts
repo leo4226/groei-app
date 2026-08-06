@@ -49,7 +49,7 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     label: 'Full sun',
     labelNl: 'Volle zon',
     icon: 'sun',
-    minHours: 6,
+    minHours: 4,
     maxHours: 14,
     color: '#f0a020',
   },
@@ -58,8 +58,8 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     label: 'Partial sun',
     labelNl: 'Half zon',
     icon: 'cloud',
-    minHours: 3,
-    maxHours: 6,
+    minHours: 2,
+    maxHours: 4,
     color: '#7ab87a',
   },
   {
@@ -68,7 +68,7 @@ export const PLANT_SUN_PROFILES: PlantSunProfile[] = [
     labelNl: 'Schaduw',
     icon: 'leaf',
     minHours: 0,
-    maxHours: 3,
+    maxHours: 2,
     color: '#4a8c9f',
   },
 ]
