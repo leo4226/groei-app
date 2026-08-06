@@ -206,3 +206,48 @@ async def test_care_undo_nonexistent_log(client, undo_db, auth_header):
     )
     assert res.status_code == 404
     assert "not found" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_care_undo_without_schedule_deletes_log(client, undo_db, auth_header):
+    """Undo succeeds for care logs whose plant has no active schedule (#791).
+
+    Quick-logged Water/Fertilize on a schedule-less plant must be reversible:
+    the log is deleted, there is nothing to restore, and the endpoint no
+    longer 404s with 'No active schedule found'.
+    """
+    await undo_db.execute(
+        """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
+           VALUES (1, 'fertilize', 1, '2026-06-11T08:00:00', NULL, 0)"""
+    )
+    await undo_db.commit()
+    rows = await undo_db.execute_fetchall(
+        "SELECT id FROM care_log WHERE plant_id = 1 AND care_type = 'fertilize'"
+    )
+    assert len(rows) == 1
+    care_log_id = rows[0]["id"]
+
+    # No fertilize schedule exists for plant 1 — undo must still succeed
+    res = await client.post(
+        "/api/care/undo",
+        json={
+            "care_log_id": care_log_id,
+            "previous_next_due": None,
+            "previous_last_done": None,
+            "previous_last_done_by": None,
+        },
+        headers=auth_header,
+    )
+    assert res.status_code == 200
+    assert res.json()["ok"] is True
+
+    logs = await undo_db.execute_fetchall(
+        "SELECT id FROM care_log WHERE id = ?", (care_log_id,)
+    )
+    assert len(logs) == 0
+
+    # The unrelated water schedule must be untouched
+    rows = await undo_db.execute_fetchall(
+        "SELECT next_due FROM care_schedules WHERE id = 1"
+    )
+    assert str(rows[0]["next_due"]) == "2026-06-10"

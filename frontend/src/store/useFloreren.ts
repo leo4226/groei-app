@@ -41,6 +41,7 @@ interface FlorerStore {
   bulkArchivePlants: (ids: number[]) => Promise<void>
   uploadPhoto: (plantId: number, file: File) => Promise<void>
   markCareDone: (plantId: number, careType: string, notes?: string, water_amount?: number, scheduleId?: number) => Promise<{ care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null } | undefined>
+  undoCare: (plantId: number, careLogId: number, previousNextDue: string | null, previousLastDone: string | null, previousLastDoneBy: number | null) => Promise<void>
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
@@ -222,6 +223,17 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
       previous_last_done: result.previous_last_done,
       previous_last_done_by: result.previous_last_done_by,
     }
+  },
+
+  undoCare: async (plantId, careLogId, previousNextDue, previousLastDone, previousLastDoneBy) => {
+    await careApi.undo(careLogId, previousNextDue, previousLastDone, previousLastDoneBy)
+    // Bump care versions and refetch so the UI reflects the reverted state —
+    // mirrors markCareDone's refresh behavior.
+    set((s) => ({
+      careVersions: { ...s.careVersions, [plantId]: (s.careVersions[plantId] ?? 0) + 1 },
+    }))
+    get().loadRecentLog()
+    get().loadWarningSummary()
   },
 
   skipCare: async (plantId, careType) => {

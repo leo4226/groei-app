@@ -52,9 +52,14 @@ export default function PlantQuickSheet({
   const t = useT()
   const navigate = useNavigate()
   const markCareDone = useFloreren((s) => s.markCareDone)
+  const undoCare = useFloreren((s) => s.undoCare)
   const [locked, setLocked] = useState(plant.is_locked)
   const [detail, setDetail] = useState<Plant | null>(null)
   const [doneTypes, setDoneTypes] = useState<Set<string>>(new Set())
+  // Previous schedule state captured when a chip logged care, so tapping the
+  // chip again can undo (restore next_due/last_done, or just delete the log
+  // when the plant has no schedule for that care type).
+  const [doneState, setDoneState] = useState<Record<string, { care_log_id: number; previous_next_due: string | null; previous_last_done: string | null; previous_last_done_by: number | null }>>({})
   const [savingType, setSavingType] = useState<string | null>(null)
   const [, setStartingMapMove] = useState(false)
   const [showMoveSheet, setShowMoveSheet] = useState(false)
@@ -107,6 +112,7 @@ export default function PlantQuickSheet({
   useEffect(() => {
     setDetail(null)
     setDoneTypes(new Set())
+    setDoneState({})
     setMeasuredSun(plant.measured_sun_hours)
     setSunEditorOpen(false)
     plantsApi.get(plant.id).then(setDetail).catch(() => {})
@@ -163,9 +169,39 @@ export default function PlantQuickSheet({
   const handleCare = async (careType: string) => {
     setSavingType(careType)
     try {
-      await markCareDone(plant.id, careType)
-      setDoneTypes(prev => new Set([...prev, careType]))
-      onCareAction()
+      if (doneTypes.has(careType)) {
+        // Chip was already logged in this sheet — tapping again undoes it.
+        const prev = doneState[careType]
+        if (prev) {
+          await undoCare(plant.id, prev.care_log_id, prev.previous_next_due, prev.previous_last_done, prev.previous_last_done_by)
+          setDoneTypes((prevSet) => {
+            const next = new Set(prevSet)
+            next.delete(careType)
+            return next
+          })
+          setDoneState((prevMap) => {
+            const next = { ...prevMap }
+            delete next[careType]
+            return next
+          })
+          onCareAction()
+        }
+      } else {
+        const result = await markCareDone(plant.id, careType)
+        if (result) {
+          setDoneState((prev) => ({
+            ...prev,
+            [careType]: {
+              care_log_id: result.care_log_id,
+              previous_next_due: result.previous_next_due,
+              previous_last_done: result.previous_last_done,
+              previous_last_done_by: result.previous_last_done_by,
+            },
+          }))
+        }
+        setDoneTypes(prev => new Set([...prev, careType]))
+        onCareAction()
+      }
     } finally {
       setSavingType(null)
     }
@@ -374,8 +410,10 @@ export default function PlantQuickSheet({
                   <button
                     key={ct}
                     onClick={() => handleCare(ct)}
-                    disabled={saving || done}
-                    style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: done ? 'default' : 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
+                    disabled={saving}
+                    aria-label={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : (careLabelMap[ct] ?? info?.label ?? ct)}
+                    title={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : undefined}
+                    style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
                   >
                     <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
                       {done ? <Glyph name="check" size={24} strokeWidth={2.4} style={{ color: '#fff' }} /> : <CareIcon type={ct as CareIconType} size={24} />}
@@ -385,8 +423,8 @@ export default function PlantQuickSheet({
                         </span>
                       )}
                     </span>
-                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {careLabelMap[ct] ?? info?.label ?? ct}
+                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: done ? 'var(--color-primary)' : 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {done ? t.plantQuickSheet.undo : (careLabelMap[ct] ?? info?.label ?? ct)}
                     </span>
                   </button>
                 )

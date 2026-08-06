@@ -737,6 +737,8 @@ export const en: Translations = {
     careRotate: 'Rotate',
     careProtectCold: 'Cold protection',
     careProtectHeat: 'Heat protection',
+    undo: 'Undo',
+    undoHint: (action: string) => `Undo ${action}`,
     overdue: (n) => `${n} ${n === 1 ? 'day' : 'days'} late`,
     today: 'today',
     overN: (n) => `in ${n} ${n === 1 ? 'day' : 'days'}`,

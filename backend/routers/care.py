@@ -430,17 +430,18 @@ async def undo_care_done(action: CareUndo, db = Depends(db_dep),
         (log_entry["plant_id"], log_entry["care_type"], account["household_id"]),
     )
     schedule = await cursor.fetchone()
-    if not schedule:
-        raise HTTPException(status_code=404, detail="No active schedule found")
 
-    # Restore schedule state to before the care action
-    await db.execute(
-        """UPDATE care_schedules
-           SET last_done = ?, last_done_by = ?, next_due = ?
-           WHERE id = ?""",
-        (action.previous_last_done, action.previous_last_done_by,
-         action.previous_next_due, schedule["id"]),
-    )
+    # Restore schedule state to before the care action — but only when an
+    # active schedule exists. Quick-logged care on a schedule-less plant has
+    # nothing to restore; the log entry is deleted either way (#791).
+    if schedule:
+        await db.execute(
+            """UPDATE care_schedules
+               SET last_done = ?, last_done_by = ?, next_due = ?
+               WHERE id = ?""",
+            (action.previous_last_done, action.previous_last_done_by,
+             action.previous_next_due, schedule["id"]),
+        )
 
     # Delete the care log entry
     await db.execute("DELETE FROM care_log WHERE id = ?", (action.care_log_id,))
