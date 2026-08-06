@@ -698,6 +698,8 @@ export type Translations = {
     careRotate: string
     careProtectCold: string
     careProtectHeat: string
+    undo: string                        // chip label when a care action was logged — "Ongedaan" / "Undo"
+    undoHint: (action: string) => string  // aria/title — "Maak {action} ongedaan" / "Undo {action}"
     overdue: (n: number) => string
     today: string
     overN: (n: number) => string

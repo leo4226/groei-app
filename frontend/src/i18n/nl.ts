@@ -737,6 +737,8 @@ export const nl: Translations = {
     careRotate: 'Draaien',
     careProtectCold: 'Beschermen tegen kou',
     careProtectHeat: 'Beschermen tegen hitte',
+    undo: 'Ongedaan',
+    undoHint: (action: string) => `Maak ${action} ongedaan`,
     overdue: (n) => `${n} ${n === 1 ? 'dag' : 'dagen'} te laat`,
     today: 'vandaag',
     overN: (n) => `over ${n} ${n === 1 ? 'dag' : 'dagen'}`,
