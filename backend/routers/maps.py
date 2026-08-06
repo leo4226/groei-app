@@ -12,7 +12,7 @@ from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut,
 from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
-from services.plant_reader import enrich_plant, enrich_plants
+from services.plant_reader import enrich_plants
 from services.storage import build_storage_from_env
 from services.garden_biodiversity import compute_for_map as compute_biodiversity
 from services.plant_suggestions import recommend_for_garden, recommend_for_streek

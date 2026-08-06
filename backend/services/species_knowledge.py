@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+from services.phenology import parse_phenology
 
 # ── curated fallback data ────────────────────────────────────────────────────
 # Growth fields sourced from RHS, Missouri Botanical Garden, Gardenia.net.
@@ -425,11 +426,10 @@ async def _from_plant_species(scientific_name: str, db) -> dict | None:
         "SELECT phenology_json FROM plant_species WHERE latin_name ILIKE ?",
         (scientific_name,),
     )
-    if not rows or not rows[0]["phenology_json"]:
+    if not rows:
         return None
-    try:
-        pheno = json.loads(rows[0]["phenology_json"])
-    except (json.JSONDecodeError, TypeError):
+    pheno = parse_phenology(rows[0])
+    if not pheno:
         return None
     months = pheno.get("months", [])
 

@@ -5,7 +5,6 @@ GET    /discover          list all discoveries for the household
 DELETE /discover/{id}     delete a discovery
 """
 import base64
-import json
 import logging
 import os
 import secrets
@@ -18,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from auth import get_current_account
 from database import db_dep
+from services.phenology import parse_phenology
 from services.geocode import reverse_geocode
 from services.storage import Storage, build_storage_from_env
 
@@ -344,14 +344,8 @@ def _format_species(row) -> dict:
     fact_nl = _clean(_row_get(row, "fun_fact_nl"))
     fact_en = _clean(_row_get(row, "fun_fact_en"))
     if not fact_nl or not fact_en:
-        raw = _row_get(row, "phenology_json")
-        phenology = None
-        if raw:
-            try:
-                phenology = json.loads(raw) if isinstance(raw, str) else raw
-            except Exception:
-                phenology = None
-        if isinstance(phenology, dict):
+        phenology = parse_phenology(row)
+        if phenology:
             fact_nl = fact_nl or _clean(phenology.get("interesting_facts_nl"))
             fact_en = fact_en or _clean(phenology.get("interesting_facts_en"))
     return {

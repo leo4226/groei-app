@@ -1,7 +1,7 @@
-import json
 import random
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database import db_dep
+from services.phenology import parse_phenology
 from models import (
     CareAction, CareUndo, CareLogOut, RecentLogEntry, PlantFactOut,
     GardenCareCompleteIn, GardenCareOperationOut,
@@ -503,12 +503,8 @@ async def _plant_fact_candidates(db, household_id: int) -> list[PlantFactOut]:
 
     candidates = []
     for row in rows:
-        phen_str = row["phenology_json"]
-        if not phen_str:
-            continue
-        try:
-            phen = json.loads(phen_str) if isinstance(phen_str, str) else phen_str
-        except json.JSONDecodeError:
+        phen = parse_phenology(row)
+        if phen is None:
             continue
         fact_nl = phen.get("interesting_facts_nl", "").strip()
         fact_en = phen.get("interesting_facts_en", "").strip()

@@ -1,10 +1,10 @@
-import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import get_current_account
 from database import db_dep
+from services.phenology import parse_phenology
 
 router = APIRouter(prefix="/spots", tags=["spots"])
 
@@ -50,7 +50,7 @@ async def get_spot_suitability(
 
     results = []
     for row in rows:
-        phenology = json.loads(row["phenology_json"])
+        phenology = parse_phenology(row) or {}
         months = phenology.get("months", [])
 
         active_months = [m for m in months if m["phase"] in ACTIVE_PHASES]

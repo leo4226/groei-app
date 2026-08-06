@@ -1,10 +1,12 @@
 import json
 import logging
 logger = logging.getLogger(__name__)
-from dataclasses import asdict
 from datetime import date, datetime
 
 from models import MostUrgent
+from services.alert_service import compute_top_alert, compute_all_alerts
+from services.phenology import parse_phenology
+from services.warnings import compute_plant_warnings
 
 
 _DATE_STRING_FIELDS = frozenset({
@@ -25,8 +27,6 @@ def _coerce_dates(obj: dict) -> dict:
         if isinstance(v, (date, datetime)):
             obj[k] = v.isoformat()
     return obj
-from services.alert_service import compute_top_alert, compute_all_alerts
-from services.warnings import compute_plant_warnings
 
 
 def _compute_care_status(schedules, today):
@@ -79,7 +79,7 @@ def _compute_temp_status(care_thresholds_json, temp_data, in_ground=False):
     min_temp = thresholds.get("min_temp_c")
     max_temp = thresholds.get("max_temp_c")
 
-    # In-ground plants can't be moved/protected — skip cold/heat status
+    # In-ground plants can't be moved/protected - skip cold/heat status
     if not in_ground:
         if min_temp is not None:
             if week_min <= min_temp:
@@ -93,77 +93,150 @@ def _compute_temp_status(care_thresholds_json, temp_data, in_ground=False):
     return "comfortable"
 
 
-async def enrich_plant(db, plant_row, today, temp_data=None):
-    """Enrich a single plant dict with care_status, most_urgent, temp_status, phenology, and care_schedules."""
-    plant = dict(plant_row)
+async def enrich_plants(
+    db,
+    plant_rows,
+    today,
+    temp_data=None,
+    rain_data=None,
+    last_watered=None,
+    last_fertilized=None,
+    map_type="outdoor",
+    *,
+    include_schedules=False,
+    include_alerts=True,
+):
+    """Enrich plant dicts with care status, weather status, alerts and phenology.
 
-    schedules = await db.execute_fetchall(
-        """SELECT cs.care_type, cs.next_due, u.name as last_done_by_name
-           FROM care_schedules cs
-           LEFT JOIN users u ON cs.last_done_by = u.id
-           WHERE cs.plant_id = ? AND cs.is_active = 1
-           ORDER BY cs.next_due ASC""",
-        (plant["id"],),
-    )
-    plant["care_status"], plant["most_urgent"] = _compute_care_status(schedules, today)
+    Single query for all schedules (N+1-free). The output shape is controlled
+    by two keyword-only flags:
 
-    care_thresholds = plant.pop("care_thresholds", None)
-    if temp_data is not None:
-        plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
-    else:
-        plant["temp_status"] = "comfortable"
+    - ``include_schedules``: PlantOut shape - full ``care_schedules`` list and
+      ISO date coercion (previously ``enrich_plant_full``). ``most_urgent`` is
+      not attached in this shape.
+    - ``include_alerts``: map shape - ``most_urgent``, ``top_alert``/``alerts``
+      and the warning pipeline (previously ``enrich_plants``). The single-plant
+      ``enrich_plant`` path used neither flag (minimal shape).
 
-    phenology_json = plant.pop("phenology_json", None)
-    if phenology_json:
-        try:
-            plant["phenology"] = json.loads(phenology_json)
-        except (json.JSONDecodeError, TypeError):
-            plant["phenology"] = None
-    else:
-        plant["phenology"] = None
+    Flag combinations reproduce the three legacy functions exactly, so callers
+    keep their current behaviour while sharing one implementation.
+    """
+    if not plant_rows:
+        return []
 
-    return plant
+    plants = [dict(r) for r in plant_rows]
+    plant_ids = [p["id"] for p in plants]
 
-
-async def enrich_plant_full(db, plant_row, today, temp_data=None):
-    """Enrich a single plant dict with full care_schedules list (for PlantOut shape)."""
-    plant = dict(plant_row)
-
+    placeholders = ",".join("?" for _ in plant_ids)
     sched_rows = await db.execute_fetchall(
-        """SELECT cs.*, u.name as last_done_by_name
-           FROM care_schedules cs
-           LEFT JOIN users u ON cs.last_done_by = u.id
-           WHERE cs.plant_id = ? AND cs.is_active = 1
-           ORDER BY cs.next_due ASC""",
-        (plant["id"],),
+        f"""SELECT cs.*, u.name as last_done_by_name
+            FROM care_schedules cs
+            LEFT JOIN users u ON cs.last_done_by = u.id
+            WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
+            ORDER BY cs.plant_id, cs.next_due ASC""",
+        plant_ids,
     )
-    schedules = [dict(row) for row in sched_rows]
-    plant["care_schedules"] = schedules
 
-    plant["care_status"], _ = _compute_care_status(schedules, today)
+    schedules_by_plant = {}
+    for row in sched_rows:
+        r = dict(row)
+        pid = r["plant_id"]
+        if pid not in schedules_by_plant:
+            schedules_by_plant[pid] = []
+        schedules_by_plant[pid].append(r)
 
-    # Convert dates to strings for Pydantic model
-    _coerce_dates(plant)
-    for s in schedules:
-        _coerce_dates(s)
+    # Build weather dict for the unified warning pipeline.
+    weather = None
+    if include_alerts and (temp_data or rain_data or last_watered):
+        weather = {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
 
-    # Compute temp_status
-    care_thresholds = plant.pop("care_thresholds", None)
-    if temp_data is not None:
-        plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
-    else:
-        plant["temp_status"] = "comfortable"
+    for plant in plants:
+        pid = plant["id"]
+        schedules = schedules_by_plant.get(pid, [])
 
-    phenology_json = plant.pop("phenology_json", None)
-    if phenology_json:
-        try:
-            plant["phenology"] = json.loads(phenology_json)
-        except (json.JSONDecodeError, TypeError):
-            plant["phenology"] = None
-    else:
-        plant["phenology"] = None
+        plant["care_status"], most_urgent = _compute_care_status(schedules, today)
+        if not include_schedules:
+            plant["most_urgent"] = most_urgent
 
-    return plant
+        if include_schedules:
+            plant["care_schedules"] = schedules
+            # Convert dates to strings for Pydantic model
+            _coerce_dates(plant)
+            for s in schedules:
+                _coerce_dates(s)
+
+        care_thresholds = plant.pop("care_thresholds", None)
+
+        if include_schedules:
+            if temp_data is not None:
+                plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
+            else:
+                plant["temp_status"] = "comfortable"
+        elif include_alerts:
+            in_ground = map_type == "outdoor" and plant.get("container_id") is None
+            if temp_data is not None and map_type != "indoor":
+                plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data, in_ground)
+            else:
+                plant["temp_status"] = "comfortable"
+        else:
+            # Minimal single-plant shape (legacy enrich_plant): no in-ground
+            # nuance, no map_type gating.
+            if temp_data is not None:
+                plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data)
+            else:
+                plant["temp_status"] = "comfortable"
+
+        if include_alerts:
+            plant["top_alert"] = compute_top_alert(
+                care_status=plant["care_status"],
+                care_thresholds_json=care_thresholds,
+                rain=rain_data,
+                temp=temp_data,
+                last_watered=last_watered,
+                last_fertilized=last_fertilized,
+                map_type=map_type,
+                most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
+                in_ground=in_ground,
+            )
+            plant["alerts"] = [
+                {"alert_type": a["alert_type"], "severity": a["severity"], "icon": a["icon"]}
+                for a in compute_all_alerts(
+                    care_status=plant["care_status"],
+                    care_thresholds_json=care_thresholds,
+                    rain=rain_data,
+                    temp=temp_data,
+                    last_watered=last_watered,
+                    last_fertilized=last_fertilized,
+                    map_type=map_type,
+                    most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
+                    in_ground=in_ground,
+                )
+            ]
+
+            # New pipeline: compute warnings via compute_plant_warnings
+            try:
+                # Recreate the plant dict shape compute_plant_warnings expects
+                warn_plant = {
+                    "id": pid,
+                    "map_type": map_type,
+                    "container_id": plant.get("container_id"),
+                    "ground_zone_id": plant.get("ground_zone_id"),
+                    "care_profile": plant.get("care_profile"),
+                    "care_thresholds": care_thresholds,
+                }
+                today_date = date.fromisoformat(today) if isinstance(today, str) else today
+                result = compute_plant_warnings(warn_plant, schedules, weather=weather, today=today_date)
+                plant["top_warning"] = _care_warning_to_dict(result.top_warning) if result.top_warning else None
+                plant["warnings"] = [_care_warning_to_dict(w) for w in result.warnings]
+            except Exception:
+                # Degrade gracefully: new pipeline failure shouldn't break the map
+                logger.warning("Warning computation failed for plant %s", plant.get("id"))
+                plant["top_warning"] = None
+                plant["warnings"] = []
+
+        plant["phenology"] = parse_phenology(plant)
+
+    return plants
 
 
 def _care_warning_to_dict(w):
@@ -188,102 +261,22 @@ def _care_warning_to_dict(w):
     }
 
 
-async def enrich_plants(db, plant_rows, today, temp_data=None, rain_data=None, last_watered=None, last_fertilized=None, map_type="outdoor"):
-    """Batch-enrich plant dicts. Single query for all schedules (fixes N+1)."""
-    if not plant_rows:
-        return []
-
-    plants = [dict(r) for r in plant_rows]
-    plant_ids = [p["id"] for p in plants]
-
-    placeholders = ",".join("?" for _ in plant_ids)
-    sched_rows = await db.execute_fetchall(
-        f"""SELECT cs.care_type, cs.next_due, cs.plant_id, cs.last_done, u.name as last_done_by_name
-            FROM care_schedules cs
-            LEFT JOIN users u ON cs.last_done_by = u.id
-            WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1
-            ORDER BY cs.plant_id, cs.next_due ASC""",
-        plant_ids,
+async def enrich_plant(db, plant_row, today, temp_data=None):
+    """Enrich a single plant dict with care_status, most_urgent, temp_status, and phenology."""
+    rows = await enrich_plants(
+        db, [dict(plant_row)], today, temp_data=temp_data, include_alerts=False
     )
+    return rows[0]
 
-    schedules_by_plant = {}
-    for row in sched_rows:
-        r = dict(row)
-        pid = r["plant_id"]
-        if pid not in schedules_by_plant:
-            schedules_by_plant[pid] = []
-        schedules_by_plant[pid].append(r)
 
-    # Build weather dict for the unified warning pipeline.
-    weather = None
-    if temp_data or rain_data or last_watered:
-        weather = {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
-
-    for plant in plants:
-        pid = plant["id"]
-        schedules = schedules_by_plant.get(pid, [])
-        plant["care_status"], plant["most_urgent"] = _compute_care_status(schedules, today)
-
-        care_thresholds = plant.pop("care_thresholds", None)
-        in_ground = map_type == "outdoor" and plant.get("container_id") is None
-        if temp_data is not None and map_type != "indoor":
-            plant["temp_status"] = _compute_temp_status(care_thresholds, temp_data, in_ground)
-        else:
-            plant["temp_status"] = "comfortable"
-        plant["top_alert"] = compute_top_alert(
-            care_status=plant["care_status"],
-            care_thresholds_json=care_thresholds,
-            rain=rain_data,
-            temp=temp_data,
-            last_watered=last_watered,
-            last_fertilized=last_fertilized,
-            map_type=map_type,
-            most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
-            in_ground=in_ground,
-        )
-        plant["alerts"] = [
-            {"alert_type": a["alert_type"], "severity": a["severity"], "icon": a["icon"]}
-            for a in compute_all_alerts(
-                care_status=plant["care_status"],
-                care_thresholds_json=care_thresholds,
-                rain=rain_data,
-                temp=temp_data,
-                last_watered=last_watered,
-                last_fertilized=last_fertilized,
-                map_type=map_type,
-                most_urgent_care_type=plant["most_urgent"].care_type if plant["most_urgent"] else None,
-                in_ground=in_ground,
-            )
-        ]
-
-        # New pipeline: compute warnings via compute_plant_warnings
-        try:
-            # Recreate the plant dict shape compute_plant_warnings expects
-            warn_plant = {
-                "id": pid,
-                "map_type": map_type,
-                "container_id": plant.get("container_id"),
-                "ground_zone_id": plant.get("ground_zone_id"),
-                "care_profile": plant.get("care_profile"),
-                "care_thresholds": care_thresholds,
-            }
-            today_date = date.fromisoformat(today) if isinstance(today, str) else today
-            result = compute_plant_warnings(warn_plant, schedules, weather=weather, today=today_date)
-            plant["top_warning"] = _care_warning_to_dict(result.top_warning) if result.top_warning else None
-            plant["warnings"] = [_care_warning_to_dict(w) for w in result.warnings]
-        except Exception:
-            # Degrade gracefully: new pipeline failure shouldn't break the map
-            logger.warning("Warning computation failed for plant %s", plant.get("id"))
-            plant["top_warning"] = None
-            plant["warnings"] = []
-
-        phenology_json = plant.pop("phenology_json", None)
-        if phenology_json:
-            try:
-                plant["phenology"] = json.loads(phenology_json)
-            except (json.JSONDecodeError, TypeError):
-                plant["phenology"] = None
-        else:
-            plant["phenology"] = None
-
-    return plants
+async def enrich_plant_full(db, plant_row, today, temp_data=None):
+    """Enrich a single plant dict with full care_schedules list (for PlantOut shape)."""
+    rows = await enrich_plants(
+        db,
+        [dict(plant_row)],
+        today,
+        temp_data=temp_data,
+        include_schedules=True,
+        include_alerts=False,
+    )
+    return rows[0]

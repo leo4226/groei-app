@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from database import db_dep
 from auth import require_admin
 from services.svg_validator import validate_icon_svg
+from services.phenology import parse_phenology
 from services.storage import build_storage_from_env
 from services.icon_ai import generate_icon_variants
 from services.icon_catalog import load_catalog
@@ -353,16 +354,6 @@ def _has_text(value) -> bool:
     return bool(str(value or "").strip())
 
 
-def _parse_json_object(raw) -> dict:
-    if not raw:
-        return {}
-    try:
-        data = __import__("json").loads(raw)
-    except Exception:  # noqa: BLE001 - bad phenology should count as missing data
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
 def _small_plant_row(row: dict) -> dict:
     return {
         "id": row["id"],
@@ -431,7 +422,7 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
         missing_nl = _localized_name_missing(row.get("common_name_nl"), latin)
         missing_en = _localized_name_missing(row.get("common_name_en"), latin)
         missing_thresholds = not _has_text(row.get("care_thresholds"))
-        phenology = _parse_json_object(row.get("phenology_json"))
+        phenology = parse_phenology(row) or {}
         missing_phenology = not phenology
         missing_facts_nl = not _has_text(phenology.get("interesting_facts_nl"))
         missing_facts_en = not _has_text(phenology.get("interesting_facts_en"))
@@ -1425,12 +1416,7 @@ async def admin_regenerate_species_fact(
     if not fact_nl or not fact_en:
         raise HTTPException(status_code=503, detail="LLM returned incomplete bilingual facts")
 
-    try:
-        phenology = _json.loads(phenology_str) if phenology_str else {}
-    except _json.JSONDecodeError:
-        phenology = {}
-    if not isinstance(phenology, dict):
-        phenology = {}
+    phenology = parse_phenology(phenology_str) or {}
 
     phenology["interesting_facts_nl"] = fact_nl
     phenology["interesting_facts_en"] = fact_en
