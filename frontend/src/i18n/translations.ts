@@ -1011,6 +1011,10 @@ export type Translations = {
       capture: string   // "Capture"
       cancel: string    // "Cancel"
       noAccess: string  // "No camera access"
+      hint: string      // "Photograph a leaf or flower close-up, in good light" — dismissible pre-capture coaching
+      hintDismiss: string // "Dismiss tip" — aria-label for the hint close button
+      retakeTipNoMatch: string        // "Move closer — fill the frame with a single leaf or flower"
+      retakeTipLowConfidence: string  // "Avoid harsh shadows; find even light"
     }
     identifying: string  // "Identifying..."
     newPhoto: string     // "📷 Take new photo"

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { plants as plantsApi, maps as mapsApi, apiRequest } from '../api/client'
-import { IdentifyCamera } from '../components/identify/IdentifyCamera'
+import { IdentifyCamera, type RetakeReason } from '../components/identify/IdentifyCamera'
 import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
 import Glyph from '../components/ui/Glyph'
@@ -19,7 +19,7 @@ type ResultsState = {
 }
 
 type Step =
-  | { kind: 'camera' }
+  | { kind: 'camera'; retakeReason?: RetakeReason }
   | { kind: 'identifying'; thumbnail: string }
   | ({ kind: 'results' } & ResultsState)
   | ({ kind: 'destination'; candidate: PlantIdCandidate; from: ResultsState })
@@ -155,7 +155,16 @@ export function IdentifyPlantPage() {
   }
 
   function retry() {
-    setStep({ kind: 'camera' })
+    // Retakes after a failed ID get targeted coaching on the camera screen:
+    // no candidates → "move closer", low confidence → lighting.
+    const retakeReason: RetakeReason = step.kind === 'results'
+      ? step.candidates.length === 0
+        ? 'no-match'
+        : step.confidence === 'low'
+          ? 'low-confidence'
+          : 'none'
+      : 'none'
+    setStep({ kind: 'camera', retakeReason })
     setCapturedPhotoDataUrl(null)
   }
 
@@ -183,7 +192,7 @@ export function IdentifyPlantPage() {
   }
 
   if (step.kind === 'camera') {
-    return <IdentifyCamera onCapture={handleCapture} onCancel={() => navigate(-1)} />
+    return <IdentifyCamera onCapture={handleCapture} onCancel={() => navigate(-1)} retakeReason={step.retakeReason ?? 'none'} />
   }
 
   // --- render ---
