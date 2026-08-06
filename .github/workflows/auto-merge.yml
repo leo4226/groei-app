@@ -13,6 +13,7 @@ permissions:
 jobs:
   enable-auto-merge:
     name: Enable auto-merge
+    if: '!github.event.pull_request.draft'
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge (squash)
