@@ -1,21 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../context/LanguageContext'
 
+export type RetakeReason = 'no-match' | 'low-confidence' | 'none'
+
 type Props = {
   onCapture: (blob: Blob, dataUrl: string) => void
   onCancel: () => void
+  // Set when the user is retaking after a failed/low-confidence ID so the
+  // camera can coach the next shot instead of showing the generic first-open hint.
+  retakeReason?: RetakeReason
 }
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-export function IdentifyCamera({ onCapture, onCancel }: Props) {
+export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none' }: Props) {
   const t = useT()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hintDismissed, setHintDismissed] = useState(false)
 
   // Digital zoom: we scale the video preview and crop the capture to match.
   // The PAGE is locked against pinch-zoom (touchAction:none + gesture preventDefault)
@@ -171,6 +177,38 @@ export function IdentifyCamera({ onCapture, onCancel }: Props) {
                 <span className="px-2 py-0.5 rounded-full bg-black/50 text-white text-xs tabular-nums">
                   {zoom.toFixed(1)}×
                 </span>
+              </div>
+            )}
+            {/* Pre-capture coaching. A failed/low-confidence retake shows one
+                targeted tip; a fresh open shows the dismissible close-up/light
+                hint. Sits above the shutter so it never collides with the top
+                chrome or the zoom badge. */}
+            {retakeReason === 'no-match' || retakeReason === 'low-confidence' ? (
+              <div
+                className="fixed inset-x-0 flex justify-center px-6 pointer-events-none z-10"
+                style={{ bottom: 'calc(env(safe-area-inset-bottom) + 10.5rem)' }}
+              >
+                <span className="px-3 py-1.5 rounded-full bg-black/50 text-white text-xs text-center max-w-full">
+                  {retakeReason === 'no-match'
+                    ? t.identify.camera.retakeTipNoMatch
+                    : t.identify.camera.retakeTipLowConfidence}
+                </span>
+              </div>
+            ) : !hintDismissed && (
+              <div
+                className="fixed inset-x-0 flex justify-center px-6 z-10"
+                style={{ bottom: 'calc(env(safe-area-inset-bottom) + 10.5rem)' }}
+              >
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 text-white text-xs text-center max-w-full">
+                  <span>{t.identify.camera.hint}</span>
+                  <button
+                    onClick={() => setHintDismissed(true)}
+                    aria-label={t.identify.camera.hintDismiss}
+                    className="shrink-0 text-white/70 hover:text-white cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             )}
             <div
