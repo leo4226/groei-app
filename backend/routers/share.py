@@ -9,7 +9,6 @@ Only finds whose owner pressed Share (which mints share_token) are reachable;
 exact GPS coordinates and personal field notes are never exposed.
 """
 import html
-import json
 import logging
 import os
 from datetime import datetime
@@ -18,6 +17,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
 from database import db_dep
+from services.phenology import parse_phenology
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["share"])
@@ -86,17 +86,14 @@ def _fact_from(row, lang: str) -> str | None:
         if value and str(value).strip():
             return str(value).strip()
     raw = _get(row, "phenology_json")
-    if raw:
-        try:
-            phenology = json.loads(raw) if isinstance(raw, str) else raw
-        except Exception:
-            logger.warning("Failed to parse phenology JSON for share page")
-            phenology = None
-        if isinstance(phenology, dict):
-            for key in (f"interesting_facts_{lang}", f"interesting_facts_{other}"):
-                value = phenology.get(key)
-                if value and str(value).strip():
-                    return str(value).strip()
+    phenology = parse_phenology(row)
+    if raw and phenology is None:
+        logger.warning("Failed to parse phenology JSON for share page")
+    if phenology:
+        for key in (f"interesting_facts_{lang}", f"interesting_facts_{other}"):
+            value = phenology.get(key)
+            if value and str(value).strip():
+                return str(value).strip()
     return None
 
 

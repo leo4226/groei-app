@@ -15,6 +15,7 @@ from care_types import CARE_TYPES, is_care_type_valid_for_env, normalize_care_ty
 from services.care_profile import environment_for_plant
 from services.scheduling import calculate_next_due
 from services.plant_reader import enrich_plant_full, _compute_care_status, _coerce_dates
+from services.phenology import parse_phenology
 from species_service import get_or_create_species, regenerate_species_phenology
 from threshold_service import generate_thresholds
 from services.deferred import fire_and_forget
@@ -168,14 +169,7 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
         for s in schedules:
             _coerce_dates(s)
         plant["care_schedules"] = schedules
-        if plant.get("phenology_json"):
-            try:
-                plant["phenology"] = json.loads(plant.pop("phenology_json"))
-            except (json.JSONDecodeError, TypeError):
-                plant["phenology"] = None
-                plant.pop("phenology_json", None)
-        else:
-            plant.pop("phenology_json", None)
+        plant["phenology"] = parse_phenology(plant)
 
     return plants
 

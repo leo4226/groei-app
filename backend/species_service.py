@@ -7,6 +7,7 @@ import httpx
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL, LLM_PHENOLOGY_MODEL
 from services.deferred import fire_and_forget
+from services.phenology import parse_phenology
 
 logger = logging.getLogger(__name__)
 
@@ -191,13 +192,8 @@ def _phenology_has_months(phenology_json) -> bool:
     non-empty `phenology_json` (e.g. just a fact) yet still show
     "No species data available" because `months` is missing.
     """
-    if not phenology_json:
-        return False
-    try:
-        phen = json.loads(phenology_json)
-    except (json.JSONDecodeError, TypeError):
-        return False
-    return isinstance(phen, dict) and bool(phen.get("months"))
+    phen = parse_phenology(phenology_json)
+    return bool(phen and phen.get("months"))
 
 
 async def regenerate_species_phenology(
@@ -417,10 +413,7 @@ async def get_species_by_id(db, species_id: int) -> dict | None:
     if not rows:
         return None
     result = dict(rows[0])
-    if result.get("phenology_json"):
-        result["phenology"] = json.loads(result.pop("phenology_json"))
-    else:
-        result.pop("phenology_json", None)
+    result["phenology"] = parse_phenology(result)
 
     img_rows = await db.execute_fetchall(
         "SELECT id, url, thumbnail_url, source, license, is_primary "
@@ -594,13 +587,7 @@ async def generate_fact_for_species(plant_name: str, latin_name: str | None = No
 
 
 def _load_phenology_json(raw: str | None) -> dict:
-    if not raw:
-        return {}
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    return parse_phenology(raw) or {}
 
 
 def _has_bilingual_facts(phenology: dict) -> bool:

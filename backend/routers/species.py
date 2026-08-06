@@ -7,6 +7,7 @@ from auth import get_current_account
 from models import PlantSpeciesOut, SpeciesSearchResponse, PlantSpeciesSearchResult, SpeciesImageOut
 from species_service import get_species_by_id, search_species
 from services.ecology_enrichment import ensure_ecology
+from services.phenology import parse_phenology
 
 logger = logging.getLogger(__name__)
 
@@ -165,16 +166,8 @@ def _normalise_fun_fact(nl: object, en: object) -> dict[str, str] | None:
 
 def _phenology_fun_fact(phenology_json: object) -> dict[str, str] | None:
     """Fallback to existing species interesting facts when fun-fact generation fails."""
-    if not phenology_json:
-        return None
-    if isinstance(phenology_json, str):
-        try:
-            phenology = json.loads(phenology_json)
-        except json.JSONDecodeError:
-            return None
-    elif isinstance(phenology_json, dict):
-        phenology = phenology_json
-    else:
+    phenology = parse_phenology(phenology_json)
+    if phenology is None:
         return None
     return _normalise_fun_fact(
         phenology.get("interesting_facts_nl"),
