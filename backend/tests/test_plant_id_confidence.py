@@ -53,3 +53,16 @@ def test_high_when_top1_exactly_at_high_threshold():
 def test_medium_when_top1_exactly_at_medium_threshold():
     """top1=0.30 (== _MEDIUM_TOP1) → medium (>= is inclusive)."""
     assert _classify_confidence(0.30, 0.28) == "medium"
+
+
+def test_high_when_blended_user_ref_match_strong():
+    """A rescued confirmed-photo match (image cosine as blended top1, big
+    margin over the PlantNet/other-species second) must present confidently.
+    #808 / audit §3.3 — the case we trust most."""
+    assert _classify_confidence(0.62, 0.40) == "high"
+
+
+def test_medium_when_blended_user_ref_match_thin_margin():
+    """Same blended rescue but with a close second (common look-alike) must
+    NOT overpromise — it stays a 'compare carefully' medium."""
+    assert _classify_confidence(0.55, 0.53) == "medium"
