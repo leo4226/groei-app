@@ -36,7 +36,7 @@ jobs:
       - name: Diff must not weaken tests
         run: |
           base="origin/${{ github.base_ref }}"
-          git fetch origin ${{ github.base_ref }} --depth=1
+          git fetch origin ${{ github.base_ref }}
           # NB: git's default pathspec fnmatch lets * cross '/', so these
           # match nested files too (verified empirically — no :(glob) needed).
           diff=$(git diff "$base"...HEAD -- 'backend/tests/**' 'frontend/**/*.test.*')
@@ -63,7 +63,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           if [ -z "$NOUS_API_KEY" ]; then echo "NOUS_API_KEY not set — skipping review"; exit 0; fi
-          git fetch origin ${{ github.base_ref }} --depth=1
+          git fetch origin ${{ github.base_ref }}
           # Cap the diff so a huge PR doesn't blow the request (~100KB).
           git diff "origin/${{ github.base_ref }}"...HEAD | head -c 100000 > /tmp/diff.txt
           if [ ! -s /tmp/diff.txt ]; then echo "empty diff — skipping"; exit 0; fi
