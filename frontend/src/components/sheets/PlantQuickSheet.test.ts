@@ -65,8 +65,8 @@ function plant(): MapPlant {
   }
 }
 
-function buttonWithText(container: HTMLElement, text: string): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll('button'))
+function buttonWithText(scope: HTMLElement, text: string): HTMLButtonElement {
+  const button = Array.from(scope.querySelectorAll('button'))
     .find((candidate) => candidate.textContent?.trim() === text)
   if (!button) throw new Error(`Button not found: ${text}`)
   return button
@@ -128,7 +128,7 @@ describe('PlantQuickSheet care chips', () => {
   it('logs care on first tap and undoes it on a second tap (#791)', async () => {
     await render()
 
-    const waterChip = buttonWithText(container, 'Water')
+    const waterChip = buttonWithText(document.body, 'Water')
     await act(async () => {
       waterChip.click()
     })
@@ -137,7 +137,7 @@ describe('PlantQuickSheet care chips', () => {
     expect(mocks.undoCare).not.toHaveBeenCalled()
 
     // The chip flips to a tappable "Undo" state — never disabled after logging
-    const undoChip = buttonWithText(container, 'Undo')
+    const undoChip = buttonWithText(document.body, 'Undo')
     expect(undoChip).toBeTruthy()
     expect(undoChip.disabled).toBe(false)
 
@@ -149,21 +149,21 @@ describe('PlantQuickSheet care chips', () => {
     expect(mocks.markCareDone).toHaveBeenCalledTimes(1)
 
     // The chip reverts to the normal care label
-    expect(buttonWithText(container, 'Water')).toBeTruthy()
+    expect(buttonWithText(document.body, 'Water')).toBeTruthy()
   })
 
   it('keeps an undone chip tappable to log again', async () => {
     await render()
 
-    const waterChip = buttonWithText(container, 'Water')
+    const waterChip = buttonWithText(document.body, 'Water')
     await act(async () => {
       waterChip.click()
     })
     await act(async () => {
-      buttonWithText(container, 'Undo').click()
+      buttonWithText(document.body, 'Undo').click()
     })
     await act(async () => {
-      buttonWithText(container, 'Water').click()
+      buttonWithText(document.body, 'Water').click()
     })
 
     expect(mocks.markCareDone).toHaveBeenCalledTimes(2)

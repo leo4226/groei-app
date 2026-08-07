@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { maps as mapsApi } from '../../api/client'
 import type { MapInfo } from '../../types'
 import Glyph from '../ui/Glyph'
@@ -24,10 +25,10 @@ export default function MovePlantSheet({ currentMapId, currentMapName, error = f
       .finally(() => setLoading(false))
   }, [currentMapId])
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 z-40" style={{ touchAction: 'none' }} onClick={onClose} />
 
       {/* Sheet */}
       <div
@@ -96,6 +97,7 @@ export default function MovePlantSheet({ currentMapId, currentMapName, error = f
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -1,4 +1,5 @@
 import type { FixedPlant } from '../../constants/fixedPlants'
+import { createPortal } from 'react-dom'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 
@@ -9,10 +10,10 @@ interface Props {
 
 export default function FixedPlantSheet({ plant, onClose }: Props) {
   const t = useT()
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 z-40" style={{ touchAction: 'none' }} onClick={onClose} />
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up">
@@ -65,6 +66,7 @@ export default function FixedPlantSheet({ plant, onClose }: Props) {
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

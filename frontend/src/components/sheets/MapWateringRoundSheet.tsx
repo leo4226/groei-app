@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { MapWateringRoundData } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { isoToDisplay, localIsoDate } from '../../utils/dateFormat'
@@ -89,7 +90,7 @@ export default function MapWateringRoundSheet({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onCancel, saving])
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
       role="presentation"
@@ -256,6 +257,7 @@ export default function MapWateringRoundSheet({
           </button>
         </footer>}
       </section>
-    </div>
+    </div>,
+    document.body,
   )
 }
