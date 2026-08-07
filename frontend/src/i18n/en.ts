@@ -1713,6 +1713,33 @@ export const en: Translations = {
     completed: '✅ All done! You\'ve completed all the steps',
   },
 
+  installPrompt: {
+    iosKicker: 'Put Floreren on your home screen',
+    iosTitle: 'Add Floreren to your home screen',
+    iosLede: 'Here\'s how in Safari:',
+    iosStepShare: 'Tap the share icon (square with arrow)',
+    iosStepHomeScreen: 'Choose "Add to Home Screen"',
+    iosStepAdd: 'Tap "Add" in the top right',
+    iosPushHook: 'You only get reminders when the app is installed',
+    iosCta: 'I\'ve done this',
+    androidKicker: 'Install Floreren',
+    androidTitle: 'Install Floreren on your phone',
+    androidLede: 'One tap — after that Floreren works like an app.',
+    androidPushHook: 'Get watering reminders as notifications',
+    androidCta: 'Install',
+    installing: 'Installing…',
+    doneTitle: 'Floreren is on your home screen! 🎉',
+    doneLede: 'Next time, open it from your home screen — no computer needed.',
+    later: 'Later',
+  },
+
+  installNudge: {
+    title: 'Floreren as an app?',
+    subtitle: 'Install — then it\'s always on your phone',
+    cta: 'Install',
+    dismissAria: 'Hide install tip',
+  },
+
   weeds: {
     identifyCard: {
       title: 'Identify field plant',

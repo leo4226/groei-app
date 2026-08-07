@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
+import { useInstallPrompt } from '../../hooks/useInstallPrompt'
+import InstallPromptSheet from '../install/InstallPromptSheet'
 
 interface Props {
   mapId: number
@@ -46,6 +48,8 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId, 
   const [isInstalled, setIsInstalled] = useState(
     () => window.matchMedia('(display-mode: standalone)').matches
   )
+  const [showInstallSheet, setShowInstallSheet] = useState(false)
+  const install = useInstallPrompt()
 
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -112,9 +116,21 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId, 
     },
     ...(isMobile ? [{
       key: 'install',
-      done: isInstalled,
+      done: isInstalled || install.isStandalone,
       label: t.onboarding.installApp.label,
-      hint: isIos ? t.onboarding.installApp.hintIos : t.onboarding.installApp.hintAndroid,
+      cta: isInstalled || install.isStandalone ? undefined : t.installPrompt.androidCta,
+      action: isInstalled || install.isStandalone
+        ? undefined
+        : () => {
+            if (install.canNativePrompt) {
+              void install.promptInstall()
+            } else {
+              setShowInstallSheet(true)
+            }
+          },
+      hint: !isInstalled && !install.isStandalone
+        ? (isIos ? t.onboarding.installApp.hintIos : t.onboarding.installApp.hintAndroid)
+        : undefined,
     }] : []),
   ]
 
@@ -261,6 +277,8 @@ export default function FirstRunOverlay({ mapId, hasZones, hasPlant, accountId, 
           </div>
         </div>
       </div>
+
+      {showInstallSheet && <InstallPromptSheet onClose={() => setShowInstallSheet(false)} />}
     </div>
   )
 }

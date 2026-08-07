@@ -15,6 +15,7 @@ import type { PlantIcon } from '../types'
 import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
 import CareRhythmSettings from './settings/CareRhythmSettings'
 import CalendarSubscriptionSettings from './settings/CalendarSubscriptionSettings'
+import InstallPromptSheet from '../components/install/InstallPromptSheet'
 
 // Backend care_type keys a user can mute for scheduled care push reminders.
 const PUSH_CARE_TYPES = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'pest_check', 'dust'] as const
@@ -57,6 +58,7 @@ export default function Settings() {
   const [pushOnHere, setPushOnHere] = useState(false)
   const [pushTestBusy, setPushTestBusy] = useState(false)
   const [pushTestMsg, setPushTestMsg] = useState<string | null>(null)
+  const [showInstallSheet, setShowInstallSheet] = useState(false)
   const [exportBusy, setExportBusy] = useState<'json' | 'csv' | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportReady, setExportReady] = useState(false)
@@ -671,6 +673,18 @@ export default function Settings() {
         <div className="card p-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
+              <div className="font-semibold text-sm">{t.installNudge.title}</div>
+              <div className="text-xs text-text-muted mt-0.5">{t.installNudge.subtitle}</div>
+            </div>
+            <button
+              onClick={() => setShowInstallSheet(true)}
+              className="flex-shrink-0 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-text bg-surface hover:border-primary/50 transition-colors"
+            >
+              {t.installPrompt.androidCta}
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-4 pt-3 border-t border-border">
+            <div>
               <div className="font-semibold text-sm">{t.settings.digestToggle}</div>
               <div className="text-xs text-text-muted mt-0.5">{t.settings.digestToggleDesc}</div>
             </div>
@@ -1195,6 +1209,8 @@ export default function Settings() {
       )}
         </div>
       </div>
+
+      {showInstallSheet && <InstallPromptSheet onClose={() => setShowInstallSheet(false)} />}
     </div>
   )
 }

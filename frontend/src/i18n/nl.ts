@@ -1715,6 +1715,33 @@ export const nl: Translations = {
     completed: '✅ Klaar! Je hebt alle stappen doorlopen',
   },
 
+  installPrompt: {
+    iosKicker: 'Zet Floreren op je beginscherm',
+    iosTitle: 'Voeg Floreren toe aan je beginscherm',
+    iosLede: 'Zo werkt het in Safari:',
+    iosStepShare: 'Tik op het deel-icoon (vierkant met pijl)',
+    iosStepHomeScreen: 'Kies "Zet op beginscherm"',
+    iosStepAdd: 'Tik rechtsboven op "Voeg toe"',
+    iosPushHook: 'Alleen als de app geïnstalleerd is krijg je meldingen',
+    iosCta: 'Ik heb dit gedaan',
+    androidKicker: 'Installeer Floreren',
+    androidTitle: 'Installeer Floreren op je telefoon',
+    androidLede: 'Eén tik — daarna werkt Floreren als een app.',
+    androidPushHook: 'Krijg waterherinneringen als melding',
+    androidCta: 'Installeren',
+    installing: 'Bezig…',
+    doneTitle: 'Floreren staat op je beginscherm! 🎉',
+    doneLede: 'Open het de volgende keer vanaf je beginscherm — geen computer nodig.',
+    later: 'Later',
+  },
+
+  installNudge: {
+    title: 'Floreren als app?',
+    subtitle: 'Installeer — dan staat hij altijd op je telefoon',
+    cta: 'Installeren',
+    dismissAria: 'Installatietip verbergen',
+  },
+
   weeds: {
     identifyCard: {
       title: 'Plant buiten herkennen',
