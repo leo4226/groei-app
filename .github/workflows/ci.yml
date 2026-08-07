@@ -13,6 +13,10 @@ concurrency:
 
 jobs:
   frontend:
+    # Keep this name exactly as-is: branch protection requires a status check
+    # literally called "Frontend · tsc + build", so renaming the job removes
+    # the required check and blocks every merge until the ruleset is updated
+    # to match. Rename both together or neither.
     name: Frontend · tsc + build
     runs-on: ubuntu-latest
     defaults:
@@ -34,6 +38,16 @@ jobs:
         # Pre-existing offenders are baselined in eslint.i18n.config.js; that
         # list must only shrink. See CLAUDE.md § Languages.
         run: npm run lint:i18n
+      - name: Unit tests (vitest)
+        # This job used to run tsc + i18n + build only, so the whole frontend
+        # suite never gated a PR. Master went red unnoticed when #838 reworded a
+        # string the camera tests asserted on (fixed in #843), and every guard in
+        # the suite — safe-area anchors, icon uniqueness, payload shape, search
+        # matching — was only as good as whoever remembered to run it locally.
+        # Uses the package script like every other step here, so the runner is
+        # the lockfile-pinned devDependency rather than whatever npx resolves.
+        run: npm test
+
       - name: Build (vite)
         # tsc is lenient about JSX nesting that Vite's rolldown parser rejects, so
         # tsc can pass while the production build fails (see PR #91 / issue #102).
