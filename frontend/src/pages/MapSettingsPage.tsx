@@ -23,6 +23,8 @@ export default function MapSettingsPage() {
   const [bearing, setBearing] = useState(0)
   const [streken, setStreken] = useState<Streek[]>([])
   const [streekSlug, setStreekSlug] = useState<string>('')
+  const [isPublic, setIsPublic] = useState(false)
+  const [photosPublic, setPhotosPublic] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -42,6 +44,8 @@ export default function MapSettingsPage() {
       setLon(m.lon != null ? String(m.lon) : '')
       setBearing(m.bearing ?? 0)
       setStreekSlug(m.streek_slug ?? '')
+      setIsPublic(m.is_public ?? false)
+      setPhotosPublic(m.photos_public ?? false)
       setLoading(false)
     }).catch(() => {
       if (mounted.current) setError(t.mapSettings.notFound)
@@ -108,6 +112,18 @@ export default function MapSettingsPage() {
   function handleBearingChange(b: number) {
     setBearing(b)
     debouncedSave({ bearing: b })
+  }
+
+  function handlePublicToggle(next: boolean) {
+    setIsPublic(next)
+    // Turning sharing off also retracts photo sharing — private stays private.
+    if (!next) setPhotosPublic(false)
+    doSave({ is_public: next, ...(!next ? { photos_public: false } : {}) })
+  }
+
+  function handlePhotosToggle(next: boolean) {
+    setPhotosPublic(next)
+    doSave({ photos_public: next })
   }
 
   function handleUseCurrentLocation() {
@@ -288,6 +304,49 @@ export default function MapSettingsPage() {
             ))}
           </select>
           <p className="text-[10px] text-text-muted mt-2">{t.garden.streek.attribution}</p>
+        </section>
+      )}
+
+      {/* Public garden atlas opt-in (outdoor only) */}
+      {isOutdoor && (
+        <section className="mb-6">
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.publicSectionTitle}</label>
+          <div className="space-y-2">
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-paper p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-primary"
+                checked={isPublic}
+                onChange={(e) => handlePublicToggle(e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-semibold text-text">{t.mapSettings.publicToggleLabel}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-text-muted">{t.mapSettings.publicToggleHint}</span>
+                <span className="mt-1 block text-[10px] uppercase tracking-wide text-text-muted">{t.mapSettings.publicToggleDesc}</span>
+              </span>
+            </label>
+
+            {isPublic && (
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-paper p-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                  checked={photosPublic}
+                  onChange={(e) => handlePhotosToggle(e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-text">{t.mapSettings.photosToggleLabel}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-text-muted">{t.mapSettings.photosToggleHint}</span>
+                </span>
+              </label>
+            )}
+          </div>
+        </section>
+      )}
+      {!isOutdoor && (
+        <section className="mb-6">
+          <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.publicSectionTitle}</label>
+          <p className="text-xs text-text-muted bg-surface rounded-xl px-4 py-2.5">{t.mapSettings.outdoorOnlyHint}</p>
         </section>
       )}
 

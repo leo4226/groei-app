@@ -8,6 +8,49 @@ export const nl: Translations = {
     maps: 'Kaart',
     calendar: 'Kalender',
     settings: 'Instellingen',
+    atlas: 'Atlas',
+  },
+
+  atlas: {
+    mastheadTitle: 'Openbare',
+    mastheadAccent: 'tuinenatlas',
+    lede: 'Echte tuinen, opengezet ter inspiratie. Elke tuin die je hier ziet is bewust gedeeld door de eigenaar, geanonimiseerd en zonder exact adres.',
+    filters: {
+      cityLabel: 'Plaats',
+      cityPlaceholder: 'Zoek op plaats of tuinnaam',
+      monthLabel: 'Maand',
+      monthAny: 'Elke maand',
+      scoreLabel: 'Biodiversiteitsscore',
+      scoreAny: 'Elke score',
+      sortLabel: 'Sorteer',
+      sortScore: 'Beste score',
+      sortName: 'Naam',
+      sortNewest: 'Nieuwste',
+    },
+    loading: 'Openbare tuinen laden…',
+    loadFailed: 'Openbare tuinen laden mislukt',
+    retry: 'Opnieuw proberen',
+    emptyTitle: 'Nog geen openbare tuinen',
+    emptyLede: 'Zodra iemand een tuin deelt, verschijnt hij hier. Deel er zelf een via de instellingen van je tuin.',
+    notFound: 'Tuin niet gevonden',
+    backToAtlas: 'Terug naar de atlas',
+    card: {
+      plantCount: (n) => `${n} planten`,
+      speciesCount: (n) => `${n} soorten`,
+      scoreLabel: 'biodiversiteitsscore',
+      flowerMonths: 'bloei',
+    },
+    detail: {
+      backLabel: 'Alle tuinen',
+      scoreLabel: 'Biodiversiteitsscore',
+      speciesLabel: 'soorten',
+      plantLabel: 'planten',
+      floweringMonthsLabel: 'Bloeiende maanden',
+      plantsTitle: 'Planten',
+      noPlants: 'Deze tuin heeft nog geen planten.',
+      noCity: 'Ergens buiten',
+      publicBadge: 'Openbare tuin',
+    },
   },
 
   dashboard: {
@@ -222,6 +265,14 @@ export const nl: Translations = {
     // PageMasthead keys (issue #180)
     mastheadTitle: 'Kaart',
     mastheadAccent: 'instellingen',
+    // Public garden atlas opt-in (#804)
+    publicSectionTitle: 'Openbare tuinenatlas',
+    publicToggleLabel: 'Deel deze tuin in de openbare atlas',
+    publicToggleHint: 'Zichtbaar voor iedereen — geanonimiseerd, zonder exact adres. Zet het aan zodat anderen kunnen rondkijken en zich laten inspireren.',
+    publicToggleDesc: 'Standaard uit. Alleen tuinen die je deelt verschijnen in de atlas.',
+    photosToggleLabel: 'Deel ook foto\'s',
+    photosToggleHint: 'Foto\'s blijven verborgen tenzij je ze ook deelt.',
+    outdoorOnlyHint: 'Alleen buitentuinen kunnen in de atlas worden gedeeld.',
   },
 
   editor: {

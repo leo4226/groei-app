@@ -1,4 +1,4 @@
-import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut } from '../types'
+import type { User, Location, Plant, PlantCreateInput, CareScheduleInput, CareLogEntry, RecentLogEntry, MapInfo, MapDetail, MapPlant, MapObject, MapItems, SecondaryMarker, ObjectCreateInput, GroundZone, PlantIcon, IconSyncResult, IconGapReport, PlantAlert, AlertSummary, PlantFactOut, RecommendationsOut, GardenSuggestionsOut, PublicGardenSummary, PublicGardenDetail } from '../types'
 import { indexIconUrls } from '../utils/icons'
 import { withNetworkRetry } from './retry'
 
@@ -494,8 +494,8 @@ export const species = {
 
 export const maps = {
   list:    ()                                                                                                     => apiWithTimeout<MapInfo[]>('GET', '/maps'),
-  create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number })             => api<MapInfo>('POST', '/maps', { body: data }),
-  update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number; streek_slug?: string | null }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
+  create:  (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number; is_public?: boolean; photos_public?: boolean })             => api<MapInfo>('POST', '/maps', { body: data }),
+  update:  (id: number, data: { name?: string; canvas_data?: string; map_type?: string; lat?: number; lon?: number; bearing?: number; streek_slug?: string | null; is_public?: boolean; photos_public?: boolean }) => api<MapInfo>('PUT', `/maps/${id}`, { body: data }),
   delete:  (id: number)                                                                                          => api<void>('DELETE', `/maps/${id}`),
   byId:    (id: number)                                                                                          => api<MapInfo>('GET', `/maps/by-id/${id}`),
   detail:  (slug: string)                                                                                        => api<MapDetail>('GET', `/maps/${slug}`),
@@ -560,6 +560,23 @@ export const garden = {
 
 export const alerts = {
   summary: () => api<AlertSummary>('GET', '/alerts/summary'),
+}
+
+// ── Public garden atlas (#804) ──
+// Anonymous read-only browse surface. The backend (routers/atlas.py) strips
+// account/household PII and rounds GPS to city level; no auth needed.
+export type AtlasSort = 'score' | 'name' | 'newest'
+
+export const atlas = {
+  list: (params: { city?: string; month?: number; min_score?: number; sort?: AtlasSort } = {}) => {
+    const qs: Record<string, string> = {}
+    if (params.city?.trim()) qs.city = params.city.trim()
+    if (params.month != null) qs.month = String(params.month)
+    if (params.min_score != null) qs.min_score = String(params.min_score)
+    if (params.sort && params.sort !== 'score') qs.sort = params.sort
+    return api<PublicGardenSummary[]>('GET', '/atlas/gardens', { params: qs })
+  },
+  get: (slug: string) => api<PublicGardenDetail>('GET', `/atlas/gardens/${encodeURIComponent(slug)}`),
 }
 
 import type { CalendarEvent } from '../pages/calendar/calendarTypes'

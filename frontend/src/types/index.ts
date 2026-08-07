@@ -154,6 +154,71 @@ export interface MapInfo {
   bearing: number
   streek_slug?: string | null
   streek_source?: 'auto' | 'manual'
+  // Public-garden atlas opt-in (backend #803). Defaults to false on the server;
+  // present on every MapInfo payload so the owner toggle can reflect saved state.
+  is_public?: boolean
+  photos_public?: boolean
+  place_name?: string | null
+  country_code?: string | null
+}
+
+// ── Public garden atlas (#804) ──
+// Read-only, anonymized browse surface. Mirrors backend models.PublicGarden*
+// (routers/atlas.py). No account/household fields and no exact GPS by design.
+
+export interface PublicGardenSummary {
+  slug: string
+  name: string
+  city: string | null
+  country_code: string | null
+  approx_lat: number | null
+  approx_lon: number | null
+  biodiversity_score: number | null
+  species_count: number
+  plant_count: number
+  flower_months: number[]
+  streek_slug: string | null
+  streek_name: string | null
+  thumbnail_file: string | null
+}
+
+export interface PublicGardenZone {
+  id: number
+  name: string
+  zone_type: string
+  sun_exposure: string | null
+  boundary: string
+  color: string | null
+  sort_order: number
+}
+
+export interface PublicGardenGroundZone {
+  id: string
+  name: string
+  zone_type: string
+  polygon: string
+}
+
+export interface PublicGardenPlant {
+  id: number
+  name: string
+  latin_name: string | null
+  species_common_name_nl: string | null
+  species_common_name_en: string | null
+  map_x: number
+  map_y: number
+  display_radius_cm: number | null
+  plant_type: string | null
+  icon_key: string | null
+  photo_path: string | null
+}
+
+export interface PublicGardenDetail extends PublicGardenSummary {
+  viewbox: string
+  canvas_data: string | null
+  zones: PublicGardenZone[]
+  ground_zones: PublicGardenGroundZone[]
+  plants: PublicGardenPlant[]
 }
 
 // --- Map Editor ---
