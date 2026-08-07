@@ -258,20 +258,20 @@ export function IdentifyPlantPage() {
         </div>
 
         <div className="mt-auto flex flex-col gap-2.5 pb-4">
+          <button
+            onClick={() => void submitIdentify(step.photos)}
+            className="w-full cursor-pointer rounded-full border border-border bg-surface py-3 text-[14px] font-medium text-text"
+          >
+            {identifyLabel}
+          </button>
           {count < MAX_PHOTOS && (
             <button
               onClick={() => setStep({ kind: 'camera', photos: step.photos })}
-              className="w-full cursor-pointer rounded-full border border-border bg-surface py-3 text-[14px] font-medium text-text"
+              className="w-full cursor-pointer rounded-full border-none bg-primary py-3 text-[14px] font-medium text-white"
             >
               {t.identify.multiAngle.addAngle}
             </button>
           )}
-          <button
-            onClick={() => void submitIdentify(step.photos)}
-            className="w-full cursor-pointer rounded-full border-none bg-primary py-3 text-[14px] font-medium text-white"
-          >
-            {identifyLabel}
-          </button>
         </div>
       </div>
     )

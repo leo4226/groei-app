@@ -1124,7 +1124,7 @@ export const en: Translations = {
       capture: 'Capture',
       cancel: 'Cancel',
       noAccess: 'No camera access',
-      hint: 'Photograph a leaf or flower close-up, in good light',
+      hint: 'One leaf or flower close-up, in good light',
       hintDismiss: 'Dismiss tip',
       retakeTipNoMatch: 'Move closer — fill the frame with a single leaf or flower',
       retakeTipLowConfidence: 'Avoid harsh shadows; find even light',

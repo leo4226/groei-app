@@ -1124,7 +1124,7 @@ export const nl: Translations = {
       capture: 'Foto maken',
       cancel: 'Annuleren',
       noAccess: 'Geen toegang tot camera',
-      hint: 'Fotografeer een blad of bloem van dichtbij, bij goed licht',
+      hint: 'Eén blad of bloem van dichtbij, bij goed licht',
       hintDismiss: 'Tip sluiten',
       retakeTipNoMatch: 'Ga dichterbij — vul het beeld met één blad of bloem',
       retakeTipLowConfidence: 'Vermijd harde schaduwen; zoek gelijkmatig licht',
