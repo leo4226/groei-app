@@ -1074,6 +1074,12 @@ export const en: Translations = {
       retakeTipNoMatch: 'Move closer — fill the frame with a single leaf or flower',
       retakeTipLowConfidence: 'Avoid harsh shadows; find even light',
     },
+    multiAngle: {
+      addAngle: 'Add another angle',
+      hint: 'Two or three angles give a more reliable match.',
+      identify: 'Identify with {count} photos',
+      identifyOne: 'Identify with this photo',
+    },
     identifying: 'Identifying...',
     newPhoto: 'New photo',
     enriching: 'Preparing your plant…',

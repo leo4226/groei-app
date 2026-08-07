@@ -18,8 +18,11 @@ type ResultsState = {
   source: string
 }
 
+type CapturedPhoto = { blob: Blob; dataUrl: string }
+
 type Step =
-  | { kind: 'camera'; retakeReason?: RetakeReason }
+  | { kind: 'camera'; photos: CapturedPhoto[]; retakeReason?: RetakeReason }
+  | { kind: 'review'; photos: CapturedPhoto[] }
   | { kind: 'identifying'; thumbnail: string }
   | ({ kind: 'results' } & ResultsState)
   | ({ kind: 'destination'; candidate: PlantIdCandidate; from: ResultsState })
@@ -28,6 +31,8 @@ type Step =
   | { kind: 'error'; message: string; thumbnail: string | null }
 
 type ScanDestination = 'journal' | 'garden'
+
+const MAX_PHOTOS = 3
 
 
 export function IdentifyPlantPage() {
@@ -42,7 +47,7 @@ export function IdentifyPlantPage() {
   // BioCLIP is the primary identifier and runs on our own infrastructure — no
   // upfront third-party consent gate. PlantNet is opt-in via the fallback button
   // on the results screen; the confirm there names the third party explicitly.
-  const [step, setStep] = useState<Step>({ kind: 'camera' })
+  const [step, setStep] = useState<Step>({ kind: 'camera', photos: [] })
   const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null)
   const mapSlug = routeState?.mapSlug ?? null
   useEffect(() => {
@@ -61,29 +66,6 @@ export function IdentifyPlantPage() {
       setStep({ kind: 'error', message: t.identify.errorOffline, thumbnail: null })
     }
   }, [t])
-
-  async function handleCapture(blob: Blob, dataUrl: string) {
-    setCapturedPhotoDataUrl(dataUrl)
-    setStep({ kind: 'identifying', thumbnail: dataUrl })
-    try {
-      const resp = await plantsApi.identify(blob, activeLang)
-      setStep({
-        kind: 'results',
-        candidates: resp.candidates,
-        confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
-        thumbnail: dataUrl,
-        capturedBlob: blob,
-        source: resp.source ?? 'bioclip',
-      })
-    } catch (e) {
-      const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
-        ? t.identify.errorQuota
-        : e instanceof Error && e.message
-          ? e.message
-          : t.identify.errorService
-      setStep({ kind: 'error', message, thumbnail: dataUrl })
-    }
-  }
 
   function handleChoose(candidate: PlantIdCandidate) {
     if (step.kind !== 'results') return
@@ -164,7 +146,7 @@ export function IdentifyPlantPage() {
           ? 'low-confidence'
           : 'none'
       : 'none'
-    setStep({ kind: 'camera', retakeReason })
+    setStep({ kind: 'camera', photos: [], retakeReason })
     setCapturedPhotoDataUrl(null)
   }
 
@@ -191,8 +173,108 @@ export function IdentifyPlantPage() {
     }
   }
 
+  // Multi-angle: after each capture we either land on the review step (add
+  // another angle or identify now) or, at MAX_PHOTOS, submit immediately.
+  function handleCapture(blob: Blob, dataUrl: string) {
+    const photos = step.kind === 'camera'
+      ? [...step.photos, { blob, dataUrl }]
+      : [{ blob, dataUrl }]
+    if (photos.length >= MAX_PHOTOS) {
+      void submitIdentify(photos)
+    } else {
+      setStep({ kind: 'review', photos })
+    }
+  }
+
+  async function submitIdentify(photos: CapturedPhoto[]) {
+    const lastPhoto = photos[photos.length - 1]
+    setCapturedPhotoDataUrl(lastPhoto.dataUrl)
+    setStep({ kind: 'identifying', thumbnail: lastPhoto.dataUrl })
+    try {
+      const resp = await plantsApi.identify(photos.map((p) => p.blob), activeLang)
+      setStep({
+        kind: 'results',
+        candidates: resp.candidates,
+        confidence: resp.confidence ?? (resp.low_confidence ? 'low' : 'high'),
+        thumbnail: photos[0].dataUrl,
+        capturedBlob: photos[0].blob,
+        source: resp.source ?? 'bioclip',
+      })
+    } catch (e) {
+      const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')
+        ? t.identify.errorQuota
+        : e instanceof Error && e.message
+          ? e.message
+          : t.identify.errorService
+      setStep({ kind: 'error', message, thumbnail: lastPhoto.dataUrl })
+    }
+  }
+
   if (step.kind === 'camera') {
-    return <IdentifyCamera onCapture={handleCapture} onCancel={() => navigate(-1)} retakeReason={step.retakeReason ?? 'none'} />
+    const isMultiAngle = step.photos.length > 0
+    return (
+      <IdentifyCamera
+        onCapture={handleCapture}
+        onCancel={() => (step.photos.length > 0 ? setStep({ kind: 'review', photos: step.photos }) : navigate(-1))}
+        retakeReason={step.retakeReason ?? 'none'}
+        title={isMultiAngle ? t.identify.multiAngle.addAngle : undefined}
+      />
+    )
+  }
+
+  if (step.kind === 'review') {
+    const count = step.photos.length
+    const identifyLabel = count === 1
+      ? t.identify.multiAngle.identifyOne
+      : t.identify.multiAngle.identify.replace('{count}', String(count))
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col p-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 self-start text-[13px] font-medium text-text-muted"
+        >
+          ← {t.identify.camera.cancel}
+        </button>
+        <h1 className="mb-1 font-heading text-[22px] font-medium text-text">{t.identify.multiAngle.addAngle}</h1>
+        <p className="mb-5 text-[13px] leading-snug text-text-soft">{t.identify.multiAngle.hint}</p>
+
+        <div className="mb-6 flex gap-2.5">
+          {step.photos.map((photo, idx) => (
+            <img
+              key={idx}
+              src={photo.dataUrl}
+              alt=""
+              className="h-24 w-24 flex-none rounded-xl border border-border object-cover"
+            />
+          ))}
+          {count < MAX_PHOTOS && (
+            <button
+              onClick={() => setStep({ kind: 'camera', photos: step.photos })}
+              className="flex h-24 w-24 flex-none cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-surface text-[11px] font-medium text-text-muted"
+            >
+              + {t.identify.multiAngle.addAngle}
+            </button>
+          )}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-2.5 pb-4">
+          {count < MAX_PHOTOS && (
+            <button
+              onClick={() => setStep({ kind: 'camera', photos: step.photos })}
+              className="w-full cursor-pointer rounded-full border border-border bg-surface py-3 text-[14px] font-medium text-text"
+            >
+              {t.identify.multiAngle.addAngle}
+            </button>
+          )}
+          <button
+            onClick={() => void submitIdentify(step.photos)}
+            className="w-full cursor-pointer rounded-full border-none bg-primary py-3 text-[14px] font-medium text-white"
+          >
+            {identifyLabel}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // --- render ---

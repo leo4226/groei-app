@@ -96,6 +96,21 @@ def image_quality_report(image) -> dict:
     return report
 
 
+def average_embeddings(embeddings: list[np.ndarray]) -> np.ndarray:
+    """Average L2-normalized embeddings and re-normalize the result.
+
+    The multi-angle ensemble (audit §3.2 / #807): each angle is embedded by
+    BioCLIP and L2-normalized; the mean of unit vectors is re-normalized so
+    cosine matching downstream sees a proper unit vector. A single embedding
+    is returned unchanged (single-photo behavior is untouched).
+    """
+    if len(embeddings) == 1:
+        return embeddings[0]
+    mean = np.mean(np.stack(embeddings), axis=0)
+    norm = np.linalg.norm(mean)
+    return mean / norm if norm > 0 else mean
+
+
 class BioClipService:
     """Singleton BioCLIP inference service on GPU."""
 

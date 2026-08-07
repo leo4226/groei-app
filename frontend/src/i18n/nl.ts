@@ -1074,6 +1074,12 @@ export const nl: Translations = {
       retakeTipNoMatch: 'Ga dichterbij — vul het beeld met één blad of bloem',
       retakeTipLowConfidence: 'Vermijd harde schaduwen; zoek gelijkmatig licht',
     },
+    multiAngle: {
+      addAngle: 'Nog een hoek toevoegen',
+      hint: 'Twee of drie hoeken geven een betrouwbaardere match.',
+      identify: 'Identificeer met {count} foto\'s',
+      identifyOne: 'Identificeer met deze foto',
+    },
     identifying: 'Identificeren...',
     newPhoto: 'Nieuwe foto',
     enriching: 'Plant voorbereiden…',

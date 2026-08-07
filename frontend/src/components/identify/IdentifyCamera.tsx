@@ -6,16 +6,15 @@ export type RetakeReason = 'no-match' | 'low-confidence' | 'none'
 type Props = {
   onCapture: (blob: Blob, dataUrl: string) => void
   onCancel: () => void
-  // Set when the user is retaking after a failed/low-confidence ID so the
-  // camera can coach the next shot instead of showing the generic first-open hint.
   retakeReason?: RetakeReason
+  title?: string
 }
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
-export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none' }: Props) {
+export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none', title }: Props) {
   const t = useT()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -154,7 +153,7 @@ export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none' }: P
     >
       <div className="fixed top-0 inset-x-0 flex items-center justify-between p-4 text-white z-10">
         <button onClick={onCancel} aria-label={t.identify.camera.cancel} className="text-2xl">×</button>
-        <span className="text-sm opacity-75">{t.identify.camera.title}</span>
+        <span className="text-sm opacity-75">{title ?? t.identify.camera.title}</span>
         <span className="w-6" />
       </div>
       <div className="flex-1 flex items-center justify-center overflow-hidden relative pt-16 pb-32">
