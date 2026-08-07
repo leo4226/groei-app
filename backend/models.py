@@ -402,6 +402,8 @@ class MapCreate(BaseModel):
     lat: float | None = None
     lon: float | None = None
     bearing: float = 0
+    is_public: bool = False
+    photos_public: bool = False
 
 
 class MapUpdate(BaseModel):
@@ -412,6 +414,8 @@ class MapUpdate(BaseModel):
     lon: float | None = None
     bearing: float | None = None
     streek_slug: str | None = None  # explicit set → 'manual' source (see maps router)
+    is_public: bool | None = None
+    photos_public: bool | None = None
 
 
 class MapOut(BaseModel):
@@ -430,6 +434,10 @@ class MapOut(BaseModel):
     bearing: float = 0
     streek_slug: str | None = None
     streek_source: str = 'auto'
+    is_public: bool = False
+    photos_public: bool = False
+    place_name: str | None = None
+    country_code: str | None = None
 
 
 class ZoneOut(BaseModel):
@@ -616,6 +624,71 @@ class MapItemsOut(BaseModel):
     plants: list[MapPlantOut] = []
     objects: list[MapObjectOut] = []
     secondary_markers: list[SecondaryMarkerOut] = []
+
+
+# --- Public garden atlas (anonymized, opt-in) ---
+
+class PublicZoneOut(BaseModel):
+    id: int
+    name: str
+    zone_type: str
+    sun_exposure: str | None = None
+    boundary: str
+    color: str | None = None
+    sort_order: int = 0
+
+
+class PublicGroundZoneOut(BaseModel):
+    id: str
+    name: str
+    zone_type: str
+    polygon: str
+
+
+class PublicPlantOut(BaseModel):
+    id: int
+    name: str
+    latin_name: str | None = None
+    species_common_name_nl: str | None = None
+    species_common_name_en: str | None = None
+    map_x: float
+    map_y: float
+    display_radius_cm: int | None = None
+    plant_type: str | None = None
+    icon_key: str | None = None
+    # Only populated when the owner opted in to photo sharing.
+    photo_path: str | None = None
+
+
+class PublicGardenSummary(BaseModel):
+    """One opt-in garden in the atlas list — PII-free by construction.
+
+    approx_lat/lon are rounded to 2 decimals (~1.1 km, city level) so the
+    browse UI can say "an Amsterdam garden" without exposing the street
+    address. city falls back to the ecological region name when no
+    reverse-geocoded place name is stored.
+    """
+    slug: str
+    name: str
+    city: str | None = None
+    country_code: str | None = None
+    approx_lat: float | None = None
+    approx_lon: float | None = None
+    biodiversity_score: int | None = None
+    species_count: int = 0
+    plant_count: int = 0
+    flower_months: list[int] = []
+    streek_slug: str | None = None
+    streek_name: str | None = None
+    thumbnail_file: str | None = None  # only when photos_public
+
+
+class PublicGardenDetail(PublicGardenSummary):
+    viewbox: str
+    canvas_data: str | None = None
+    zones: list[PublicZoneOut] = []
+    ground_zones: list[PublicGroundZoneOut] = []
+    plants: list[PublicPlantOut] = []
 
 
 # --- Species / Phenology ---
