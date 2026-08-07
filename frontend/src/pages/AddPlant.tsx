@@ -465,8 +465,11 @@ export default function AddPlant() {
   // Entry-choice screen: shown when the user lands on Add Plant without a prior
   // path choice, and kept mounted behind the picker sheet so the sheet dims a
   // real screen instead of an empty white page.
+  // Mobile: fills the scroll area (viewport minus the in-flow BottomNav) so the
+  // three route cards sit exactly above the nav with no page scrollbar. Desktop
+  // keeps the centered editorial layout.
   const entryChoiceScreen = (
-      <div className="pb-16">
+      <div className="flex min-h-full flex-col pb-2">
         <PageMasthead
           eyebrow={t.addPlant.breadcrumb}
           title={t.addPlant.entryTitle}
@@ -486,9 +489,10 @@ export default function AddPlant() {
 
         {/* Three routes, side by side from 900px up. The old layout stacked them
             in a max-w-md column, which on a desktop viewport left a tiny strip
-            of UI adrift in empty space. */}
-        <div className="mx-auto flex max-w-[1100px] flex-col justify-center px-4 pt-7 sm:px-6 md:min-h-[52vh] md:pt-0">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
+            of UI adrift in empty space. On mobile the wrapper flexes to fill the
+            remaining height and the cards share it equally. */}
+        <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col justify-center px-4 pt-4 sm:px-6 md:min-h-[52vh] md:pt-0">
+          <div className="flex flex-1 flex-col gap-2.5 md:flex-none md:grid md:grid-cols-3 md:gap-5">
             {[
               {
                 key: 'identify',
@@ -526,7 +530,7 @@ export default function AddPlant() {
                   type="button"
                   onClick={route.onClick}
                   className={[
-                    'group flex h-full flex-col items-start rounded-2xl border p-5 text-left transition-all sm:p-6',
+                    'group flex flex-1 flex-col items-start rounded-2xl border p-3.5 text-left transition-all sm:p-6 md:h-full',
                     'hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(31,42,30,0.07)] active:translate-y-0',
                     isPrimary
                       ? 'border-primary bg-primary/[0.06] shadow-[0_0_0_1px_var(--color-primary)]'
@@ -536,7 +540,7 @@ export default function AddPlant() {
                   {/* Icon well — the warm gradient from the design language */}
                   <div
                     className={[
-                      'mb-4 flex h-12 w-12 items-center justify-center rounded-xl border transition-colors',
+                      'mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl border transition-colors sm:mb-4 sm:h-12 sm:w-12',
                       isPrimary
                         ? 'border-primary/30 bg-gradient-to-br from-primary/20 to-primary-dark/20 text-primary'
                         : 'border-border-soft bg-gradient-to-br from-[#FDFAF1] to-[#EDE5D1] text-text-soft group-hover:text-primary',
@@ -545,7 +549,7 @@ export default function AddPlant() {
                     <Glyph name={route.icon} size={22} />
                   </div>
 
-                  <div className="mb-1.5 flex min-h-[14px] items-center gap-2 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                  <div className="mb-1 flex min-h-[12px] items-center gap-2 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted sm:mb-1.5 sm:min-h-[14px]">
                     <span>{String(index + 1).padStart(2, '0')}</span>
                     {route.badge && (
                       <>
@@ -555,10 +559,10 @@ export default function AddPlant() {
                     )}
                   </div>
 
-                  <h2 className="m-0 font-heading text-[19px] font-medium leading-tight tracking-[-0.01em] text-text sm:text-[21px]">
+                  <h2 className="m-0 font-heading text-[17px] font-medium leading-tight tracking-[-0.01em] text-text sm:text-[21px]">
                     {route.title}
                   </h2>
-                  <p className="mt-1.5 font-heading text-sm italic leading-[1.5] text-text-soft">
+                  <p className="mt-1.5 font-heading text-[13px] italic leading-snug text-text-soft sm:mt-1.5 sm:text-sm sm:leading-[1.5]">
                     {route.subtitle}
                   </p>
                 </button>
