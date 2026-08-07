@@ -19,6 +19,7 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
+import PageMasthead from '../components/ui/PageMasthead'
 import {
   isIdentifyPrefill,
   findMatchingIcon,
@@ -448,57 +449,105 @@ export default function AddPlant() {
   // path choice, and kept mounted behind the picker sheet so the sheet dims a
   // real screen instead of an empty white page.
   const entryChoiceScreen = (
-      <div className="px-4 pt-6 pb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={handleCancel}
-            aria-label={t.addPlant.cancel}
-            className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
-          >
-            ←
-          </button>
-          <h1 className="text-2xl font-extrabold">{t.addPlant.title}</h1>
-        </div>
-        <div className="flex flex-col gap-3 max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate('/identify')}
-            className="bg-green-700 text-white p-4 rounded-lg text-left"
-          >
-            <div className="flex items-center gap-3">
-              <Glyph name="camera" size={24} className="shrink-0" />
-              <div>
-                <div className="font-medium">{t.addPlant.entry.identify}</div>
-                <div className="text-xs opacity-85">{t.addPlant.entry.identifySubtitle}</div>
-              </div>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(location.pathname, { state: { from: 'pick', fromMap: fromMapState } })}
-            className="card p-4 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <Glyph name="search" size={24} className="shrink-0 text-text-muted" />
-              <div>
-                <div className="font-medium">{t.addPlant.entry.pick}</div>
-                <div className="text-xs text-text-muted">{t.addPlant.entry.pickSubtitle}</div>
-              </div>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(location.pathname, { state: { from: 'manual', fromMap: fromMapState } })}
-            className="card p-4 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <Glyph name="edit" size={24} className="shrink-0 text-text-muted" />
-              <div>
-                <div className="font-medium">{t.addPlant.entry.manual}</div>
-                <div className="text-xs text-text-muted">{t.addPlant.entry.manualSubtitle}</div>
-              </div>
-            </div>
-          </button>
+      <div className="pb-16">
+        <PageMasthead
+          eyebrow={t.addPlant.breadcrumb}
+          title={t.addPlant.entryTitle}
+          accent={t.addPlant.entryAccent}
+          lede={t.addPlant.subheading}
+          actions={
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 font-heading text-sm text-text-soft transition-colors hover:border-text-muted hover:text-text"
+            >
+              <Glyph name="arrow-left" size={14} />
+              {t.addPlant.cancel}
+            </button>
+          }
+        />
+
+        {/* Three routes, side by side from 900px up. The old layout stacked them
+            in a max-w-md column, which on a desktop viewport left a tiny strip
+            of UI adrift in empty space. */}
+        <div className="mx-auto flex max-w-[1100px] flex-col justify-center px-4 pt-7 sm:px-6 md:min-h-[52vh] md:pt-0">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
+            {[
+              {
+                key: 'identify',
+                icon: 'camera' as const,
+                title: t.addPlant.entry.identify,
+                subtitle: t.addPlant.entry.identifySubtitle,
+                badge: t.addPlant.entry.recommended,
+                onClick: () => navigate('/identify'),
+              },
+              {
+                key: 'pick',
+                icon: 'search' as const,
+                title: t.addPlant.entry.pick,
+                subtitle: t.addPlant.entry.pickSubtitle,
+                badge: t.addPlant.entry.speciesBadge(PICKABLE_SPECIES_COUNT),
+                onClick: () => navigate(location.pathname, {
+                  state: { from: 'pick', fromMap: fromMapState },
+                }),
+              },
+              {
+                key: 'manual',
+                icon: 'edit' as const,
+                title: t.addPlant.entry.manual,
+                subtitle: t.addPlant.entry.manualSubtitle,
+                badge: undefined,
+                onClick: () => navigate(location.pathname, {
+                  state: { from: 'manual', fromMap: fromMapState },
+                }),
+              },
+            ].map((route, index) => {
+              const isPrimary = index === 0
+              return (
+                <button
+                  key={route.key}
+                  type="button"
+                  onClick={route.onClick}
+                  className={[
+                    'group flex h-full flex-col items-start rounded-2xl border p-5 text-left transition-all sm:p-6',
+                    'hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(31,42,30,0.07)] active:translate-y-0',
+                    isPrimary
+                      ? 'border-primary bg-primary/[0.06] shadow-[0_0_0_1px_var(--color-primary)]'
+                      : 'border-border bg-paper hover:border-text-muted',
+                  ].join(' ')}
+                >
+                  {/* Icon well — the warm gradient from the design language */}
+                  <div
+                    className={[
+                      'mb-4 flex h-12 w-12 items-center justify-center rounded-xl border transition-colors',
+                      isPrimary
+                        ? 'border-primary/30 bg-gradient-to-br from-primary/20 to-primary-dark/20 text-primary'
+                        : 'border-border-soft bg-gradient-to-br from-[#FDFAF1] to-[#EDE5D1] text-text-soft group-hover:text-primary',
+                    ].join(' ')}
+                  >
+                    <Glyph name={route.icon} size={22} />
+                  </div>
+
+                  <div className="mb-1.5 flex min-h-[14px] items-center gap-2 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    {route.badge && (
+                      <>
+                        <span className="h-px w-3 bg-border" />
+                        <span className={isPrimary ? 'text-primary' : undefined}>{route.badge}</span>
+                      </>
+                    )}
+                  </div>
+
+                  <h2 className="m-0 font-heading text-[19px] font-medium leading-tight tracking-[-0.01em] text-text sm:text-[21px]">
+                    {route.title}
+                  </h2>
+                  <p className="mt-1.5 font-heading text-sm italic leading-[1.5] text-text-soft">
+                    {route.subtitle}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
   )

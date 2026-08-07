@@ -898,7 +898,12 @@ export type Translations = {
       pickSubtitle: string     // "Browse our plant library"
       manual: string           // "Enter manually"
       manualSubtitle: string   // "I know what it is"
+      recommended: string      // badge on the photo-ID route
+      speciesBadge: (n: number) => string  // badge on the pick route
     }
+    // Entry-screen masthead: "<entryTitle> <entryAccent>." (accent is italic)
+    entryTitle: string
+    entryAccent: string
     // ── Form header ──
     breadcrumb: string      // "Collection" / "Collectie"
     heading: string         // "Add" / "Toevoegen"
