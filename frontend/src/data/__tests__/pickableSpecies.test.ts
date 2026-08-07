@@ -72,10 +72,21 @@ describe('picker inventory', () => {
     expect(iconKeys().filter((key) => !known.has(key))).toEqual([])
   })
 
-  it('the icon backlog only shrinks', () => {
-    // Hortensia was wired to the already-existing `hydrangea` icon; the rest
-    // still need artwork. Lower this number as icons land — never raise it.
-    expect(PLANTS_AWAITING_ICON.length).toBeLessThanOrEqual(22)
+  it('every plant has artwork', () => {
+    // The backlog is cleared. This must only ever stay at zero: a new dataset
+    // entry ships with an icon, or it shows a bare category tile in the picker.
+    expect(PLANTS_AWAITING_ICON).toEqual([])
+  })
+
+  it('no two plants share an icon', () => {
+    // Distinct species drawn with one icon read as duplicate tiles in the grid.
+    const byIcon = new Map<string, string[]>()
+    for (const p of LOCAL_PLANTS) {
+      if (!p.iconKey) continue
+      byIcon.set(p.iconKey, [...(byIcon.get(p.iconKey) ?? []), p.dutchName])
+    }
+    const shared = [...byIcon].filter(([, names]) => names.length > 1)
+    expect(shared, `Shared icons: ${shared.map(([k, v]) => `${k} (${v.join(', ')})`).join('; ')}`).toEqual([])
   })
 
   it('no dataset entry carries a _bare icon key', () => {

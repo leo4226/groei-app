@@ -88,11 +88,11 @@ describe('PICKABLE_SPECIES_COUNT', () => {
     expect(PICKABLE_SPECIES_COUNT).toBe(PICKABLE_PLANTS.length)
   })
 
-  it('counts the whole dataset, including plants still awaiting artwork', () => {
-    // The picker no longer hides icon-less plants — they render a
-    // category-coloured leaf tile. See data/__tests__/pickableSpecies.test.ts.
+  it('counts the whole dataset', () => {
+    // The picker offers every curated plant, and each now has its own icon.
+    // See data/__tests__/pickableSpecies.test.ts for the artwork guarantees.
     expect(PICKABLE_SPECIES_COUNT).toBe(PICKABLE_PLANTS.length)
-    expect(PICKABLE_PLANTS.some((p) => !p.iconKey)).toBe(true)
+    expect(PICKABLE_PLANTS.every((p) => p.iconKey)).toBe(true)
   })
 
   it('is nowhere near the 2891 the banner used to advertise', () => {
