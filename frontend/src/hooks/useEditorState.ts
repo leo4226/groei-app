@@ -80,6 +80,7 @@ type Action =
   | { type: 'DELETE_WALL_ELEMENT'; id: string }
   | { type: 'SELECT_WALL_ELEMENT'; id: string | null }
   | { type: 'SET_MAP_TYPE'; mapType: MapType }
+  | { type: 'INIT_MAP_TYPE'; mapType: MapType }
   | { type: 'ADD_SHADOW_CASTER'; caster: ShadowCaster }
   | { type: 'UPDATE_SHADOW_CASTER'; id: string; updates: Partial<ShadowCaster> }
   | { type: 'DELETE_SHADOW_CASTER'; id: string }
@@ -252,6 +253,11 @@ function reducer(state: EditorState, action: Action): EditorState {
       }
     case 'SET_MAP_TYPE':
       return { ...state, mapType: action.mapType, isDirty: true }
+    // Adopting the map's own type on load is not an edit: it must not mark the
+    // map unsaved, and it must not become an undo step the user can rewind
+    // into the wrong mode.
+    case 'INIT_MAP_TYPE':
+      return { ...state, mapType: action.mapType }
     case 'ADD_SHADOW_CASTER':
       return {
         ...state,
@@ -480,6 +486,10 @@ export function useEditorState() {
     dispatchWithHistory({ type: 'SET_MAP_TYPE', mapType })
   }, [dispatchWithHistory])
 
+  const setMapTypeSilently = useCallback((mapType: MapType) => {
+    dispatch({ type: 'INIT_MAP_TYPE', mapType })
+  }, [])
+
   const addShadowCaster = useCallback((caster: Omit<ShadowCaster, 'id'>) => {
     shadowCasterCounter++
     const id = `sc_${shadowCasterCounter}_${Date.now()}`
@@ -550,6 +560,7 @@ export function useEditorState() {
     deleteWallElement,
     selectWallElement,
     setMapType,
+    setMapTypeSilently,
     addShadowCaster,
     updateShadowCaster,
     deleteShadowCaster,

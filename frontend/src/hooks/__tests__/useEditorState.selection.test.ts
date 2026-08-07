@@ -83,3 +83,34 @@ describe('selecting an element switches to the select tool', () => {
     expect(editor().activeTool).toBe('select')
   })
 })
+
+// ── F1: a blank map has to adopt its own type ──────────────────────────────
+
+describe('map type initialisation', () => {
+  it('adopts the map type without marking the map unsaved', () => {
+    // A map with no canvas_data never called loadCanvasData, so mapType stayed
+    // at the 'outdoor' default: a brand-new *indoor* map opened with the garden
+    // palette, garden zone types and the sun controls, and the first-run wizard
+    // asked it for a compass bearing.
+    const e = mountEditor()
+    expect(e().mapType).toBe('outdoor')
+
+    act(() => e().setMapTypeSilently('indoor'))
+    expect(e().mapType).toBe('indoor')
+    expect(e().isDirty).toBe(false)
+  })
+
+  it('does not become an undo step', () => {
+    // Rewinding into the wrong mode would be worse than not offering the undo.
+    const e = mountEditor()
+    act(() => e().setMapTypeSilently('indoor'))
+    expect(e().canUndo).toBe(false)
+  })
+
+  it('still marks the map dirty when the user flips it deliberately', () => {
+    const e = mountEditor()
+    act(() => e().setMapType('indoor'))
+    expect(e().mapType).toBe('indoor')
+    expect(e().isDirty).toBe(true)
+  })
+})

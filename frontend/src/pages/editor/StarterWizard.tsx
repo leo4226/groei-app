@@ -3,7 +3,7 @@ import { useT } from '../../context/LanguageContext'
 import CompassBearingPicker from '../../components/settings/CompassBearingPicker'
 import {
   STARTER_TEMPLATES,
-  STARTER_TEMPLATE_ORDER,
+  templateOrderFor,
   buildTemplateZones,
   fitScalePxPerM,
   type StarterTemplateId,
@@ -20,13 +20,17 @@ export interface StarterWizardResult {
 }
 
 interface Props {
+  /** Indoor maps ask two questions, not four: there is no sun model, so
+   *  compass bearing and GPS are meaningless for a floor plan. */
+  mapType: 'outdoor' | 'indoor'
   /** Called on finish. `null` = "Draw my own" / dismiss → fall back to the
    *  blank-canvas + tour flow. */
   onComplete: (result: StarterWizardResult | null) => void
 }
 
-const STEP_ORDER = ['shape', 'size', 'orientation', 'location'] as const
-type Step = (typeof STEP_ORDER)[number]
+const OUTDOOR_STEPS = ['shape', 'size', 'orientation', 'location'] as const
+const INDOOR_STEPS = ['shape', 'size'] as const
+type Step = (typeof OUTDOOR_STEPS)[number]
 type GeoStatus = 'idle' | 'locating' | 'set' | 'error'
 
 const overlayStyle: React.CSSProperties = {
@@ -110,21 +114,36 @@ function ShapePreview({ id }: { id: StarterTemplateId }) {
         <path d="M6 6 H22 V18 H38 V30 H6 Z" fill={faint} stroke={fill} strokeWidth={1.5} strokeLinejoin="round" />
       )}
       {id === 'balcony' && <rect x={4} y={14} width={36} height={8} rx={2} fill={faint} stroke={fill} strokeWidth={1.5} />}
-      {id === 'blank' && (
+      {(id === 'blank' || id === 'blank_indoor') && (
         <rect x={6} y={6} width={32} height={24} rx={2} fill="none" stroke="var(--color-text-muted)" strokeWidth={1.5} strokeDasharray="3 3" />
+      )}
+      {/* Indoor: the same outlines drawn as rooms, with the dividing wall
+          shown so the two-room tile is distinguishable from the studio. */}
+      {id === 'studio' && <rect x={6} y={6} width={32} height={24} rx={1} fill={faint} stroke={fill} strokeWidth={1.5} />}
+      {id === 'two_room' && (
+        <g fill={faint} stroke={fill} strokeWidth={1.5}>
+          <rect x={6} y={6} width={32} height={24} rx={1} />
+          <line x1={23} y1={6} x2={23} y2={30} />
+        </g>
+      )}
+      {id === 'l_room' && (
+        <path d="M6 6 H22 V18 H38 V30 H6 Z" fill={faint} stroke={fill} strokeWidth={1.5} strokeLinejoin="round" />
       )}
     </svg>
   )
 }
 
-export default function StarterWizard({ onComplete }: Props) {
+export default function StarterWizard({ mapType, onComplete }: Props) {
   const t = useT()
   const w = t.editor.wizard
+  const isIndoor = mapType === 'indoor'
+  const steps: readonly Step[] = isIndoor ? INDOOR_STEPS : OUTDOOR_STEPS
+  const defaultTemplate: StarterTemplateId = isIndoor ? 'studio' : 'rectangle'
 
   const [step, setStep] = useState<Step>('shape')
-  const [templateId, setTemplateId] = useState<StarterTemplateId>('rectangle')
-  const [widthM, setWidthM] = useState(String(STARTER_TEMPLATES.rectangle.defaultWidthM))
-  const [depthM, setDepthM] = useState(String(STARTER_TEMPLATES.rectangle.defaultDepthM))
+  const [templateId, setTemplateId] = useState<StarterTemplateId>(defaultTemplate)
+  const [widthM, setWidthM] = useState(String(STARTER_TEMPLATES[defaultTemplate].defaultWidthM))
+  const [depthM, setDepthM] = useState(String(STARTER_TEMPLATES[defaultTemplate].defaultDepthM))
   const [bearing, setBearing] = useState(0)
   const [lat, setLat] = useState<number | null>(null)
   const [lon, setLon] = useState<number | null>(null)
@@ -144,14 +163,20 @@ export default function StarterWizard({ onComplete }: Props) {
     )
   }
 
-  const shapeMeta: { id: StarterTemplateId; label: string; hint: string }[] = STARTER_TEMPLATE_ORDER.map((id) => ({
-    id,
-    label: id === 'rectangle' ? w.shapeRectangle : id === 'l_shape' ? w.shapeLshape : id === 'balcony' ? w.shapeBalcony : w.shapeCustom,
-    hint: id === 'rectangle' ? w.shapeRectangleHint : id === 'l_shape' ? w.shapeLshapeHint : id === 'balcony' ? w.shapeBalconyHint : w.shapeCustomHint,
-  }))
+  const SHAPE_COPY: Record<StarterTemplateId, { label: string; hint: string }> = {
+    rectangle:    { label: w.shapeRectangle, hint: w.shapeRectangleHint },
+    l_shape:      { label: w.shapeLshape,    hint: w.shapeLshapeHint },
+    balcony:      { label: w.shapeBalcony,   hint: w.shapeBalconyHint },
+    blank:        { label: w.shapeCustom,    hint: w.shapeCustomHint },
+    studio:       { label: w.shapeStudio,    hint: w.shapeStudioHint },
+    two_room:     { label: w.shapeTwoRoom,   hint: w.shapeTwoRoomHint },
+    l_room:       { label: w.shapeLroom,     hint: w.shapeLroomHint },
+    blank_indoor: { label: w.shapeCustom,    hint: w.shapeCustomIndoorHint },
+  }
+  const shapeMeta = templateOrderFor(mapType).map((id) => ({ id, ...SHAPE_COPY[id] }))
 
   function pickShape(id: StarterTemplateId) {
-    if (id === 'blank') { onComplete(null); return }
+    if (!STARTER_TEMPLATES[id].seedsZones) { onComplete(null); return }
     setTemplateId(id)
     setWidthM(String(STARTER_TEMPLATES[id].defaultWidthM))
     setDepthM(String(STARTER_TEMPLATES[id].defaultDepthM))
@@ -182,7 +207,7 @@ export default function StarterWizard({ onComplete }: Props) {
             picking a shape or picking "Draw my own". */}
         <div style={progressRowStyle}>
           <span style={progressLabelStyle}>
-            {w.stepOf(STEP_ORDER.indexOf(step) + 1, STEP_ORDER.length)}
+            {w.stepOf(steps.indexOf(step) + 1, steps.length)}
           </span>
           <button type="button" onClick={leave} aria-label={w.close} style={closeBtnStyle}>
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -193,8 +218,8 @@ export default function StarterWizard({ onComplete }: Props) {
 
         {step === 'shape' && (
           <>
-            <h2 style={titleStyle}>{w.shapeTitle}</h2>
-            <p style={subtitleStyle}>{w.shapeSubtitle}</p>
+            <h2 style={titleStyle}>{isIndoor ? w.shapeTitleIndoor : w.shapeTitle}</h2>
+            <p style={subtitleStyle}>{isIndoor ? w.shapeSubtitleIndoor : w.shapeSubtitle}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {shapeMeta.map(({ id, label, hint }) => (
                 <button
@@ -203,7 +228,7 @@ export default function StarterWizard({ onComplete }: Props) {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8,
                     padding: '14px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-                    border: `1px solid ${id === 'blank' ? 'var(--color-border)' : 'var(--color-border)'}`,
+                    border: '1px solid var(--color-border)',
                     background: 'var(--color-bg)',
                   }}
                 >
@@ -218,7 +243,7 @@ export default function StarterWizard({ onComplete }: Props) {
 
         {step === 'size' && (
           <>
-            <h2 style={titleStyle}>{w.sizeTitle}</h2>
+            <h2 style={titleStyle}>{isIndoor ? w.sizeTitleIndoor : w.sizeTitle}</h2>
             <p style={subtitleStyle}>{w.sizeSubtitle}</p>
             <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
               <div style={{ flex: 1 }}>
@@ -237,7 +262,10 @@ export default function StarterWizard({ onComplete }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setStep('orientation')} style={primaryBtnStyle}>{w.next}</button>
+              {/* A floor plan has no sun model, so size is the last question. */}
+              <button onClick={() => (isIndoor ? finish() : setStep('orientation'))} style={primaryBtnStyle}>
+                {isIndoor ? w.finish : w.next}
+              </button>
               <button onClick={() => setStep('shape')} style={ghostBtnStyle}>{w.back}</button>
             </div>
           </>
