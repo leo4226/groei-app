@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { ZoneStyleType, MapUnderlay } from '../../types'
 import type { EditorTool, ObjectPreset } from '../../hooks/useEditorState'
 import { HARDSCAPE_PRESETS } from '../../hooks/useEditorState'
-import { ZONE_STYLES, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
+import { zoneStyle, GARDEN_ZONE_TYPES, HOUSE_ZONE_TYPES } from './EditorDefs'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 
@@ -94,7 +94,7 @@ export default function EditorLegendPanel({
         {open.zones && (
           <div className="flex flex-col gap-1 mt-2">
             {zoneTypes.map((type) => {
-              const style = ZONE_STYLES[type]
+              const style = zoneStyle(type)
               const isActive = activeZoneType === type && activeTool === 'draw'
               return (
                 <button

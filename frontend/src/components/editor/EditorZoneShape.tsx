@@ -1,5 +1,5 @@
 import type { EditorZone, WallElement } from '../../types'
-import { ZONE_STYLES } from './EditorDefs'
+import { zoneStyle } from './EditorDefs'
 import { WALL_COLOR, ROOM_FILL, WALL_THICKNESS_EXTERIOR_CM } from '../../constants/mapDefaults'
 import { computeClipPoints } from '../../utils/clipPath'
 import DoorRenderer from './DoorRenderer'
@@ -199,7 +199,7 @@ export default function EditorZoneShape({ zone, isSelected, scalePxPerM, wallEle
   }
 
   // ── Garden zones (deck, soil, gravel, lawn, path, water, fence) ──
-  const style = ZONE_STYLES[zone.type]
+  const style = zoneStyle(zone.type)
 
   return (
     <g>

@@ -176,6 +176,19 @@ export default function LayoutEditorPage() {
     }
   }, [mapId])
 
+  const handleObjectResize = useCallback(async (
+    objectId: number,
+    dims: { width_cm?: number; depth_cm?: number; diameter_cm?: number },
+  ) => {
+    setMapObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, ...dims } : o))
+    try {
+      await client.objects.update(objectId, dims)
+    } catch {
+      const objs = await client.objects.list()
+      setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+    }
+  }, [mapId])
+
   // ── Trace-over background (#647) ──────────────────────────────────────────
   const handleAddUnderlayFile = useCallback(async (file: File) => {
     if (!mapId || underlayBusy) return
@@ -363,6 +376,7 @@ export default function LayoutEditorPage() {
     <ObjectPropertiesPanel
       object={selectedObject}
       onRotate={(rotation) => handleObjectRotate(selectedObject.id, rotation)}
+      onResize={(dims) => handleObjectResize(selectedObject.id, dims)}
       onDelete={handleDelete}
     />
   ) : null
@@ -654,7 +668,12 @@ export default function LayoutEditorPage() {
           onPlaceWallElement={editor.addWallElement}
           selectedObjectId={selectedObjectId}
           onMoveObject={handleObjectMove}
-          onSelectObject={setSelectedObjectId}
+          onSelectObject={(id) => {
+            setSelectedObjectId(id)
+            // Match the reducer's behaviour for zones: selecting is
+            // manipulation intent, so surface the handles and the panel.
+            if (id !== null) editor.setTool('select')
+          }}
           onObjectCreated={() => {
             if (!mapId) return
             client.objects.list().then((objs) => setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId)))
