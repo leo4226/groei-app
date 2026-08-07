@@ -99,7 +99,7 @@ export function IdentifyResults({
 
   const photoLightbox = photoOpen && capturedThumbnailUrl ? (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4"
       onClick={() => setPhotoOpen(false)}
     >
       <img src={capturedThumbnailUrl} alt="" className="max-h-[85vh] max-w-[94vw] rounded-xl object-contain" />
@@ -161,114 +161,123 @@ export function IdentifyResults({
       ? t.identify.noMatch.bodyDetailed
       : t.identify.noMatch.body
     return (
-      <div className="mx-auto max-w-md p-4">
-        {header}
-        <p className="mb-1 mt-3 font-heading text-[17px] font-medium text-text">{t.identify.noMatch.title}</p>
-        <p className="m-0 text-[13.5px] leading-snug text-text-soft">{bodyText}</p>
-        {verifyAndSafety}
-        <div className="mt-5 flex gap-2.5">
-          {retakeButton}
-          {plantnetButton}
+      <div className="fixed inset-0 z-[60] flex flex-col bg-bg">
+        <div className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-y-auto px-4 pt-[max(env(safe-area-inset-top,0px),20px)]">
+          {header}
+          <p className="mb-1 mt-3 font-heading text-[17px] font-medium text-text">{t.identify.noMatch.title}</p>
+          <p className="m-0 text-[13.5px] leading-snug text-text-soft">{bodyText}</p>
+          {verifyAndSafety}
         </div>
-        <button
-          onClick={onManualFallback}
-          className="mt-3 w-full cursor-pointer border-none bg-transparent text-center text-[12.5px] font-medium text-primary"
-        >
-          {t.identify.noMatch.manualFallback}
-        </button>
+        <div className="mx-auto w-full max-w-md shrink-0 px-4 pb-[calc(var(--bottom-nav-height)+12px)]">
+          <div className="mt-5 flex gap-2.5">
+            {retakeButton}
+            {plantnetButton}
+          </div>
+          <button
+            onClick={onManualFallback}
+            className="mt-3 w-full cursor-pointer border-none bg-transparent text-center text-[12.5px] font-medium text-primary"
+          >
+            {t.identify.noMatch.manualFallback}
+          </button>
+        </div>
         {photoLightbox}
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-md p-4">
-      {header}
+    <div className="fixed inset-0 z-[60] flex flex-col bg-bg">
+      <div className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-y-auto px-4 pt-[max(env(safe-area-inset-top,0px),20px)]">
+        {header}
 
-      {/* One short line of context under the chip, replacing the old banner. */}
-      <p className="mb-3 mt-1 text-[12px] leading-snug text-text-soft">{confidenceSummary.body}</p>
+        {/* One short line of context under the chip, replacing the old banner. */}
+        <p className="mb-3 mt-1 text-[12px] leading-snug text-text-soft">{confidenceSummary.body}</p>
 
-      {/* Candidates: slim numbered rows, field-guide style. Position conveys
-          rank (no per-card status pills, no raw-% — see #442 §3.3). */}
-      <div className="flex flex-col gap-2">
-        {candidates.map((c, idx) => {
-          const commonName = lang === 'nl'
-            ? c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
-            : c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name
-          const isTop = idx === 0
-          const weed = matchWeed(c.scientific_name)
-          return (
-            <div key={c.scientific_name} className="flex flex-col gap-1.5">
-              <button
-                onClick={() => onChoose(c)}
-                className={`flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left active:opacity-80 ${
-                  isTop ? 'border-primary/40 bg-primary/[0.06]' : 'border-border bg-surface'
-                }`}
-              >
-                <span className={`w-6 flex-none text-center font-mono text-[10px] tracking-[0.08em] ${isTop ? 'font-bold text-primary' : 'text-text-muted'}`}>
-                  {String(idx + 1).padStart(2, '0')}
-                </span>
-                {c.thumbnail_url ? (
-                  <img src={c.thumbnail_url} alt="" className="h-12 w-12 flex-none rounded-lg border border-border object-cover" />
-                ) : (
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg border border-border bg-bg text-text-muted">
-                    <Glyph name="leaf" size={22} />
+        {/* Candidates: slim numbered rows, field-guide style. Position conveys
+            rank (no per-card status pills, no raw-% — see #442 §3.3). */}
+        <div className="flex flex-col gap-2">
+          {candidates.map((c, idx) => {
+            const commonName = lang === 'nl'
+              ? c.common_names_nl[0] || c.common_names_en[0] || c.scientific_name
+              : c.common_names_en[0] || c.common_names_nl[0] || c.scientific_name
+            const isTop = idx === 0
+            const weed = matchWeed(c.scientific_name)
+            return (
+              <div key={c.scientific_name} className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => onChoose(c)}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left active:opacity-80 ${
+                    isTop ? 'border-primary/40 bg-primary/[0.06]' : 'border-border bg-surface'
+                  }`}
+                >
+                  <span className={`w-6 flex-none text-center font-mono text-[10px] tracking-[0.08em] ${isTop ? 'font-bold text-primary' : 'text-text-muted'}`}>
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  {c.thumbnail_url ? (
+                    <img src={c.thumbnail_url} alt="" className="h-12 w-12 flex-none rounded-lg border border-border object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg border border-border bg-bg text-text-muted">
+                      <Glyph name="leaf" size={22} />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-[15px] font-medium text-text">{commonName}</span>
+                      {weed && (
+                        <span className="inline-flex flex-none items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10.5px] font-medium text-red-700">
+                          <Glyph name="alert" size={10} />
+                          {t.weeds.knownWeed}
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-[12px] italic text-text-muted">{c.scientific_name}</div>
+                  </div>
+                  <Glyph name="chevron-right" size={16} className="flex-none text-text-muted" />
+                </button>
+                {weed && (
+                  <div className="mx-3 -mt-0.5 flex items-center justify-between gap-2 rounded-r border-l-2 border-red-300 bg-red-50 px-3 py-2">
+                    <div className="min-w-0 text-xs text-text-muted">
+                      <span className="font-medium text-text">{weed.common_name_nl}</span>
+                      {weed.places.length > 0 && <span className="truncate"> · {weed.places.join(', ')}</span>}
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onLogSighting(weed.id, weed.common_name_nl) }}
+                      className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-full border-none bg-primary px-3 py-1.5 text-xs font-medium text-white"
+                    >
+                      <Glyph name="pin" size={13} />
+                      {t.weeds.logSighting}
+                    </button>
                   </div>
                 )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[15px] font-medium text-text">{commonName}</span>
-                    {weed && (
-                      <span className="inline-flex flex-none items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10.5px] font-medium text-red-700">
-                        <Glyph name="alert" size={10} />
-                        {t.weeds.knownWeed}
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-[12px] italic text-text-muted">{c.scientific_name}</div>
-                </div>
-                <Glyph name="chevron-right" size={16} className="flex-none text-text-muted" />
-              </button>
-              {weed && (
-                <div className="mx-3 -mt-0.5 flex items-center justify-between gap-2 rounded-r border-l-2 border-red-300 bg-red-50 px-3 py-2">
-                  <div className="min-w-0 text-xs text-text-muted">
-                    <span className="font-medium text-text">{weed.common_name_nl}</span>
-                    {weed.places.length > 0 && <span className="truncate"> · {weed.places.join(', ')}</span>}
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onLogSighting(weed.id, weed.common_name_nl) }}
-                    className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-full border-none bg-primary px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    <Glyph name="pin" size={13} />
-                    {t.weeds.logSighting}
-                  </button>
-                </div>
-              )}
-            </div>
-          )
-        })}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Escape hatch straight to manual entry. */}
+        <button
+          onClick={onManualFallback}
+          className="mt-2 w-full cursor-pointer border-none bg-transparent py-1 text-center text-[12.5px] font-medium text-primary"
+        >
+          {t.identify.results.noneOfThese}
+        </button>
+
+        {verifyAndSafety}
       </div>
 
-      {/* Escape hatch straight to manual entry. */}
-      <button
-        onClick={onManualFallback}
-        className="mt-2 w-full cursor-pointer border-none bg-transparent py-1 text-center text-[12.5px] font-medium text-primary"
-      >
-        {t.identify.results.noneOfThese}
-      </button>
-
-      {verifyAndSafety}
-
-      {/* Actions side by side; powered-by credit as a quiet mono caption. */}
-      <div className="mt-4 flex gap-2.5">
-        {retakeButton}
-        {plantnetButton}
+      {/* Actions side by side; powered-by credit as a quiet mono caption.
+          Pinned below the scroll area so they're always tappable. */}
+      <div className="mx-auto w-full max-w-md shrink-0 px-4 pb-[calc(var(--bottom-nav-height)+12px)]">
+        <div className="mt-4 flex gap-2.5">
+          {retakeButton}
+          {plantnetButton}
+        </div>
+        {!fromBioclip && (
+          <p className="m-0 mt-2.5 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
+            {t.identify.results.poweredBy}
+          </p>
+        )}
       </div>
-      {!fromBioclip && (
-        <p className="m-0 mt-2.5 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-          {t.identify.results.poweredBy}
-        </p>
-      )}
       {photoLightbox}
     </div>
   )
