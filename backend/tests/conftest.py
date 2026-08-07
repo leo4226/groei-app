@@ -84,7 +84,14 @@ SCHEMA = """
         phase TEXT DEFAULT 'established',
         sown_date TEXT,
         quantity INTEGER NOT NULL DEFAULT 1,
-        household_id INTEGER
+        household_id INTEGER,
+        form_type TEXT,
+        pot_material TEXT,
+        pot_diameter_cm INTEGER,
+        pot_height_cm INTEGER,
+        has_drainage BOOLEAN,
+        substrate TEXT,
+        acquired_from TEXT
     );
     CREATE TABLE plant_placements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -10,8 +10,8 @@ import TileIcon from '../components/ui/TileIcon'
 import type { PlantIcon } from '../types'
 import { icons, species as speciesApi } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
+import { PICKABLE_SPECIES_COUNT } from '../data/pickableSpecies'
 import EntryBanner from '../components/add/EntryBanner'
-import { displayToIso } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
 import Card from '../components/ui/Card'
 import FormRow from '../components/ui/FormRow'
@@ -26,6 +26,7 @@ import {
   buildCreatePayload,
   sunPreferenceToTile,
   waterAdviceFromThresholds,
+  zoneAdviceKey,
   SUN_DB_TO_TILE,
   TYPE_TO_FORM,
 } from './addPlant/prefill'
@@ -63,9 +64,22 @@ export default function AddPlant() {
     isIndoor: m.map_type === 'indoor',
   })), [maps, plants, t.maps.indoor, t.maps.outdoor])
 
-  // Preserve the return path through replace navigations (pick flow remounts the component with new location.state)
-  const fromMapState = (location.state as any)?.fromMap
-  if (fromMapState) sessionStorage.setItem('addPlant_returnPath', fromMapState)
+  // Preserve the return path across the entry-choice navigations, which remount
+  // this component with fresh location.state. Written in an effect, not during
+  // render — and cleared whenever the user leaves without creating a plant, so
+  // a later add started from /plants can't inherit an old map's path.
+  const fromMapState = (location.state as { fromMap?: string } | null)?.fromMap
+  useEffect(() => {
+    if (fromMapState) sessionStorage.setItem('addPlant_returnPath', fromMapState)
+  }, [fromMapState])
+
+  const returnPath = () => sessionStorage.getItem('addPlant_returnPath') ?? '/plants'
+
+  function handleCancel() {
+    const path = returnPath()
+    sessionStorage.removeItem('addPlant_returnPath')
+    navigate(path)
+  }
 
   const [name, setName] = useState<string>(
     prefill
@@ -90,8 +104,6 @@ export default function AddPlant() {
       : ''
   )
   const [locationId] = useState<number | undefined>()
-  const [, setArea] = useState<'tuin' | 'huis' | null>(null)
-  const [potSize] = useState('')
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
   const [notes, setNotes] = useState(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
@@ -150,6 +162,14 @@ export default function AddPlant() {
   const [hasDrainage, setHasDrainage] = useState(false)
   const [substrate, setSubstrate] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  /**
+   * Canonical container size. The form asks for a diameter; `pot_size_cm` is
+   * what the backend stores and what the potted/bare icon variant keys off, so
+   * the two must not drift apart.
+   */
+  const potSize = potDiameter
 
 
   function randomMapPos(viewbox: string) {
@@ -346,6 +366,7 @@ export default function AddPlant() {
     if (!name?.trim()) return
 
     setSubmitting(true)
+    setSubmitError(null)
     try {
       // Use the actual map the user selected in the ZonePicker, not a fuzzy match on area
       const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
@@ -359,7 +380,7 @@ export default function AddPlant() {
         mapX: mapPos?.x,
         mapY: mapPos?.y,
         potSizeCm: potSize ? parseInt(potSize) : undefined,
-        acquiredDate: acquiredDateInput.trim() || displayToIso(acquiredDateInput) || undefined,
+        acquiredDate: acquiredDateInput.trim() || undefined,
         notes,
         iconKey: iconKey ?? undefined,
         kind: norm.kind,
@@ -368,7 +389,14 @@ export default function AddPlant() {
         sunRequirement,
         phase: phase as any,
         quantity,
-        sownDate: displayToIso(sownDateInput) || undefined,
+        sownDate: sownDateInput.trim() || undefined,
+        formType,
+        potMaterial: showDetails ? potMaterial : undefined,
+        potDiameterCm: potDiameter ? parseInt(potDiameter) : undefined,
+        potHeightCm: potHeight ? parseInt(potHeight) : undefined,
+        hasDrainage: showDetails ? hasDrainage : undefined,
+        substrate,
+        acquiredFrom: locationText,
         careSchedules: [],
       }))
 
@@ -376,17 +404,37 @@ export default function AddPlant() {
         const compressed = await compressImage(photoFile)
         await uploadPhoto(plant.id, new File([compressed], 'photo.jpg', { type: 'image/jpeg' }))
       }
-    } catch (e) {
-      console.error('AddPlant: add failed', e)
-    } finally {
-      const finalReturnPath = sessionStorage.getItem('addPlant_returnPath') ?? '/plants'
+
+      // Only leave the form once the plant actually exists. On failure the user
+      // keeps everything they typed and sees why (previously every error was
+      // swallowed and looked exactly like success).
+      const finalReturnPath = returnPath()
       sessionStorage.removeItem('addPlant_returnPath')
       navigate(finalReturnPath)
+    } catch (e) {
+      console.error('AddPlant: add failed', e)
+      const status = (e as { status?: number }).status
+      setSubmitError(
+        status === 422 ? t.addPlant.errorInvalid
+          : status === 401 || status === 403 ? t.addPlant.errorAuth
+          : status && status >= 500 ? t.addPlant.errorServer
+          : t.addPlant.errorNetwork
+      )
+    } finally {
       setSubmitting(false)
     }
   }
 
 
+
+  // Zone advice follows the sun requirement we actually know. No requirement,
+  // no advice — silence beats a confident wrong claim.
+  const zoneAdvice = useMemo(() => {
+    const key = zoneAdviceKey(sunRequirement)
+    if (!key) return undefined
+    const subject = name.trim() || species.trim()
+    return subject ? t.addPlant.zoneAdvice[key](subject) : undefined
+  }, [sunRequirement, name, species, t])
 
   // Derived Latin name for species row (read-only, from prefill)
   const latinName = useMemo(() => {
@@ -396,13 +444,15 @@ export default function AddPlant() {
     return ''
   }, [prefill])
 
-  // Entry-choice screen: shown when the user lands on Add Plant without a prior path choice.
-  if (locState?.from == null) {
-    return (
+  // Entry-choice screen: shown when the user lands on Add Plant without a prior
+  // path choice, and kept mounted behind the picker sheet so the sheet dims a
+  // real screen instead of an empty white page.
+  const entryChoiceScreen = (
       <div className="px-4 pt-6 pb-8">
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleCancel}
+            aria-label={t.addPlant.cancel}
             className="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center text-text"
           >
             ←
@@ -425,7 +475,7 @@ export default function AddPlant() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(location.pathname, { state: { from: 'pick' }, replace: true })}
+            onClick={() => navigate(location.pathname, { state: { from: 'pick', fromMap: fromMapState } })}
             className="card p-4 text-left"
           >
             <div className="flex items-center gap-3">
@@ -438,7 +488,7 @@ export default function AddPlant() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(location.pathname, { state: { from: 'manual' }, replace: true })}
+            onClick={() => navigate(location.pathname, { state: { from: 'manual', fromMap: fromMapState } })}
             className="card p-4 text-left"
           >
             <div className="flex items-center gap-3">
@@ -451,20 +501,27 @@ export default function AddPlant() {
           </button>
         </div>
       </div>
-    )
-  }
+  )
 
+  if (locState?.from == null) return entryChoiceScreen
+
+  // Picker sheet, over the entry screen. Both the sheet and the form are pushed
+  // (not replaced), so browser Back walks form → picker → entry → wherever the
+  // user came from, and a wrong species is one tap to correct.
   if (locState?.from === 'pick' && !prefill) {
     return (
-      <PlantPickerSheet
-        onClose={() => navigate(-1)}
-        onSelectPlant={(plant) =>
-          navigate(location.pathname, { state: { from: 'pick', prefill: plant }, replace: true })
-        }
-        onCustomName={(name) =>
-          navigate(location.pathname, { state: { from: 'manual', prefill: name ? { name } : undefined }, replace: true })
-        }
-      />
+      <>
+        {entryChoiceScreen}
+        <PlantPickerSheet
+          onClose={() => navigate(-1)}
+          onSelectPlant={(plant) =>
+            navigate(location.pathname, { state: { from: 'pick', prefill: plant, fromMap: fromMapState } })
+          }
+          onCustomName={(name) =>
+            navigate(location.pathname, { state: { from: 'manual', prefill: name ? { name } : undefined, fromMap: fromMapState } })
+          }
+        />
+      </>
     )
   }
 
@@ -516,13 +573,19 @@ export default function AddPlant() {
         <EntryBanner
           activeRoute={activeRoute}
           onRouteChange={setActiveRoute}
-          speciesCount={2891}
+          speciesCount={PICKABLE_SPECIES_COUNT}
+          onBrowseSpecies={() =>
+            navigate(location.pathname, { state: { from: 'pick', fromMap: fromMapState } })
+          }
+          onIdentifyWithPhoto={() => navigate('/identify')}
           selectedSpeciesName={
             prefill
               ? isIdentifyPrefill(prefill)
                 ? undefined // identify case: name shown in photo route instead
                 : 'latinName' in prefill
-                  ? (prefill as LocalPlant).dutchName
+                  ? (t.locale.startsWith('en')
+                      ? (prefill as LocalPlant).englishName || (prefill as LocalPlant).dutchName
+                      : (prefill as LocalPlant).dutchName)
                   : undefined
               : undefined
           }
@@ -621,45 +684,37 @@ export default function AddPlant() {
           eyebrow={t.addPlant.secIdentity}
           title={t.addPlant.secIdentityTitle}
         >
-          {/* Bijnaam */}
+          {/* Bijnaam — the decorative random "record code" that used to sit
+              beside this field is gone: it re-rolled Math.random() on every
+              render, so it changed on each keystroke, and was never stored. */}
           <FormRow label={t.addPlant.labelNickname} description={t.addPlant.labelNicknameDesc}>
-            <div className="grid grid-cols-[1fr_120px] gap-3">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t.addPlant.placeholderNickname}
-                required
-                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-              />
-              <input
-                type="text"
-                readOnly
-                value={species ? species.replace(/[^a-zA-Z].*$/, '').slice(0, 4).toUpperCase() + '-' + String(Math.floor(Math.random() * 1000)).padStart(3, '0') : ''}
-                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-xs text-text-muted"
-                placeholder="---"
-              />
-            </div>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.addPlant.placeholderNickname}
+              required
+              className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
           </FormRow>
 
-          {/* Species */}
+          {/* Species. One editable field — the read-only twin next to it showed
+              the same Latin name on the pick path and stayed permanently empty
+              on the manual path. The prefill's Latin name, when we have one, is
+              shown as a caption instead. */}
           <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
-            <div className="grid grid-cols-[1fr_1fr] gap-3">
-              <input
-                type="text"
-                value={species}
-                onChange={(e) => setSpecies(e.target.value)}
-                placeholder={t.addPlant.placeholderSpecies}
-                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-              />
-              <input
-                type="text"
-                readOnly
-                value={latinName}
-                className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading italic text-sm text-text-soft"
-                placeholder={t.addPlant.placeholderSpeciesLatin}
-              />
-            </div>
+            <input
+              type="text"
+              value={species}
+              onChange={(e) => setSpecies(e.target.value)}
+              placeholder={t.addPlant.placeholderSpecies}
+              className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
+            {latinName && latinName !== species && (
+              <p className="mt-1.5 font-heading italic text-xs text-text-soft">
+                {t.addPlant.speciesFromPrefill(latinName)}
+              </p>
+            )}
           </FormRow>
 
           {/* Form type */}
@@ -739,20 +794,15 @@ export default function AddPlant() {
                 plantsLabel: t.addPlant.zonePlants,
               }}
               value={selectedZoneId}
-              onChange={(zoneId) => {
-                setSelectedZoneId(zoneId || null)
-                if (!zoneId) return
-                const zone = zoneList.find(z => z.id === zoneId)
-                if (zone) {
-                  setArea(zone.isIndoor ? 'huis' : 'tuin')
-                }
-              }}
-              advice={species ? t.addPlant.zoneAdvice(species) : undefined}
+              onChange={(zoneId) => setSelectedZoneId(zoneId || null)}
+              emptyLabel={t.addPlant.zoneEmpty}
+              advice={zoneAdvice}
             />
           </FormRow>
 
-          {showDetails && (<>
-          {/* Light measurement */}
+          {/* Light measurement — deliberately outside DETAILS: sun_requirement
+              drives garden fit and the sun overlays, and a manual add that
+              never opens DETAILS used to ship without it entirely. */}
           <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
               options={[
@@ -767,6 +817,7 @@ export default function AddPlant() {
             />
           </FormRow>
 
+          {showDetails && (<>
           {/* Pot material */}
           <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
             <TileGrid
@@ -883,15 +934,14 @@ export default function AddPlant() {
               </div>
             )}
 
-            {/* Sown date */}
+            {/* Sown date — a native date picker like Acquired above. It used to
+                be free text parsed as DD-MM-YYYY, so anything unparseable was
+                dropped without a word. */}
             <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
               <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
+                type="date"
                 value={sownDateInput}
                 onChange={(e) => setSownDateInput(e.target.value)}
-                placeholder="DD-MM-YYYY"
                 className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
               />
             </FormRow>
@@ -918,11 +968,22 @@ export default function AddPlant() {
           </div>
         )}
 
+        {/* Submit error — the form stays put and keeps everything typed. */}
+        {submitError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-overdue/10 border border-overdue/30 text-sm text-overdue"
+          >
+            <Glyph name="alert" size={16} className="shrink-0 mt-0.5" />
+            <span>{submitError}</span>
+          </div>
+        )}
+
         {/* Action Bar */}
         <div className="sticky bottom-0 bg-bg/95 backdrop-blur border-t border-border mt-6 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 py-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={handleCancel}
             className="font-heading font-medium text-sm px-3 py-2.5 rounded-xl border border-border text-text-soft hover:text-text hover:border-text-muted transition-colors shrink-0"
           >
             {t.addPlant.cancel}
@@ -930,7 +991,7 @@ export default function AddPlant() {
           <button
             type="submit"
             disabled={submitting || !name.trim()}
-            className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm max-w-[260px] truncate"
+            className="font-heading font-bold text-sm px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 active:scale-[0.98] transition-all shadow-sm shrink-0"
           >
             {submitting ? (
               <span className="flex items-center gap-2 min-w-0">
@@ -938,7 +999,9 @@ export default function AddPlant() {
                 <span className="truncate">{progressMsg || t.addPlant.submitting}</span>
               </span>
             ) : (
-              name ? `${t.addPlant.title} — ${name}` : t.addPlant.title
+              // Just the verb. Appending the nickname pushed the label past the
+              // button's width, so long names read as "Toevoegen — Monstera de…".
+              t.addPlant.title
             )}
           </button>
         </div>

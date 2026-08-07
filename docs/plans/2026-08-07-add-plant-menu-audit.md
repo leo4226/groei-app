@@ -34,6 +34,9 @@ Both paths then converge on the same form and the same submit
 Severity: **P1** = data loss / user-visible incorrectness, **P2** = broken or
 dead UI, **P3** = polish.
 
+**Status: all findings below are fixed** (PR #823). Each entry describes the
+problem as found; the "Fixes" section at the end records what changed.
+
 ### P1-1 — Six form sections are collected and then silently discarded
 
 `buildCreatePayload` (`pages/addPlant/prefill.ts:290`) and `PlantCreateInput`
@@ -247,12 +250,32 @@ broken if revived.
 - The dropped-fields problem is confined to the *client*: the backend contract
   simply has no columns for pot material/substrate/form.
 
-## Suggested order of work
+## Fixes
 
-1. P1-2 (error handling) — it hides every other submit bug.
-2. P1-1 pot wiring (`potDiameter → pot_size_cm`) — smallest fix, unblocks the
-   icon variant logic.
-3. P1-3 and P1-4 — both are user-facing false statements.
-4. P1-5, P2-1, P2-2 — the "is this form real?" cluster.
-5. P1-1 remainder: decide per field whether to persist (schema + API change) or
-   remove the UI. Shipping write-only inputs is worse than not having them.
+| Finding | What changed |
+|---|---|
+| P1-1 | Migration `0063` adds `form_type`, `pot_material`, `pot_diameter_cm`, `pot_height_cm`, `has_drainage`, `substrate` (JSON) and `acquired_from` to `plants`. Extended `PlantCreate` / `PlantUpdate` / `PlantOut`, `PlantCreateInput` and `buildCreatePayload`; the form now submits all seven. `pot_size_cm` falls back to the diameter, which also unsticks the potted/bare icon variant. |
+| P1-2 | `handleSubmit` navigates only after the plant exists. Failures set `submitError`, keep every entered value, and render a status-branched message (422 / 401-403 / 5xx / network). |
+| P1-3 | `zoneAdviceKey()` maps the light tile to one of four advice lines; no sun requirement means no advice at all. Light also moved out of DETAILS so manual adds stop shipping without `sun_requirement`. |
+| P1-4 | `PICKABLE_SPECIES_COUNT` in `data/pickableSpecies.ts` is the picker's real inventory; the banner quotes it. |
+| P1-5 | The random "record code" field is gone — it was never stored and re-rolled on every keystroke. |
+| P2-1 | Both banner panels are now buttons: database opens the picker, photo starts `/identify`. A "choose a different species" link appears once one is selected. |
+| P2-2 | Entry → picker → form all push instead of replacing, so Back walks the flow in reverse. The picker renders over the entry screen rather than a blank page (P2-6). |
+| P2-3 | `addPlant_returnPath` is written in an effect and cleared on cancel and on the back arrow, not only on submit. |
+| P2-4 | Empty-state message when the account has no maps; tapping the selected zone clears it; the per-zone plant count renders (the column was already reserved). |
+| P2-5 | `matchesPlantQuery()` searches Dutch, Latin **and** English names. |
+| P3-1 | Every `EntryBanner` string moved into the typed catalog, number formatting follows `t.locale`, and the file is off the i18n baseline ignore list. Common names now prefer the account language in both the match heading and the alternatives. |
+| P3-2 | One species input; the prefill's Latin name is a caption when it differs. |
+| P3-3 | Sown date is a native date picker like Acquired. |
+| P3-4 | Light is always visible (see P1-3). |
+| P3-5 | The App-level picker's handlers pass `from`, so the prefill is honoured if it is ever re-enabled. |
+| P3-6 | Removed the write-only `setArea`; the submit button no longer truncates long nicknames. |
+
+Regression cover: `backend/tests/test_plant_container_details.py` (6 tests) and
+`frontend/src/pages/addPlant/__tests__/containerDetails.test.ts` (16 tests).
+
+## Not fixed here
+
+`tests/test_calendar_water_sessions.py` has three failures that reproduce on an
+unmodified `master` — a heat-water grouping regression from #788, unrelated to
+this flow. Tracked separately.

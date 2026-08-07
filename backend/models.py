@@ -1,3 +1,4 @@
+import json
 import re as _re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -93,6 +94,15 @@ class PlantCreate(BaseModel):
     phase: str = 'established'    # 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
     sown_date: date | None = None
     quantity: int = 1            # how many specimens this record represents
+    # Container / provenance detail (0063). The Add Plant form has always asked
+    # for these; before 0063 they had nowhere to go and were silently dropped.
+    form_type: str | None = None       # 'pot' | 'ground' | 'seedling' | 'tree'
+    pot_material: str | None = None    # 'terracotta' | 'plastic' | 'ceramic' | 'basket'
+    pot_diameter_cm: int | None = None
+    pot_height_cm: int | None = None
+    has_drainage: bool | None = None
+    substrate: list[str] | None = None
+    acquired_from: str | None = None   # free text, e.g. 'Garden centre'
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -116,6 +126,13 @@ class PlantUpdate(BaseModel):
     map_id: int | None = None
     map_x: float | None = None
     map_y: float | None = None
+    form_type: str | None = None
+    pot_material: str | None = None
+    pot_diameter_cm: int | None = None
+    pot_height_cm: int | None = None
+    has_drainage: bool | None = None
+    substrate: list[str] | None = None
+    acquired_from: str | None = None
 
 
 class CareScheduleOut(BaseModel):
@@ -166,9 +183,30 @@ class PlantOut(BaseModel):
     quantity: int = 1
     species_id: int | None = None
     phenology: Any | None = None
+    form_type: str | None = None
+    pot_material: str | None = None
+    pot_diameter_cm: int | None = None
+    pot_height_cm: int | None = None
+    has_drainage: bool | None = None
+    substrate: list[str] = []
+    acquired_from: str | None = None
     care_schedules: list[CareScheduleOut] = []
     care_status: str = "good"
     temp_status: str = "comfortable"
+
+    @field_validator("substrate", mode="before")
+    @classmethod
+    def _parse_substrate(cls, v):
+        """`substrate` is stored as a JSON array in a TEXT column."""
+        if v is None or v == "":
+            return []
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+            except (ValueError, TypeError):
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return v
 
 
 # --- Alerts ---
