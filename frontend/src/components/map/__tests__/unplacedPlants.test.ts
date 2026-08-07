@@ -12,6 +12,8 @@ function plant(over: Partial<Plant>): Plant {
     sun_requirement: null,
     measured_sun_hours: null, plant_type: null, icon_key: null, icon_requested: false,
     phase: 'established', quantity: 1, species_id: null, phenology: null, care_schedules: [],
+    form_type: null, pot_material: null, pot_diameter_cm: null, pot_height_cm: null,
+    has_drainage: null, substrate: [], acquired_from: null,
     care_status: 'good', temp_status: 'comfortable',
     ...over,
   }

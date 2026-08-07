@@ -16,6 +16,7 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
+import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { resolveIconUrl } from '../utils/icons'
 import CareScheduleEditor from '../components/plant/CareScheduleEditor'
@@ -65,6 +66,16 @@ export default function EditPlant() {
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
+
+  // Advice follows the sun requirement we know, and stays silent when we know
+  // nothing — the same fix as AddPlant, where one fixed "prefers a bright spot
+  // without direct sunlight" line was shown for every species.
+  const zoneAdvice = useMemo(() => {
+    const key = zoneAdviceKey(sunRequirement)
+    if (!key) return undefined
+    const subject = name.trim() || species.trim()
+    return subject ? t.addPlant.zoneAdvice[key](subject) : undefined
+  }, [sunRequirement, name, species, t])
 
   // Care
   const [schedules, setSchedules] = useState<ScheduleEditorState | null>(null)
@@ -492,7 +503,7 @@ export default function EditPlant() {
                     onChange={(zoneId) => {
                       setSelectedZoneId(zoneId || null)
                     }}
-                    advice={species ? t.addPlant.zoneAdvice(species) : undefined}
+                    advice={zoneAdvice}
                   />
                 </FormRow>
 

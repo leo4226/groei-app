@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
-import { LOCAL_PLANTS } from '../../data/plants-dataset'
+import { PICKABLE_PLANTS, matchesPlantQuery } from '../../data/pickableSpecies'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 import { resolveIconUrl } from '../../utils/icons'
@@ -24,20 +24,15 @@ interface Props {
 export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName }: Props) {
   const t = useT()
   const [query, setQuery] = useState('')
+  const isEnglish = t.locale.startsWith('en')
 
-  // Only offer plants that have an icon — a uniform icon grid looks far cleaner
-  // than mixing in blank coloured squares for the (curated) entries without one.
-  const withIcon = useMemo(() => LOCAL_PLANTS.filter((p) => p.iconKey), [])
-
-  const filtered = useMemo(() => {
-    if (!query.trim()) return withIcon
-    const q = query.toLowerCase()
-    return withIcon.filter(
-      (p) =>
-        p.dutchName.toLowerCase().includes(q) ||
-        p.latinName.toLowerCase().includes(q)
-    )
-  }, [query, withIcon])
+  // `matchesPlantQuery` searches every name we might be showing — an
+  // English-mode user searching for the name on screen used to get "no results"
+  // because only the Dutch and Latin names were searched.
+  const filtered = useMemo(
+    () => PICKABLE_PLANTS.filter((p) => matchesPlantQuery(p, query)),
+    [query],
+  )
 
   const handleCustom = () => {
     onCustomName(query.trim() || undefined)
@@ -143,7 +138,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                     />
                   )}
                   <span className="text-xs font-semibold text-text leading-tight line-clamp-2">
-                    {t.locale.startsWith('en') ? (plant.englishName || plant.dutchName) : plant.dutchName}
+                    {isEnglish ? (plant.englishName || plant.dutchName) : plant.dutchName}
                   </span>
                   <span className="text-[10px] text-text-muted italic leading-tight line-clamp-1">
                     {plant.latinName}
