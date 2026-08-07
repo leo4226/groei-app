@@ -216,14 +216,16 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null)
   const pullRefreshEnabled = PULL_REFRESH_ROUTES.has(location.pathname)
 
+  // AddPlant keys off `location.state.from`; without it it shows the
+  // entry-choice screen and ignores the prefill entirely.
   const handleSelectPlant = (plant: LocalPlant) => {
     setShowPlantPicker(false)
-    navigate('/plants/add', { state: { prefill: plant } })
+    navigate('/plants/add', { state: { from: 'pick', prefill: plant } })
   }
 
   const handleCustomName = (name?: string) => {
     setShowPlantPicker(false)
-    navigate('/plants/add', { state: name ? { prefill: { name } } : undefined })
+    navigate('/plants/add', { state: { from: 'manual', prefill: name ? { name } : undefined } })
   }
 
   return (

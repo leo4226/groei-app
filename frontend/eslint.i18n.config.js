@@ -49,7 +49,6 @@ export default [
       'src/components/LeonAvatar.tsx',
       'src/components/PhaseCalendar.tsx',
       'src/components/PlantCareInfo.tsx',
-      'src/components/add/EntryBanner.tsx',
       'src/components/discoveries/ExpeditionMap.tsx',
       'src/components/discoveries/ExpeditionMapGL.tsx',
       'src/components/editor/DimensionArrows.tsx',

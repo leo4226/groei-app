@@ -26,7 +26,10 @@ def _db_cache():
                 species_id INTEGER, container_id INTEGER, ground_zone_id TEXT,
                 display_radius_cm INTEGER, care_thresholds TEXT,
                 phase TEXT DEFAULT 'established', sown_date TEXT,
-                quantity INTEGER NOT NULL DEFAULT 1, household_id INTEGER
+                quantity INTEGER NOT NULL DEFAULT 1, household_id INTEGER,
+                form_type TEXT, pot_material TEXT, pot_diameter_cm INTEGER,
+                pot_height_cm INTEGER, has_drainage BOOLEAN, substrate TEXT,
+                acquired_from TEXT
             );
             CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0, household_id INTEGER);
             CREATE TABLE care_schedules (
