@@ -236,3 +236,46 @@ Ordered by effect on a new user with a phone.
 
 Items 1-4 are what stand between a new user and a finished map. 5-10 are real but
 survivable.
+
+---
+
+## Status
+
+All ten items implemented, across five stacked PRs.
+
+| # | Item | PR |
+|---|---|---|
+| 1 | E1 + E2 + E3 — the core loop | #844 |
+| 2 | Touch targets to 44px | #844 |
+| 3 | R2 — undo into the dock | #844 |
+| 4 | M2 + M3 — one commit behaviour, units on the fields | #844 |
+| 5 | F2 + F3 — tour copy, a way out of wizard step 1 | #845 |
+| 6 | L1 — translate the panels, shrink the baseline | #846 |
+| 7 | M1 — object dimensions | #848 |
+| 8 | R1 — zone-style fallback | #848 |
+| 9 | F1 — an indoor wizard | #851 |
+| 10 | F4 — move the map-type switch out of the palette head | #845 |
+
+### Found while fixing, not in the original audit
+
+Three defects the audit missed, each surfaced by driving the change in a
+browser rather than by reading the source:
+
+- **A new indoor map did not know it was indoor.** `mapType` was only ever set
+  inside `if (m.canvas_data)`, and a brand-new map has none — so it stayed at
+  the `'outdoor'` default. A new indoor map opened with the garden palette,
+  garden zone types and the sun controls. This is wider than F1 as written
+  (#851).
+- **Selecting an *object* also needed the select tool** — the same defect E1
+  described for zones, which #844 did not cover because object selection lives
+  outside the reducer. It made the new size fields unreachable on a freshly
+  opened map (#848).
+- **The zone `<select>` and the zone palette used different vocabularies** —
+  the dropdown rendered `EditorDefs`' hardcoded Dutch labels while the palette
+  beside it used the catalog, in the same panel (#846).
+
+Two smaller ones: both tour wordings said "click on the canvas to draw", but
+drawing is a drag and a click below `MIN_ZONE_SIZE` silently produces nothing;
+and the i18n rule cannot see string literals in ternaries or JSX attributes, so
+`title="Rondleiding"` and `{showSunPreview ? 'Aan' : 'Uit'}` survived a clean
+lint run.
