@@ -710,8 +710,8 @@ export default function Plants() {
                 borderTopLeftRadius: 24, borderTopRightRadius: 24,
                 borderTop: '2px solid var(--color-primary)',
                 boxShadow: '0 -8px 30px rgba(0,0,0,0.15)',
-                paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem + 16px)',
-                maxHeight: '70vh', overflowY: 'auto',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+                maxHeight: '88vh', overflowY: 'auto',
                 animation: 'slide-up 0.25s ease-out',
               }}
             >
