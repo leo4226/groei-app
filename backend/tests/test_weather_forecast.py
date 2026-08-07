@@ -49,6 +49,7 @@ class FakeClient:
                 "wind_speed_10m_max": [10.0, 12.0, 14.0],
                 "sunrise": ["06:00", "06:01", "06:02"],
                 "sunset": ["21:50", "21:49", "21:48"],
+                "cloud_cover_mean": [85.0, 15.0, 90.0],
             },
         })
 
@@ -83,12 +84,14 @@ async def test_fetches_history_forecast_precipitation_temperature_and_et0_per_ma
     assert "precipitation_sum" in params["daily"]
     assert "temperature_2m_max" in params["daily"]
     assert "et0_fao_evapotranspiration" in params["daily"]
+    assert "cloud_cover_mean" in params["daily"]
     assert first["days"][1] == {
         "date": "2026-07-16",
         "max_temp_c": 26.0,
         "min_temp_c": 16.0,
         "precipitation_mm": 0.0,
         "et0_mm": 3.5,
+        "cloud_cover_mean_pct": 15.0,
     }
     assert first["daily"]["time"][0] == "2026-07-16"
     assert first["daily"]["temperature_2m_max"] == [26.0, 28.0]
