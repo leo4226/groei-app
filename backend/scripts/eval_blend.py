@@ -47,6 +47,11 @@ logger = logging.getLogger(__name__)
 
 _EVAL_DIR = Path(__file__).resolve().parent.parent / "data" / "eval"
 
+# Worker auth: when BIOCLIP_WORKER_TOKEN is set, send it on every request.
+def _worker_headers() -> dict[str, str]:
+    token = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
+    return {"X-Worker-Token": token} if token else {}
+
 
 async def identify(client: httpx.AsyncClient, worker_url: str, path: Path):
     """POST one photo to /identify → (matches, query_embedding) or (None, None)."""
@@ -55,7 +60,7 @@ async def identify(client: httpx.AsyncClient, worker_url: str, path: Path):
             resp = await client.post(
                 f"{worker_url.rstrip('/')}/identify",
                 files={"image": (path.name, f.read(), "image/jpeg")},
-                headers={"X-Worker-Token": os.environ.get("BIOCLIP_WORKER_TOKEN", "")},
+                headers=_worker_headers(),
                 timeout=30,
             )
         if resp.status_code != 200:
