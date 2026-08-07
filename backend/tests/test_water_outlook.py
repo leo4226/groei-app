@@ -124,3 +124,21 @@ async def test_water_outlook_requires_authentication(client):
     response = await client.get("/api/calendar/water-outlook")
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("hours", "expected"),
+    [
+        (None, None),
+        (5.0, "sun"),
+        (4.0, "sun"),
+        (3.5, "partial"),
+        (2.0, "partial"),
+        (1.0, "shade"),
+        (0.0, "shade"),
+        ("bad", None),
+    ],
+)
+def test_exposure_from_sun_hours_maps_unified_thresholds(hours, expected):
+    # Unified 4h/2h light thresholds (#811): >=4h sun, 2-4h partial, <2h shade.
+    assert calendar_router._exposure_from_sun_hours(hours) == expected

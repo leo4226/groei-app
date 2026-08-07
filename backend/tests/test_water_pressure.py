@@ -121,53 +121,68 @@ def test_recommendation_never_moves_later_than_saved_due(days_until_due: int):
     assert result.recommended_check_date <= due
 
 
-# ── Mulch factor (#799) ──────────────────────────────────────────────────────
+# ── #800: per-plant shade / exposure ──────────────────────────────────────────
 
 
-def test_mulched_ground_scores_lower_than_bare_in_dry_weather():
-    bare = calculate_water_pressure(
+def test_shaded_outdoor_plant_scores_lower_than_identical_full_sun():
+    """A plant in shade must dry slower than an identical plant in full sun."""
+    sun_result = calculate_water_pressure(
         environment="outdoor_ground",
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
         weather_days=_days(max_temp=31, et0=5.0),
+        exposure="sun",
     )
-    mulched = calculate_water_pressure(
+    shade_result = calculate_water_pressure(
         environment="outdoor_ground",
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
         weather_days=_days(max_temp=31, et0=5.0),
-        mulch=True,
+        exposure="shade",
     )
 
-    assert mulched.score < bare.score
-    assert mulched.factors["mulch"] is True
-    assert mulched.factors["mulch_demand_factor"] == 0.9
-    # The mulch note explains the reduction in both languages.
-    assert "mulch" in mulched.reason_nl.lower()
-    assert "mulch" in mulched.reason_en.lower()
+    assert shade_result.score < sun_result.score
+    assert shade_result.level != "high" or sun_result.level == "high"
+    assert shade_result.factors["exposure"] == "shade"
+    assert shade_result.factors["exposure_multiplier"] < 1.0
+    assert sun_result.factors["exposure_multiplier"] == 1.0
+    # Shade reason copy mentions slower drying
+    assert "minder snel" in shade_result.reason_nl
+    assert "more slowly" in shade_result.reason_en
 
 
-def test_mulched_container_slightly_lowers_pressure():
-    bare = calculate_water_pressure(
+def test_partial_shade_outdoor_plant_scores_between_sun_and_shade():
+    sun_result = calculate_water_pressure(
         environment="outdoor_container",
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
-        weather_days=_days(max_temp=31, et0=5.0),
+        weather_days=_days(max_temp=28, et0=4.0),
+        exposure="sun",
     )
-    mulched = calculate_water_pressure(
+    partial_result = calculate_water_pressure(
         environment="outdoor_container",
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
-        weather_days=_days(max_temp=31, et0=5.0),
-        mulch=True,
+        weather_days=_days(max_temp=28, et0=4.0),
+        exposure="partial",
+    )
+    shade_result = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=28, et0=4.0),
+        exposure="shade",
     )
 
-    assert mulched.score < bare.score
-    assert mulched.factors["mulch_demand_factor"] == 0.95
+    assert partial_result.score < sun_result.score
+    assert shade_result.score < partial_result.score
+    assert partial_result.factors["exposure_multiplier"] < 1.0
+    assert partial_result.factors["exposure_multiplier"] > shade_result.factors["exposure_multiplier"]
 
 
-def test_mulch_unknown_or_bare_is_neutral():
-    bare = calculate_water_pressure(
+def test_unknown_exposure_is_neutral():
+    """Missing/None exposure must not change anything vs an unset call."""
+    baseline = calculate_water_pressure(
         environment="outdoor_ground",
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
@@ -178,31 +193,30 @@ def test_mulch_unknown_or_bare_is_neutral():
         today=TODAY,
         next_due=TODAY + timedelta(days=4),
         weather_days=_days(max_temp=31, et0=5.0),
-        mulch=None,
+        exposure=None,
     )
-    explicit_bare = calculate_water_pressure(
-        environment="outdoor_ground",
+
+    assert baseline.score == unknown.score
+    assert baseline.reason_en == unknown.reason_en
+    assert unknown.factors["exposure_multiplier"] == 1.0
+    assert "exposure" not in unknown.reason_en
+
+
+def test_exposure_does_not_change_indoor_proxy_pressure():
+    """Indoor is driven by temperature proxy — shade is an outdoor-only term."""
+    indoor = calculate_water_pressure(
+        environment="indoor",
         today=TODAY,
-        next_due=TODAY + timedelta(days=4),
-        weather_days=_days(max_temp=31, et0=5.0),
-        mulch=False,
+        next_due=TODAY + timedelta(days=6),
+        weather_days=_days(max_temp=30, et0=6.0, rain={0: 40.0}),
+        exposure="shade",
     )
-
-    assert unknown.score == bare.score
-    assert explicit_bare.score == bare.score
-    assert unknown.factors["mulch"] is False
-    assert "mulch" not in unknown.reason_nl.lower()
-
-
-@pytest.mark.parametrize("environment", ["outdoor_ground", "outdoor_container"])
-def test_mulch_never_moves_recommendation_later(environment):
-    due = TODAY + timedelta(days=2)
-    result = calculate_water_pressure(
-        environment=environment,
+    baseline = calculate_water_pressure(
+        environment="indoor",
         today=TODAY,
-        next_due=due,
-        weather_days=_days(max_temp=34, et0=7.0),
-        mulch=True,
+        next_due=TODAY + timedelta(days=6),
+        weather_days=_days(max_temp=30, et0=6.0, rain={0: 40.0}),
     )
 
-    assert result.recommended_check_date <= due
+    assert indoor.score == baseline.score
+    assert indoor.reason_en == baseline.reason_en

@@ -11,11 +11,22 @@ from typing import Literal, Sequence
 
 Environment = Literal["outdoor_container", "outdoor_ground", "indoor"]
 PressureLevel = Literal["unknown", "normal", "elevated", "high"]
+Exposure = Literal["sun", "partial", "shade"]
 
 # Short horizon keeps forecast uncertainty bounded and prevents one distant wet
 # day from masking soil that is dry now.
 _LOOKBACK_DAYS = 2
 _LOOKAHEAD_DAYS = 2
+
+# Per-plant exposure (#800) scales outdoor drying demand. A plant in shade or
+# partial shade receives less direct sun and dries more slowly than an
+# identical plant in full sun. Unknown exposure is neutral (1.0) — it never
+# changes the recommendation.
+_EXPOSURE_MULTIPLIERS: dict[Exposure, float] = {
+    "sun":     1.00,
+    "partial": 0.85,
+    "shade":   0.65,
+}
 
 # Containers intercept less rainfall and expose more root-zone surface. Open
 # ground captures more rain while established roots buffer evaporation.
@@ -94,12 +105,16 @@ def calculate_water_pressure(
     next_due: date,
     weather_days: Sequence[WeatherDay],
     mulch: bool | None = None,
+    exposure: Exposure | None = None,
 ) -> WaterPressureResult:
     """Calculate a bounded, read-only moisture-check recommendation.
 
     `mulch` is only meaningful for outdoor environments: a mulched surface
     lowers evaporation-driven demand. Unknown (None) or bare (False) is
     neutral — identical behaviour to before this factor existed.
+
+    `exposure` is a coarse per-plant shade value ('sun' | 'partial' | 'shade')
+    that scales outdoor drying demand (#800). Unknown (None) is neutral.
     """
     if next_due <= today:
         return WaterPressureResult(
@@ -160,8 +175,11 @@ def calculate_water_pressure(
     mulch_demand_factor = 1.0
     if mulch and environment in _MULCH_DEMAND_FACTORS:
         mulch_demand_factor = float(_MULCH_DEMAND_FACTORS[environment])
+    exposure_multiplier = float(_EXPOSURE_MULTIPLIERS.get(exposure, 1.0)) \
+        if environment != "indoor" else 1.0
     drying_demand = (
-        et0 * float(coefficients["demand"]) * mulch_demand_factor + heat_boost
+        et0 * float(coefficients["demand"]) * mulch_demand_factor * exposure_multiplier
+        + heat_boost
     )
     deficit = max(0.0, drying_demand - effective_rain)
     score = deficit / float(coefficients["high_deficit_mm"])
@@ -189,6 +207,13 @@ def calculate_water_pressure(
             reason_nl += " De mulch in de pot houdt vocht iets langer vast."
             reason_en += " The mulch in the container holds moisture a little longer."
 
+    if exposure == "shade":
+        reason_nl += " De plant staat in de schaduw en droogt minder snel."
+        reason_en += " This plant is in shade and dries more slowly."
+    elif exposure == "partial":
+        reason_nl += " De plant staat in halfschaduw en droogt iets minder snel."
+        reason_en += " This plant is in partial shade and dries a little more slowly."
+
     return WaterPressureResult(
         level=level,
         score=round(score, 2),
@@ -206,5 +231,7 @@ def calculate_water_pressure(
             "deficit_mm": round(deficit, 1),
             "mulch": bool(mulch or False),
             "mulch_demand_factor": mulch_demand_factor,
+            "exposure": exposure if exposure else "unknown",
+            "exposure_multiplier": exposure_multiplier,
         },
     )

@@ -60,12 +60,30 @@ def _pressure_weather_days(forecast: dict, *, usable: bool) -> list[WeatherDay]:
     ]
 
 
+# Unified light thresholds shared with the sun model: >= 4h full sun, 2-4h
+# partial shade, < 2h shade (#811). `measured_sun_hours` is per-plant measured
+# direct sun hours; missing measurement means exposure is unknown and the
+# pressure engine stays neutral (#800).
+def _exposure_from_sun_hours(measured_sun_hours) -> str | None:
+    if measured_sun_hours is None:
+        return None
+    try:
+        hours = float(measured_sun_hours)
+    except (TypeError, ValueError):
+        return None
+    if hours >= 4.0:
+        return "sun"
+    if hours >= 2.0:
+        return "partial"
+    return "shade"
+
+
 async def build_water_outlook(db, *, household_id: int) -> dict:
     """Build map-local Water pressure for one household without writing."""
     rows = await db.execute_fetchall(
         """SELECT cs.id AS schedule_id, cs.next_due,
                   p.id AS plant_id, p.name AS plant_name,
-                  p.container_id, p.ground_zone_id, p.mulch,
+                  p.container_id, p.ground_zone_id, p.mulch, p.measured_sun_hours,
                   m.id AS map_id, m.name AS map_name, m.map_type, m.lat, m.lon
            FROM care_schedules cs
            JOIN plants p ON p.id = cs.plant_id
@@ -159,6 +177,7 @@ async def build_water_outlook(db, *, household_id: int) -> dict:
                 next_due=next_due,
                 weather_days=weather_days,
                 mulch=plant.get("mulch"),
+                exposure=_exposure_from_sun_hours(plant.get("measured_sun_hours")),
             )
             plants.append({
                 "plant_id": plant["plant_id"],
