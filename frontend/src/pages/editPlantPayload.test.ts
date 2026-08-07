@@ -39,6 +39,7 @@ function plant(overrides: Partial<Plant> = {}): Plant {
     has_drainage: null,
     substrate: [],
     acquired_from: null,
+    mulch: null,
     species_id: null,
     phenology: null,
     care_schedules: [],
