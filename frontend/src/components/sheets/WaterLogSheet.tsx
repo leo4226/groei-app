@@ -1,4 +1,5 @@
 import { useT } from '../../context/LanguageContext'
+import { createPortal } from 'react-dom'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
@@ -68,10 +69,10 @@ export default function GardenActionSheet({
       }
   const todayStr = new Date().toISOString().slice(0, 10)
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 z-40" style={{ touchAction: 'none' }} onClick={onClose} />
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up">
@@ -142,6 +143,7 @@ export default function GardenActionSheet({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -58,8 +58,8 @@ const data: MapWateringRoundData = {
   ],
 }
 
-function buttonWithText(container: HTMLElement, text: string): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll('button'))
+function buttonWithText(scope: HTMLElement, text: string): HTMLButtonElement {
+  const button = Array.from(scope.querySelectorAll('button'))
     .find((candidate) => candidate.textContent?.trim() === text)
   if (!button) throw new Error(`Button not found: ${text}`)
   return button
@@ -108,16 +108,16 @@ describe('MapWateringRoundSheet', () => {
       ))
     })
 
-    expect(container.textContent).toContain('Watering round')
-    expect(container.textContent).toContain('Back garden')
-    expect(container.textContent).toContain('Last round')
-    expect(container.textContent).toContain('Could not update the watering round')
-    expect(container.textContent).toContain('20-07-2026')
-    expect(container.textContent).toContain('Leon')
-    expect(container.textContent).toContain('2 plants')
-    expect(buttonWithText(container, 'Water 2 plants').disabled).toBe(false)
+    expect(document.body.textContent).toContain('Watering round')
+    expect(document.body.textContent).toContain('Back garden')
+    expect(document.body.textContent).toContain('Last round')
+    expect(document.body.textContent).toContain('Could not update the watering round')
+    expect(document.body.textContent).toContain('20-07-2026')
+    expect(document.body.textContent).toContain('Leon')
+    expect(document.body.textContent).toContain('2 plants')
+    expect(buttonWithText(document.body, 'Water 2 plants').disabled).toBe(false)
 
-    const history = container.querySelector('details') as HTMLDetailsElement
+    const history = document.body.querySelector('details') as HTMLDetailsElement
     expect(history.open).toBe(false)
     const summary = history.querySelector('summary') as HTMLElement
     act(() => summary.click())
@@ -125,9 +125,9 @@ describe('MapWateringRoundSheet', () => {
     expect(history.querySelectorAll('[data-watering-history-row]')).toHaveLength(3)
     expect(buttonWithText(history, 'Undo')).toBeTruthy()
 
-    const basil = container.querySelector('input[value="11"]') as HTMLInputElement
+    const basil = document.body.querySelector('input[value="11"]') as HTMLInputElement
     act(() => basil.click())
-    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    const dateInput = document.body.querySelector('input[type="date"]') as HTMLInputElement
     act(() => {
       const valueSetter = Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
@@ -137,7 +137,7 @@ describe('MapWateringRoundSheet', () => {
       dateInput.dispatchEvent(new Event('change', { bubbles: true }))
     })
     expect(onDateChange).toHaveBeenCalledWith('2026-07-22')
-    act(() => buttonWithText(container, 'Water 1 plant').click())
+    act(() => buttonWithText(document.body, 'Water 1 plant').click())
     expect(onConfirm).toHaveBeenCalledWith('2026-07-23', [10])
 
     act(() => buttonWithText(history, 'Undo').click())
@@ -164,8 +164,8 @@ describe('MapWateringRoundSheet', () => {
       ))
     })
 
-    act(() => buttonWithText(container, 'Select none').click())
-    expect(buttonWithText(container, 'Select at least one plant').disabled).toBe(true)
+    act(() => buttonWithText(document.body, 'Select none').click())
+    expect(buttonWithText(document.body, 'Select at least one plant').disabled).toBe(true)
 
     act(() => document.dispatchEvent(new KeyboardEvent(
       'keydown', { key: 'Escape', bubbles: true },
@@ -193,7 +193,7 @@ describe('MapWateringRoundSheet', () => {
         createElement(MapWateringRoundSheet, { ...baseProps, loading: true }),
       ))
     })
-    expect(container.querySelector('[role="status"]')?.textContent)
+    expect(document.body.querySelector('[role="status"]')?.textContent)
       .toContain('Loading watering round')
 
     act(() => {
@@ -207,9 +207,9 @@ describe('MapWateringRoundSheet', () => {
         }),
       ))
     })
-    expect(container.querySelector('[role="alert"]')?.textContent)
+    expect(document.body.querySelector('[role="alert"]')?.textContent)
       .toContain('Could not load the watering round')
-    act(() => buttonWithText(container, 'Try again').click())
+    act(() => buttonWithText(document.body, 'Try again').click())
     expect(onRetry).toHaveBeenCalledOnce()
 
     act(() => {
@@ -223,8 +223,8 @@ describe('MapWateringRoundSheet', () => {
         }),
       ))
     })
-    expect(buttonWithText(container, 'Water 2 plants').disabled).toBe(true)
-    expect(container.querySelector('[role="dialog"]')?.getAttribute('aria-busy')).toBe('true')
+    expect(buttonWithText(document.body, 'Water 2 plants').disabled).toBe(true)
+    expect(document.body.querySelector('[role="dialog"]')?.getAttribute('aria-busy')).toBe('true')
   })
 
   it('traps focus and restores the opening control on close', () => {
@@ -250,7 +250,7 @@ describe('MapWateringRoundSheet', () => {
         }),
       ))
     })
-    const dialog = container.querySelector('[role="dialog"]') as HTMLElement
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement
     const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('*'))
       .filter((element) => element.tabIndex >= 0 && !element.matches(':disabled'))
     const first = focusable[0]

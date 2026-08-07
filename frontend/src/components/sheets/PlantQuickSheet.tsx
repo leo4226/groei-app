@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant, MapInfo, SecondaryMarker } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
@@ -269,10 +270,14 @@ export default function PlantQuickSheet({
     return fit ? { fit, sunHours, source, profile } : null
   })()
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 lg:bg-black/20 z-40" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/40 lg:bg-black/20 z-40"
+        style={{ touchAction: 'none' }}
+        onClick={onClose}
+      />
 
       {/* Sheet */}
       <div
@@ -594,7 +599,8 @@ export default function PlantQuickSheet({
           onClose={() => setShowMoveSheet(false)}
         />
       )}
-    </>
+    </>,
+    document.body,
   )
 }
 

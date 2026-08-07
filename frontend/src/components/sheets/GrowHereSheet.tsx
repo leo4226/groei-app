@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import type { MapPlant } from '../../types'
@@ -292,11 +293,12 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 pointer-events-auto"
+        style={{ touchAction: 'none' }}
         onClick={onClose}
       />
 
@@ -474,6 +476,7 @@ export default function GrowHereSheet({ tappedCell, selectedMonth, mapPlants, ma
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

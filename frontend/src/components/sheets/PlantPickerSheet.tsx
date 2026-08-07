@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import type { LocalPlant } from '../../data/plants-dataset'
 import { PICKABLE_PLANTS, matchesPlantQuery, displayPlantName } from '../../data/pickableSpecies'
 import { useT } from '../../context/LanguageContext'
@@ -37,10 +38,10 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
     onCustomName(query.trim() || undefined)
   }
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 z-40" style={{ touchAction: 'none' }} onClick={onClose} />
 
       {/* Sheet */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-2xl z-50 pb-[calc(4rem+env(safe-area-inset-bottom))] animate-slide-up max-h-[85dvh] flex flex-col">
@@ -157,6 +158,7 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
