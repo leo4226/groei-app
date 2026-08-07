@@ -276,6 +276,11 @@ export const en: Translations = {
   },
 
   editor: {
+    selection: {
+      deselect: 'Deselect',
+      wallElement: 'Door or window',
+      shadowCaster: 'Shadow object',
+    },
     zones: {
       deck:      { name: 'Deck',      description: 'Decking, tiles or paved outdoor floor' },
       soil:      { name: 'Soil',      description: 'Garden soil for plants and flowers' },

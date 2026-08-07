@@ -189,8 +189,19 @@ function reducer(state: EditorState, action: Action): EditorState {
           state.selectedZoneId === action.id ? null : state.selectedZoneId,
         isDirty: true,
       }
+    // Tapping an existing element is manipulation intent, so the tool follows.
+    // Without this the editor opened in 'draw' (and only ever flipped to
+    // 'select' after ADDING something), so tapping a shape on a map you came
+    // back to selected it but showed no resize handles — EditorCanvas gates the
+    // handle overlay on activeTool === 'select'. Clearing a selection (id null)
+    // leaves the tool alone, so drawing keeps working.
     case 'SELECT_ZONE':
-      return { ...state, selectedZoneId: action.id, selectedWallElementId: null }
+      return {
+        ...state,
+        selectedZoneId: action.id,
+        selectedWallElementId: null,
+        activeTool: action.id ? 'select' : state.activeTool,
+      }
     case 'SET_TOOL':
       return {
         ...state,
@@ -237,6 +248,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         ...state,
         selectedWallElementId: action.id,
         selectedZoneId: null,
+        activeTool: action.id ? 'select' : state.activeTool,
       }
     case 'SET_MAP_TYPE':
       return { ...state, mapType: action.mapType, isDirty: true }
@@ -272,6 +284,7 @@ function reducer(state: EditorState, action: Action): EditorState {
         selectedShadowCasterId: action.id,
         selectedZoneId: null,
         selectedWallElementId: null,
+        activeTool: action.id ? 'select' : state.activeTool,
       }
     case 'SET_OBJECT_PRESET':
       return { ...state, objectPreset: action.preset }

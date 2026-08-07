@@ -18,7 +18,6 @@ import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
 import WallElementPlacementOverlay from './WallElementPlacementOverlay'
 import { zoomAroundViewportCenter } from '../../utils/editorViewport'
-import { CHROME_TOP_CLASS } from '../safeAreaLayout'
 
 const CANVAS_W = 680
 const CANVAS_H = 680
@@ -1267,14 +1266,23 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? `${CHROME_TOP_CLASS} left-[calc(var(--safe-left)+4rem)]` : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
+      {/* Zoom. On touch this is a vertical stack on the right edge, not a pill
+          in the top row: at 44px per control the horizontal pill collided with
+          the save chip and the action icons on a 390px screen, and the right
+          edge puts zoom in thumb reach. Sits at a third of the height so the
+          selection sheet (38dvh, bottom-anchored) never covers it. */}
+      <div className={`absolute flex gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${
+        isTouch
+          ? `flex-col items-center top-1/3 -translate-y-1/2 right-[var(--chrome-right)]`
+          : 'flex-row items-center bottom-3 right-3'
+      }`}>
         <button onClick={() => changeZoom((currentZoom) => currentZoom - ZOOM_STEP)}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
-        <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
+          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>−</button>
+        <span className={`${isTouch ? "text-sm w-12" : "text-xs w-10"} text-text-muted font-medium text-center select-none`}>{Math.round(zoom * 100)}%</span>
         <button onClick={() => changeZoom((currentZoom) => currentZoom + ZOOM_STEP)}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">+</button>
+          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>+</button>
         <button onClick={fitToContent}
-          className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5"
+          className={`${isTouch ? "w-11 h-11" : "w-7 h-7"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5`}
           title="Fit to garden">⟲</button>
       </div>
     </div>

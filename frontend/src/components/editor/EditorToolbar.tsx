@@ -35,7 +35,7 @@ export default function EditorToolbar({
       {/* Tool buttons */}
       <button
         onClick={() => onSetTool('select')}
-        className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
+        className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'select' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
         title={t.editor.toolbar.select}
@@ -47,7 +47,7 @@ export default function EditorToolbar({
       <button
         onClick={() => onSetTool('draw')}
         data-tour-id="tool-draw"
-        className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
+        className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'draw' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
         title={t.editor.toolbar.draw}
@@ -59,7 +59,7 @@ export default function EditorToolbar({
       <button
         onClick={() => onSetTool('shadow_caster')}
         data-tour-id="tool-shadow-caster"
-        className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm ${
+        className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center text-sm ${
           activeTool === 'shadow_caster' ? 'bg-primary text-white' : 'bg-bg text-text-muted border border-border'
         }`}
         title={t.editor.toolbar.shadowCaster}
@@ -76,7 +76,7 @@ export default function EditorToolbar({
           <div className="w-px h-6 bg-border shrink-0" />
           <button
             onClick={onDelete}
-            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-overdue/10 text-overdue border border-overdue/20"
+            className="shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-overdue/10 text-overdue border border-overdue/20"
             title={t.editor.toolbar.delete}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

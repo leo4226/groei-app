@@ -276,6 +276,11 @@ export const nl: Translations = {
   },
 
   editor: {
+    selection: {
+      deselect: 'Selectie opheffen',
+      wallElement: 'Deur of raam',
+      shadowCaster: 'Schaduwobject',
+    },
     zones: {
       deck:      { name: 'Terras',   description: 'Vlonders, tegels of verharde buitenvloer' },
       soil:      { name: 'Grond',    description: 'Tuinaarde voor planten en bloemen' },
