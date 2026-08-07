@@ -18,9 +18,10 @@ export interface HeatmapCell {
   y: number          // SVG y of cell top-left
   w: number          // cell width in px
   h: number          // cell height in px
-  sunMinutes: number // total minutes of direct sun
-  sunHours: number   // sunMinutes / 60
+  sunMinutes: number // intensity-weighted minutes of direct sun (#855)
+  sunHours: number   // sunMinutes / 60 — weighted hours, not raw clock hours
   skyOpenness: number // cosine-weighted SVF, 0.0 (enclosed) → 1.0 (open sky)
+  weighted: true     // marker: sunMinutes/sunHours are sin(altitude)-weighted
 }
 
 /**
@@ -141,12 +142,16 @@ export function computeHeatmap(
   const intervalMs = intervalMin * 60 * 1000
 
   // Pre-compute all shadow regions for each time sample (direct sun hours)
-  const samples: { time: Date; regions: ReturnType<typeof computeShadowRegions> }[] = []
+  const samples: { time: Date; altitudeRad: number; regions: ReturnType<typeof computeShadowRegions> }[] = []
   for (let t = sunrise; t <= sunset; t += intervalMs) {
     const date = new Date(t)
     const sun = getSunPosition(date, useLat, useLon)
     if (!sun.isUp) continue
-    samples.push({ time: date, regions: computeShadowRegions(sun, useCasters, useBearing) })
+    samples.push({
+      time: date,
+      altitudeRad: sun.altitudeDeg * Math.PI / 180,
+      regions: computeShadowRegions(sun, useCasters, useBearing),
+    })
   }
 
   // Pre-compute 3-D obstructions for SVF (time-independent — computed once per map).
@@ -180,10 +185,14 @@ export function computeHeatmap(
         continue
       }
 
-      // Direct sun hours (time-dependent, sampled across the day)
+      // Direct sun hours (time-dependent, sampled across the day).
+      // Weighted by sin(altitude) (#855): a minute of high sun contributes
+      // more light than a minute of low morning/winter sun — the first-order
+      // PAR proxy that makes "sun hours" mean "light received", not "clock
+      // minutes with the sun above the horizon".
       let sunCredit = 0
       for (const sample of samples) {
-        sunCredit += getSunFraction(cx, cy, sample.regions)
+        sunCredit += getSunFraction(cx, cy, sample.regions) * Math.sin(sample.altitudeRad)
       }
 
       // Sky openness / SVF (time-independent, computed once per cell)
@@ -198,6 +207,7 @@ export function computeHeatmap(
         sunMinutes,
         sunHours: sunMinutes / 60,
         skyOpenness,
+        weighted: true,
       })
     }
   }
