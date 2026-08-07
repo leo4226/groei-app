@@ -14,7 +14,6 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +81,7 @@ def image_quality_report(image) -> dict:
     # Laplacian variance: sharp images have high variance, blurry ones low.
     # PIL's FIND_EDGES paints a 1px border artifact, so trim 2px before
     # computing variance — otherwise flat images look spuriously "sharp".
+    from PIL import ImageFilter
     edges = image.convert("L").filter(ImageFilter.FIND_EDGES)
     if edges.width > 4 and edges.height > 4:
         edges = edges.crop((2, 2, edges.width - 2, edges.height - 2))
