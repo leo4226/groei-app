@@ -74,13 +74,13 @@ describe('IdentifyCamera', () => {
 
   it('shows the close-up/light hint on first open (NL)', () => {
     const { container: c } = renderCamera()
-    expect(c.textContent).toContain('Fotografeer een blad of bloem van dichtbij, bij goed licht')
+    expect(c.textContent).toContain('Eén blad of bloem van dichtbij, bij goed licht')
   })
 
   it('shows the close-up/light hint in English when the account language is English', () => {
     localStorage.setItem('floreren_lang', 'en')
     const { container: c } = renderCamera()
-    expect(c.textContent).toContain('Photograph a leaf or flower close-up, in good light')
+    expect(c.textContent).toContain('One leaf or flower close-up, in good light')
   })
 
   it('dismisses the hint when the close button is clicked', () => {
