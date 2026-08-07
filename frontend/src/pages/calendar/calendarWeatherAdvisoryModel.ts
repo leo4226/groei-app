@@ -146,33 +146,51 @@ export function buildCalendarPresentation(events: CalendarEvent[]): CalendarPres
     addPlants(location, event)
   })
 
-  const weatherAdvisories = [...advisoriesByKey.values()].map(advisory => {
-    const locations = [...advisory.locationsByKey.values()]
-      .map(location => {
-        const plants = [...location.plants.values()].sort((a, b) => (
-          a.name.localeCompare(b.name) || a.id - b.id
+  const weatherAdvisories = [...advisoriesByKey.values()]
+    .map(advisory => {
+      const locations = [...advisory.locationsByKey.values()]
+        .map(location => {
+          const plants = [...location.plants.values()].sort((a, b) => (
+            a.name.localeCompare(b.name) || a.id - b.id
+          ))
+          return {
+            key: location.key,
+            mapId: location.mapId,
+            mapName: location.mapName,
+            affectedPlantCount: Math.max(plants.length, location.fallbackCount),
+            plants,
+          }
+        })
+        .sort((a, b) => (
+          (a.mapName ?? '').localeCompare(b.mapName ?? '')
+          || (a.mapId ?? 0) - (b.mapId ?? 0)
         ))
-        return {
-          key: location.key,
-          mapId: location.mapId,
-          mapName: location.mapName,
-          affectedPlantCount: Math.max(plants.length, location.fallbackCount),
-          plants,
-        }
-      })
-      .sort((a, b) => (
-        (a.mapName ?? '').localeCompare(b.mapName ?? '')
-        || (a.mapId ?? 0) - (b.mapId ?? 0)
-      ))
-    const { locationsByKey: _, ...base } = advisory
-    return {
-      ...base,
-      locations,
-      affectedPlantCount: locations.reduce((count, location) => count + location.affectedPlantCount, 0),
-    }
-  }).sort((a, b) => a.date.localeCompare(b.date) || a.type.localeCompare(b.type) || a.key.localeCompare(b.key))
+      const { locationsByKey: _, ...base } = advisory
+      return {
+        ...base,
+        locations,
+        affectedPlantCount: locations.reduce((count, location) => count + location.affectedPlantCount, 0),
+      }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.type.localeCompare(b.type) || a.key.localeCompare(b.key))
 
-  return { ordinaryEvents, weatherAdvisories }
+  // Heat dedup: the #785 heat-triggered watering moment ("Extra water geven
+  // vanwege hitte") is the actionable heat surface and supersedes the older
+  // profile-driven heat_protect advisory. When both fire on the same date,
+  // keep the heat-water advisory and drop heat_protect — otherwise users see
+  // two heat cards saying essentially the same thing.
+  const heatWaterDates = new Set(
+    weatherAdvisories
+      .filter(advisory => advisory.type === 'water')
+      .map(advisory => advisory.date),
+  )
+  const deduped = heatWaterDates.size
+    ? weatherAdvisories.filter(
+        advisory => !(advisory.type === 'heat_protect' && heatWaterDates.has(advisory.date)),
+      )
+    : weatherAdvisories
+
+  return { ordinaryEvents, weatherAdvisories: deduped }
 }
 
 export function partitionCalendarWeather(advisories: CalendarWeatherAdvisory[]) {
