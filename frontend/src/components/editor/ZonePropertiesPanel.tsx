@@ -62,7 +62,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
           value={zone.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
           placeholder="bijv. Woonkamer..."
-          className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+          className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
         />
       </div>
 
@@ -72,7 +72,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         <select
           value={zone.type}
           onChange={(e) => onUpdate({ type: e.target.value as ZoneStyleType })}
-          className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+          className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
         >
           {ZONE_TYPE_ORDER.map((t) => (
             <option key={t} value={t}>{ZONE_STYLES[t].label}</option>
@@ -157,15 +157,15 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
               <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
             </label>
             <input
-              type="number" min="0.5" max="4" step="0.1"
+              type="number" inputMode="decimal" min="0.5" max="4" step="0.1"
               placeholder="bijv. 2.0"
-              defaultValue={zone.fenceHeightM ?? 2.0}
+              value={zone.fenceHeightM ?? 2.0}
               key={`fenceh-${zone.id}`}
-              onBlur={(e) => {
+              onChange={(e) => {
                 const m = parseFloat(e.target.value)
                 onUpdate({ fenceHeightM: !isNaN(m) && m > 0 ? m : undefined })
               }}
-              className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+              className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
             />
           </div>
         </>
@@ -179,15 +179,15 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
           </label>
           <input
-            type="number" min="1" max="6" step="0.1"
+            type="number" inputMode="decimal" min="1" max="6" step="0.1"
             placeholder="bijv. 2.5"
-            defaultValue={zone.structureHeightM ?? 2.5}
+            value={zone.structureHeightM ?? 2.5}
             key={`structh-${zone.id}`}
-            onBlur={(e) => {
+            onChange={(e) => {
               const m = parseFloat(e.target.value)
               onUpdate({ structureHeightM: !isNaN(m) && m > 0 ? m : undefined })
             }}
-            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
           />
         </div>
       )}
@@ -200,15 +200,15 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             <span className="ml-1 text-[10px] text-text-muted/60">schaduw op lagere planten</span>
           </label>
           <input
-            type="number" min="0.2" max="1.5" step="0.05"
+            type="number" inputMode="decimal" min="0.2" max="1.5" step="0.05"
             placeholder="bijv. 0.50"
-            defaultValue={zone.raisedBedHeightM ?? 0.5}
+            value={zone.raisedBedHeightM ?? 0.5}
             key={`rbh-${zone.id}`}
-            onBlur={(e) => {
+            onChange={(e) => {
               const m = parseFloat(e.target.value)
               onUpdate({ raisedBedHeightM: !isNaN(m) && m > 0 ? m : undefined })
             }}
-            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
           />
         </div>
       )}
@@ -217,28 +217,28 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       <div className="flex gap-2 mb-2">
         <div className="flex-1">
           <label className="text-xs text-text-muted block mb-1">
-            Lengte{lenM ? ` (${lenM}m)` : ''}
+            Lengte (m)
           </label>
           <input
-            type="number" min="0.1" step="0.1"
+            type="number" inputMode="decimal" min="0.1" step="0.1"
             placeholder={lenM ?? 'bijv. 4.5'}
             value={lenM ?? ''}
             key={`len-${zone.id}`}
             onChange={(e) => handleLengteChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
           />
         </div>
         <div className="flex-1">
           <label className="text-xs text-text-muted block mb-1">
-            Breedte{breedM ? ` (${breedM}m)` : ''}
+            Breedte (m)
           </label>
           <input
-            type="number" min="0.1" step="0.1"
+            type="number" inputMode="decimal" min="0.1" step="0.1"
             placeholder={breedM ?? 'bijv. 3.0'}
             value={breedM ?? ''}
             key={`breed-${zone.id}`}
             onChange={(e) => handleBreedteChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
           />
         </div>
       </div>
@@ -251,12 +251,12 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             <span className="ml-1 text-[10px] text-text-muted/60">info only</span>
           </label>
           <input
-            type="number" min="1" max="6" step="0.05"
+            type="number" inputMode="decimal" min="1" max="6" step="0.05"
             placeholder="bijv. 2.60"
             defaultValue={zone.roomHeightM ?? ''}
             key={`hoogte-${zone.id}`}
             onBlur={(e) => handleHoogteChange(e.target.value)}
-            className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text"
+            className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
           />
         </div>
       )}
@@ -312,7 +312,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                     Breedte ({(zone.cornerCut.widthPx / scalePxPerM).toFixed(2)}m)
                   </label>
                   <input
-                    type="number" min="0.1" step="0.1"
+                    type="number" inputMode="decimal" min="0.1" step="0.1"
                     defaultValue={(zone.cornerCut.widthPx / scalePxPerM).toFixed(2)}
                     key={`cw-${zone.id}-${zone.cornerCut.corner}`}
                     onBlur={(e) => {
@@ -328,7 +328,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                     Diepte ({(zone.cornerCut.heightPx / scalePxPerM).toFixed(2)}m)
                   </label>
                   <input
-                    type="number" min="0.1" step="0.1"
+                    type="number" inputMode="decimal" min="0.1" step="0.1"
                     defaultValue={(zone.cornerCut.heightPx / scalePxPerM).toFixed(2)}
                     key={`ch-${zone.id}-${zone.cornerCut.corner}`}
                     onBlur={(e) => {
@@ -365,7 +365,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             Stel schaal in via lengte van deze zone (m)
           </label>
           <input
-            type="number" min="0.1" step="0.1"
+            type="number" inputMode="decimal" min="0.1" step="0.1"
             placeholder={lenM ?? ''}
             key={`scale-${zone.id}`}
             onBlur={(e) => handleCalibrateScale(e.target.value)}

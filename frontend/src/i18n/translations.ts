@@ -250,6 +250,12 @@ export type Translations = {
   }
 
   editor: {
+    /** Touch-only sheet for the element the user has selected. */
+    selection: {
+      deselect: string
+      wallElement: string
+      shadowCaster: string
+    }
     zones: Record<string, { name: string; description: string }>
     toolbar: {
       select: string

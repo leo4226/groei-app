@@ -15,6 +15,7 @@ import Glyph from '../components/ui/Glyph'
 import { deriveGardenBounds, deriveGardenPerimeter } from '../utils/gardenFromCanvas'
 import { useEditorTour, hasTourBeenSeen, markTourSeen } from '../hooks/useEditorTour'
 import EditorTour from '../components/editor/EditorTour'
+import SelectionSheet from '../components/editor/SelectionSheet'
 import StarterWizard, { type StarterWizardResult } from './editor/StarterWizard'
 import { useIsTouch } from '../hooks/useIsTouch'
 import { CHROME_TOP_CLASS, CHROME_TOP_ROW3_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS } from '../components/safeAreaLayout'
@@ -332,6 +333,54 @@ export default function LayoutEditorPage() {
   const selectedShadowCaster = editor.shadowCasters.find((s) => s.id === editor.selectedShadowCasterId) ?? null
   const selectedObject = mapObjects.find((o) => o.id === selectedObjectId) ?? null
 
+  // The four properties panels, rendered once and placed either in the desktop
+  // sidebar or — on touch — in the SelectionSheet above the tool dock. They used
+  // to live only in the sidebar, which on a phone buried them ~1400px down the
+  // drawing palette behind a drawer covering 57% of the screen.
+  const propertiesPanel = selectedZone && !selectedWallElement ? (
+    <ZonePropertiesPanel
+      zone={selectedZone}
+      scalePxPerM={editor.scalePxPerM}
+      onUpdate={(updates) => editor.updateZone(selectedZone.id, updates)}
+      onSetScale={editor.setScalePxPerM}
+      onDelete={handleDelete}
+    />
+  ) : selectedWallElement ? (
+    <WallElementPropertiesPanel
+      element={selectedWallElement}
+      onUpdate={(updates) => editor.updateWallElement(selectedWallElement.id, updates)}
+      onDelete={handleDelete}
+    />
+  ) : selectedShadowCaster ? (
+    <ShadowCasterPropertiesPanel
+      caster={selectedShadowCaster}
+      scalePxPerM={editor.scalePxPerM}
+      gardenBounds={gardenBounds ?? { minX: 0, minY: 0, maxX: 680, maxY: 680 }}
+      onUpdate={(updates) => editor.updateShadowCaster(selectedShadowCaster.id, updates)}
+      onDelete={handleDelete}
+    />
+  ) : selectedObject ? (
+    <ObjectPropertiesPanel
+      object={selectedObject}
+      onRotate={(rotation) => handleObjectRotate(selectedObject.id, rotation)}
+      onDelete={handleDelete}
+    />
+  ) : null
+
+  const selectionTitle = selectedZone?.label
+    || (selectedWallElement ? t.editor.selection.wallElement : '')
+    || (selectedShadowCaster ? t.editor.selection.shadowCaster : '')
+    || selectedObject?.name
+    || ''
+
+  function clearSelection() {
+    editor.selectZone(null)
+    editor.selectWallElement(null)
+    editor.selectShadowCaster(null)
+    setSelectedObjectId(null)
+  }
+
+
   if (loading) return <div className="p-6 text-text-muted text-center">{t.editor.loading}</div>
   if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>
 
@@ -534,6 +583,17 @@ export default function LayoutEditorPage() {
           {/* Tool dock — bottom-centre (thumb zone): tools + the mode/zone picker */}
           {!previewMode && (
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+              {/* Undo — a stray drag resizes a zone, so recovery has to be one
+                  tap. It was only in the ⋮ overflow menu, while the ⟲ in the
+                  zoom pill (fit-to-content) looked like undo and was not. */}
+              <button
+                onClick={editor.undo}
+                disabled={!editor.canUndo}
+                aria-label={t.editor.toolbar.undo}
+                className="w-11 h-11 shrink-0 rounded-2xl bg-surface/90 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted disabled:opacity-35"
+              >
+                <Glyph name="refresh" size={19} className="-scale-x-100" />
+              </button>
               <EditorToolbar
                 floating
                 activeTool={editor.activeTool}
@@ -559,6 +619,13 @@ export default function LayoutEditorPage() {
                 </svg>
               </button>
             </div>
+          )}
+
+          {/* Selected element's own controls, above the dock, shape still visible */}
+          {isTouch && propertiesPanel && (
+            <SelectionSheet title={selectionTitle} onClose={clearSelection}>
+              {propertiesPanel}
+            </SelectionSheet>
           )}
         </>
       )}
@@ -686,38 +753,7 @@ export default function LayoutEditorPage() {
               onRemoveUnderlay={() => editor.setUnderlay(null)}
               onCalibrateWidthM={handleCalibrateWidthM}
             />
-            {selectedZone && !selectedWallElement && (
-              <ZonePropertiesPanel
-                zone={selectedZone}
-                scalePxPerM={editor.scalePxPerM}
-                onUpdate={(updates) => editor.updateZone(selectedZone.id, updates)}
-                onSetScale={editor.setScalePxPerM}
-                onDelete={handleDelete}
-              />
-            )}
-            {selectedWallElement && (
-              <WallElementPropertiesPanel
-                element={selectedWallElement}
-                onUpdate={(updates) => editor.updateWallElement(selectedWallElement.id, updates)}
-                onDelete={handleDelete}
-              />
-            )}
-            {selectedShadowCaster && (
-              <ShadowCasterPropertiesPanel
-                caster={selectedShadowCaster}
-                scalePxPerM={editor.scalePxPerM}
-                gardenBounds={gardenBounds ?? { minX: 0, minY: 0, maxX: 680, maxY: 680 }}
-                onUpdate={(updates) => editor.updateShadowCaster(selectedShadowCaster.id, updates)}
-                onDelete={handleDelete}
-              />
-            )}
-            {selectedObject && (
-              <ObjectPropertiesPanel
-                object={selectedObject}
-                onRotate={(rotation) => handleObjectRotate(selectedObject.id, rotation)}
-                onDelete={handleDelete}
-              />
-            )}
+            {!isTouch && propertiesPanel}
 
             {/* Shadow caster list — shows all casters including off-canvas ones */}
             {editor.shadowCasters.length > 0 && (
