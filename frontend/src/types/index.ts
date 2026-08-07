@@ -58,6 +58,13 @@ export interface Plant {
   icon_requested: boolean
   phase: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
   quantity: number
+  form_type: string | null
+  pot_material: string | null
+  pot_diameter_cm: number | null
+  pot_height_cm: number | null
+  has_drainage: boolean | null
+  substrate: string[]
+  acquired_from: string | null
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -117,6 +124,15 @@ export interface PlantCreateInput {
   phase?: 'seed' | 'sprout' | 'seedling' | 'young' | 'established'
   sown_date?: string
   quantity?: number
+  // Container / provenance detail (migration 0063). Before it, the Add Plant
+  // form collected all of these and dropped them on the floor.
+  form_type?: string
+  pot_material?: string
+  pot_diameter_cm?: number
+  pot_height_cm?: number
+  has_drainage?: boolean
+  substrate?: string[]
+  acquired_from?: string
   care_schedules: CareScheduleInput[]
 }
 

@@ -182,6 +182,32 @@ export function sunPreferenceToTile(sunPreference: string | null | undefined): s
   return SUN_DB_TO_TILE[sunPreference] ?? null
 }
 
+// ── Zone advice ──
+
+/**
+ * Which advice line fits a Light TileGrid id.
+ *
+ * The Zone row used to render one fixed sentence — "prefers a bright spot
+ * without direct sunlight" — for *every* species as soon as the species field
+ * was non-empty, including full-sun plants picked straight from the list. Advice
+ * now follows the sun requirement we actually know, and stays silent when we
+ * know nothing rather than inventing a claim.
+ */
+export type ZoneAdviceKey = 'shade' | 'indirect' | 'bright' | 'fullSun'
+
+const SUN_TILE_TO_ADVICE: Record<string, ZoneAdviceKey> = {
+  dark: 'shade',
+  shade: 'shade',
+  indirect: 'indirect',
+  bright: 'bright',
+  'full-sun': 'fullSun',
+}
+
+export function zoneAdviceKey(sunRequirement: string | null | undefined): ZoneAdviceKey | null {
+  if (!sunRequirement) return null
+  return SUN_TILE_TO_ADVICE[sunRequirement] ?? null
+}
+
 // ── normalizePrefill: consolidate the three-path duck-typing into one shape ──
 
 export type PrefillKind = 'identify' | 'database' | 'manual' | 'none'
@@ -276,6 +302,15 @@ export interface CreatePayloadFormState {
   phase?: PlantCreateInput['phase']
   sownDate?: string
   quantity?: number
+  /** How the plant grows: 'pot' | 'ground' | 'seedling' | 'tree'. */
+  formType?: string
+  potMaterial?: string
+  potDiameterCm?: number
+  potHeightCm?: number
+  hasDrainage?: boolean
+  substrate?: string[]
+  /** Free text: where the plant came from. */
+  acquiredFrom?: string
   careSchedules: CareScheduleInput[]
 }
 
@@ -304,6 +339,13 @@ export function buildCreatePayload(s: CreatePayloadFormState): PlantCreateInput 
     phase: s.phase,
     sown_date: s.sownDate,
     quantity: s.quantity != null && s.quantity > 1 ? s.quantity : undefined,
+    form_type: s.formType,
+    pot_material: s.potMaterial,
+    pot_diameter_cm: s.potDiameterCm,
+    pot_height_cm: s.potHeightCm,
+    has_drainage: s.hasDrainage,
+    substrate: s.substrate && s.substrate.length > 0 ? s.substrate : undefined,
+    acquired_from: s.acquiredFrom?.trim() || undefined,
     care_schedules: s.careSchedules,
   }
 }

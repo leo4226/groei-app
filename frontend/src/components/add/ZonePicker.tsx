@@ -19,21 +19,18 @@ interface ZonePickerProps {
   advice?: string
   className?: string
   translations?: ZonePickerTranslations
+  /** Shown when the account has no maps yet. Without it the grid renders blank. */
+  emptyLabel?: string
 }
 
-export const DEFAULT_ZONES: Zone[] = [
-  { id: 'binnen-woonkamer', name: 'Woonkamer', description: 'Binnen · raam west · 19-22°C', plantCount: 5, isIndoor: true },
-  { id: 'binnen-slaapkamer', name: 'Slaapkamer', description: 'Binnen · raam oost · 17-20°C', plantCount: 3, isIndoor: true },
-  { id: 'buiten-a', name: 'Tuin zone A', description: 'Buiten · volle zon · ochtend', plantCount: 7, isIndoor: false },
-  { id: 'buiten-b', name: 'Tuin zone B', description: 'Buiten · halfschaduw · middag', plantCount: 4, isIndoor: false },
-]
-
 export default function ZonePicker({
-  zones = DEFAULT_ZONES,
+  zones = [],
   value,
   onChange,
   advice,
   className = '',
+  translations,
+  emptyLabel,
 }: ZonePickerProps) {
   const selectedZone = zones.find(z => z.id === value)
 
@@ -46,6 +43,16 @@ export default function ZonePicker({
     return 0
   })
 
+  if (zones.length === 0) {
+    return (
+      <div className={className}>
+        <div className="rounded-lg border border-dashed border-border p-4 text-sm text-text-muted">
+          {emptyLabel}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={className}>
       <div className="grid grid-cols-2 gap-2">
@@ -55,7 +62,10 @@ export default function ZonePicker({
             <button
               key={zone.id}
               type="button"
-              onClick={() => onChange(zone.id)}
+              aria-pressed={isActive}
+              // Tapping the selected zone clears it — a plant does not have to
+              // be placed on a map, and there was no way back out before.
+              onClick={() => onChange(isActive ? '' : zone.id)}
               className={`
                 grid grid-cols-[44px_1fr_auto] gap-3 items-center
                 rounded-lg border p-3 text-left
@@ -106,6 +116,14 @@ export default function ZonePicker({
                   </div>
                 )}
               </div>
+
+              {/* The grid always reserved this column; the count was computed
+                  and passed in but never rendered. */}
+              {translations && zone.plantCount != null && (
+                <div className="font-mono text-[10px] text-text-muted whitespace-nowrap self-center">
+                  {translations.plantsLabel(zone.plantCount)}
+                </div>
+              )}
             </button>
           )
         })}

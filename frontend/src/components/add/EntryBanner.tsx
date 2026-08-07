@@ -1,5 +1,6 @@
 import type { PlantIdCandidate } from '../../types'
 import Glyph, { type GlyphName } from '../ui/Glyph'
+import { useT } from '../../context/LanguageContext'
 
 export interface EntryBannerProps {
   activeRoute: 'database' | 'photo'
@@ -9,6 +10,10 @@ export interface EntryBannerProps {
   selectedSpeciesName?: string
   selectedSpeciesScientific?: string
   selectedSpeciesIcon?: string
+  /** Open the species picker. Without it the database panel has nothing to offer. */
+  onBrowseSpecies?: () => void
+  /** Start the photo-ID flow. Without it the photo panel has nothing to offer. */
+  onIdentifyWithPhoto?: () => void
   // Photo route data (from identify)
   photoPreview?: string | null
   identifyResult?: {
@@ -18,10 +23,6 @@ export interface EntryBannerProps {
   }
 }
 
-function fmtNum(n: number): string {
-  return n.toLocaleString('nl-NL').replace(/,/g, ' ')
-}
-
 export default function EntryBanner({
   activeRoute,
   onRouteChange,
@@ -29,9 +30,16 @@ export default function EntryBanner({
   selectedSpeciesName,
   selectedSpeciesScientific,
   selectedSpeciesIcon,
+  onBrowseSpecies,
+  onIdentifyWithPhoto,
   photoPreview,
   identifyResult,
 }: EntryBannerProps) {
+  const t = useT()
+
+  const fmtNum = (n: number): string =>
+    n.toLocaleString(t.locale).replace(/,/g, ' ')
+
   const isDb = activeRoute === 'database'
   const isPhoto = activeRoute === 'photo'
 
@@ -92,11 +100,11 @@ export default function EntryBanner({
 
   // Build database subtitle
   const dbSubtitle = speciesCount
-    ? `Bladeren door ${fmtNum(speciesCount)} soorten`
-    : 'Bladeren door soorten'
+    ? t.addPlant.banner.dbSubtitleCount(fmtNum(speciesCount))
+    : t.addPlant.banner.dbSubtitle
 
   // Build photo subtitle
-  const photoSubtitle = 'Herkend uit foto · veldwerk'
+  const photoSubtitle = t.addPlant.banner.photoSubtitle
 
   // ── Body: Database route ──
   const DatabaseBody = () => {
@@ -113,7 +121,7 @@ export default function EntryBanner({
           {/* ID card */}
           <div className="min-w-0">
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary mb-1">
-              § Geselecteerd
+              {t.addPlant.banner.selected}
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-medium leading-[1.05] tracking-[-0.015em] text-text m-0 mb-1">
               {selectedSpeciesName}
@@ -124,49 +132,47 @@ export default function EntryBanner({
               </div>
             )}
 
-            {/* Meta row — stubs */}
-            <div className="flex gap-5 sm:gap-6 mt-3 flex-wrap">
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                  Verzorgingsprofielen
-                </span>
-                <span className="font-heading text-base text-text">—</span>
-              </div>
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                  Botanische familie
-                </span>
-                <span className="font-heading text-base text-text">—</span>
-              </div>
-              <div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                  Herkomst
-                </span>
-                <span className="font-heading text-base text-text">—</span>
-              </div>
-            </div>
+            {onBrowseSpecies && (
+              <button
+                type="button"
+                onClick={onBrowseSpecies}
+                className="mt-3 inline-flex items-center gap-1.5 font-heading text-sm text-primary hover:underline"
+              >
+                <Glyph name="search" size={15} />
+                {t.addPlant.banner.changeSpecies}
+              </button>
+            )}
           </div>
         </div>
       )
     }
 
-    // No species selected yet — prompt to browse
+    // No species selected yet — prompt to browse. The prompt is the button:
+    // it used to be inert text inviting an action it could not perform.
+    const Wrapper = onBrowseSpecies ? 'button' : 'div'
     return (
-      <div className="p-4 sm:p-6 flex items-center gap-4">
+      <Wrapper
+        {...(onBrowseSpecies
+          ? { type: 'button' as const, onClick: onBrowseSpecies }
+          : {})}
+        className={`w-full p-4 sm:p-6 flex items-center gap-4 text-left ${
+          onBrowseSpecies ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
+        }`}
+      >
         <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
           <Glyph name="search" size={22} />
         </div>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-0.5">
-            Kies een soort
+            {t.addPlant.banner.pickSpecies}
           </div>
           <div className="font-heading text-base text-text">
             {speciesCount
-              ? `Bladeren door ${fmtNum(speciesCount)} soorten in de database`
-              : 'Bladeren door de database om een soort te kiezen'}
+              ? t.addPlant.banner.browseCount(fmtNum(speciesCount))
+              : t.addPlant.banner.browsePrompt}
           </div>
         </div>
-      </div>
+      </Wrapper>
     )
   }
 
@@ -182,7 +188,7 @@ export default function EntryBanner({
           <div className="relative w-full max-w-[220px] aspect-square rounded-md border border-border overflow-hidden bg-[repeating-linear-gradient(45deg,transparent_0_8px,rgba(74,90,71,.06)_8px_9px),linear-gradient(135deg,#E8E0CC_0%,#D6CDB6_100%)] flex-shrink-0">
             <img
               src={photoPreview}
-              alt="Plant foto"
+              alt={t.addPlant.banner.photoAlt}
               className="absolute inset-0 w-full h-full object-cover"
             />
             {/* Focus corners */}
@@ -192,17 +198,20 @@ export default function EntryBanner({
             <div className="absolute bottom-[22px] right-[22px] w-[22px] h-[22px] border-b-2 border-r-2 border-secondary pointer-events-none rounded-br-sm" />
             {/* Label */}
             <div className="absolute bottom-3 left-3 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted bg-paper/90 px-2 py-1 rounded border border-border">
-              — foto —
+              {t.addPlant.banner.photoLabel}
             </div>
           </div>
 
           {/* ID card */}
           <div className="min-w-0 flex-1">
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary mb-1">
-              § Match
+              {t.addPlant.banner.match}
             </div>
             <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-medium leading-[1.05] tracking-[-0.015em] text-text m-0 mb-1">
-              {topMatch.common_names_nl?.[0] || topMatch.common_names_en?.[0] || topMatch.scientific_name}
+              {(t.locale.startsWith('en')
+                ? topMatch.common_names_en?.[0] || topMatch.common_names_nl?.[0]
+                : topMatch.common_names_nl?.[0] || topMatch.common_names_en?.[0]
+              ) || topMatch.scientific_name}
             </h2>
             <div className="font-heading italic text-base sm:text-lg text-text-soft mb-3">
               {topMatch.scientific_name}
@@ -212,7 +221,7 @@ export default function EntryBanner({
             <div className="flex gap-5 sm:gap-6 flex-wrap">
               <div>
                 <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                  Trefkans
+                  {t.addPlant.banner.confidence}
                 </span>
                 <span className="font-heading text-base text-text">
                   <em className="text-secondary not-italic font-medium">{confidencePct}%</em>
@@ -222,15 +231,15 @@ export default function EntryBanner({
                 <>
                   <div>
                     <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                      Database
+                      {t.addPlant.banner.database}
                     </span>
                     <span className="font-heading text-base text-text">
-                      {fmtNum(stats.databaseSize)} soorten
+                      {t.addPlant.banner.speciesCount(fmtNum(stats.databaseSize))}
                     </span>
                   </div>
                   <div>
                     <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted block">
-                      Beeldreferenties
+                      {t.addPlant.banner.imageRefs}
                     </span>
                     <span className="font-heading text-base text-text">
                       {fmtNum(stats.imageRefs)}
@@ -244,7 +253,7 @@ export default function EntryBanner({
             {alternatives && alternatives.length > 0 && (
               <div className="mt-4">
                 <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted mb-2">
-                  Alternatieven
+                  {t.addPlant.banner.alternatives}
                 </div>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
                   {alternatives.map((alt, i) => (
@@ -253,7 +262,10 @@ export default function EntryBanner({
                       className="flex-shrink-0 border border-border rounded px-3 py-2 bg-paper text-center min-w-[80px]"
                     >
                       <div className="font-heading text-xs text-text leading-tight truncate max-w-[72px]">
-                        {alt.common_names_nl?.[0] || alt.scientific_name.split(' ')[0]}
+                        {(t.locale.startsWith('en')
+                          ? alt.common_names_en?.[0] || alt.common_names_nl?.[0]
+                          : alt.common_names_nl?.[0] || alt.common_names_en?.[0]
+                        ) || alt.scientific_name.split(' ')[0]}
                       </div>
                       <div className="font-mono text-[10px] text-text-muted mt-0.5">
                         {Math.round(alt.confidence * 1000) / 10}%
@@ -268,21 +280,30 @@ export default function EntryBanner({
       )
     }
 
-    // No photo uploaded yet
+    // No photo yet — the prompt starts the identify flow rather than merely
+    // describing it.
+    const Wrapper = onIdentifyWithPhoto ? 'button' : 'div'
     return (
-      <div className="p-4 sm:p-6 flex items-center gap-4">
+      <Wrapper
+        {...(onIdentifyWithPhoto
+          ? { type: 'button' as const, onClick: onIdentifyWithPhoto }
+          : {})}
+        className={`w-full p-4 sm:p-6 flex items-center gap-4 text-left ${
+          onIdentifyWithPhoto ? 'hover:bg-primary/5 transition-colors cursor-pointer' : ''
+        }`}
+      >
         <div className="w-12 h-12 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
           <Glyph name="camera" size={22} />
         </div>
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted mb-0.5">
-            Upload een foto
+            {t.addPlant.banner.uploadPhoto}
           </div>
           <div className="font-heading text-base text-text">
-            Upload een foto om te identificeren
+            {t.addPlant.banner.uploadPhotoPrompt}
           </div>
         </div>
-      </div>
+      </Wrapper>
     )
   }
 
@@ -295,13 +316,13 @@ export default function EntryBanner({
           <TabButton
             route="database"
             icon="book"
-            label="Uit database"
+            label={t.addPlant.banner.tabDatabase}
             subtitle={dbSubtitle}
           />
           <TabButton
             route="photo"
             icon="camera"
-            label="Met foto"
+            label={t.addPlant.banner.tabPhoto}
             subtitle={photoSubtitle}
           />
         </div>
