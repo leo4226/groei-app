@@ -1,6 +1,6 @@
 {
-  "count": 309,
-  "iconCount": 309,
+  "count": 335,
+  "iconCount": 335,
   "categories": [
     {
       "id": "all",
@@ -3019,6 +3019,240 @@
       "family": "Asteraceae",
       "file": "sunflower_bare.svg",
       "variant_of": "sunflower"
+    },
+    {
+      "id": "epimedium",
+      "name": "Elfenbloem",
+      "sci": "Epimedium × perralchicum",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Berberidaceae",
+      "file": "epimedium.svg"
+    },
+    {
+      "id": "pachysandra",
+      "name": "Schaduwgroen",
+      "sci": "Pachysandra terminalis",
+      "cat": "houseplant",
+      "form": "bare",
+      "family": "Buxaceae",
+      "file": "pachysandra.svg"
+    },
+    {
+      "id": "helleborus",
+      "name": "Kerstroos",
+      "sci": "Helleborus orientalis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "helleborus.svg"
+    },
+    {
+      "id": "pulmonaria",
+      "name": "Longkruid",
+      "sci": "Pulmonaria officinalis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Boraginaceae",
+      "file": "pulmonaria.svg"
+    },
+    {
+      "id": "astrantia",
+      "name": "Astrantia",
+      "sci": "Astrantia major",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Apiaceae",
+      "file": "astrantia.svg"
+    },
+    {
+      "id": "heuchera",
+      "name": "Heuchera",
+      "sci": "Heuchera sanguinea",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Saxifragaceae",
+      "file": "heuchera.svg"
+    },
+    {
+      "id": "tiarella",
+      "name": "Tiarella",
+      "sci": "Tiarella cordifolia",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Saxifragaceae",
+      "file": "tiarella.svg"
+    },
+    {
+      "id": "rhododendron",
+      "name": "Rododendron",
+      "sci": "Rhododendron (hybride)",
+      "cat": "shrub",
+      "form": "bare",
+      "family": "Ericaceae",
+      "file": "rhododendron.svg"
+    },
+    {
+      "id": "anemone_japanese",
+      "name": "Japanse anemoon",
+      "sci": "Anemone hybrida",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "anemone_japanese.svg"
+    },
+    {
+      "id": "astilbe",
+      "name": "Pluimspirea",
+      "sci": "Astilbe × arendsii",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Saxifragaceae",
+      "file": "astilbe.svg"
+    },
+    {
+      "id": "persicaria",
+      "name": "Duizendknoop",
+      "sci": "Persicaria amplexicaulis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Polygonaceae",
+      "file": "persicaria.svg"
+    },
+    {
+      "id": "anemone_autumn",
+      "name": "Herfstanemoon",
+      "sci": "Anemone hupehensis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "anemone_autumn.svg"
+    },
+    {
+      "id": "crocosmia",
+      "name": "Montbretia",
+      "sci": "Crocosmia 'Lucifer'",
+      "cat": "bulb",
+      "form": "bare",
+      "family": "Iridaceae",
+      "file": "crocosmia.svg"
+    },
+    {
+      "id": "phlox",
+      "name": "Vlambloem",
+      "sci": "Phlox paniculata",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Polemoniaceae",
+      "file": "phlox.svg"
+    },
+    {
+      "id": "thalictrum",
+      "name": "Ruit",
+      "sci": "Thalictrum delavayi",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Ranunculaceae",
+      "file": "thalictrum.svg"
+    },
+    {
+      "id": "salvia_nemorosa",
+      "name": "Bossalie",
+      "sci": "Salvia nemorosa",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "salvia_nemorosa.svg"
+    },
+    {
+      "id": "verbena_bonariensis",
+      "name": "IJzerhard",
+      "sci": "Verbena bonariensis",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Verbenaceae",
+      "file": "verbena_bonariensis.svg"
+    },
+    {
+      "id": "pennisetum",
+      "name": "Lampenpoetsersgras",
+      "sci": "Pennisetum alopecuroides",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "file": "pennisetum.svg"
+    },
+    {
+      "id": "sedum_spectabile",
+      "name": "Hemelsleutel",
+      "sci": "Hylotelephium spectabile",
+      "cat": "succulent",
+      "form": "bare",
+      "family": "Crassulaceae",
+      "file": "sedum_spectabile.svg"
+    },
+    {
+      "id": "nepeta",
+      "name": "Kattenkruid",
+      "sci": "Nepeta × faassenii",
+      "cat": "herb",
+      "form": "bare",
+      "family": "Lamiaceae",
+      "file": "nepeta.svg"
+    },
+    {
+      "id": "kniphofia",
+      "name": "Vuurpijl",
+      "sci": "Kniphofia uvaria",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asphodelaceae",
+      "file": "kniphofia.svg"
+    },
+    {
+      "id": "stipa_tenuissima",
+      "name": "Vedergras",
+      "sci": "Nassella tenuissima",
+      "cat": "grass",
+      "form": "bare",
+      "family": "Poaceae",
+      "file": "stipa_tenuissima.svg"
+    },
+    {
+      "id": "ladyfern",
+      "name": "Wijfjesvaren",
+      "sci": "Athyrium filix-femina",
+      "cat": "fern",
+      "form": "bare",
+      "family": "Athyriaceae",
+      "file": "ladyfern.svg"
+    },
+    {
+      "id": "rose_climbing",
+      "name": "Klimroos",
+      "sci": "Rosa (klimvariëteit)",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Rosaceae",
+      "file": "rose_climbing.svg"
+    },
+    {
+      "id": "rudbeckia",
+      "name": "Zonnehoed (vaste)",
+      "sci": "Rudbeckia fulgida",
+      "cat": "flower",
+      "form": "bare",
+      "family": "Asteraceae",
+      "file": "rudbeckia.svg"
+    },
+    {
+      "id": "hydrangea_climbing",
+      "name": "Klimhortensia",
+      "sci": "Hydrangea anomala subsp. petiolaris",
+      "cat": "climber",
+      "form": "bare",
+      "family": "Hydrangeaceae",
+      "file": "hydrangea_climbing.svg"
     }
   ]
 }
