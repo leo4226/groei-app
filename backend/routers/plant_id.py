@@ -87,7 +87,17 @@ def _classify_confidence(top1: float, top2: float | None) -> str:
 # rescued wrongly. Note: a rescued match's raw image cosine currently flows
 # straight into the displayed confidence, so it reads as e.g. "85%" beside text
 # candidates' "30%" — that display recalibration is tracked separately (audit §3.3).
-_IMAGE_MATCH_MIN = 0.80
+#
+# 2026-08-06 interim calibration (GBIF eval set, 126 photos / 47 species, worker
+# http://127.0.0.1:8001, scripts/eval_blend.py):
+#   SAME species pairs:      p50=0.486  p95=0.737
+#   DIFFERENT species pairs: p50=0.203  p95=0.411
+# The previous 0.80 sat above the same-species p95 (0.737), so the un-gate never
+# fired in practice. 0.45 sits below the same-species median (most genuine repeat
+# photos clear it) and above the different-species p95 (most look-alikes stay
+# below). PENDING: real-photo validation on Leon's garden photos (~2026-08-20);
+# re-run eval_blend.py and re-fit this floor before trusting it in production.
+_IMAGE_MATCH_MIN = 0.45
 
 
 def _blend_scores(
