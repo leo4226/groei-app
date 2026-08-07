@@ -1049,6 +1049,12 @@ export type Translations = {
     // ── Zone picker ──
     zonePlants: (n: number) => string
     zoneEmpty: string       // shown when the account has no maps yet
+    labelPlace: string      // placement picker field label
+    labelPlaceDesc: string  // placement picker field description
+    // ── Placement picker (tap-to-place on the selected map) ──
+    placePickerHint: string   // "Tap the spot on the map where the plant should go"
+    placePickerSet: string    // "Tap again to move the marker"
+    placePickerUnavailable: string // shown when the map has no usable viewbox
     /**
      * Placement advice, keyed by the light level we actually know for the
      * plant. Previously one fixed "prefers a bright spot without direct

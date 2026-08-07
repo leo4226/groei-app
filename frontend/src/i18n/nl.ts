@@ -1075,6 +1075,11 @@ export const nl: Translations = {
     phaseEstablished: 'Volwassen',
     zonePlants: (n: number) => `${n} planten`,
     zoneEmpty: 'Nog geen kaarten — maak eerst een tuin of plattegrond om deze plant te plaatsen. Je kunt hem ook zonder plek toevoegen en later plaatsen.',
+    labelPlace: 'Plek op de kaart',
+    labelPlaceDesc: 'Optioneel — tik aan waar de plant moet staan. Zonder tik kiezen we een willekeurige vrije plek.',
+    placePickerHint: 'Tik op de plek op de kaart waar de plant moet komen',
+    placePickerSet: 'Tik nogmaals om het markerpunt te verplaatsen',
+    placePickerUnavailable: 'Deze kaart kan nog niet gebruikt worden om te plaatsen',
     zoneAdvice: {
       shade: (subject: string) => `Tip: ${subject} doet het beter uit de volle zon — een schaduwrijke plek past goed.`,
       indirect: (subject: string) => `Tip: ${subject} staat het liefst op een lichte plek zonder direct zonlicht.`,
