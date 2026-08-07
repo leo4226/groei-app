@@ -41,6 +41,8 @@ const GameHostPage = lazy(() => import('./pages/GameHostPage'))
 const GamePlayerPage = lazy(() => import('./pages/GamePlayerPage'))
 const DiscoveryCard = lazy(() => import('./pages/DiscoveryCard'))
 const FieldJournalPage = lazy(() => import('./pages/FieldJournalPage'))
+const AtlasPage = lazy(() => import('./pages/AtlasPage'))
+const AtlasGardenPage = lazy(() => import('./pages/AtlasGardenPage'))
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -347,6 +349,22 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <PlanningCalendarPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/atlas"
+                element={
+                  <RequireAuth>
+                    <AtlasPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/atlas/:slug"
+                element={
+                  <RequireAuth>
+                    <AtlasGardenPage />
                   </RequireAuth>
                 }
               />

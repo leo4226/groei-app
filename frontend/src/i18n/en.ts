@@ -8,6 +8,49 @@ export const en: Translations = {
     maps: 'Map',
     calendar: 'Calendar',
     settings: 'Settings',
+    atlas: 'Atlas',
+  },
+
+  atlas: {
+    mastheadTitle: 'Public garden',
+    mastheadAccent: 'atlas',
+    lede: 'Real gardens, opened up for inspiration. Every garden you see here was shared by its owner on purpose, anonymised and without an exact address.',
+    filters: {
+      cityLabel: 'City',
+      cityPlaceholder: 'Search by city or garden name',
+      monthLabel: 'Month',
+      monthAny: 'Any month',
+      scoreLabel: 'Biodiversity score',
+      scoreAny: 'Any score',
+      sortLabel: 'Sort',
+      sortScore: 'Best score',
+      sortName: 'Name',
+      sortNewest: 'Newest',
+    },
+    loading: 'Loading public gardens…',
+    loadFailed: 'Could not load public gardens',
+    retry: 'Try again',
+    emptyTitle: 'No public gardens yet',
+    emptyLede: 'When someone shares a garden, it appears here. Share one of yours from its map settings.',
+    notFound: 'Garden not found',
+    backToAtlas: 'Back to atlas',
+    card: {
+      plantCount: (n) => `${n} plants`,
+      speciesCount: (n) => `${n} species`,
+      scoreLabel: 'biodiversity score',
+      flowerMonths: 'flowering',
+    },
+    detail: {
+      backLabel: 'All gardens',
+      scoreLabel: 'Biodiversity score',
+      speciesLabel: 'species',
+      plantLabel: 'plants',
+      floweringMonthsLabel: 'Flowering months',
+      plantsTitle: 'Plants',
+      noPlants: 'This garden has no plants yet.',
+      noCity: 'Somewhere outdoors',
+      publicBadge: 'Public garden',
+    },
   },
 
   dashboard: {
@@ -222,6 +265,14 @@ export const en: Translations = {
     // PageMasthead keys (issue #180)
     mastheadTitle: 'Map',
     mastheadAccent: 'settings',
+    // Public garden atlas opt-in (#804)
+    publicSectionTitle: 'Public garden atlas',
+    publicToggleLabel: 'Share this garden in the public atlas',
+    publicToggleHint: 'Visible to everyone — anonymised, without an exact address. Turn it on to let others browse and get inspired.',
+    publicToggleDesc: 'Off by default. Only gardens you share appear in the atlas.',
+    photosToggleLabel: 'Also share photos',
+    photosToggleHint: 'Photos stay hidden unless you share them too.',
+    outdoorOnlyHint: 'Only outdoor gardens can be shared in the atlas.',
   },
 
   editor: {

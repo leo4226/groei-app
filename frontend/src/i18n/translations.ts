@@ -12,6 +12,49 @@ export type Translations = {
     maps: string
     calendar: string
     settings: string
+    atlas: string
+  }
+
+  atlas: {
+    mastheadTitle: string
+    mastheadAccent: string
+    lede: string
+    filters: {
+      cityLabel: string
+      cityPlaceholder: string
+      monthLabel: string
+      monthAny: string
+      scoreLabel: string
+      scoreAny: string
+      sortLabel: string
+      sortScore: string
+      sortName: string
+      sortNewest: string
+    }
+    loading: string
+    loadFailed: string
+    retry: string
+    emptyTitle: string
+    emptyLede: string
+    notFound: string
+    backToAtlas: string
+    card: {
+      plantCount: (n: number) => string
+      speciesCount: (n: number) => string
+      scoreLabel: string
+      flowerMonths: string
+    }
+    detail: {
+      backLabel: string
+      scoreLabel: string
+      speciesLabel: string
+      plantLabel: string
+      floweringMonthsLabel: string
+      plantsTitle: string
+      noPlants: string
+      noCity: string
+      publicBadge: string
+    }
   }
 
   dashboard: {
@@ -196,6 +239,14 @@ export type Translations = {
     // PageMasthead keys (issue #180)
     mastheadTitle: string
     mastheadAccent: string
+    // Public garden atlas opt-in (#804)
+    publicSectionTitle: string
+    publicToggleLabel: string
+    publicToggleHint: string
+    publicToggleDesc: string
+    photosToggleLabel: string
+    photosToggleHint: string
+    outdoorOnlyHint: string
   }
 
   editor: {
