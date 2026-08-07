@@ -9,12 +9,11 @@ import {
   SAFE_INSET_STYLE,
 } from '../safeAreaLayout'
 
-import mapPageSrc from '../../pages/MapPage.tsx?raw'
-import layoutEditorSrc from '../../pages/LayoutEditorPage.tsx?raw'
-import demoGardenSrc from '../../pages/DemoGardenPage.tsx?raw'
-import plantDetailSrc from '../../pages/PlantDetail.tsx?raw'
-import editorCanvasSrc from '../../components/editor/EditorCanvas.tsx?raw'
-import identifyCameraSrc from '../../components/identify/IdentifyCamera.tsx?raw'
+const SOURCES = import.meta.glob('../../**/*.tsx', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
 
 /**
  * Screens that paint to the physical top of the display. `index.html` sets
@@ -23,17 +22,39 @@ import identifyCameraSrc from '../../components/identify/IdentifyCamera.tsx?raw'
  * themselves. A bare numeric `top-N` on an absolutely or fixed positioned
  * element in one of these files is the bug this suite exists to catch.
  */
-const FULL_BLEED_SCREENS: [name: string, source: string][] = [
-  ['pages/MapPage.tsx', mapPageSrc],
-  ['pages/LayoutEditorPage.tsx', layoutEditorSrc],
-  ['pages/DemoGardenPage.tsx', demoGardenSrc],
-  ['pages/PlantDetail.tsx', plantDetailSrc],
-  ['components/editor/EditorCanvas.tsx', editorCanvasSrc],
-  ['components/identify/IdentifyCamera.tsx', identifyCameraSrc],
+const FULL_BLEED_SCREENS = [
+  'pages/MapPage.tsx',
+  'pages/LayoutEditorPage.tsx',
+  'pages/DemoGardenPage.tsx',
+  'pages/PlantDetail.tsx',
+  'components/editor/EditorCanvas.tsx',
+  'components/identify/IdentifyCamera.tsx',
 ]
 
 /** `top-0` is fine on a full-bleed layer; `top-full` / `top-1/2` are relative. */
 const OFFENDING_TOP = /\b(?:absolute|fixed)\b[^"'`]*?\btop-([1-9]\d*)(?![\d/])/g
+
+/**
+ * Glob keys are relative to this file and vary in depth
+ * ('../../pages/MapPage.tsx', '../editor/EditorCanvas.tsx'). Resolve them
+ * against this directory so both shapes become 'components/editor/...' etc.
+ */
+const TEST_DIR = ['src', 'components', '__tests__']
+
+function srcPath(globKey: string): string {
+  const segments = [...TEST_DIR]
+  for (const part of globKey.split('/')) {
+    if (part === '..') segments.pop()
+    else if (part !== '.') segments.push(part)
+  }
+  return segments.slice(1).join('/') // drop the leading 'src'
+}
+
+function sourceFor(screen: string): string {
+  const hit = Object.entries(SOURCES).find(([key]) => srcPath(key).endsWith(screen))
+  if (!hit) throw new Error(`${screen} not found — update FULL_BLEED_SCREENS`)
+  return hit[1]
+}
 
 describe('safe-area tokens', () => {
   it('every chrome class consumes an inset', () => {
@@ -53,13 +74,31 @@ describe('safe-area tokens', () => {
 })
 
 describe('full-bleed screens keep their chrome out of the display cutout', () => {
-  for (const [screen, source] of FULL_BLEED_SCREENS) {
+  for (const screen of FULL_BLEED_SCREENS) {
     it(`${screen} anchors nothing to a bare numeric top`, () => {
-      const offenders = [...source.matchAll(OFFENDING_TOP)].map((m) => m[0].trim())
+      const offenders = [...sourceFor(screen).matchAll(OFFENDING_TOP)].map((m) => m[0].trim())
       expect(
         offenders,
         `Use CHROME_TOP_CLASS (or a calc on --safe-top) instead of a bare top-N: ${offenders.join(' | ')}`,
       ).toEqual([])
     })
   }
+
+  it('scans every screen that uses the safe-area tokens', () => {
+    // The list above is hand-maintained, so a future full-bleed screen could be
+    // added without being scanned. Any file reaching for these tokens is by
+    // definition viewport-anchored — pull it into the list rather than letting
+    // it drift out of coverage.
+    const usingTokens = Object.keys(SOURCES)
+      .filter((key) => /from '[^']*safeAreaLayout'/.test(SOURCES[key]))
+      .map(srcPath)
+
+    const unscanned = usingTokens.filter(
+      (path) => !FULL_BLEED_SCREENS.some((screen) => path.endsWith(screen)),
+    )
+    expect(
+      unscanned,
+      `Add these to FULL_BLEED_SCREENS so their top anchors are checked: ${unscanned.join(', ')}`,
+    ).toEqual([])
+  })
 })
