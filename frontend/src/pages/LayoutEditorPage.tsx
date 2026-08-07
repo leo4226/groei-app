@@ -18,7 +18,7 @@ import EditorTour from '../components/editor/EditorTour'
 import SelectionSheet from '../components/editor/SelectionSheet'
 import StarterWizard, { type StarterWizardResult } from './editor/StarterWizard'
 import { useIsTouch } from '../hooks/useIsTouch'
-import { CHROME_TOP_CLASS, CHROME_TOP_ROW3_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS } from '../components/safeAreaLayout'
+import { CHROME_TOP_CLASS, CHROME_TOP_ROW3_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS, CHROME_BOTTOM_CLASS } from '../components/safeAreaLayout'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -41,6 +41,10 @@ export default function LayoutEditorPage() {
 
   const editor = useEditorState()
   const isTouch = useIsTouch()
+  /** Choosing a tool is the last thing you do in the palette — the next step is
+   *  drawing, which needs the canvas visible. On desktop the panel is a
+   *  permanent sidebar, so it stays put. */
+  const closeDrawerOnTouch = useCallback(() => { if (isTouch) setSidebarOpen(false) }, [isTouch])
   const tour = useEditorTour(mapId, editor.mapType, t.editor.tour)
   const gardenBounds = useMemo(
     () => deriveGardenBounds(editor.zones),
@@ -558,7 +562,7 @@ export default function LayoutEditorPage() {
           <button
             onClick={() => handleExit('/maps')}
             aria-label={t.editor.toolbar.back}
-            className={`absolute z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted ${CHROME_TOP_CLASS} ${CHROME_LEFT_CLASS}`}
+            className={`absolute z-40 w-11 h-11 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted ${CHROME_TOP_CLASS} ${CHROME_LEFT_CLASS}`}
           >
             <Glyph name="arrow-left" size={20} />
           </button>
@@ -573,7 +577,7 @@ export default function LayoutEditorPage() {
             <button
               onClick={() => setPreviewMode((p) => !p)}
               aria-label={previewMode ? t.editor.toolbar.edit : t.editor.toolbar.preview}
-              className={`w-10 h-10 rounded-full backdrop-blur-md border shadow-lg flex items-center justify-center text-base ${
+              className={`w-11 h-11 rounded-full backdrop-blur-md border shadow-lg flex items-center justify-center text-base ${
                 previewMode ? 'bg-primary text-white border-primary' : 'bg-surface/85 text-text-muted border-border'
               }`}
             >
@@ -583,7 +587,7 @@ export default function LayoutEditorPage() {
               <button
                 onClick={() => setShowMoreActions(v => !v)}
                 aria-label={t.editor.more}
-                className="w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg leading-none"
+                className="w-11 h-11 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted text-lg leading-none"
               >
                 {'⋮'}
               </button>
@@ -610,9 +614,13 @@ export default function LayoutEditorPage() {
             </div>
           </div>
 
-          {/* Tool dock — bottom-centre (thumb zone): tools + the mode/zone picker */}
-          {!previewMode && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+          {/* Tool dock — bottom-centre (thumb zone): tools + the mode/zone picker.
+              Hidden while the palette drawer is open: the drawer is 224px of a
+              390px screen and covered 168px of the 278px dock, including the
+              very button that opens it — a highlighted control that did
+              nothing when tapped. */}
+          {!previewMode && !sidebarOpen && (
+            <div className={`absolute left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 ${CHROME_BOTTOM_CLASS}`}>
               {/* Undo — a stray drag resizes a zone, so recovery has to be one
                   tap. It was only in the ⋮ overflow menu, while the ⟲ in the
                   zoom pill (fit-to-content) looked like undo and was not. */}
@@ -765,6 +773,25 @@ export default function LayoutEditorPage() {
                   : 'hidden lg:flex'
               }`}
             >
+            {/* Explicit way out. The drawer covers its own toggle, and the only
+                remaining exit was the strip of backdrop to its left — which
+                nothing signposts. */}
+            {sidebarOpen && (
+              <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between pl-3 bg-surface border-b border-border">
+                <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  {t.editor.legend}
+                </span>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label={t.editor.closeLegend}
+                  className="w-11 h-11 flex items-center justify-center text-text-muted"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <EditorLegendPanel
               activeZoneType={editor.activeZoneType}
               activeTool={editor.activeTool}
@@ -772,9 +799,9 @@ export default function LayoutEditorPage() {
               objectPreset={editor.objectPreset}
               shadowCasterPreset={editor.shadowCasterPreset}
               onSetZoneType={editor.setZoneType}
-              onSetTool={editor.setTool}
+              onSetTool={(tool) => { editor.setTool(tool); closeDrawerOnTouch() }}
               onSetMapType={(t) => editor.setMapType(t as MapType)}
-              onSetObjectPreset={editor.setObjectPreset}
+              onSetObjectPreset={(preset) => { editor.setObjectPreset(preset); if (preset) closeDrawerOnTouch() }}
               onSetShadowCasterPreset={editor.setShadowCasterPreset}
               shadowMode={shadowMode}
               onSetShadowMode={setShadowMode}

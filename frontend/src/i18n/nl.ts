@@ -393,6 +393,7 @@ export const nl: Translations = {
     loading: 'Editor laden...',
     notFound: 'Kaart niet gevonden',
     legend: 'Legenda',
+    closeLegend: 'Sluit palet',
     legendLabels: {
       container: 'Pot / Bak',
       hardscape: 'Tuinobject',

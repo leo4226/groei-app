@@ -5,6 +5,7 @@ import {
   CHROME_TOP_ROW3_CLASS,
   CHROME_LEFT_CLASS,
   CHROME_RIGHT_CLASS,
+  CHROME_BOTTOM_CLASS,
   CANVAS_TOP_CLASS,
   SAFE_INSET_STYLE,
 } from '../safeAreaLayout'
@@ -33,6 +34,14 @@ const FULL_BLEED_SCREENS = [
 
 /** `top-0` is fine on a full-bleed layer; `top-full` / `top-1/2` are relative. */
 const OFFENDING_TOP = /\b(?:absolute|fixed)\b[^"'`]*?\btop-([1-9]\d*)(?![\d/])/g
+
+/**
+ * The same rule for the bottom edge. This suite only ever scanned the top, so
+ * the editor's tool dock sat at a bare `bottom-3` from the day it shipped: on a
+ * phone with a home indicator the lower half of its 44px buttons fell inside
+ * the system gesture strip. A cutout is not only at the top of the screen.
+ */
+const OFFENDING_BOTTOM = /\b(?:absolute|fixed)\b[^"'`]*?\bbottom-([1-9]\d*)(?![\d/])/g
 
 /**
  * Glob keys are relative to this file and vary in depth
@@ -83,6 +92,36 @@ describe('full-bleed screens keep their chrome out of the display cutout', () =>
       ).toEqual([])
     })
   }
+
+  /**
+   * Pre-existing bottom-anchored chrome, baselined the way the i18n guard
+   * baselines its offenders: this list must only ever shrink. They predate the
+   * bottom scan and sit on the map screens, which have their own BottomNav
+   * interplay (`--bottom-nav-height`) and want measuring before they move —
+   * some of these are canvases where sitting under the nav is intended, and
+   * others are pills that would currently hide behind it on a notched phone.
+   */
+  const BOTTOM_BASELINE: Record<string, number> = {
+    'pages/MapPage.tsx': 4,
+    'pages/DemoGardenPage.tsx': 2,
+    'pages/PlantDetail.tsx': 1,
+  }
+
+  for (const screen of FULL_BLEED_SCREENS) {
+    it(`${screen} anchors nothing new to a bare numeric bottom`, () => {
+      const offenders = [...sourceFor(screen).matchAll(OFFENDING_BOTTOM)].map((m) => m[0].trim())
+      const allowed = BOTTOM_BASELINE[screen] ?? 0
+      expect(
+        offenders.length,
+        `Use CHROME_BOTTOM_CLASS (or a calc on --safe-bottom) instead of a bare bottom-N. ` +
+        `Baseline for this file is ${allowed}; found ${offenders.length}: ${offenders.join(' | ')}`,
+      ).toBeLessThanOrEqual(allowed)
+    })
+  }
+
+  it('exposes a bottom token at all — the edge that had none', () => {
+    expect(CHROME_BOTTOM_CLASS).toContain('--chrome-bottom')
+  })
 
   it('scans every screen that uses the safe-area tokens', () => {
     // The list above is hand-maintained, so a future full-bleed screen could be
