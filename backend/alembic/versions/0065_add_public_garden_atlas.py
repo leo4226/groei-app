@@ -1,12 +1,12 @@
 """add public garden atlas flags to maps
 
-Revision ID: 0063
-Revises: 0062
+Revision ID: 0065
+Revises: 0064
 """
 from alembic import op
 
-revision = "0063"
-down_revision = "0062"
+revision = "0065"
+down_revision = "0064"
 branch_labels = None
 depends_on = None
 
