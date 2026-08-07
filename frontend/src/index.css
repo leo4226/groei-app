@@ -55,7 +55,27 @@
 }
 
 :root {
-  --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  /* Display-cutout insets, named once so every screen consumes the same value.
+     index.html sets viewport-fit=cover and apple-mobile-web-app-status-bar-style
+     black-translucent, which means that in an installed (standalone) PWA the
+     page is drawn UNDER the status bar, notch, Dynamic Island and camera hole.
+     Anything anchored to a viewport edge must therefore add the inset itself —
+     floating map/editor chrome that used a bare `top-3` sat behind the clock
+     and battery on every device with a cutout.
+
+     Kept as variables rather than inline env() so a test harness can override
+     them to simulate a device. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Floating chrome offsets: the 12px/16px design gap PLUS the cutout. */
+  --chrome-top: calc(var(--safe-top) + 0.75rem);
+  --chrome-left: calc(var(--safe-left) + 0.75rem);
+  --chrome-right: calc(var(--safe-right) + 0.75rem);
+
+  --bottom-nav-height: calc(4rem + var(--safe-bottom));
 }
 
 body {

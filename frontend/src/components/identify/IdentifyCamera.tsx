@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../context/LanguageContext'
+import { SAFE_INSET_STYLE } from '../safeAreaLayout'
 
 export type RetakeReason = 'no-match' | 'low-confidence' | 'none'
 
@@ -151,7 +152,7 @@ export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none', tit
       className="fixed inset-0 z-[60] bg-black flex flex-col"
       style={{ touchAction: 'none' }}
     >
-      <div className="fixed top-0 inset-x-0 flex items-center justify-between p-4 text-white z-10">
+      <div className="fixed top-0 inset-x-0 flex items-center justify-between pb-4 text-white z-10" style={SAFE_INSET_STYLE}>
         <button onClick={onCancel} aria-label={t.identify.camera.cancel} className="text-2xl">×</button>
         <span className="text-sm opacity-75">{title ?? t.identify.camera.title}</span>
         <span className="w-6" />
@@ -172,7 +173,7 @@ export function IdentifyCamera({ onCapture, onCancel, retakeReason = 'none', tit
               style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
             />
             {zoom > 1.01 && (
-              <div className="fixed top-16 inset-x-0 flex justify-center pointer-events-none z-10">
+              <div className="fixed inset-x-0 flex justify-center pointer-events-none z-10 top-[calc(var(--safe-top)+4rem)]">
                 <span className="px-2 py-0.5 rounded-full bg-black/50 text-white text-xs tabular-nums">
                   {zoom.toFixed(1)}×
                 </span>

@@ -18,6 +18,7 @@ import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
 import WallElementPlacementOverlay from './WallElementPlacementOverlay'
 import { zoomAroundViewportCenter } from '../../utils/editorViewport'
+import { CHROME_TOP_CLASS } from '../safeAreaLayout'
 
 const CANVAS_W = 680
 const CANVAS_H = 680
@@ -1266,7 +1267,7 @@ export default function EditorCanvas({
           )}
         </g>
       </svg>
-      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? 'top-3 left-16' : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
+      <div className={`absolute flex items-center gap-1 bg-surface/90 border border-border rounded-lg shadow-md backdrop-blur-sm p-1 ${isTouch ? `${CHROME_TOP_CLASS} left-[calc(var(--safe-left)+4rem)]` : 'bottom-3 right-3'}`}>{/* touch: top row, just right of the back pill */}
         <button onClick={() => changeZoom((currentZoom) => currentZoom - ZOOM_STEP)}
           className="w-7 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-sm font-bold">−</button>
         <span className="text-xs text-text-muted font-medium w-10 text-center select-none">{Math.round(zoom * 100)}%</span>

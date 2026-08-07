@@ -17,6 +17,7 @@ import { useEditorTour, hasTourBeenSeen, markTourSeen } from '../hooks/useEditor
 import EditorTour from '../components/editor/EditorTour'
 import StarterWizard, { type StarterWizardResult } from './editor/StarterWizard'
 import { useIsTouch } from '../hooks/useIsTouch'
+import { CHROME_TOP_CLASS, CHROME_TOP_ROW3_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS } from '../components/safeAreaLayout'
 
 export default function LayoutEditorPage() {
   const t = useT()
@@ -478,13 +479,13 @@ export default function LayoutEditorPage() {
           <button
             onClick={() => handleExit('/maps')}
             aria-label={t.editor.toolbar.back}
-            className="absolute top-3 left-3 z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted"
+            className={`absolute z-40 w-10 h-10 rounded-full bg-surface/85 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-text-muted ${CHROME_TOP_CLASS} ${CHROME_LEFT_CLASS}`}
           >
             <Glyph name="arrow-left" size={20} />
           </button>
 
           {/* Cluster — top-right: save status + preview toggle + more menu */}
-          <div className="absolute top-3 right-3 z-40 flex items-center gap-1.5">
+          <div className={`absolute z-40 flex items-center gap-1.5 ${CHROME_TOP_CLASS} ${CHROME_RIGHT_CLASS}`}>
             <span className={`px-2 py-1 rounded-full text-[10px] font-medium bg-surface/85 backdrop-blur-md border border-border shadow ${
               saveStatus === 'saved' ? 'text-primary' : saveStatus === 'saving' ? 'text-text-muted' : 'text-pumpkin-swirl'
             }`}>
@@ -628,7 +629,7 @@ export default function LayoutEditorPage() {
             {/* Toggle button — narrow desktop only; touch uses the picker in the bottom dock */}
             <button
               onClick={() => setSidebarOpen((o) => !o)}
-              className={`lg:hidden fixed top-20 right-3 z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted ${isTouch ? 'hidden' : ''}`}
+              className={`lg:hidden fixed ${CHROME_TOP_ROW3_CLASS} ${CHROME_RIGHT_CLASS} z-40 w-10 h-10 rounded-xl bg-surface border border-border shadow-lg flex items-center justify-center text-text-muted ${isTouch ? 'hidden' : ''}`}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 {sidebarOpen ? (
@@ -658,7 +659,7 @@ export default function LayoutEditorPage() {
             <div
               className={`w-56 lg:w-56 flex flex-col bg-surface border-l border-border overflow-y-auto shrink-0 ${
                 sidebarOpen
-                  ? 'fixed right-0 top-0 bottom-0 z-50 shadow-2xl'
+                  ? 'fixed right-0 top-0 bottom-0 z-50 shadow-2xl pt-[var(--safe-top)] pb-[var(--safe-bottom)]'
                   : 'hidden lg:flex'
               }`}
             >

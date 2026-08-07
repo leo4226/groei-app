@@ -34,6 +34,7 @@ import type { ObjectPreset } from '../hooks/useEditorState'
 import * as clientApis from '../api/client'
 import type { PageContext } from '../api/chat'
 import { useT } from '../context/LanguageContext'
+import { CANVAS_TOP_CLASS, CHROME_TOP_CLASS, CHROME_TOP_ROW2_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS } from '../components/safeAreaLayout'
 import { bucketFor } from '../utils/lightQuality'
 import { localIsoDate } from '../utils/dateFormat'
 import { isInsideZone } from '../utils/svgCoords'
@@ -560,7 +561,7 @@ export default function MapPage() {
   return (
     <div className="relative h-full [@media(orientation:landscape) and (max-height:500px)]:h-dvh overflow-hidden">
       {/* Map fills safe area between top pills and bottom sheet */}
-      <div className="absolute top-12 bottom-14 left-0 right-0">
+      <div className={`absolute bottom-14 left-0 right-0 ${CANVAS_TOP_CLASS}`}>
         <MapView
           map={map}
           plants={plants}
@@ -628,17 +629,17 @@ export default function MapPage() {
 
       {/* Top-left: garden pill — z-30 so its map-switch dropdown overlays the
           unplaced-plants tray (z-20) stacked directly below it */}
-      <div className="absolute top-3 left-3 z-30 landscape-mobile-hide">
+      <div className={`absolute z-30 landscape-mobile-hide ${CHROME_TOP_CLASS} ${CHROME_LEFT_CLASS}`}>
         <MapTopBar map={map} allMaps={maps} labelMode={labelMode} onSetLabelMode={setLabelMode} showWarnings={showWarnings} onToggleWarnings={() => setShowWarnings((v: boolean) => !v)} />
       </div>
 
       {/* Left, below the garden pill: unplaced-plants tray */}
-      <div className="absolute top-16 left-3 z-20 landscape-mobile-hide">
+      <div className={`absolute z-20 landscape-mobile-hide ${CHROME_TOP_ROW2_CLASS} ${CHROME_LEFT_CLASS}`}>
         <UnplacedPlantsTray plants={unplacedPlants} onPlace={handlePlaceUnplaced} />
       </div>
 
       {/* Action cluster: top-right in portrait, bottom-center in landscape */}
-      <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-2 md:gap-3 landscape-action-bottom">
+      <div className={`absolute z-20 flex flex-col items-end gap-2 md:gap-3 landscape-action-bottom ${CHROME_TOP_CLASS} ${CHROME_RIGHT_CLASS}`}>
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={mapWaterStatus}
@@ -681,7 +682,7 @@ export default function MapPage() {
       )}
 
       {placingPlant && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 landscape-mobile-hide rounded-2xl border border-border bg-surface/95 px-3.5 py-2.5 shadow-lg flex items-center gap-3 max-w-[85vw]" style={{ backdropFilter: 'blur(10px)' }}>
+        <div className={`absolute left-1/2 -translate-x-1/2 z-50 landscape-mobile-hide ${CHROME_TOP_ROW2_CLASS} rounded-2xl border border-border bg-surface/95 px-3.5 py-2.5 shadow-lg flex items-center gap-3 max-w-[85vw]`} style={{ backdropFilter: 'blur(10px)' }}>
           <span className="font-heading text-xs text-text-soft leading-snug">
             {t.mapPage.placeSpotHint(placingPlant.name)}
           </span>
