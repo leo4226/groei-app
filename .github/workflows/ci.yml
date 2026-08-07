@@ -13,7 +13,11 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend · tsc + tests + build
+    # Keep this name exactly as-is: branch protection requires a status check
+    # literally called "Frontend · tsc + build", so renaming the job removes
+    # the required check and blocks every merge until the ruleset is updated
+    # to match. Rename both together or neither.
+    name: Frontend · tsc + build
     runs-on: ubuntu-latest
     defaults:
       run:
