@@ -91,7 +91,7 @@ export default function GameHostPage() {
     if (!code) return
     setStep('analyzing')
     try {
-      const resp = await plantsApi.identify(blob, activeLang)
+      const resp = await plantsApi.identify([blob], activeLang)
       const topCandidate = resp.candidates?.[0]?.scientific_name ?? ''
       const otherCandidates = resp.candidates?.slice(1, 3).map((c) => c.scientific_name) ?? []
       const confidence = resp.candidates?.[0]?.confidence ?? 0

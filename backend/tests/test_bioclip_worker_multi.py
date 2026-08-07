@@ -2,7 +2,10 @@
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
+
+torch = pytest.importorskip("torch")  # noqa: F401 — worker requires torch (GPU box only)
 
 import bioclip_worker as worker
 
