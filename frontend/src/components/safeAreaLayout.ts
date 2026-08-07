@@ -28,6 +28,15 @@ export const CHROME_LEFT_CLASS = 'left-[var(--chrome-left)]'
 export const CHROME_RIGHT_CLASS = 'right-[var(--chrome-right)]'
 
 /**
+ * Bottom-anchored floating chrome: 12px + the home indicator.
+ *
+ * The editor's tool dock used a bare `bottom-3`, so on a phone with a home
+ * indicator the lower half of its 44px buttons sat inside the gesture strip —
+ * the same class of bug the top tokens fixed, on the edge nobody checked.
+ */
+export const CHROME_BOTTOM_CLASS = 'bottom-[var(--chrome-bottom)]'
+
+/**
  * A second row of chrome stacked under the first (e.g. the unplaced-plants
  * tray below the garden pill): 64px + the top cutout.
  */

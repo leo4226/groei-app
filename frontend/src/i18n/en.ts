@@ -393,6 +393,7 @@ export const en: Translations = {
     loading: 'Loading editor...',
     notFound: 'Map not found',
     legend: 'Legend',
+    closeLegend: 'Close palette',
     legendLabels: {
       container: 'Container',
       hardscape: 'Garden object',

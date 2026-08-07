@@ -30,8 +30,11 @@ export default function SelectionSheet({ title, children, onClose }: Props) {
   return (
     <div
       className="absolute inset-x-0 z-30 border-t border-border bg-surface/97 shadow-[0_-4px_20px_rgba(31,42,30,0.13)] backdrop-blur-md"
-      // Sits directly above the floating tool dock (bottom-3, ~44px tall).
-      style={{ bottom: 'calc(var(--safe-bottom) + 4.25rem)' }}
+      // Clears the floating tool dock, which sits at --chrome-bottom and
+      // measures ~62px tall. The old 4.25rem was measured against a dock
+      // anchored at a bare `bottom-3`, and left the sheet overlapping it by
+      // 6px on any device reporting no bottom inset.
+      style={{ bottom: 'calc(var(--chrome-bottom) + 4.5rem)' }}
     >
       <div className="flex items-center gap-1 px-3 py-2">
         <button

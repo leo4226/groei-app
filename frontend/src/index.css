@@ -74,6 +74,10 @@
   --chrome-top: calc(var(--safe-top) + 0.75rem);
   --chrome-left: calc(var(--safe-left) + 0.75rem);
   --chrome-right: calc(var(--safe-right) + 0.75rem);
+  /* The bottom edge needs the same treatment as the top: on a phone with a
+     home indicator, chrome anchored at a bare `bottom-3` lands inside the
+     gesture strip, where the system competes for the touch. */
+  --chrome-bottom: calc(var(--safe-bottom) + 0.75rem);
 
   --bottom-nav-height: calc(4rem + var(--safe-bottom));
 }

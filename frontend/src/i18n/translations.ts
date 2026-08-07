@@ -358,6 +358,7 @@ export type Translations = {
     offCanvas: string
     shadowCasterList: (count: number) => string
     legend: string
+    closeLegend: string
     legendLabels: Record<string, string>
     mode: string          // "Mode" / "Modus"
     legendZones: string   // "Zones" / "Zones"
