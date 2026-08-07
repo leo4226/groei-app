@@ -331,10 +331,10 @@ export const LOCAL_PLANTS: LocalPlant[] = [
   {
     id: 'hydrangea-macrophylla',
     dutchName: 'Hortensia',
-    englishName: '',
+    englishName: 'Bigleaf hydrangea',
     latinName: 'Hydrangea macrophylla',
     commonName: 'Hortensia',
-    iconKey: null,
+    iconKey: 'hydrangea',
     sunRequirement: 'partial_sun',
     minSunHours: 2,
     maxSunHours: 6,

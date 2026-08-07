@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { LocalPlant } from '../../data/plants-dataset'
-import { PICKABLE_PLANTS, matchesPlantQuery } from '../../data/pickableSpecies'
+import { PICKABLE_PLANTS, matchesPlantQuery, displayPlantName } from '../../data/pickableSpecies'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 import { resolveIconUrl } from '../../utils/icons'
@@ -24,7 +24,6 @@ interface Props {
 export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName }: Props) {
   const t = useT()
   const [query, setQuery] = useState('')
-  const isEnglish = t.locale.startsWith('en')
 
   // `matchesPlantQuery` searches every name we might be showing — an
   // English-mode user searching for the name on screen used to get "no results"
@@ -128,17 +127,26 @@ export default function PlantPickerSheet({ onClose, onSelectPlant, onCustomName 
                   {plant.iconKey ? (
                     <img
                       src={resolveIconUrl(plant.iconKey)!}
-                      alt={plant.dutchName}
+                      alt={displayPlantName(plant, t.locale)}
                       className="w-8 h-8 object-contain"
                     />
                   ) : (
+                    // Awaiting bespoke artwork. A tinted leaf tile reads as a
+                    // deliberate category marker; the bare coloured square this
+                    // replaced read as a missing asset, which is why these
+                    // plants used to be hidden from the picker entirely.
                     <div
-                      className="w-8 h-8 rounded-md shrink-0"
-                      style={{ background: TYPE_COLOR[plant.type] ?? '#909090' }}
-                    />
+                      className="w-8 h-8 rounded-md shrink-0 flex items-center justify-center"
+                      style={{
+                        background: (TYPE_COLOR[plant.type] ?? '#909090') + '24',
+                        color: TYPE_COLOR[plant.type] ?? '#909090',
+                      }}
+                    >
+                      <Glyph name="leaf" size={17} />
+                    </div>
                   )}
                   <span className="text-xs font-semibold text-text leading-tight line-clamp-2">
-                    {isEnglish ? (plant.englishName || plant.dutchName) : plant.dutchName}
+                    {displayPlantName(plant, t.locale)}
                   </span>
                   <span className="text-[10px] text-text-muted italic leading-tight line-clamp-1">
                     {plant.latinName}
