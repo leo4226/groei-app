@@ -420,6 +420,17 @@ export type Translations = {
       shapeBalconyHint: string
       shapeCustom: string
       shapeCustomHint: string
+      // Indoor variants (#841 F1)
+      shapeTitleIndoor: string
+      shapeSubtitleIndoor: string
+      sizeTitleIndoor: string
+      shapeStudio: string
+      shapeStudioHint: string
+      shapeTwoRoom: string
+      shapeTwoRoomHint: string
+      shapeLroom: string
+      shapeLroomHint: string
+      shapeCustomIndoorHint: string
       sizeTitle: string
       sizeSubtitle: string
       widthLabel: string

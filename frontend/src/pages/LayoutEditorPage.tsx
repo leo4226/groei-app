@@ -75,14 +75,22 @@ export default function LayoutEditorPage() {
         loadedMapIdRef.current = mapId
         setMap(m)
         setMapObjects(objs.filter((o: MapObject) => o.map_id === mapId))
+        const normaliseType = (raw: string | undefined | null): MapType =>
+          (raw === 'indoor' || raw === 'house') ? 'indoor' : 'outdoor'
         if (m.canvas_data) {
           try {
             const data = JSON.parse(m.canvas_data) as CanvasData
             // Normalise mapType to 'outdoor'|'indoor', mapping legacy 'garden'/'house' values
-            const raw = (data.mapType as string) || m.map_type
-            data.mapType = (raw === 'indoor' || raw === 'house') ? 'indoor' : 'outdoor'
+            data.mapType = normaliseType((data.mapType as string) || m.map_type)
             editor.loadCanvasData(data)
           } catch { /* start blank */ }
+        } else {
+          // A map with no canvas_data has nothing to load, and the editor's
+          // default is 'outdoor' — so a brand-new *indoor* map opened with the
+          // garden palette, garden zone types and the sun controls, and the
+          // first-run wizard asked it for a compass bearing. The map's own
+          // type has to be seeded from the record.
+          editor.setMapTypeSilently(normaliseType(m.map_type))
         }
       })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -100,11 +108,11 @@ export default function LayoutEditorPage() {
       return
     }
     autoIntroRef.current = mapId
-    if (editor.mapType === 'outdoor') {
-      setShowWizard(true)
-    } else {
-      tour.start()
-    }
+    // Indoor used to fall straight through to the tour on an empty canvas —
+    // the harder of the two models got the weaker onboarding (#841 F1). Both
+    // now open the wizard; it asks two questions for a floor plan and four
+    // for a garden, and "Draw my own" still lands on the tour.
+    setShowWizard(true)
   }, [loading, mapId, editor.mapType])
 
   // Wizard finished: seed the chosen template + persist the bearing, or fall
@@ -135,26 +143,34 @@ export default function LayoutEditorPage() {
       scale_px_per_m: result.scalePxPerM,
       canvas_w: 680,
       canvas_h: 680,
-      mapType: 'outdoor',
+      mapType: editor.mapType,
     }
     editor.loadCanvasData(canvasData)
-    const hasLocation = typeof result.lat === 'number' && typeof result.lon === 'number'
+    // A floor plan has no sun model, so the indoor wizard never asks for a
+    // bearing or a location and must not write the step's default 0 bearing
+    // over whatever the map already has.
+    const isIndoor = editor.mapType === 'indoor'
+    const hasLocation = !isIndoor && typeof result.lat === 'number' && typeof result.lon === 'number'
     try {
       await client.maps.update(mapId, {
         canvas_data: JSON.stringify(canvasData),
-        bearing: result.bearing,
+        ...(isIndoor ? {} : { bearing: result.bearing }),
         ...(hasLocation ? { lat: result.lat, lon: result.lon } : {}),
       })
       setMap((prev) => (
         prev
-          ? { ...prev, bearing: result.bearing, ...(hasLocation ? { lat: result.lat!, lon: result.lon! } : {}) }
+          ? {
+              ...prev,
+              ...(isIndoor ? {} : { bearing: result.bearing }),
+              ...(hasLocation ? { lat: result.lat!, lon: result.lon! } : {}),
+            }
           : prev
       ))
     } catch {
       // Persist failed — the seeded outline is still in the editor and will be
       // saved on exit; the bearing can be re-set from Map Settings if needed.
     }
-  }, [mapId, editor.loadCanvasData, tour])
+  }, [mapId, editor.loadCanvasData, editor.mapType, tour])
 
   const handleObjectMove = useCallback(async (objectId: number, x: number, y: number) => {
     setMapObjects((prev) => prev.map((o) => o.id === objectId ? { ...o, map_x: x, map_y: y } : o))
@@ -826,7 +842,7 @@ export default function LayoutEditorPage() {
         )}
       </div>
 
-      {showWizard && <StarterWizard onComplete={handleWizardComplete} />}
+      {showWizard && <StarterWizard mapType={editor.mapType} onComplete={handleWizardComplete} />}
 
       <EditorTour
         tour={tour}
