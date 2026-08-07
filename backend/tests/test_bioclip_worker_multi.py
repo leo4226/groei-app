@@ -46,7 +46,11 @@ async def _fake_pil(upload):
     """Stand-in for the PIL decode step; only rejects files named bad.jpg."""
     if getattr(upload, "filename", "") == "bad.jpg":
         raise worker.HTTPException(status_code=400, detail="Could not decode image")
-    return object()  # any PIL-ish object; embedding is stubbed
+    # A real tiny image: the #824 quality-report path calls .size/.convert("L")
+    # on the decoded image, so a bare object() would AttributeError there.
+    from PIL import Image
+
+    return Image.new("RGB", (64, 64), (120, 160, 80))  # embedding is stubbed
 
 
 def test_identify_single_image_returns_matches():
