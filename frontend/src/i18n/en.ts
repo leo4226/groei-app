@@ -315,6 +315,9 @@ export const en: Translations = {
     mapType: {
       garden: '🌿 Garden',
       house: '🏠 House',
+      hint: 'Sets which zones you can draw: garden has lawn, deck and sun; house has rooms, walls, doors and windows.',
+      switchWarning: (zoneCount) =>
+        `You have already drawn ${zoneCount} ${zoneCount === 1 ? 'shape' : 'shapes'}. Switching type changes which zones exist. Continue?`,
     },
     props: {
       zone: 'Zone',
@@ -389,14 +392,26 @@ export const en: Translations = {
       skipSettings: 'Skip for now',
       outdoor: {
         step1: { title: 'Welcome to the editor', body: 'Draw your garden layout here. Add zones, place objects and define shadows.' },
-        step2: { title: 'Drawing zones', body: 'Pick a zone type in the sidebar (soil, lawn, deck…) and click on the canvas to draw the shape.' },
+        step2: {
+          title: 'Drawing zones',
+          body: 'Pick a zone type in the sidebar (soil, lawn, deck…) and drag across the canvas to draw the shape.',
+          bodyTouch: 'Tap the layers button at the right of the bottom bar, pick a zone type (soil, lawn, deck…), then drag across the map to draw the shape.',
+        },
         step3: { title: 'Shadow objects', body: 'Add buildings or trees outside your garden that cast shadows into it. This feeds the sun heatmap — the more accurate, the better.' },
         step4: { title: 'Set compass bearing', body: 'For an accurate sun heatmap, tell the app which direction is "up" on your map. Set this via Map Settings → Compass bearing.' },
       },
       indoor: {
         step1: { title: 'Welcome to the editor', body: 'Draw your floor plan here. Add rooms, place walls, doors and windows.' },
-        step2: { title: 'Drawing rooms', body: 'Pick a room type in the sidebar and draw each space on the canvas.' },
-        step3: { title: 'Doors & windows', body: 'Click on a wall to place a door or window. This helps track light per room.' },
+        step2: {
+          title: 'Drawing rooms',
+          body: 'Pick a room type in the sidebar and drag across the canvas to draw each space.',
+          bodyTouch: 'Tap the layers button at the right of the bottom bar, pick a room type, then drag across the floor plan to draw each space.',
+        },
+        step3: {
+          title: 'Doors & windows',
+          body: 'Click on a wall to place a door or window. This helps track light per room.',
+          bodyTouch: 'Tap a wall to place a door or window. This helps track light per room.',
+        },
       },
     },
     wizard: {
@@ -426,6 +441,8 @@ export const en: Translations = {
       back: 'Back',
       next: 'Next',
       finish: 'Finish',
+      stepOf: (current, total) => `Step ${current} of ${total}`,
+      close: 'Close',
     },
     background: {
       title: 'Background',

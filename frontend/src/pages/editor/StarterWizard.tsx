@@ -25,7 +25,8 @@ interface Props {
   onComplete: (result: StarterWizardResult | null) => void
 }
 
-type Step = 'shape' | 'size' | 'orientation' | 'location'
+const STEP_ORDER = ['shape', 'size', 'orientation', 'location'] as const
+type Step = (typeof STEP_ORDER)[number]
 type GeoStatus = 'idle' | 'locating' | 'set' | 'error'
 
 const overlayStyle: React.CSSProperties = {
@@ -78,6 +79,24 @@ const ghostBtnStyle: React.CSSProperties = {
   background: 'transparent', color: 'var(--color-text-muted)',
   fontFamily: 'var(--font-body)', fontSize: 15,
   border: '1px solid var(--color-border)', cursor: 'pointer',
+}
+
+const progressRowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  marginBottom: 12,
+}
+
+const progressLabelStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)', fontSize: 10,
+  textTransform: 'uppercase', letterSpacing: '0.18em',
+  color: 'var(--color-text-muted)',
+}
+
+const closeBtnStyle: React.CSSProperties = {
+  width: 44, height: 44, marginRight: -12, marginTop: -12,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'transparent', border: 'none', cursor: 'pointer',
+  color: 'var(--color-text-muted)', fontSize: 17, lineHeight: 1,
 }
 
 // A miniature glyph of each starter shape so the picker reads at a glance.
@@ -152,9 +171,26 @@ export default function StarterWizard({ onComplete }: Props) {
     })
   }
 
+  // Every exit lands on the same place: a blank canvas plus the intro tour.
+  const leave = () => onComplete(null)
+
   return (
-    <div style={overlayStyle}>
+    <div style={overlayStyle} onClick={leave}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+        {/* Progress + a way out. Step 1 previously had neither: no back, no
+            cancel, and the backdrop did nothing, so the only exits were
+            picking a shape or picking "Draw my own". */}
+        <div style={progressRowStyle}>
+          <span style={progressLabelStyle}>
+            {w.stepOf(STEP_ORDER.indexOf(step) + 1, STEP_ORDER.length)}
+          </span>
+          <button type="button" onClick={leave} aria-label={w.close} style={closeBtnStyle}>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
         {step === 'shape' && (
           <>
             <h2 style={titleStyle}>{w.shapeTitle}</h2>

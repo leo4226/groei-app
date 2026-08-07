@@ -29,6 +29,9 @@ interface Props {
   onUpdateUnderlay: (updates: Partial<MapUnderlay>) => void
   onRemoveUnderlay: () => void
   onCalibrateWidthM: (metres: number) => void
+  /** Drives the warning on the map-type switch — flipping the type swaps the
+   *  whole zone vocabulary under whatever is already drawn. */
+  zoneCount: number
 }
 
 function SectionHeader({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
@@ -73,45 +76,17 @@ export default function EditorLegendPanel({
   onUpdateUnderlay,
   onRemoveUnderlay,
   onCalibrateWidthM,
+  zoneCount,
 }: Props) {
   const t = useT()
   const zoneTypes = mapType === 'indoor' ? HOUSE_ZONE_TYPES : GARDEN_ZONE_TYPES
-  const [open, setOpen] = useState<Record<string, boolean>>({ zones: true, objects: false, shadows: false, place: false, background: false })
+  const [open, setOpen] = useState<Record<string, boolean>>({ zones: true, objects: false, shadows: false, place: false, background: false, mode: false })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function toggle(key: string) { setOpen(o => ({ ...o, [key]: !o[key] })) }
 
   return (
     <div className="p-3 border-b border-border flex flex-col gap-3">
-
-      {/* ── Modus (always open) ── */}
-      <div>
-        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">
-          {t.editor.mode}
-        </p>
-        <div className="flex gap-1">
-          <button
-            onClick={() => onSetMapType('outdoor')}
-            className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
-              mapType === 'outdoor'
-                ? 'bg-primary text-white'
-                : 'bg-bg text-text-muted border border-border hover:bg-bg/80'
-            }`}
-          >
-            {t.editor.mapType.garden}
-          </button>
-          <button
-            onClick={() => onSetMapType('indoor')}
-            className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
-              mapType === 'indoor'
-                ? 'bg-primary text-white'
-                : 'bg-bg text-text-muted border border-border hover:bg-bg/80'
-            }`}
-          >
-            {t.editor.mapType.house}
-          </button>
-        </div>
-      </div>
 
       {/* ── Zones tekenen ── */}
       <div>
@@ -382,6 +357,42 @@ export default function EditorLegendPanel({
           )}
         </div>
       )}
+
+      {/* ── Kaarttype ──
+          Last, and collapsed. This used to be the first thing in the panel,
+          above everything else: the most consequential and least-often-needed
+          control in the drawer, in its most prominent position. Flipping it
+          swaps the entire zone vocabulary, walls and sun handling under
+          whatever is already drawn, so on a map with content it asks first. */}
+      <div>
+        <SectionHeader label={t.editor.mode} open={open.mode} onToggle={() => toggle('mode')} />
+        {open.mode && (
+          <div className="mt-2">
+            <div className="flex gap-1">
+              {(['outdoor', 'indoor'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    if (type === mapType) return
+                    if (zoneCount > 0 && !window.confirm(t.editor.mapType.switchWarning(zoneCount))) return
+                    onSetMapType(type)
+                  }}
+                  className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
+                    mapType === type
+                      ? 'bg-primary text-white'
+                      : 'bg-bg text-text-muted border border-border hover:bg-bg/80'
+                  }`}
+                >
+                  {type === 'outdoor' ? t.editor.mapType.garden : t.editor.mapType.house}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-text-muted">
+              {t.editor.mapType.hint}
+            </p>
+          </div>
+        )}
+      </div>
 
     </div>
   )
