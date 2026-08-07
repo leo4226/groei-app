@@ -19,6 +19,7 @@ import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
+import PlacementPicker from '../components/add/PlacementPicker'
 import PageMasthead from '../components/ui/PageMasthead'
 import {
   isIdentifyPrefill,
@@ -31,6 +32,7 @@ import {
   SUN_DB_TO_TILE,
   TYPE_TO_FORM,
 } from './addPlant/prefill'
+import { resolveDefaultMapId, type MapPos } from './addPlant/placementModel'
 
 const SECTION_MARKER = String.fromCodePoint(0x00a7)
 const WATER_FORMULA = `H${String.fromCodePoint(0x2082)}O`
@@ -163,7 +165,18 @@ export default function AddPlant() {
   const [hasDrainage, setHasDrainage] = useState(false)
   const [substrate, setSubstrate] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [pickedPos, setPickedPos] = useState<MapPos | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Auto-select the most logical map: the one the user came from, else the
+  // last map they visited (BottomNav/MapPage keep lastMapSlug in sync). Only
+  // when the user hasn't chosen yet — a deliberate pick always wins.
+  useEffect(() => {
+    if (selectedZoneId || maps.length === 0) return
+    const wantedSlug: string | null = fromMapState ?? localStorage.getItem('lastMapSlug')
+    const defaultId = resolveDefaultMapId(maps, fromMapState ?? null, wantedSlug)
+    if (defaultId != null) setSelectedZoneId(String(defaultId))
+  }, [maps, selectedZoneId, fromMapState])
 
   /**
    * Canonical container size. The form asks for a diameter; `pot_size_cm` is
@@ -371,7 +384,11 @@ export default function AddPlant() {
     try {
       // Use the actual map the user selected in the ZonePicker, not a fuzzy match on area
       const placedMap = selectedZoneId ? maps.find(m => String(m.id) === selectedZoneId) : undefined
-      const mapPos = placedMap ? randomMapPos(placedMap.viewbox) : undefined
+      // Tapped position wins; otherwise scatter randomly as before (only when
+      // a map is chosen — a plant can also be added without a spot).
+      const mapPos = placedMap
+        ? (pickedPos ?? randomMapPos(placedMap.viewbox))
+        : undefined
 
       const plant = await addPlant(buildCreatePayload({
         name,
@@ -841,11 +858,29 @@ export default function AddPlant() {
                 plantsLabel: t.addPlant.zonePlants,
               }}
               value={selectedZoneId}
-              onChange={(zoneId) => setSelectedZoneId(zoneId || null)}
+              onChange={(zoneId) => {
+                setSelectedZoneId(zoneId || null)
+                setPickedPos(null) // placement is per-map; a new map clears it
+              }}
               emptyLabel={t.addPlant.zoneEmpty}
               advice={zoneAdvice}
             />
           </FormRow>
+
+          {/* Tap-to-place on the selected map — opt-in; without a tap we fall
+              back to a random spot on submit. Shown whenever a map is picked. */}
+          {selectedZoneId && (() => {
+            const placedMap = maps.find(m => String(m.id) === selectedZoneId)
+            return placedMap ? (
+              <FormRow label={t.addPlant.labelPlace} description={t.addPlant.labelPlaceDesc}>
+                <PlacementPicker
+                  map={placedMap}
+                  value={pickedPos}
+                  onChange={setPickedPos}
+                />
+              </FormRow>
+            ) : null
+          })()}
 
           {/* Light measurement — deliberately outside DETAILS: sun_requirement
               drives garden fit and the sun overlays, and a manual add that

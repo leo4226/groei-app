@@ -1075,6 +1075,11 @@ export const en: Translations = {
     phaseEstablished: 'Grown',
     zonePlants: (n: number) => `${n} plants`,
     zoneEmpty: 'No maps yet — create a garden or floor plan first to place this plant. You can add it without a spot and place it later.',
+    labelPlace: 'Spot on the map',
+    labelPlaceDesc: 'Optional — tap where the plant should stand. Without a tap we pick a random free spot.',
+    placePickerHint: 'Tap the spot on the map where the plant should go',
+    placePickerSet: 'Tap again to move the marker',
+    placePickerUnavailable: 'This map can\'t be used for placement yet',
     zoneAdvice: {
       shade: (subject: string) => `Tip: ${subject} does best out of direct sun — a shaded spot suits it.`,
       indirect: (subject: string) => `Tip: ${subject} prefers a bright spot without direct sunlight.`,
