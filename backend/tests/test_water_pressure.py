@@ -119,3 +119,90 @@ def test_recommendation_never_moves_later_than_saved_due(days_until_due: int):
     )
 
     assert result.recommended_check_date <= due
+
+
+# ── Mulch factor (#799) ──────────────────────────────────────────────────────
+
+
+def test_mulched_ground_scores_lower_than_bare_in_dry_weather():
+    bare = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+    )
+    mulched = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+        mulch=True,
+    )
+
+    assert mulched.score < bare.score
+    assert mulched.factors["mulch"] is True
+    assert mulched.factors["mulch_demand_factor"] == 0.9
+    # The mulch note explains the reduction in both languages.
+    assert "mulch" in mulched.reason_nl.lower()
+    assert "mulch" in mulched.reason_en.lower()
+
+
+def test_mulched_container_slightly_lowers_pressure():
+    bare = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+    )
+    mulched = calculate_water_pressure(
+        environment="outdoor_container",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+        mulch=True,
+    )
+
+    assert mulched.score < bare.score
+    assert mulched.factors["mulch_demand_factor"] == 0.95
+
+
+def test_mulch_unknown_or_bare_is_neutral():
+    bare = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+    )
+    unknown = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+        mulch=None,
+    )
+    explicit_bare = calculate_water_pressure(
+        environment="outdoor_ground",
+        today=TODAY,
+        next_due=TODAY + timedelta(days=4),
+        weather_days=_days(max_temp=31, et0=5.0),
+        mulch=False,
+    )
+
+    assert unknown.score == bare.score
+    assert explicit_bare.score == bare.score
+    assert unknown.factors["mulch"] is False
+    assert "mulch" not in unknown.reason_nl.lower()
+
+
+@pytest.mark.parametrize("environment", ["outdoor_ground", "outdoor_container"])
+def test_mulch_never_moves_recommendation_later(environment):
+    due = TODAY + timedelta(days=2)
+    result = calculate_water_pressure(
+        environment=environment,
+        today=TODAY,
+        next_due=due,
+        weather_days=_days(max_temp=34, et0=7.0),
+        mulch=True,
+    )
+
+    assert result.recommended_check_date <= due

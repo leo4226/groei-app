@@ -65,6 +65,8 @@ export interface Plant {
   has_drainage: boolean | null
   substrate: string[]
   acquired_from: string | null
+  /** NULL = unknown (neutral); true = mulched (lowers water pressure). */
+  mulch: boolean | null
   species_id: number | null
   phenology: Phenology | null
   care_schedules: CareSchedule[]
@@ -133,6 +135,7 @@ export interface PlantCreateInput {
   has_drainage?: boolean
   substrate?: string[]
   acquired_from?: string
+  mulch?: boolean
   care_schedules: CareScheduleInput[]
 }
 

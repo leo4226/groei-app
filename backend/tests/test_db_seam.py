@@ -29,7 +29,7 @@ def _db_cache():
                 quantity INTEGER NOT NULL DEFAULT 1, household_id INTEGER,
                 form_type TEXT, pot_material TEXT, pot_diameter_cm INTEGER,
                 pot_height_cm INTEGER, has_drainage BOOLEAN, substrate TEXT,
-                acquired_from TEXT
+                acquired_from TEXT, mulch BOOLEAN
             );
             CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, icon TEXT, sort_order INTEGER DEFAULT 0, household_id INTEGER);
             CREATE TABLE care_schedules (

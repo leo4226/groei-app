@@ -202,15 +202,15 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
     substrate = json.dumps(data.substrate) if data.substrate else None
     cursor = await db.execute(
         """INSERT INTO plants (name, species, location_id, acquired_date, pot_size_cm, notes, map_id, map_x, map_y, sun_requirement, plant_type, icon_key, phase, sown_date, quantity, household_id,
-                               form_type, pot_material, pot_diameter_cm, pot_height_cm, has_drainage, substrate, acquired_from)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                               form_type, pot_material, pot_diameter_cm, pot_height_cm, has_drainage, substrate, acquired_from, mulch)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (data.name, data.species, data.location_id,
          data.acquired_date,
          pot_size_cm, data.notes,
          data.map_id, data.map_x, data.map_y, data.sun_requirement, data.plant_type, data.icon_key,
          data.phase, data.sown_date, quantity, account["household_id"],
          data.form_type, data.pot_material, data.pot_diameter_cm, data.pot_height_cm,
-         data.has_drainage, substrate, data.acquired_from),
+         data.has_drainage, substrate, data.acquired_from, data.mulch),
     )
     plant_id = cursor.lastrowid
 

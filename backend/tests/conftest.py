@@ -91,7 +91,8 @@ SCHEMA = """
         pot_height_cm INTEGER,
         has_drainage BOOLEAN,
         substrate TEXT,
-        acquired_from TEXT
+        acquired_from TEXT,
+        mulch BOOLEAN
     );
     CREATE TABLE plant_placements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

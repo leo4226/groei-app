@@ -1269,6 +1269,8 @@ export const en: Translations = {
     phaseSeedling: 'Seedling',
     phaseYoung: 'Young plant',
     phaseEstablished: 'Established',
+    mulchLabel: 'Mulch',
+    mulchDescription: 'Mulch keeps moisture in the soil — lowers watering pressure.',
   },
 
   // ── Calendar page ────────────────────────────────────────

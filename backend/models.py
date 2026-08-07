@@ -103,6 +103,7 @@ class PlantCreate(BaseModel):
     has_drainage: bool | None = None
     substrate: list[str] | None = None
     acquired_from: str | None = None   # free text, e.g. 'Garden centre'
+    mulch: bool | None = None          # NULL = unknown (neutral); True = mulched
     care_schedules: list[CareScheduleCreate] = []
 
 
@@ -133,6 +134,7 @@ class PlantUpdate(BaseModel):
     has_drainage: bool | None = None
     substrate: list[str] | None = None
     acquired_from: str | None = None
+    mulch: bool | None = None          # True/False = set; None = leave as-is
 
 
 class CareScheduleOut(BaseModel):
@@ -190,6 +192,7 @@ class PlantOut(BaseModel):
     has_drainage: bool | None = None
     substrate: list[str] = []
     acquired_from: str | None = None
+    mulch: bool | None = None
     care_schedules: list[CareScheduleOut] = []
     care_status: str = "good"
     temp_status: str = "comfortable"

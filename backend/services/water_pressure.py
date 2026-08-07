@@ -32,6 +32,15 @@ _OUTDOOR_COEFFICIENTS = {
     },
 }
 
+# Mulch keeps moisture near the roots and cuts evaporation-driven demand
+# (the #441 audit flagged it as the strongest evaporation reducer for outdoor
+# plants). Containers benefit a little too: a top layer still shields the
+# potting mix from direct sun and wind. Unknown/bare stays neutral (1.0).
+_MULCH_DEMAND_FACTORS = {
+    "outdoor_ground": 0.90,
+    "outdoor_container": 0.95,
+}
+
 
 @dataclass(frozen=True)
 class WeatherDay:
@@ -84,8 +93,14 @@ def calculate_water_pressure(
     today: date,
     next_due: date,
     weather_days: Sequence[WeatherDay],
+    mulch: bool | None = None,
 ) -> WaterPressureResult:
-    """Calculate a bounded, read-only moisture-check recommendation."""
+    """Calculate a bounded, read-only moisture-check recommendation.
+
+    `mulch` is only meaningful for outdoor environments: a mulched surface
+    lowers evaporation-driven demand. Unknown (None) or bare (False) is
+    neutral — identical behaviour to before this factor existed.
+    """
     if next_due <= today:
         return WaterPressureResult(
             level="normal",
@@ -142,7 +157,12 @@ def calculate_water_pressure(
     effective_rain = raw_rain * float(coefficients["rain_capture"])
     et0 = sum(max(0.0, day.et0_mm) for day in days)
     heat_boost = max(0.0, average_max - 25.0) * 0.8
-    drying_demand = et0 * float(coefficients["demand"]) + heat_boost
+    mulch_demand_factor = 1.0
+    if mulch and environment in _MULCH_DEMAND_FACTORS:
+        mulch_demand_factor = float(_MULCH_DEMAND_FACTORS[environment])
+    drying_demand = (
+        et0 * float(coefficients["demand"]) * mulch_demand_factor + heat_boost
+    )
     deficit = max(0.0, drying_demand - effective_rain)
     score = deficit / float(coefficients["high_deficit_mm"])
     level = _level(score)
@@ -161,6 +181,14 @@ def calculate_water_pressure(
         reason_nl = "De regen compenseert de verwachte uitdroging."
         reason_en = "Rain is covering the expected drying."
 
+    if mulch and environment in _MULCH_DEMAND_FACTORS:
+        if environment == "outdoor_ground":
+            reason_nl += " De mulch houdt vocht vast in de grond."
+            reason_en += " The mulch keeps moisture in the soil."
+        else:
+            reason_nl += " De mulch in de pot houdt vocht iets langer vast."
+            reason_en += " The mulch in the container holds moisture a little longer."
+
     return WaterPressureResult(
         level=level,
         score=round(score, 2),
@@ -176,5 +204,7 @@ def calculate_water_pressure(
             "heat_boost_mm": round(heat_boost, 1),
             "drying_demand_mm": round(drying_demand, 1),
             "deficit_mm": round(deficit, 1),
+            "mulch": bool(mulch or False),
+            "mulch_demand_factor": mulch_demand_factor,
         },
     )

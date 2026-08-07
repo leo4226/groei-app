@@ -1269,6 +1269,8 @@ export const nl: Translations = {
     phaseSeedling: 'Zaailing',
     phaseYoung: 'Jonge plant',
     phaseEstablished: 'Volwassen',
+    mulchLabel: 'Mulch',
+    mulchDescription: 'Mulch houdt vocht vast in de grond — lagere waterdruk.',
   },
 
   // ── Calendar page ────────────────────────────────────────
