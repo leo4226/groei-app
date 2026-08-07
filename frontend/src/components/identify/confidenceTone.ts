@@ -24,7 +24,9 @@ export function confidenceTone(confidence: IdentifyConfidence): ConfidenceTone {
         showMediumSubtitle: true,
         showDetailedNoMatch: false,
         showCompareCandidates: true,
-        plantnetCtaProminent: true,
+        // PlantNet is a normal secondary option on a plausible match — the
+        // green rescue CTA is reserved for a genuine no_match (#808, audit §3.3).
+        plantnetCtaProminent: false,
       }
     case 'low':
       return {
@@ -32,7 +34,8 @@ export function confidenceTone(confidence: IdentifyConfidence): ConfidenceTone {
         showMediumSubtitle: false,
         showDetailedNoMatch: false,
         showCompareCandidates: true,
-        plantnetCtaProminent: true,
+        // Same rule: don't reflexively push PlantNet on every uncertain match.
+        plantnetCtaProminent: false,
       }
     case 'no_match':
       return {
@@ -40,6 +43,8 @@ export function confidenceTone(confidence: IdentifyConfidence): ConfidenceTone {
         showMediumSubtitle: false,
         showDetailedNoMatch: true,
         showCompareCandidates: false,
+        // Genuine no-match is the one case where a second opinion is the
+        // primary action.
         plantnetCtaProminent: true,
       }
   }

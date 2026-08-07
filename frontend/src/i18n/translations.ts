@@ -992,7 +992,48 @@ export type Translations = {
     phaseEstablished: string
     // ── Zone picker ──
     zonePlants: (n: number) => string
-    zoneAdvice: (species: string) => string
+    zoneEmpty: string       // shown when the account has no maps yet
+    /**
+     * Placement advice, keyed by the light level we actually know for the
+     * plant. Previously one fixed "prefers a bright spot without direct
+     * sunlight" line was shown for every species, full-sun plants included.
+     */
+    zoneAdvice: {
+      shade: (subject: string) => string
+      indirect: (subject: string) => string
+      bright: (subject: string) => string
+      fullSun: (subject: string) => string
+    }
+    // ── Entry banner ──
+    banner: {
+      tabDatabase: string
+      tabPhoto: string
+      dbSubtitle: string
+      dbSubtitleCount: (count: string) => string
+      photoSubtitle: string
+      selected: string
+      changeSpecies: string
+      pickSpecies: string
+      browsePrompt: string
+      browseCount: (count: string) => string
+      uploadPhoto: string
+      uploadPhotoPrompt: string
+      photoAlt: string
+      photoLabel: string
+      match: string
+      confidence: string
+      database: string
+      speciesCount: (count: string) => string
+      imageRefs: string
+      alternatives: string
+    }
+    // ── Submit errors ──
+    errorInvalid: string
+    errorAuth: string
+    errorServer: string
+    errorNetwork: string
+    // ── Species prefill caption ──
+    speciesFromPrefill: (latin: string) => string
     // ── Substrate options ──
     substrateOptions: string[]
     // ── Action bar ──

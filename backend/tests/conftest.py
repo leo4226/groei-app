@@ -84,7 +84,14 @@ SCHEMA = """
         phase TEXT DEFAULT 'established',
         sown_date TEXT,
         quantity INTEGER NOT NULL DEFAULT 1,
-        household_id INTEGER
+        household_id INTEGER,
+        form_type TEXT,
+        pot_material TEXT,
+        pot_diameter_cm INTEGER,
+        pot_height_cm INTEGER,
+        has_drainage BOOLEAN,
+        substrate TEXT,
+        acquired_from TEXT
     );
     CREATE TABLE plant_placements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -272,6 +279,44 @@ def _reset_rate_limit():
     reset()
     yield
     reset()
+
+
+#: A mild, unremarkable 7-day forecast: nothing near the frost
+#: (`bring_inside_below_c`) or heat (`HEAT_WATER_MAX_TEMP_C` = 30 °C)
+#: thresholds, so no weather-driven ephemeral task is ever created for it.
+_NEUTRAL_TEMP_DAYS = [{"min": 12.0, "max": 20.0} for _ in range(7)]
+
+
+@pytest.fixture(autouse=True)
+def _neutral_weather(monkeypatch):
+    """Stop the suite from asserting against the live Amsterdam forecast.
+
+    `services.environment.get_temp_data` falls through to an Open-Meteo HTTP
+    call when no cache is warm, which in tests meant every run fetched the real
+    7-day forecast over the network. `_sync_ephemeral_schedules` then scans that
+    whole window for a day at or above 30 °C and, on a hit, inserts an ephemeral
+    heat-water schedule for every eligible outdoor plant. Any test asserting an
+    exact number of water events therefore passed or failed according to the
+    weather in Amsterdam that day — `test_calendar_water_sessions.py` went red
+    for exactly this reason, with a phantom `heat-water:` card.
+
+    Tests that care about specific weather patch their own seam on top of this;
+    the default is simply a forecast that triggers nothing, and no network.
+    """
+    from datetime import date, timedelta
+
+    today = date.today()
+    days = [
+        {**day, "date": (today + timedelta(days=offset)).isoformat()}
+        for offset, day in enumerate(_NEUTRAL_TEMP_DAYS)
+    ]
+
+    async def _fake_get_temp_data(db=None):
+        return {"days": days}
+
+    monkeypatch.setattr(
+        "services.environment.get_temp_data", _fake_get_temp_data, raising=True,
+    )
 
 
 @pytest.fixture

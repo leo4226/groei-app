@@ -150,7 +150,9 @@ export function IdentifyResults({
       }`}
     >
       <Glyph name="flask" size={15} />
-      {t.identify.results.plantnetCta}
+      {tone.plantnetCtaProminent
+        ? t.identify.results.plantnetProminentCta
+        : t.identify.results.plantnetCta}
     </button>
   ) : null
 
