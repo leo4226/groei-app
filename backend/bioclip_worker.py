@@ -207,7 +207,7 @@ async def identify(
 
     # Cheap quality diagnostics (resolution / blur / lighting) — log-only,
     # never reject. Helps the #806/#809 validation tell *why* a photo failed.
-    quality = _image_quality_report(pil_image)
+    quality = _image_quality_report(pil_images[0])
     if any(quality.get(k) for k in ("low_resolution", "blurry", "too_dark", "too_bright")):
         flags = [k for k in ("low_resolution", "blurry", "too_dark", "too_bright") if quality.get(k)]
         logger.info("Image quality flags %s (w=%s h=%s lap=%.1f luma=%.0f)",
