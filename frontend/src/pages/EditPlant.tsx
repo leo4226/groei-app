@@ -46,10 +46,10 @@ export default function EditPlant() {
   const zoneList = useMemo(() => maps.map(m => ({
     id: String(m.id),
     name: m.name,
-    description: m.map_type === 'indoor' ? 'Binnen' : 'Buiten',
+    description: m.map_type === 'indoor' ? t.maps.indoor : t.maps.outdoor,
     plantCount: plants.filter(p => p.map_id === m.id).length,
     isIndoor: m.map_type === 'indoor',
-  })), [maps, plants])
+  })), [maps, plants, t.maps.indoor, t.maps.outdoor])
 
   // Basic fields
   const [name, setName] = useState('')

@@ -10,7 +10,7 @@ import TileIcon from '../components/ui/TileIcon'
 import type { PlantIcon } from '../types'
 import { icons, species as speciesApi } from '../api/client'
 import PlantPickerSheet from '../components/sheets/PlantPickerSheet'
-import { PICKABLE_SPECIES_COUNT } from '../data/pickableSpecies'
+import { PICKABLE_SPECIES_COUNT, displayPlantName } from '../data/pickableSpecies'
 import EntryBanner from '../components/add/EntryBanner'
 import { compressImage } from '../utils/compressImage'
 import Card from '../components/ui/Card'
@@ -86,7 +86,7 @@ export default function AddPlant() {
       ? isIdentifyPrefill(prefill)
         ? prefill.name_nl_suggested
         : 'latinName' in prefill
-          ? prefill.dutchName
+          ? displayPlantName(prefill, t.locale)
           : String((prefill as Record<string, unknown>).name
             ?? (prefill as Record<string, unknown>).scientific_name
             ?? '')
@@ -282,7 +282,7 @@ export default function AddPlant() {
     }
     if ('latinName' in (prefill as Record<string, unknown>)) {
       const p = prefill as LocalPlant
-      setName(p.dutchName)
+      setName(displayPlantName(p, t.locale))
       setSpecies(p.latinName)
       setNotes(p.amsterdamNotes ?? '')
       setSunRequirement(SUN_DB_TO_TILE[p.sunRequirement] ?? p.sunRequirement ?? null)
@@ -583,9 +583,7 @@ export default function AddPlant() {
               ? isIdentifyPrefill(prefill)
                 ? undefined // identify case: name shown in photo route instead
                 : 'latinName' in prefill
-                  ? (t.locale.startsWith('en')
-                      ? (prefill as LocalPlant).englishName || (prefill as LocalPlant).dutchName
-                      : (prefill as LocalPlant).dutchName)
+                  ? displayPlantName(prefill as LocalPlant, t.locale)
                   : undefined
               : undefined
           }
