@@ -18,6 +18,9 @@ import numpy as np
 import torch
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import Response
+
+from services.bioclip_id import center_crop as _center_crop
+from services.bioclip_id import image_quality_report as _image_quality_report
 from PIL import Image
 import uvicorn
 
@@ -27,6 +30,7 @@ logger = logging.getLogger("bioclip_worker")
 _EMBEDDINGS_DIR = Path(__file__).resolve().parent / "data" / "bioclip"
 _EMBEDDINGS_PATH = _EMBEDDINGS_DIR / "species_embeddings.npy"
 _SPECIES_IDS_PATH = _EMBEDDINGS_DIR / "species_ids.npy"
+_META_PATH = _EMBEDDINGS_DIR / "meta.json"
 _MODEL_NAME = "hf-hub:imageomics/bioclip"
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -99,6 +103,13 @@ async def _read_upload_to_pil(image: UploadFile) -> Image.Image:
 
 def _embed_pil_to_float32(pil_image: Image.Image) -> np.ndarray:
     """Encode a PIL image into a 512-dim L2-normalised float32 numpy array."""
+    # Center-crop first (drop background rim), then the model's own resize.
+    # Default OFF (1.0 = no-op): measured on the GBIF eval, any center crop
+    # hurts (GBIF frames are already tight). The crop targets phone photos
+    # with pot/soil/mulch background — validate it there (#806 real-photo
+    # window) and enable via BIOCLIP_CROP_FRACTION (e.g. 0.9) when it wins.
+    crop_frac = float(os.environ.get("BIOCLIP_CROP_FRACTION", "1.0"))
+    pil_image = _center_crop(pil_image, fraction=crop_frac)
     image_tensor = _preprocess(pil_image).unsqueeze(0).to(_device)
     with torch.no_grad():
         emb = _model.encode_image(image_tensor)
@@ -157,6 +168,15 @@ async def identify(image: UploadFile = File(...)):
 
     pil_image = await _read_upload_to_pil(image)
 
+    # Cheap quality diagnostics (resolution / blur / lighting) — log-only,
+    # never reject. Helps the #806/#809 validation tell *why* a photo failed.
+    quality = _image_quality_report(pil_image)
+    if any(quality.get(k) for k in ("low_resolution", "blurry", "too_dark", "too_bright")):
+        flags = [k for k in ("low_resolution", "blurry", "too_dark", "too_bright") if quality.get(k)]
+        logger.info("Image quality flags %s (w=%s h=%s lap=%.1f luma=%.0f)",
+                    flags, quality["width"], quality["height"],
+                    quality["laplacian_variance"], quality["mean_luma"])
+
     try:
         async with _infer_lock:
             matches, image_emb = await anyio.to_thread.run_sync(_identify_image, pil_image)
@@ -207,6 +227,13 @@ async def coverage():
     user data, only integer species IDs and aggregate readiness metadata.
     """
     ready = _model is not None and _text_embeddings is not None and _species_ids is not None
+    meta = {}
+    try:
+        import json
+        if _META_PATH.exists():
+            meta = json.loads(_META_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        meta = {}
     return {
         "ready": ready,
         "model_loaded": _model is not None,
@@ -214,6 +241,11 @@ async def coverage():
         "device": _device or "unknown",
         "species_count": len(_species_ids or []),
         "species_ids": list(_species_ids or []),
+        # Staleness (§7): when the reference embeddings were generated and with
+        # what prompt strategy. Compare `generated_at` against species-table
+        # changes to decide whether a regenerate is due.
+        "embeddings_generated_at": meta.get("generated_at"),
+        "prompt_strategy": meta.get("prompt_strategy", "unknown"),
     }
 
 

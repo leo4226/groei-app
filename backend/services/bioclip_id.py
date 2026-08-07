@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+from PIL import Image, ImageFilter
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,76 @@ _SPECIES_IDS_PATH = _EMBEDDINGS_DIR / "species_ids.npy"
 
 # BioCLIP model identifier for open_clip
 _MODEL_NAME = "hf-hub:imageomics/bioclip"
+
+# ── Preprocessing / crop strategy (#809) ────────────────────────────────────
+# Background (pot, soil, mulch) dilutes the plant signal. Before inference we
+# center-crop to a fraction of the frame (default 0.85 keeps the central 85%),
+# which drops the outer rim where background usually dominates. The crop is
+# applied to the PIL image BEFORE the model's own resize, so it is resolution-
+# independent. Resolution minimums: the model resizes to 224×224 internally;
+# sources below ~224px on the short side lose signal and should be re-taken —
+# we log a warning when detected rather than fail (cheap checks only).
+_CENTER_CROP_FRACTION = 0.85
+_MIN_SIDE_FOR_CROP = 256
+_MIN_SHORT_SIDE_WARN = 224
+_BLUR_LAPLACIAN_THRESHOLD = 80.0  # variance of the Laplacian below this = blurry
+_DARK_MEAN_LUMA = 40.0
+_BRIGHT_MEAN_LUMA = 220.0
+
+
+def center_crop(image, fraction: float = _CENTER_CROP_FRACTION):
+    """Center-crop a PIL image to `fraction` of its width/height.
+
+    No-op for tiny images (nothing meaningful to crop) and for fraction <= 1.
+    Returns the cropped image (same mode/format as input).
+    """
+    if fraction >= 1.0:
+        return image
+    w, h = image.size
+    if min(w, h) < _MIN_SIDE_FOR_CROP:
+        return image
+    cw, ch = int(w * fraction), int(h * fraction)
+    left = (w - cw) // 2
+    top = (h - ch) // 2
+    return image.crop((left, top, left + cw, top + ch))
+
+
+def image_quality_report(image) -> dict:
+    """Cheap quality checks on a PIL image: resolution + blur + lighting.
+
+    Returns a dict of boolean flags (``blurry``, ``too_dark``, ``too_bright``,
+    ``low_resolution``) plus the numeric values used. Used for logging and
+    diagnostics only — never to reject an image.
+    """
+    import numpy as np
+
+    w, h = image.size
+    gray = np.asarray(image.convert("L"), dtype=np.float32)
+    report = {
+        "width": w,
+        "height": h,
+        "low_resolution": min(w, h) < _MIN_SHORT_SIDE_WARN,
+    }
+    if gray.size == 0:
+        report.update({"blurry": False, "too_dark": False, "too_bright": False,
+                       "laplacian_variance": 0.0, "mean_luma": 0.0})
+        return report
+
+    # Laplacian variance: sharp images have high variance, blurry ones low.
+    # PIL's FIND_EDGES paints a 1px border artifact, so trim 2px before
+    # computing variance — otherwise flat images look spuriously "sharp".
+    edges = image.convert("L").filter(ImageFilter.FIND_EDGES)
+    if edges.width > 4 and edges.height > 4:
+        edges = edges.crop((2, 2, edges.width - 2, edges.height - 2))
+    lap = np.asarray(edges, dtype=np.float32)
+    report["laplacian_variance"] = float(lap.var())
+    report["blurry"] = report["laplacian_variance"] < _BLUR_LAPLACIAN_THRESHOLD
+
+    mean_luma = float(gray.mean())
+    report["mean_luma"] = mean_luma
+    report["too_dark"] = mean_luma < _DARK_MEAN_LUMA
+    report["too_bright"] = mean_luma > _BRIGHT_MEAN_LUMA
+    return report
 
 
 class BioClipService:
@@ -102,6 +173,12 @@ class BioClipService:
 
         import torch
 
+        # Center-crop first (drop background rim), then the model's own resize.
+        # Default OFF (1.0 = no-op): GBIF eval showed any center crop hurts
+        # tight frames; the crop targets phone photos with background — enable
+        # via BIOCLIP_CROP_FRACTION once validated on real photos (#806).
+        crop_frac = float(os.environ.get("BIOCLIP_CROP_FRACTION", "1.0"))
+        image = center_crop(image, fraction=crop_frac)
         image_tensor = self._preprocess(image).unsqueeze(0).to(self._device)
 
         with torch.no_grad():

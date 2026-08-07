@@ -29,6 +29,11 @@ logger = logging.getLogger(__name__)
 
 _EVAL_DIR = Path(__file__).resolve().parent.parent / "data" / "eval"
 
+# Worker auth: when BIOCLIP_WORKER_TOKEN is set, send it on every request.
+def _worker_headers() -> dict[str, str]:
+    token = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
+    return {"X-Worker-Token": token} if token else {}
+
 # Threshold floor values for suggest_thresholds. Numbers are intentional minima:
 # even with a degenerate eval (very few samples), the suggested band edges
 # can never fall below these — keeps the surfaced thresholds in a sane range.
@@ -104,6 +109,7 @@ async def call_worker(client: httpx.AsyncClient, worker_url: str, photo_path: Pa
             resp = await client.post(
                 f"{worker_url.rstrip('/')}/identify",
                 files={"image": (photo_path.name, f.read(), "image/jpeg")},
+                headers=_worker_headers(),
                 timeout=30,
             )
         if resp.status_code != 200:
