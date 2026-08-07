@@ -61,21 +61,21 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         <input
           value={zone.label}
           onChange={(e) => onUpdate({ label: e.target.value })}
-          placeholder="bijv. Woonkamer..."
+          placeholder={t.editor.props.labelPlaceholder}
           className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
         />
       </div>
 
       {/* Type */}
       <div className="mb-2">
-        <label className="text-xs text-text-muted block mb-1">Type</label>
+        <label className="text-xs text-text-muted block mb-1">{t.editor.props.type}</label>
         <select
           value={zone.type}
           onChange={(e) => onUpdate({ type: e.target.value as ZoneStyleType })}
           className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
         >
-          {ZONE_TYPE_ORDER.map((t) => (
-            <option key={t} value={t}>{ZONE_STYLES[t].label}</option>
+          {ZONE_TYPE_ORDER.map((zt) => (
+            <option key={zt} value={zt}>{t.editor.zones[zt]?.name ?? ZONE_STYLES[zt].label}</option>
           ))}
         </select>
       </div>
@@ -83,11 +83,11 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {/* Soil note — only for soil and raised_bed zones */}
       {(zone.type === 'soil' || zone.type === 'raised_bed') && (
         <div className="mb-2">
-          <label className="text-xs text-text-muted block mb-1">Bodemnotitie</label>
+          <label className="text-xs text-text-muted block mb-1">{t.editor.props.soilNote}</label>
           <textarea
             value={zone.soil_note ?? ''}
             onChange={(e) => onUpdate({ soil_note: e.target.value || undefined })}
-            placeholder="bijv. rijke kleigrond, goede drainage..."
+            placeholder={t.editor.props.soilNotePlaceholder}
             rows={2}
             className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm bg-bg text-text resize-none"
           />
@@ -97,7 +97,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {/* Wall thickness toggle for rooms */}
       {isRoom && (
         <div className="mb-2">
-          <label className="text-xs text-text-muted block mb-1">Muurtype</label>
+          <label className="text-xs text-text-muted block mb-1">{t.editor.props.wallThickness}</label>
           <div className="flex gap-1">
             <button
               onClick={() => onUpdate({ wallThickness: 'exterior' })}
@@ -107,7 +107,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                   : 'bg-bg text-text-muted border-border'
               }`}
             >
-              Buitenmuur
+              {t.editor.props.outerWall}
             </button>
             <button
               onClick={() => onUpdate({ wallThickness: 'interior' })}
@@ -117,7 +117,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                   : 'bg-bg text-text-muted border-border'
               }`}
             >
-              Binnenmuur
+              {t.editor.props.innerWall}
             </button>
           </div>
         </div>
@@ -127,7 +127,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {zone.type === 'fence' && (
         <>
           <div className="mb-2">
-            <label className="text-xs text-text-muted block mb-1">Materiaal</label>
+            <label className="text-xs text-text-muted block mb-1">{t.editor.props.material}</label>
             <div className="flex gap-1">
               <button
                 onClick={() => onUpdate({ fenceMaterial: 'wood' })}
@@ -137,7 +137,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Hout
+                {t.editor.props.materialWood}
               </button>
               <button
                 onClick={() => onUpdate({ fenceMaterial: 'brick' })}
@@ -147,18 +147,18 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Steen
+                {t.editor.props.materialBrick}
               </button>
             </div>
           </div>
           <div className="mb-2">
             <label className="text-xs text-text-muted block mb-1">
-              Hoogte (m)
-              <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
+              {t.editor.props.height}
+              <span className="ml-1 text-[10px] text-text-muted/60">{t.editor.props.affectsShadow}</span>
             </label>
             <input
               type="number" inputMode="decimal" min="0.5" max="4" step="0.1"
-              placeholder="bijv. 2.0"
+              placeholder={t.editor.props.egHeight2}
               value={zone.fenceHeightM ?? 2.0}
               key={`fenceh-${zone.id}`}
               onChange={(e) => {
@@ -175,12 +175,12 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {zone.type === 'structure' && (
         <div className="mb-2">
           <label className="text-xs text-text-muted block mb-1">
-            Hoogte (m)
-            <span className="ml-1 text-[10px] text-text-muted/60">schaduw</span>
+            {t.editor.props.height}
+            <span className="ml-1 text-[10px] text-text-muted/60">{t.editor.props.affectsShadow}</span>
           </label>
           <input
             type="number" inputMode="decimal" min="1" max="6" step="0.1"
-            placeholder="bijv. 2.5"
+            placeholder={t.editor.props.egHeight25}
             value={zone.structureHeightM ?? 2.5}
             key={`structh-${zone.id}`}
             onChange={(e) => {
@@ -196,12 +196,12 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {zone.type === 'raised_bed' && (
         <div className="mb-2">
           <label className="text-xs text-text-muted block mb-1">
-            Hoogte bed (m)
-            <span className="ml-1 text-[10px] text-text-muted/60">schaduw op lagere planten</span>
+            {t.editor.props.bedHeightM}
+            <span className="ml-1 text-[10px] text-text-muted/60">{t.editor.props.shadesLowerPlants}</span>
           </label>
           <input
             type="number" inputMode="decimal" min="0.2" max="1.5" step="0.05"
-            placeholder="bijv. 0.50"
+            placeholder={t.editor.props.egHeight05}
             value={zone.raisedBedHeightM ?? 0.5}
             key={`rbh-${zone.id}`}
             onChange={(e) => {
@@ -217,11 +217,11 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       <div className="flex gap-2 mb-2">
         <div className="flex-1">
           <label className="text-xs text-text-muted block mb-1">
-            Lengte (m)
+            {t.editor.props.length}
           </label>
           <input
             type="number" inputMode="decimal" min="0.1" step="0.1"
-            placeholder={lenM ?? 'bijv. 4.5'}
+            placeholder={lenM ?? t.editor.props.egLength}
             value={lenM ?? ''}
             key={`len-${zone.id}`}
             onChange={(e) => handleLengteChange(e.target.value)}
@@ -230,11 +230,11 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
         </div>
         <div className="flex-1">
           <label className="text-xs text-text-muted block mb-1">
-            Breedte (m)
+            {t.editor.props.width}
           </label>
           <input
             type="number" inputMode="decimal" min="0.1" step="0.1"
-            placeholder={breedM ?? 'bijv. 3.0'}
+            placeholder={breedM ?? t.editor.props.egWidth}
             value={breedM ?? ''}
             key={`breed-${zone.id}`}
             onChange={(e) => handleBreedteChange(e.target.value)}
@@ -247,12 +247,12 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {isRoom && (
         <div className="mb-2">
           <label className="text-xs text-text-muted block mb-1">
-            Hoogte (m)
-            <span className="ml-1 text-[10px] text-text-muted/60">info only</span>
+            {t.editor.props.height}
+            <span className="ml-1 text-[10px] text-text-muted/60">{t.editor.props.infoOnly}</span>
           </label>
           <input
             type="number" inputMode="decimal" min="1" max="6" step="0.05"
-            placeholder="bijv. 2.60"
+            placeholder={t.editor.props.egHeight26}
             defaultValue={zone.roomHeightM ?? ''}
             key={`hoogte-${zone.id}`}
             onBlur={(e) => handleHoogteChange(e.target.value)}
@@ -267,18 +267,18 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
           <summary className="text-xs text-text-muted cursor-pointer select-none py-0.5 inline-flex items-center gap-1.5">
             <Glyph name="scissors" size={12} className="shrink-0" />
             {zone.cornerCut
-              ? `Hoek afgesneden (${zone.cornerCut.corner.toUpperCase()})`
-              : 'Hoek afsnijden…'}
+              ? t.editor.props.cornerCutDone(zone.cornerCut.corner.toUpperCase())
+              : t.editor.props.cornerCutOpen}
           </summary>
           <div className="mt-2 space-y-2">
             {/* Corner picker */}
             <div>
-              <label className="text-xs text-text-muted block mb-1">Welke hoek</label>
+              <label className="text-xs text-text-muted block mb-1">{t.editor.props.corner}</label>
               <div className="grid grid-cols-2 gap-1">
                 {(['tl','tr','bl','br'] as CornerPosition[]).map((c) => {
                   const labels: Record<CornerPosition, string> = {
-                    tl: '↖ Links boven', tr: '↗ Rechts boven',
-                    bl: '↙ Links onder', br: '↘ Rechts onder',
+                    tl: `↖ ${t.editor.props.corners.tl}`, tr: `↗ ${t.editor.props.corners.tr}`,
+                    bl: `↙ ${t.editor.props.corners.bl}`, br: `↘ ${t.editor.props.corners.br}`,
                   }
                   const active = zone.cornerCut?.corner === c
                   return (
@@ -309,7 +309,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-xs text-text-muted block mb-1">
-                    Breedte ({(zone.cornerCut.widthPx / scalePxPerM).toFixed(2)}m)
+                    {t.editor.props.widthWithValue((zone.cornerCut.widthPx / scalePxPerM).toFixed(2))}
                   </label>
                   <input
                     type="number" inputMode="decimal" min="0.1" step="0.1"
@@ -325,7 +325,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                 </div>
                 <div className="flex-1">
                   <label className="text-xs text-text-muted block mb-1">
-                    Diepte ({(zone.cornerCut.heightPx / scalePxPerM).toFixed(2)}m)
+                    {t.editor.props.depthWithValue((zone.cornerCut.heightPx / scalePxPerM).toFixed(2))}
                   </label>
                   <input
                     type="number" inputMode="decimal" min="0.1" step="0.1"
@@ -348,7 +348,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
                 onClick={() => onUpdate({ cornerCut: undefined })}
                 className="w-full text-xs py-1 rounded-lg border border-overdue/20 bg-overdue/5 text-overdue"
               >
-                Hoek herstellen
+                {t.editor.props.cornerRestore}
               </button>
             )}
           </div>
@@ -358,11 +358,11 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
       {/* Scale calibration — collapsed by default */}
       <details>
         <summary className="text-[10px] text-text-muted cursor-pointer select-none">
-          Schaal kalibreren…
+          {t.editor.props.scaleCalibrate}
         </summary>
         <div className="mt-1.5">
           <label className="text-[10px] text-text-muted block mb-1">
-            Stel schaal in via lengte van deze zone (m)
+            {t.editor.props.scaleHint}
           </label>
           <input
             type="number" inputMode="decimal" min="0.1" step="0.1"
@@ -372,7 +372,7 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
             className="w-full border border-border rounded-lg px-2 py-1 text-xs bg-bg text-text"
           />
           <p className="text-[10px] text-text-muted mt-1">
-            Schaal: {scalePxPerM} px/m · {zone.width}×{zone.height} px
+            {t.editor.props.scaleReadout(scalePxPerM, zone.width, zone.height)}
           </p>
         </div>
       </details>

@@ -26,7 +26,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
       </div>
       {/* Width */}
       <div className="mb-2">
-        <label className="text-xs text-text-muted block mb-1">Breedte (cm)</label>
+        <label className="text-xs text-text-muted block mb-1">{t.editor.props.widthCm}</label>
         <input
           type="number" min="40" max="300" step="10"
           value={element.widthCm}
@@ -42,7 +42,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
       {isDoor && (
         <>
           <div className="mb-2">
-            <label className="text-xs text-text-muted block mb-1">Scharnier</label>
+            <label className="text-xs text-text-muted block mb-1">{t.editor.props.hinge}</label>
             <div className="flex gap-1">
               <button
                 onClick={() => onUpdate({ swingSide: 'left' })}
@@ -52,7 +52,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Links
+                {t.editor.props.left}
               </button>
               <button
                 onClick={() => onUpdate({ swingSide: 'right' })}
@@ -62,12 +62,12 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Rechts
+                {t.editor.props.right}
               </button>
             </div>
           </div>
           <div className="mb-1">
-            <label className="text-xs text-text-muted block mb-1">Draairichting</label>
+            <label className="text-xs text-text-muted block mb-1">{t.editor.props.openingDirection}</label>
             <div className="flex gap-1">
               <button
                 onClick={() => onUpdate({ swingDirection: 'inward' })}
@@ -77,7 +77,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Naar binnen
+                {t.editor.props.inward}
               </button>
               <button
                 onClick={() => onUpdate({ swingDirection: 'outward' })}
@@ -87,7 +87,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
                     : 'bg-bg text-text-muted border-border'
                 }`}
               >
-                Naar buiten
+                {t.editor.props.outward}
               </button>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function WallElementPropertiesPanel({ element, onUpdate, onDelete
       )}
 
       <p className="text-[10px] text-text-muted mt-2">
-        {element.edge} · positie {Math.round(element.position * 100)}%
+        {t.editor.props.edgePosition(t.editor.props.edges[element.edge], Math.round(element.position * 100))}
       </p>
     </div>
   )

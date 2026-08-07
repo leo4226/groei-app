@@ -18,6 +18,7 @@ import RoomWallRenderer from './RoomWallRenderer'
 import EditorResizeOverlay, { type ResizeHandle } from './EditorResizeOverlay'
 import WallElementPlacementOverlay from './WallElementPlacementOverlay'
 import { zoomAroundViewportCenter } from '../../utils/editorViewport'
+import { useT } from '../../context/LanguageContext'
 
 const CANVAS_W = 680
 const CANVAS_H = 680
@@ -330,6 +331,7 @@ export default function EditorCanvas({
   const [underlaySelected, setUnderlaySelected] = useState(false)
   const [svgPointer, setSvgPointer] = useState<{ x: number; y: number } | null>(null)
   const [snapLines, setSnapLines] = useState<SnapLine[]>([])
+  const t = useT()
   const isMobile = useIsMobile()
   const isTouch = useIsTouch()
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -1277,13 +1279,16 @@ export default function EditorCanvas({
           : 'flex-row items-center bottom-3 right-3'
       }`}>
         <button onClick={() => changeZoom((currentZoom) => currentZoom - ZOOM_STEP)}
-          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>−</button>
-        <span className={`${isTouch ? "text-sm w-12" : "text-xs w-10"} text-text-muted font-medium text-center select-none`}>{Math.round(zoom * 100)}%</span>
+          aria-label={t.editor.zoom.out}
+          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>{'−'}</button>
+        <span className={`${isTouch ? "text-sm w-12" : "text-xs w-10"} text-text-muted font-medium text-center select-none`}>{`${Math.round(zoom * 100)}%`}</span>
         <button onClick={() => changeZoom((currentZoom) => currentZoom + ZOOM_STEP)}
-          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>+</button>
+          aria-label={t.editor.zoom.in}
+          className={`${isTouch ? "w-11 h-11 text-base" : "w-7 h-7 text-sm"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors font-bold`}>{'+'}</button>
         <button onClick={fitToContent}
           className={`${isTouch ? "w-11 h-11" : "w-7 h-7"} flex items-center justify-center rounded-md text-text-muted hover:bg-bg hover:text-text transition-colors text-xs border-l border-border ml-0.5 pl-1.5`}
-          title="Fit to garden">⟲</button>
+          aria-label={t.editor.zoom.fit}
+          title={t.editor.zoom.fit}>{'⟲'}</button>
       </div>
     </div>
   )
