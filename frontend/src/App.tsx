@@ -10,6 +10,7 @@ import NewMapModal from './components/dashboard/NewMapModal'
 import AppLoadingView from './components/ui/AppLoadingView'
 import PullToRefresh from './components/ui/PullToRefresh'
 import UpdateToast from './components/ui/UpdateToast'
+import InstallNudge from './components/install/InstallNudge'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
 import { icons } from './api/client'
@@ -430,6 +431,8 @@ export default function App() {
           <BottomNav />
         </div>
       )}
+
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && <InstallNudge />}
 
       {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
 
