@@ -76,16 +76,6 @@ export default function AddPlant() {
     if (fromMapState) sessionStorage.setItem('addPlant_returnPath', fromMapState)
   }, [fromMapState])
 
-  // Auto-select the most logical map: the one the user came from, else the
-  // last map they visited (BottomNav/MapPage keep lastMapSlug in sync). Only
-  // when the user hasn't chosen yet — a deliberate pick always wins.
-  useEffect(() => {
-    if (selectedZoneId || maps.length === 0) return
-    const wantedSlug = fromMapState ?? localStorage.getItem('lastMapSlug')
-    const defaultId = resolveDefaultMapId(maps, fromMapState, wantedSlug)
-    if (defaultId != null) setSelectedZoneId(String(defaultId))
-  }, [maps, selectedZoneId, fromMapState])
-
   const returnPath = () => sessionStorage.getItem('addPlant_returnPath') ?? '/plants'
 
   function handleCancel() {
@@ -177,6 +167,16 @@ export default function AddPlant() {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [pickedPos, setPickedPos] = useState<MapPos | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Auto-select the most logical map: the one the user came from, else the
+  // last map they visited (BottomNav/MapPage keep lastMapSlug in sync). Only
+  // when the user hasn't chosen yet — a deliberate pick always wins.
+  useEffect(() => {
+    if (selectedZoneId || maps.length === 0) return
+    const wantedSlug: string | null = fromMapState ?? localStorage.getItem('lastMapSlug')
+    const defaultId = resolveDefaultMapId(maps, fromMapState ?? null, wantedSlug)
+    if (defaultId != null) setSelectedZoneId(String(defaultId))
+  }, [maps, selectedZoneId, fromMapState])
 
   /**
    * Canonical container size. The form asks for a diameter; `pot_size_cm` is
