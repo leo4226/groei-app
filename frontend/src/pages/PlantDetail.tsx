@@ -22,6 +22,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
+import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -816,12 +817,12 @@ export default function PlantDetail() {
 
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text"
+          className={`absolute left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text ${CHROME_TOP_CLASS}`}
         >
           <Glyph name="arrow-left" size={18} aria-hidden />
         </button>
 
-        <div className="absolute top-4 right-4 flex gap-1.5">
+        <div className={`absolute right-4 flex gap-1.5 ${CHROME_TOP_CLASS}`}>
           <button
             onClick={handleDuplicate}
             disabled={duplicating}

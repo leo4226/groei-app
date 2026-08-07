@@ -7,6 +7,7 @@ import { useSunVisualization } from '../hooks/useSunVisualization'
 import { useT } from '../context/LanguageContext'
 import { DEMO_BIODIVERSITY, DEMO_MAP, DEMO_OBJECTS, DEMO_PLANTS } from '../demo/demoGarden'
 import type { CanvasData } from '../types'
+import { CANVAS_TOP_CLASS, CHROME_TOP_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS } from '../components/safeAreaLayout'
 
 const MONTH_LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
@@ -102,7 +103,7 @@ export default function DemoGardenPage() {
 
   return (
     <div className="relative h-full overflow-hidden">
-      <div className={rec ? 'absolute inset-0 [&_.map-zoom-controls]:hidden' : 'absolute top-12 bottom-14 left-0 right-0'}>
+      <div className={rec ? 'absolute inset-0 [&_.map-zoom-controls]:hidden' : `absolute bottom-14 left-0 right-0 ${CANVAS_TOP_CLASS}`}>
         <MapView
           map={DEMO_MAP}
           plants={DEMO_PLANTS}
@@ -154,7 +155,7 @@ export default function DemoGardenPage() {
       {!rec && (
         <>
           {/* Top-left: garden name + demo badge */}
-          <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border border-border bg-surface/95 py-1.5 pl-3.5 pr-2 shadow-lg backdrop-blur">
+          <div className={`absolute z-20 flex items-center gap-2 rounded-full border border-border bg-surface/95 py-1.5 pl-3.5 pr-2 shadow-lg backdrop-blur ${CHROME_TOP_CLASS} ${CHROME_LEFT_CLASS}`}>
             <span className="text-sm font-semibold text-text">{t.demo.gardenName}</span>
             <span className="rounded-full bg-amber-400/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
               {t.demo.badge}
@@ -162,7 +163,7 @@ export default function DemoGardenPage() {
           </div>
 
           {/* Top-right: create-your-own CTA + biodiversity snapshot */}
-          <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+          <div className={`absolute z-20 flex flex-col items-end gap-2 ${CHROME_TOP_CLASS} ${CHROME_RIGHT_CLASS}`}>
             <button
               type="button"
               onClick={() => navigate('/login?mode=register')}
