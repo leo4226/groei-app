@@ -315,6 +315,9 @@ export const nl: Translations = {
     mapType: {
       garden: '🌿 Tuin',
       house: '🏠 Huis',
+      hint: 'Bepaalt welke zones je kunt tekenen: tuin heeft gazon, terras en zon; huis heeft kamers, muren, deuren en ramen.',
+      switchWarning: (zoneCount) =>
+        `Je hebt al ${zoneCount} ${zoneCount === 1 ? 'vorm' : 'vormen'} getekend. Van type wisselen verandert welke zones er bestaan. Doorgaan?`,
     },
     props: {
       zone: 'Zone',
@@ -389,14 +392,26 @@ export const nl: Translations = {
       skipSettings: 'Nu overslaan',
       outdoor: {
         step1: { title: 'Welkom in de editor', body: 'Hier teken je de indeling van je tuin. Voeg zones toe, plaats objecten en definieer schaduwen.' },
-        step2: { title: 'Zones tekenen', body: 'Kies een zonetype in de zijbalk (grond, gazon, terras…) en klik op het canvas om de vorm te tekenen.' },
+        step2: {
+          title: 'Zones tekenen',
+          body: 'Kies een zonetype in de zijbalk (grond, gazon, terras…) en sleep over het canvas om de vorm te tekenen.',
+          bodyTouch: 'Tik op de lagenknop rechts in de balk onderaan, kies een zonetype (grond, gazon, terras…) en sleep dan over de kaart om de vorm te tekenen.',
+        },
         step3: { title: 'Schaduw objecten', body: 'Voeg gebouwen of bomen toe die buiten je tuin staan maar wel schaduw werpen. Dit voedt de zonnekaart — hoe nauwkeuriger, hoe beter de heatmap.' },
         step4: { title: 'Kompas instellen', body: 'Voor een correcte zonnekaart geef je aan welke richting "omhoog" is op jouw kaart. Stel dit in via Kaartinstellingen → Kompasrichting.' },
       },
       indoor: {
         step1: { title: 'Welkom in de editor', body: 'Hier teken je de plattegrond van je huis. Voeg kamers toe, plaats muren, deuren en ramen.' },
-        step2: { title: 'Kamers tekenen', body: 'Kies een kamertype in de zijbalk en teken elke ruimte op het canvas.' },
-        step3: { title: 'Deuren & ramen', body: 'Klik op een muur om een deur of raam te plaatsen. Dit helpt bij het bijhouden van licht per kamer.' },
+        step2: {
+          title: 'Kamers tekenen',
+          body: 'Kies een kamertype in de zijbalk en sleep over het canvas om elke ruimte te tekenen.',
+          bodyTouch: 'Tik op de lagenknop rechts in de balk onderaan, kies een kamertype en sleep dan over de plattegrond om elke ruimte te tekenen.',
+        },
+        step3: {
+          title: 'Deuren & ramen',
+          body: 'Klik op een muur om een deur of raam te plaatsen. Dit helpt bij het bijhouden van licht per kamer.',
+          bodyTouch: 'Tik op een muur om een deur of raam te plaatsen. Dit helpt bij het bijhouden van licht per kamer.',
+        },
       },
     },
     wizard: {
@@ -426,6 +441,8 @@ export const nl: Translations = {
       back: 'Terug',
       next: 'Volgende',
       finish: 'Klaar',
+      stepOf: (current, total) => `Stap ${current} van ${total}`,
+      close: 'Sluiten',
     },
     background: {
       title: 'Achtergrond',

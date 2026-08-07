@@ -277,6 +277,9 @@ export type Translations = {
     mapType: {
       garden: string
       house: string
+      hint: string
+      /** Confirm copy — the switch rewrites the zone vocabulary under existing shapes. */
+      switchWarning: (zoneCount: number) => string
     }
     props: {
       zone: string
@@ -348,14 +351,17 @@ export type Translations = {
       skipSettings: string
       outdoor: {
         step1: { title: string; body: string }
-        step2: { title: string; body: string }
+        // Steps that name a control need two wordings: the control is a
+        // sidebar under a mouse and a button in the bottom dock under a
+        // finger. `bodyTouch` is the phone copy, `body` the pointer copy.
+        step2: { title: string; body: string; bodyTouch: string }
         step3: { title: string; body: string }
         step4: { title: string; body: string }
       }
       indoor: {
         step1: { title: string; body: string }
-        step2: { title: string; body: string }
-        step3: { title: string; body: string }
+        step2: { title: string; body: string; bodyTouch: string }
+        step3: { title: string; body: string; bodyTouch: string }
       }
     }
     wizard: {
@@ -385,6 +391,10 @@ export type Translations = {
       back: string
       next: string
       finish: string
+      /** "Stap 2 van 4" — the flow's length is otherwise unknowable from inside it. */
+      stepOf: (current: number, total: number) => string
+      /** Leaves the wizard for a blank canvas. Step 1 had no exit at all. */
+      close: string
     }
     background: {
       title: string

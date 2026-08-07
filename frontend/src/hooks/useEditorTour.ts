@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { Translations } from '../i18n/translations'
+import { useIsTouch } from './useIsTouch'
 
 export interface TourStep {
   id: string
@@ -18,22 +19,31 @@ export interface UseEditorTourReturn {
   skip: () => void
 }
 
-function buildSteps(
+/** Steps that name a control carry two wordings. The sidebar the pointer copy
+ *  points at does not exist on a phone — there the same control is a button in
+ *  the bottom dock — so the first instruction a new mobile user read described
+ *  furniture that was not on screen. */
+function copy(step: { title: string; body: string; bodyTouch?: string }, isTouch: boolean) {
+  return { title: step.title, body: (isTouch && step.bodyTouch) || step.body }
+}
+
+export function buildSteps(
   mapType: 'outdoor' | 'indoor',
   tour: Translations['editor']['tour'],
+  isTouch: boolean,
 ): TourStep[] {
   if (mapType === 'indoor') {
     return [
-      { id: 'indoor-1', ...tour.indoor.step1 },
-      { id: 'indoor-2', ...tour.indoor.step2, tourTargetId: 'tool-draw' },
-      { id: 'indoor-3', ...tour.indoor.step3, tourTargetId: 'tool-place-door' },
+      { id: 'indoor-1', ...copy(tour.indoor.step1, isTouch) },
+      { id: 'indoor-2', ...copy(tour.indoor.step2, isTouch), tourTargetId: 'tool-draw' },
+      { id: 'indoor-3', ...copy(tour.indoor.step3, isTouch), tourTargetId: 'tool-place-door' },
     ]
   }
   return [
-    { id: 'outdoor-1', ...tour.outdoor.step1 },
-    { id: 'outdoor-2', ...tour.outdoor.step2, tourTargetId: 'tool-draw' },
-    { id: 'outdoor-3', ...tour.outdoor.step3, tourTargetId: 'tool-shadow-caster' },
-    { id: 'outdoor-4', ...tour.outdoor.step4, action: 'settings' },
+    { id: 'outdoor-1', ...copy(tour.outdoor.step1, isTouch) },
+    { id: 'outdoor-2', ...copy(tour.outdoor.step2, isTouch), tourTargetId: 'tool-draw' },
+    { id: 'outdoor-3', ...copy(tour.outdoor.step3, isTouch), tourTargetId: 'tool-shadow-caster' },
+    { id: 'outdoor-4', ...copy(tour.outdoor.step4, isTouch), action: 'settings' },
   ]
 }
 
@@ -56,7 +66,8 @@ export function useEditorTour(
   mapType: 'outdoor' | 'indoor',
   tour: Translations['editor']['tour'],
 ): UseEditorTourReturn {
-  const steps = buildSteps(mapType, tour)
+  const isTouch = useIsTouch()
+  const steps = buildSteps(mapType, tour, isTouch)
   const [isActive, setIsActive] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
 

@@ -752,6 +752,7 @@ export default function LayoutEditorPage() {
               onUpdateUnderlay={editor.updateUnderlay}
               onRemoveUnderlay={() => editor.setUnderlay(null)}
               onCalibrateWidthM={handleCalibrateWidthM}
+              zoneCount={editor.zones.length}
             />
             {!isTouch && propertiesPanel}
 
