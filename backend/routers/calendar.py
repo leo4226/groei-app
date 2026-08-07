@@ -65,7 +65,7 @@ async def build_water_outlook(db, *, household_id: int) -> dict:
     rows = await db.execute_fetchall(
         """SELECT cs.id AS schedule_id, cs.next_due,
                   p.id AS plant_id, p.name AS plant_name,
-                  p.container_id, p.ground_zone_id,
+                  p.container_id, p.ground_zone_id, p.mulch,
                   m.id AS map_id, m.name AS map_name, m.map_type, m.lat, m.lon
            FROM care_schedules cs
            JOIN plants p ON p.id = cs.plant_id
@@ -158,6 +158,7 @@ async def build_water_outlook(db, *, household_id: int) -> dict:
                 today=today,
                 next_due=next_due,
                 weather_days=weather_days,
+                mulch=plant.get("mulch"),
             )
             plants.append({
                 "plant_id": plant["plant_id"],

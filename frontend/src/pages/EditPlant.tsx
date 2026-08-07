@@ -59,6 +59,9 @@ export default function EditPlant() {
 
   // Identity card
   const [formType, setFormType] = useState('pot')
+  // Mulch (moisture-retaining top layer, #799): only meaningful outdoors; the
+  // pressure engine ignores it for indoor plants.
+  const [mulch, setMulch] = useState(false)
   const [phase, setPhase] = useState('established')
   const [quantity, setQuantity] = useState(1)
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
@@ -126,6 +129,7 @@ export default function EditPlant() {
         // Form only controls the potted/bare icon variant. Its canonical
         // value comes from icon_key in the catalog effect below, never plant_type.
         setFormType('pot')
+        setMulch(p.mulch ?? false)
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
@@ -242,6 +246,7 @@ export default function EditPlant() {
         phase: phase as Plant['phase'],
         sownDateInput,
         quantity,
+        mulch,
         randomMapPos,
       }))
 
@@ -522,8 +527,25 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Substrate */}
-
+                {/* Mulch — moisture-retaining top layer; lowers outdoor water pressure */}
+                <FormRow label={t.editPlant.mulchLabel} description={t.editPlant.mulchDescription}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={mulch}
+                    aria-label={t.editPlant.mulchLabel}
+                    onClick={() => setMulch(v => !v)}
+                    className={`relative h-6 w-11 rounded-full transition-colors ${
+                      mulch ? 'bg-primary' : 'bg-border'
+                    }`}
+                  >
+                    <span
+                      className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                        mulch ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </FormRow>
 
                 {/* Last repotted */}
                 <FormRow label={t.editPlant.lastRepottedLabel} description={t.addPlant.labelSownDesc}>

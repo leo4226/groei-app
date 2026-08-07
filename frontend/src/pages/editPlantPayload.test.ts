@@ -66,6 +66,7 @@ const baseInput = {
   sunRequirement: 'indirect',
   phase: 'established' as const,
   sownDateInput: '',
+  mulch: false,
   randomMapPos: () => ({ x: 99, y: 88 }),
 }
 

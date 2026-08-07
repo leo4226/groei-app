@@ -1239,6 +1239,8 @@ export type Translations = {
     phaseSeedling: string     // "Seedling"
     phaseYoung: string        // "Young plant"
     phaseEstablished: string  // "Established"
+    mulchLabel: string        // "Mulch"
+    mulchDescription: string  // "Mulch holds moisture in the soil — lowers watering pressure."
   }
 
   // ── Calendar page ───────────────────────────────────────────────

@@ -31,6 +31,7 @@ export interface BuildEditPlantPayloadInput {
   phase: Plant['phase']
   sownDateInput: string
   quantity?: number
+  mulch: boolean
   randomMapPos: (viewbox: string) => MapPosition
 }
 
@@ -50,6 +51,9 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     // The edit form has no measured-sun control (that lives in the map quick
     // sheet, #645); carry the stored value through so an edit never wipes it.
     measured_sun_hours: input.plant.measured_sun_hours ?? null,
+    // Mulch toggle: unknown (null) is treated as bare by the pressure engine,
+    // so saving the current toggle state is always safe.
+    mulch: input.mulch,
   }
 
   if (input.quantity != null) {
