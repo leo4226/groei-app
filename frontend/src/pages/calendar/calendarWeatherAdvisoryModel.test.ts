@@ -144,4 +144,49 @@ describe('buildCalendarPresentation', () => {
     expect(presentation.ordinaryEvents).toEqual([bareWeatherWater])
     expect(presentation.weatherAdvisories).toHaveLength(0)
   })
+
+  it('drops heat_protect advisory when a heat-water moment fires on the same date', () => {
+    const heatProtect = event({
+      id: 'heat-protect-1',
+      type: 'heat_protect',
+      reason_nl: 'Hitte vandaag — max 33°C',
+      reason_en: 'Heat today — max 33°C',
+    })
+    const heatWater = event({
+      id: 'heat-water:4:2026-07-30',
+      type: 'water',
+      schedule_id: 20,
+      weather_warning_id: null,
+      reason_nl: 'Extra water geven vanwege hitte — max 33°C',
+      reason_en: 'Extra watering due to heat — max 33°C',
+      action_nl: 'Geef extra water of controleer de grond.',
+      action_en: 'Water extra or check the soil.',
+    })
+    const frost = event({
+      id: 'frost-1',
+      type: 'frost_protect',
+      date: '2026-01-15',
+      reason_nl: 'Vorst morgen',
+      reason_en: 'Frost tomorrow',
+    })
+
+    const presentation = buildCalendarPresentation([heatProtect, heatWater, frost])
+
+    const types = presentation.weatherAdvisories.map(a => a.type).sort()
+    expect(types).toEqual(['frost_protect', 'water'])
+  })
+
+  it('keeps heat_protect advisory when no heat-water moment exists that day', () => {
+    const heatProtect = event({
+      id: 'heat-protect-1',
+      type: 'heat_protect',
+      reason_nl: 'Hitte op komst — max 28°C',
+      reason_en: 'Heat building — max 28°C',
+    })
+
+    const presentation = buildCalendarPresentation([heatProtect])
+
+    expect(presentation.weatherAdvisories).toHaveLength(1)
+    expect(presentation.weatherAdvisories[0].type).toBe('heat_protect')
+  })
 })
