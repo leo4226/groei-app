@@ -1,15 +1,40 @@
 import type { MapObject } from '../../types'
 import { useT } from '../../context/LanguageContext'
+import { parseCm } from './objectDimensions'
 
 interface Props {
   object: MapObject
   onRotate: (rotation: number) => void
+  onResize: (dims: { width_cm?: number; depth_cm?: number; diameter_cm?: number }) => void
   onDelete: () => void
 }
 
-export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Props) {
+export default function ObjectPropertiesPanel({ object, onRotate, onResize, onDelete }: Props) {
   const t = useT()
   const rotation = object.rotation ?? 0
+  const isRound = object.shape === 'circle'
+
+  // A table, shed or pot placed from the palette was stuck at its preset
+  // dimensions forever: this panel offered rotate and delete only, while
+  // width_cm/depth_cm/diameter_cm were sent once at create time and never
+  // again. The backend has always accepted them on PUT /objects/{id}.
+  const sizeField = (
+    key: 'width_cm' | 'depth_cm' | 'diameter_cm',
+    label: string,
+  ) => (
+    <div className="flex-1">
+      <label className="text-xs text-text-muted block mb-1">{label}</label>
+      <input
+        type="number" inputMode="numeric" min="1" step="1"
+        value={object[key] ?? ''}
+        onChange={(e) => {
+          const cm = parseCm(e.target.value)
+          if (cm !== undefined) onResize({ [key]: cm ?? undefined })
+        }}
+        className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
+      />
+    </div>
+  )
 
   return (
     <div className="p-3 border-b border-border">
@@ -23,6 +48,18 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
         >
           {t.common.delete}
         </button>
+      </div>
+
+      {/* Size */}
+      <div className="flex gap-2 mb-3">
+        {isRound
+          ? sizeField('diameter_cm', t.editor.props.diameterCm)
+          : (
+            <>
+              {sizeField('width_cm', t.editor.props.widthCm)}
+              {sizeField('depth_cm', t.editor.props.depthCm)}
+            </>
+          )}
       </div>
 
       <div>

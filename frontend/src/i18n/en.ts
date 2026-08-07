@@ -326,6 +326,9 @@ export const en: Translations = {
     },
     props: {
       type: 'Type',
+      depthCm: 'Depth (cm)',
+      diameterCm: 'Diameter (cm)',
+      unknownType: (type) => `Unknown type (${type})`,
       labelPlaceholder: 'e.g. Living room…',
       soilNote: 'Soil note',
       soilNotePlaceholder: 'e.g. rich clay, drains well…',

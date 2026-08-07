@@ -288,6 +288,10 @@ export type Translations = {
     }
     props: {
       type: string
+      depthCm: string
+      diameterCm: string
+      /** Shown when a zone's stored type is outside ZoneStyleType. */
+      unknownType: (type: string) => string
       labelPlaceholder: string
       soilNote: string
       soilNotePlaceholder: string

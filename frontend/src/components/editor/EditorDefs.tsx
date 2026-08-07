@@ -25,6 +25,31 @@ export const ZONE_STYLES: Record<ZoneStyleType, ZoneStyle> = {
   raised_bed: { fill: '#7B6B2D', patternId: 'soilp', patternOpacity: 0.7, stroke: '#5C4E1E', strokeWidth: 0.8, opacity: 0.55, label: 'Raised Bed', chipColor: '#7B6B2D' },
 }
 
+/** Neutral grey, deliberately unlike any real zone so an unknown type reads as
+ *  "something is here that I don't recognise" rather than as a lawn. */
+export const UNKNOWN_ZONE_STYLE: ZoneStyle = {
+  fill: '#8C8C88', stroke: 'rgba(222,220,209,0.35)', strokeWidth: 1,
+  opacity: 0.35, label: 'Unknown', chipColor: '#8C8C88',
+}
+
+/**
+ * Zone style lookup that survives a type the app does not know.
+ *
+ * `canvas_data` is user data that round-trips through the database, and the
+ * indexed lookup returned `undefined` for anything outside `ZoneStyleType` —
+ * so the next `.fill` threw and the ErrorBoundary swallowed the entire map.
+ * One bad zone from a legacy record or a hand-edited payload made every other
+ * zone on that map unreachable, with no way to delete the offender.
+ */
+export function zoneStyle(type: string): ZoneStyle {
+  // Own-property check, not `??`: a zone typed "toString" or "__proto__"
+  // resolves to something inherited and truthy, so the nullish fallback never
+  // fires and `.fill` is undefined again — the exact crash this guards.
+  return Object.prototype.hasOwnProperty.call(ZONE_STYLES, type)
+    ? ZONE_STYLES[type as ZoneStyleType]
+    : UNKNOWN_ZONE_STYLE
+}
+
 export const ZONE_TYPE_ORDER: ZoneStyleType[] = [
   'deck', 'soil', 'gravel', 'lawn', 'wall', 'path', 'room', 'water', 'structure', 'fence', 'raised_bed',
 ]

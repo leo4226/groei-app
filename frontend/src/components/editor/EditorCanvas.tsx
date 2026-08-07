@@ -1157,7 +1157,14 @@ export default function EditorCanvas({
                   y={obj.map_y ?? 0}
                   showLabel={true}
                   isDragging={objectDragging?.objectId === obj.id}
-                  onTap={activeTool === 'select' ? () => onSelectObject(obj.id) : undefined}
+                  // Tapping an object selects it whatever the active tool is,
+                  // the same way tapping a zone does (#844). A tap in draw mode
+                  // creates nothing anyway — anything under MIN_ZONE_SIZE is
+                  // discarded — so gating selection on the tool only meant the
+                  // object's own controls, its size fields included, were
+                  // unreachable on a freshly opened map. Dragging stays gated
+                  // so a stroke starting over an object still draws.
+                  onTap={() => onSelectObject(obj.id)}
                   onPointerDown={activeTool === 'select' ? (e) => handleObjectPointerDown(e, obj.id) : undefined}
                 />
                 {isSelected && (

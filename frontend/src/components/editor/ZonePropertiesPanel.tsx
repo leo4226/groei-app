@@ -1,5 +1,5 @@
 import type { EditorZone, ZoneStyleType, CornerPosition } from '../../types'
-import { ZONE_STYLES, ZONE_TYPE_ORDER } from './EditorDefs'
+import { zoneStyle, ZONE_TYPE_ORDER } from './EditorDefs'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
 
@@ -74,8 +74,15 @@ export default function ZonePropertiesPanel({ zone, scalePxPerM, onUpdate, onSet
           onChange={(e) => onUpdate({ type: e.target.value as ZoneStyleType })}
           className="w-full border border-border rounded-lg px-2.5 py-2.5 text-base bg-bg text-text"
         >
+          {/* A zone whose type is outside ZONE_TYPE_ORDER would otherwise show
+              the first option as if selected, and picking anything would be
+              indistinguishable from picking nothing. Surfacing it keeps the
+              select honest and gives the user a way to reassign the zone. */}
+          {!ZONE_TYPE_ORDER.includes(zone.type) && (
+            <option value={zone.type}>{t.editor.props.unknownType(zone.type)}</option>
+          )}
           {ZONE_TYPE_ORDER.map((zt) => (
-            <option key={zt} value={zt}>{t.editor.zones[zt]?.name ?? ZONE_STYLES[zt].label}</option>
+            <option key={zt} value={zt}>{t.editor.zones[zt]?.name ?? zoneStyle(zt).label}</option>
           ))}
         </select>
       </div>

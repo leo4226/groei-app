@@ -326,6 +326,9 @@ export const nl: Translations = {
     },
     props: {
       type: 'Type',
+      depthCm: 'Diepte (cm)',
+      diameterCm: 'Diameter (cm)',
+      unknownType: (type) => `Onbekend type (${type})`,
       labelPlaceholder: 'bijv. Woonkamer…',
       soilNote: 'Bodemnotitie',
       soilNotePlaceholder: 'bijv. rijke kleigrond, goede drainage…',
