@@ -51,11 +51,6 @@ export default [
       'src/components/PlantCareInfo.tsx',
       'src/components/discoveries/ExpeditionMap.tsx',
       'src/components/discoveries/ExpeditionMapGL.tsx',
-      'src/components/editor/DimensionArrows.tsx',
-      'src/components/editor/EditorCanvas.tsx',
-      'src/components/editor/ObjectPropertiesPanel.tsx',
-      'src/components/editor/WallElementPropertiesPanel.tsx',
-      'src/components/editor/ZonePropertiesPanel.tsx',
       'src/components/game/GameLeaderboard.tsx',
       'src/components/map/CareNeedsList.tsx',
       'src/components/map/GlobalCareSheet.tsx',
@@ -76,7 +71,6 @@ export default [
       'src/pages/GameHostPage.tsx',
       'src/pages/GameJoinPage.tsx',
       'src/pages/GamePlayerPage.tsx',
-      'src/pages/LayoutEditorPage.tsx',
       // LoginPage is pre-auth (no account language exists yet) so it can't use
       // the account-driven catalog; it carries its own bilingual COPY dict with
       // an NL/EN toggle (Dutch default) — permanent exemption.

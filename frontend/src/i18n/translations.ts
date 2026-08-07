@@ -274,6 +274,11 @@ export type Translations = {
       saving: string
       unsaved: string
     }
+    zoom: {
+      in: string
+      out: string
+      fit: string
+    }
     mapType: {
       garden: string
       house: string
@@ -282,6 +287,34 @@ export type Translations = {
       switchWarning: (zoneCount: number) => string
     }
     props: {
+      type: string
+      labelPlaceholder: string
+      soilNote: string
+      soilNotePlaceholder: string
+      material: string
+      materialWood: string
+      materialBrick: string
+      bedHeightM: string
+      /** Suffixes explaining what a height feeds into. */
+      affectsShadow: string
+      shadesLowerPlants: string
+      infoOnly: string
+      egHeight2: string
+      egHeight25: string
+      egHeight05: string
+      egHeight26: string
+      egLength: string
+      egWidth: string
+      cornerCutOpen: string
+      cornerCutDone: (corner: string) => string
+      cornerRestore: string
+      corners: Record<'tl' | 'tr' | 'bl' | 'br', string>
+      widthWithValue: (metres: string) => string
+      depthWithValue: (metres: string) => string
+      scaleReadout: (pxPerM: number, widthPx: number, heightPx: number) => string
+      /** Wall edge names — the raw 'top'/'left' identifiers were shown as-is. */
+      edges: Record<'top' | 'right' | 'bottom' | 'left', string>
+      edgePosition: (edge: string, percent: number) => string
       zone: string
       door: string
       window: string
@@ -312,6 +345,14 @@ export type Translations = {
     }
     loading: string
     notFound: string
+    viewMap: string
+    sunPerimeterShow: string
+    sunPerimeterHide: string
+    more: string
+    tourAction: string
+    undoShortcut: string
+    offCanvas: string
+    shadowCasterList: (count: number) => string
     legend: string
     legendLabels: Record<string, string>
     mode: string          // "Mode" / "Modus"
@@ -1865,6 +1906,8 @@ export type Translations = {
     envGround: string    // "Ground" / "Grond"
     envPotted: string    // "Potted" / "Pot"
     envIndoor: string    // "Indoor" / "Binnen"
+    on: string
+    off: string
   }
 
   discovery: {

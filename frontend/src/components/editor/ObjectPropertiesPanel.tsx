@@ -27,7 +27,7 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
 
       <div>
         <label className="text-xs text-text-muted block mb-1">
-          {t.editor.props.rotation}&ensp;<span className="font-semibold text-text">{Math.round(rotation)}°</span>
+          {t.editor.props.rotation}&ensp;<span className="font-semibold text-text">{`${Math.round(rotation)}°`}</span>
         </label>
         <input
           type="range"
@@ -43,7 +43,7 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
             onClick={() => onRotate(((rotation - 45) % 360 + 360) % 360)}
             className="flex-1 text-xs py-1 rounded-lg border border-border bg-bg text-text-muted hover:bg-border"
           >
-            −45°
+            {'−45°'}
           </button>
           <button
             onClick={() => onRotate(0)}
@@ -55,7 +55,7 @@ export default function ObjectPropertiesPanel({ object, onRotate, onDelete }: Pr
             onClick={() => onRotate((rotation + 45) % 360)}
             className="flex-1 text-xs py-1 rounded-lg border border-border bg-bg text-text-muted hover:bg-border"
           >
-            +45°
+            {'+45°'}
           </button>
         </div>
       </div>
