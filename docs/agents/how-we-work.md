@@ -339,6 +339,12 @@ see their output:
   adds skip/xfail markers (agents may add tests, never weaken them), plus
   an **advisory** adversarial DeepSeek review posted as a PR comment. The
   review is input for Leon — it is not a merge gate and it can be wrong.
+  Because the guard is a grep, it also fires when a PR deletes the tests of
+  code it deletes. That case is legitimate, and **Leon** unblocks it with the
+  `tests-intentionally-removed` label: the guard downgrades to a warning and
+  re-runs on the label alone (no new push needed); removing the label
+  re-blocks. An agent must never label its own PR — the label *is* the human
+  saying the removal was intended.
 
 The human chain is unchanged: detector files → Leon/Claude triage (set
 difficulty + route) → executor agent fixes → CI + review → **Leon merges**.
