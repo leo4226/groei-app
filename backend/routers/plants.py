@@ -52,6 +52,118 @@ async def _generate_thresholds_deferred(
         await db.commit()
 
 
+def _species_text_changed(old: str | None, new: str | None) -> bool:
+    """True when the species text names a different plant.
+
+    Case and surrounding whitespace are noise — "rosa canina " is not a
+    re-identification and must not throw away the plant's anchors.
+    """
+    return str(old or "").strip().casefold() != str(new or "").strip().casefold()
+
+
+async def _find_species_by_name(db, name: str) -> int | None:
+    """Existing species row for `name`, or None. Lookup only — never creates.
+
+    Mirrors the lookup inside `get_or_create_species` so the rename path can
+    relink instantly for a species we already know, and pay the LLM round trip
+    only when the species is genuinely new.
+    """
+    if not str(name or "").strip():
+        return None
+    rows = await db.execute_fetchall(
+        """SELECT id FROM plant_species
+           WHERE LOWER(common_name_nl) = LOWER(?)
+              OR LOWER(COALESCE(common_name_en, '')) = LOWER(?)
+              OR LOWER(COALESCE(latin_name, '')) = LOWER(?)
+           LIMIT 1""",
+        (name, name, name),
+    )
+    return rows[0]["id"] if rows else None
+
+
+async def _apply_species_relink(
+    db, plant_id: int, old_species_id: int | None, new_species_id: int,
+    photo_path: str | None = None, plant_name: str = "", species_name: str | None = None,
+) -> None:
+    """Point a plant at a different species and bring its derived data along.
+
+    Renaming a plant's species used to change one text column and nothing else:
+    `species_id` kept pointing at the old species, so care thresholds, the
+    phenology calendar, ecology and biodiversity all still described the plant
+    the user had just said it wasn't.
+
+    Three things follow the link:
+      - the cached `care_thresholds` (regenerated in the background when the
+        new species has none yet, exactly as plant creation does),
+      - the water routine, but only when it is still `provisional` —
+        `_seed_care_schedules` never touches an interval the user set,
+      - the identification anchors this plant contributed, which are labelled
+        with the species the user just moved away from (#866 phase 2).
+    """
+    if not new_species_id or new_species_id == old_species_id:
+        return
+
+    from services.user_refs import retract_plant_anchors
+
+    await db.execute(
+        "UPDATE plants SET species_id = ? WHERE id = ?", (new_species_id, plant_id)
+    )
+    await db.commit()
+    await retract_plant_anchors(db, plant_id, photo_path)
+
+    cached = None
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT care_thresholds FROM plant_species WHERE id = ?", (new_species_id,)
+        )
+        if rows and rows[0]["care_thresholds"]:
+            cached = rows[0]["care_thresholds"]
+    except Exception:
+        logger.warning("Threshold lookup failed for species_id=%s", new_species_id)
+
+    if cached:
+        await db.execute(
+            "UPDATE plants SET care_thresholds = ? WHERE id = ?", (cached, plant_id)
+        )
+        await db.commit()
+        await _seed_care_schedules(db, plant_id, cached)
+        await db.commit()
+    else:
+        fire_and_forget(
+            lambda: _generate_thresholds_deferred(
+                plant_id, new_species_id, plant_name, species_name,
+            ),
+            f"care-thresholds plant={plant_id}",
+        )
+
+
+async def _relink_species_deferred(
+    plant_id: int, old_species_id: int | None, lookup_name: str,
+    photo_path: str | None, plant_name: str,
+) -> None:
+    """Rename to a species we don't have yet: create it, then relink.
+
+    Deferred because `get_or_create_species` calls the LLM, and an edit-plant
+    save must not wait on that (or fail when the LLM is down). The plant keeps
+    its previous link for the second or two this takes.
+    """
+    from database import get_db
+    from species_service import get_or_create_species
+
+    async with get_db() as db:
+        try:
+            species_id = await get_or_create_species(db, lookup_name)
+        except Exception:
+            logger.warning(
+                "Species relink failed for plant_id=%s name=%r", plant_id, lookup_name
+            )
+            return
+        await _apply_species_relink(
+            db, plant_id, old_species_id, species_id,
+            photo_path=photo_path, plant_name=plant_name, species_name=lookup_name,
+        )
+
+
 async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
     """Raise 404 unless the plant belongs to the caller's household.
 
@@ -435,6 +547,17 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
 
     updates = dict(data.model_dump(exclude_unset=True))
 
+    # A species rename is a re-identification, not a text edit: the plant is now
+    # a different species and everything derived from species_id must follow.
+    # Read the pre-update row before the write so we can compare.
+    before = None
+    if "species" in updates and str(updates["species"] or "").strip():
+        rows = await db.execute_fetchall(
+            "SELECT name, species, species_id, photo_path FROM plants WHERE id = ?",
+            (plant_id,),
+        )
+        before = dict(rows[0]) if rows else None
+
     if "quantity" in updates and updates["quantity"] is not None:
         updates["quantity"] = max(1, int(updates["quantity"]))
 
@@ -453,6 +576,28 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
         values,
     )
     await db.commit()
+
+    if before is not None and _species_text_changed(before.get("species"), updates["species"]):
+        lookup_name = str(updates["species"]).strip()
+        # Known species: relink now, so the edit screen closes on correct data.
+        # Unknown: defer, because creating it calls the LLM and the save must
+        # neither wait for that nor fail with it.
+        existing_id = await _find_species_by_name(db, lookup_name)
+        if existing_id is not None:
+            await _apply_species_relink(
+                db, plant_id, before.get("species_id"), existing_id,
+                photo_path=before.get("photo_path"),
+                plant_name=before.get("name") or "",
+                species_name=lookup_name,
+            )
+        else:
+            fire_and_forget(
+                lambda: _relink_species_deferred(
+                    plant_id, before.get("species_id"), lookup_name,
+                    before.get("photo_path"), before.get("name") or "",
+                ),
+                f"species-relink plant={plant_id}",
+            )
 
     return await get_plant(plant_id, db=db, account=account)
 
