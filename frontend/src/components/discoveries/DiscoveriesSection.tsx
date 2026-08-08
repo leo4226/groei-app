@@ -132,7 +132,6 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const [notesSaving, setNotesSaving] = useState(false)
   const [locationCapturing, setLocationCapturing] = useState(false)
   const [locationError, setLocationError] = useState(false)
-  const [funFactLoadingId, setFunFactLoadingId] = useState<number | null>(null)
   const [funFactFailedId, setFunFactFailedId] = useState<number | null>(null)
 
   // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh. Only
@@ -223,7 +222,6 @@ export default function DiscoveriesSection({ onStats }: Props) {
   // one on open — the endpoint generates via the LLM and caches on the species.
   async function loadMissingFunFact(item: PlantDiscovery) {
     if (item.species_id == null) return
-    setFunFactLoadingId(item.id)
     setFunFactFailedId(null)
     const speciesId = item.species_id
     try {
@@ -234,8 +232,6 @@ export default function DiscoveriesSection({ onStats }: Props) {
           : d))
     } catch {
       setFunFactFailedId(item.id)
-    } finally {
-      setFunFactLoadingId(current => current === item.id ? null : current)
     }
   }
 
@@ -666,17 +662,18 @@ export default function DiscoveriesSection({ onStats }: Props) {
                 ) : selected.species_id != null && (
                   <div>
                     <p className="m-0 mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">{t.discovery.funFact}</p>
-                    {funFactLoadingId === selected.id ? (
-                      <p className="m-0 text-sm text-text-muted">{t.discovery.funFactLoading}</p>
-                    ) : (
+                    {/* Default to the loading state: the fetch is kicked off by
+                        an effect that runs after this paint, so keying on
+                        "loading" here would flash the error text first. */}
+                    {funFactFailedId === selected.id ? (
                       <div className="flex items-center gap-2">
                         <p className="m-0 text-sm text-text-muted">{t.discovery.funFactError}</p>
-                        {funFactFailedId === selected.id && (
-                          <button onClick={() => void loadMissingFunFact(selected)} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary">
-                            {t.discovery.funFactRetry}
-                          </button>
-                        )}
+                        <button onClick={() => void loadMissingFunFact(selected)} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary">
+                          {t.discovery.funFactRetry}
+                        </button>
                       </div>
+                    ) : (
+                      <p className="m-0 text-sm text-text-muted">{t.discovery.funFactLoading}</p>
                     )}
                   </div>
                 )}
