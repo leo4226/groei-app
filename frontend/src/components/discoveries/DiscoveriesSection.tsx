@@ -7,6 +7,7 @@ import { buildDiscoveryJournalEntry, discoveryDisplayName, discoveryFunFact } fr
 import { captureDiscoveryLocation } from '../../utils/discoveryLocation'
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
 import type { EcologyOut } from '../../types'
+import { wikipediaPlantUrl } from '../../utils/plantReferenceLinks'
 import ExpeditionMap from './ExpeditionMap'
 
 // The GL map (maplibre + tiles) is its own lazy chunk; the bundled SVG map is
@@ -131,6 +132,8 @@ export default function DiscoveriesSection({ onStats }: Props) {
   const [notesSaving, setNotesSaving] = useState(false)
   const [locationCapturing, setLocationCapturing] = useState(false)
   const [locationError, setLocationError] = useState(false)
+  const [funFactLoadingId, setFunFactLoadingId] = useState<number | null>(null)
+  const [funFactFailedId, setFunFactFailedId] = useState<number | null>(null)
 
   // refreshTick: re-fetch on pull-to-refresh / app-foreground refresh. Only
   // the initial run shows the loading state; refreshes swap data in place.
@@ -218,21 +221,28 @@ export default function DiscoveriesSection({ onStats }: Props) {
   // Self-healing fun facts: entries whose species predates the journal's
   // fun-fact columns (or whose fact generation failed at identify time) fetch
   // one on open — the endpoint generates via the LLM and caches on the species.
-  useEffect(() => {
-    const item = selectedId != null ? items.find(d => d.id === selectedId) : undefined
-    if (!item || item.species_id == null) return
-    if (item.fun_fact_nl || item.fun_fact_en) return
-    let cancelled = false
+  async function loadMissingFunFact(item: PlantDiscovery) {
+    if (item.species_id == null) return
+    setFunFactLoadingId(item.id)
+    setFunFactFailedId(null)
     const speciesId = item.species_id
-    speciesApi.funFact(speciesId)
-      .then(r => {
-        if (cancelled || (!r.fun_fact_nl && !r.fun_fact_en)) return
-        setItems(prev => prev.map(d => d.species_id === speciesId
+    try {
+      const r = await speciesApi.funFact(speciesId)
+      if (!r.fun_fact_nl && !r.fun_fact_en) throw new Error('Empty fun fact')
+      setItems(prev => prev.map(d => d.species_id === speciesId
           ? { ...d, fun_fact_nl: r.fun_fact_nl || d.fun_fact_nl, fun_fact_en: r.fun_fact_en || d.fun_fact_en }
           : d))
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
+    } catch {
+      setFunFactFailedId(item.id)
+    } finally {
+      setFunFactLoadingId(current => current === item.id ? null : current)
+    }
+  }
+
+  useEffect(() => {
+    const item = selectedId != null ? items.find(d => d.id === selectedId) : undefined
+    if (!item || item.species_id == null || item.fun_fact_nl || item.fun_fact_en) return
+    void loadMissingFunFact(item)
   }, [selectedId])
 
   function openEntry(id: number) {
@@ -648,11 +658,33 @@ export default function DiscoveriesSection({ onStats }: Props) {
                   )}
                 </div>
 
-                {entry.fun_fact && (
+                {entry.fun_fact ? (
                   <div>
                     <p className="m-0 mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">{t.discovery.funFact}</p>
                     <p className="m-0 font-heading text-[14.5px] italic leading-[1.55] text-text-soft">{entry.fun_fact}</p>
                   </div>
+                ) : selected.species_id != null && (
+                  <div>
+                    <p className="m-0 mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">{t.discovery.funFact}</p>
+                    {funFactLoadingId === selected.id ? (
+                      <p className="m-0 text-sm text-text-muted">{t.discovery.funFactLoading}</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="m-0 text-sm text-text-muted">{t.discovery.funFactError}</p>
+                        {funFactFailedId === selected.id && (
+                          <button onClick={() => void loadMissingFunFact(selected)} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary">
+                            {t.discovery.funFactRetry}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selected.latin_name && (
+                  <a href={wikipediaPlantUrl(selected.latin_name, t.locale)} target="_blank" rel="noreferrer" className="w-fit text-xs font-semibold text-primary no-underline hover:underline">
+                    {t.discovery.readOnWikipedia} ↗
+                  </a>
                 )}
 
                 <div>
