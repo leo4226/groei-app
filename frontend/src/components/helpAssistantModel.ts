@@ -1,5 +1,4 @@
-import type { Translations } from '../i18n/translations'
-import type { MarkCareDoneActionPayload, NavigateActionPayload } from '../api/chat'
+import type { ChatMessage, MarkCareDoneActionPayload, NavigateActionPayload } from '../api/chat'
 
 export type AssistantSheetState = 'compact' | 'expanded'
 export type AssistantBackdrop = 'none' | 'soft' | 'scrim'
@@ -8,15 +7,6 @@ export interface AssistantPanelConfig {
   maxHeight: string
   backdrop: AssistantBackdrop
   pageInteractive: boolean
-}
-
-export interface BugQuestion {
-  title: string
-  prompt: string
-}
-
-export function bugQuestions(t: Translations['help']['chat']): BugQuestion[] {
-  return t.bugQuestions
 }
 
 export function getAssistantPanelConfig({
@@ -49,18 +39,25 @@ export function getAssistantPanelConfig({
   }
 }
 
-export function bugStepFromAnswerCount(answerCount: number, t: Translations['help']['chat']) {
-  const total = bugQuestions(t).length
-  const readyToReview = answerCount >= total
-  return {
-    current: readyToReview ? total : Math.min(answerCount + 1, total),
-    total,
-    readyToReview,
-  }
+/** Feedback flow: one free-text box → Stekkie drafts an issue → user confirms.
+ * Replaces the old three-question bug wizard, which forced three paragraphs
+ * out of anyone reporting "the water button does nothing". */
+export type FeedbackStep = 'compose' | 'preview' | 'done'
+
+/** A report needs a couple of real characters — enough to stop an accidental
+ * one-key submit, loose enough never to nag someone with a short, clear bug. */
+export const MIN_REPORT_LENGTH = 3
+
+export function canRequestDraft(report: string): boolean {
+  return report.trim().length >= MIN_REPORT_LENGTH
 }
 
-export function isBugReportReadyToSubmit(answers: string[], t: Translations['help']['chat']) {
-  return answers.filter(answer => answer.trim().length > 0).length >= bugQuestions(t).length
+/** Strip the chat down to what the report needs: plain role/content pairs,
+ * no attached suggested-actions, no UI-only placeholder turns. */
+export function feedbackChatContext(messages: ChatMessage[]): ChatMessage[] {
+  return messages
+    .filter((m) => m.content.trim().length > 0)
+    .map(({ role, content }) => ({ role, content }))
 }
 
 /** Resolves a validated navigate action (see #410) to an in-app route, or

@@ -5,18 +5,19 @@ import { useT } from '../context/LanguageContext'
 import LeonAvatar from './LeonAvatar'
 import Glyph from './ui/Glyph'
 import {
-  sendChatMessage, submitBugReport, ChatRequestError,
+  sendChatMessage, draftFeedback, submitFeedback, ChatRequestError,
   type ChatMessage, type PageContext, type StekkieAction,
+  type FeedbackDraft, type FeedbackKind,
 } from '../api/chat'
 import { renderChatText } from '../utils/chatMarkdown'
 import {
-  bugStepFromAnswerCount,
   getAssistantPanelConfig,
-  isBugReportReadyToSubmit,
-  bugQuestions,
+  canRequestDraft,
+  feedbackChatContext,
   careCompletionArgs,
   resolveNavigateHref,
   type AssistantSheetState,
+  type FeedbackStep,
 } from './helpAssistantModel'
 
 type PageKey = 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify'
@@ -135,16 +136,18 @@ export default function HelpAssistant() {
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Bug report wizard state
-  const [bugReportMode, setBugReportMode] = useState(false)
-  const [bugAnswers, setBugAnswers] = useState<string[]>([])
-  const [bugDraft, setBugDraft] = useState('')
+  // Feedback flow state — one box, a confirmable draft, then filed.
+  const [feedbackMode, setFeedbackMode] = useState(false)
+  const [feedbackStep, setFeedbackStep] = useState<FeedbackStep>('compose')
+  const [reportText, setReportText] = useState('')
+  const [draft, setDraft] = useState<FeedbackDraft | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<{
     ok: boolean
     url?: string
-    error?: string
+    kind?: FeedbackKind
   } | null>(null)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   // Bubble throttle: set true once user opens chat — no more proactive bubbles
   const hasInteractedRef = useRef(false)
@@ -187,9 +190,7 @@ export default function HelpAssistant() {
 
   const pageKey = detectPage(location.pathname)
   const panelConfig = getAssistantPanelConfig({ isMobile, sheetState })
-  const bugStep = bugStepFromAnswerCount(bugAnswers.length, t.help.chat)
-  const currentBugQuestion = bugQuestions(t.help.chat)[bugAnswers.length]
-  const canSubmitBugReport = isBugReportReadyToSubmit(bugAnswers, t.help.chat)
+  const canSubmitReport = canRequestDraft(reportText)
 
   // ---------- bubble cycle ----------
   useEffect(() => {
@@ -226,7 +227,7 @@ export default function HelpAssistant() {
 
   // ---------- helpers ----------
   async function handleSend() {
-    if (!input.trim() || loading || bugReportMode) return
+    if (!input.trim() || loading || feedbackMode) return
     const userMsg = input.trim()
     setInput('')
     const updated = [...messages, { role: 'user' as const, content: userMsg }]
@@ -307,27 +308,27 @@ export default function HelpAssistant() {
     setOpen(false)
   }
 
-  function startBugReport() {
-    setMessages([])
-    setBugReportMode(true)
-    setBugAnswers([])
-    setBugDraft('')
+  // ---------- feedback (bug / idea) ----------
+  // The chat is deliberately NOT cleared here: if the user has been describing
+  // a problem to Stekkie, that transcript is the best context we have and it
+  // rides along with the report.
+  function startFeedback() {
+    setFeedbackMode(true)
+    setFeedbackStep('compose')
+    setReportText('')
+    setDraft(null)
     setSubmitResult(null)
+    setFeedbackError(null)
     setSheetState('compact')
   }
 
-  function cancelBugReport() {
-    setBugReportMode(false)
-    setBugAnswers([])
-    setBugDraft('')
+  function cancelFeedback() {
+    setFeedbackMode(false)
+    setFeedbackStep('compose')
+    setReportText('')
+    setDraft(null)
     setSubmitResult(null)
-  }
-
-  function handleBugNext() {
-    const answer = bugDraft.trim()
-    if (!answer || bugStep.readyToReview) return
-    setBugAnswers(prev => [...prev, answer])
-    setBugDraft('')
+    setFeedbackError(null)
   }
 
   function handleDismiss() {
@@ -336,43 +337,35 @@ export default function HelpAssistant() {
     setOpen(false)
   }
 
-  function buildBugReportMessages(): ChatMessage[] {
-    const reportMessages: ChatMessage[] = []
-    bugQuestions(t.help.chat).forEach((question, index) => {
-      reportMessages.push({
-        role: 'assistant',
-        content: `${question.title}\n${question.prompt}`,
-      })
-      if (bugAnswers[index]) {
-        reportMessages.push({ role: 'user', content: bugAnswers[index] })
-      }
-    })
-    return reportMessages
+  async function handleRequestDraft() {
+    if (submitting || !canSubmitReport) return
+    setSubmitting(true)
+    setFeedbackError(null)
+    try {
+      const composed = await draftFeedback(reportText, feedbackChatContext(messages))
+      setDraft(composed)
+      setFeedbackStep('preview')
+    } catch {
+      setFeedbackError(t.help.feedback.error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  async function handleSubmitBugReport() {
-    if (submitting || !canSubmitBugReport) return
+  async function handleSubmitFeedback() {
+    if (submitting || !draft) return
     setSubmitting(true)
-    setSubmitResult(null)
+    setFeedbackError(null)
     try {
-      const result = await submitBugReport(
-        buildBugReportMessages(),
-        window.location.pathname,
-      )
-      setSubmitResult({ ok: true, url: result.issue_url ?? undefined })
-      // Reset to normal after 3s
-      setTimeout(() => {
-        setBugReportMode(false)
-        setBugAnswers([])
-        setBugDraft('')
-        setMessages([])
-        setSubmitResult(null)
-      }, 3000)
-    } catch (err) {
+      const result = await submitFeedback(reportText, draft, feedbackChatContext(messages))
       setSubmitResult({
-        ok: false,
-        error: err instanceof Error ? err.message : t.help.chat.submitError,
+        ok: true,
+        url: result.issue_url ?? undefined,
+        kind: result.kind ?? draft.kind,
       })
+      setFeedbackStep('done')
+    } catch {
+      setFeedbackError(t.help.feedback.error)
     } finally {
       setSubmitting(false)
     }
@@ -533,11 +526,11 @@ export default function HelpAssistant() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-bold text-base sm:text-lg text-text leading-tight">
-                  {bugReportMode ? t.help.chat.bugReportHeader : 'Stekkie'}
+                  {feedbackMode ? t.help.feedback.header : 'Stekkie'}
                 </p>
                 <p className="text-[11px] sm:text-xs text-text-muted font-heading italic flex items-center gap-1 flex-wrap leading-tight">
-                  {bugReportMode
-                    ? t.help.chat.stepLabel(bugStep.current, bugStep.total)
+                  {feedbackMode
+                    ? t.help.feedback.prompt
                     : <>
                         <span className="truncate">— {t.help.subtitle(userName)}</span>
                         {!isMobile && <span className="text-text-muted/40 mx-1">·</span>}
@@ -562,11 +555,11 @@ export default function HelpAssistant() {
               </button>
               <button
                 onClick={() => {
-                  if (bugReportMode) cancelBugReport()
+                  if (feedbackMode) cancelFeedback()
                   else closeAssistant()
                 }}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-text transition-colors"
-                aria-label={bugReportMode ? t.common.cancel : t.help.close}
+                aria-label={feedbackMode ? t.common.cancel : t.help.close}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -575,62 +568,82 @@ export default function HelpAssistant() {
             </div>
 
             <div className="flex-1 overflow-y-auto min-h-0 space-y-2 px-0.5 overscroll-contain">
-              {bugReportMode ? (
+              {feedbackMode ? (
                 <div className="space-y-3">
-                  {!bugStep.readyToReview && currentBugQuestion && (
+                  {/* Compose deliberately has no card of its own — the header
+                      asks the question and the textarea below answers it. */}
+                  {feedbackStep === 'compose' && messages.length > 0 && (
                     <div className="rounded-2xl bg-bg border border-border-soft p-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary mb-1">
-                        {t.help.chat.stepLabel(bugStep.current, bugStep.total)}
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        {t.help.feedback.chatAttached}
                       </p>
-                      <h3 className="font-heading font-bold text-base text-text">{currentBugQuestion.title}</h3>
-                      <p className="text-sm text-text-soft leading-relaxed mt-1">{currentBugQuestion.prompt}</p>
                     </div>
                   )}
 
-                  {bugStep.readyToReview && (
+                  {feedbackStep === 'preview' && draft && (
                     <div className="rounded-2xl bg-bg border border-border-soft p-3 space-y-3">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary mb-1">{t.help.chat.review}</p>
-                        <h3 className="font-heading font-bold text-base text-text">{t.help.chat.reviewTitle}</h3>
-                        <p className="text-sm text-text-soft leading-relaxed mt-1">{t.help.chat.reviewHint}</p>
+                        <h3 className="font-heading font-bold text-base text-text">{t.help.feedback.previewTitle}</h3>
+                        <p className="text-sm text-text-soft leading-relaxed mt-1">
+                          {draft.composed_by === 'llm'
+                            ? t.help.feedback.previewHint
+                            : t.help.feedback.fallbackHint}
+                        </p>
                       </div>
-                      <div className="rounded-xl bg-surface border border-border-soft px-3 py-2 text-xs text-text-muted break-all">
-                        {window.location.pathname}
+
+                      {/* Stekkie's guess is only a suggestion — one tap corrects it. */}
+                      <div>
+                        <p className="text-[11px] font-semibold text-text-muted mb-1.5">{t.help.feedback.kindQuestion}</p>
+                        <div className="flex gap-2">
+                          {(['bug', 'feature'] as const).map((kind) => (
+                            <button
+                              key={kind}
+                              onClick={() => setDraft({ ...draft, kind })}
+                              aria-pressed={draft.kind === kind}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-[0.98] ${
+                                draft.kind === kind
+                                  ? 'bg-primary text-white border-primary'
+                                  : 'bg-surface text-text-muted border-border-soft hover:border-primary/40'
+                              }`}
+                            >
+                              {kind === 'bug' ? t.help.feedback.kindBug : t.help.feedback.kindFeature}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <ol className="space-y-2">
-                        {bugAnswers.map((answer, index) => (
-                          <li key={`${index}-${answer}`} className="rounded-xl bg-surface border border-border-soft px-3 py-2">
-                            <p className="text-[11px] font-semibold text-text-muted mb-1">{bugQuestions(t.help.chat)[index]?.title}</p>
-                            <p className="text-sm text-text whitespace-pre-wrap break-words">{answer}</p>
-                          </li>
-                        ))}
-                      </ol>
+
+                      <div className="rounded-xl bg-surface border border-border-soft px-3 py-2">
+                        <p className="text-sm font-semibold text-text break-words">{draft.title}</p>
+                        <div className="text-sm text-text-soft leading-relaxed mt-1.5">
+                          {renderChatText(draft.body)}
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {submitResult && (
-                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      submitResult.ok
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-50 text-red-700'
-                    }`}>
-                      {submitResult.ok ? (
-                        <>
-                          <p className="font-semibold">{t.help.chat.submitted}</p>
-                          {submitResult.url && (
-                            <a
-                              href={submitResult.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline text-green-700 text-xs mt-1 inline-block break-all"
-                            >
-                              {submitResult.url}
-                            </a>
-                          )}
-                        </>
-                      ) : (
-                        <p>{submitResult.error ?? t.help.chat.submitError}</p>
+                  {feedbackStep === 'done' && submitResult?.ok && (
+                    <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed bg-green-100 text-green-800">
+                      <p className="font-semibold">
+                        {submitResult.kind === 'feature'
+                          ? t.help.feedback.doneFeature
+                          : t.help.feedback.doneBug}
+                      </p>
+                      {submitResult.url && (
+                        <a
+                          href={submitResult.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-green-700 text-xs mt-1 inline-block break-all"
+                        >
+                          {t.help.feedback.viewIssue}
+                        </a>
                       )}
+                    </div>
+                  )}
+
+                  {feedbackError && (
+                    <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed bg-red-50 text-red-700">
+                      <p>{feedbackError}</p>
                     </div>
                   )}
                 </div>
@@ -698,66 +711,73 @@ export default function HelpAssistant() {
               )}
             </div>
 
-            {bugReportMode ? (
+            {feedbackMode ? (
               <div className="border-t border-border-soft pt-3 shrink-0 space-y-2">
-                {!bugStep.readyToReview && !submitResult && (
+                {feedbackStep === 'compose' && (
                   <>
                     <textarea
-                      value={bugDraft}
-                      onChange={(e) => setBugDraft(e.target.value)}
-                      placeholder={t.help.chat.inputPlaceholder}
+                      value={reportText}
+                      onChange={(e) => setReportText(e.target.value)}
+                      placeholder={t.help.feedback.placeholder}
                       rows={isMobile ? 3 : 2}
                       disabled={submitting}
+                      autoFocus
                       className="w-full bg-bg rounded-xl px-3.5 py-2.5 text-sm border border-border-soft focus:outline-none focus:border-primary text-text placeholder:text-text-muted/50 disabled:opacity-60 resize-none leading-relaxed"
                     />
                     <button
-                      onClick={handleBugNext}
-                      disabled={!bugDraft.trim() || submitting}
-                      className="w-full h-11 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 active:scale-[0.98] transition-all text-sm font-semibold"
-                    >
-                      {bugAnswers.length + 1 >= bugQuestions(t.help.chat).length ? t.help.chat.review : t.help.chat.next}
-                    </button>
-                  </>
-                )}
-
-                {bugStep.readyToReview && !submitResult && (
-                  <div className="grid grid-cols-[auto_1fr] gap-2">
-                    <button
-                      onClick={() => {
-                        setBugAnswers(prev => prev.slice(0, -1))
-                        setBugDraft(bugAnswers[bugAnswers.length - 1] ?? '')
-                      }}
-                      disabled={submitting}
-                      className="px-4 h-11 rounded-xl border border-border text-text-muted text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-40"
-                    >
-                      {t.common.back}
-                    </button>
-                    <button
-                      onClick={handleSubmitBugReport}
-                      disabled={submitting || !canSubmitBugReport}
-                      className="h-11 rounded-xl bg-green-600 text-white flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-all text-sm font-semibold"
-                      aria-label={t.help.chat.submit}
+                      onClick={handleRequestDraft}
+                      disabled={!canSubmitReport || submitting}
+                      className="w-full h-11 rounded-xl bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-all text-sm font-semibold"
                     >
                       {submitting ? (
-                        <span className="flex items-center gap-1.5">
+                        <>
                           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                           </svg>
-                          {t.help.chat.submitting}
-                        </span>
+                          {t.help.feedback.drafting}
+                        </>
                       ) : (
-                        t.help.chat.submit
+                        t.help.feedback.next
+                      )}
+                    </button>
+                  </>
+                )}
+
+                {feedbackStep === 'preview' && (
+                  <div className="grid grid-cols-[auto_1fr] gap-2">
+                    <button
+                      onClick={() => { setFeedbackStep('compose'); setFeedbackError(null) }}
+                      disabled={submitting}
+                      className="px-4 h-11 rounded-xl border border-border text-text-muted text-sm font-semibold active:scale-[0.98] transition-all disabled:opacity-40"
+                    >
+                      {t.help.feedback.back}
+                    </button>
+                    <button
+                      onClick={handleSubmitFeedback}
+                      disabled={submitting}
+                      className="h-11 rounded-xl bg-green-600 text-white flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-all text-sm font-semibold"
+                    >
+                      {submitting ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          {t.help.feedback.submitting}
+                        </>
+                      ) : (
+                        t.help.feedback.submit
                       )}
                     </button>
                   </div>
                 )}
 
                 <button
-                  onClick={cancelBugReport}
+                  onClick={cancelFeedback}
                   className="text-xs text-text-muted/60 hover:text-text-muted transition-colors underline underline-offset-2"
                 >
-                  {t.common.cancel}
+                  {feedbackStep === 'done' ? t.help.close : t.common.cancel}
                 </button>
               </div>
             ) : (
@@ -774,12 +794,12 @@ export default function HelpAssistant() {
                     }}
                     rows={1}
                     placeholder={t.help.chat.inputPlaceholder}
-                    disabled={loading || submitting || !!submitResult}
+                    disabled={loading}
                     className="flex-1 bg-bg rounded-xl px-3.5 py-2.5 text-sm border border-border-soft focus:outline-none focus:border-primary text-text placeholder:text-text-muted/50 disabled:opacity-60 resize-none leading-relaxed max-h-24"
                   />
                   <button
                     onClick={handleSend}
-                    disabled={loading || !input.trim() || !!submitResult}
+                    disabled={loading || !input.trim()}
                     className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all shrink-0"
                     aria-label={t.help.chat.send}
                   >
@@ -792,10 +812,10 @@ export default function HelpAssistant() {
                 <div className="flex items-center justify-between shrink-0 gap-3">
                   <p className="text-[11px] text-text-muted/50 italic min-w-0">{t.help.disclaimer}</p>
                   <button
-                    onClick={startBugReport}
-                    className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all shrink-0"
+                    onClick={startFeedback}
+                    className="px-3 py-2 rounded-xl bg-bg border border-border-soft text-text-muted text-xs sm:text-sm font-medium hover:border-primary/40 hover:text-text active:scale-[0.98] transition-all shrink-0"
                   >
-                    {t.help.chat.bugReport}
+                    {t.help.feedback.open}
                   </button>
                 </div>
               </>

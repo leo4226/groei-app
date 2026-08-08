@@ -1,26 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bugStepFromAnswerCount,
   getAssistantPanelConfig,
-  isBugReportReadyToSubmit,
-  bugQuestions,
+  canRequestDraft,
+  feedbackChatContext,
   careCompletionArgs,
   resolveNavigateHref,
 } from './helpAssistantModel'
-
-const mockChat = {
-  bugQuestions: [
-    { title: 'Waar was je?', prompt: 'Op welke pagina was je?' },
-    { title: 'Wat gebeurde er?', prompt: 'Kreeg je een foutmelding?' },
-    { title: 'Wat was de laatste stap?', prompt: 'Bijvoorbeeld: ik tikte op het water-icoontje.' },
-  ],
-  // minimal stubs for the other required keys
-  inputPlaceholder: '', send: '', thinking: '', error: '', unavailable: '',
-  empty: '', example: '', bugReport: '', bugReportHeader: '', expand: '', collapse: '',
-  next: '', review: '', stepLabel: (c: number, t: number) => `${c}/${t}`,
-  reviewTitle: '', reviewHint: '', submit: '', submitting: '', submitted: '', submitError: '',
-  actionConfirm: '', actionCancel: '', actionDone: '', actionError: '',
-}
 
 describe('HelpAssistant mobile model', () => {
   it('uses a compact non-modal pocket dock on mobile by default', () => {
@@ -47,18 +32,45 @@ describe('HelpAssistant mobile model', () => {
     })
   })
 
-  it('turns bug reporting into a three-step wizard with a review state', () => {
-    expect(bugStepFromAnswerCount(0, mockChat)).toEqual({ current: 1, total: 3, readyToReview: false })
-    expect(bugStepFromAnswerCount(2, mockChat)).toEqual({ current: 3, total: 3, readyToReview: false })
-    expect(bugStepFromAnswerCount(3, mockChat)).toEqual({ current: 3, total: 3, readyToReview: true })
-    expect(isBugReportReadyToSubmit(['page', 'thing broke', 'last tap'], mockChat)).toBe(true)
+})
+
+describe('feedback flow model', () => {
+  it('accepts a one-line report — no three-question wizard to clear', () => {
+    expect(canRequestDraft('de waterknop doet niks')).toBe(true)
   })
 
-  it('stores mobile-friendly bug questions without markdown formatting noise', () => {
-    const questions = bugQuestions(mockChat)
-    expect(questions).toHaveLength(3)
-    expect(questions.join('\n')).not.toContain('**')
-    expect(questions[0].title).toBe('Waar was je?')
+  it('rejects empty or whitespace-only reports', () => {
+    expect(canRequestDraft('')).toBe(false)
+    expect(canRequestDraft('   \n ')).toBe(false)
+  })
+
+  it('rejects a stray single keystroke but allows a genuinely short report', () => {
+    expect(canRequestDraft('a')).toBe(false)
+    expect(canRequestDraft('bug')).toBe(true)
+  })
+
+  it('carries the chat transcript along as report context', () => {
+    expect(feedbackChatContext([
+      { role: 'user', content: 'waarom is mijn kaart leeg?' },
+      { role: 'assistant', content: 'Dat zou niet moeten gebeuren.' },
+    ])).toEqual([
+      { role: 'user', content: 'waarom is mijn kaart leeg?' },
+      { role: 'assistant', content: 'Dat zou niet moeten gebeuren.' },
+    ])
+  })
+
+  it('drops empty turns and strips anything beyond role/content', () => {
+    const withAction = [
+      { role: 'assistant' as const, content: 'Doe dit', action: { type: 'navigate' } },
+      { role: 'user' as const, content: '   ' },
+    ]
+    expect(feedbackChatContext(withAction as never)).toEqual([
+      { role: 'assistant', content: 'Doe dit' },
+    ])
+  })
+
+  it('handles an empty chat', () => {
+    expect(feedbackChatContext([])).toEqual([])
   })
 })
 
