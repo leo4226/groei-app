@@ -9,6 +9,7 @@ from auth import get_current_account
 from database import db_dep
 from services.db_adapter import DbAdapter
 from services.feedback_composer import (
+    VALID_COMPOSED_BY,
     VALID_DIFFICULTIES,
     VALID_KINDS,
     FeedbackDraft,
@@ -66,6 +67,10 @@ class BugReportRequest(FeedbackDraftRequest):
     title: str | None = None
     body: str | None = None
     difficulty: str | None = None
+    # Echoed back from the draft so the filed issue attributes the text
+    # honestly. Defaults to "fallback": if a caller doesn't tell us the AI
+    # wrote it, we don't claim it did.
+    composed_by: str | None = None
 
 
 class BugReportResponse(BaseModel):
@@ -181,7 +186,7 @@ async def submit_bug_report(
             title=truncate_words(req.title.strip().replace("\n", " "), GITHUB_TITLE_MAX),
             body=req.body.strip(),
             difficulty=req.difficulty if req.difficulty in VALID_DIFFICULTIES else None,
-            composed_by="llm",
+            composed_by=req.composed_by if req.composed_by in VALID_COMPOSED_BY else "fallback",
         )
     else:
         draft = await compose_draft(

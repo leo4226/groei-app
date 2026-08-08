@@ -180,5 +180,8 @@ export async function submitFeedback(
     title: draft.title,
     body: draft.body,
     difficulty: draft.difficulty,
+    // So the filed issue says who actually wrote the text — the preview
+    // already told the user whether the AI was available.
+    composed_by: draft.composed_by,
   })
 }

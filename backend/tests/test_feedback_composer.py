@@ -176,6 +176,26 @@ class TestComposeDraft:
         draft = await fc.compose_draft("map is blank")
         assert draft.composed_by == "fallback"
 
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"choices": None},
+            {"choices": []},
+            {"choices": [{"message": None}]},
+            {"choices": [{}]},
+            {},
+            {"choices": "not-a-list"},
+            [],
+        ],
+    )
+    async def test_falls_back_on_a_200_with_the_wrong_shape(self, monkeypatch, payload):
+        """A malformed-but-valid-JSON 200 must not escape as a 500."""
+        monkeypatch.setattr(fc, "LLM_API_KEY", "test-key")
+        _install_fake_llm(monkeypatch, status=200, payload=payload)
+        draft = await fc.compose_draft("map is blank")
+        assert draft.composed_by == "fallback"
+        assert draft.body == "map is blank"
+
     async def test_falls_back_on_a_network_error(self, monkeypatch):
         import httpx
 

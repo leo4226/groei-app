@@ -25,6 +25,7 @@ Difficulty = Literal["easy", "medium", "hard"]
 
 VALID_KINDS: tuple[str, ...] = ("bug", "feature")
 VALID_DIFFICULTIES: tuple[str, ...] = ("easy", "medium", "hard")
+VALID_COMPOSED_BY: tuple[str, ...] = ("llm", "fallback")
 
 TITLE_MAX = 100
 # Keep the prompt (and so the cost) bounded no matter how long the chat ran.
@@ -207,7 +208,12 @@ async def compose_draft(
             logger.warning("Feedback composer LLM returned %s", resp.status_code)
             return fallback_draft(report)
         content = resp.json()["choices"][0]["message"].get("content")
-    except (httpx.RequestError, KeyError, IndexError, ValueError) as exc:
+    # A 200 whose body is valid JSON but the wrong shape ({"choices": null},
+    # a null message, a list where a dict belongs) must fall back like any
+    # other failure — never surface as a 500 and lose the user's report.
+    except (
+        httpx.RequestError, KeyError, IndexError, TypeError, AttributeError, ValueError
+    ) as exc:
         logger.warning("Feedback composer LLM call failed: %s", exc)
         return fallback_draft(report)
 

@@ -188,6 +188,64 @@ async def test_submit_includes_source_context_and_verbatim_report(
 
 
 @pytest.mark.asyncio
+async def test_submit_attributes_a_fallback_draft_to_the_reporter_not_the_ai(
+    client, seeded_db, auth_header, github_capture
+):
+    """When drafting fell back, the issue must not claim Stekkie wrote it."""
+    resp = await client.post(
+        "/api/bug-report",
+        json={
+            "report": "de kaart is leeg",
+            "kind": "bug",
+            "title": "de kaart is leeg",
+            "body": "de kaart is leeg",
+            "composed_by": "fallback",
+        },
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200
+    body = github_capture["json"]["body"]
+    assert "reporter (AI unavailable)" in body
+    assert "Stekkie (AI)" not in body
+
+
+@pytest.mark.asyncio
+async def test_submit_attributes_an_llm_draft_to_stekkie(
+    client, seeded_db, auth_header, github_capture
+):
+    resp = await client.post(
+        "/api/bug-report",
+        json={
+            "report": "de kaart is leeg",
+            "kind": "bug",
+            "title": "Map renders blank",
+            "body": "The garden map renders blank.",
+            "composed_by": "llm",
+        },
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200
+    assert "Stekkie (AI)" in github_capture["json"]["body"]
+
+
+@pytest.mark.asyncio
+async def test_submit_does_not_claim_ai_authorship_when_provenance_is_absent(
+    client, seeded_db, auth_header, github_capture
+):
+    """An unknown provenance must not be upgraded to 'written by AI'."""
+    resp = await client.post(
+        "/api/bug-report",
+        json={"report": "x", "kind": "bug", "title": "T", "body": "B"},
+        headers=auth_header,
+    )
+
+    assert resp.status_code == 200
+    assert "Stekkie (AI)" not in github_capture["json"]["body"]
+
+
+@pytest.mark.asyncio
 async def test_submit_composes_when_the_caller_skips_the_preview(
     client, seeded_db, auth_header, github_capture, monkeypatch
 ):
