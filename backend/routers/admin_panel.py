@@ -350,6 +350,84 @@ async def _fetch_bioclip_coverage() -> dict:
     }
 
 
+async def _identify_outcomes(db, start_date) -> dict:
+    """Did the identify actually land? (#866 phase 3)
+
+    Counts committed identifies in the window and splits them by whether the
+    user kept what the engine led with. `misses` — a BioCLIP identify where the
+    user committed a *different* species — is the number that should fall as the
+    catalog sync feeds real corrections back in. `missed_species` ranks what to
+    add next: the species users had to reach past BioCLIP to find.
+
+    Best-effort: the columns arrive with migration 0068, so an unmigrated DB (or
+    a slim test fixture) reports zeros rather than 500ing the whole dashboard.
+    """
+    empty = {
+        "committed": 0, "bioclip_accepted": 0, "bioclip_misses": 0,
+        "miss_rate": None, "missed_species": [],
+    }
+    try:
+        totals = await db.execute_fetchall("""
+            SELECT
+              COUNT(*) as committed,
+              COUNT(*) FILTER (
+                WHERE engine = 'bioclip' AND chosen_species_id = top_species_id
+              ) as accepted,
+              COUNT(*) FILTER (
+                WHERE engine = 'bioclip'
+                  AND (top_species_id IS NULL OR chosen_species_id != top_species_id)
+              ) as misses
+            FROM identify_log
+            WHERE committed_at IS NOT NULL AND created_at >= $1::date
+        """, (start_date,))
+    except Exception:
+        return empty
+
+    row = dict(totals[0]) if totals else {}
+    accepted = int(row.get("accepted") or 0)
+    misses = int(row.get("misses") or 0)
+    bioclip_total = accepted + misses
+
+    # Counts stand on their own; if the ranked list can't be built (join over a
+    # table this deployment doesn't have yet) the numbers still report.
+    try:
+        missed_rows = await db.execute_fetchall("""
+        SELECT il.chosen_species_id as species_id,
+               ps.latin_name, ps.common_name_nl,
+               COUNT(*) as count
+        FROM identify_log il
+        LEFT JOIN plant_species ps ON ps.id = il.chosen_species_id
+        WHERE il.committed_at IS NOT NULL
+          AND il.created_at >= $1::date
+          AND il.engine = 'bioclip'
+          AND il.chosen_species_id IS NOT NULL
+          AND (il.top_species_id IS NULL OR il.chosen_species_id != il.top_species_id)
+        GROUP BY il.chosen_species_id, ps.latin_name, ps.common_name_nl
+        ORDER BY count DESC, ps.latin_name
+        LIMIT 20
+        """, (start_date,))
+    except Exception:
+        missed_rows = []
+
+    return {
+        "committed": int(row.get("committed") or 0),
+        "bioclip_accepted": accepted,
+        "bioclip_misses": misses,
+        # None rather than 0 when nothing was committed — "no data" and "never
+        # misses" must not look the same on the dashboard.
+        "miss_rate": round(misses / bioclip_total, 3) if bioclip_total else None,
+        "missed_species": [
+            {
+                "species_id": r["species_id"],
+                "latin_name": r["latin_name"],
+                "common_name_nl": r["common_name_nl"],
+                "count": r["count"],
+            }
+            for r in missed_rows
+        ],
+    }
+
+
 def _has_text(value) -> bool:
     return bool(str(value or "").strip())
 
@@ -736,6 +814,8 @@ async def admin_growth_metrics(
     prev_identifies = prev_identify_raw[0]["n"]
     prev_active = prev_active_raw[0]["n"]
 
+    identify_outcomes = await _identify_outcomes(db, start_date)
+
     return {
         "days": days,
         "metrics": {
@@ -753,6 +833,7 @@ async def admin_growth_metrics(
             "identifies": current_identifies - prev_identifies,
         },
         "top_identifiers": top_identifiers,
+        "identify_outcomes": identify_outcomes,
     }
 
 

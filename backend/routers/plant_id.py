@@ -11,7 +11,7 @@ import json
 import logging
 import os
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -207,6 +207,10 @@ class IdentifyResponse(BaseModel):
     # migrate to reading `confidence` directly; remove this field after.
     low_confidence: bool = False
     source: str = "bioclip"
+    # Handle for this identify attempt. The client passes it back on commit so
+    # we can record what the user actually kept (#866 phase 3). None when the
+    # log write failed — never a reason to fail the identify itself.
+    identify_id: int | None = None
 
 
 def _clean_common_names(names: list[str]) -> list[str]:
@@ -374,18 +378,62 @@ async def _increment_quota(db, account_id: int) -> None:
     )
 
 
-async def _log_identify(db, account: dict, engine: str, outcome: str) -> None:
+async def _log_identify(
+    db,
+    account: dict,
+    engine: str,
+    outcome: str,
+    top_species_id: int | None = None,
+    top_confidence: float | None = None,
+) -> int | None:
     """Best-effort record of an identify call, for the admin growth metrics
     ("how many IDs, by which household, via which engine"). Never fails the
-    identify flow — a logging hiccup must not break identification."""
+    identify flow — a logging hiccup must not break identification.
+
+    Also records what the engine led with, so a later commit can say whether the
+    user accepted it (#866 phase 3). Returns the row id to hand back to the
+    client as `identify_id`, or None if the write failed."""
+    try:
+        rows = await db.execute_fetchall(
+            "INSERT INTO identify_log "
+            "  (account_id, household_id, engine, outcome, top_species_id, top_confidence) "
+            "VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+            (
+                account["account_id"], account["household_id"], engine, outcome,
+                int(top_species_id) if top_species_id is not None else None,
+                float(top_confidence) if top_confidence is not None else None,
+            ),
+        )
+        await db.commit()
+        return int(rows[0]["id"]) if rows else None
+    except Exception:
+        logger.warning("identify_log write failed", exc_info=True)
+        return None
+
+
+async def _log_identify_choice(
+    db, identify_id: int, account: dict, species_id: int, source: str | None
+) -> None:
+    """Close the loop on an identify: what did the user actually keep?
+
+    Scoped to the account that made the identify call, so a guessed id cannot
+    write into someone else's row. Best-effort like the insert."""
     try:
         await db.execute(
-            "INSERT INTO identify_log (account_id, household_id, engine, outcome) VALUES (?, ?, ?, ?)",
-            (account["account_id"], account["household_id"], engine, outcome),
+            "UPDATE identify_log "
+            "SET chosen_species_id = ?, chosen_source = ?, committed_at = ? "
+            "WHERE id = ? AND account_id = ?",
+            (
+                int(species_id),
+                source if source in {"bioclip", "plantnet", "manual"} else None,
+                datetime.now(timezone.utc).replace(tzinfo=None),
+                int(identify_id),
+                account["account_id"],
+            ),
         )
         await db.commit()
     except Exception:
-        logger.warning("identify_log write failed", exc_info=True)
+        logger.warning("identify_log choice update failed", exc_info=True)
 
 
 _BIOCLIP_WORKER_URL = os.environ.get("BIOCLIP_WORKER_URL", "")
@@ -648,7 +696,12 @@ async def identify_endpoint(
         try:
             result = await _bioclip_identify(image_bytes_list, db, lang)
             if result is not None:
-                await _log_identify(db, account, result.source, result.confidence)
+                top = result.candidates[0] if result.candidates else None
+                result.identify_id = await _log_identify(
+                    db, account, result.source, result.confidence,
+                    top_species_id=top.species_id if top else None,
+                    top_confidence=top.confidence if top else None,
+                )
                 return result
         except Exception as exc:
             logger.warning("BioCLIP failed, falling back to Pl@ntNet: %s", exc)
@@ -680,12 +733,13 @@ async def identify_endpoint(
     await _increment_quota(db, account["account_id"])
 
     if not candidates or candidates[0].confidence < _CONFIDENCE_FLOOR:
-        await _log_identify(db, account, "plantnet", "no_match")
+        identify_id = await _log_identify(db, account, "plantnet", "no_match")
         return IdentifyResponse(
             candidates=[],
             confidence="no_match",
             low_confidence=False,
             source="plantnet",
+            identify_id=identify_id,
         )
 
     top_candidates = candidates[:_MAX_CANDIDATES]
@@ -707,18 +761,30 @@ async def identify_endpoint(
     top1 = candidates[0].confidence
     top2 = candidates[1].confidence if len(candidates) > 1 else None
     confidence = _classify_confidence(top1, top2)
-    await _log_identify(db, account, "plantnet", confidence)
+    # top_species_id stays NULL when PlantNet's pick is not in our catalog —
+    # that absence is exactly the coverage gap this telemetry is meant to expose.
+    identify_id = await _log_identify(
+        db, account, "plantnet", confidence,
+        top_species_id=out[0].species_id if out else None,
+        top_confidence=out[0].confidence if out else None,
+    )
     return IdentifyResponse(
         candidates=out,
         confidence=confidence,
         low_confidence=(confidence != "high"),
         source="plantnet",
+        identify_id=identify_id,
     )
 
 
 class IdentifyCommitRequest(BaseModel):
     scientific_name: str
     photo_base64: str
+    # From the identify response this commit follows, plus which engine's list
+    # the chosen candidate came from. Both optional: older clients don't send
+    # them, and a commit must never fail over telemetry (#866 phase 3).
+    identify_id: int | None = None
+    chosen_source: str | None = None
 
 
 class IdentifyCommitResponse(BaseModel):
@@ -900,6 +966,14 @@ async def identify_commit(
     # block the event loop (a single stalled upload used to freeze every
     # concurrent request on this one small machine).
     photo_path = await run_in_threadpool(_save_identify_photo, image_bytes)
+
+    # Close the telemetry loop: which species did the user actually keep, and
+    # from whose candidate list? This is what makes "BioCLIP missed, PlantNet
+    # got it" countable instead of anecdotal.
+    if body.identify_id is not None:
+        await _log_identify_choice(
+            db, body.identify_id, account, species_id, body.chosen_source
+        )
 
     # Best-effort: capture the image embedding for the user-confirmed retrieval
     # layer AFTER the response — it's a GPU worker round trip the user never

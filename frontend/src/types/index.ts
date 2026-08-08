@@ -653,6 +653,9 @@ export type IdentifyResponse = {
   // results now flag as low_confidence too. Read `confidence` directly instead.
   low_confidence: boolean
   source?: IdentifySource
+  /** Handle for this identify attempt; pass it back on commit so the backend
+   *  can record which candidate the user actually kept (#866 phase 3). */
+  identify_id?: number | null
 }
 
 export type IdentifyCommitResult = {

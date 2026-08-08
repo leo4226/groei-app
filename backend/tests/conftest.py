@@ -233,7 +233,12 @@ SCHEMA = """
         household_id INTEGER,
         engine TEXT NOT NULL,
         outcome TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        top_species_id INTEGER,
+        top_confidence REAL,
+        chosen_species_id INTEGER,
+        chosen_source TEXT,
+        committed_at TIMESTAMP
     );
 """
 
