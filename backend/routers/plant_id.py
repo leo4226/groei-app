@@ -817,6 +817,25 @@ async def _capture_confirmed_embedding(
         )
 
 
+_COMMIT_SYNC_LIMIT = 64
+
+
+async def _sync_bioclip_catalog() -> None:
+    """Deferred: push newly created species to the worker's reference set (#866).
+
+    A species first seen through a PlantNet correction is inserted with
+    `embedded_at IS NULL`, i.e. queued. Draining the queue here is what makes
+    the plant identifiable by BioCLIP itself next time, instead of relying on
+    the user-confirmed image rescue alone."""
+    from database import get_db
+    from services.bioclip_catalog_sync import sync_pending
+
+    async with get_db() as db:
+        # One batch only — this rides along with a user action, so it should not
+        # turn into a catalog-wide job. The periodic reconcile drains backlogs.
+        await sync_pending(db, limit=_COMMIT_SYNC_LIMIT)
+
+
 @router.post("/identify/commit", response_model=IdentifyCommitResponse)
 async def identify_commit(
     body: IdentifyCommitRequest,
@@ -888,6 +907,10 @@ async def identify_commit(
             lambda: _capture_confirmed_embedding(species_id, image_bytes, account_id, photo_path),
             f"embed-capture species={species_id}",
         )
+        # And teach the identifier the species itself, not just this photo:
+        # drains the pending-embedding queue, which a just-created species
+        # (embedded_at NULL) is already in.
+        fire_and_forget(_sync_bioclip_catalog, f"catalog-sync species={species_id}")
 
     return IdentifyCommitResponse(
         species_id=species_id,

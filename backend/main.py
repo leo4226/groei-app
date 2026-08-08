@@ -15,6 +15,10 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger("uvicorn.access").addFilter(CalendarFeedAccessLogFilter())
 _log = logging.getLogger("floreren")
 
+# Let the app finish booting (and the worker finish loading its model) before
+# the first catalog reconcile — it is a safety net, never a startup dependency.
+_BIOCLIP_SYNC_STARTUP_DELAY_S = 120
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -75,7 +79,34 @@ async def lifespan(app: FastAPI):
     if not os.environ.get("BIOCLIP_WORKER_URL"):
         asyncio.ensure_future(_preload_bioclip())
 
+    # Keep the worker's identification catalog in step with plant_species (#866).
+    # Species created from a PlantNet-corrected identify are queued
+    # (embedded_at IS NULL); the commit handler drains the queue immediately and
+    # this loop is the safety net — it also repairs drift after a worker rebuild
+    # by diffing against /coverage. Set BIOCLIP_SYNC_INTERVAL_S=0 to disable.
+    sync_task: asyncio.Task | None = None
+
+    async def _bioclip_catalog_sync_loop(interval_s: int):
+        from services.bioclip_catalog_sync import reconcile
+
+        await asyncio.sleep(_BIOCLIP_SYNC_STARTUP_DELAY_S)
+        while True:
+            try:
+                async with get_db() as _db:
+                    result = await reconcile(_db)
+                if result.get("embedded") or result.get("requeued"):
+                    _log.info("BioCLIP catalog sync: %s", result)
+            except Exception as exc:
+                _log.warning("BioCLIP catalog sync failed: %s", exc)
+            await asyncio.sleep(interval_s)
+
+    _sync_interval = int(os.environ.get("BIOCLIP_SYNC_INTERVAL_S", "21600"))
+    if os.environ.get("BIOCLIP_WORKER_URL") and _sync_interval > 0:
+        sync_task = asyncio.ensure_future(_bioclip_catalog_sync_loop(_sync_interval))
+
     yield
+    if sync_task is not None:
+        sync_task.cancel()
     await close_pool()
 
 

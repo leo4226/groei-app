@@ -2,11 +2,10 @@
 from unittest.mock import patch
 
 import numpy as np
-import pytest
 from fastapi.testclient import TestClient
 
-torch = pytest.importorskip("torch")  # noqa: F401 — worker requires torch (GPU box only)
-
+# The worker module imports torch lazily (inside the functions that need a GPU),
+# so its HTTP layer is testable — and covered in CI — without the ML stack.
 import bioclip_worker as worker
 
 
