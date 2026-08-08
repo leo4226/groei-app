@@ -154,7 +154,8 @@ Key Fly secrets:
 | `DATABASE_URL` | Neon Postgres connection string |
 | `JWT_SECRET` | JWT signing key |
 | `BIOCLIP_WORKER_URL` | `https://bioclip.floreren.app` — remote GPU worker |
-| `BIOCLIP_WORKER_TOKEN` | Shared secret sent as `X-Worker-Token`; the worker rejects `/identify` + `/embed-image` without it. Must match the Windows worker's env var of the same name. |
+| `BIOCLIP_WORKER_TOKEN` | Shared secret sent as `X-Worker-Token`; the worker rejects `/identify`, `/embed-image`, `/embed-text` and `/coverage` without it. Must match the Windows worker's env var of the same name. |
+| `BIOCLIP_SYNC_INTERVAL_S` | Catalog-sync loop interval (default `21600` = 6h; `0` disables). |
 | `NOUS_API_KEY` | LLM calls (care thresholds, species, icon generation) via Nous Portal — DeepSeek V4 Flash |
 | `RESEND_API_KEY` | Transactional email |
 | `PLANTNET_API_KEY` | PlantNet fallback identification |
@@ -187,9 +188,11 @@ npx vercel alias <deploy-url> floreren.app  # point domain to new deploy
 
 Runs **natively on Windows** (Leon's desktop, AMD Ryzen 7 5800X, RTX 2070, 16 GB), bound to **`127.0.0.1:8001`** (loopback only — cloudflared reaches it via localhost) — no WSL. Health: `GET /health` → `{"status":"ok","model_loaded":true,"embeddings_loaded":true,"device":"cuda"}` (health is unauthenticated).
 
-**Auth:** `/identify` and `/embed-image` require the `X-Worker-Token` header to match the worker's `BIOCLIP_WORKER_TOKEN` env var (set as a persistent user env var via `setx`, inherited by the scheduled task; mirrors the Fly secret of the same name). If `BIOCLIP_WORKER_TOKEN` is unset on the worker, auth is disabled (dev fallback). GPU inference is serialized behind an async lock and runs in a threadpool so health checks stay responsive.
+**Auth:** `/identify`, `/embed-image`, `/embed-text` and `/coverage` require the `X-Worker-Token` header to match the worker's `BIOCLIP_WORKER_TOKEN` env var (set as a persistent user env var via `setx`, inherited by the scheduled task; mirrors the Fly secret of the same name). If `BIOCLIP_WORKER_TOKEN` is unset on the worker, auth is disabled (dev fallback). GPU inference is serialized behind an async lock and runs in a threadpool so health checks stay responsive.
 
 The Fly backend offloads plant identification to this worker via `BIOCLIP_WORKER_URL`. When the env var is set (production), `main.py` skips local BioCLIP preloading — the backend image does not include torch/open_clip.
+
+**Catalog sync (#866).** The reference set (`backend/data/bioclip/species_embeddings.npy`) is no longer only rebuilt by a manual `scripts/precompute_embeddings.py` run. `plant_species.embedded_at IS NULL` marks a species as queued (new rows — e.g. a species first seen through a PlantNet correction — start that way), and `services/bioclip_catalog_sync.py` pushes the queue to the worker's `POST /embed-text`, which appends to the live matrix and persists it atomically. It runs on every identify commit, every `BIOCLIP_SYNC_INTERVAL_S` from `main.py`, and on demand via `POST /admin-panel/bioclip/sync`; the periodic pass also diffs against `/coverage` and re-queues anything the worker lost. Full-catalog rebuilds (prompt changes, model swaps) are still the batch script's job.
 
 **Runtime / startup** (migrated WSL → Windows-native 2026-06-07):
 

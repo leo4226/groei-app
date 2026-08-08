@@ -40,6 +40,41 @@ _DARK_MEAN_LUMA = 40.0
 _BRIGHT_MEAN_LUMA = 220.0
 
 
+# ── Prompt ensemble (#809) ──────────────────────────────────────────────────
+# BioCLIP (imageomics) was trained on taxonomic + common-name prompts and
+# benefits from template ensembling. We use a compact canonical set: 7
+# Latin-name templates + 3 common-name templates (when the species has an
+# English common name). Average per species, then re-normalize to unit length.
+#
+# Lives here (not in scripts/) because BOTH the offline batch build
+# (scripts/precompute_embeddings.py) and the worker's incremental
+# /embed-text endpoint must encode species identically — a species added
+# live has to land in the same embedding space as the batch-built ones.
+LATIN_TEMPLATES = [
+    "a photo of {name}",
+    "a photo of a {name}",
+    "a photo of the {name}",
+    "a photo of {name}, a plant",
+    "a photo of a {name}, a plant",
+    "a photo of the {name}, a plant",
+    "a photo of the {name} plant",
+]
+
+COMMON_TEMPLATES = [
+    "a photo of a {name}",
+    "a photo of the {name}",
+    "a photo of {name}, a plant",
+]
+
+
+def build_prompts(latin_name: str, common_name_en: str | None = None) -> list[str]:
+    """Return the prompt ensemble for one species (Latin required, common optional)."""
+    prompts = [t.format(name=latin_name) for t in LATIN_TEMPLATES]
+    if common_name_en:
+        prompts += [t.format(name=common_name_en) for t in COMMON_TEMPLATES]
+    return prompts
+
+
 def center_crop(image, fraction: float = _CENTER_CROP_FRACTION):
     """Center-crop a PIL image to `fraction` of its width/height.
 

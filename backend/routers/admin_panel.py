@@ -467,6 +467,18 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
     species_gap_rows.sort(key=lambda r: (not r["in_use"], str(r.get("common_name_nl") or "").lower()))
     species_stats["incomplete"] = incomplete_species
 
+    # Queue depth for the incremental catalog sync (#866). Best-effort: the
+    # column arrives with migration 0067, so a DB that hasn't migrated yet (or a
+    # test fixture with a slim plant_species) reports "unknown" rather than 500.
+    try:
+        pending_embedding = (await db.execute_fetchall(
+            "SELECT COUNT(*) as n FROM plant_species "
+            "WHERE embedded_at IS NULL AND id_enabled = TRUE "
+            "  AND latin_name IS NOT NULL AND latin_name != ''"
+        ))[0]["n"]
+    except Exception:
+        pending_embedding = None
+
     bioclip_worker = await _fetch_bioclip_coverage()
     embedded_ids = set(bioclip_worker.get("species_ids") or [])
     db_missing_ids = set()
@@ -511,8 +523,23 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
             "db_species_missing_from_bioclip": len(db_missing_ids),
             "active_plants_missing_from_bioclip": active_missing_bioclip,
             "missing_species_rows": db_missing_rows,
+            # Species queued for the incremental /embed-text sync (#866). The
+            # sync loop drains this on its own; the count is here so a stuck
+            # queue (worker down, names failing the sanity check) is visible.
+            "pending_embedding": pending_embedding,
         },
     }
+
+
+@router.post("/admin-panel/bioclip/sync")
+async def admin_bioclip_sync(admin=Depends(require_admin), db=Depends(db_dep)):
+    """Reconcile the worker's reference catalog with plant_species now (#866).
+
+    Same operation the background loop runs every few hours — exposed so a drift
+    spotted on this page can be fixed without waiting for the next tick."""
+    from services.bioclip_catalog_sync import reconcile
+
+    return await reconcile(db)
 
 
 @router.get("/admin-panel/overview")
