@@ -7,6 +7,7 @@ import { resolveIconUrl } from '../utils/icons'
 import { captureDiscoveryLocation } from '../utils/discoveryLocation'
 import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
+import { wikipediaPlantUrl } from '../utils/plantReferenceLinks'
 
 const MONTH_ABBR: Record<'nl' | 'en', string[]> = {
   nl: ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
@@ -51,6 +52,7 @@ export default function DiscoveryCard() {
   const [ecology, setEcology] = useState<EcologyOut | null>(null)
   const [funFact, setFunFact] = useState<string | null>(null)
   const [funFactLoading, setFunFactLoading] = useState(false)
+  const [funFactFailed, setFunFactFailed] = useState(false)
   const [gardenFits, setGardenFits] = useState<GardenFit[] | null>(null)
   const [gardenFitLoading, setGardenFitLoading] = useState(false)
   const [showGardenFit, setShowGardenFit] = useState(false)
@@ -104,16 +106,24 @@ export default function DiscoveryCard() {
     ?? candidate.common_name_nl
     ?? scientificName
 
+  function loadFunFact(id: number) {
+    setFunFactFailed(false)
+    setFunFactLoading(true)
+    speciesApi.funFact(id)
+      .then((r) => {
+        const fact = activeLang === 'en' ? r.fun_fact_en : r.fun_fact_nl
+        setFunFact(fact || null)
+        setFunFactFailed(!fact)
+      })
+      .catch(() => { setFunFact(null); setFunFactFailed(true) })
+      .finally(() => setFunFactLoading(false))
+  }
+
   useEffect(() => {
     if (!speciesId) return
     setEcologyLoading(true)
     speciesApi.ecology(speciesId).then(setEcology).catch(() => {}).finally(() => setEcologyLoading(false))
-
-    setFunFactLoading(true)
-    speciesApi.funFact(speciesId)
-      .then((r) => setFunFact(activeLang === 'en' ? r.fun_fact_en : r.fun_fact_nl))
-      .catch(() => setFunFact(null))
-      .finally(() => setFunFactLoading(false))
+    loadFunFact(speciesId)
   }, [speciesId, activeLang])
 
   function handleShowGardenFit() {
@@ -246,7 +256,19 @@ export default function DiscoveryCard() {
         ) : funFact ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--color-text)' }}>{funFact}</p>
         ) : (
-          <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>{t.discovery.funFactError}</p>
+          <div>
+            <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>{t.discovery.funFactError}</p>
+            {speciesId && funFactFailed && (
+              <button onClick={() => loadFunFact(speciesId)} style={{ marginTop: 8, padding: 0, border: 0, background: 'transparent', color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {t.discovery.funFactRetry}
+              </button>
+            )}
+          </div>
+        )}
+        {scientificName && (
+          <a href={wikipediaPlantUrl(scientificName, t.locale)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, color: 'var(--color-primary)', fontSize: 12, textDecoration: 'none' }}>
+            {t.discovery.readOnWikipedia} ↗
+          </a>
         )}
       </div>
 
