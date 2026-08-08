@@ -742,7 +742,7 @@ export const nl: Translations = {
     live: 'Live',
     heatmap: 'Zonkaart',
     now: 'Nu',
-    sunHoursIn: '~{hours}u directe zon in {month}',
+    sunHoursIn: '~{hours}u zonneschijn in {month}',
     whatCanGrow: 'Wat kan hier? →',
     aboveHorizon: '{deg}° boven horizon',
     belowHorizon: 'Onder horizon',
@@ -763,7 +763,7 @@ export const nl: Translations = {
   // ── Grow-here sheet ─────────────────────────────────────
   growHere: {
     title: 'Wat kan hier groeien?',
-    sunLabel: '~{hours}u directe zon',
+    sunLabel: '~{hours}u zonneschijn',
     alreadyInGarden: 'Al in uw tuin',
     suggestions: 'Suggesties',
     aiSuggestions: 'AI Suggesties',

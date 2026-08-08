@@ -698,7 +698,7 @@ export type Translations = {
     live: string
     heatmap: string
     now: string
-    sunHoursIn: string  // "~{hours}u direct sunlight in {month}"
+    sunHoursIn: string  // "~{hours}h sunshine in {month}" — altitude-weighted equivalent hours (#855)
     whatCanGrow: string  // "What can go here? →"
     aboveHorizon: string  // "{deg}° above horizon"
     belowHorizon: string  // "Below horizon"
@@ -722,7 +722,7 @@ export type Translations = {
   // ── Grow-here sheet ─────────────────────────────────────────────
   growHere: {
     title: string  // "What can grow here?"
-    sunLabel: string  // "~{hours}u direct sunlight"
+    sunLabel: string  // "~{hours}h sunshine" — altitude-weighted equivalent hours (#855)
     alreadyInGarden: string  // "Already in your garden"
     suggestions: string  // "Suggestions"
     aiSuggestions: string  // "AI Suggestions"
