@@ -12,13 +12,14 @@ This service closes that loop by pushing species to the worker's `/embed-text`
 endpoint:
 
 - `sync_pending()`   — embed species marked `embedded_at IS NULL` (the queue).
-- `reconcile()`      — diff the DB against the worker's `/coverage` and repair
-                       the queue in both directions, then drain it. Self-heals
-                       after a worker rebuild, restore, or a lost `.npy`.
+- `reconcile()`      — diff the DB against the worker's `/coverage`, queue
+                       anything the worker lacks, then drain. Self-heals after a
+                       worker rebuild, restore, or a lost `.npy`.
 
 Both are best-effort: identification keeps working (minus the new species) if
 the worker is unreachable, so no caller should fail because of a sync error.
 """
+import asyncio
 import logging
 import os
 import re
@@ -151,7 +152,15 @@ async def _mark_embedded(db, species_ids: list[int]) -> None:
     await db.commit()
 
 
-async def sync_pending(db, limit: int = _MAX_PER_RUN) -> dict:
+# Only one sync may run at a time. Each run holds a pooled DB connection while
+# it waits on the worker (up to _HTTP_TIMEOUT_S), and the worker serializes the
+# GPU work anyway — so a burst of identify commits must not each start their own
+# job and drain the connection pool. Callers riding on a user action pass
+# skip_if_busy: the queue is durable, so dropping a redundant trigger is free.
+_sync_lock = asyncio.Lock()
+
+
+async def sync_pending(db, limit: int = _MAX_PER_RUN, *, skip_if_busy: bool = False) -> dict:
     """Embed every queued species (up to `limit`) on the worker.
 
     Returns a summary dict; never raises. Species whose latin name fails the
@@ -160,7 +169,14 @@ async def sync_pending(db, limit: int = _MAX_PER_RUN) -> dict:
     """
     if not _worker_url():
         return {"status": "unconfigured", "embedded": 0, "skipped": 0, "failed": 0}
+    if skip_if_busy and _sync_lock.locked():
+        return {"status": "busy", "embedded": 0, "skipped": 0, "failed": 0}
 
+    async with _sync_lock:
+        return await _drain_queue(db, limit)
+
+
+async def _drain_queue(db, limit: int) -> dict:
     pending = await _fetch_pending(db, limit)
     if not pending:
         return {"status": "ok", "embedded": 0, "skipped": 0, "failed": 0}
@@ -205,30 +221,28 @@ async def sync_pending(db, limit: int = _MAX_PER_RUN) -> dict:
 
 
 async def reconcile(db, limit: int = _MAX_PER_RUN) -> dict:
-    """Diff DB vs worker, repair the queue in both directions, then drain it.
+    """Queue everything the worker is missing, then drain the queue.
 
-    - In the DB but not on the worker → queue it (covers a rebuilt/restored
-      worker, and rows that predate this service).
-    - Already on the worker but marked pending → mark embedded, so a fresh
-      deploy doesn't re-embed the whole catalog.
+    Reconciliation only ever ADDS to the queue. It deliberately does not mark a
+    queued species as embedded just because its id appears in /coverage:
+    coverage carries ids, not names or a catalog version, so presence cannot
+    prove the worker's vector is current. A row re-queued on purpose — say
+    `mark_species_pending` after a latin-name fix — would otherwise be silently
+    discarded, leaving the old-name embedding in place forever. Re-embedding is
+    idempotent (the worker replaces the row), so erring towards a redundant
+    push is the cheap side of this trade.
     """
     worker_ids = await _fetch_worker_species_ids()
     if worker_ids is None:
-        return {"status": "worker_unavailable", "requeued": 0, "embedded": 0}
+        return {"status": "worker_unavailable", "requeued": 0, "embedded": 0,
+                "skipped": 0, "failed": 0}
 
     rows = await db.execute_fetchall(
-        "SELECT id, embedded_at FROM plant_species "
-        "WHERE id_enabled = TRUE AND latin_name IS NOT NULL AND latin_name != ''"
+        "SELECT id FROM plant_species "
+        "WHERE embedded_at IS NOT NULL AND id_enabled = TRUE "
+        "  AND latin_name IS NOT NULL AND latin_name != ''"
     )
-    requeue, resolve = [], []
-    for row in rows:
-        sid = int(row["id"])
-        on_worker = sid in worker_ids
-        marked = row["embedded_at"] is not None
-        if marked and not on_worker:
-            requeue.append(sid)
-        elif on_worker and not marked:
-            resolve.append(sid)
+    requeue = [int(row["id"]) for row in rows if int(row["id"]) not in worker_ids]
 
     if requeue:
         for sid in requeue:
@@ -237,14 +251,11 @@ async def reconcile(db, limit: int = _MAX_PER_RUN) -> dict:
             )
         await db.commit()
         logger.info("BioCLIP catalog sync: re-queued %d species missing from worker", len(requeue))
-    if resolve:
-        await _mark_embedded(db, resolve)
 
     result = await sync_pending(db, limit=limit)
     return {
         "status": result["status"],
         "requeued": len(requeue),
-        "resolved": len(resolve),
         "embedded": result["embedded"],
         "skipped": result["skipped"],
         "failed": result["failed"],

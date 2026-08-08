@@ -38,6 +38,10 @@ _MODEL_NAME = "hf-hub:imageomics/bioclip"
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
+# Species per /embed-text request. Bounds one GPU pass, and doubles as the
+# "torn write" tolerance when reloading a catalog (see _load_embeddings).
+_MAX_EMBED_TEXT_BATCH = 256
+
 # Shared secret. When set, /identify and /embed-image require a matching
 # X-Worker-Token header. Empty => auth disabled (local dev / not yet rolled out).
 _WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
@@ -83,11 +87,29 @@ def _load_embeddings():
     embeddings = np.load(_EMBEDDINGS_PATH)
     ids_and_names = np.load(_SPECIES_IDS_PATH, allow_pickle=True)
     if len(ids_and_names) != embeddings.shape[0]:
-        logger.error(
-            "Embedding/id misalignment: %d ids vs %d embedding rows — refusing to load",
-            len(ids_and_names), embeddings.shape[0],
+        # The two files are written by two os.replace calls, so a crash between
+        # them leaves one file a few rows ahead. Both are append-ordered and
+        # replacements happen in place, so the common prefix is a consistent
+        # (merely older) catalog — recover from it instead of leaving the worker
+        # dead until someone rebuilds by hand. The species dropped this way is
+        # still queued backend-side (embedded_at is only set on HTTP 200), so
+        # the next sync re-adds it. A gap bigger than one batch is not a torn
+        # write but genuine corruption, and still refuses to load.
+        gap = abs(len(ids_and_names) - embeddings.shape[0])
+        if gap > _MAX_EMBED_TEXT_BATCH:
+            logger.error(
+                "Embedding/id misalignment: %d ids vs %d embedding rows — refusing to load",
+                len(ids_and_names), embeddings.shape[0],
+            )
+            return False
+        usable = min(len(ids_and_names), embeddings.shape[0])
+        logger.warning(
+            "Embedding/id misalignment (%d ids vs %d rows) — torn write, "
+            "recovering the first %d aligned species",
+            len(ids_and_names), embeddings.shape[0], usable,
         )
-        return False
+        embeddings = embeddings[:usable]
+        ids_and_names = ids_and_names[:usable]
     _text_embeddings = embeddings
     _species_ids = [int(x[0]) for x in ids_and_names]
     # Latin names are kept in memory (not just on disk) because /embed-text
@@ -376,9 +398,6 @@ class SpeciesPrompt(BaseModel):
 
 class EmbedTextRequest(BaseModel):
     species: list[SpeciesPrompt]
-
-
-_MAX_EMBED_TEXT_BATCH = 256
 
 
 @app.post("/embed-text", dependencies=[Depends(_require_token)])

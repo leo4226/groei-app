@@ -833,7 +833,10 @@ async def _sync_bioclip_catalog() -> None:
     async with get_db() as db:
         # One batch only — this rides along with a user action, so it should not
         # turn into a catalog-wide job. The periodic reconcile drains backlogs.
-        await sync_pending(db, limit=_COMMIT_SYNC_LIMIT)
+        # skip_if_busy: concurrent commits must not each hold a pooled DB
+        # connection through the worker round trip; the queue is durable, so a
+        # dropped trigger costs nothing.
+        await sync_pending(db, limit=_COMMIT_SYNC_LIMIT, skip_if_busy=True)
 
 
 @router.post("/identify/commit", response_model=IdentifyCommitResponse)

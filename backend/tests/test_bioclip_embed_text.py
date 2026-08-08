@@ -123,6 +123,47 @@ def test_no_temp_files_are_left_behind(tmp_path):
             p.stop()
 
 
+def test_torn_write_recovers_the_aligned_prefix(tmp_path):
+    """Crash between the two os.replace calls: one file is a row ahead. The
+    worker must come back on the common prefix — refusing to load would leave
+    identification dead until someone rebuilds the catalog by hand. The dropped
+    species is still queued backend-side, so the next sync re-adds it."""
+    patches = _patch_worker(tmp_path, [1, 2], ["Rosa canina", "Bellis perennis"])
+    try:
+        assert _post({"species": [{"species_id": 9, "latin_name": "Urtica dioica"}]}).status_code == 200
+        # Roll the id file back to its pre-update state, leaving embeddings ahead.
+        np.save(
+            str(tmp_path / "species_ids.npy"),
+            np.array([(1, "Rosa canina"), (2, "Bellis perennis")], dtype=object),
+        )
+
+        with patch.object(worker, "_text_embeddings", None), \
+             patch.object(worker, "_species_ids", None), \
+             patch.object(worker, "_species_names", None):
+            assert worker._load_embeddings() is True
+            assert worker._species_ids == [1, 2]
+            assert worker._text_embeddings.shape == (2, _DIM)
+    finally:
+        for p in patches:
+            p.stop()
+
+
+def test_wholesale_misalignment_still_refuses_to_load(tmp_path):
+    """A gap larger than one batch is corruption, not a torn write."""
+    patches = _patch_worker(tmp_path, [1], ["Rosa canina"])
+    try:
+        np.save(str(tmp_path / "species_embeddings.npy"), _unit_rows(400))
+        np.save(str(tmp_path / "species_ids.npy"), np.array([(1, "Rosa canina")], dtype=object))
+
+        with patch.object(worker, "_text_embeddings", None), \
+             patch.object(worker, "_species_ids", None), \
+             patch.object(worker, "_species_names", None):
+            assert worker._load_embeddings() is False
+    finally:
+        for p in patches:
+            p.stop()
+
+
 def test_blank_latin_names_are_rejected(tmp_path):
     patches = _patch_worker(tmp_path, [1], ["Rosa canina"])
     try:

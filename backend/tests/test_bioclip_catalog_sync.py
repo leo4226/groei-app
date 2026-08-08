@@ -184,11 +184,12 @@ async def test_reconcile_requeues_species_the_worker_lost(db, worker_configured,
 
 
 @pytest.mark.asyncio
-async def test_reconcile_resolves_species_the_worker_already_has(db, worker_configured, sent, monkeypatch):
-    """First run after the migration on a pre-existing catalog: don't re-embed
-    thousands of species the worker is already serving."""
-    await _insert(db, 1, "Rosa canina")
-    await _insert(db, 2, "Bellis perennis")
+async def test_reconcile_never_discards_an_explicit_re_embed_request(db, worker_configured, sent, monkeypatch):
+    """A species re-queued on purpose (latin name fixed) must still be pushed
+    even though its id is in /coverage — coverage proves the id is loaded, not
+    that the worker's vector matches the current name."""
+    await _insert(db, 1, "Rosa rugosa")  # queued after a rename
+    await _insert(db, 2, "Bellis perennis", embedded=True)
 
     async def _coverage():
         return {1, 2}
@@ -197,10 +198,27 @@ async def test_reconcile_resolves_species_the_worker_already_has(db, worker_conf
 
     result = await sync.reconcile(db)
 
-    assert result["resolved"] == 2
-    assert result["embedded"] == 0
-    assert sent == []
+    assert result["requeued"] == 0
+    assert result["embedded"] == 1
+    assert [s["latin_name"] for batch in sent for s in batch] == ["Rosa rugosa"]
     assert await _embedded_ids(db) == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_reconcile_leaves_embedded_species_alone(db, worker_configured, sent, monkeypatch):
+    """Everything already embedded and present on the worker: no GPU work."""
+    await _insert(db, 1, "Rosa canina", embedded=True)
+    await _insert(db, 2, "Bellis perennis", embedded=True)
+
+    async def _coverage():
+        return {1, 2}
+
+    monkeypatch.setattr(sync, "_fetch_worker_species_ids", _coverage)
+
+    result = await sync.reconcile(db)
+
+    assert result == {"status": "ok", "requeued": 0, "embedded": 0, "skipped": 0, "failed": 0}
+    assert sent == []
 
 
 @pytest.mark.asyncio
@@ -217,6 +235,37 @@ async def test_reconcile_leaves_the_queue_alone_when_the_worker_is_down(db, work
     assert result["status"] == "worker_unavailable"
     assert sent == []
     assert await _embedded_ids(db) == [1]  # not wrongly re-queued
+
+
+@pytest.mark.asyncio
+async def test_a_second_sync_is_skipped_while_one_is_running(db, worker_configured, monkeypatch):
+    """Concurrent identify commits must not each hold a pooled DB connection
+    through the worker round trip — the second trigger drops instead."""
+    import asyncio
+
+    await _insert(db, 1, "Silene dioica")
+    started = asyncio.Event()
+    release = asyncio.Event()
+    calls = []
+
+    async def _slow_post(species):
+        calls.append(species)
+        started.set()
+        await release.wait()
+        return True
+
+    monkeypatch.setattr(sync, "_post_embed_text", _slow_post)
+
+    first = asyncio.create_task(sync.sync_pending(db, skip_if_busy=True))
+    await started.wait()
+
+    second = await sync.sync_pending(db, skip_if_busy=True)
+    assert second["status"] == "busy"
+    assert second["embedded"] == 0
+
+    release.set()
+    assert (await first)["embedded"] == 1
+    assert len(calls) == 1
 
 
 @pytest.mark.asyncio
