@@ -37,6 +37,11 @@ async def test_growth_metrics_reports_identifies_and_top_households(client, seed
     # "By who" — the seeded household is surfaced with its count
     assert body["top_identifiers"] == [{"household": "Test Household", "count": 3}]
 
+    # Identify outcomes ride along on the same call (#866 phase 3). Nothing was
+    # committed here, so it reports zeros — the point is that it is wired up.
+    assert body["identify_outcomes"]["committed"] == 0
+    assert body["identify_outcomes"]["miss_rate"] is None
+
 
 @pytest.mark.asyncio
 async def test_growth_metrics_requires_admin(client, seeded_db, auth_header):

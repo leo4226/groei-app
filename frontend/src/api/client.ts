@@ -432,7 +432,7 @@ export const plants = {
   fact:              ()                                            => api<PlantFactOut>('GET', '/plant-fact'),
   identify:          async (imageBlobs: Blob[], lang: 'nl' | 'en' = 'nl')  => { const f = new FormData(); f.append('image', imageBlobs[0], 'plant.jpg'); imageBlobs.slice(1).forEach((b, i) => f.append('extra_images', b, `angle-${i + 2}.jpg`)); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?lang=${lang}`, { form: f }) },
   identifyPlantnet:  async (imageBlob: Blob, lang: 'nl' | 'en' = 'en')  => { const f = new FormData(); f.append('image', imageBlob, 'plant.jpg'); return api<import('../types').IdentifyResponse>('POST', `/plants/identify?engine=plantnet&lang=${lang}`, { form: f }) },
-  commitIdentify:    (scientificName: string, photoBase64: string, lang: 'nl' | 'en' = 'nl') => api<import('../types').IdentifyCommitResult>('POST', `/plants/identify/commit?lang=${lang}`, { body: { scientific_name: scientificName, photo_base64: photoBase64 } }),
+  commitIdentify:    (scientificName: string, photoBase64: string, lang: 'nl' | 'en' = 'nl', outcome?: { identifyId?: number | null; chosenSource?: string }) => api<import('../types').IdentifyCommitResult>('POST', `/plants/identify/commit?lang=${lang}`, { body: { scientific_name: scientificName, photo_base64: photoBase64, identify_id: outcome?.identifyId ?? null, chosen_source: outcome?.chosenSource ?? null } }),
 }
 
 export const weatherWarnings = {

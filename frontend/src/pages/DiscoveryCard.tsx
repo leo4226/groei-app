@@ -19,6 +19,10 @@ type RouteState = {
   destination?: 'journal' | 'garden'
   location_lat?: number
   location_lon?: number
+  /** Which identify attempt this discovery came from, and whose candidate list
+   *  the user picked from — recorded on commit (#866 phase 3). */
+  identifyId?: number | null
+  chosenSource?: string
   /** Set by the identify flow: the card lands instantly with candidate data
    * and runs the identify commit itself, filling species details as they
    * arrive instead of holding the user on a wait screen. */
@@ -77,7 +81,10 @@ export default function DiscoveryCard() {
         setLocationPending(false)
       })
     }
-    plantsApi.commitIdentify(state.candidate.scientific_name, state.thumbnail, activeLang)
+    plantsApi.commitIdentify(
+      state.candidate.scientific_name, state.thumbnail, activeLang,
+      { identifyId: state.identifyId, chosenSource: state.chosenSource },
+    )
       .then((r) => { if (!cancelled) setCommitResult(r) })
       .catch(() => { /* species not found / offline: candidate data still works */ })
       .finally(() => { if (!cancelled) setCommitting(false) })

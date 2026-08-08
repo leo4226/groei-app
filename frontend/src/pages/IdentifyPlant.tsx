@@ -16,6 +16,8 @@ type ResultsState = {
   thumbnail: string
   capturedBlob: Blob
   source: string
+  /** Links the eventual commit back to this identify attempt (#866 phase 3). */
+  identifyId?: number | null
 }
 
 type CapturedPhoto = { blob: Blob; dataUrl: string }
@@ -93,6 +95,8 @@ export function IdentifyPlantPage() {
           thumbnail: capturedPhotoDataUrl,
           destination: 'journal',
           pendingCommit: true,
+          identifyId: step.from.identifyId ?? null,
+          chosenSource: candidate.source ?? step.from.source,
         },
       })
       return
@@ -100,7 +104,10 @@ export function IdentifyPlantPage() {
 
     setStep({ kind: 'enriching' })
     try {
-      const commitResult = await plantsApi.commitIdentify(candidate.scientific_name, capturedPhotoDataUrl, activeLang)
+      const commitResult = await plantsApi.commitIdentify(
+        candidate.scientific_name, capturedPhotoDataUrl, activeLang,
+        { identifyId: step.from.identifyId, chosenSource: candidate.source ?? step.from.source },
+      )
       navigate('/plants/add', { state: { prefill: commitResult, from: 'identify' } })
     } catch (e) {
       // 404 = species not found; the api client attaches the HTTP status so we
@@ -164,6 +171,7 @@ export function IdentifyPlantPage() {
         thumbnail: step.thumbnail,
         capturedBlob: step.capturedBlob,
         source: resp.source ?? 'plantnet',
+        identifyId: resp.identify_id ?? null,
       })
     } catch (e) {
       const message = e instanceof Error && e.message
@@ -199,6 +207,7 @@ export function IdentifyPlantPage() {
         thumbnail: photos[0].dataUrl,
         capturedBlob: photos[0].blob,
         source: resp.source ?? 'bioclip',
+        identifyId: resp.identify_id ?? null,
       })
     } catch (e) {
       const message = e instanceof Error && e.message.toLowerCase().includes('tijdelijk')

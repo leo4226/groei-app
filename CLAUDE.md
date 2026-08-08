@@ -194,6 +194,8 @@ The Fly backend offloads plant identification to this worker via `BIOCLIP_WORKER
 
 **Catalog sync (#866).** The reference set (`backend/data/bioclip/species_embeddings.npy`) is no longer only rebuilt by a manual `scripts/precompute_embeddings.py` run. `plant_species.embedded_at IS NULL` marks a species as queued (new rows — e.g. a species first seen through a PlantNet correction — start that way), and `services/bioclip_catalog_sync.py` pushes the queue to the worker's `POST /embed-text`, which appends to the live matrix and persists it atomically. It runs on every identify commit, every `BIOCLIP_SYNC_INTERVAL_S` from `main.py`, and on demand via `POST /admin-panel/bioclip/sync`; the periodic pass also diffs against `/coverage` and re-queues anything the worker lost. Full-catalog rebuilds (prompt changes, model swaps) are still the batch script's job.
 
+**Identify telemetry (#866).** `identify_log` records what the engine led with (`top_species_id`/`top_confidence`) and, once `/identify/commit` runs with the `identify_id` the identify response returned, what the user actually kept (`chosen_species_id`/`chosen_source`/`committed_at`). `GET /admin-panel/growth-metrics` rolls that into `identify_outcomes`: accepted vs missed BioCLIP identifies, the miss rate, and the species users had to reach past BioCLIP to find — the ranked list of what the catalog still lacks.
+
 **Runtime / startup** (migrated WSL → Windows-native 2026-06-07):
 
 | Item | Detail |
