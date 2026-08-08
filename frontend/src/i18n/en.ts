@@ -742,7 +742,7 @@ export const en: Translations = {
     live: 'Live',
     heatmap: 'Sun heatmap',
     now: 'Now',
-    sunHoursIn: '~{hours}h direct sun in {month}',
+    sunHoursIn: '~{hours}h sunshine in {month}',
     whatCanGrow: 'What can go here? →',
     aboveHorizon: '{deg}° above horizon',
     belowHorizon: 'Below horizon',
@@ -763,7 +763,7 @@ export const en: Translations = {
   // ── Grow-here sheet ─────────────────────────────────────
   growHere: {
     title: 'What can grow here?',
-    sunLabel: '~{hours}h direct sunlight',
+    sunLabel: '~{hours}h sunshine',
     alreadyInGarden: 'Already in your garden',
     suggestions: 'Suggestions',
     aiSuggestions: 'AI Suggestions',
