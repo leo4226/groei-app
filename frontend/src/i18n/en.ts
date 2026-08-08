@@ -1971,6 +1971,8 @@ export const en: Translations = {
     funFact: 'Did you know...',
     funFactLoading: 'Loading fun fact...',
     funFactError: 'Could not load fun fact',
+    funFactRetry: 'Try again',
+    readOnWikipedia: 'Read more on Wikipedia',
     ecology: 'Ecology',
     ecologyLoading: 'Loading ecology data...',
     nativeNl: 'Native to NL',
