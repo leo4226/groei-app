@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 import json
@@ -295,51 +296,81 @@ async def get_species_garden_fit(
 
 async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tuple[str, str]:
     """Generate NL + EN fun facts via LLM. Returns ('', '') on failure."""
-    from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+    from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_FUN_FACT_MODEL
     if not LLM_API_KEY:
         return "", ""
 
     display_name = common_name_nl or latin_name
+    system_prompt = (
+        "You are a careful botanist writing for a friendly field guide. "
+        "Return only valid JSON. Never invent medicinal, edible, toxic, or historical claims."
+    )
     prompt = (
-        f"Write one short, surprising fun fact about the plant {latin_name} ({display_name}). "
-        "The fact should be genuinely interesting — something most gardeners don't know. "
-        "Respond ONLY with a JSON object like: "
-        '{"nl": "...", "en": "..."} '
-        "Both facts must be 1-2 sentences, no filler phrases like 'Did you know'."
+        f"Plant: {latin_name} (Dutch common name: {display_name}).\n"
+        "Write one genuinely surprising, verifiable botanical or ecological fact about this species. "
+        "Prefer pollination, seed dispersal, plant-animal relationships, unusual adaptations, "
+        "name origins, or other memorable field-guide knowledge. Avoid generic care advice. "
+        "Give the same fact naturally in Dutch and English, each in 1-2 short sentences. "
+        "Do not start with 'Wist je dat' or 'Did you know'.\n"
+        'Output schema: {"nl":"...","en":"..."}'
     )
 
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                LLM_CHAT_URL,
-                headers={"Authorization": f"Bearer {LLM_API_KEY}", "content-type": "application/json"},
-                json={
-                    "model": LLM_MODEL,
-                    "max_tokens": 150,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
+    import httpx
+    # Nous can occasionally take longer than the old 15-second budget or wrap
+    # valid JSON in prose/markdown. Retry once and parse the first JSON object
+    # rather than turning a transient/model-format issue into a permanent gap.
+    for attempt in range(2):
+        try:
+            timeout = httpx.Timeout(30.0, connect=5.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    LLM_CHAT_URL,
+                    headers={"Authorization": f"Bearer {LLM_API_KEY}", "content-type": "application/json"},
+                    json={
+                        "model": LLM_FUN_FACT_MODEL,
+                        # DeepSeek V4 Flash reasons before answering; the old
+                        # 150-token cap was often exhausted before JSON began.
+                        "max_tokens": 4000,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt},
+                        ],
+                    },
+                )
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"].get("content", "")
+            parsed = _parse_fun_fact_content(content)
+            if parsed:
+                return parsed
+            logger.warning("Fun fact LLM returned unexpected format for %s: %r", latin_name, content)
+        except Exception as exc:
+            logger.warning(
+                "Fun fact LLM call failed for %s (attempt %s/2): %s",
+                latin_name, attempt + 1, exc,
             )
-            resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"].get("content", "")
-    except Exception as exc:
-        logger.warning("Fun fact LLM call failed for %s: %s", latin_name, exc)
-        return "", ""
+        if attempt == 0:
+            await asyncio.sleep(0.35)
+    return "", ""
 
-    import re
-    content = content.strip()
-    content = re.sub(r"^```json\s*", "", content)
-    content = re.sub(r"\s*```$", "", content)
-    try:
-        data = json.loads(content)
+
+def _parse_fun_fact_content(content: object) -> tuple[str, str] | None:
+    """Extract a bilingual fact even when the model wraps JSON in prose."""
+    text = str(content or "").strip()
+    decoder = json.JSONDecoder()
+    for offset, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            data, _ = decoder.raw_decode(text[offset:])
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(data, dict):
+            continue
         nl = str(data.get("nl", "")).strip()
         en = str(data.get("en", "")).strip()
         if nl and en:
             return nl, en
-    except (json.JSONDecodeError, AttributeError):
-        pass
-    logger.warning("Fun fact LLM returned unexpected format for %s: %r", latin_name, content)
-    return "", ""
+    return None
 
 
 @router.get("/by-latin/{latin_name}")
