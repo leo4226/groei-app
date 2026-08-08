@@ -95,6 +95,7 @@ export interface BugReportResponse {
   issue_url: string | null
   issue_number: number | null
   error: string | null
+  kind: FeedbackKind | null
 }
 
 export interface BugReportDeviceInfo {
@@ -102,27 +103,85 @@ export interface BugReportDeviceInfo {
   screen_size: string
 }
 
-export async function submitBugReport(
+export type FeedbackKind = 'bug' | 'feature'
+
+/** What Stekkie made of the user's free-text report, shown for confirmation
+ * before anything is filed. `composed_by` is 'fallback' when the LLM was
+ * unavailable and the report is being filed as written. */
+export interface FeedbackDraft {
+  kind: FeedbackKind
+  title: string
+  body: string
+  difficulty: string | null
+  composed_by: 'llm' | 'fallback'
+}
+
+interface FeedbackPayload {
+  report: string
+  page: string
+  conversation: ChatMessage[]
+  device: BugReportDeviceInfo
+}
+
+function feedbackPayload(
+  report: string,
   conversation: ChatMessage[],
-  page: string,
   device?: BugReportDeviceInfo,
-): Promise<BugReportResponse> {
+): FeedbackPayload {
+  return {
+    report,
+    page: window.location.pathname,
+    conversation,
+    device: device ?? {
+      user_agent: navigator.userAgent,
+      screen_size: `${window.innerWidth}x${window.innerHeight}`,
+    },
+  }
+}
+
+async function postFeedback<T>(path: string, body: unknown): Promise<T> {
   const token = getToken()
-  const resp = await fetch(`${BASE}/bug-report`, {
+  const resp = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({
-      conversation,
-      page,
-      device: device ?? { user_agent: navigator.userAgent, screen_size: `${window.innerWidth}x${window.innerHeight}` },
-    }),
+    body: JSON.stringify(body),
   })
-  if (!resp.ok) {
-    const errBody = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }))
-    throw new Error(errBody.detail ?? `Bug report error: ${resp.status}`)
-  }
+  if (!resp.ok) throw new ChatRequestError(resp.status)
   return resp.json()
+}
+
+/** Ask the backend to turn a free-text report into a titled, classified issue
+ * draft. Side-effect free — nothing is filed until submitFeedback(). */
+export async function draftFeedback(
+  report: string,
+  conversation: ChatMessage[] = [],
+  device?: BugReportDeviceInfo,
+): Promise<FeedbackDraft> {
+  return postFeedback<FeedbackDraft>(
+    '/bug-report/draft',
+    feedbackPayload(report, conversation, device),
+  )
+}
+
+/** File the confirmed draft as a GitHub issue. The server re-derives labels
+ * from `kind`, so only the kind the user actually saw can take effect. */
+export async function submitFeedback(
+  report: string,
+  draft: FeedbackDraft,
+  conversation: ChatMessage[] = [],
+  device?: BugReportDeviceInfo,
+): Promise<BugReportResponse> {
+  return postFeedback<BugReportResponse>('/bug-report', {
+    ...feedbackPayload(report, conversation, device),
+    kind: draft.kind,
+    title: draft.title,
+    body: draft.body,
+    difficulty: draft.difficulty,
+    // So the filed issue says who actually wrote the text — the preview
+    // already told the user whether the AI was available.
+    composed_by: draft.composed_by,
+  })
 }

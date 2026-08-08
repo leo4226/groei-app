@@ -1877,24 +1877,35 @@ export type Translations = {
       unavailable: string
       empty: string
       example: string
-      bugReport: string
-      bugReportHeader: string
       expand: string
       collapse: string
-      next: string
-      review: string
-      stepLabel: (current: number, total: number) => string
-      reviewTitle: string
-      reviewHint: string
-      submit: string
-      submitting: string
-      submitted: string
-      submitError: string
-      bugQuestions: Array<{ title: string; prompt: string }>
       actionConfirm: string
       actionCancel: string
       actionDone: string
       actionError: string
+    }
+    // One free-text box → Stekkie drafts a GitHub issue → user confirms.
+    feedback: {
+      open: string
+      header: string
+      prompt: string
+      placeholder: string
+      chatAttached: string
+      next: string
+      drafting: string
+      previewTitle: string
+      previewHint: string
+      fallbackHint: string
+      kindBug: string
+      kindFeature: string
+      kindQuestion: string
+      back: string
+      submit: string
+      submitting: string
+      doneBug: string
+      doneFeature: string
+      viewIssue: string
+      error: string
     }
   }
 
