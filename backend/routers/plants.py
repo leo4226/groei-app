@@ -351,7 +351,7 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
     if still missing.
     """
     cursor = await db.execute(
-        "SELECT id, name, species, species_id, care_thresholds "
+        "SELECT id, name, species, species_id, care_thresholds, photo_path "
         "FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
         (plant_id, account["household_id"]),
     )
@@ -369,6 +369,14 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
             plant_id,
         )
         raise HTTPException(status_code=503, detail="species_generation_unavailable")
+    # Re-identified as a different species: the anchors this plant contributed
+    # are labelled with the species the user just moved away from, so they must
+    # not keep pulling future photos towards it (#866 phase 2).
+    if species_id is not None and plant.get("species_id") not in (None, species_id):
+        from services.user_refs import retract_plant_anchors
+
+        await retract_plant_anchors(db, plant_id, plant.get("photo_path"))
+
     await db.execute(
         "UPDATE plants SET species_id = ? WHERE id = ?",
         (species_id, plant_id),
