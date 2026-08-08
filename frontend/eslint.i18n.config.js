@@ -102,7 +102,7 @@ export default [
               '[A-Z_-]+',
               // Pure decorative glyph runs beside translated expressions,
               // e.g. "— — {t.x}", "↓ {t.y}", "… → {t.z}"
-              '[—–·×→↓↑←\\s]+',
+              '[—–·×→↓↑←↗\\s]+',
               'Floreren',
               'floreren.app',
               'BioCLIP',

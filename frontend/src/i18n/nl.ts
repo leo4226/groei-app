@@ -1973,6 +1973,8 @@ export const nl: Translations = {
     funFact: 'Wist je dat...',
     funFactLoading: 'Weetje laden...',
     funFactError: 'Kon geen weetje laden',
+    funFactRetry: 'Probeer opnieuw',
+    readOnWikipedia: 'Lees meer op Wikipedia',
     ecology: 'Ecologie',
     ecologyLoading: 'Ecologie laden...',
     nativeNl: 'Inheems in NL',

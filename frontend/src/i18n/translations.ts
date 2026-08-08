@@ -1945,6 +1945,8 @@ export type Translations = {
     funFact: string            // "Wist je dat..."
     funFactLoading: string     // "Weetje laden..."
     funFactError: string       // "Kon geen weetje laden"
+    funFactRetry: string
+    readOnWikipedia: string
     ecology: string            // "Ecologie"
     ecologyLoading: string     // "Ecologie laden..."
     nativeNl: string           // "Inheems in NL"
