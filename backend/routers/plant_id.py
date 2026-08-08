@@ -867,15 +867,19 @@ async def _capture_confirmed_embedding(
             headers=_worker_headers(),
         )
     if emb_resp.status_code == 200 and len(emb_resp.content) == 2048:
+        # Shared write path with the journal-photo harvest (#866 phase 2): same
+        # dedupe and per-species cap, so no single species can be swamped and
+        # re-committing the same photo doesn't stack identical anchors.
+        from services.user_refs import add_anchor
+
         async with get_db() as db:
-            await db.execute(
-                """INSERT INTO user_confirmed_embeddings
-                     (species_id, embedding, source_account_id, source_photo_url)
-                   VALUES (?, ?, ?, ?)""",
-                (species_id, emb_resp.content, account_id, photo_path),
+            outcome = await add_anchor(
+                db, species_id, emb_resp.content,
+                account_id=account_id, photo_url=photo_path,
             )
-            await db.commit()
-        logger.info("Captured user-confirmed embedding for species_id=%s", species_id)
+        logger.info(
+            "User-confirmed embedding for species_id=%s: %s", species_id, outcome
+        )
     else:
         logger.warning(
             "Worker /embed-image returned status=%s size=%s — skipping capture",

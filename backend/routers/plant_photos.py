@@ -133,16 +133,32 @@ async def upload_plant_photo(
             pass
         raise
 
-    background.add_task(_run_photo_check, photo_id, data, plant.get("species_id"))
+    background.add_task(
+        _run_photo_check, photo_id, data, plant.get("species_id"),
+        plant_id, account["account_id"], url,
+    )
 
     rows = await db.execute_fetchall("SELECT * FROM plant_photos WHERE id = ?", (photo_id,))
     return _row_to_out(rows[0])
 
 
-async def _run_photo_check(photo_id: int, image_bytes: bytes, plant_species_id: int | None) -> None:
+async def _run_photo_check(
+    photo_id: int,
+    image_bytes: bytes,
+    plant_species_id: int | None,
+    plant_id: int | None = None,
+    account_id: int | None = None,
+    photo_url: str | None = None,
+) -> None:
     """BioCLIP sanity-check, after the response. Opens its OWN connection:
     the request's pooled connection is already back in the pool by the time
-    background tasks run (FastAPI tears down yielded dependencies first)."""
+    background tasks run (FastAPI tears down yielded dependencies first).
+
+    The same call also yields an image embedding, which we keep as a user-
+    confirmed anchor for the plant's species (#866 phase 2): journal photos are
+    the best reference material we have — the user's own plant, in their light,
+    across seasons — and the embedding was already being computed and discarded.
+    """
     result = await check_photo(image_bytes, plant_species_id)
     if result is None:
         return
@@ -154,6 +170,18 @@ async def _run_photo_check(photo_id: int, image_bytes: bytes, plant_species_id: 
              result["species_mismatch"], result["embedding"], photo_id),
         )
         await task_db.commit()
+
+        # Only anchor photos we have reason to trust: the plant must be linked
+        # to a species, and BioCLIP must not be confidently saying this is
+        # something else — that disagreement is exactly the case where the
+        # label is in doubt, and a doubtful label is worse than no anchor.
+        if plant_species_id and not result["species_mismatch"]:
+            from services.user_refs import add_anchor
+
+            await add_anchor(
+                task_db, plant_species_id, result["embedding"],
+                account_id=account_id, photo_url=photo_url, plant_id=plant_id,
+            )
 
 
 class PhotoReminderToggle(BaseModel):
@@ -256,4 +284,9 @@ async def delete_photo(photo_id: int,
     await db.execute("DELETE FROM plant_photos WHERE id = ?", (photo_id,))
     await _sync_thumbnail(db, photo["plant_id"])
     await db.commit()
+
+    # A deleted photo must not keep steering identification (#866 phase 2).
+    from services.user_refs import retract_photo_anchor
+
+    await retract_photo_anchor(db, photo.get("url"))
     return {"ok": True}
