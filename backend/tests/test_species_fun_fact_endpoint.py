@@ -2,6 +2,8 @@ import json
 
 import pytest
 
+from routers.species import _parse_fun_fact_content
+
 
 _PLANT_SPECIES_WITHOUT_FUN_FACT_COLUMNS = """
     CREATE TABLE plant_species (
@@ -11,6 +13,16 @@ _PLANT_SPECIES_WITHOUT_FUN_FACT_COLUMNS = """
         phenology_json TEXT
     )
 """
+
+
+def test_fun_fact_parser_accepts_markdown_and_leading_prose():
+    assert _parse_fun_fact_content(
+        'Here is the result:\n```json\n{"nl":"Een weetje.","en":"A fact."}\n```'
+    ) == ("Een weetje.", "A fact.")
+
+
+def test_fun_fact_parser_rejects_half_filled_payload():
+    assert _parse_fun_fact_content('{"nl":"Alleen Nederlands","en":""}') is None
 
 
 @pytest.mark.asyncio
