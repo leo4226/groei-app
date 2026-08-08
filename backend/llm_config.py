@@ -10,6 +10,7 @@ DeepSeek V4 Flash. Override per environment:
     LLM_CHAT_URL        chat-completions endpoint (default: Nous Portal)
     LLM_MODEL           model id for names/general calls (default: deepseek/deepseek-v4-pro)
     LLM_PHENOLOGY_MODEL model id for full phenology generation (default: deepseek/deepseek-v4-flash)
+    LLM_FUN_FACT_MODEL  model id for short bilingual facts (default: deepseek/deepseek-v4-flash-0731)
 
 The request shape is OpenAI-compatible (Bearer auth), so call sites are
 unchanged apart from the URL, key and model id.
@@ -26,3 +27,4 @@ LLM_API_KEY = os.getenv("NOUS_API_KEY") or ""
 LLM_CHAT_URL = os.getenv("LLM_CHAT_URL") or "https://inference-api.nousresearch.com/v1/chat/completions"
 LLM_MODEL = os.getenv("LLM_MODEL") or "deepseek/deepseek-v4-pro"
 LLM_PHENOLOGY_MODEL = os.getenv("LLM_PHENOLOGY_MODEL") or "deepseek/deepseek-v4-flash"
+LLM_FUN_FACT_MODEL = os.getenv("LLM_FUN_FACT_MODEL") or "deepseek/deepseek-v4-flash-0731"
