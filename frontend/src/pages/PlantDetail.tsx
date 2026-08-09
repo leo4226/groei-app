@@ -23,7 +23,7 @@ import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
-import { localCalendarDate, showsGardenWeather } from './plantPassportModel'
+import { localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX } from './plantPassportModel'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -179,8 +179,7 @@ export default function PlantDetail() {
   )
   const currentMonth = new Date().getMonth() + 1
   const { sunHours } = useSunAt(sunCoord, currentMonth, mapInfo)
-  // 720px editorial-layout boundary (same split as Plants.tsx / PageMasthead)
-  const isMobile = useIsMobile(720)
+  const isMobile = useIsMobile(PASSPORT_DESKTOP_MIN_PX)
 
   // ── Plant-to-plant navigation ──
   const sortedPlants = useMemo(
@@ -335,6 +334,27 @@ export default function PlantDetail() {
   }
 
   if (loading) {
+    // The skeleton has to match the layout it precedes, or the page jumps when
+    // data lands — the mobile shape used to render at every width (#878).
+    if (!isMobile) {
+      return (
+        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '0 clamp(24px, 3vw, 56px)' }}>
+          <div className="space-y-3 py-9">
+            <div className="skeleton h-3 w-48" />
+            <div className="skeleton h-10 w-96" />
+            <div className="skeleton h-4 w-64" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px' }}>
+            <div className="skeleton h-[380px]" style={{ borderRadius: '16px 0 0 16px' }} />
+            <div className="skeleton h-[380px]" style={{ borderRadius: '0 16px 16px 0' }} />
+          </div>
+          <div className="skeleton mt-9 h-24 w-full" />
+          <div className="mt-8 grid grid-cols-2 gap-x-10 gap-y-8 xl:grid-cols-3">
+            {[0, 1, 2].map(i => <div key={i} className="skeleton h-56 w-full" />)}
+          </div>
+        </div>
+      )
+    }
     return (
       <div>
         <div className="skeleton w-full h-52" style={{ borderRadius: 0 }} />
@@ -667,6 +687,7 @@ export default function PlantDetail() {
                 <button
                   onClick={() => navigate(-1)}
                   title={t.common.back}
+                  aria-label={t.common.back}
                   className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-all hover:border-primary hover:text-primary"
                 >
                   <Glyph name="arrow-left" size={18} aria-hidden />
@@ -828,6 +849,7 @@ export default function PlantDetail() {
 
         <button
           onClick={() => navigate(-1)}
+          aria-label={t.common.back}
           className={`absolute left-4 w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text ${CHROME_TOP_CLASS}`}
         >
           <Glyph name="arrow-left" size={18} aria-hidden />
@@ -839,6 +861,7 @@ export default function PlantDetail() {
             disabled={duplicating}
             className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text-muted disabled:opacity-50"
             title={t.plantDetail.copyPlant}
+            aria-label={t.plantDetail.copyPlant}
           >
             {duplicating ? '…' : '⎘'}
           </button>

@@ -5,6 +5,7 @@ import {
   PLANT_QUICK_SHEET_BODY_CLASS,
   PLANT_QUICK_SHEET_CLASS,
   PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS,
+  PLANT_QUICK_SHEET_DESKTOP_MIN_PX,
   PLANT_QUICK_SHEET_HEADER_CLASS,
   PLANT_QUICK_SHEET_LANDSCAPE_BOTTOM_CLASS,
   clampedPlantNameStyle,
@@ -49,6 +50,14 @@ describe('plant quick sheet mobile layout', () => {
 
   it('hides secondary lock/close actions from the cramped mobile header', () => {
     expect(PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS).toBe('hidden sm:block')
+  })
+
+  it('flips the header at the same width as the rest of the desktop console', () => {
+    expect(PLANT_QUICK_SHEET_DESKTOP_MIN_PX).toBe(1024)
+    // `lg:` is Tailwind's 1024px breakpoint — the header used to use `sm:`
+    // (640px) while the three-column grid waited for 1024px.
+    expect(PLANT_QUICK_SHEET_HEADER_CLASS).toContain('lg:flex-row')
+    expect(PLANT_QUICK_SHEET_HEADER_CLASS).not.toContain('sm:flex-row')
   })
 
   it('allows long plant names and Latin names to use two lines before clipping', () => {

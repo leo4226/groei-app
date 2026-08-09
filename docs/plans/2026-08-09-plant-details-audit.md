@@ -1,11 +1,21 @@
 # Plant details pane — audit (2026-08-09)
 
-> **Status.** Tracked as #878. Round 1 (weather card), round 2 (deduplication),
-> round 3 (the orphaned care page) and the correctness/copy items of round 5 are
-> implemented on this branch. Still open: moving the weather to a garden-level
-> surface, the remaining round 4 layout work (desktop skeleton, breakpoint
-> alignment, quick-sheet column scrolling, unused layout constants), the
-> remaining i18n baseline files, and the sheet's dialog semantics/a11y.
+> **Status.** Tracked as #878. Rounds 1–5 are implemented, except for the items
+> listed below. Still open:
+>
+> - **Moving rainfall/temperature to a garden-level surface** (finding 4). Needs a
+>   decision on where it lives — the map's weather pill or the dashboard.
+> - **A measured-sun editor on the passport** (finding 9). The passport now reads
+>   `measured_sun_hours`, but only the quick sheet can set it.
+> - `PLANT_QUICK_SHEET_ACTIONS_CLASS` / `..._DESKTOP_ONLY_ACTION_CLASS`
+>   (finding 17). Nothing renders them, but `plantQuickSheetLayout.test.ts`
+>   asserts their shape, so removing them deletes tests — which needs the
+>   `tests-intentionally-removed` label, and an agent must not apply that to its
+>   own PR. `PLANT_QUICK_SHEET_TITLE_ROW_CLASS`, which no test referenced, is
+>   gone.
+> - The two product questions in §3: no way to add a care schedule from the
+>   passport, and no "last watered N days ago".
+> - An end-to-end pass over the pane with the account language set to `en`.
 
 Scope: everything a user sees after tapping a plant, from either entry point.
 
