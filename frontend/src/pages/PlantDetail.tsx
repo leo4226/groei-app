@@ -14,7 +14,7 @@ import { PassportEditLink } from '../components/plant/PassportEditLink'
 import { photos as photosApi } from '../api/client'
 import { compressImage } from '../utils/compressImage'
 import EcologyCard from '../components/EcologyCard'
-import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../utils/plantSunRequirements'
+import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS, effectiveSunHours } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
 import { resolveIconUrl } from '../utils/icons'
 import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
@@ -23,6 +23,7 @@ import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
+import { localCalendarDate, showsGardenWeather } from './plantPassportModel'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -92,7 +93,7 @@ function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: 
   if (warnings.length === 0 && displayActions.length === 0) return null
 
   return (
-    <Section title={t.plantDetail.weatherAlerts}>
+    <Section title={t.plantDetail.signalsHeading}>
       {warnings.length > 0 && (
         <div className="space-y-2">
           {warnings.map((w, i) => (
@@ -350,13 +351,18 @@ export default function PlantDetail() {
 
   if (!plant) return null
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localCalendarDate()
 
+  // A manually measured value (#645) wins over the modelled heatmap hours, the
+  // same way the map marker and the quick sheet resolve it — otherwise the two
+  // panes show different sun hours for the same plant (#878).
   const sunFitInfo = (() => {
-    if (!plant.sun_requirement || sunHours === null) return null
-    const fit     = getSunFit(plant.sun_requirement, sunHours)
+    if (!plant.sun_requirement) return null
+    if (plant.measured_sun_hours == null && sunHours === null) return null
+    const { sunHours: hours, source } = effectiveSunHours(plant.measured_sun_hours, sunHours ?? 0)
+    const fit     = getSunFit(plant.sun_requirement, hours)
     const profile = PLANT_SUN_PROFILES.find(p => p.id === plant.sun_requirement)
-    return fit && profile ? { fit, sunHours, profile } : null
+    return fit && profile ? { fit, sunHours: hours, source, profile } : null
   })()
 
   const locale = t.locale || 'nl-NL'
@@ -396,6 +402,10 @@ export default function PlantDetail() {
       <span className="text-sm text-text-muted flex-1">
         {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
         {' · '}{isEN ? sunFitInfo.profile.label : sunFitInfo.profile.labelNl}
+        {' · '}
+        <span className={`italic ${sunFitInfo.source === 'measured' ? 'text-primary' : 'text-text-soft'}`}>
+          {sunFitInfo.source === 'measured' ? t.plantQuickSheet.sunSourceMeasured : t.plantQuickSheet.sunSourceEstimated}
+        </span>
       </span>
       <span
         className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -416,6 +426,9 @@ export default function PlantDetail() {
       phenology={plant.phenology!}
       sunHours={sunHours}
       monthStripHeight={isMobile ? 'h-5' : 'h-9'}
+      // The "what can you do now" section below merges these same actions with
+      // the plant's warnings — don't print them twice (#878).
+      showActions={false}
     />
   ) : (
     <div className="bg-surface rounded-xl px-4 py-6 text-center border border-border">
@@ -452,9 +465,11 @@ export default function PlantDetail() {
 
   const alertsBlock = <PlantCareSignals plantId={plantId} phenology={plant.phenology ?? null} />
 
-  // Schedule rows without the quick-action pills — the desktop layout shows
-  // the pills in the hero identity panel instead, so they must not repeat here.
-  const careScheduleRows = plant.care_schedules.length > 0 && (
+  // One row per schedule. `withLogButton` puts the "mark done" action on the
+  // row itself (mobile, which used to carry a separate pill per schedule right
+  // above the identical rows); desktop keeps the pills in the hero panel
+  // instead, so its rows stay read-only (#878).
+  const careScheduleRows = (withLogButton: boolean) => plant.care_schedules.length > 0 && (
       <div className="space-y-2">
         {plant.care_schedules.map((sched) => {
           const isOverdue = sched.next_due < today
@@ -477,12 +492,24 @@ export default function PlantDetail() {
               </div>
               <div className="text-right shrink-0">
                 <p className={`text-sm font-semibold ${isOverdue ? 'text-overdue' : isDueToday ? 'text-due' : 'text-good'}`}>
-                  {isOverdue ? t.plantDetail.overdue : isDueToday ? t.plantDetail.today : sched.next_due}
+                  {isOverdue
+                    ? t.plantDetail.overdue
+                    : isDueToday
+                      ? t.plantDetail.today
+                      : new Date(sched.next_due).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
                 </p>
                 {sched.last_done_by_name && (
                   <p className="text-[11px] text-text-muted">{t.plantDetail.byPerson.replace('{name}', sched.last_done_by_name)}</p>
                 )}
               </div>
+              {withLogButton && (
+                <button
+                  onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
+                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-white active:scale-95 transition-transform"
+                >
+                  {t.plantDetail.markDone}
+                </button>
+              )}
               <button
                 onClick={() => handleDeleteSchedule(sched.id)}
                 className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
@@ -496,32 +523,16 @@ export default function PlantDetail() {
       </div>
   )
 
-  const careBlock = careScheduleRows && (
+  const careBlock = plant.care_schedules.length > 0 && (
     <Section title={t.plantDetail.care}>
-      {/* Quick action buttons */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
-        {plant.care_schedules.map((sched) => {
-          return (
-            <button
-              key={sched.id}
-              onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap active:scale-95 transition-transform"
-            >
-              <CareIcon type={sched.care_type as CareIconType} size={16} strokeWidth={2} /> {t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}
-            </button>
-          )
-        })}
-      </div>
-      {careScheduleRows}
+      {careScheduleRows(true)}
     </Section>
   )
 
-  // mt-4 lived inside PlantCareInfo; hoisted here so the desktop column can
-  // start the card flush with its siblings' section headers.
-  const trefleBlock = (
-    <div className="mt-4 mb-6">
-      <PlantCareInfo plantId={plantId} />
-    </div>
+  const showGardenWeather = showsGardenWeather(mapInfo)
+
+  const speciesInfoBlock = (
+    <PlantCareInfo plantId={plantId} showWeather={showGardenWeather} />
   )
 
   const journalBlock = (
@@ -750,14 +761,14 @@ export default function PlantDetail() {
           <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
             <div className="min-w-0 xl:pr-8">
               {alertsBlock}
-              {careScheduleRows && (
+              {plant.care_schedules.length > 0 && (
                 <Section title={t.plantDetail.care}>
-                  {careScheduleRows}
+                  {careScheduleRows(false)}
                 </Section>
               )}
             </div>
             <div className="min-w-0 xl:px-8">
-              <PlantCareInfo plantId={plantId} layout="split" />
+              <PlantCareInfo plantId={plantId} layout="split" showWeather={showGardenWeather} />
             </div>
             <div className="min-w-0 xl:pl-8">
               {journalBlock}
@@ -865,26 +876,29 @@ export default function PlantDetail() {
           )}
         </div>
 
+        {/* Actionable first: the page answers "does this plant need me today?"
+            before it starts explaining the species (#878). */}
+
         {/* Sun fit (if placed on map) */}
         {sunFitBlock}
 
-        {/* Jaarkalender */}
-        {calendarBlock}
-
-        {/* Ecology */}
-        {ecologyBlock}
-
-        {/* Weather alerts */}
+        {/* Warnings + what you can do now */}
         {alertsBlock}
 
         {/* Care schedules */}
         {careBlock}
 
-        {/* Trefle care info */}
-        {trefleBlock}
+        {/* Jaarkalender */}
+        {calendarBlock}
 
         {/* Photo journal (Groeidagboek) */}
         {journalBlock}
+
+        {/* Species profile + garden weather */}
+        {speciesInfoBlock}
+
+        {/* Ecology */}
+        {ecologyBlock}
 
         {carePhotoUi}
 
