@@ -933,6 +933,11 @@ export type Translations = {
     temperatureTitle: string  // "Temperature — 7 days"
     total: string          // "Total:"
     avgMax: string         // "Avg max:"
+    avgHeight: string      // "Average height:"
+    toxicity: string       // "Toxic:"
+    edible: string         // "Edible"
+    /** API toxicity values: low | medium | high */
+    toxicityLevels: Record<string, string>
     /** API light_label values: shade | partial | full_sun */
     lightLabels: Record<string, string>
     /** API duration values: perennial | annual | biennial */
@@ -940,48 +945,6 @@ export type Translations = {
     /** API assessment values: hot | warm | mild | cool | cold */
     tempBadges: Record<string, string>
     /** API assessment values: well_watered | moderate | dry | very_dry */
-    rainBadges: Record<string, string>
-  }
-
-  // ── Plant Care Detail page ─────────────────────────────────────
-  plantCare: {
-    light: string
-    water: string
-    floweringCalendar: string
-    characteristics: string
-    specifications: string
-    treeInspection: string
-    family: string
-    // Fallback / status
-    careGuide: string
-    noInfo: string
-    failedToLoad: string
-    retry: string
-    // Characteristics
-    evergreen: string
-    deciduous: string
-    avgHeight: string
-    flowers: string
-    toxicity: string
-    edible: string
-    yes: string
-    no: string
-    // Specs
-    stemDiameter: string
-    height: string
-    age: string
-    // Water context
-    precipitationYear: string
-    amsterdamSuitable: string
-    needsMoreRain: string
-    tooWet: string
-    // Rain chart
-    rainfallAmsterdam: string
-    total: string
-    // Source
-    dataVia: string
-    // Lookup maps
-    lightLabels: Record<string, string>
     rainBadges: Record<string, string>
   }
 

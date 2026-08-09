@@ -162,6 +162,38 @@ export default function PlantCareInfo({ plantId, layout = 'collapsible', showWea
             </span>
           </div>
         )}
+
+        {care.data.avg_height_cm != null && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="tree" size={16} className="shrink-0 text-text-muted" />
+            <span className="text-text-muted">{ci.avgHeight} {care.data.avg_height_cm} cm</span>
+          </div>
+        )}
+
+        {/* Toxicity and edibility — the two facts that matter with pets and
+            children around. They used to exist only on an unreachable page. */}
+        {care.data.toxicity && care.data.toxicity.toLowerCase() !== 'none' && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="alert" size={16} className="shrink-0 text-overdue" />
+            <span className="text-text-muted">
+              {ci.toxicity} {ci.toxicityLevels[care.data.toxicity.toLowerCase()] ?? care.data.toxicity}
+            </span>
+          </div>
+        )}
+
+        {care.data.edible === true && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="check" size={16} className="shrink-0 text-good" />
+            <span className="text-text-muted">{ci.edible}</span>
+          </div>
+        )}
+
+        {care.data.family && (
+          <div className="flex items-start gap-2 text-sm">
+            <Glyph name="book" size={16} className="shrink-0 text-text-muted" />
+            <span className="text-text-muted italic">{care.data.family}</span>
+          </div>
+        )}
       </>}
     </>
   ) : null

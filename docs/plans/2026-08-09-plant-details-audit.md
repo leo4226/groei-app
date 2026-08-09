@@ -1,5 +1,12 @@
 # Plant details pane — audit (2026-08-09)
 
+> **Status.** Tracked as #878. Round 1 (weather card), round 2 (deduplication),
+> round 3 (the orphaned care page) and the correctness/copy items of round 5 are
+> implemented on this branch. Still open: moving the weather to a garden-level
+> surface, the remaining round 4 layout work (desktop skeleton, breakpoint
+> alignment, quick-sheet column scrolling, unused layout constants), the
+> remaining i18n baseline files, and the sheet's dialog semantics/a11y.
+
 Scope: everything a user sees after tapping a plant, from either entry point.
 
 | Entry point | Component | Lines |

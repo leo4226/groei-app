@@ -29,7 +29,6 @@ const Plants = lazy(() => import('./pages/Plants'))
 const AddPlant = lazy(() => import('./pages/AddPlant'))
 const PlantDetail = lazy(() => import('./pages/PlantDetail'))
 const EditPlant = lazy(() => import('./pages/EditPlant'))
-const PlantCareDetail = lazy(() => import('./pages/PlantCareDetail'))
 const IdentifyPlantPage = lazy(() => import('./pages/IdentifyPlant').then(m => ({ default: m.IdentifyPlantPage })))
 const Settings = lazy(() => import('./pages/Settings'))
 const PlanningCalendarPage = lazy(() => import('./pages/calendar/PlanningCalendarPage'))
@@ -328,14 +327,6 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <EditPlant />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/plants/:id/care"
-                element={
-                  <RequireAuth>
-                    <PlantCareDetail />
                   </RequireAuth>
                 }
               />
