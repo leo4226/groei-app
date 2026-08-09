@@ -98,9 +98,29 @@ class BatchFitRequest(BaseModel):
     species_ids: list[int]
 
 
+# Garden-fit reasons are shown verbatim in the discovery card and the field
+# guide chips, so they must follow the request language — both endpoints used
+# to emit Dutch to everyone. Keyed by grade, plus the two "no verdict" cases.
+_FIT_REASONS: dict[str, dict[str, str]] = {
+    "perfect": {"nl": "Ideaal licht", "en": "Ideal light"},
+    "acceptable": {"nl": "Geschikt licht", "en": "Suitable light"},
+    "marginal": {"nl": "Krap licht", "en": "Marginal light"},
+    "tolerated": {"nl": "Past in elke tuin", "en": "Fits any garden"},
+    "unknown": {"nl": "Onbekend", "en": "Unknown"},
+    "no_preference": {"nl": "Geen lichtvoorkeur bekend", "en": "No light preference known"},
+    "too_dark": {"nl": "Waarschijnlijk te donker", "en": "Probably too dark"},
+}
+
+
+def _fit_reason(key: str | None, lang: str) -> str:
+    lang = "en" if lang == "en" else "nl"
+    return _FIT_REASONS.get(key or "unknown", _FIT_REASONS["unknown"])[lang]
+
+
 @router.post("/garden-fit/batch")
 async def batch_species_garden_fit(
     body: BatchFitRequest,
+    lang: str = Query("nl"),
     account=Depends(get_current_account),
     db=Depends(db_dep),
 ) -> dict[str, list[GardenFitVerdict]]:
@@ -124,13 +144,6 @@ async def batch_species_garden_fit(
 
     from services.plant_suggestions import fit_grade, bucket_for
 
-    _FIT_LABEL_NL = {
-        "perfect": "Ideaal licht",
-        "acceptable": "Geschikt licht",
-        "marginal": "Krap licht",
-        "tolerated": "Past in elke tuin",
-    }
-
     result: dict[str, list[GardenFitVerdict]] = {}
     for sid in body.species_ids:
         sun_preference = sp_map.get(sid)
@@ -139,12 +152,12 @@ async def batch_species_garden_fit(
             if not sun_preference:
                 verdicts.append(GardenFitVerdict(
                     map_id=m["id"], map_name=m["name"],
-                    sun_fit=None, reason="Geen lichtvoorkeur bekend",
+                    sun_fit=None, reason=_fit_reason("no_preference", lang),
                 ))
                 continue
             avg_sun = 4.5 if m["map_type"] == "outdoor" else 2.0
             grade = fit_grade(sun_preference, bucket_for(float(avg_sun)))
-            reason = _FIT_LABEL_NL.get(grade, "Onbekend") if grade else "Waarschijnlijk te donker"
+            reason = _fit_reason(grade, lang) if grade else _fit_reason("too_dark", lang)
             verdicts.append(GardenFitVerdict(
                 map_id=m["id"], map_name=m["name"], sun_fit=grade, reason=reason,
             ))
@@ -240,6 +253,7 @@ async def get_species_fun_fact(species_id: int, db=Depends(db_dep)):
 @router.get("/{species_id}/garden-fit", response_model=list[GardenFitVerdict])
 async def get_species_garden_fit(
     species_id: int,
+    lang: str = Query("nl"),
     account=Depends(get_current_account),
     db=Depends(db_dep),
 ):
@@ -266,7 +280,7 @@ async def get_species_garden_fit(
                 "map_id": m["id"],
                 "map_name": m["name"],
                 "sun_fit": None,
-                "reason": "Geen lichtvoorkeur bekend" if True else "No light preference known",
+                "reason": _fit_reason("no_preference", lang),
             })
             continue
 
@@ -276,13 +290,7 @@ async def get_species_garden_fit(
         bucket = bucket_for(float(avg_sun))
         grade = fit_grade(sun_preference, bucket)
 
-        _FIT_LABEL_NL = {
-            "perfect": "Ideaal licht",
-            "acceptable": "Geschikt licht",
-            "marginal": "Krap licht",
-            "tolerated": "Past in elke tuin",
-        }
-        reason = _FIT_LABEL_NL.get(grade, "Onbekend") if grade else "Waarschijnlijk te donker"
+        reason = _fit_reason(grade, lang) if grade else _fit_reason("too_dark", lang)
 
         verdicts.append({
             "map_id": m["id"],

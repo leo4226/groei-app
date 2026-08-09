@@ -102,7 +102,10 @@ export default [
               '[A-Z_-]+',
               // Pure decorative glyph runs beside translated expressions,
               // e.g. "— — {t.x}", "↓ {t.y}", "… → {t.z}"
-              '[—–·×→↓↑←↗\\s]+',
+              // ↗ is deliberately NOT excluded: U+2197 renders as a colour
+              // emoji on iOS, so external-link arrows must be inline SVG
+              // (see components/discoveries/WikipediaLink.tsx).
+              '[—–·×→↓↑←\\s]+',
               'Floreren',
               'floreren.app',
               'BioCLIP',

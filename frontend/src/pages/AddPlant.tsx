@@ -233,11 +233,11 @@ export default function AddPlant() {
   useEffect(() => {
     if (norm.speciesId == null) return
     let cancelled = false
-    speciesApi.gardenFit(norm.speciesId)
+    speciesApi.gardenFit(norm.speciesId, t.locale.toLowerCase().startsWith('en') ? 'en' : 'nl')
       .then(fits => { if (!cancelled) setGardenFitChip(fits) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [norm.speciesId])
+  }, [norm.speciesId, t.locale])
 
   // Photo-ID path: lazily fetch the species ecology profile and fill the sun
   // requirement from it. Non-blocking and fire-and-forget (mirrors the catalog

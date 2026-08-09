@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
@@ -7,7 +7,12 @@ import { resolveIconUrl } from '../utils/icons'
 import { captureDiscoveryLocation } from '../utils/discoveryLocation'
 import Glyph from '../components/ui/Glyph'
 import type { IdentifyCommitResult, EcologyOut } from '../types'
-import { wikipediaPlantUrl } from '../utils/plantReferenceLinks'
+import WikipediaLink from '../components/discoveries/WikipediaLink'
+
+const RETRY_STYLE: React.CSSProperties = {
+  marginTop: 8, padding: 0, border: 0, background: 'transparent',
+  color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+}
 
 const MONTH_ABBR: Record<'nl' | 'en', string[]> = {
   nl: ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
@@ -63,34 +68,57 @@ export default function DiscoveryCard() {
   const [ecologyLoading, setEcologyLoading] = useState(false)
   const [commitResult, setCommitResult] = useState<IdentifyCommitResult | null>(null)
   const [committing, setCommitting] = useState(!!state?.pendingCommit)
+  const [commitFailed, setCommitFailed] = useState(false)
+  const cancelledRef = useRef(false)
   const [geo, setGeo] = useState<{ lat?: number; lon?: number }>({
     lat: state?.location_lat,
     lon: state?.location_lon,
   })
   const [locationPending, setLocationPending] = useState(false)
 
+  // The commit is what links this discovery to a species. Everything on this
+  // card that needs a species_id — fun fact, ecology, garden fit — and the
+  // journal entry's ability to self-heal later all hang off it, so a silent
+  // failure here is what made facts "never load": the entry got saved with no
+  // species and could never recover. Retry once, then say so and offer a retry.
+  const runCommit = useCallback(async () => {
+    const scientificName = state?.candidate.scientific_name
+    if (!scientificName) return
+    setCommitting(true)
+    setCommitFailed(false)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await plantsApi.commitIdentify(
+          scientificName, state.thumbnail, activeLang,
+          { identifyId: state.identifyId, chosenSource: state.chosenSource },
+        )
+        if (!cancelledRef.current) { setCommitResult(r); setCommitting(false) }
+        return
+      } catch (e) {
+        // 404 means the species genuinely isn't in the catalog and could not be
+        // enriched — retrying just costs the user another slow round trip.
+        if ((e as Error & { status?: number }).status === 404) break
+      }
+    }
+    if (!cancelledRef.current) { setCommitFailed(true); setCommitting(false) }
+  }, [state, activeLang])
+
   // Optimistic flow: the identify page navigated here immediately; run the
   // commit (species link, localized name, photo upload) and the geolocation
   // capture in parallel while the card is already on screen.
   useEffect(() => {
     if (!state?.pendingCommit || !state.candidate.scientific_name) return
-    let cancelled = false
+    cancelledRef.current = false
     if ('geolocation' in navigator) {
       setLocationPending(true)
       void captureDiscoveryLocation(navigator.geolocation).then((location) => {
-        if (cancelled) return
+        if (cancelledRef.current) return
         if (location) setGeo(location)
         setLocationPending(false)
       })
     }
-    plantsApi.commitIdentify(
-      state.candidate.scientific_name, state.thumbnail, activeLang,
-      { identifyId: state.identifyId, chosenSource: state.chosenSource },
-    )
-      .then((r) => { if (!cancelled) setCommitResult(r) })
-      .catch(() => { /* species not found / offline: candidate data still works */ })
-      .finally(() => { if (!cancelled) setCommitting(false) })
-    return () => { cancelled = true }
+    void runCommit()
+    return () => { cancelledRef.current = true }
   }, [])
 
   const candidate = { ...state?.candidate, ...(commitResult ?? {}) }
@@ -255,20 +283,36 @@ export default function DiscoveryCard() {
           <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>{t.discovery.funFactLoading}</p>
         ) : funFact ? (
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: 'var(--color-text)' }}>{funFact}</p>
+        ) : !speciesId ? (
+          // No species link: no fun fact was ever requested and none can be.
+          // Reporting a failed load here was the misleading state in the
+          // screenshot — say what actually went wrong, and let them retry the
+          // lookup, which is what unblocks ecology and garden fit too.
+          <div>
+            <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>
+              {commitFailed ? t.discovery.speciesLinkFailed : t.discovery.speciesUnknown}
+            </p>
+            {commitFailed && (
+              <button onClick={() => void runCommit()} style={RETRY_STYLE}>
+                {t.discovery.funFactRetry}
+              </button>
+            )}
+          </div>
         ) : (
           <div>
             <p style={{ margin: 0, color: 'var(--color-text-soft)', fontSize: 14 }}>{t.discovery.funFactError}</p>
-            {speciesId && funFactFailed && (
-              <button onClick={() => loadFunFact(speciesId)} style={{ marginTop: 8, padding: 0, border: 0, background: 'transparent', color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            {funFactFailed && (
+              <button onClick={() => loadFunFact(speciesId)} style={RETRY_STYLE}>
                 {t.discovery.funFactRetry}
               </button>
             )}
           </div>
         )}
         {scientificName && (
-          <a href={wikipediaPlantUrl(scientificName, t.locale)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 10, color: 'var(--color-primary)', fontSize: 12, textDecoration: 'none' }}>
-            {t.discovery.readOnWikipedia} ↗
-          </a>
+          <WikipediaLink
+            latinName={scientificName}
+            style={{ display: 'inline-block', marginTop: 10, color: 'var(--color-primary)', fontSize: 12, textDecoration: 'none' }}
+          />
         )}
       </div>
 
@@ -375,6 +419,17 @@ export default function DiscoveryCard() {
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-overdue)', textAlign: 'center' }}>
             {t.discovery.saveError}
           </p>
+        )}
+        {savedId && (
+          <button
+            onClick={() => navigate('/field-journal')}
+            style={{
+              margin: '0 auto', padding: 0, border: 0, background: 'transparent',
+              color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            {t.discovery.viewInJournal}
+          </button>
         )}
         <button
           onClick={handleShare}
