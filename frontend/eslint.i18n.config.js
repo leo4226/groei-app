@@ -48,7 +48,6 @@ export default [
       'src/components/IconPicker.tsx',
       'src/components/LeonAvatar.tsx',
       'src/components/PhaseCalendar.tsx',
-      'src/components/PlantCareInfo.tsx',
       'src/components/discoveries/ExpeditionMap.tsx',
       'src/components/discoveries/ExpeditionMapGL.tsx',
       'src/components/game/GameLeaderboard.tsx',
@@ -78,7 +77,6 @@ export default [
 
       'src/pages/MapSettingsPage.tsx',
       'src/pages/MapsListPage.tsx',
-      'src/pages/PlantCareDetail.tsx',
       'src/pages/ResetPasswordPage.tsx',
       'src/pages/Settings.tsx',
       'src/pages/calendar/CalendarAlmanac.tsx',
@@ -112,6 +110,7 @@ export default [
               'cm',
               'mm',
               '°C',
+              '°',
               '%',
               '…',
               '⋯',

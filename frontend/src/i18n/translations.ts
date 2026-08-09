@@ -867,7 +867,7 @@ export type Translations = {
     mastheadEyebrow: string   // desktop masthead eyebrow, e.g. "Plant passport"
     statSchedules: string     // masthead stat label: nr of care schedules
     statSunHours: string      // masthead stat label: sun hours per day
-    weatherAlerts: string
+    signalsHeading: string  // section header above warnings + this month's actions
     copyPlant: string
     yearCalendar: string
     care: string
@@ -878,6 +878,7 @@ export type Translations = {
     intervalSourceProvisional: string
     byPerson: string  // "by {name}"
     deleteSchedule: string
+    markDone: string  // row action: log this care as done today
     deleteScheduleConfirm: string
     undo: string
     photoJournal: string
@@ -918,45 +919,32 @@ export type Translations = {
     loading: string
   }
 
-  // ── Plant Care Detail page ─────────────────────────────────────
-  plantCare: {
-    light: string
-    water: string
-    floweringCalendar: string
-    characteristics: string
-    specifications: string
-    treeInspection: string
-    family: string
-    // Fallback / status
-    careGuide: string
-    noInfo: string
-    failedToLoad: string
-    retry: string
-    // Characteristics
+  // ── PlantCareInfo card (species profile + garden weather) ──────
+  careInfo: {
+    more: string
+    less: string
+    loadFailed: string
+    noSpeciesInfo: string
+    mmPerYear: string
     evergreen: string
     deciduous: string
-    avgHeight: string
-    flowers: string
-    toxicity: string
-    edible: string
-    yes: string
-    no: string
-    // Specs
-    stemDiameter: string
-    height: string
-    age: string
-    // Water context
-    precipitationYear: string
-    amsterdamSuitable: string
-    needsMoreRain: string
-    tooWet: string
-    // Rain chart
-    rainfallAmsterdam: string
-    total: string
-    // Source
-    dataVia: string
-    // Lookup maps
+    flowersLabel: string   // "Flowers:" / "Bloemen:"
+    rainfallTitle: string  // "Rainfall — 14 days"
+    temperatureTitle: string  // "Temperature — 7 days"
+    total: string          // "Total:"
+    avgMax: string         // "Avg max:"
+    avgHeight: string      // "Average height:"
+    toxicity: string       // "Toxic:"
+    edible: string         // "Edible"
+    /** API toxicity values: low | medium | high */
+    toxicityLevels: Record<string, string>
+    /** API light_label values: shade | partial | full_sun */
     lightLabels: Record<string, string>
+    /** API duration values: perennial | annual | biennial */
+    durations: Record<string, string>
+    /** API assessment values: hot | warm | mild | cool | cold */
+    tempBadges: Record<string, string>
+    /** API assessment values: well_watered | moderate | dry | very_dry */
     rainBadges: Record<string, string>
   }
 

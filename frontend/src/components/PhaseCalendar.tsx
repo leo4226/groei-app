@@ -11,6 +11,12 @@ interface Props {
   isActiveMonth?: (month: number) => boolean
   monthStripHeight?: string
   monthStripClass?: string
+  /**
+   * Show this month's suggested actions in the callout. Pass false when the
+   * host already renders them merged with the plant's active warnings — the
+   * passport did both, so every action appeared twice (#878).
+   */
+  showActions?: boolean
 }
 
 export default function PhaseCalendar({
@@ -19,6 +25,7 @@ export default function PhaseCalendar({
   isActiveMonth,
   monthStripHeight = 'h-5',
   monthStripClass,
+  showActions = true,
 }: Props) {
   const t = useT()
   const currentMonth = new Date().getMonth() + 1
@@ -72,7 +79,7 @@ export default function PhaseCalendar({
         {suitability.detailLabel && (
           <p className="text-xs text-text-muted mt-0.5">{suitability.detailLabel}</p>
         )}
-        {suitability.actions.length > 0 && (
+        {showActions && suitability.actions.length > 0 && (
           <ul className="mt-2 space-y-0.5">
             {suitability.actions.map((action, i) => (
               <li key={i} className="text-xs text-text-muted">→ {action}</li>
