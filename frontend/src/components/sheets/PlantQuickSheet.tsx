@@ -68,6 +68,8 @@ export default function PlantQuickSheet({
   const [menuOpen, setMenuOpen] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const headingId = `plant-quick-sheet-title-${plant.id}`
   // Manual "measured sun" override (#645). Held locally so the sheet reflects
   // the change immediately; persisted via plantsApi.update, null = cleared.
   const [measuredSun, setMeasuredSun] = useState<number | null>(plant.measured_sun_hours)
@@ -118,6 +120,28 @@ export default function PlantQuickSheet({
     setSunEditorOpen(false)
     plantsApi.get(plant.id).then(setDetail).catch(() => {})
   }, [plant.id])
+
+  // Dialog behaviour: move focus into the sheet on open, hand it back to
+  // whatever opened it on close, and let Escape dismiss the topmost layer
+  // first (#878). No Tab trap — MovePlantSheet renders as a sibling portal,
+  // and a naive trap would lock focus out of it.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    sheetRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (showMoveSheet) { setShowMoveSheet(false); return }
+      if (menuOpen) { setMenuOpen(false); return }
+      if (sunEditorOpen) { setSunEditorOpen(false); return }
+      onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showMoveSheet, menuOpen, sunEditorOpen, onClose])
 
   // Persist a measured-sun value (or null to clear) and refresh map markers.
   const handleSetMeasuredSun = async (value: number | null) => {
@@ -281,13 +305,18 @@ export default function PlantQuickSheet({
 
       {/* Sheet */}
       <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+        tabIndex={-1}
         className={PLANT_QUICK_SHEET_CLASS}
         style={plantQuickSheetStyle()}
       >
         {/* Drag handle */}
         <button
           onClick={onClose}
-          aria-label="Sluiten"
+          aria-label={t.plantQuickSheet.close}
           className="plant-quick-sheet-handle shrink-0 pt-3 pb-1 flex justify-center w-full group"
         >
           <div className="w-10 h-1 bg-border rounded-full group-active:bg-text-muted transition-colors" />
@@ -329,7 +358,7 @@ export default function PlantQuickSheet({
 
               {/* Name + species + more info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={clampedPlantNameStyle()}>{displayName}</h3>
+                <h3 id={headingId} style={clampedPlantNameStyle()}>{displayName}</h3>
                 {plant.species && <p style={clampedPlantSpeciesStyle()}>{plant.species}</p>}
                 {plant.quantity > 1 && (
                   <p style={{ margin: '3px 0 0', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary)' }}>
@@ -359,11 +388,11 @@ export default function PlantQuickSheet({
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 61, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 6 }}>
                       <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}><Glyph name="edit" size={15} /></span>{t.plantQuickSheet.edit}</button>
                       {onMoveOnMap && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle}>↔</span>{t.plantQuickSheet.moveOnMap}</button>
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle} aria-hidden="true">↔</span>{t.plantQuickSheet.moveOnMap}</button>
                       )}
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle}>⇄</span>{t.plantQuickSheet.moveToMap}</button>
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle} aria-hidden="true">⇄</span>{t.plantQuickSheet.moveToMap}</button>
                       {onDuplicate && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle}>⧉</span>{t.plantQuickSheet.duplicate}</button>
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle} aria-hidden="true">⧉</span>{t.plantQuickSheet.duplicate}</button>
                       )}
                       <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={15} /></span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
                       {onRemove && (
@@ -379,9 +408,9 @@ export default function PlantQuickSheet({
             {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
             <div className="hidden lg:grid grid-cols-3 mt-2" style={{ width: 'fit-content', gap: 10 }}>
               <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
-              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>↔</span></button>)}
-              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⇄</span></button>
-              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }}>⧉</span></button>)}
+              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">↔</span></button>)}
+              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">⇄</span></button>
+              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">⧉</span></button>)}
               <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
               {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
             </div>
@@ -484,17 +513,17 @@ export default function PlantQuickSheet({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 12 }}>
                     <button
                       onClick={() => setSunDraft((d) => Math.max(0, Math.round((d - 0.5) * 2) / 2))}
-                      aria-label="−"
+                      aria-label={t.plantQuickSheet.sunMeasureLess}
                       style={sunStepBtnStyle}
-                    >−</button>
+                    ><span aria-hidden="true">−</span></button>
                     <span style={{ minWidth: 64, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>
                       {sunDraft.toFixed(1)}{t.plantQuickSheet.sunHoursUnit}
                     </span>
                     <button
                       onClick={() => setSunDraft((d) => Math.min(12, Math.round((d + 0.5) * 2) / 2))}
-                      aria-label="+"
+                      aria-label={t.plantQuickSheet.sunMeasureMore}
                       style={sunStepBtnStyle}
-                    >＋</button>
+                    ><span aria-hidden="true">＋</span></button>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {measuredSun != null && (

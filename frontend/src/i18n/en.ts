@@ -884,6 +884,8 @@ export const en: Translations = {
     sunMeasureTitle: 'Measured sun hours',
     sunMeasureHint: 'Hours of direct sun this plant gets here.',
     sunMeasureClear: 'Clear',
+    sunMeasureLess: 'Half an hour less',
+    sunMeasureMore: 'Half an hour more',
     sunMeasureSave: 'Save',
     water: '💧 Water',
     fertilize: '🌿 Fertilize',
@@ -958,6 +960,13 @@ export const en: Translations = {
     enrichedAt: 'updated',
     failed: 'Ecology data could not be loaded. Try again later.',
     loading: 'Loading ecology…',
+  },
+
+  phaseCalendar: {
+    now: (month: string) => `Now (${month}): `,
+    sow: 'Sow',
+    transplant: 'Transplant',
+    harvest: 'Harvest',
   },
 
   careInfo: {

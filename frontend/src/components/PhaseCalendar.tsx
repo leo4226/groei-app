@@ -74,7 +74,7 @@ export default function PhaseCalendar({
       {/* Current month callout */}
       <div className="mt-2 p-3 bg-surface rounded-xl border border-border">
         <p className="text-sm font-semibold text-text">
-          {isEN ? `Now (${fmtMonth(currentMonth)}): ` : `Nu (${fmtMonth(currentMonth)}): `}{suitability.phaseLabel || '—'}
+          {t.phaseCalendar.now(fmtMonth(currentMonth))}{suitability.phaseLabel || '—'}
         </p>
         {suitability.detailLabel && (
           <p className="text-xs text-text-muted mt-0.5">{suitability.detailLabel}</p>
@@ -94,7 +94,7 @@ export default function PhaseCalendar({
           {phenology.sow_window?.length > 0 && (
             <div className="bg-emerald-green/10 rounded-[10px] p-2">
               <p className="text-xs font-semibold text-emerald-green">
-                {isEN ? 'Sow' : 'Zaaien'}
+                {t.phaseCalendar.sow}
               </p>
               <p className="text-xs text-emerald-green/80 mt-0.5">{fmtMonths(phenology.sow_window)}</p>
             </div>
@@ -102,7 +102,7 @@ export default function PhaseCalendar({
           {phenology.transplant_window?.length > 0 && (
             <div className="bg-aqua-glow/10 rounded-[10px] p-2">
               <p className="text-xs font-semibold text-midnight-ink">
-                {isEN ? 'Transplant' : 'Uitplanten'}
+                {t.phaseCalendar.transplant}
               </p>
               <p className="text-xs text-midnight-ink/70 mt-0.5">{fmtMonths(phenology.transplant_window)}</p>
             </div>
@@ -110,7 +110,7 @@ export default function PhaseCalendar({
           {phenology.harvest_window?.length > 0 && (
             <div className="bg-pumpkin-swirl/10 rounded-[10px] p-2">
               <p className="text-xs font-semibold text-pumpkin-swirl">
-                {isEN ? 'Harvest' : 'Oogst'}
+                {t.phaseCalendar.harvest}
               </p>
               <p className="text-xs text-pumpkin-swirl/80 mt-0.5">{fmtMonths(phenology.harvest_window)}</p>
             </div>

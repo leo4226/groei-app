@@ -1,6 +1,14 @@
 import type { MapInfo } from '../types'
 
 /**
+ * Width at which the passport switches from the phone layout to the editorial
+ * masthead spread. Matches Plants.tsx / PageMasthead. Lower than the quick
+ * sheet's `PLANT_QUICK_SHEET_DESKTOP_MIN_PX` (1024) on purpose — a page only
+ * has to reflow, the sheet has to fit three min-width columns side by side.
+ */
+export const PASSPORT_DESKTOP_MIN_PX = 720
+
+/**
  * Today's date as `YYYY-MM-DD` in the *local* calendar.
  *
  * `new Date().toISOString().slice(0, 10)` is UTC: in Amsterdam (UTC+1/+2) it

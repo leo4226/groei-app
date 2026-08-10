@@ -16,6 +16,18 @@
     gap: clamp(24px, 2.5vw, 44px);
     padding-inline: clamp(24px, 3vw, 56px);
     padding-bottom: 20px !important;
+    /* Each column scrolls on its own — scrolling the whole grid pushed the
+       identity and care columns out of view whenever the context column grew
+       (sun editor open, several placements), even though they had room to
+       spare (#878). min-height:0 lets a grid item shrink below its content. */
+    overflow-y: hidden;
+  }
+
+  .plant-quick-sheet-identity,
+  .plant-quick-sheet-care,
+  .plant-quick-sheet-context {
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .plant-quick-sheet-identity {

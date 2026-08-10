@@ -843,6 +843,8 @@ export type Translations = {
     sunMeasureTitle: string
     sunMeasureHint: string
     sunMeasureClear: string
+    sunMeasureLess: string
+    sunMeasureMore: string
     sunMeasureSave: string
     water: string
     fertilize: string
@@ -917,6 +919,13 @@ export type Translations = {
     enrichedAt: string
     failed: string
     loading: string
+  }
+
+  phaseCalendar: {
+    now: (month: string) => string   // "Now (Aug): " / "Nu (aug): "
+    sow: string
+    transplant: string
+    harvest: string
   }
 
   // ── PlantCareInfo card (species profile + garden weather) ──────

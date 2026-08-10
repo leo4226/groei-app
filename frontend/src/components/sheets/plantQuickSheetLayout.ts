@@ -15,11 +15,20 @@ export const PLANT_QUICK_SHEET_CLASS = [
 export const PLANT_QUICK_SHEET_BODY_CLASS =
   'plant-quick-sheet-body overflow-y-auto overscroll-contain flex-1 px-5'
 
-export const PLANT_QUICK_SHEET_HEADER_CLASS =
-  'plant-quick-sheet-identity flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:gap-3'
+/**
+ * Width at which the sheet becomes the three-column desktop console. It is
+ * deliberately higher than the passport's own desktop threshold
+ * (`PASSPORT_DESKTOP_MIN_PX`, 721px): the passport only has to reflow a page,
+ * while this sheet's three columns have min-widths summing past 960px plus
+ * gaps, so they need the extra room. Keep it in sync with the media query in
+ * plantQuickSheet.css.
+ */
+export const PLANT_QUICK_SHEET_DESKTOP_MIN_PX = 1024
 
-export const PLANT_QUICK_SHEET_TITLE_ROW_CLASS =
-  'flex items-start gap-3 min-w-0'
+// One breakpoint for the whole sheet: the header used to flip to a row at
+// `sm:` (640px) while every other part waited for 1024px (#878).
+export const PLANT_QUICK_SHEET_HEADER_CLASS =
+  'plant-quick-sheet-identity flex flex-col gap-3 py-4 lg:flex-row lg:items-start lg:gap-3'
 
 export const PLANT_QUICK_SHEET_ACTIONS_CLASS =
   'grid grid-cols-2 gap-2 self-end sm:flex sm:items-center sm:justify-end sm:gap-1.5 sm:shrink-0'

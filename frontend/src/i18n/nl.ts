@@ -884,6 +884,8 @@ export const nl: Translations = {
     sunMeasureTitle: 'Gemeten zon-uren',
     sunMeasureHint: 'Aantal uur direct zonlicht dat deze plant hier krijgt.',
     sunMeasureClear: 'Wissen',
+    sunMeasureLess: 'Half uur minder',
+    sunMeasureMore: 'Half uur meer',
     sunMeasureSave: 'Opslaan',
     water: '💧 Water',
     fertilize: '🌿 Bemesten',
@@ -958,6 +960,13 @@ export const nl: Translations = {
     enrichedAt: 'bijgewerkt',
     failed: 'Ecologie-data kon niet worden opgehaald. Probeer later opnieuw.',
     loading: 'Ecologie laden…',
+  },
+
+  phaseCalendar: {
+    now: (month: string) => `Nu (${month}): `,
+    sow: 'Zaaien',
+    transplant: 'Uitplanten',
+    harvest: 'Oogst',
   },
 
   careInfo: {
