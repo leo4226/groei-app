@@ -7,7 +7,7 @@ import { buildDiscoveryJournalEntry, discoveryDisplayName, discoveryFunFact } fr
 import { captureDiscoveryLocation } from '../../utils/discoveryLocation'
 import { countPlaces, type GeoEntry } from '../../utils/expeditionGeo'
 import type { EcologyOut } from '../../types'
-import { wikipediaPlantUrl } from '../../utils/plantReferenceLinks'
+import WikipediaLink from './WikipediaLink'
 import ExpeditionMap from './ExpeditionMap'
 
 // The GL map (maplibre + tiles) is its own lazy chunk; the bundled SVG map is
@@ -150,7 +150,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
   useEffect(() => {
     const ids = [...new Set(items.flatMap(i => i.species_id != null ? [i.species_id] : []))]
     if (ids.length === 0) return
-    speciesApi.gardenFitBatch(ids).then(setFitMap).catch(() => {})
+    speciesApi.gardenFitBatch(ids, isEN ? 'en' : 'nl').then(setFitMap).catch(() => {})
     // Ecology per unique species — served from the backend cache, so a burst
     // of parallel GETs is fine for journal-sized collections.
     Promise.allSettled(ids.map(id => speciesApi.ecology(id).then(e => [id, e] as const)))
@@ -159,7 +159,9 @@ export default function DiscoveriesSection({ onStats }: Props) {
         for (const r of results) if (r.status === 'fulfilled') map[r.value[0]] = r.value[1]
         setEcologyMap(map)
       })
-  }, [items])
+    // isEN: the fit reasons are localized server-side, so a language switch
+    // has to refetch them or the chips keep the previous language.
+  }, [items, isEN])
 
   // Chronological numbering: oldest find = nr. 1
   const orderIndex = useMemo(() => {
@@ -679,9 +681,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                 )}
 
                 {selected.latin_name && (
-                  <a href={wikipediaPlantUrl(selected.latin_name, t.locale)} target="_blank" rel="noreferrer" className="w-fit text-xs font-semibold text-primary no-underline hover:underline">
-                    {t.discovery.readOnWikipedia} ↗
-                  </a>
+                  <WikipediaLink latinName={selected.latin_name} className="w-fit text-xs font-semibold text-primary no-underline hover:underline" />
                 )}
 
                 <div>

@@ -1935,6 +1935,11 @@ export type Translations = {
     funFactError: string       // "Kon geen weetje laden"
     funFactRetry: string
     readOnWikipedia: string
+    /** Species lookup failed — shown instead of a fun-fact error, with a retry. */
+    speciesLinkFailed: string
+    /** Identified, but the species is not in the catalog: no facts to show. */
+    speciesUnknown: string
+    viewInJournal: string
     ecology: string            // "Ecologie"
     ecologyLoading: string     // "Ecologie laden..."
     nativeNl: string           // "Inheems in NL"
