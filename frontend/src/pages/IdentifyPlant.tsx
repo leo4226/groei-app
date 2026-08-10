@@ -237,7 +237,7 @@ export function IdentifyPlantPage() {
       ? t.identify.multiAngle.identifyOne
       : t.identify.multiAngle.identify.replace('{count}', String(count))
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col p-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
+      <div className="mx-auto flex h-full max-w-md flex-col p-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}>
         <button
           onClick={() => navigate(-1)}
           className="mb-4 self-start text-[13px] font-medium text-text-muted"
