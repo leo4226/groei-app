@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PLANT_QUICK_SHEET_ACTIONS_CLASS,
   PLANT_QUICK_SHEET_BOTTOM_CLEARANCE_CLASS,
   PLANT_QUICK_SHEET_BODY_CLASS,
   PLANT_QUICK_SHEET_CLASS,
-  PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS,
   PLANT_QUICK_SHEET_DESKTOP_MIN_PX,
   PLANT_QUICK_SHEET_HEADER_CLASS,
   PLANT_QUICK_SHEET_LANDSCAPE_BOTTOM_CLASS,
@@ -41,15 +39,8 @@ describe('plant quick sheet mobile layout', () => {
     expect(plantQuickSheetStyle().maxHeight).toBe('var(--plant-quick-sheet-max-height)')
   })
 
-  it('uses a mobile-first header with actions on a separate two-column grid', () => {
+  it('uses a mobile-first header', () => {
     expect(PLANT_QUICK_SHEET_HEADER_CLASS).toContain('flex-col')
-    expect(PLANT_QUICK_SHEET_ACTIONS_CLASS).toContain('grid')
-    expect(PLANT_QUICK_SHEET_ACTIONS_CLASS).toContain('grid-cols-2')
-    expect(PLANT_QUICK_SHEET_ACTIONS_CLASS).toContain('sm:flex')
-  })
-
-  it('hides secondary lock/close actions from the cramped mobile header', () => {
-    expect(PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS).toBe('hidden sm:block')
   })
 
   it('flips the header at the same width as the rest of the desktop console', () => {

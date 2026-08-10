@@ -881,6 +881,13 @@ export type Translations = {
     byPerson: string  // "by {name}"
     deleteSchedule: string
     markDone: string  // row action: log this care as done today
+    lastDoneToday: string
+    lastDoneYesterday: string
+    lastDoneDaysAgo: (n: number) => string
+    addCare: string          // "Add care"
+    addCareType: string
+    addCarePick: string      // empty-select placeholder
+    addCareInterval: string  // "Every … days"
     deleteScheduleConfirm: string
     undo: string
     photoJournal: string
@@ -928,7 +935,22 @@ export type Translations = {
     harvest: string
   }
 
-  // ── PlantCareInfo card (species profile + garden weather) ──────
+  // ── Garden weather (map popover + passport summary) ────────────
+  gardenWeather: {
+    rainfallTitle: string     // "Rainfall — 14 days"
+    temperatureTitle: string  // "Temperature — 7 days"
+    total: string             // "Total:"
+    avgMax: string            // "Avg max:"
+    rainSummary: (mm: number) => string   // "22 mm in 14 days"
+    tempSummary: (c: number) => string    // "21°C avg max"
+    historyHeading: string    // weather popover section header
+    /** API assessment values: hot | warm | mild | cool | cold */
+    tempBadges: Record<string, string>
+    /** API assessment values: well_watered | moderate | dry | very_dry */
+    rainBadges: Record<string, string>
+  }
+
+  // ── PlantCareInfo card (species profile) ───────────────────────
   careInfo: {
     more: string
     less: string
@@ -938,23 +960,17 @@ export type Translations = {
     evergreen: string
     deciduous: string
     flowersLabel: string   // "Flowers:" / "Bloemen:"
-    rainfallTitle: string  // "Rainfall — 14 days"
-    temperatureTitle: string  // "Temperature — 7 days"
-    total: string          // "Total:"
-    avgMax: string         // "Avg max:"
     avgHeight: string      // "Average height:"
-    toxicity: string       // "Toxic:"
+    toxicityUnknown: (raw: string) => string  // fallback for an unmapped API value
     edible: string         // "Edible"
-    /** API toxicity values: low | medium | high */
+    /** API toxicity values: low | medium | high → a full phrase */
     toxicityLevels: Record<string, string>
+    /** API flower_colors values (English words) → localized colour names */
+    flowerColors: Record<string, string>
     /** API light_label values: shade | partial | full_sun */
     lightLabels: Record<string, string>
     /** API duration values: perennial | annual | biennial */
     durations: Record<string, string>
-    /** API assessment values: hot | warm | mild | cool | cold */
-    tempBadges: Record<string, string>
-    /** API assessment values: well_watered | moderate | dry | very_dry */
-    rainBadges: Record<string, string>
   }
 
   // ── Add / Edit Plant ────────────────────────────────────────────

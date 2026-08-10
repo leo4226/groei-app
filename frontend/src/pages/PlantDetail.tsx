@@ -2,7 +2,7 @@ import { useT } from '../context/LanguageContext'
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import type { Phenology, PlantWarningStateOut } from '../types'
+import type { CareType, Phenology, PlantWarningStateOut } from '../types'
 import CareIcon, { type CareIconType } from '../components/ui/CareIcon'
 import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
@@ -23,7 +23,8 @@ import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
-import { localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX } from './plantPassportModel'
+import { localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX, relativeDayLabel, nextScheduleInput } from './plantPassportModel'
+import MeasuredSunEditor from '../components/plant/MeasuredSunEditor'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -54,6 +55,12 @@ function NavArrow({ dir, plant, t, onClick }: {
     </button>
   )
 }
+
+// Care types a user can add by hand from the passport. Deliberately excludes
+// 'photo', which the growth journal's reminder toggle owns.
+const ADDABLE_CARE_TYPES: CareType[] = [
+  'water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'frost_protect', 'heat_protect',
+]
 
 const ALERT_BORDER: Record<string, string> = {
   urgent:  'border-l-fiery-red',
@@ -160,6 +167,12 @@ export default function PlantDetail() {
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const carePhotoRef = useRef<HTMLInputElement>(null)
   const carePhotoUploadLogId = useRef<number | null>(null)
+  const [sunEditorOpen, setSunEditorOpen] = useState(false)
+  const [savingSun, setSavingSun] = useState(false)
+  const [addingCare, setAddingCare] = useState(false)
+  const [newCareType, setNewCareType] = useState<CareType | ''>('')
+  const [newCareInterval, setNewCareInterval] = useState(7)
+  const [savingCare, setSavingCare] = useState(false)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -292,6 +305,40 @@ export default function PlantDetail() {
     }
   }
 
+  async function handleSetMeasuredSun(value: number | null) {
+    setSavingSun(true)
+    try {
+      await plantsApi.update(plantId, { measured_sun_hours: value })
+      await loadPlants()
+    } finally {
+      setSavingSun(false)
+    }
+  }
+
+  // The API replaces the whole schedule list, so send the existing rows back
+  // untouched alongside the new one.
+  async function handleAddSchedule() {
+    if (!plant || !newCareType) return
+    setSavingCare(true)
+    try {
+      await care.syncSchedules(plantId, [
+        ...plant.care_schedules.map(s => ({
+          care_type: s.care_type,
+          interval_days: s.interval_days,
+          season_adjust: s.season_adjust ?? undefined,
+          notes: s.notes ?? undefined,
+          next_due: s.next_due,
+        })),
+        nextScheduleInput(newCareType, newCareInterval),
+      ])
+      await loadPlants()
+      setAddingCare(false)
+      setNewCareType('')
+    } finally {
+      setSavingCare(false)
+    }
+  }
+
   async function handleDeleteSchedule(scheduleId: number) {
     if (!window.confirm(t.plantDetail.deleteScheduleConfirm)) return
     await care.deleteSchedule(scheduleId)
@@ -417,7 +464,7 @@ export default function PlantDetail() {
     : null
 
   const sunFitCard = sunFitInfo && (
-    <div className="flex items-center gap-3 bg-surface rounded-xl px-4 py-3 border border-border">
+    <div className={`flex items-center gap-3 bg-surface px-4 py-3 border border-border ${sunEditorOpen ? 'rounded-t-xl border-b-0' : 'rounded-xl'}`}>
       <Glyph name="sun" size={18} className="text-amber-500 shrink-0" />
       <span className="text-sm text-text-muted flex-1">
         {t.plantDetail.sunHoursLabel} <span className="text-text font-medium">~{sunFitInfo.sunHours.toFixed(1)}{t.plantDetail.sunHoursUnit}</span>
@@ -433,9 +480,33 @@ export default function PlantDetail() {
       >
         {sunFitInfo.fit === 'good' ? t.plantDetail.fitGood : sunFitInfo.fit === 'partial' ? t.plantDetail.fitPartial : t.plantDetail.fitInsufficient}
       </span>
+      <button
+        onClick={() => setSunEditorOpen(v => !v)}
+        aria-label={t.plantQuickSheet.sunMeasureOpen}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border ${sunEditorOpen ? 'bg-primary text-white' : 'bg-surface text-text-muted'}`}
+      >
+        <Glyph name="edit" size={13} />
+      </button>
     </div>
   )
-  const sunFitBlock = sunFitCard && <div className="mb-5">{sunFitCard}</div>
+
+  // Same editor the quick sheet uses, so a measured value can be corrected
+  // from whichever pane the user happens to be in (#878).
+  const sunFitPanel = sunFitInfo && (
+    <>
+      {sunFitCard}
+      {sunEditorOpen && (
+        <MeasuredSunEditor
+          measured={plant.measured_sun_hours}
+          fallback={sunFitInfo.sunHours}
+          saving={savingSun}
+          onSave={handleSetMeasuredSun}
+          onCancel={() => setSunEditorOpen(false)}
+        />
+      )}
+    </>
+  )
+  const sunFitBlock = sunFitPanel && <div className="mb-5">{sunFitPanel}</div>
 
   // A phenology object can exist yet have no month calendar (incomplete LLM
   // generation) — that still reads as "No species data available", so treat it
@@ -494,12 +565,20 @@ export default function PlantDetail() {
         {plant.care_schedules.map((sched) => {
           const isOverdue = sched.next_due < today
           const isDueToday = sched.next_due === today
+          const lastDoneLabel = relativeDayLabel(sched.last_done, {
+            today: t.plantDetail.lastDoneToday,
+            yesterday: t.plantDetail.lastDoneYesterday,
+            daysAgo: t.plantDetail.lastDoneDaysAgo,
+          })
           return (
             <div key={sched.id} className="card p-3.5 flex items-center gap-3">
               <span className="shrink-0 text-text-soft"><CareIcon type={sched.care_type as CareIconType} size={22} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}</p>
                 <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
+                {lastDoneLabel && (
+                  <p className="text-xs text-text-soft">{lastDoneLabel}</p>
+                )}
                 {sched.care_type === 'water'
                   && (sched.interval_source === 'species' || sched.interval_source === 'provisional')
                   && (
@@ -543,9 +622,74 @@ export default function PlantDetail() {
       </div>
   )
 
-  const careBlock = plant.care_schedules.length > 0 && (
+  const scheduledTypes = new Set(plant.care_schedules.map(cs => cs.care_type))
+  const addableCareTypes = ADDABLE_CARE_TYPES.filter(ct => !scheduledTypes.has(ct))
+
+  // Deleting a schedule was possible from here; adding one meant a trip to the
+  // edit form (#878).
+  const addCareBlock = addableCareTypes.length > 0 && (
+    addingCare ? (
+      <div className="card mt-2 space-y-3 p-3.5">
+        <label className="block">
+          <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {t.plantDetail.addCareType}
+          </span>
+          <select
+            value={newCareType}
+            onChange={e => setNewCareType(e.target.value as CareType | '')}
+            className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          >
+            <option value="">{t.plantDetail.addCarePick}</option>
+            {addableCareTypes.map(ct => (
+              <option key={ct} value={ct}>
+                {t.careTypes[ct as keyof typeof t.careTypes] ?? ct}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
+            {t.plantDetail.addCareInterval}
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={newCareInterval}
+            onChange={e => setNewCareInterval(Number(e.target.value))}
+            className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          />
+        </label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setAddingCare(false); setNewCareType('') }}
+            className="flex-1 rounded-full border border-border py-2 text-sm font-semibold text-text-muted"
+          >
+            {t.common.cancel}
+          </button>
+          <button
+            onClick={handleAddSchedule}
+            disabled={!newCareType || savingCare}
+            className="flex-1 rounded-full bg-primary py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {savingCare ? t.common.saving : t.common.save}
+          </button>
+        </div>
+      </div>
+    ) : (
+      <button
+        onClick={() => setAddingCare(true)}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-primary"
+      >
+        <Glyph name="sprout" size={14} aria-hidden />{t.plantDetail.addCare}
+      </button>
+    )
+  )
+
+  const careBlock = (plant.care_schedules.length > 0 || addCareBlock) && (
     <Section title={t.plantDetail.care}>
       {careScheduleRows(true)}
+      {addCareBlock}
     </Section>
   )
 
@@ -762,7 +906,7 @@ export default function PlantDetail() {
               {potAcquiredLine && (
                 <p className="font-mono text-[10px] text-text-muted">{potAcquiredLine}</p>
               )}
-              {sunFitCard}
+              {sunFitPanel}
               {quickActionPills}
             </div>
           </div>
@@ -782,9 +926,10 @@ export default function PlantDetail() {
           <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
             <div className="min-w-0 xl:pr-8">
               {alertsBlock}
-              {plant.care_schedules.length > 0 && (
+              {(plant.care_schedules.length > 0 || addCareBlock) && (
                 <Section title={t.plantDetail.care}>
                   {careScheduleRows(false)}
+                  {addCareBlock}
                 </Section>
               )}
             </div>

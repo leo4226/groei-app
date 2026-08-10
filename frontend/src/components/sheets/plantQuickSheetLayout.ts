@@ -30,11 +30,6 @@ export const PLANT_QUICK_SHEET_DESKTOP_MIN_PX = 1024
 export const PLANT_QUICK_SHEET_HEADER_CLASS =
   'plant-quick-sheet-identity flex flex-col gap-3 py-4 lg:flex-row lg:items-start lg:gap-3'
 
-export const PLANT_QUICK_SHEET_ACTIONS_CLASS =
-  'grid grid-cols-2 gap-2 self-end sm:flex sm:items-center sm:justify-end sm:gap-1.5 sm:shrink-0'
-
-export const PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS = 'hidden sm:block'
-
 export function plantQuickSheetBodyStyle(): CSSProperties {
   return { paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom,0px))' }
 }

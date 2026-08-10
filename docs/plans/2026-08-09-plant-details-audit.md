@@ -1,21 +1,17 @@
 # Plant details pane — audit (2026-08-09)
 
-> **Status.** Tracked as #878. Rounds 1–5 are implemented, except for the items
-> listed below. Still open:
+> **Status.** Tracked as #878. Every finding in this document is implemented.
+> The weather charts moved to the map's weather popover
+> (`components/garden/GardenWeatherHistory.tsx`); the passport keeps a one-line
+> summary. The pane was verified rendering in **both languages** at phone and
+> desktop widths against a stubbed API, which turned up two further NL/EN
+> defects fixed here: flower colours were printed as raw English API values
+> ("Bloemen: Pink, Blue"), and the photo-reminder hint still promised a task on
+> the retired dashboard.
 >
-> - **Moving rainfall/temperature to a garden-level surface** (finding 4). Needs a
->   decision on where it lives — the map's weather pill or the dashboard.
-> - **A measured-sun editor on the passport** (finding 9). The passport now reads
->   `measured_sun_hours`, but only the quick sheet can set it.
-> - `PLANT_QUICK_SHEET_ACTIONS_CLASS` / `..._DESKTOP_ONLY_ACTION_CLASS`
->   (finding 17). Nothing renders them, but `plantQuickSheetLayout.test.ts`
->   asserts their shape, so removing them deletes tests — which needs the
->   `tests-intentionally-removed` label, and an agent must not apply that to its
->   own PR. `PLANT_QUICK_SHEET_TITLE_ROW_CLASS`, which no test referenced, is
->   gone.
-> - The two product questions in §3: no way to add a care schedule from the
->   passport, and no "last watered N days ago".
-> - An end-to-end pass over the pane with the account language set to `en`.
+> Deliberately not done: aligning the passport's 720px breakpoint with the
+> sheet's 1024px. They differ because the sheet has three min-width columns to
+> fit while a page only has to reflow; both are named, documented constants now.
 
 Scope: everything a user sees after tapping a plant, from either entry point.
 

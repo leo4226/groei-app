@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWeather } from '../../hooks/useWeather'
 import { useT } from '../../context/LanguageContext'
 import WeatherIcon from '../weather/WeatherIcon'
+import GardenWeatherHistory from '../garden/GardenWeatherHistory'
 
 interface Props {
   lat: number
@@ -52,7 +53,7 @@ export default function WeatherPill({ lat, lon }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-[260px] bg-surface border border-border rounded-xl shadow-lg p-3 z-50">
+        <div className="absolute right-0 top-full mt-1 w-[300px] max-h-[70dvh] overflow-y-auto bg-surface border border-border rounded-xl shadow-lg p-3 z-50">
           {/* Current conditions */}
           <div className="flex items-center gap-2 mb-2">
             <WeatherIcon icon={weather.currentIcon} size={28} />
@@ -91,6 +92,16 @@ export default function WeatherPill({ lat, lon }: Props) {
                 </div>
               )
             })}
+          </div>
+
+          {/* What the garden has actually had — the 14-day rain and 7-day
+              temperature history that used to be repeated inside every plant
+              page, even though it is one household-wide figure (#878). */}
+          <div className="border-t border-border-soft mt-2 pt-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted mb-2">
+              {t.gardenWeather.historyHeading}
+            </p>
+            <GardenWeatherHistory compact />
           </div>
 
           {/* Calendar link */}

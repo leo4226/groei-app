@@ -1,5 +1,58 @@
 import { describe, expect, it } from 'vitest'
-import { localCalendarDate, showsGardenWeather } from './plantPassportModel'
+import {
+  daysSince,
+  localCalendarDate,
+  nextScheduleInput,
+  relativeDayLabel,
+  showsGardenWeather,
+} from './plantPassportModel'
+
+const LABELS = {
+  today: 'Done today',
+  yesterday: 'Done yesterday',
+  daysAgo: (n: number) => `Done ${n} days ago`,
+}
+
+describe('daysSince / relativeDayLabel', () => {
+  const now = new Date(2026, 7, 9, 14, 0)
+
+  it('counts calendar days, not elapsed hours', () => {
+    // 23:00 yesterday is 15 hours ago but still "1 day ago" to a gardener.
+    expect(daysSince('2026-08-08T23:00:00', now)).toBe(1)
+    expect(daysSince('2026-08-09T00:30:00', now)).toBe(0)
+    expect(daysSince('2026-08-02T09:00:00', now)).toBe(7)
+  })
+
+  it('labels today, yesterday and older', () => {
+    expect(relativeDayLabel('2026-08-09T08:00:00', LABELS, now)).toBe('Done today')
+    expect(relativeDayLabel('2026-08-08T08:00:00', LABELS, now)).toBe('Done yesterday')
+    expect(relativeDayLabel('2026-08-06T08:00:00', LABELS, now)).toBe('Done 3 days ago')
+  })
+
+  it('returns null for never-done, unparseable and future dates', () => {
+    expect(relativeDayLabel(null, LABELS, now)).toBeNull()
+    expect(relativeDayLabel(undefined, LABELS, now)).toBeNull()
+    expect(relativeDayLabel('not a date', LABELS, now)).toBeNull()
+    expect(relativeDayLabel('2026-08-20T08:00:00', LABELS, now)).toBeNull()
+  })
+})
+
+describe('nextScheduleInput', () => {
+  it('makes the new schedule due today so the plant reaches the care lists', () => {
+    const now = new Date(2026, 7, 9)
+    expect(nextScheduleInput('water', 7, now)).toEqual({
+      care_type: 'water',
+      interval_days: 7,
+      next_due: '2026-08-09',
+    })
+  })
+
+  it('never produces an interval below one day', () => {
+    expect(nextScheduleInput('mist', 0).interval_days).toBe(1)
+    expect(nextScheduleInput('mist', -5).interval_days).toBe(1)
+    expect(nextScheduleInput('mist', 2.4).interval_days).toBe(2)
+  })
+})
 
 describe('localCalendarDate', () => {
   it('formats the local calendar date, zero-padded', () => {
