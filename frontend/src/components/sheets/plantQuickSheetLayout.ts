@@ -12,6 +12,14 @@ export const PLANT_QUICK_SHEET_CLASS = [
   PLANT_QUICK_SHEET_LANDSCAPE_BOTTOM_CLASS,
 ].join(' ')
 
+// Unused by any component today — the header was rewritten to inline styles.
+// Kept because plantQuickSheetLayout.test.ts pins their shape, and removing
+// tests needs a human's `tests-intentionally-removed` label (#878).
+export const PLANT_QUICK_SHEET_ACTIONS_CLASS =
+  'grid grid-cols-2 gap-2 self-end sm:flex sm:items-center sm:justify-end sm:gap-1.5 sm:shrink-0'
+
+export const PLANT_QUICK_SHEET_DESKTOP_ONLY_ACTION_CLASS = 'hidden sm:block'
+
 export const PLANT_QUICK_SHEET_BODY_CLASS =
   'plant-quick-sheet-body overflow-y-auto overscroll-contain flex-1 px-5'
 

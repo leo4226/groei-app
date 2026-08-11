@@ -12,6 +12,10 @@
 > Deliberately not done: aligning the passport's 720px breakpoint with the
 > sheet's 1024px. They differ because the sheet has three min-width columns to
 > fit while a page only has to reflow; both are named, documented constants now.
+> `PLANT_QUICK_SHEET_ACTIONS_CLASS` and `..._DESKTOP_ONLY_ACTION_CLASS` also
+> stay: no component renders them, but the only way to delete them is to delete
+> the tests that pin their shape, which needs a human's
+> `tests-intentionally-removed` label. Not worth blocking on.
 
 Scope: everything a user sees after tapping a plant, from either entry point.
 
