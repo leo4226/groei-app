@@ -25,6 +25,70 @@ def test_fun_fact_parser_rejects_half_filled_payload():
     assert _parse_fun_fact_content('{"nl":"Alleen Nederlands","en":""}') is None
 
 
+def test_fun_fact_parser_prefers_the_last_object_in_reasoning():
+    """Reasoning text holds discarded drafts before the answer it settled on."""
+    reasoning = (
+        'Let me draft one: {"nl":"Eerste poging","en":"First try"}. '
+        'Hmm, that is generic. Better: {"nl":"Beter weetje","en":"Better fact"}'
+    )
+    assert _parse_fun_fact_content(reasoning, prefer_last=True) == (
+        "Beter weetje", "Better fact",
+    )
+    # Default (content) semantics stay first-match.
+    assert _parse_fun_fact_content(reasoning) == ("Eerste poging", "First try")
+
+
+@pytest.mark.asyncio
+async def test_generate_fun_fact_reads_reasoning_when_content_is_empty(monkeypatch):
+    """The production failure: budget spent reasoning, `content` comes back empty.
+
+    The fact was generated — it just landed in `reasoning` instead of
+    `content`, and the endpoint only ever read `content`.
+    """
+    import routers.species as species_mod
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{
+                "finish_reason": "length",
+                "message": {
+                    "content": "",
+                    "reasoning": 'I should answer with {"nl":"Cipressen leven lang.","en":"Cypresses live long."}',
+                },
+            }]}
+
+    class _Client:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **kw):
+            return _Resp()
+
+    monkeypatch.setattr(species_mod, "httpx", type("m", (), {
+        "AsyncClient": _Client,
+        "Timeout": lambda *a, **kw: None,
+    }))
+    monkeypatch.setattr(
+        species_mod, "_fun_fact_llm_config",
+        lambda: ("key", "https://example.invalid", "model"),
+    )
+
+    assert await species_mod._generate_fun_fact("Cupressus sempervirens", "Italiaanse cipres") == (
+        "Cipressen leven lang.", "Cypresses live long.",
+    )
+
+
 @pytest.mark.asyncio
 async def test_fun_fact_endpoint_falls_back_to_phenology_when_cache_columns_absent(
     client, seeded_db, monkeypatch
