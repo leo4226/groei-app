@@ -929,6 +929,7 @@ export const nl: Translations = {
     addCareType: 'Soort verzorging',
     addCarePick: 'Kies…',
     addCareInterval: 'Elke … dagen',
+    addCareFailed: 'Dit schema kon niet worden opgeslagen. Probeer een andere soort verzorging.',
     deleteScheduleConfirm: 'Weet je zeker dat je dit verzorgingsschema wilt verwijderen?',
     undo: 'Ongedaan maken',
     photoJournal: 'Groeidagboek',

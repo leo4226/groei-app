@@ -2,7 +2,7 @@ import { useT } from '../context/LanguageContext'
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import type { CareType, Phenology, PlantWarningStateOut } from '../types'
+import type { Phenology, PlantWarningStateOut } from '../types'
 import CareIcon, { type CareIconType } from '../components/ui/CareIcon'
 import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
@@ -23,7 +23,11 @@ import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
 import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
-import { localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX, relativeDayLabel, nextScheduleInput } from './plantPassportModel'
+import {
+  localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX,
+  relativeDayLabel, addableCareTypes, buildAddSchedulePayload,
+} from './plantPassportModel'
+import { careEnvironmentForPlant } from './editPlantCareSchedules'
 import MeasuredSunEditor from '../components/plant/MeasuredSunEditor'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
@@ -55,12 +59,6 @@ function NavArrow({ dir, plant, t, onClick }: {
     </button>
   )
 }
-
-// Care types a user can add by hand from the passport. Deliberately excludes
-// 'photo', which the growth journal's reminder toggle owns.
-const ADDABLE_CARE_TYPES: CareType[] = [
-  'water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'frost_protect', 'heat_protect',
-]
 
 const ALERT_BORDER: Record<string, string> = {
   urgent:  'border-l-fiery-red',
@@ -170,9 +168,10 @@ export default function PlantDetail() {
   const [sunEditorOpen, setSunEditorOpen] = useState(false)
   const [savingSun, setSavingSun] = useState(false)
   const [addingCare, setAddingCare] = useState(false)
-  const [newCareType, setNewCareType] = useState<CareType | ''>('')
+  const [newCareType, setNewCareType] = useState<string>('')
   const [newCareInterval, setNewCareInterval] = useState(7)
   const [savingCare, setSavingCare] = useState(false)
+  const [addCareError, setAddCareError] = useState(false)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -186,6 +185,10 @@ export default function PlantDetail() {
   }, [careLog.data, loading, plant?.id])
 
   const mapInfo = plant?.map_id ? (maps.find(m => m.id === plant.map_id) ?? null) : null
+  const careEnvironment = careEnvironmentForPlant(
+    { container_id: plant?.container_id ?? null },
+    mapInfo ?? undefined,
+  )
   const sunCoord = useMemo(
     () => plant?.map_x != null && plant?.map_y != null ? { x: plant.map_x, y: plant.map_y } : null,
     [plant?.map_x, plant?.map_y],
@@ -320,20 +323,19 @@ export default function PlantDetail() {
   async function handleAddSchedule() {
     if (!plant || !newCareType) return
     setSavingCare(true)
+    setAddCareError(false)
     try {
-      await care.syncSchedules(plantId, [
-        ...plant.care_schedules.map(s => ({
-          care_type: s.care_type,
-          interval_days: s.interval_days,
-          season_adjust: s.season_adjust ?? undefined,
-          notes: s.notes ?? undefined,
-          next_due: s.next_due,
-        })),
-        nextScheduleInput(newCareType, newCareInterval),
-      ])
+      await care.syncSchedules(
+        plantId,
+        buildAddSchedulePayload(plant.care_schedules, careEnvironment, newCareType, newCareInterval),
+      )
       await loadPlants()
       setAddingCare(false)
       setNewCareType('')
+    } catch {
+      // The endpoint validates the whole list; without this the Save button
+      // just appeared to do nothing.
+      setAddCareError(true)
     } finally {
       setSavingCare(false)
     }
@@ -622,12 +624,11 @@ export default function PlantDetail() {
       </div>
   )
 
-  const scheduledTypes = new Set(plant.care_schedules.map(cs => cs.care_type))
-  const addableCareTypes = ADDABLE_CARE_TYPES.filter(ct => !scheduledTypes.has(ct))
+  const addable = addableCareTypes(plant.care_schedules, careEnvironment)
 
   // Deleting a schedule was possible from here; adding one meant a trip to the
   // edit form (#878).
-  const addCareBlock = addableCareTypes.length > 0 && (
+  const addCareBlock = addable.length > 0 && (
     addingCare ? (
       <div className="card mt-2 space-y-3 p-3.5">
         <label className="block">
@@ -636,11 +637,11 @@ export default function PlantDetail() {
           </span>
           <select
             value={newCareType}
-            onChange={e => setNewCareType(e.target.value as CareType | '')}
+            onChange={e => setNewCareType(e.target.value)}
             className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
           >
             <option value="">{t.plantDetail.addCarePick}</option>
-            {addableCareTypes.map(ct => (
+            {addable.map(ct => (
               <option key={ct} value={ct}>
                 {t.careTypes[ct as keyof typeof t.careTypes] ?? ct}
               </option>
@@ -660,9 +661,12 @@ export default function PlantDetail() {
             className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
           />
         </label>
+        {addCareError && (
+          <p className="text-xs text-overdue">{t.plantDetail.addCareFailed}</p>
+        )}
         <div className="flex gap-2">
           <button
-            onClick={() => { setAddingCare(false); setNewCareType('') }}
+            onClick={() => { setAddingCare(false); setNewCareType(''); setAddCareError(false) }}
             className="flex-1 rounded-full border border-border py-2 text-sm font-semibold text-text-muted"
           >
             {t.common.cancel}

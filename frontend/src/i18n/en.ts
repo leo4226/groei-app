@@ -929,6 +929,7 @@ export const en: Translations = {
     addCareType: 'Type of care',
     addCarePick: 'Choose…',
     addCareInterval: 'Every … days',
+    addCareFailed: 'That schedule could not be saved. Try a different type of care.',
     deleteScheduleConfirm: 'Are you sure you want to delete this care schedule?',
     undo: 'Undo',
     photoJournal: 'Growth journal',
