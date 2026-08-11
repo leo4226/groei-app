@@ -14,6 +14,7 @@ import Glyph from '../ui/Glyph'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
 import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
+import MeasuredSunEditor from '../plant/MeasuredSunEditor'
 import './plantQuickSheet.css'
 import {
   PLANT_QUICK_SHEET_BODY_CLASS,
@@ -75,7 +76,6 @@ export default function PlantQuickSheet({
   const [measuredSun, setMeasuredSun] = useState<number | null>(plant.measured_sun_hours)
   const [sunEditorOpen, setSunEditorOpen] = useState(false)
   const [savingSun, setSavingSun] = useState(false)
-  const [sunDraft, setSunDraft] = useState(0)
 
   async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -495,7 +495,7 @@ export default function PlantQuickSheet({
                   {sunFitInfo.fit === 'good' ? t.plantQuickSheet.goodFit : sunFitInfo.fit === 'partial' ? t.plantQuickSheet.partialFit : t.plantQuickSheet.insufficientFit}
                 </span>
                 <button
-                  onClick={() => { setSunDraft(measuredSun ?? Math.round(sunFitInfo.sunHours * 2) / 2); setSunEditorOpen((v) => !v) }}
+                  onClick={() => setSunEditorOpen((v) => !v)}
                   aria-label={t.plantQuickSheet.sunMeasureOpen}
                   style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, border: '1px solid var(--color-border-soft)', background: sunEditorOpen ? 'var(--color-primary)' : 'var(--color-surface)', color: sunEditorOpen ? '#fff' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 >
@@ -503,47 +503,13 @@ export default function PlantQuickSheet({
                 </button>
               </div>
               {sunEditorOpen && (
-                <div style={{ padding: '12px', borderRadius: '0 0 10px 10px', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-soft)' }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-text-muted)', marginBottom: 4 }}>
-                    {t.plantQuickSheet.sunMeasureTitle}
-                  </div>
-                  <p style={{ margin: '0 0 10px', fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--color-text-soft)' }}>
-                    {t.plantQuickSheet.sunMeasureHint}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 12 }}>
-                    <button
-                      onClick={() => setSunDraft((d) => Math.max(0, Math.round((d - 0.5) * 2) / 2))}
-                      aria-label={t.plantQuickSheet.sunMeasureLess}
-                      style={sunStepBtnStyle}
-                    ><span aria-hidden="true">−</span></button>
-                    <span style={{ minWidth: 64, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>
-                      {sunDraft.toFixed(1)}{t.plantQuickSheet.sunHoursUnit}
-                    </span>
-                    <button
-                      onClick={() => setSunDraft((d) => Math.min(12, Math.round((d + 0.5) * 2) / 2))}
-                      aria-label={t.plantQuickSheet.sunMeasureMore}
-                      style={sunStepBtnStyle}
-                    ><span aria-hidden="true">＋</span></button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {measuredSun != null && (
-                      <button
-                        onClick={() => { void handleSetMeasuredSun(null); setSunEditorOpen(false) }}
-                        disabled={savingSun}
-                        style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                      >
-                        {t.plantQuickSheet.sunMeasureClear}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { void handleSetMeasuredSun(sunDraft); setSunEditorOpen(false) }}
-                      disabled={savingSun}
-                      style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--color-primary)', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: savingSun ? 0.6 : 1 }}
-                    >
-                      {t.plantQuickSheet.sunMeasureSave}
-                    </button>
-                  </div>
-                </div>
+                <MeasuredSunEditor
+                  measured={measuredSun}
+                  fallback={sunFitInfo.sunHours}
+                  saving={savingSun}
+                  onSave={handleSetMeasuredSun}
+                  onCancel={() => setSunEditorOpen(false)}
+                />
               )}
             </div>
           )}
@@ -642,13 +608,6 @@ const menuItemStyle: React.CSSProperties = {
 
 const menuIconStyle: React.CSSProperties = {
   width: 18, textAlign: 'center', flexShrink: 0, fontSize: 14,
-}
-
-const sunStepBtnStyle: React.CSSProperties = {
-  width: 40, height: 40, borderRadius: '50%',
-  border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-  color: 'var(--color-text)', fontSize: 20, lineHeight: 1, cursor: 'pointer',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
 }
 
 const desktopIconStyle: React.CSSProperties = {
