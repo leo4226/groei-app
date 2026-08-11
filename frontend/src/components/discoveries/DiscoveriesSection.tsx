@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, lazy, Suspense, Component, type MouseEvent, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense, Component, type MouseEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { plantPassportSwipeDirection } from '../../utils/plantPassportSwipe'
 import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { discoveries as discoveriesApi, species as speciesApi, type PlantDiscovery } from '../../api/client'
@@ -242,6 +243,69 @@ export default function DiscoveriesSection({ onStats }: Props) {
     if (!item || item.species_id == null || item.fun_fact_nl || item.fun_fact_en) return
     void loadMissingFunFact(item)
   }, [selectedId])
+
+  // Flat order of the cards as the grid actually paints them, so the detail
+  // view's prev/next and swipe move to the neighbour the user can see (#884).
+  const navOrder = useMemo(() => {
+    if (!(filter === 'all' && years.length > 1)) return visible
+    return years.flatMap(year =>
+      visible.filter(d => new Date(d.discovered_at).getFullYear() === year))
+  }, [visible, years, filter])
+
+  const navIndex = selectedId != null ? navOrder.findIndex(d => d.id === selectedId) : -1
+  const prevEntry = navIndex > 0 ? navOrder[navIndex - 1] : null
+  const nextEntry = navIndex >= 0 && navIndex < navOrder.length - 1 ? navOrder[navIndex + 1] : null
+
+  const stepEntry = useCallback((dir: 'prev' | 'next') => {
+    setSelectedId(current => {
+      if (current == null) return current
+      const i = navOrder.findIndex(d => d.id === current)
+      if (i === -1) return current
+      const target = dir === 'prev' ? navOrder[i - 1] : navOrder[i + 1]
+      if (!target) return current
+      setEditingNotes(false)
+      setLocationError(false)
+      return target.id
+    })
+  }, [navOrder])
+
+  // Escape closes; arrows page through the guide like a real one.
+  useEffect(() => {
+    if (selectedId == null) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (editingNotes) return
+      if (e.key === 'Escape') { setSelectedId(null); return }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stepEntry('prev') }
+      if (e.key === 'ArrowRight') { e.preventDefault(); stepEntry('next') }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [selectedId, editingNotes, stepEntry])
+
+  // Keep the page behind the modal still on phones.
+  useEffect(() => {
+    if (selectedId == null) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previous }
+  }, [selectedId])
+
+  // Swipe left/right pages through the guide, matching the plant passport's
+  // gesture (#884). Reuses the shared classifier so a diagonal drag stays a
+  // scroll rather than flipping the entry.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const onCardTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    swipeStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+  const onCardTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start || editingNotes) return
+    const touch = e.changedTouches[0]
+    const direction = plantPassportSwipeDirection(start.x, start.y, touch.clientX, touch.clientY)
+    if (direction) stepEntry(direction)
+  }
 
   function openEntry(id: number) {
     setSelectedId(id)
@@ -570,12 +634,25 @@ export default function DiscoveriesSection({ onStats }: Props) {
             aria-modal="true"
             aria-label={entry.title}
             onClick={() => setSelectedId(null)}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(20,20,16,.38)] p-4"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(20,20,16,.38)] p-4 pb-[calc(var(--bottom-nav-height)+1rem)] md:pb-4"
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="grid max-h-[min(760px,calc(100dvh-32px))] w-[min(100%,880px)] grid-cols-1 overflow-y-auto rounded-3xl bg-bg shadow-[0_20px_60px_rgba(0,0,0,.22)] md:grid-cols-[1fr_1.25fr]"
+              onTouchStart={onCardTouchStart}
+              onTouchEnd={onCardTouchEnd}
+              className="relative grid max-h-[min(760px,calc(100dvh-var(--bottom-nav-height)-48px))] w-[min(100%,880px)] md:max-h-[min(760px,calc(100dvh-32px))] grid-cols-1 overflow-y-auto rounded-3xl bg-bg shadow-[0_20px_60px_rgba(0,0,0,.22)] md:grid-cols-[1fr_1.25fr]"
             >
+              {/* Close sits on the card itself, not inside the right-hand
+                  column: stacked on a phone that column starts below the photo
+                  and the map, so the only way out was to scroll (#884). */}
+              <button
+                onClick={() => setSelectedId(null)}
+                aria-label={t.discovery.closeEntry}
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65"
+              >
+                <Glyph name="x" size={17} aria-hidden />
+              </button>
+
               {/* Left: photo + mini location map */}
               <div className="flex flex-col border-border-soft md:border-r">
                 <div className="relative h-52 shrink-0 md:h-60" style={{ background: 'linear-gradient(145deg, #FDFAF1 0%, #F4EEDB 100%)' }}>
@@ -627,18 +704,31 @@ export default function DiscoveriesSection({ onStats }: Props) {
 
               {/* Right: field-guide entry */}
               <div className="flex flex-col gap-3.5 p-6">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3 pr-11">
                   <p className="m-0 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
                     <span className="h-px w-6 flex-none bg-border" />
                     {t.discovery.entryNoPrefix} {nr} · {formatDate(entry.occurred_at, t.locale)}
                   </p>
-                  <button
-                    onClick={() => setSelectedId(null)}
-                    className="cursor-pointer border-none bg-transparent text-2xl leading-none text-text-muted"
-                    aria-label={t.common.cancel}
-                  >
-                    ×
-                  </button>
+                  {(prevEntry || nextEntry) && (
+                    <div className="flex flex-none items-center gap-1">
+                      <button
+                        onClick={() => stepEntry('prev')}
+                        disabled={!prevEntry}
+                        aria-label={t.discovery.previousEntry}
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-colors hover:border-primary hover:text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:border-border disabled:hover:text-text-soft"
+                      >
+                        <Glyph name="arrow-left" size={15} aria-hidden />
+                      </button>
+                      <button
+                        onClick={() => stepEntry('next')}
+                        disabled={!nextEntry}
+                        aria-label={t.discovery.nextEntry}
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-transparent text-text-soft transition-colors hover:border-primary hover:text-primary disabled:cursor-default disabled:opacity-30 disabled:hover:border-border disabled:hover:text-text-soft"
+                      >
+                        <Glyph name="chevron-right" size={15} aria-hidden />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <h2 className="m-0 font-heading text-[28px] font-medium leading-[1.05] tracking-[-0.01em] text-text">
@@ -742,10 +832,11 @@ export default function DiscoveriesSection({ onStats }: Props) {
                   </button>
                   <button
                     onClick={(e) => stopAction(e, () => void handleDelete(selected.id))}
-                    className="cursor-pointer rounded-full border border-overdue/25 bg-transparent px-4 py-2.5 text-sm text-overdue/70 hover:bg-overdue/5"
+                    className="flex cursor-pointer items-center justify-center rounded-full border border-overdue/25 bg-transparent px-4 py-2.5 text-sm text-overdue/70 hover:bg-overdue/5"
                     aria-label={t.common.delete}
+                    title={t.common.delete}
                   >
-                    ×
+                    <Glyph name="trash" size={15} aria-hidden />
                   </button>
                 </div>
               </div>
