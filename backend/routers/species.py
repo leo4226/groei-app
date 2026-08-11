@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import httpx
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 import json
@@ -302,9 +303,15 @@ async def get_species_garden_fit(
     return verdicts
 
 
+def _fun_fact_llm_config() -> tuple[str, str, str]:
+    """Read the LLM config at call time (so env changes and tests both apply)."""
+    from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_FUN_FACT_MODEL
+    return LLM_API_KEY, LLM_CHAT_URL, LLM_FUN_FACT_MODEL
+
+
 async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tuple[str, str]:
     """Generate NL + EN fun facts via LLM. Returns ('', '') on failure."""
-    from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_FUN_FACT_MODEL
+    LLM_API_KEY, LLM_CHAT_URL, LLM_FUN_FACT_MODEL = _fun_fact_llm_config()
     if not LLM_API_KEY:
         return "", ""
 
@@ -323,7 +330,6 @@ async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tup
         'Output schema: {"nl":"...","en":"..."}'
     )
 
-    import httpx
     # Nous can occasionally take longer than the old 15-second budget or wrap
     # valid JSON in prose/markdown. Retry once and parse the first JSON object
     # rather than turning a transient/model-format issue into a permanent gap.
@@ -346,11 +352,26 @@ async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tup
                     },
                 )
                 resp.raise_for_status()
-                content = resp.json()["choices"][0]["message"].get("content", "")
+                choice = resp.json()["choices"][0]
+                message = choice.get("message", {})
+                content = message.get("content", "")
+                finish_reason = choice.get("finish_reason")
             parsed = _parse_fun_fact_content(content)
+            # Reasoning models (DeepSeek V4, o1, …) spend max_tokens on
+            # reasoning BEFORE they start writing `content`, and when the budget
+            # runs out they return an empty/partial `content` with the whole
+            # answer left in `reasoning`. That is the common failure here, not a
+            # provider outage: the fact was generated, we just weren't reading
+            # the field it landed in. species_service.generate_fact_for_species
+            # has handled this for a while; this endpoint never learned it.
+            if not parsed:
+                parsed = _parse_fun_fact_content(message.get("reasoning"), prefer_last=True)
             if parsed:
                 return parsed
-            logger.warning("Fun fact LLM returned unexpected format for %s: %r", latin_name, content)
+            logger.warning(
+                "Fun fact LLM returned unexpected format for %s (finish_reason=%s): %r",
+                latin_name, finish_reason, content,
+            )
         except Exception as exc:
             logger.warning(
                 "Fun fact LLM call failed for %s (attempt %s/2): %s",
@@ -361,10 +382,16 @@ async def _generate_fun_fact(latin_name: str, common_name_nl: str | None) -> tup
     return "", ""
 
 
-def _parse_fun_fact_content(content: object) -> tuple[str, str] | None:
-    """Extract a bilingual fact even when the model wraps JSON in prose."""
+def _parse_fun_fact_content(content: object, prefer_last: bool = False) -> tuple[str, str] | None:
+    """Extract a bilingual fact even when the model wraps JSON in prose.
+
+    `prefer_last` is for reasoning text, which typically contains the model's
+    discarded drafts before the answer it settled on — there the LAST usable
+    object is the real one, whereas in `content` the first is.
+    """
     text = str(content or "").strip()
     decoder = json.JSONDecoder()
+    found: tuple[str, str] | None = None
     for offset, char in enumerate(text):
         if char != "{":
             continue
@@ -377,8 +404,10 @@ def _parse_fun_fact_content(content: object) -> tuple[str, str] | None:
         nl = str(data.get("nl", "")).strip()
         en = str(data.get("en", "")).strip()
         if nl and en:
-            return nl, en
-    return None
+            if not prefer_last:
+                return nl, en
+            found = (nl, en)
+    return found
 
 
 @router.get("/by-latin/{latin_name}")
