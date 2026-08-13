@@ -141,7 +141,7 @@ a fit immediately. Migration `0070` rewrites the stored rows and a validator on
 subtitles changed from lux ranges to hours of direct sun, which is what
 `PLANT_SUN_PROFILES` actually compares — see P3-3.
 
-### P1-2 — Clearing the species field leaves the plant linked to the old species
+### P1-2 — Clearing the species field leaves the plant linked to the old species — **FIXED**
 
 `update_plant` treats a species rename as a re-identification and relinks
 `species_id`, retracting BioCLIP anchors and regenerating phenology
@@ -152,6 +152,13 @@ form sends `species: input.species.trim() || null` (`editPlantPayload.ts:41`), s
 `species_id` keeps pointing at the old species, and the passport goes on showing
 that species' phenology, ecology card and care thresholds. There is no way to say
 "I was wrong, I don't know what this is."
+
+**Fixed.** The pre-read now fires whenever `species` is present in the payload,
+empty or not, and an emptied field takes a third branch: `_clear_species_link`,
+the mirror of `_apply_species_relink`. It drops `species_id`, clears the cached
+`care_thresholds` that described the withdrawn species, and retracts the
+plant's anchors — while leaving the plant's own care schedules untouched, since
+un-identifying should lose what the species told us, not what the user set up.
 
 ### P1-3 — `care_profile` and `care_schedules` are two sources of truth for "is this care type on"
 

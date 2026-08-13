@@ -11,6 +11,7 @@ import pytest
 
 from routers.plants import (
     _apply_species_relink,
+    _clear_species_link,
     _find_species_by_name,
     _species_text_changed,
 )
@@ -223,3 +224,86 @@ async def test_rewriting_the_same_species_keeps_the_anchors(client, seeded_db, a
     assert res.status_code == 200, res.text
     assert (await _plant(seeded_db))["species_id"] == 1
     assert await _anchor_count(seeded_db) == 1
+
+
+# ── un-identifying: clearing the field ──────────────────────────────────────
+#
+# #886 P1-2. The pre-read that drives all of the above was gated on the *new*
+# species text being non-empty, so emptying the field fell straight through it:
+# `species` went NULL while `species_id` kept pointing at the rejected species,
+# and the passport carried on showing its phenology, ecology and thresholds.
+
+@pytest.mark.asyncio
+async def test_clearing_the_species_drops_the_link_and_the_anchors(seeded_db):
+    await _setup(seeded_db, thresholds_for_2=None)
+    await seeded_db.execute(
+        "UPDATE plants SET care_thresholds = ? WHERE id = 5",
+        (json.dumps({"water_interval_days": 3}),),
+    )
+    await seeded_db.commit()
+
+    await _clear_species_link(seeded_db, 5, 1, photo_path="https://r2/commit.jpg")
+
+    plant = await _plant(seeded_db)
+    assert plant["species_id"] is None
+    # The cached thresholds described the species the user just withdrew.
+    assert plant["care_thresholds"] is None
+    assert await _anchor_count(seeded_db) == 0
+
+
+@pytest.mark.asyncio
+async def test_clearing_a_plant_that_had_no_species_is_a_no_op(seeded_db):
+    await _setup(seeded_db)
+    await seeded_db.execute("UPDATE plants SET species_id = NULL WHERE id = 5")
+    await seeded_db.commit()
+
+    await _clear_species_link(seeded_db, 5, None)
+
+    # Nothing to retract — in particular, another plant's anchors are safe.
+    assert await _anchor_count(seeded_db) == 1
+
+
+@pytest.mark.asyncio
+async def test_clearing_the_species_leaves_the_care_schedules_alone(seeded_db):
+    """Un-identifying drops what the *species* told us, not what the user set up."""
+    await _setup(seeded_db)
+    await seeded_db.execute(
+        "INSERT INTO care_schedules (plant_id, care_type, interval_days, is_active, interval_source) "
+        "VALUES (5, 'water', 21, 1, 'manual')"
+    )
+    await seeded_db.commit()
+
+    await _clear_species_link(seeded_db, 5, 1)
+
+    rows = await seeded_db.execute_fetchall(
+        "SELECT interval_days, is_active FROM care_schedules WHERE plant_id = 5"
+    )
+    assert [(r["interval_days"], bool(r["is_active"])) for r in rows] == [(21, True)]
+
+
+@pytest.mark.asyncio
+async def test_emptying_the_species_field_un_identifies_the_plant(
+    client, seeded_db, auth_header
+):
+    await _setup(seeded_db)
+
+    res = await client.put(f"{BASE}/plants/5", json={"species": None}, headers=auth_header)
+
+    assert res.status_code == 200, res.text
+    plant = await _plant(seeded_db)
+    assert plant["species"] is None
+    assert plant["species_id"] is None       # the actual bug: this stayed 1
+    assert await _anchor_count(seeded_db) == 0
+
+
+@pytest.mark.asyncio
+async def test_blanking_the_species_field_counts_as_clearing_it(
+    client, seeded_db, auth_header
+):
+    """The form sends null, but whitespace must not resurrect the old link."""
+    await _setup(seeded_db)
+
+    res = await client.put(f"{BASE}/plants/5", json={"species": "   "}, headers=auth_header)
+
+    assert res.status_code == 200, res.text
+    assert (await _plant(seeded_db))["species_id"] is None
