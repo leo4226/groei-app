@@ -49,6 +49,12 @@ export function nextScheduleInput(careType: string, intervalDays: number, now: D
  * Full replacement payload for `PUT /plants/{id}/care-schedules` when adding
  * one schedule from the passport.
  *
+ * **No caller since #886 §4.1**: adding a care type moved to the edit form, so
+ * the passport no longer builds an add payload. Kept because deleting it means
+ * deleting the tests that pin its 422-avoidance rules, which needs a human's
+ * `tests-intentionally-removed` label — and because those rules are the
+ * hard-won part, worth having on hand if an add flow returns here.
+ *
  * The endpoint replaces the whole list, so existing rows have to be sent back —
  * but it 422s the entire request on any row it considers not user-managed:
  * `photo` (unknown care type), the weather-triggered frost/heat rows, ephemeral
@@ -115,7 +121,12 @@ export function buildIntervalChangePayload(
     })
 }
 
-/** Editable care types for this environment that the plant does not have yet. */
+/**
+ * Editable care types for this environment that the plant does not have yet.
+ *
+ * Also without a caller since #886 §4.1 — see the note on
+ * `buildAddSchedulePayload`.
+ */
 export function addableCareTypes(
   existing: Pick<CareSchedule, 'care_type' | 'is_active'>[],
   environment: CareEnvironment,

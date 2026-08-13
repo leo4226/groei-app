@@ -1,8 +1,13 @@
 # Plant edit pane — audit (2026-08-13)
 
-> **Status.** Tracked in PR #886. Findings are being worked in the order of §5;
-> each one is marked **FIXED** inline as it lands, with a note on what changed.
-> One finding (P2-4) was withdrawn on closer reading — the note explains why.
+> **Status.** Findings landed in #886; the §4 restructure followed in a second
+> pass. Everything in §3 and §4 is now implemented except the
+> `PATCH /care-profile` endpoint, which needs a human's
+> `tests-intentionally-removed` label. One finding (P2-4) was withdrawn on
+> closer reading — the note explains why.
+>
+> The re-cut form was verified rendering at phone and desktop widths in **both**
+> languages against a stubbed API, the same way the plant-details audit was.
 > Companion to `2026-08-09-plant-details-audit.md` (#878, the read pane) and
 > `2026-08-07-add-plant-menu-audit.md` (#823, the create pane). This one covers
 > the third side of the same triangle: **editing** a plant that already exists.
@@ -73,11 +78,11 @@ deliberately omits `next_due` for the edited row — retiming must not also mean
 while pinning every other row to its current date, since the endpoint replaces
 the whole list.
 
-**Still open:** the two metaphors themselves. Adding and removing a care type
-is still possible in both panes, silently in the form and behind a
-`window.confirm` in the passport. §4.1 proposes consolidating that on the form.
+**And then for the metaphors.** Adding and removing a care type is form-only
+now; the passport's care block ends in one link that opens the form on its care
+card, and the per-row `×` is gone. See §4.1.
 
-### 2.2 "Sun" is split across three panes, by accident
+### 2.2 "Sun" is split across three panes, by accident — **fixed**
 
 - `sun_requirement` (what the plant wants) → **edit form only**.
 - `measured_sun_hours` (what the spot actually gives) → **passport + quick sheet
@@ -89,6 +94,12 @@ so that saving the edit form does not wipe a value the edit form cannot show
 (`editPlantPayload.ts:52-53`). The two halves of one comparison live in two
 screens, and the fit verdict is shown in the pane that can only edit the half
 that isn't the plant's.
+
+**Fixed.** The form's Light section is two rows — what the plant wants and what
+the spot gives — so both halves of the comparison are editable in the pane that
+owns the plant's setup, and the payload no longer has to carry
+`measured_sun_hours` through blind. The passport and quick sheet keep their
+pencil, which is the right place to correct a measurement in context.
 
 ### 2.3 The edit form cannot edit ~40% of what Add Plant collects — **mostly fixed**
 
@@ -104,9 +115,9 @@ Since #823, Add Plant persists container and provenance detail. `PlantUpdate`
 | `has_drainage` | ✅ | ✅ **fixed** |
 | `substrate` | ✅ | ✅ **fixed** |
 | `acquired_from` | ✅ | ✅ **fixed** |
-| `container_id` | map drag | ❌ (and it selects the care environment) |
-| `location_id` | Locations feature | ❌ |
-| `measured_sun_hours` | — | ❌ here, ✅ in two other panes |
+| `container_id` | map drag | ✅ **fixed** — see below |
+| `location_id` | Locations feature | ❌ — owned by the Locations feature |
+| `measured_sun_hours` | — | ✅ **fixed** — see §2.2 |
 
 Repotting a plant into a bigger pot is one of the few genuinely recurring plant
 events, and the only pot field in the edit form is the *date* you did it. This is
@@ -120,10 +131,13 @@ cannot drift apart the way the Light row did, and Edit Plant gained a "Came
 from" row. `pot_size_cm` follows the diameter on save, mirroring what
 `create_plant` does, rather than being left behind at its creation value.
 
-**Still open:** `container_id` and `location_id`. Both are genuinely
-placement-owned — a container is a specific object at a specific spot on a map,
-not a dropdown value — so exposing them here needs the object picker described
-in §4.3, not another payload field. `measured_sun_hours` is covered by §4.1.
+**Also fixed: `container_id`.** The concern that it is placement-owned turned
+out to be answered by the code — `PUT /plants/{id}/container` already exists and
+is already how the map sets a container without moving the plant, so the form
+calls it. The row only offers containers on the plant's own map.
+
+**Still open: `location_id`.** It belongs to the Locations feature, which this
+form deliberately does not touch (see the comment in `buildEditPlantPayload`).
 
 ---
 
@@ -424,21 +438,34 @@ at least a parity test, would make that claim true.
    human; the endpoint needs a `tests-intentionally-removed` label.
 7. ~~P3 copy pass + i18n baseline removal~~ — **done**.
 
-### What is left
+### The §4 restructure — done
 
-Everything remaining is structural rather than defective — the §4 proposal
-rather than the §3 findings:
+- **§4.1** — add/remove of a care type is form-only now; the passport's care
+  block ends in one link into the edit form's care card (`#care`, which opens
+  that card on a phone). The per-row `×` is gone with it. Interval editing
+  stays in both, as the table proposed.
+- **§4.2** — four cards re-cut: Identity took the icon and the Form tiles,
+  "Where it lives" holds every input the care engine reads, Care names the
+  environment it derived from and lists the photo reminder, and "History &
+  notes" collects the dates that were scattered across the other two.
+- **§4.3** — species picker with autocomplete and an explicit "I don't know",
+  the second light row (`measured_sun_hours`), and the container switch.
+- **§4.4** — the Basis/Details toggle and the decorative id box are gone.
+- **§4.5** — `backend/tests/test_care_matrix_parity.py`.
 
-- **§4.1** — consolidating add/remove of a care type on one pane, and surfacing
-  `sun_requirement` from the passport's sun-fit card.
-- **§4.2** — the four-card re-cut (icon into Identity, sown date and
-  last-repotted into History & notes, the environment inputs together).
-- **§4.3** — the species picker with an explicit "unknown" option (the backend
-  half now exists, see P1-2), the second light row for `measured_sun_hours`, and
-  a container / ground switch.
-- **§4.4** — retiring the mobile Basis/Details toggle and the decorative id box.
-- **§4.5** — a parity test between `DEFAULT_INTERVALS` and `care_types.py`.
-- The `PATCH /care-profile` endpoint, pending the label.
+**Deliberately not done.** §4.1 proposed surfacing `sun_requirement` from the
+passport's sun-fit card as well. It is left in the form: the card is a verdict
+about a spot, and the requirement is a property of the plant — putting a
+species-level control on it invites editing the wrong half of the comparison,
+which is the confusion P3-3 was about. The measured-sun pencil already sits
+there, and the passport's edit link is two taps from the requirement.
 
-None of these change what the app stores, so they are safe to take in any
-order — unlike the seven above, which were.
+The photo reminder is named in the care card but not editable there: it is a
+`photo` schedule, which `sync_care_schedules` rejects outright, so a toggle
+would need a second write path. The journal keeps the control and the card
+links to it.
+
+### Still open
+
+Only the `PATCH /care-profile` endpoint, pending a `tests-intentionally-removed`
+label — see P1-3.

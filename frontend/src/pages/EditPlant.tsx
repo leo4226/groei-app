@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { plants as plantsApi, care as careApi, icons as iconsApi } from '../api/client'
-import type { Plant } from '../types'
+import { plants as plantsApi, care as careApi, icons as iconsApi, objects as objectsApi } from '../api/client'
+import type { MapObject, Plant } from '../types'
 import Glyph from '../components/ui/Glyph'
 import { isoToDisplay } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
@@ -16,17 +16,21 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PotDetailsFields from '../components/add/PotDetailsFields'
+import SpeciesPicker from '../components/plant/SpeciesPicker'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
+import { EDIT_PLANT_CARE_HASH, PLANT_PASSPORT_ANCHORS } from '../utils/plantPassportLinks'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useSunAt } from '../hooks/useSunAt'
 import { resolveIconUrl } from '../utils/icons'
 import CareScheduleEditor from '../components/plant/CareScheduleEditor'
 import {
   buildCareScheduleSyncPayload,
   buildScheduleEditorState,
   careEnvironmentForPlant,
+  editableCareTypesForEnvironment,
 } from './editPlantCareSchedules'
 import type { EditableCareType, ScheduleEditorState } from './editPlantCareSchedules'
 
@@ -39,11 +43,15 @@ export default function EditPlant() {
 
   const [plant, setPlant] = useState<Plant | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showDetails, setShowDetails] = useState(false)
-  // Below 1024px the form grid is single-column (mobile flow with the
-  // Basis/Details toggle); from lg up all sections show beside the preview rail.
+  // Below 1024px the form grid is single-column and the cards collapse, so all
+  // four headings stay on screen; from lg up they all sit open beside the
+  // preview rail. This replaces a Basis / Details pill that read like a wizard
+  // step but was a filter — a phone user editing a pot size had to know it
+  // lived under "Details" (#886 §4.4).
   const isNarrow = useIsMobile(1023)
-  const expanded = showDetails || !isNarrow
+  // The passport's "manage care" link lands here; on a phone the care card is
+  // collapsed by default, so open it when that is where the user was heading.
+  const openCareCard = !isNarrow || window.location.hash === EDIT_PLANT_CARE_HASH
 
   // Build zone list from the user's actual maps
   const zoneList = useMemo(() => maps.map(m => ({
@@ -82,6 +90,16 @@ export default function EditPlant() {
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
+  // "This spot gives" — the other half of the sun-fit comparison. Editable in
+  // the passport and the quick sheet but not here, so the form showed the
+  // plant's requirement with no sight of what it is judged against (#886 §4.3).
+  const [measuredSun, setMeasuredSun] = useState<number | null>(null)
+  // Which container object the plant sits in, if any. It decides the care
+  // environment (outdoor_container vs outdoor_ground) and therefore which care
+  // types the form offers and what they default to — but it could only be set
+  // by dragging the plant onto a container on the map (#886 §4.3).
+  const [containerId, setContainerId] = useState<number | null>(null)
+  const [containers, setContainers] = useState<MapObject[]>([])
 
   // Advice follows the sun requirement we know, and stays silent when we know
   // nothing — the same fix as AddPlant, where one fixed "prefers a bright spot
@@ -121,7 +139,21 @@ export default function EditPlant() {
     return { bareBases, pottedVariants }
   }, [iconCatalog])
 
-  // Derived area from the selected zone
+  // Modelled sun hours at the plant's spot, shown beside the measured override
+  // so "this spot gives" has something to default to. Null for an unplaced or
+  // indoor plant, where the light engine has nothing to model.
+  const sunCoord = useMemo(
+    () => (plant?.map_x != null && plant?.map_y != null
+      ? { x: plant.map_x, y: plant.map_y }
+      : null),
+    [plant?.map_x, plant?.map_y],
+  )
+  const plantMap = useMemo(
+    () => maps.find(map => map.id === plant?.map_id) ?? null,
+    [maps, plant?.map_id],
+  )
+  const { sunHours: modelledSunHours } = useSunAt(sunCoord, new Date().getMonth() + 1, plantMap)
+
 
   // Load plant data
   useEffect(() => {
@@ -139,6 +171,8 @@ export default function EditPlant() {
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
         setSunRequirement(normalizeSunRequirement(p.sun_requirement))
+        setMeasuredSun(p.measured_sun_hours)
+        setContainerId(p.container_id)
         // Resolved against the icon in the catalog effect below, which is the
         // half of this that map placement keeps current.
         setFormType(p.form_type ?? 'pot')
@@ -180,6 +214,14 @@ export default function EditPlant() {
   // Load icon catalog once for potted/bare switching
   useEffect(() => {
     iconsApi.catalog().then(setIconCatalog).catch(() => {})
+  }, [])
+
+  // Container objects, for the "which pot is it in" row. A failed load just
+  // leaves the row empty — it must never block editing the rest of the form.
+  useEffect(() => {
+    objectsApi.list()
+      .then(all => setContainers(all.filter(o => o.category === 'container' && o.is_active)))
+      .catch(() => setContainers([]))
   }, [])
 
   // Set base icon ref when plant data and catalog are both available, and align
@@ -244,8 +286,24 @@ export default function EditPlant() {
   const selectedCareMap = selectedZoneId
     ? maps.find(map => String(map.id) === selectedZoneId)
     : undefined
+  // The journal owns this one — it is a `photo` schedule, which
+  // sync_care_schedules rejects — so the care card names it and links out
+  // rather than offering a toggle that could not save (#886 §4.2).
+  const photoReminder = plant?.care_schedules.find(
+    cs => cs.care_type === 'photo' && cs.is_active,
+  ) ?? null
+
+  // Containers live on a specific map, so only those on the map the plant is
+  // placed on are real choices.
+  const containersOnMap = useMemo(() => {
+    const mapId = selectedZoneId ? Number(selectedZoneId) : null
+    return mapId == null ? [] : containers.filter(c => c.map_id === mapId)
+  }, [containers, selectedZoneId])
+
+  // Follows the container the user has picked, not the stored one, so the care
+  // card visibly re-derives while they are still deciding.
   const careEnvironment = plant
-    ? careEnvironmentForPlant(plant, selectedCareMap)
+    ? careEnvironmentForPlant({ container_id: containerId }, selectedCareMap)
     : 'outdoor_ground'
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,12 +331,19 @@ export default function EditPlant() {
         substrate,
         acquiredFrom,
         sunRequirement,
+        measuredSun,
         phase: phase as Plant['phase'],
         sownDateInput,
         quantity,
         mulch,
         randomMapPos,
       }))
+
+      // Its own endpoint (it also clears ground_zone_id and re-resolves the
+      // potted/bare icon), so only call it when the choice actually changed.
+      if (containerId !== (plant.container_id ?? null)) {
+        await plantsApi.setContainer(plantId, containerId)
+      }
 
       if (schedules) {
         await careApi.syncSchedules(
@@ -370,32 +435,6 @@ export default function EditPlant() {
         }
       />
 
-      {/* ——— BASIS / DETAILS Toggle — mobile only; desktop shows everything ——— */}
-      {isNarrow && (
-      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowDetails(false)}
-            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
-              !showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
-            }`}
-          >
-            {t.addPlant.basic}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDetails(true)}
-            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
-              showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
-            }`}
-          >
-            {t.addPlant.details}
-          </button>
-        </div>
-      </div>
-      )}
-
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8">
@@ -428,49 +467,29 @@ export default function EditPlant() {
               <Card
                 eyebrow={t.addPlant.secIdentity}
                 title={t.addPlant.secIdentityTitle}
+                collapsible={isNarrow}
+                defaultOpen
               >
                 {/* Bijnaam */}
                 <FormRow label={t.addPlant.labelNickname} description={t.addPlant.labelNicknameDesc}>
-                  <div className="grid grid-cols-[1fr_120px] gap-3">
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder={t.addPlant.placeholderNickname}
-                      required
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                    <input
-                      type="text"
-                      readOnly
-                      value={plant.id ? '#' + String(plant.id).padStart(3, '0') : ''}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-xs text-text-muted"
-                      placeholder="---"
-                    />
-                  </div>
-                </FormRow>
-
-                {/* Species */}
-                <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
                   <input
                     type="text"
-                    value={species}
-                    onChange={(e) => setSpecies(e.target.value)}
-                    placeholder={t.addPlant.placeholderSpecies}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t.addPlant.placeholderNickname}
+                    required
                     className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
 
-                {/* Form type */}
-                <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
-                  <TileGrid
-                    options={[
-                      { id: 'pot', glyph: <TileIcon name="form-pot" />, title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
-                      { id: 'ground', glyph: <TileIcon name="form-ground" />, title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
-                      { id: 'seedling', glyph: <TileIcon name="form-seedling" />, title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
-                      { id: 'tree', glyph: <TileIcon name="form-tree" />, title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
-                    ]}
-                    value={formType} onChange={setFormType}
+                {/* Species — autocomplete + an explicit "I don't know", because
+                    changing this re-identifies the plant (#866) */}
+                <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
+                  <SpeciesPicker
+                    value={species}
+                    onChange={setSpecies}
+                    original={plant.species}
+                    placeholder={t.addPlant.placeholderSpecies}
                   />
                 </FormRow>
 
@@ -504,37 +523,39 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Acquisition */}
-                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={acquiredDateInput}
-                    onChange={(e) => setAcquiredDateInput(e.target.value)}
-                    placeholder="DD-MM-YYYY"
-                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                {/* Icon — identity, not archive: it is how the plant is
+                    recognised on the map, so it belongs beside its name. The
+                    Form tiles pick its potted/bare variant, so they sit here
+                    with it rather than three cards away (#886 §4.2). */}
+                <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
+                  <IconPicker value={iconKey} onChange={handleIconChange} />
+                </FormRow>
+
+                {/* Form type */}
+                <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
+                  <TileGrid
+                    options={[
+                      { id: 'pot', glyph: <TileIcon name="form-pot" />, title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
+                      { id: 'ground', glyph: <TileIcon name="form-ground" />, title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
+                      { id: 'seedling', glyph: <TileIcon name="form-seedling" />, title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
+                      { id: 'tree', glyph: <TileIcon name="form-tree" />, title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
+                    ]}
+                    value={formType} onChange={setFormType}
                   />
                 </FormRow>
 
-                {/* Where it came from */}
-                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
-                  <input
-                    type="text"
-                    value={acquiredFrom}
-                    onChange={(e) => setAcquiredFrom(e.target.value)}
-                    placeholder={t.editPlant.acquiredFromPlaceholder}
-                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                  />
-                </FormRow>
               </Card>
 
-              {/* ——— § II · Placement Card ——— */}
-              {expanded && (
+              {/* ——— § II · Where it lives ———
+                  Every input the care engine reads to pick an environment:
+                  map, container, mulch, light, pot. They decide § III, so they
+                  sit together and ahead of it. */}
               <Card
                 eyebrow={t.addPlant.secPlacement}
                 title={t.addPlant.secPlacementTitle}
                 subtitle={t.addPlant.secPlacementSubtitle}
+                collapsible={isNarrow}
+                defaultOpen={false}
               >
                 {/* Zone picker */}
                 <FormRow label={t.addPlant.labelZone} description={t.addPlant.labelZoneDesc}>
@@ -551,13 +572,73 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Light requirement — the three values the sun-fit engine knows */}
+                {/* Which container, if any. Only offers containers on the map
+                    the plant is actually on — a pot in the greenhouse is not a
+                    choice for a plant in the living room. */}
+                {containersOnMap.length > 0 && (
+                  <FormRow
+                    label={t.editPlant.containerLabel}
+                    description={t.editPlant.containerDescription}
+                  >
+                    <select
+                      value={containerId ?? ''}
+                      onChange={(e) => setContainerId(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20 sm:w-72"
+                    >
+                      <option value="">{t.editPlant.containerNone}</option>
+                      {containersOnMap.map(c => (
+                        <option key={c.id} value={c.id}>{c.label || c.name}</option>
+                      ))}
+                    </select>
+                  </FormRow>
+                )}
+
+                {/* Two rows, not one. The sun-fit verdict compares what the
+                    plant WANTS against what the spot GIVES; the form used to
+                    show only the first, under copy describing the second. */}
                 <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
                   <TileGrid
                     options={sunRequirementTiles(t)}
                     value={sunRequirement}
                     onChange={(v) => setSunRequirement(v || null)}
                   />
+                </FormRow>
+
+                <FormRow
+                  label={t.editPlant.measuredSunLabel}
+                  description={t.editPlant.measuredSunDescription}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={12}
+                      step={0.5}
+                      inputMode="decimal"
+                      value={measuredSun ?? ''}
+                      onChange={(e) => {
+                        const v = Number.parseFloat(e.target.value)
+                        setMeasuredSun(Number.isFinite(v) ? Math.min(12, Math.max(0, v)) : null)
+                      }}
+                      placeholder={modelledSunHours != null ? modelledSunHours.toFixed(1) : '—'}
+                      className="w-24 rounded-lg border border-border bg-paper px-3 py-2 text-right font-mono text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <span className="text-xs text-text-muted">{t.plantQuickSheet.sunHoursUnit}</span>
+                    {measuredSun != null && (
+                      <button
+                        type="button"
+                        onClick={() => setMeasuredSun(null)}
+                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-muted hover:text-text"
+                      >
+                        {t.plantQuickSheet.sunMeasureClear}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-text-muted">
+                    {modelledSunHours != null
+                      ? t.editPlant.measuredSunEstimate(modelledSunHours.toFixed(1))
+                      : t.editPlant.measuredSunNoEstimate}
+                  </p>
                 </FormRow>
 
                 {/* Mulch — moisture-retaining top layer; lowers outdoor water
@@ -600,27 +681,41 @@ export default function EditPlant() {
                   }}
                 />
 
-                {/* Last repotted */}
-                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={lastRepottedInput}
-                    onChange={(e) => setLastRepottedInput(e.target.value)}
-                    placeholder="DD-MM-YYYY"
-                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
-                  />
-                </FormRow>
               </Card>
-              )}
 
               {/* ——— § III · Care Card ——— */}
               <Card
                 eyebrow={t.addPlant.secCare}
                 title={t.addPlant.secCareTitle}
-                subtitle={expanded ? t.addPlant.secCareSubtitle : undefined}
+                subtitle={t.addPlant.secCareSubtitle}
+                collapsible={isNarrow}
+                defaultOpen={openCareCard}
               >
+                {/* Name the environment these toggles came from, so the
+                    dependency on § II is visible rather than mysterious. */}
+                <p className="rounded-xl bg-surface px-3 py-2 text-xs text-text-muted">
+                  {t.editPlant.careEnvironmentNote(
+                    t.editPlant.careEnvironments[careEnvironment],
+                    editableCareTypesForEnvironment(careEnvironment).length,
+                  )}
+                </p>
+                {photoReminder && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-paper px-3 py-2.5">
+                    <span className="text-text-muted"><Glyph name="camera" size={18} /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-heading text-sm font-medium text-text">{t.careTypes.photo}</p>
+                      <p className="text-xs text-text-muted">
+                        {t.plantDetail.xDays.replace('{n}', String(photoReminder.interval_days))}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/plants/${plantId}#${PLANT_PASSPORT_ANCHORS.photoJournal}`}
+                      className="shrink-0 text-xs font-semibold text-primary no-underline"
+                    >
+                      {t.editPlant.photoReminderManage}
+                    </Link>
+                  </div>
+                )}
                 {schedules && (
                   <CareScheduleEditor
                     environment={careEnvironment}
@@ -635,48 +730,76 @@ export default function EditPlant() {
                 )}
               </Card>
 
-              {/* ——— § IV · Album Card ——— */}
-              {expanded ? (
-                <Card
-                  eyebrow={t.addPlant.secAlbum}
-                  title={t.addPlant.secAlbumTitle}
-                  subtitle={t.addPlant.secAlbumSubtitle}
-                >
-                  {/* Icon */}
-                  <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
-                    <IconPicker value={iconKey} onChange={handleIconChange} />
-                  </FormRow>
+              {/* ——— § IV · History & notes ———
+                  Dates and free text. "Album" used to hold the sown date while
+                  "Placement" held last-repotted; neither is where a user looks
+                  for them (#886 §4.2). */}
+              <Card
+                eyebrow={t.editPlant.historyEyebrow}
+                title={t.editPlant.historyTitle}
+                subtitle={t.editPlant.historySubtitle}
+                collapsible={isNarrow}
+                defaultOpen={false}
+              >
+                {/* Acquisition */}
+                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={acquiredDateInput}
+                    onChange={(e) => setAcquiredDateInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
 
-                  {/* Sown date */}
-                  <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={sownDateInput}
-                      onChange={(e) => setSownDateInput(e.target.value)}
-                      placeholder="DD-MM-YYYY"
-                      className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
-                    />
-                  </FormRow>
+                {/* Where it came from */}
+                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
+                  <input
+                    type="text"
+                    value={acquiredFrom}
+                    onChange={(e) => setAcquiredFrom(e.target.value)}
+                    placeholder={t.editPlant.acquiredFromPlaceholder}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
+                {/* Last repotted */}
+                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={lastRepottedInput}
+                    onChange={(e) => setLastRepottedInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
+                  />
+                </FormRow>
+                {/* Sown date */}
+                <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={sownDateInput}
+                    onChange={(e) => setSownDateInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
+                  />
+                </FormRow>
 
-                  {/* Notes */}
-                  <FormRow label={t.addPlant.labelNotes} description={t.addPlant.labelNotesDesc}>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder={t.editPlant.notesPlaceholder}
-                      rows={3}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-body text-sm resize-none"
-                    />
-                  </FormRow>
-                </Card>
-              ) : (
-                <div className="card p-4 flex items-center gap-4">
-                  <span className="font-mono text-[10px] text-text-muted uppercase tracking-[0.15em]">{t.addPlant.labelIcon}</span>
-                  <IconPicker value={iconKey} onChange={setIconKey} />
-                </div>
-              )}
+                {/* Notes */}
+                <FormRow label={t.addPlant.labelNotes} description={t.addPlant.labelNotesDesc}>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={t.editPlant.notesPlaceholder}
+                    rows={3}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-body text-sm resize-none"
+                  />
+                </FormRow>
+              </Card>
 
               {/* Action Bar */}
               {saveError && (

@@ -888,6 +888,7 @@ export type Translations = {
     addCareType: string
     addCarePick: string      // empty-select placeholder
     addCareInterval: string
+    manageCare: string
     editInterval: string
     addCareFailed: string
     deleteScheduleConfirm: string
@@ -1307,6 +1308,22 @@ export type Translations = {
     lastRepottedLabel: string // "Last repotted"
     lastRepottedDescription: string
     acquiredDescription: string
+    historyEyebrow: string
+    historyTitle: string
+    photoReminderManage: string
+    historySubtitle: string
+    careEnvironmentNote: (environment: string, count: number) => string
+    careEnvironments: Record<'indoor' | 'outdoor_container' | 'outdoor_ground', string>
+    containerLabel: string
+    containerDescription: string
+    containerNone: string
+    speciesUnknown: string
+    speciesWillRelink: string
+    speciesWillUnlink: string
+    measuredSunLabel: string
+    measuredSunDescription: string
+    measuredSunEstimate: (hours: string) => string
+    measuredSunNoEstimate: string
     acquiredFromLabel: string
     acquiredFromDescription: string
     acquiredFromPlaceholder: string
