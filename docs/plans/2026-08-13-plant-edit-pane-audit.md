@@ -10,7 +10,7 @@
 **Scope:** `/plants/:id/edit` (`pages/EditPlant.tsx`, 758 lines) plus every other
 surface in the app that writes the same data — because the answer to "do these
 two menus make sense?" turns out to be that there are not two menus, there are
-five.
+five (four, now that the dead one is gone).
 
 | Surface | File | What it writes |
 |---|---|---|
@@ -18,7 +18,7 @@ five.
 | Care block in the passport | `pages/PlantDetail.tsx` (+ `plantPassportModel.ts`) | add / delete one schedule |
 | Photo reminder | `components/plant/PhotoJournal.tsx` | the `photo` schedule |
 | Measured sun | `components/plant/MeasuredSunEditor.tsx`, used by the passport **and** `PlantQuickSheet` | `measured_sun_hours` |
-| Care profile rows | `components/care/CareProfileSection.tsx` | `plants.care_profile` — **dead code, nothing renders it** |
+| ~~Care profile rows~~ | ~~`components/care/CareProfileSection.tsx`~~ | ~~`plants.care_profile`~~ — deleted, see P1-3 |
 
 ---
 
@@ -185,7 +185,7 @@ the mirror of `_apply_species_relink`. It drops `species_id`, clears the cached
 plant's anchors — while leaving the plant's own care schedules untouched, since
 un-identifying should lose what the species told us, not what the user set up.
 
-### P1-3 — `care_profile` and `care_schedules` are two sources of truth for "is this care type on"
+### P1-3 — `care_profile` and `care_schedules` are two sources of truth for "is this care type on" — **FIXED (frontend half)**
 
 `services/warnings.py:588-594` gates every schedule warning on
 `care_profile[type].active`. The only writer of `plants.care_profile` in the
@@ -204,6 +204,19 @@ in the edit form would not clear the profile.
 
 Either delete the dead half (component + `patchCareProfile` + endpoint) or make
 `sync_care_schedules` the single writer of both.
+
+**Fixed as far as it can be without a human.** `CareProfileSection`,
+`usePlantCareProfile`, `patchCareProfile` (api client + store) and the store's
+`profileVersions` are gone, so nothing in the app can write the competing model
+any more. The endpoint itself stays: deleting it means deleting
+`test_legacy_care_profile_patch_persists_only_canonical_keys`, and the
+`test-guard` CI check requires a human's `tests-intentionally-removed` label for
+that. Its docstring now records that no UI calls it and what has to happen
+before one does.
+
+The read path in `services/warnings.py` is untouched — it is load-bearing, and
+with the column NULL everywhere `load_legacy_care_profile` derives the active
+set from the environment while the schedules decide the outcome.
 
 ### P2-1 — "Form" tiles offer four options, of which two are unreachable and none persist — **FIXED**
 
