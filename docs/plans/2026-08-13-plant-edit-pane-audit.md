@@ -275,9 +275,10 @@ language audit was about. (`EditPlant.tsx` is still on the i18n-guard baseline
 list in `eslint.i18n.config.js:67`; a pass over it should also remove that entry.)
 
 **Fixed.** The four subtitles are Dutch now ("In een pot", "Wortels in de
-grond", "Nog jong", "Op stam"). The baseline entry is still there — removing it
-is its own pass, and the guard has to be run with the entry deleted to know
-whether anything else in the file trips it.
+grond", "Nog jong", "Op stam"), and `EditPlant.tsx` is off the baseline list —
+the guard flagged exactly one thing once the entry was removed, a `·` separator
+sitting as markup text between the translated eyebrow and the plant's id, now
+folded into the expression beside it.
 
 ### P3-2 — Labels that describe fields the form doesn't have, or the wrong field — **FIXED**
 
@@ -410,14 +411,34 @@ at least a parity test, would make that claim true.
 
 ---
 
-## 5. Suggested order of work
+## 5. Order of work
 
-1. P1-1 (light values) — data fix + backfill; it silently breaks a feature users
-   can see.
-2. P1-2 (un-identify) — small backend change.
-3. P2-1 / P2-4 (form tiles, `pot_size_cm`) — decide and land together.
-4. 2.3 / 4.3 (pot + container fields editable) — the largest user-visible win.
-5. 2.1 (interval editing on the passport row) — removes the worst of the
-   two-menus confusion for one small addition.
-6. P1-3 (dead care-profile path) — delete or unify.
-7. P3 copy pass + i18n baseline removal, verified in **both** languages.
+1. ~~P1-1 (light values)~~ — **done**, incl. migration 0070 and a backfill.
+2. ~~P1-2 (un-identify)~~ — **done**.
+3. ~~P2-1 (form tiles)~~ — **done**. P2-4 withdrawn; see the note there.
+4. ~~2.3 / 4.3 (pot + provenance editable)~~ — **done** for the pot and
+   provenance columns; `container_id` / `location_id` still need the object
+   picker from §4.3.
+5. ~~2.1 (interval editing on the passport row)~~ — **done**.
+6. ~~P1-3 (dead care-profile path)~~ — **done** as far as it can be without a
+   human; the endpoint needs a `tests-intentionally-removed` label.
+7. ~~P3 copy pass + i18n baseline removal~~ — **done**.
+
+### What is left
+
+Everything remaining is structural rather than defective — the §4 proposal
+rather than the §3 findings:
+
+- **§4.1** — consolidating add/remove of a care type on one pane, and surfacing
+  `sun_requirement` from the passport's sun-fit card.
+- **§4.2** — the four-card re-cut (icon into Identity, sown date and
+  last-repotted into History & notes, the environment inputs together).
+- **§4.3** — the species picker with an explicit "unknown" option (the backend
+  half now exists, see P1-2), the second light row for `measured_sun_hours`, and
+  a container / ground switch.
+- **§4.4** — retiring the mobile Basis/Details toggle and the decorative id box.
+- **§4.5** — a parity test between `DEFAULT_INTERVALS` and `care_types.py`.
+- The `PATCH /care-profile` endpoint, pending the label.
+
+None of these change what the app stores, so they are safe to take in any
+order — unlike the seven above, which were.

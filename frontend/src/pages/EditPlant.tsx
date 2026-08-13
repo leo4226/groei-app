@@ -739,7 +739,7 @@ export default function EditPlant() {
 
                 <div className="border-t border-border-soft px-5 py-4">
                   <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-                    {t.plantDetail.mastheadEyebrow} · #{String(plant.id).padStart(3, '0')}
+                    {`${t.plantDetail.mastheadEyebrow} · #${String(plant.id).padStart(3, '0')}`}
                   </p>
                   <div className="mt-1.5 flex items-start justify-between gap-3">
                     <p className="min-w-0 font-heading text-2xl font-medium leading-tight text-text">
