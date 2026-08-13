@@ -78,6 +78,43 @@ export function buildAddSchedulePayload(
   return [...kept, nextScheduleInput(newType, newIntervalDays, now)]
 }
 
+/**
+ * Full replacement payload for changing one existing schedule's interval from
+ * the passport.
+ *
+ * Deliberately *not* `buildAddSchedulePayload` with a new interval. That one
+ * stamps `next_due` = today, which is right for a schedule you are creating —
+ * it should show up in the care lists straight away — and wrong for one you are
+ * retiming: "water every 5 days, not 7" must not also mean "and water it now".
+ * Omitting `next_due` for the edited row lets the backend recompute it from
+ * `last_done` (`_care_schedule_anchor`), so the next visit lands 5 days after
+ * the last one actually happened.
+ *
+ * The interval was editable only in the edit form, while adding and deleting
+ * were possible from the passport — the single most common care edit was the
+ * one that needed the other screen (#886).
+ */
+export function buildIntervalChangePayload(
+  existing: Pick<CareSchedule, 'care_type' | 'interval_days' | 'season_adjust' | 'notes' | 'next_due' | 'is_active'>[],
+  environment: CareEnvironment,
+  careType: string,
+  intervalDays: number,
+): CareScheduleInput[] {
+  const allowed = new Set<string>(editableCareTypesForEnvironment(environment))
+  return existing
+    .filter(s => s.is_active && allowed.has(s.care_type))
+    .map(s => {
+      const base = {
+        care_type: s.care_type,
+        ...(s.season_adjust ? { season_adjust: s.season_adjust } : {}),
+        ...(s.notes ? { notes: s.notes } : {}),
+      }
+      return s.care_type === careType
+        ? { ...base, interval_days: Math.max(1, Math.round(intervalDays)) }
+        : { ...base, interval_days: s.interval_days, next_due: s.next_due }
+    })
+}
+
 /** Editable care types for this environment that the plant does not have yet. */
 export function addableCareTypes(
   existing: Pick<CareSchedule, 'care_type' | 'is_active'>[],

@@ -26,6 +26,7 @@ import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
 import {
   localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX,
   relativeDayLabel, addableCareTypes, buildAddSchedulePayload,
+  buildIntervalChangePayload,
 } from './plantPassportModel'
 import { careEnvironmentForPlant } from './editPlantCareSchedules'
 import MeasuredSunEditor from '../components/plant/MeasuredSunEditor'
@@ -172,6 +173,12 @@ export default function PlantDetail() {
   const [newCareInterval, setNewCareInterval] = useState(7)
   const [savingCare, setSavingCare] = useState(false)
   const [addCareError, setAddCareError] = useState(false)
+  // Retiming an existing schedule used to mean a trip to the edit form, while
+  // adding and deleting were both possible from here (#886).
+  const [editingInterval, setEditingInterval] = useState<number | null>(null)
+  const [intervalDraft, setIntervalDraft] = useState(7)
+  const [savingInterval, setSavingInterval] = useState(false)
+  const [intervalError, setIntervalError] = useState(false)
 
   const plantId = Number(id)
   const careLog = useCareLog(plantId)
@@ -338,6 +345,24 @@ export default function PlantDetail() {
       setAddCareError(true)
     } finally {
       setSavingCare(false)
+    }
+  }
+
+  async function handleSaveInterval(careType: string) {
+    if (!plant) return
+    setSavingInterval(true)
+    setIntervalError(false)
+    try {
+      await care.syncSchedules(
+        plantId,
+        buildIntervalChangePayload(plant.care_schedules, careEnvironment, careType, intervalDraft),
+      )
+      await loadPlants()
+      setEditingInterval(null)
+    } catch {
+      setIntervalError(true)
+    } finally {
+      setSavingInterval(false)
     }
   }
 
@@ -577,7 +602,50 @@ export default function PlantDetail() {
               <span className="shrink-0 text-text-soft"><CareIcon type={sched.care_type as CareIconType} size={22} strokeWidth={1.8} /></span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm">{t.careTypes[sched.care_type as keyof typeof t.careTypes] ?? sched.care_type}</p>
-                <p className="text-xs text-text-muted">{t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}</p>
+                {editingInterval === sched.id ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      autoFocus
+                      aria-label={t.plantDetail.addCareInterval}
+                      value={intervalDraft}
+                      onChange={e => setIntervalDraft(Number(e.target.value))}
+                      className="w-16 rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text"
+                    />
+                    <span className="text-xs text-text-muted">{t.editPlant.daysLabel}</span>
+                    <button
+                      onClick={() => handleSaveInterval(sched.care_type)}
+                      disabled={savingInterval || intervalDraft < 1}
+                      className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                    >
+                      {savingInterval ? t.common.saving : t.common.save}
+                    </button>
+                    <button
+                      onClick={() => { setEditingInterval(null); setIntervalError(false) }}
+                      className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-text-muted"
+                    >
+                      {t.common.cancel}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingInterval(sched.id)
+                      setIntervalDraft(sched.interval_days)
+                      setIntervalError(false)
+                    }}
+                    aria-label={t.plantDetail.editInterval}
+                    className="flex items-center gap-1 text-xs text-text-muted underline decoration-dotted underline-offset-2 hover:text-primary"
+                  >
+                    {t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}
+                    <Glyph name="edit" size={11} aria-hidden />
+                  </button>
+                )}
+                {intervalError && editingInterval === sched.id && (
+                  <p className="mt-1 text-xs text-overdue">{t.plantDetail.addCareFailed}</p>
+                )}
                 {lastDoneLabel && (
                   <p className="text-xs text-text-soft">{lastDoneLabel}</p>
                 )}

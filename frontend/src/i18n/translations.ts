@@ -887,7 +887,8 @@ export type Translations = {
     addCare: string          // "Add care"
     addCareType: string
     addCarePick: string      // empty-select placeholder
-    addCareInterval: string  // "Every … days"
+    addCareInterval: string
+    editInterval: string
     addCareFailed: string
     deleteScheduleConfirm: string
     undo: string

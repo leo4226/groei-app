@@ -3,6 +3,7 @@ import type { CareType } from '../types'
 import {
   addableCareTypes,
   buildAddSchedulePayload,
+  buildIntervalChangePayload,
   daysSince,
   localCalendarDate,
   nextScheduleInput,
@@ -130,5 +131,68 @@ describe('showsGardenWeather', () => {
     expect(showsGardenWeather({ map_type: 'outdoor' })).toBe(true)
     expect(showsGardenWeather(null)).toBe(true)
     expect(showsGardenWeather(undefined)).toBe(true)
+  })
+})
+
+// ── #886 §2.1: retiming a schedule from the passport ────────────────────────
+//
+// The interval was editable only in the edit form, while adding and deleting
+// were both possible from the passport — so the most common care edit of all,
+// "water every 5 days, not 7", was the one that needed the other screen.
+
+describe('buildIntervalChangePayload', () => {
+  const schedules: { care_type: CareType; interval_days: number; season_adjust: string | null; notes: string | null; next_due: string; is_active: boolean }[] = [
+    { care_type: 'water', interval_days: 7, season_adjust: null, notes: null, next_due: '2026-08-20', is_active: true },
+    { care_type: 'fertilize', interval_days: 30, season_adjust: 'summer', notes: 'half dose', next_due: '2026-09-01', is_active: true },
+    { care_type: 'photo', interval_days: 30, season_adjust: null, notes: null, next_due: '2026-09-01', is_active: true },
+    { care_type: 'frost_protect', interval_days: 1, season_adjust: null, notes: null, next_due: '2026-08-11', is_active: true },
+    { care_type: 'prune', interval_days: 180, season_adjust: null, notes: null, next_due: '2026-12-01', is_active: false },
+  ]
+
+  it('changes only the targeted interval and leaves the rest untouched', () => {
+    const payload = buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 5)
+
+    expect(payload).toEqual([
+      { care_type: 'water', interval_days: 5 },
+      {
+        care_type: 'fertilize', interval_days: 30, season_adjust: 'summer',
+        notes: 'half dose', next_due: '2026-09-01',
+      },
+    ])
+  })
+
+  it('omits next_due for the edited row so the backend recomputes it', () => {
+    // Retiming must not also mean "and do it right now": with next_due absent
+    // the backend anchors the next visit on last_done. buildAddSchedulePayload
+    // stamps today, which is correct when creating a schedule and wrong here.
+    const payload = buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 5)
+    const water = payload.find(p => p.care_type === 'water')!
+    expect(water).not.toHaveProperty('next_due')
+  })
+
+  it('pins every other row to its current next_due', () => {
+    // The endpoint replaces the whole list, so an untouched row that arrived
+    // without its date would have it recalculated out from under the user.
+    const payload = buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 5)
+    expect(payload.find(p => p.care_type === 'fertilize')!.next_due).toBe('2026-09-01')
+  })
+
+  it('drops photo, weather, inactive and environment-invalid rows', () => {
+    // Same 422 hazard as buildAddSchedulePayload: the endpoint rejects the
+    // whole request on any row it does not consider user-managed.
+    expect(buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 5).map(p => p.care_type))
+      .toEqual(['water', 'fertilize'])
+  })
+
+  it('never sends an interval below 1 day', () => {
+    expect(buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 0)[0].interval_days).toBe(1)
+    expect(buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', -3)[0].interval_days).toBe(1)
+    expect(buildIntervalChangePayload(schedules, 'outdoor_ground', 'water', 5.6)[0].interval_days).toBe(6)
+  })
+
+  it('is a no-op payload when the care type is not scheduled', () => {
+    const payload = buildIntervalChangePayload(schedules, 'outdoor_ground', 'repot', 90)
+    expect(payload.map(p => p.care_type)).toEqual(['water', 'fertilize'])
+    expect(payload.every(p => p.next_due !== undefined)).toBe(true)
   })
 })

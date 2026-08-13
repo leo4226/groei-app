@@ -50,7 +50,7 @@ passport-preview rail.
 overlapping editors of the same records with two different mental models, and the
 split runs through the middle of several concepts rather than between them.
 
-### 2.1 Care schedules are edited in two metaphors that mean the same thing
+### 2.1 Care schedules are edited in two metaphors that mean the same thing — **partly fixed**
 
 The edit form models care as **eight toggles**: every editable type for the
 environment is present, off or on, with an interval. The passport models the same
@@ -64,6 +64,18 @@ every 5 days, not 7"* — is **only** possible in the edit form; the passport sh
 the interval as read-only text. Meanwhile *adding* a care type is possible in
 both. So the user has to learn which of two screens holds which half of one
 concept.
+
+**Fixed for the interval.** The "every 7 days" line on each passport care row
+is now a button that opens an inline editor, so the most common care edit no
+longer needs the other screen. It uses `buildIntervalChangePayload`, which
+deliberately omits `next_due` for the edited row — retiming must not also mean
+"and water it now", so the backend recomputes the next visit from `last_done` —
+while pinning every other row to its current date, since the endpoint replaces
+the whole list.
+
+**Still open:** the two metaphors themselves. Adding and removing a care type
+is still possible in both panes, silently in the form and behind a
+`window.confirm` in the passport. §4.1 proposes consolidating that on the form.
 
 ### 2.2 "Sun" is split across three panes, by accident
 
