@@ -44,7 +44,7 @@ type PlacementMap = Pick<MapInfo, 'id' | 'viewbox'>
 type MapPosition = { x: number; y: number }
 
 export interface BuildEditPlantPayloadInput {
-  plant: Pick<Plant, 'map_id' | 'measured_sun_hours'>
+  plant: Pick<Plant, 'map_id'>
   maps: PlacementMap[]
   selectedZoneId: string | null
   name: string
@@ -61,6 +61,7 @@ export interface BuildEditPlantPayloadInput {
   substrate: string[]
   acquiredFrom: string
   sunRequirement: string | null
+  measuredSun: number | null
   phase: Plant['phase']
   sownDateInput: string
   quantity?: number
@@ -92,9 +93,10 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     sun_requirement: normalizeSunRequirement(input.sunRequirement),
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,
-    // The edit form has no measured-sun control (that lives in the map quick
-    // sheet, #645); carry the stored value through so an edit never wipes it.
-    measured_sun_hours: input.plant.measured_sun_hours ?? null,
+    // The form owns this now (#886 §4.3) — it used to have no control for it
+    // and had to carry the stored value through so an edit would not wipe a
+    // value it could not show.
+    measured_sun_hours: input.measuredSun,
     // Mulch toggle: unknown (null) is treated as bare by the pressure engine,
     // so saving the current toggle state is always safe.
     mulch: input.mulch,

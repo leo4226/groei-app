@@ -1307,6 +1307,16 @@ export type Translations = {
     lastRepottedLabel: string // "Last repotted"
     lastRepottedDescription: string
     acquiredDescription: string
+    containerLabel: string
+    containerDescription: string
+    containerNone: string
+    speciesUnknown: string
+    speciesWillRelink: string
+    speciesWillUnlink: string
+    measuredSunLabel: string
+    measuredSunDescription: string
+    measuredSunEstimate: (hours: string) => string
+    measuredSunNoEstimate: string
     acquiredFromLabel: string
     acquiredFromDescription: string
     acquiredFromPlaceholder: string

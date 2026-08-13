@@ -72,6 +72,7 @@ const baseInput = {
   substrate: ['potgrond'],
   acquiredFrom: 'Tuincentrum',
   sunRequirement: 'partial_sun',
+  measuredSun: null,
   phase: 'established' as const,
   sownDateInput: '',
   mulch: false,
@@ -205,5 +206,32 @@ describe('buildEditPlantPayload container + provenance', () => {
   it('clears a blanked provenance instead of writing an empty string', () => {
     const payload = buildEditPlantPayload({ ...baseInput, acquiredFrom: '   ' })
     expect(payload.acquired_from).toBeNull()
+  })
+})
+
+// ── #886 §4.3: the form owns the other half of the sun comparison ───────────
+//
+// measured_sun_hours was editable in the passport and the quick sheet but not
+// here, so the payload had to carry the stored value through untouched to stop
+// an edit wiping a value the form could not display.
+
+describe('buildEditPlantPayload measured sun', () => {
+  it('sends the value the form now holds', () => {
+    expect(buildEditPlantPayload({ ...baseInput, measuredSun: 3.5 }).measured_sun_hours).toBe(3.5)
+  })
+
+  it('clears the override when the field is emptied', () => {
+    // null means "fall back to the modelled sun map", not "unchanged" — the
+    // whole point of the clear button next to the input.
+    expect(buildEditPlantPayload({ ...baseInput, measuredSun: null }).measured_sun_hours).toBeNull()
+  })
+
+  it('does not silently reuse the stored value', () => {
+    const payload = buildEditPlantPayload({
+      ...baseInput,
+      plant: plant({ measured_sun_hours: 6 }),
+      measuredSun: 2,
+    })
+    expect(payload.measured_sun_hours).toBe(2)
   })
 })

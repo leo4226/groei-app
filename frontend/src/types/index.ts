@@ -869,3 +869,12 @@ export interface PlantPhoto {
   care_log_id: number | null
   species_mismatch: boolean
 }
+
+/** One result from `GET /species/search`, used by the edit form's picker. */
+export interface SpeciesSearchHit {
+  id: number
+  slug: string
+  common_name_nl: string | null
+  common_name_en: string | null
+  latin_name: string | null
+}

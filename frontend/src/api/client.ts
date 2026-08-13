@@ -484,6 +484,11 @@ export const photos = {
 
 
 export const species = {
+  /** Autocomplete for the plant edit form's species field (#886 §4.3). */
+  search: (q: string, signal?: AbortSignal) =>
+    api<{ results: import('../types').SpeciesSearchHit[]; total: number }>(
+      'GET', '/species/search', { params: { q, per_page: '8' }, signal },
+    ),
   ecology: (id: number) => api<import('../types').EcologyOut>('GET', `/species/${id}/ecology`),
   lookupLatin: (latin: string) => api<{ id: number; care_thresholds: Record<string, unknown> | null }>('GET', `/species/by-latin/${encodeURIComponent(latin)}`),
   funFact: (id: number) => api<{ fun_fact_nl: string; fun_fact_en: string }>('GET', `/species/${id}/fun-fact`),

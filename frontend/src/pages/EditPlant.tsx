@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
-import { plants as plantsApi, care as careApi, icons as iconsApi } from '../api/client'
-import type { Plant } from '../types'
+import { plants as plantsApi, care as careApi, icons as iconsApi, objects as objectsApi } from '../api/client'
+import type { MapObject, Plant } from '../types'
 import Glyph from '../components/ui/Glyph'
 import { isoToDisplay } from '../utils/dateFormat'
 import { compressImage } from '../utils/compressImage'
@@ -16,11 +16,13 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PotDetailsFields from '../components/add/PotDetailsFields'
+import SpeciesPicker from '../components/plant/SpeciesPicker'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useSunAt } from '../hooks/useSunAt'
 import { resolveIconUrl } from '../utils/icons'
 import CareScheduleEditor from '../components/plant/CareScheduleEditor'
 import {
@@ -82,6 +84,16 @@ export default function EditPlant() {
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [sunRequirement, setSunRequirement] = useState<string | null>(null)
+  // "This spot gives" — the other half of the sun-fit comparison. Editable in
+  // the passport and the quick sheet but not here, so the form showed the
+  // plant's requirement with no sight of what it is judged against (#886 §4.3).
+  const [measuredSun, setMeasuredSun] = useState<number | null>(null)
+  // Which container object the plant sits in, if any. It decides the care
+  // environment (outdoor_container vs outdoor_ground) and therefore which care
+  // types the form offers and what they default to — but it could only be set
+  // by dragging the plant onto a container on the map (#886 §4.3).
+  const [containerId, setContainerId] = useState<number | null>(null)
+  const [containers, setContainers] = useState<MapObject[]>([])
 
   // Advice follows the sun requirement we know, and stays silent when we know
   // nothing — the same fix as AddPlant, where one fixed "prefers a bright spot
@@ -121,7 +133,21 @@ export default function EditPlant() {
     return { bareBases, pottedVariants }
   }, [iconCatalog])
 
-  // Derived area from the selected zone
+  // Modelled sun hours at the plant's spot, shown beside the measured override
+  // so "this spot gives" has something to default to. Null for an unplaced or
+  // indoor plant, where the light engine has nothing to model.
+  const sunCoord = useMemo(
+    () => (plant?.map_x != null && plant?.map_y != null
+      ? { x: plant.map_x, y: plant.map_y }
+      : null),
+    [plant?.map_x, plant?.map_y],
+  )
+  const plantMap = useMemo(
+    () => maps.find(map => map.id === plant?.map_id) ?? null,
+    [maps, plant?.map_id],
+  )
+  const { sunHours: modelledSunHours } = useSunAt(sunCoord, new Date().getMonth() + 1, plantMap)
+
 
   // Load plant data
   useEffect(() => {
@@ -139,6 +165,8 @@ export default function EditPlant() {
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
         setSunRequirement(normalizeSunRequirement(p.sun_requirement))
+        setMeasuredSun(p.measured_sun_hours)
+        setContainerId(p.container_id)
         // Resolved against the icon in the catalog effect below, which is the
         // half of this that map placement keeps current.
         setFormType(p.form_type ?? 'pot')
@@ -180,6 +208,14 @@ export default function EditPlant() {
   // Load icon catalog once for potted/bare switching
   useEffect(() => {
     iconsApi.catalog().then(setIconCatalog).catch(() => {})
+  }, [])
+
+  // Container objects, for the "which pot is it in" row. A failed load just
+  // leaves the row empty — it must never block editing the rest of the form.
+  useEffect(() => {
+    objectsApi.list()
+      .then(all => setContainers(all.filter(o => o.category === 'container' && o.is_active)))
+      .catch(() => setContainers([]))
   }, [])
 
   // Set base icon ref when plant data and catalog are both available, and align
@@ -244,8 +280,17 @@ export default function EditPlant() {
   const selectedCareMap = selectedZoneId
     ? maps.find(map => String(map.id) === selectedZoneId)
     : undefined
+  // Containers live on a specific map, so only those on the map the plant is
+  // placed on are real choices.
+  const containersOnMap = useMemo(() => {
+    const mapId = selectedZoneId ? Number(selectedZoneId) : null
+    return mapId == null ? [] : containers.filter(c => c.map_id === mapId)
+  }, [containers, selectedZoneId])
+
+  // Follows the container the user has picked, not the stored one, so the care
+  // card visibly re-derives while they are still deciding.
   const careEnvironment = plant
-    ? careEnvironmentForPlant(plant, selectedCareMap)
+    ? careEnvironmentForPlant({ container_id: containerId }, selectedCareMap)
     : 'outdoor_ground'
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,12 +318,19 @@ export default function EditPlant() {
         substrate,
         acquiredFrom,
         sunRequirement,
+        measuredSun,
         phase: phase as Plant['phase'],
         sownDateInput,
         quantity,
         mulch,
         randomMapPos,
       }))
+
+      // Its own endpoint (it also clears ground_zone_id and re-resolves the
+      // potted/bare icon), so only call it when the choice actually changed.
+      if (containerId !== (plant.container_id ?? null)) {
+        await plantsApi.setContainer(plantId, containerId)
+      }
 
       if (schedules) {
         await careApi.syncSchedules(
@@ -450,14 +502,14 @@ export default function EditPlant() {
                   </div>
                 </FormRow>
 
-                {/* Species */}
+                {/* Species — autocomplete + an explicit "I don't know", because
+                    changing this re-identifies the plant (#866) */}
                 <FormRow label={t.addPlant.labelSpecies} description={t.addPlant.labelSpeciesDesc}>
-                  <input
-                    type="text"
+                  <SpeciesPicker
                     value={species}
-                    onChange={(e) => setSpecies(e.target.value)}
+                    onChange={setSpecies}
+                    original={plant.species}
                     placeholder={t.addPlant.placeholderSpecies}
-                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
 
@@ -551,13 +603,73 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Light requirement — the three values the sun-fit engine knows */}
+                {/* Which container, if any. Only offers containers on the map
+                    the plant is actually on — a pot in the greenhouse is not a
+                    choice for a plant in the living room. */}
+                {containersOnMap.length > 0 && (
+                  <FormRow
+                    label={t.editPlant.containerLabel}
+                    description={t.editPlant.containerDescription}
+                  >
+                    <select
+                      value={containerId ?? ''}
+                      onChange={(e) => setContainerId(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20 sm:w-72"
+                    >
+                      <option value="">{t.editPlant.containerNone}</option>
+                      {containersOnMap.map(c => (
+                        <option key={c.id} value={c.id}>{c.label || c.name}</option>
+                      ))}
+                    </select>
+                  </FormRow>
+                )}
+
+                {/* Two rows, not one. The sun-fit verdict compares what the
+                    plant WANTS against what the spot GIVES; the form used to
+                    show only the first, under copy describing the second. */}
                 <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
                   <TileGrid
                     options={sunRequirementTiles(t)}
                     value={sunRequirement}
                     onChange={(v) => setSunRequirement(v || null)}
                   />
+                </FormRow>
+
+                <FormRow
+                  label={t.editPlant.measuredSunLabel}
+                  description={t.editPlant.measuredSunDescription}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={12}
+                      step={0.5}
+                      inputMode="decimal"
+                      value={measuredSun ?? ''}
+                      onChange={(e) => {
+                        const v = Number.parseFloat(e.target.value)
+                        setMeasuredSun(Number.isFinite(v) ? Math.min(12, Math.max(0, v)) : null)
+                      }}
+                      placeholder={modelledSunHours != null ? modelledSunHours.toFixed(1) : '—'}
+                      className="w-24 rounded-lg border border-border bg-paper px-3 py-2 text-right font-mono text-sm text-text focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                    />
+                    <span className="text-xs text-text-muted">{t.plantQuickSheet.sunHoursUnit}</span>
+                    {measuredSun != null && (
+                      <button
+                        type="button"
+                        onClick={() => setMeasuredSun(null)}
+                        className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-muted hover:text-text"
+                      >
+                        {t.plantQuickSheet.sunMeasureClear}
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-text-muted">
+                    {modelledSunHours != null
+                      ? t.editPlant.measuredSunEstimate(modelledSunHours.toFixed(1))
+                      : t.editPlant.measuredSunNoEstimate}
+                  </p>
                 </FormRow>
 
                 {/* Mulch — moisture-retaining top layer; lowers outdoor water
