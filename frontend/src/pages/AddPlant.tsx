@@ -17,10 +17,10 @@ import Card from '../components/ui/Card'
 import FormRow from '../components/ui/FormRow'
 import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
-import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
 import PlacementPicker from '../components/add/PlacementPicker'
 import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
+import PotDetailsFields from '../components/add/PotDetailsFields'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import PageMasthead from '../components/ui/PageMasthead'
 import {
@@ -898,67 +898,19 @@ export default function AddPlant() {
             />
           </FormRow>
 
-          {showDetails && (<>
-          {/* Pot material */}
-          <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
-            <TileGrid
-              options={[
-                { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: <TileIcon name="pot-terracotta" /> },
-                { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: <TileIcon name="pot-plastic" /> },
-                { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: <TileIcon name="pot-ceramic" /> },
-                { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: <TileIcon name="pot-basket" /> },
-              ]}
-              value={potMaterial}
-              onChange={setPotMaterial}
-            />
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotDiameter}</label>
-                <input
-                  type="number"
-                  value={potDiameter || ''}
-                  onChange={(e) => setPotDiameter(e.target.value)}
-                  placeholder="⌀ 18"
-                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotHeight}</label>
-                <input
-                  type="number"
-                  value={potHeight || ''}
-                  onChange={(e) => setPotHeight(e.target.value)}
-                  placeholder="↑ 22"
-                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-              </div>
-            </div>
-            <label className="inline-flex items-center gap-2 mt-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hasDrainage}
-                onChange={(e) => setHasDrainage(e.target.checked)}
-                className="sr-only peer"
-              />
-              <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all inline-flex items-center gap-1">
-                {hasDrainage && <Glyph name="check" size={13} />}{t.addPlant.labelDrainageYes}
-              </span>
-            </label>
-          </FormRow>
-
-          {/* Substrate */}
-          <FormRow
-            label={t.addPlant.labelSubstrate}
-            description={t.addPlant.labelSubstrateDesc}
-            help={t.addPlant.substrateHelp}
-          >
-            <ChipCluster
-              options={t.addPlant.substrateOptions}
-              selected={substrate}
-              onChange={setSubstrate}
-            />
-          </FormRow>
-          </>)}
+          {showDetails && (
+          <PotDetailsFields
+            t={t}
+            value={{ potMaterial, potDiameter, potHeight, hasDrainage, substrate }}
+            onChange={(patch) => {
+              if (patch.potMaterial !== undefined) setPotMaterial(patch.potMaterial)
+              if (patch.potDiameter !== undefined) setPotDiameter(patch.potDiameter)
+              if (patch.potHeight !== undefined) setPotHeight(patch.potHeight)
+              if (patch.hasDrainage !== undefined) setHasDrainage(patch.hasDrainage)
+              if (patch.substrate !== undefined) setSubstrate(patch.substrate)
+            }}
+          />
+          )}
         </Card>
 
         {/* ——— § III · Care Card ——— */}

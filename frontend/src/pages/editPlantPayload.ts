@@ -33,6 +33,12 @@ export function resolveFormType(
     : 'ground'
 }
 
+/** A pot dimension in whole cm, or null for blank/nonsense input. */
+function parseCm(value: string): number | null {
+  const n = Number.parseInt(value, 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 type PlacementMap = Pick<MapInfo, 'id' | 'viewbox'>
 
 type MapPosition = { x: number; y: number }
@@ -48,6 +54,12 @@ export interface BuildEditPlantPayloadInput {
   notes: string
   iconKey: string | null
   formType: string
+  potMaterial: string
+  potDiameter: string
+  potHeight: string
+  hasDrainage: boolean
+  substrate: string[]
+  acquiredFrom: string
   sunRequirement: string | null
   phase: Plant['phase']
   sownDateInput: string
@@ -67,6 +79,16 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     // Written, not just used to pick the icon variant: re-deriving it from the
     // icon on reopen flattened `tree`/`seedling` back to `ground` (#886).
     form_type: input.formType,
+    pot_material: input.potMaterial || null,
+    pot_diameter_cm: parseCm(input.potDiameter),
+    pot_height_cm: parseCm(input.potHeight),
+    // pot_size_cm is the canonical container size (create_plant seeds it from
+    // the diameter). Keep the two in step so an edit cannot leave a stale size
+    // behind the value the user can actually see.
+    pot_size_cm: parseCm(input.potDiameter),
+    has_drainage: input.hasDrainage,
+    substrate: input.substrate,
+    acquired_from: input.acquiredFrom.trim() || null,
     sun_requirement: normalizeSunRequirement(input.sunRequirement),
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,

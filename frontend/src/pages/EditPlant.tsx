@@ -15,6 +15,7 @@ import TileIcon from '../components/ui/TileIcon'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
+import PotDetailsFields from '../components/add/PotDetailsFields'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
@@ -67,6 +68,16 @@ export default function EditPlant() {
   const [phase, setPhase] = useState('established')
   const [quantity, setQuantity] = useState(1)
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
+
+  // Container + provenance (#823 columns). Collected by Add Plant since #823
+  // and, until #886, editable nowhere — a repot could be dated but the pot
+  // itself could never be corrected.
+  const [potMaterial, setPotMaterial] = useState('terracotta')
+  const [potDiameter, setPotDiameter] = useState('')
+  const [potHeight, setPotHeight] = useState('')
+  const [hasDrainage, setHasDrainage] = useState(false)
+  const [substrate, setSubstrate] = useState<string[]>([])
+  const [acquiredFrom, setAcquiredFrom] = useState('')
 
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
@@ -132,6 +143,15 @@ export default function EditPlant() {
         // half of this that map placement keeps current.
         setFormType(p.form_type ?? 'pot')
         setMulch(p.mulch ?? false)
+        setPotMaterial(p.pot_material ?? 'terracotta')
+        // pot_size_cm is the canonical container size and pot_diameter_cm the
+        // form's field; create_plant seeds the former from the latter, so fall
+        // back to it for plants added before the diameter input existed.
+        setPotDiameter(String(p.pot_diameter_cm ?? p.pot_size_cm ?? ''))
+        setPotHeight(String(p.pot_height_cm ?? ''))
+        setHasDrainage(p.has_drainage ?? false)
+        setSubstrate(p.substrate ?? [])
+        setAcquiredFrom(p.acquired_from ?? '')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
@@ -246,6 +266,12 @@ export default function EditPlant() {
         notes,
         iconKey,
         formType,
+        potMaterial,
+        potDiameter,
+        potHeight,
+        hasDrainage,
+        substrate,
+        acquiredFrom,
         sunRequirement,
         phase: phase as Plant['phase'],
         sownDateInput,
@@ -490,6 +516,17 @@ export default function EditPlant() {
                     className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
+
+                {/* Where it came from */}
+                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
+                  <input
+                    type="text"
+                    value={acquiredFrom}
+                    onChange={(e) => setAcquiredFrom(e.target.value)}
+                    placeholder={t.editPlant.acquiredFromPlaceholder}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
               </Card>
 
               {/* ——— § II · Placement Card ——— */}
@@ -547,6 +584,21 @@ export default function EditPlant() {
                   </button>
                 </FormRow>
                 )}
+
+                {/* Pot + substrate — the container detail Add Plant collects.
+                    Until #886 none of it was editable, so a repot could be
+                    dated here but the pot itself never corrected. */}
+                <PotDetailsFields
+                  t={t}
+                  value={{ potMaterial, potDiameter, potHeight, hasDrainage, substrate }}
+                  onChange={(patch) => {
+                    if (patch.potMaterial !== undefined) setPotMaterial(patch.potMaterial)
+                    if (patch.potDiameter !== undefined) setPotDiameter(patch.potDiameter)
+                    if (patch.potHeight !== undefined) setPotHeight(patch.potHeight)
+                    if (patch.hasDrainage !== undefined) setHasDrainage(patch.hasDrainage)
+                    if (patch.substrate !== undefined) setSubstrate(patch.substrate)
+                  }}
+                />
 
                 {/* Last repotted */}
                 <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>

@@ -78,7 +78,7 @@ so that saving the edit form does not wipe a value the edit form cannot show
 screens, and the fit verdict is shown in the pane that can only edit the half
 that isn't the plant's.
 
-### 2.3 The edit form cannot edit ~40% of what Add Plant collects
+### 2.3 The edit form cannot edit ~40% of what Add Plant collects — **mostly fixed**
 
 Since #823, Add Plant persists container and provenance detail. `PlantUpdate`
 (`backend/models.py:110-137`) accepts all of it. `buildEditPlantPayload` sends
@@ -86,12 +86,12 @@ Since #823, Add Plant persists container and provenance detail. `PlantUpdate`
 
 | Field | Set at creation | Editable afterwards |
 |---|---|---|
-| `pot_size_cm` | ✅ | ❌ |
-| ~~`form_type`~~ | ✅ | ✅ **fixed** — see P2-1 |
-| `pot_material`, `pot_diameter_cm`, `pot_height_cm` | ✅ | ❌ |
-| `has_drainage` | ✅ | ❌ |
-| `substrate` | ✅ | ❌ |
-| `acquired_from` | ✅ | ❌ |
+| `pot_size_cm` | ✅ | ✅ **fixed** (follows the diameter, as on create) |
+| `form_type` | ✅ | ✅ **fixed** — see P2-1 |
+| `pot_material`, `pot_diameter_cm`, `pot_height_cm` | ✅ | ✅ **fixed** |
+| `has_drainage` | ✅ | ✅ **fixed** |
+| `substrate` | ✅ | ✅ **fixed** |
+| `acquired_from` | ✅ | ✅ **fixed** |
 | `container_id` | map drag | ❌ (and it selects the care environment) |
 | `location_id` | Locations feature | ❌ |
 | `measured_sun_hours` | — | ❌ here, ✅ in two other panes |
@@ -101,6 +101,17 @@ events, and the only pot field in the edit form is the *date* you did it. This i
 write-once data with no correction path, which is the same class of defect #823
 fixed on the create side (fields collected and dropped); here they are collected
 and then frozen.
+
+**Fixed for the pot and provenance columns.** The Pot and Substrate rows moved
+into a shared `PotDetailsFields` component that both forms render, so they
+cannot drift apart the way the Light row did, and Edit Plant gained a "Came
+from" row. `pot_size_cm` follows the diameter on save, mirroring what
+`create_plant` does, rather than being left behind at its creation value.
+
+**Still open:** `container_id` and `location_id`. Both are genuinely
+placement-owned — a container is a specific object at a specific spot on a map,
+not a dropdown value — so exposing them here needs the object picker described
+in §4.3, not another payload field. `measured_sun_hours` is covered by §4.1.
 
 ---
 

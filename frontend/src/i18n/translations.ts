@@ -1306,6 +1306,9 @@ export type Translations = {
     lastRepottedLabel: string // "Last repotted"
     lastRepottedDescription: string
     acquiredDescription: string
+    acquiredFromLabel: string
+    acquiredFromDescription: string
+    acquiredFromPlaceholder: string
     iconDescription: string
     notesLabel: string       // "Notes"
     notesPlaceholder: string // "Likes indirect light, water from below..."
