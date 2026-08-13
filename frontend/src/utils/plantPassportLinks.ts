@@ -18,3 +18,13 @@ export function resolvePlantPassportAnchor(
   if (!PLANT_PASSPORT_ANCHOR_IDS.has(id) && !CARE_LOG_ANCHOR_PATTERN.test(id)) return null
   return root.getElementById(id)
 }
+
+/**
+ * Hash that opens the edit form on its care card.
+ *
+ * The passport links here instead of carrying its own add/remove controls: the
+ * same write was reachable two ways, silently in the form and behind a
+ * `window.confirm` in the passport (#886 §4.1). On a phone the card is
+ * collapsed by default, so the form opens it when it sees this hash.
+ */
+export const EDIT_PLANT_CARE_HASH = '#care'

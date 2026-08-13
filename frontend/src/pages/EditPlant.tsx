@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { plants as plantsApi, care as careApi, icons as iconsApi, objects as objectsApi } from '../api/client'
 import type { MapObject, Plant } from '../types'
@@ -20,6 +20,7 @@ import SpeciesPicker from '../components/plant/SpeciesPicker'
 import PageMasthead from '../components/ui/PageMasthead'
 import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
+import { EDIT_PLANT_CARE_HASH, PLANT_PASSPORT_ANCHORS } from '../utils/plantPassportLinks'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useSunAt } from '../hooks/useSunAt'
@@ -29,6 +30,7 @@ import {
   buildCareScheduleSyncPayload,
   buildScheduleEditorState,
   careEnvironmentForPlant,
+  editableCareTypesForEnvironment,
 } from './editPlantCareSchedules'
 import type { EditableCareType, ScheduleEditorState } from './editPlantCareSchedules'
 
@@ -41,11 +43,15 @@ export default function EditPlant() {
 
   const [plant, setPlant] = useState<Plant | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showDetails, setShowDetails] = useState(false)
-  // Below 1024px the form grid is single-column (mobile flow with the
-  // Basis/Details toggle); from lg up all sections show beside the preview rail.
+  // Below 1024px the form grid is single-column and the cards collapse, so all
+  // four headings stay on screen; from lg up they all sit open beside the
+  // preview rail. This replaces a Basis / Details pill that read like a wizard
+  // step but was a filter — a phone user editing a pot size had to know it
+  // lived under "Details" (#886 §4.4).
   const isNarrow = useIsMobile(1023)
-  const expanded = showDetails || !isNarrow
+  // The passport's "manage care" link lands here; on a phone the care card is
+  // collapsed by default, so open it when that is where the user was heading.
+  const openCareCard = !isNarrow || window.location.hash === EDIT_PLANT_CARE_HASH
 
   // Build zone list from the user's actual maps
   const zoneList = useMemo(() => maps.map(m => ({
@@ -280,6 +286,13 @@ export default function EditPlant() {
   const selectedCareMap = selectedZoneId
     ? maps.find(map => String(map.id) === selectedZoneId)
     : undefined
+  // The journal owns this one — it is a `photo` schedule, which
+  // sync_care_schedules rejects — so the care card names it and links out
+  // rather than offering a toggle that could not save (#886 §4.2).
+  const photoReminder = plant?.care_schedules.find(
+    cs => cs.care_type === 'photo' && cs.is_active,
+  ) ?? null
+
   // Containers live on a specific map, so only those on the map the plant is
   // placed on are real choices.
   const containersOnMap = useMemo(() => {
@@ -422,32 +435,6 @@ export default function EditPlant() {
         }
       />
 
-      {/* ——— BASIS / DETAILS Toggle — mobile only; desktop shows everything ——— */}
-      {isNarrow && (
-      <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 pt-5">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowDetails(false)}
-            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
-              !showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
-            }`}
-          >
-            {t.addPlant.basic}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDetails(true)}
-            className={`font-heading text-xs px-3 py-1.5 rounded-full transition-all ${
-              showDetails ? 'bg-primary text-white' : 'bg-paper border border-border text-text-soft'
-            }`}
-          >
-            {t.addPlant.details}
-          </button>
-        </div>
-      </div>
-      )}
-
       {/* ——— Two-column form grid ——— */}
       <div className="max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-7">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8">
@@ -480,26 +467,19 @@ export default function EditPlant() {
               <Card
                 eyebrow={t.addPlant.secIdentity}
                 title={t.addPlant.secIdentityTitle}
+                collapsible={isNarrow}
+                defaultOpen
               >
                 {/* Bijnaam */}
                 <FormRow label={t.addPlant.labelNickname} description={t.addPlant.labelNicknameDesc}>
-                  <div className="grid grid-cols-[1fr_120px] gap-3">
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder={t.addPlant.placeholderNickname}
-                      required
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                    />
-                    <input
-                      type="text"
-                      readOnly
-                      value={plant.id ? '#' + String(plant.id).padStart(3, '0') : ''}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-xs text-text-muted"
-                      placeholder="---"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t.addPlant.placeholderNickname}
+                    required
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
                 </FormRow>
 
                 {/* Species — autocomplete + an explicit "I don't know", because
@@ -510,19 +490,6 @@ export default function EditPlant() {
                     onChange={setSpecies}
                     original={plant.species}
                     placeholder={t.addPlant.placeholderSpecies}
-                  />
-                </FormRow>
-
-                {/* Form type */}
-                <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
-                  <TileGrid
-                    options={[
-                      { id: 'pot', glyph: <TileIcon name="form-pot" />, title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
-                      { id: 'ground', glyph: <TileIcon name="form-ground" />, title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
-                      { id: 'seedling', glyph: <TileIcon name="form-seedling" />, title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
-                      { id: 'tree', glyph: <TileIcon name="form-tree" />, title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
-                    ]}
-                    value={formType} onChange={setFormType}
                   />
                 </FormRow>
 
@@ -556,37 +523,39 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Acquisition */}
-                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={acquiredDateInput}
-                    onChange={(e) => setAcquiredDateInput(e.target.value)}
-                    placeholder="DD-MM-YYYY"
-                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                {/* Icon — identity, not archive: it is how the plant is
+                    recognised on the map, so it belongs beside its name. The
+                    Form tiles pick its potted/bare variant, so they sit here
+                    with it rather than three cards away (#886 §4.2). */}
+                <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
+                  <IconPicker value={iconKey} onChange={handleIconChange} />
+                </FormRow>
+
+                {/* Form type */}
+                <FormRow label={t.addPlant.labelForm} description={t.addPlant.labelFormDesc}>
+                  <TileGrid
+                    options={[
+                      { id: 'pot', glyph: <TileIcon name="form-pot" />, title: t.addPlant.formPot, subtitle: t.addPlant.formPotSub },
+                      { id: 'ground', glyph: <TileIcon name="form-ground" />, title: t.addPlant.formGround, subtitle: t.addPlant.formGroundSub },
+                      { id: 'seedling', glyph: <TileIcon name="form-seedling" />, title: t.addPlant.formSeedling, subtitle: t.addPlant.formSeedlingSub },
+                      { id: 'tree', glyph: <TileIcon name="form-tree" />, title: t.addPlant.formTree, subtitle: t.addPlant.formTreeSub },
+                    ]}
+                    value={formType} onChange={setFormType}
                   />
                 </FormRow>
 
-                {/* Where it came from */}
-                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
-                  <input
-                    type="text"
-                    value={acquiredFrom}
-                    onChange={(e) => setAcquiredFrom(e.target.value)}
-                    placeholder={t.editPlant.acquiredFromPlaceholder}
-                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
-                  />
-                </FormRow>
               </Card>
 
-              {/* ——— § II · Placement Card ——— */}
-              {expanded && (
+              {/* ——— § II · Where it lives ———
+                  Every input the care engine reads to pick an environment:
+                  map, container, mulch, light, pot. They decide § III, so they
+                  sit together and ahead of it. */}
               <Card
                 eyebrow={t.addPlant.secPlacement}
                 title={t.addPlant.secPlacementTitle}
                 subtitle={t.addPlant.secPlacementSubtitle}
+                collapsible={isNarrow}
+                defaultOpen={false}
               >
                 {/* Zone picker */}
                 <FormRow label={t.addPlant.labelZone} description={t.addPlant.labelZoneDesc}>
@@ -712,27 +681,41 @@ export default function EditPlant() {
                   }}
                 />
 
-                {/* Last repotted */}
-                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={lastRepottedInput}
-                    onChange={(e) => setLastRepottedInput(e.target.value)}
-                    placeholder="DD-MM-YYYY"
-                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
-                  />
-                </FormRow>
               </Card>
-              )}
 
               {/* ——— § III · Care Card ——— */}
               <Card
                 eyebrow={t.addPlant.secCare}
                 title={t.addPlant.secCareTitle}
-                subtitle={expanded ? t.addPlant.secCareSubtitle : undefined}
+                subtitle={t.addPlant.secCareSubtitle}
+                collapsible={isNarrow}
+                defaultOpen={openCareCard}
               >
+                {/* Name the environment these toggles came from, so the
+                    dependency on § II is visible rather than mysterious. */}
+                <p className="rounded-xl bg-surface px-3 py-2 text-xs text-text-muted">
+                  {t.editPlant.careEnvironmentNote(
+                    t.editPlant.careEnvironments[careEnvironment],
+                    editableCareTypesForEnvironment(careEnvironment).length,
+                  )}
+                </p>
+                {photoReminder && (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-paper px-3 py-2.5">
+                    <span className="text-text-muted"><Glyph name="camera" size={18} /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-heading text-sm font-medium text-text">{t.careTypes.photo}</p>
+                      <p className="text-xs text-text-muted">
+                        {t.plantDetail.xDays.replace('{n}', String(photoReminder.interval_days))}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/plants/${plantId}#${PLANT_PASSPORT_ANCHORS.photoJournal}`}
+                      className="shrink-0 text-xs font-semibold text-primary no-underline"
+                    >
+                      {t.editPlant.photoReminderManage}
+                    </Link>
+                  </div>
+                )}
                 {schedules && (
                   <CareScheduleEditor
                     environment={careEnvironment}
@@ -747,48 +730,76 @@ export default function EditPlant() {
                 )}
               </Card>
 
-              {/* ——— § IV · Album Card ——— */}
-              {expanded ? (
-                <Card
-                  eyebrow={t.addPlant.secAlbum}
-                  title={t.addPlant.secAlbumTitle}
-                  subtitle={t.addPlant.secAlbumSubtitle}
-                >
-                  {/* Icon */}
-                  <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
-                    <IconPicker value={iconKey} onChange={handleIconChange} />
-                  </FormRow>
+              {/* ——— § IV · History & notes ———
+                  Dates and free text. "Album" used to hold the sown date while
+                  "Placement" held last-repotted; neither is where a user looks
+                  for them (#886 §4.2). */}
+              <Card
+                eyebrow={t.editPlant.historyEyebrow}
+                title={t.editPlant.historyTitle}
+                subtitle={t.editPlant.historySubtitle}
+                collapsible={isNarrow}
+                defaultOpen={false}
+              >
+                {/* Acquisition */}
+                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={acquiredDateInput}
+                    onChange={(e) => setAcquiredDateInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
 
-                  {/* Sown date */}
-                  <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={sownDateInput}
-                      onChange={(e) => setSownDateInput(e.target.value)}
-                      placeholder="DD-MM-YYYY"
-                      className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
-                    />
-                  </FormRow>
+                {/* Where it came from */}
+                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
+                  <input
+                    type="text"
+                    value={acquiredFrom}
+                    onChange={(e) => setAcquiredFrom(e.target.value)}
+                    placeholder={t.editPlant.acquiredFromPlaceholder}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
+                {/* Last repotted */}
+                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={lastRepottedInput}
+                    onChange={(e) => setLastRepottedInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
+                  />
+                </FormRow>
+                {/* Sown date */}
+                <FormRow label={t.addPlant.labelSown} description={t.addPlant.labelSownDesc}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={sownDateInput}
+                    onChange={(e) => setSownDateInput(e.target.value)}
+                    placeholder="DD-MM-YYYY"
+                    className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm"
+                  />
+                </FormRow>
 
-                  {/* Notes */}
-                  <FormRow label={t.addPlant.labelNotes} description={t.addPlant.labelNotesDesc}>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder={t.editPlant.notesPlaceholder}
-                      rows={3}
-                      className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-body text-sm resize-none"
-                    />
-                  </FormRow>
-                </Card>
-              ) : (
-                <div className="card p-4 flex items-center gap-4">
-                  <span className="font-mono text-[10px] text-text-muted uppercase tracking-[0.15em]">{t.addPlant.labelIcon}</span>
-                  <IconPicker value={iconKey} onChange={setIconKey} />
-                </div>
-              )}
+                {/* Notes */}
+                <FormRow label={t.addPlant.labelNotes} description={t.addPlant.labelNotesDesc}>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={t.editPlant.notesPlaceholder}
+                    rows={3}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-body text-sm resize-none"
+                  />
+                </FormRow>
+              </Card>
 
               {/* Action Bar */}
               {saveError && (

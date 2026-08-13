@@ -1,8 +1,13 @@
 # Plant edit pane — audit (2026-08-13)
 
-> **Status.** Tracked in PR #886. Findings are being worked in the order of §5;
-> each one is marked **FIXED** inline as it lands, with a note on what changed.
-> One finding (P2-4) was withdrawn on closer reading — the note explains why.
+> **Status.** Findings landed in #886; the §4 restructure followed in a second
+> pass. Everything in §3 and §4 is now implemented except the
+> `PATCH /care-profile` endpoint, which needs a human's
+> `tests-intentionally-removed` label. One finding (P2-4) was withdrawn on
+> closer reading — the note explains why.
+>
+> The re-cut form was verified rendering at phone and desktop widths in **both**
+> languages against a stubbed API, the same way the plant-details audit was.
 > Companion to `2026-08-09-plant-details-audit.md` (#878, the read pane) and
 > `2026-08-07-add-plant-menu-audit.md` (#823, the create pane). This one covers
 > the third side of the same triangle: **editing** a plant that already exists.
@@ -424,21 +429,34 @@ at least a parity test, would make that claim true.
    human; the endpoint needs a `tests-intentionally-removed` label.
 7. ~~P3 copy pass + i18n baseline removal~~ — **done**.
 
-### What is left
+### The §4 restructure — done
 
-Everything remaining is structural rather than defective — the §4 proposal
-rather than the §3 findings:
+- **§4.1** — add/remove of a care type is form-only now; the passport's care
+  block ends in one link into the edit form's care card (`#care`, which opens
+  that card on a phone). The per-row `×` is gone with it. Interval editing
+  stays in both, as the table proposed.
+- **§4.2** — four cards re-cut: Identity took the icon and the Form tiles,
+  "Where it lives" holds every input the care engine reads, Care names the
+  environment it derived from and lists the photo reminder, and "History &
+  notes" collects the dates that were scattered across the other two.
+- **§4.3** — species picker with autocomplete and an explicit "I don't know",
+  the second light row (`measured_sun_hours`), and the container switch.
+- **§4.4** — the Basis/Details toggle and the decorative id box are gone.
+- **§4.5** — `backend/tests/test_care_matrix_parity.py`.
 
-- **§4.1** — consolidating add/remove of a care type on one pane, and surfacing
-  `sun_requirement` from the passport's sun-fit card.
-- **§4.2** — the four-card re-cut (icon into Identity, sown date and
-  last-repotted into History & notes, the environment inputs together).
-- **§4.3** — the species picker with an explicit "unknown" option (the backend
-  half now exists, see P1-2), the second light row for `measured_sun_hours`, and
-  a container / ground switch.
-- **§4.4** — retiring the mobile Basis/Details toggle and the decorative id box.
-- **§4.5** — a parity test between `DEFAULT_INTERVALS` and `care_types.py`.
-- The `PATCH /care-profile` endpoint, pending the label.
+**Deliberately not done.** §4.1 proposed surfacing `sun_requirement` from the
+passport's sun-fit card as well. It is left in the form: the card is a verdict
+about a spot, and the requirement is a property of the plant — putting a
+species-level control on it invites editing the wrong half of the comparison,
+which is the confusion P3-3 was about. The measured-sun pencil already sits
+there, and the passport's edit link is two taps from the requirement.
 
-None of these change what the app stores, so they are safe to take in any
-order — unlike the seven above, which were.
+The photo reminder is named in the care card but not editable there: it is a
+`photo` schedule, which `sync_care_schedules` rejects outright, so a toggle
+would need a second write path. The journal keeps the control and the card
+links to it.
+
+### Still open
+
+Only the `PATCH /care-profile` endpoint, pending a `tests-intentionally-removed`
+label — see P1-3.

@@ -20,13 +20,14 @@ import { resolveIconUrl } from '../utils/icons'
 import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { buildPlantDetailActions } from '../utils/plantCareRecommendations'
-import { careLogAnchor, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor } from '../utils/plantPassportLinks'
+import {
+  careLogAnchor, EDIT_PLANT_CARE_HASH, PLANT_PASSPORT_ANCHORS, resolvePlantPassportAnchor,
+} from '../utils/plantPassportLinks'
 import { plantPassportSwipeDirection } from '../utils/plantPassportSwipe'
 import { CHROME_TOP_CLASS } from '../components/safeAreaLayout'
 import {
   localCalendarDate, showsGardenWeather, PASSPORT_DESKTOP_MIN_PX,
-  relativeDayLabel, addableCareTypes, buildAddSchedulePayload,
-  buildIntervalChangePayload,
+  relativeDayLabel, buildIntervalChangePayload,
 } from './plantPassportModel'
 import { careEnvironmentForPlant } from './editPlantCareSchedules'
 import MeasuredSunEditor from '../components/plant/MeasuredSunEditor'
@@ -168,11 +169,6 @@ export default function PlantDetail() {
   const carePhotoUploadLogId = useRef<number | null>(null)
   const [sunEditorOpen, setSunEditorOpen] = useState(false)
   const [savingSun, setSavingSun] = useState(false)
-  const [addingCare, setAddingCare] = useState(false)
-  const [newCareType, setNewCareType] = useState<string>('')
-  const [newCareInterval, setNewCareInterval] = useState(7)
-  const [savingCare, setSavingCare] = useState(false)
-  const [addCareError, setAddCareError] = useState(false)
   // Retiming an existing schedule used to mean a trip to the edit form, while
   // adding and deleting were both possible from here (#886).
   const [editingInterval, setEditingInterval] = useState<number | null>(null)
@@ -325,29 +321,6 @@ export default function PlantDetail() {
     }
   }
 
-  // The API replaces the whole schedule list, so send the existing rows back
-  // untouched alongside the new one.
-  async function handleAddSchedule() {
-    if (!plant || !newCareType) return
-    setSavingCare(true)
-    setAddCareError(false)
-    try {
-      await care.syncSchedules(
-        plantId,
-        buildAddSchedulePayload(plant.care_schedules, careEnvironment, newCareType, newCareInterval),
-      )
-      await loadPlants()
-      setAddingCare(false)
-      setNewCareType('')
-    } catch {
-      // The endpoint validates the whole list; without this the Save button
-      // just appeared to do nothing.
-      setAddCareError(true)
-    } finally {
-      setSavingCare(false)
-    }
-  }
-
   async function handleSaveInterval(careType: string) {
     if (!plant) return
     setSavingInterval(true)
@@ -364,12 +337,6 @@ export default function PlantDetail() {
     } finally {
       setSavingInterval(false)
     }
-  }
-
-  async function handleDeleteSchedule(scheduleId: number) {
-    if (!window.confirm(t.plantDetail.deleteScheduleConfirm)) return
-    await care.deleteSchedule(scheduleId)
-    await loadPlants() // store.sync effect picks up the updated plant
   }
 
   async function handleArchive() {
@@ -679,89 +646,30 @@ export default function PlantDetail() {
                   {t.plantDetail.markDone}
                 </button>
               )}
-              <button
-                onClick={() => handleDeleteSchedule(sched.id)}
-                className="text-xs text-text-muted hover:text-overdue transition-colors px-1 shrink-0"
-                title={t.plantDetail.deleteSchedule}
-              >
-                <Glyph name="x" size={14} />
-              </button>
             </div>
           )
         })}
       </div>
   )
 
-  const addable = addableCareTypes(plant.care_schedules, careEnvironment)
-
-  // Deleting a schedule was possible from here; adding one meant a trip to the
-  // edit form (#878).
-  const addCareBlock = addable.length > 0 && (
-    addingCare ? (
-      <div className="card mt-2 space-y-3 p-3.5">
-        <label className="block">
-          <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {t.plantDetail.addCareType}
-          </span>
-          <select
-            value={newCareType}
-            onChange={e => setNewCareType(e.target.value)}
-            className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-          >
-            <option value="">{t.plantDetail.addCarePick}</option>
-            {addable.map(ct => (
-              <option key={ct} value={ct}>
-                {t.careTypes[ct as keyof typeof t.careTypes] ?? ct}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-text-muted">
-            {t.plantDetail.addCareInterval}
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={365}
-            value={newCareInterval}
-            onChange={e => setNewCareInterval(Number(e.target.value))}
-            className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-          />
-        </label>
-        {addCareError && (
-          <p className="text-xs text-overdue">{t.plantDetail.addCareFailed}</p>
-        )}
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setAddingCare(false); setNewCareType(''); setAddCareError(false) }}
-            className="flex-1 rounded-full border border-border py-2 text-sm font-semibold text-text-muted"
-          >
-            {t.common.cancel}
-          </button>
-          <button
-            onClick={handleAddSchedule}
-            disabled={!newCareType || savingCare}
-            className="flex-1 rounded-full bg-primary py-2 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {savingCare ? t.common.saving : t.common.save}
-          </button>
-        </div>
-      </div>
-    ) : (
-      <button
-        onClick={() => setAddingCare(true)}
-        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-primary"
-      >
-        <Glyph name="sprout" size={14} aria-hidden />{t.plantDetail.addCare}
-      </button>
-    )
+  // Adding and removing a care type is setup, not "what changed today", and it
+  // was possible in two places with two different metaphors: a silent toggle in
+  // the edit form, a window.confirm behind a × here. It lives in the form now,
+  // one tap away, where the same screen also shows the interval and the rhythm
+  // switch for every type at once (#886 §4.1).
+  const editCareLink = (
+    <Link
+      to={`/plants/${plantId}/edit${EDIT_PLANT_CARE_HASH}`}
+      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-primary no-underline"
+    >
+      <Glyph name="sprout" size={14} aria-hidden />{t.plantDetail.manageCare}
+    </Link>
   )
 
-  const careBlock = (plant.care_schedules.length > 0 || addCareBlock) && (
+  const careBlock = (
     <Section title={t.plantDetail.care}>
       {careScheduleRows(true)}
-      {addCareBlock}
+      {editCareLink}
     </Section>
   )
 
@@ -998,12 +906,10 @@ export default function PlantDetail() {
           <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
             <div className="min-w-0 xl:pr-8">
               {alertsBlock}
-              {(plant.care_schedules.length > 0 || addCareBlock) && (
-                <Section title={t.plantDetail.care}>
-                  {careScheduleRows(false)}
-                  {addCareBlock}
-                </Section>
-              )}
+              <Section title={t.plantDetail.care}>
+                {careScheduleRows(false)}
+                {editCareLink}
+              </Section>
             </div>
             <div className="min-w-0 xl:px-8">
               <PlantCareInfo plantId={plantId} layout="split" showWeather={showGardenWeather} />
