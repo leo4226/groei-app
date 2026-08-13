@@ -12,7 +12,7 @@ import { compressImage } from '../../utils/compressImage'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 import Glyph from '../ui/Glyph'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
+import { getSunFit, sunProfileFor, SUN_FIT_COLORS } from '../../utils/plantSunRequirements'
 import MovePlantSheet from './MovePlantSheet'
 import MeasuredSunEditor from '../plant/MeasuredSunEditor'
 import './plantQuickSheet.css'
@@ -269,7 +269,7 @@ export default function PlantQuickSheet({
 
   const sunFitInfo = (() => {
     if (!plant.sun_requirement) return null
-    const profile = PLANT_SUN_PROFILES.find(p => p.id === plant.sun_requirement)
+    const profile = sunProfileFor(plant.sun_requirement)
     if (!profile) return null
     // Modelled sun at the plant's (or its container's) position, when a heatmap
     // is available. A measured override wins over this and lets the fit show

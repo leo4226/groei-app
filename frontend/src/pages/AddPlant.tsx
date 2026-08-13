@@ -17,9 +17,11 @@ import Card from '../components/ui/Card'
 import FormRow from '../components/ui/FormRow'
 import TileGrid from '../components/ui/TileGrid'
 import SegmentedControl from '../components/ui/SegmentedControl'
-import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
 import PlacementPicker from '../components/add/PlacementPicker'
+import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
+import PotDetailsFields from '../components/add/PotDetailsFields'
+import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import PageMasthead from '../components/ui/PageMasthead'
 import {
   isIdentifyPrefill,
@@ -29,7 +31,6 @@ import {
   sunPreferenceToTile,
   waterAdviceFromThresholds,
   zoneAdviceKey,
-  SUN_DB_TO_TILE,
   TYPE_TO_FORM,
 } from './addPlant/prefill'
 import { resolveDefaultMapId, type MapPos } from './addPlant/placementModel'
@@ -115,7 +116,7 @@ export default function AddPlant() {
   )
   const [sunRequirement, setSunRequirement] = useState<string | null>(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
-      ? SUN_DB_TO_TILE[(prefill as LocalPlant).sunRequirement] ?? (prefill as LocalPlant).sunRequirement
+      ? normalizeSunRequirement((prefill as LocalPlant).sunRequirement)
       : null
   )
   const [iconKey, setIconKey] = useState<string | null>(
@@ -299,7 +300,7 @@ export default function AddPlant() {
       setName(displayPlantName(p, t.locale))
       setSpecies(p.latinName)
       setNotes(p.amsterdamNotes ?? '')
-      setSunRequirement(SUN_DB_TO_TILE[p.sunRequirement] ?? p.sunRequirement ?? null)
+      setSunRequirement(normalizeSunRequirement(p.sunRequirement))
       setFormType(TYPE_TO_FORM[p.type] ?? 'pot')
       // Try to auto-match an icon from the catalog
       if (iconCatalog.length > 0) {
@@ -886,84 +887,30 @@ export default function AddPlant() {
             ) : null
           })()}
 
-          {/* Light measurement — deliberately outside DETAILS: sun_requirement
+          {/* Light requirement — deliberately outside DETAILS: sun_requirement
               drives garden fit and the sun overlays, and a manual add that
               never opens DETAILS used to ship without it entirely. */}
           <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
-              options={[
-                { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: <TileIcon name="light-dark" /> },
-                { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: <TileIcon name="light-shade" /> },
-                { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: <TileIcon name="light-indirect" /> },
-                { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: <TileIcon name="light-bright" /> },
-                { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: <TileIcon name="light-full" /> },
-              ]}
+              options={sunRequirementTiles(t)}
               value={sunRequirement}
               onChange={(v) => setSunRequirement(v || null)}
             />
           </FormRow>
 
-          {showDetails && (<>
-          {/* Pot material */}
-          <FormRow label={t.addPlant.labelPot} description={t.addPlant.labelPotDesc}>
-            <TileGrid
-              options={[
-                { id: 'terracotta', title: t.addPlant.potTerracotta, subtitle: t.addPlant.potTerracottaSub, glyph: <TileIcon name="pot-terracotta" /> },
-                { id: 'plastic', title: t.addPlant.potPlastic, subtitle: t.addPlant.potPlasticSub, glyph: <TileIcon name="pot-plastic" /> },
-                { id: 'ceramic', title: t.addPlant.potCeramic, subtitle: t.addPlant.potCeramicSub, glyph: <TileIcon name="pot-ceramic" /> },
-                { id: 'basket', title: t.addPlant.potBasket, subtitle: t.addPlant.potBasketSub, glyph: <TileIcon name="pot-basket" /> },
-              ]}
-              value={potMaterial}
-              onChange={setPotMaterial}
-            />
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotDiameter}</label>
-                <input
-                  type="number"
-                  value={potDiameter || ''}
-                  onChange={(e) => setPotDiameter(e.target.value)}
-                  placeholder="⌀ 18"
-                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-text-muted mb-1 block">{t.addPlant.labelPotHeight}</label>
-                <input
-                  type="number"
-                  value={potHeight || ''}
-                  onChange={(e) => setPotHeight(e.target.value)}
-                  placeholder="↑ 22"
-                  className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-mono text-sm"
-                />
-              </div>
-            </div>
-            <label className="inline-flex items-center gap-2 mt-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hasDrainage}
-                onChange={(e) => setHasDrainage(e.target.checked)}
-                className="sr-only peer"
-              />
-              <span className="font-heading text-sm rounded-full border px-3 py-1.5 peer-checked:bg-primary/10 peer-checked:border-primary peer-checked:text-primary bg-paper border-border text-text-soft transition-all inline-flex items-center gap-1">
-                {hasDrainage && <Glyph name="check" size={13} />}{t.addPlant.labelDrainageYes}
-              </span>
-            </label>
-          </FormRow>
-
-          {/* Substrate */}
-          <FormRow
-            label={t.addPlant.labelSubstrate}
-            description={t.addPlant.labelSubstrateDesc}
-            help={t.addPlant.substrateHelp}
-          >
-            <ChipCluster
-              options={t.addPlant.substrateOptions}
-              selected={substrate}
-              onChange={setSubstrate}
-            />
-          </FormRow>
-          </>)}
+          {showDetails && (
+          <PotDetailsFields
+            t={t}
+            value={{ potMaterial, potDiameter, potHeight, hasDrainage, substrate }}
+            onChange={(patch) => {
+              if (patch.potMaterial !== undefined) setPotMaterial(patch.potMaterial)
+              if (patch.potDiameter !== undefined) setPotDiameter(patch.potDiameter)
+              if (patch.potHeight !== undefined) setPotHeight(patch.potHeight)
+              if (patch.hasDrainage !== undefined) setHasDrainage(patch.hasDrainage)
+              if (patch.substrate !== undefined) setSubstrate(patch.substrate)
+            }}
+          />
+          )}
         </Card>
 
         {/* ——— § III · Care Card ——— */}

@@ -64,7 +64,6 @@ export default [
       'src/components/sun/HeatmapLegend.tsx',
 
       'src/pages/AdminPage.tsx',
-      'src/pages/EditPlant.tsx',
       'src/pages/GameHostPage.tsx',
       'src/pages/GameJoinPage.tsx',
       'src/pages/GamePlayerPage.tsx',

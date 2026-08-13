@@ -476,7 +476,23 @@ async def patch_care_profile(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
-    """Partially update a plant's care_profile. Only specified care_types are merged."""
+    """Partially update a plant's care_profile. Only specified care_types are merged.
+
+    **No UI calls this.** It is the only writer of `plants.care_profile` in the
+    codebase, and its frontend caller (`CareProfileSection` + `patchCareProfile`)
+    was deleted in #886 as a second, competing source of truth for "is this care
+    type on": `care_schedules.is_active` is what the edit form and the passport
+    write, and what every care surface reads through `_schedule_warning_for_type`.
+
+    Left in place only because removing it means removing
+    `test_legacy_care_profile_patch_persists_only_canonical_keys`, which needs a
+    human's `tests-intentionally-removed` label. Do not wire a UI back onto this
+    without first making `sync_care_schedules` the single writer of both — today
+    the column is NULL for every plant, so `load_legacy_care_profile` derives the
+    active set from the environment and the schedules decide the outcome. Write
+    to it and the two models can disagree: disabling a type here would not
+    remove its schedule, and toggling a schedule off would not clear the profile.
+    """
     plant_rows = await db.execute_fetchall(
         "SELECT care_profile FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
         (plant_id, account["household_id"]),

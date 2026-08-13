@@ -60,17 +60,26 @@ describe('buildCreatePayload — container / provenance detail', () => {
 
 describe('zoneAdviceKey', () => {
   it('maps each light tile to its own advice', () => {
-    expect(zoneAdviceKey('dark')).toBe('shade')
+    // The "tiles" are the canonical sun requirements since #886; the five-value
+    // tile vocabulary they used to carry is covered by the case below.
     expect(zoneAdviceKey('shade')).toBe('shade')
+    expect(zoneAdviceKey('partial_sun')).toBe('indirect')
+    expect(zoneAdviceKey('full_sun')).toBe('fullSun')
+  })
+
+  it('still resolves advice for the retired tile spellings (#886)', () => {
+    // Plants saved before the Light row was collapsed onto the canonical three
+    // still carry these; advice must not go silent for them.
+    expect(zoneAdviceKey('dark')).toBe('shade')
+    expect(zoneAdviceKey('bright')).toBe('indirect')
     expect(zoneAdviceKey('indirect')).toBe('indirect')
-    expect(zoneAdviceKey('bright')).toBe('bright')
     expect(zoneAdviceKey('full-sun')).toBe('fullSun')
   })
 
   it('does not claim a full-sun plant wants shade', () => {
     // The old copy told every species it "prefers a bright spot without direct
     // sunlight" — including plants explicitly marked full sun.
-    expect(zoneAdviceKey('full-sun')).not.toBe('indirect')
+    expect(zoneAdviceKey('full_sun')).not.toBe('indirect')
   })
 
   it('stays silent when the sun requirement is unknown', () => {

@@ -14,8 +14,11 @@ import TileGrid from '../components/ui/TileGrid'
 import TileIcon from '../components/ui/TileIcon'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
+import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
+import PotDetailsFields from '../components/add/PotDetailsFields'
 import PageMasthead from '../components/ui/PageMasthead'
-import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
+import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
+import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { resolveIconUrl } from '../utils/icons'
@@ -65,6 +68,16 @@ export default function EditPlant() {
   const [phase, setPhase] = useState('established')
   const [quantity, setQuantity] = useState(1)
   const [acquiredDateInput, setAcquiredDateInput] = useState('')
+
+  // Container + provenance (#823 columns). Collected by Add Plant since #823
+  // and, until #886, editable nowhere — a repot could be dated but the pot
+  // itself could never be corrected.
+  const [potMaterial, setPotMaterial] = useState('terracotta')
+  const [potDiameter, setPotDiameter] = useState('')
+  const [potHeight, setPotHeight] = useState('')
+  const [hasDrainage, setHasDrainage] = useState(false)
+  const [substrate, setSubstrate] = useState<string[]>([])
+  const [acquiredFrom, setAcquiredFrom] = useState('')
 
   // Placement card
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
@@ -125,11 +138,20 @@ export default function EditPlant() {
         setSownDateInput(p.sown_date ? isoToDisplay(p.sown_date) : '')
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
-        setSunRequirement(p.sun_requirement ? (SUN_DB_TO_TILE[p.sun_requirement] ?? p.sun_requirement) : null)
-        // Form only controls the potted/bare icon variant. Its canonical
-        // value comes from icon_key in the catalog effect below, never plant_type.
-        setFormType('pot')
+        setSunRequirement(normalizeSunRequirement(p.sun_requirement))
+        // Resolved against the icon in the catalog effect below, which is the
+        // half of this that map placement keeps current.
+        setFormType(p.form_type ?? 'pot')
         setMulch(p.mulch ?? false)
+        setPotMaterial(p.pot_material ?? 'terracotta')
+        // pot_size_cm is the canonical container size and pot_diameter_cm the
+        // form's field; create_plant seeds the former from the latter, so fall
+        // back to it for plants added before the diameter input existed.
+        setPotDiameter(String(p.pot_diameter_cm ?? p.pot_size_cm ?? ''))
+        setPotHeight(String(p.pot_height_cm ?? ''))
+        setHasDrainage(p.has_drainage ?? false)
+        setSubstrate(p.substrate ?? [])
+        setAcquiredFrom(p.acquired_from ?? '')
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         if (p.photo_path) setPhotoPreview(p.photo_path)
       } catch {
@@ -161,16 +183,17 @@ export default function EditPlant() {
   }, [])
 
   // Set base icon ref when plant data and catalog are both available, and align
-  // the Potted/Bare toggle with the icon's ACTUAL form. plant_type can be stale —
-  // map placement updates icon_key but never plant_type — so initialising the
-  // toggle from plant_type would silently flip a bare plant back to potted when
-  // the editor opens (part of the potted/bare drift bug).
+  // the Form tile with the icon's ACTUAL form. The stored form_type can be stale
+  // on the potted/bare axis — map placement updates icon_key but never
+  // form_type — so trusting it outright would silently flip a bare plant back to
+  // potted when the editor opens (part of the potted/bare drift bug). Within the
+  // bare half it is the better answer, and resolveFormType keeps it.
   useEffect(() => {
     if (!plant?.icon_key || iconCatalog.length === 0) return
     const entry = iconCatalog.find(e => e.id === plant.icon_key)
     baseIconRef.current = entry?.variant_of ?? plant.icon_key
     const isBare = entry?.form === 'bare' || /_bare$/.test(plant.icon_key)
-    setFormType(isBare ? 'ground' : 'pot')
+    setFormType(resolveFormType(plant.form_type, isBare))
   }, [iconCatalog, plant])
 
   // Switch icon variant when form type or catalog changes
@@ -242,6 +265,13 @@ export default function EditPlant() {
         lastRepottedInput,
         notes,
         iconKey,
+        formType,
+        potMaterial,
+        potDiameter,
+        potHeight,
+        hasDrainage,
+        substrate,
+        acquiredFrom,
         sunRequirement,
         phase: phase as Plant['phase'],
         sownDateInput,
@@ -306,11 +336,9 @@ export default function EditPlant() {
     established: t.addPlant.phaseEstablished,
   }
   const previewSunLabel: Record<string, string> = {
-    dark: t.addPlant.lightDark,
     shade: t.addPlant.lightShade,
-    indirect: t.addPlant.lightIndirect,
-    bright: t.addPlant.lightBright,
-    'full-sun': t.addPlant.lightFullSun,
+    partial_sun: t.addPlant.lightPartial,
+    full_sun: t.addPlant.lightFullSun,
   }
   const previewZone = selectedZoneId ? zoneList.find(z => z.id === selectedZoneId) ?? null : null
   const previewMrz = `P<FLO<<${name}<<${species}`
@@ -477,7 +505,7 @@ export default function EditPlant() {
                 </FormRow>
 
                 {/* Acquisition */}
-                <FormRow label={t.addPlant.labelAcquired} description={t.addPlant.labelAcquiredDesc}>
+                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -486,6 +514,17 @@ export default function EditPlant() {
                     onChange={(e) => setAcquiredDateInput(e.target.value)}
                     placeholder="DD-MM-YYYY"
                     className="w-full sm:w-44 rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+                  />
+                </FormRow>
+
+                {/* Where it came from */}
+                <FormRow label={t.editPlant.acquiredFromLabel} description={t.editPlant.acquiredFromDescription}>
+                  <input
+                    type="text"
+                    value={acquiredFrom}
+                    onChange={(e) => setAcquiredFrom(e.target.value)}
+                    placeholder={t.editPlant.acquiredFromPlaceholder}
+                    className="w-full rounded-lg border border-border bg-paper px-3 py-2 font-heading text-sm text-text placeholder:text-text-muted/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
                   />
                 </FormRow>
               </Card>
@@ -512,22 +551,20 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Light measurement */}
+                {/* Light requirement — the three values the sun-fit engine knows */}
                 <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
                   <TileGrid
-                    options={[
-                      { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: <TileIcon name="light-dark" /> },
-                      { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: <TileIcon name="light-shade" /> },
-                      { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: <TileIcon name="light-indirect" /> },
-                      { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: <TileIcon name="light-bright" /> },
-                      { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: <TileIcon name="light-full" /> },
-                    ]}
+                    options={sunRequirementTiles(t)}
                     value={sunRequirement}
                     onChange={(v) => setSunRequirement(v || null)}
                   />
                 </FormRow>
 
-                {/* Mulch — moisture-retaining top layer; lowers outdoor water pressure */}
+                {/* Mulch — moisture-retaining top layer; lowers outdoor water
+                    pressure. Hidden indoors, where the pressure engine ignores
+                    it entirely, so the form stops asking a question that has no
+                    effect (#886). */}
+                {careEnvironment !== 'indoor' && (
                 <FormRow label={t.editPlant.mulchLabel} description={t.editPlant.mulchDescription}>
                   <button
                     type="button"
@@ -546,9 +583,25 @@ export default function EditPlant() {
                     />
                   </button>
                 </FormRow>
+                )}
+
+                {/* Pot + substrate — the container detail Add Plant collects.
+                    Until #886 none of it was editable, so a repot could be
+                    dated here but the pot itself never corrected. */}
+                <PotDetailsFields
+                  t={t}
+                  value={{ potMaterial, potDiameter, potHeight, hasDrainage, substrate }}
+                  onChange={(patch) => {
+                    if (patch.potMaterial !== undefined) setPotMaterial(patch.potMaterial)
+                    if (patch.potDiameter !== undefined) setPotDiameter(patch.potDiameter)
+                    if (patch.potHeight !== undefined) setPotHeight(patch.potHeight)
+                    if (patch.hasDrainage !== undefined) setHasDrainage(patch.hasDrainage)
+                    if (patch.substrate !== undefined) setSubstrate(patch.substrate)
+                  }}
+                />
 
                 {/* Last repotted */}
-                <FormRow label={t.editPlant.lastRepottedLabel} description={t.addPlant.labelSownDesc}>
+                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -590,7 +643,7 @@ export default function EditPlant() {
                   subtitle={t.addPlant.secAlbumSubtitle}
                 >
                   {/* Icon */}
-                  <FormRow label={t.addPlant.labelIcon} description={t.addPlant.labelIconDesc}>
+                  <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
                     <IconPicker value={iconKey} onChange={handleIconChange} />
                   </FormRow>
 
@@ -686,7 +739,7 @@ export default function EditPlant() {
 
                 <div className="border-t border-border-soft px-5 py-4">
                   <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
-                    {t.plantDetail.mastheadEyebrow} · #{String(plant.id).padStart(3, '0')}
+                    {`${t.plantDetail.mastheadEyebrow} · #${String(plant.id).padStart(3, '0')}`}
                   </p>
                   <div className="mt-1.5 flex items-start justify-between gap-3">
                     <p className="min-w-0 font-heading text-2xl font-medium leading-tight text-text">

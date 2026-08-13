@@ -137,6 +137,37 @@ async def _apply_species_relink(
         )
 
 
+async def _clear_species_link(
+    db, plant_id: int, old_species_id: int | None, photo_path: str | None = None,
+) -> None:
+    """Un-identify a plant: drop `species_id` and everything derived from it.
+
+    The mirror image of `_apply_species_relink` for the case where the user
+    empties the species field. There is no new species to inherit from, so the
+    derived data is cleared rather than replaced:
+
+      - `species_id`, so the passport stops rendering the old species' phenology
+        calendar, ecology card and species profile,
+      - the cached `care_thresholds`, which described the rejected species —
+        the plant's own care schedules are untouched, so nothing it is actually
+        on the hook for disappears,
+      - the identification anchors this plant contributed, for the same reason
+        they are retracted on a rename: they are labelled with a species the
+        user has withdrawn (#866 phase 2).
+    """
+    if old_species_id is None:
+        return
+
+    from services.user_refs import retract_plant_anchors
+
+    await db.execute(
+        "UPDATE plants SET species_id = NULL, care_thresholds = NULL WHERE id = ?",
+        (plant_id,),
+    )
+    await db.commit()
+    await retract_plant_anchors(db, plant_id, photo_path)
+
+
 async def _relink_species_deferred(
     plant_id: int, old_species_id: int | None, lookup_name: str,
     photo_path: str | None, plant_name: str,
@@ -550,8 +581,14 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     # A species rename is a re-identification, not a text edit: the plant is now
     # a different species and everything derived from species_id must follow.
     # Read the pre-update row before the write so we can compare.
+    #
+    # Clearing the field counts. It used to be excluded by the emptiness check
+    # here, so "I was wrong, I don't know what this is" wrote species = NULL and
+    # left species_id pointing at the rejected species — the passport kept
+    # showing its phenology, ecology and care thresholds, and its anchors kept
+    # pulling future photos towards the label the user had just withdrawn.
     before = None
-    if "species" in updates and str(updates["species"] or "").strip():
+    if "species" in updates:
         rows = await db.execute_fetchall(
             "SELECT name, species, species_id, photo_path FROM plants WHERE id = ?",
             (plant_id,),
@@ -578,12 +615,16 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     await db.commit()
 
     if before is not None and _species_text_changed(before.get("species"), updates["species"]):
-        lookup_name = str(updates["species"]).strip()
+        lookup_name = str(updates["species"] or "").strip()
+        if not lookup_name:
+            # Un-identified: drop the link rather than guess at a replacement.
+            await _clear_species_link(
+                db, plant_id, before.get("species_id"), before.get("photo_path"),
+            )
         # Known species: relink now, so the edit screen closes on correct data.
         # Unknown: defer, because creating it calls the LLM and the save must
         # neither wait for that nor fail with it.
-        existing_id = await _find_species_by_name(db, lookup_name)
-        if existing_id is not None:
+        elif (existing_id := await _find_species_by_name(db, lookup_name)) is not None:
             await _apply_species_relink(
                 db, plant_id, before.get("species_id"), existing_id,
                 photo_path=before.get("photo_path"),

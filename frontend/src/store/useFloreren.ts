@@ -18,7 +18,6 @@ interface FlorerStore {
   error: string | null
   showPlantPicker: boolean
   careVersions: Record<number, number>
-  profileVersions: Record<number, number>
   /** Bumped by refreshAll() — pages that own their data (field journal,
    * calendar, logbook) include this in their fetch-effect deps so a
    * pull-to-refresh / foreground refresh reaches them too. */
@@ -45,7 +44,6 @@ interface FlorerStore {
   skipCare: (plantId: number, careType: string) => Promise<void>
   createMap: (data: { name: string; map_type?: string; lat?: number; lon?: number; bearing?: number }) => Promise<MapInfo>
   deleteMap: (id: number) => Promise<void>
-  patchCareProfile: (plantId: number, data: Record<string, { active: boolean }>) => Promise<void>
   setActiveUser: (id: number) => void
   setShowPlantPicker: (show: boolean) => void
   setAssistantPageContext: (context: Partial<PageContext> | null) => void
@@ -76,7 +74,6 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
   error: null,
   showPlantPicker: false,
   careVersions: {},
-  profileVersions: {},
   refreshTick: 0,
   lastRefreshAt: 0,
 
@@ -246,13 +243,6 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     }))
     get().loadRecentLog()
     get().loadWarningSummary()
-  },
-
-  patchCareProfile: async (plantId, data) => {
-    await plantsApi.patchCareProfile(plantId, data)
-    set((s) => ({
-      profileVersions: { ...s.profileVersions, [plantId]: (s.profileVersions[plantId] ?? 0) + 1 },
-    }))
   },
 
   createMap: async (data) => {
