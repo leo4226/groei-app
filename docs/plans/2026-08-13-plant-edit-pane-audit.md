@@ -78,11 +78,11 @@ deliberately omits `next_due` for the edited row — retiming must not also mean
 while pinning every other row to its current date, since the endpoint replaces
 the whole list.
 
-**Still open:** the two metaphors themselves. Adding and removing a care type
-is still possible in both panes, silently in the form and behind a
-`window.confirm` in the passport. §4.1 proposes consolidating that on the form.
+**And then for the metaphors.** Adding and removing a care type is form-only
+now; the passport's care block ends in one link that opens the form on its care
+card, and the per-row `×` is gone. See §4.1.
 
-### 2.2 "Sun" is split across three panes, by accident
+### 2.2 "Sun" is split across three panes, by accident — **fixed**
 
 - `sun_requirement` (what the plant wants) → **edit form only**.
 - `measured_sun_hours` (what the spot actually gives) → **passport + quick sheet
@@ -94,6 +94,12 @@ so that saving the edit form does not wipe a value the edit form cannot show
 (`editPlantPayload.ts:52-53`). The two halves of one comparison live in two
 screens, and the fit verdict is shown in the pane that can only edit the half
 that isn't the plant's.
+
+**Fixed.** The form's Light section is two rows — what the plant wants and what
+the spot gives — so both halves of the comparison are editable in the pane that
+owns the plant's setup, and the payload no longer has to carry
+`measured_sun_hours` through blind. The passport and quick sheet keep their
+pencil, which is the right place to correct a measurement in context.
 
 ### 2.3 The edit form cannot edit ~40% of what Add Plant collects — **mostly fixed**
 
@@ -109,9 +115,9 @@ Since #823, Add Plant persists container and provenance detail. `PlantUpdate`
 | `has_drainage` | ✅ | ✅ **fixed** |
 | `substrate` | ✅ | ✅ **fixed** |
 | `acquired_from` | ✅ | ✅ **fixed** |
-| `container_id` | map drag | ❌ (and it selects the care environment) |
-| `location_id` | Locations feature | ❌ |
-| `measured_sun_hours` | — | ❌ here, ✅ in two other panes |
+| `container_id` | map drag | ✅ **fixed** — see below |
+| `location_id` | Locations feature | ❌ — owned by the Locations feature |
+| `measured_sun_hours` | — | ✅ **fixed** — see §2.2 |
 
 Repotting a plant into a bigger pot is one of the few genuinely recurring plant
 events, and the only pot field in the edit form is the *date* you did it. This is
@@ -125,10 +131,13 @@ cannot drift apart the way the Light row did, and Edit Plant gained a "Came
 from" row. `pot_size_cm` follows the diameter on save, mirroring what
 `create_plant` does, rather than being left behind at its creation value.
 
-**Still open:** `container_id` and `location_id`. Both are genuinely
-placement-owned — a container is a specific object at a specific spot on a map,
-not a dropdown value — so exposing them here needs the object picker described
-in §4.3, not another payload field. `measured_sun_hours` is covered by §4.1.
+**Also fixed: `container_id`.** The concern that it is placement-owned turned
+out to be answered by the code — `PUT /plants/{id}/container` already exists and
+is already how the map sets a container without moving the plant, so the form
+calls it. The row only offers containers on the plant's own map.
+
+**Still open: `location_id`.** It belongs to the Locations feature, which this
+form deliberately does not touch (see the comment in `buildEditPlantPayload`).
 
 ---
 
