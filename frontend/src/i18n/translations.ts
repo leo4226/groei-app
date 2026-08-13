@@ -1304,6 +1304,9 @@ export type Translations = {
     potSizePlaceholder: string // "15"
     acquiredLabel: string    // "Acquired"
     lastRepottedLabel: string // "Last repotted"
+    lastRepottedDescription: string
+    acquiredDescription: string
+    iconDescription: string
     notesLabel: string       // "Notes"
     notesPlaceholder: string // "Likes indirect light, water from below..."
     saving: string           // "Saving..."

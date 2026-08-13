@@ -2,6 +2,37 @@ import type { MapInfo, Plant } from '../types'
 import { displayToIso } from '../utils/dateFormat'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 
+/**
+ * Form types that describe a plant growing out of a pot. Everything else sits
+ * in the ground, which is the only distinction the icon set can draw — there
+ * are `potted` and `bare` variants and nothing finer.
+ */
+const BARE_FORM_TYPES = ['ground', 'seedling', 'tree']
+
+/**
+ * Which Form tile to select when the editor opens.
+ *
+ * The icon's actual form is authoritative on the potted/bare axis, because it
+ * is the half that map placement keeps up to date: dropping a plant into a bed
+ * rewrites `icon_key` (`resolve_placement_icon`) but never `form_type`.
+ * Initialising the tile from the stored `form_type` alone would show "In pot"
+ * for a plant that is visibly in the ground, and the icon effect would then
+ * write the potted icon back on save — the potted/bare drift bug.
+ *
+ * Within the bare half the stored value is the better answer, though: `tree`
+ * and `seedling` are both drawn bare, so re-deriving from the icon flattened
+ * them to `ground` and the user's choice was lost on every reopen (#886).
+ */
+export function resolveFormType(
+  storedFormType: string | null | undefined,
+  iconIsBare: boolean,
+): string {
+  if (!iconIsBare) return 'pot'
+  return storedFormType && BARE_FORM_TYPES.includes(storedFormType)
+    ? storedFormType
+    : 'ground'
+}
+
 type PlacementMap = Pick<MapInfo, 'id' | 'viewbox'>
 
 type MapPosition = { x: number; y: number }
@@ -16,6 +47,7 @@ export interface BuildEditPlantPayloadInput {
   lastRepottedInput: string
   notes: string
   iconKey: string | null
+  formType: string
   sunRequirement: string | null
   phase: Plant['phase']
   sownDateInput: string
@@ -32,6 +64,9 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     last_repotted: displayToIso(input.lastRepottedInput) || null,
     notes: input.notes.trim() || null,
     icon_key: input.iconKey,
+    // Written, not just used to pick the icon variant: re-deriving it from the
+    // icon on reopen flattened `tree`/`seedling` back to `ground` (#886).
+    form_type: input.formType,
     sun_requirement: normalizeSunRequirement(input.sunRequirement),
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,

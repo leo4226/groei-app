@@ -1,6 +1,8 @@
 # Plant edit pane — audit (2026-08-13)
 
-> **Status.** Findings only — nothing in this document is implemented yet.
+> **Status.** Tracked in PR #886. Findings are being worked in the order of §5;
+> each one is marked **FIXED** inline as it lands, with a note on what changed.
+> One finding (P2-4) was withdrawn on closer reading — the note explains why.
 > Companion to `2026-08-09-plant-details-audit.md` (#878, the read pane) and
 > `2026-08-07-add-plant-menu-audit.md` (#823, the create pane). This one covers
 > the third side of the same triangle: **editing** a plant that already exists.
@@ -84,8 +86,8 @@ Since #823, Add Plant persists container and provenance detail. `PlantUpdate`
 
 | Field | Set at creation | Editable afterwards |
 |---|---|---|
-| `pot_size_cm` | ✅ | ❌ (also: drives the potted/bare icon, `routers/icons.py:76-78`) |
-| `form_type` | ✅ | ❌ (tiles exist but only switch the icon — see 3.3) |
+| `pot_size_cm` | ✅ | ❌ |
+| ~~`form_type`~~ | ✅ | ✅ **fixed** — see P2-1 |
 | `pot_material`, `pot_diameter_cm`, `pot_height_cm` | ✅ | ❌ |
 | `has_drainage` | ✅ | ❌ |
 | `substrate` | ✅ | ❌ |
@@ -180,7 +182,7 @@ in the edit form would not clear the profile.
 Either delete the dead half (component + `patchCareProfile` + endpoint) or make
 `sync_care_schedules` the single writer of both.
 
-### P2-1 — "Form" tiles offer four options, of which two are unreachable and none persist
+### P2-1 — "Form" tiles offer four options, of which two are unreachable and none persist — **FIXED**
 
 `formType` is documented as controlling only the potted/bare icon variant
 (`EditPlant.tsx:129-131`) and the switcher only asks `formType === 'pot'`
@@ -191,11 +193,22 @@ save, reopen → "In de grond". Four tiles with subtitles ("Young", "Standard")
 that read like taxonomy, for a two-state icon switch. Meanwhile the real column,
 `form_type`, is writable in `PlantUpdate` and never written from here.
 
-### P2-2 — The mulch toggle is shown for indoor plants
+**Fixed.** `form_type` is now sent on save, and `resolveFormType()` decides what
+the tile shows on reopen: the icon stays authoritative on the potted/bare axis
+(map placement rewrites `icon_key` but never `form_type`, so trusting the stored
+value outright would resurrect the drift bug), while within the bare half the
+stored value wins — which is what `tree` and `seedling` needed, since the icon
+set cannot draw the difference. Seedling and Tree still share the bare icon;
+that is a limit of the icon set, and now an intentional one rather than a
+silently discarded choice.
+
+### P2-2 — The mulch toggle is shown for indoor plants — **FIXED**
 
 The comment at `EditPlant.tsx:62-64` says mulch is outdoor-only and the pressure
 engine ignores it indoors; the toggle renders unconditionally in § II. It should
 follow the same environment gate the care editor already uses.
+
+**Fixed.** The row is hidden when `careEnvironment === 'indoor'`.
 
 ### P2-3 — The form is unusable if `/maps` fails
 
@@ -205,14 +218,19 @@ follow the same environment gate the care editor already uses.
 whole edit page — including the name field — becomes read-only with no error
 shown.
 
-### P2-4 — `pot_size_cm` and the potted/bare icon can drift
+### P2-4 — ~~`pot_size_cm` and the potted/bare icon can drift~~ — **withdrawn**
 
-The backend treats `pot_size_cm` as the canonical container size that drives the
-potted/bare form (`routers/icons.py:76-78`). The edit form flips the icon variant
-via the form tiles and never touches `pot_size_cm`, so the two can disagree after
-any edit.
+Overstated when this was written, on the strength of the first half of the
+docstring at `routers/icons.py:70-79`. The second half says the opposite:
+`pot_size_cm` was *deliberately* cut out of the icon decision when the
+potted/bare drift bug was fixed — it "is still accepted for call-site
+compatibility but no longer influences the icon". There is nothing for the two
+to drift on.
 
-### P3-1 — English strings in the Dutch catalog
+What remains is not a drift bug but a gap: `pot_size_cm` simply is not editable
+after creation. That is already covered by §2.3.
+
+### P3-1 — English strings in the Dutch catalog — **FIXED**
 
 `i18n/nl.ts:1162-1168`: `formPotSub: 'Potted'`, `formGroundSub: 'Bare'`,
 `formSeedlingSub: 'Seedling'`, `formTreeSub: 'Tree'` — the Dutch UI prints
@@ -220,7 +238,12 @@ English subtitles under Dutch titles. Exactly the class of defect the 2026-07
 language audit was about. (`EditPlant.tsx` is still on the i18n-guard baseline
 list in `eslint.i18n.config.js:67`; a pass over it should also remove that entry.)
 
-### P3-2 — Labels that describe fields the form doesn't have, or the wrong field
+**Fixed.** The four subtitles are Dutch now ("In een pot", "Wortels in de
+grond", "Nog jong", "Op stam"). The baseline entry is still there — removing it
+is its own pass, and the guard has to be run with the entry deleted to know
+whether anything else in the file trips it.
+
+### P3-2 — Labels that describe fields the form doesn't have, or the wrong field — **FIXED**
 
 - **Last repotted** is described with `t.addPlant.labelSownDesc` — *"When did it
   start?"* / *"Wanneer begon de plant?"* (`EditPlant.tsx:551`). Copy-paste from
@@ -232,6 +255,11 @@ list in `eslint.i18n.config.js:67`; a pass over it should also remove that entry
   picks illustrated SVGs from the icon catalog, not emoji.
 - The NL light label is **"Lichtmeting"** (light *measurement*) where EN says
   "Light" — which brings us to the next point.
+
+**Fixed.** Last-repotted, Acquired and Icon have their own descriptions rather
+than borrowed ones — the first two live under `editPlant` precisely because Add
+Plant's versions are correct *there* (it does collect `acquired_from`) and only
+wrong when reused here. The light label is covered by P3-3.
 
 ### P3-3 — The light row asks about the spot and stores it as the plant's requirement — **copy fixed**
 

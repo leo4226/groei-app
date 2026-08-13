@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildEditPlantPayload } from './editPlantPayload'
+import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import type { Plant, MapInfo } from '../types'
 
 function plant(overrides: Partial<Plant> = {}): Plant {
@@ -64,6 +64,7 @@ const baseInput = {
   lastRepottedInput: '',
   notes: 'Still healthy',
   iconKey: 'monstera',
+  formType: 'pot',
   sunRequirement: 'partial_sun',
   phase: 'established' as const,
   sownDateInput: '',
@@ -112,5 +113,42 @@ describe('buildEditPlantPayload', () => {
       map_y: null,
     })
     expect(payload).not.toHaveProperty('location_id')
+  })
+})
+
+// ── #886 P2-1: the Form tile round-trip ─────────────────────────────────────
+//
+// formType used to be display-only: it picked the potted/bare icon variant and
+// was never sent. On reopen it was re-derived from the icon, which can only be
+// potted or bare — so "Boomvorm" came back as "In de grond" and the user's
+// choice was quietly lost on every save.
+
+describe('resolveFormType', () => {
+  it('keeps the finer bare forms the icon cannot express', () => {
+    expect(resolveFormType('tree', true)).toBe('tree')
+    expect(resolveFormType('seedling', true)).toBe('seedling')
+    expect(resolveFormType('ground', true)).toBe('ground')
+  })
+
+  it('lets the icon win on the potted/bare axis', () => {
+    // The drift bug: map placement rewrites icon_key but never form_type, so a
+    // plant dropped into a bed is bare while form_type still says pot. Showing
+    // "In pot" there would write the potted icon back on the next save.
+    expect(resolveFormType('pot', true)).toBe('ground')
+    expect(resolveFormType('tree', false)).toBe('pot')
+  })
+
+  it('falls back cleanly when nothing is stored', () => {
+    // Plants created before form_type existed, or placed from the map.
+    expect(resolveFormType(null, true)).toBe('ground')
+    expect(resolveFormType(undefined, false)).toBe('pot')
+    expect(resolveFormType('nonsense', true)).toBe('ground')
+  })
+})
+
+describe('buildEditPlantPayload form_type', () => {
+  it('persists the selected form so it survives a reopen', () => {
+    const payload = buildEditPlantPayload({ ...baseInput, formType: 'tree' })
+    expect(payload.form_type).toBe('tree')
   })
 })

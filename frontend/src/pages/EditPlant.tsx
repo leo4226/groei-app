@@ -16,7 +16,7 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
 import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PageMasthead from '../components/ui/PageMasthead'
-import { buildEditPlantPayload } from './editPlantPayload'
+import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -128,9 +128,9 @@ export default function EditPlant() {
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
         setSunRequirement(normalizeSunRequirement(p.sun_requirement))
-        // Form only controls the potted/bare icon variant. Its canonical
-        // value comes from icon_key in the catalog effect below, never plant_type.
-        setFormType('pot')
+        // Resolved against the icon in the catalog effect below, which is the
+        // half of this that map placement keeps current.
+        setFormType(p.form_type ?? 'pot')
         setMulch(p.mulch ?? false)
         setSelectedZoneId(p.map_id ? String(p.map_id) : null)
         if (p.photo_path) setPhotoPreview(p.photo_path)
@@ -163,16 +163,17 @@ export default function EditPlant() {
   }, [])
 
   // Set base icon ref when plant data and catalog are both available, and align
-  // the Potted/Bare toggle with the icon's ACTUAL form. plant_type can be stale —
-  // map placement updates icon_key but never plant_type — so initialising the
-  // toggle from plant_type would silently flip a bare plant back to potted when
-  // the editor opens (part of the potted/bare drift bug).
+  // the Form tile with the icon's ACTUAL form. The stored form_type can be stale
+  // on the potted/bare axis — map placement updates icon_key but never
+  // form_type — so trusting it outright would silently flip a bare plant back to
+  // potted when the editor opens (part of the potted/bare drift bug). Within the
+  // bare half it is the better answer, and resolveFormType keeps it.
   useEffect(() => {
     if (!plant?.icon_key || iconCatalog.length === 0) return
     const entry = iconCatalog.find(e => e.id === plant.icon_key)
     baseIconRef.current = entry?.variant_of ?? plant.icon_key
     const isBare = entry?.form === 'bare' || /_bare$/.test(plant.icon_key)
-    setFormType(isBare ? 'ground' : 'pot')
+    setFormType(resolveFormType(plant.form_type, isBare))
   }, [iconCatalog, plant])
 
   // Switch icon variant when form type or catalog changes
@@ -244,6 +245,7 @@ export default function EditPlant() {
         lastRepottedInput,
         notes,
         iconKey,
+        formType,
         sunRequirement,
         phase: phase as Plant['phase'],
         sownDateInput,
@@ -477,7 +479,7 @@ export default function EditPlant() {
                 </FormRow>
 
                 {/* Acquisition */}
-                <FormRow label={t.addPlant.labelAcquired} description={t.addPlant.labelAcquiredDesc}>
+                <FormRow label={t.addPlant.labelAcquired} description={t.editPlant.acquiredDescription}>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -521,7 +523,11 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Mulch — moisture-retaining top layer; lowers outdoor water pressure */}
+                {/* Mulch — moisture-retaining top layer; lowers outdoor water
+                    pressure. Hidden indoors, where the pressure engine ignores
+                    it entirely, so the form stops asking a question that has no
+                    effect (#886). */}
+                {careEnvironment !== 'indoor' && (
                 <FormRow label={t.editPlant.mulchLabel} description={t.editPlant.mulchDescription}>
                   <button
                     type="button"
@@ -540,9 +546,10 @@ export default function EditPlant() {
                     />
                   </button>
                 </FormRow>
+                )}
 
                 {/* Last repotted */}
-                <FormRow label={t.editPlant.lastRepottedLabel} description={t.addPlant.labelSownDesc}>
+                <FormRow label={t.editPlant.lastRepottedLabel} description={t.editPlant.lastRepottedDescription}>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -584,7 +591,7 @@ export default function EditPlant() {
                   subtitle={t.addPlant.secAlbumSubtitle}
                 >
                   {/* Icon */}
-                  <FormRow label={t.addPlant.labelIcon} description={t.addPlant.labelIconDesc}>
+                  <FormRow label={t.addPlant.labelIcon} description={t.editPlant.iconDescription}>
                     <IconPicker value={iconKey} onChange={handleIconChange} />
                   </FormRow>
 
