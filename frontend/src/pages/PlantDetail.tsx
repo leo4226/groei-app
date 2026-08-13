@@ -14,7 +14,7 @@ import { PassportEditLink } from '../components/plant/PassportEditLink'
 import { photos as photosApi } from '../api/client'
 import { compressImage } from '../utils/compressImage'
 import EcologyCard from '../components/EcologyCard'
-import { getSunFit, PLANT_SUN_PROFILES, SUN_FIT_COLORS, effectiveSunHours } from '../utils/plantSunRequirements'
+import { getSunFit, sunProfileFor, SUN_FIT_COLORS, effectiveSunHours } from '../utils/plantSunRequirements'
 import PhaseCalendar from '../components/PhaseCalendar'
 import { resolveIconUrl } from '../utils/icons'
 import PageMasthead, { type MastheadStat } from '../components/ui/PageMasthead'
@@ -430,7 +430,7 @@ export default function PlantDetail() {
     if (plant.measured_sun_hours == null && sunHours === null) return null
     const { sunHours: hours, source } = effectiveSunHours(plant.measured_sun_hours, sunHours ?? 0)
     const fit     = getSunFit(plant.sun_requirement, hours)
-    const profile = PLANT_SUN_PROFILES.find(p => p.id === plant.sun_requirement)
+    const profile = sunProfileFor(plant.sun_requirement)
     return fit && profile ? { fit, sunHours: hours, source, profile } : null
   })()
 

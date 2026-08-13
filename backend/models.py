@@ -20,6 +20,39 @@ from typing import Any, Literal
 from care_types import CARE_TYPES, normalize_care_type
 
 
+# --- Sun requirement ---
+
+# The only values `plants.sun_requirement` may hold. Shared with the species
+# ecology `sun_preference` vocabulary and the frontend's PLANT_SUN_PROFILES.
+SUN_REQUIREMENTS = ("shade", "partial_sun", "full_sun")
+
+# Retired spellings from the five-tile Light control (#886). Two of the five
+# tiles had no mapping at all, so "dark" and "bright" reached the column
+# verbatim and matched no profile — the sun-fit card then rendered nothing.
+# Migration 0070 rewrites the stored rows; this keeps a stale client from
+# writing new ones.
+_LEGACY_SUN_REQUIREMENTS = {
+    "dark": "shade",
+    "bright": "partial_sun",
+    "indirect": "partial_sun",
+    "full-sun": "full_sun",
+}
+
+
+def normalize_sun_requirement(value: str | None) -> str | None:
+    """Canonical sun requirement, or None for unset/unrecognised input.
+
+    Coerces rather than 422s: an unknown value is a client that is behind, and
+    rejecting the whole save would lose the rest of the user's edit.
+    """
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    if cleaned in SUN_REQUIREMENTS:
+        return cleaned
+    return _LEGACY_SUN_REQUIREMENTS.get(cleaned)
+
+
 # --- Users ---
 
 class UserOut(BaseModel):
@@ -106,6 +139,11 @@ class PlantCreate(BaseModel):
     mulch: bool | None = None          # NULL = unknown (neutral); True = mulched
     care_schedules: list[CareScheduleCreate] = []
 
+    @field_validator("sun_requirement")
+    @classmethod
+    def _canonical_sun_requirement(cls, value: str | None) -> str | None:
+        return normalize_sun_requirement(value)
+
 
 class PlantUpdate(BaseModel):
     name: str | None = None
@@ -135,6 +173,11 @@ class PlantUpdate(BaseModel):
     substrate: list[str] | None = None
     acquired_from: str | None = None
     mulch: bool | None = None          # True/False = set; None = leave as-is
+
+    @field_validator("sun_requirement")
+    @classmethod
+    def _canonical_sun_requirement(cls, value: str | None) -> str | None:
+        return normalize_sun_requirement(value)
 
 
 class CareScheduleOut(BaseModel):

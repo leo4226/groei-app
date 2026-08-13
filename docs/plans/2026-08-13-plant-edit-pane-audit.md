@@ -107,7 +107,7 @@ and then frozen.
 Severity: **P1** = wrong data persisted / silent loss, **P2** = broken or dead
 UI, **P3** = copy and polish.
 
-### P1-1 — Two of the five light options write values nothing can read
+### P1-1 — Two of the five light options write values nothing can read — **FIXED**
 
 The light tiles offer `dark · shade · indirect · bright · full-sun`
 (`EditPlant.tsx:518-524`, identical in `AddPlant.tsx`). `SUN_TILE_TO_DB`
@@ -127,6 +127,19 @@ re-selects the tile. Two of five choices are silent dead ends.
 
 Needs a data check (`SELECT sun_requirement, count(*) FROM plants GROUP BY 1`)
 plus a backfill, not just a UI fix.
+
+**Fixed.** The tile vocabulary is gone: `SUN_REQUIREMENT_IDS` (`shade |
+partial_sun | full_sun`) is now the single vocabulary shared by the forms, the
+sun profiles, the species `sun_preference` column and `plants.sun_requirement`,
+and both forms render it through one `sunRequirementTiles()` helper, so the
+control cannot emit a value the engine can't read. `normalizeSunRequirement()`
+coerces the retired spellings on read (`dark → shade`, `bright → partial_sun`,
+`indirect → partial_sun`, `full-sun → full_sun`) and `getSunFit` /
+`sunProfileFor` route through it, so plants already carrying a bad value render
+a fit immediately. Migration `0070` rewrites the stored rows and a validator on
+`PlantCreate` / `PlantUpdate` stops a stale client writing new ones. The
+subtitles changed from lux ranges to hours of direct sun, which is what
+`PLANT_SUN_PROFILES` actually compares — see P3-3.
 
 ### P1-2 — Clearing the species field leaves the plant linked to the old species
 
@@ -213,7 +226,7 @@ list in `eslint.i18n.config.js:67`; a pass over it should also remove that entry
 - The NL light label is **"Lichtmeting"** (light *measurement*) where EN says
   "Light" — which brings us to the next point.
 
-### P3-3 — The light row asks about the spot and stores it as the plant's requirement
+### P3-3 — The light row asks about the spot and stores it as the plant's requirement — **copy fixed**
 
 `labelLightDesc` is *"How much light it gets"* / *"Hoeveel licht de plant
 krijgt"*, and the tile subtitles are lux ranges (`≤500 lx`, `10–25k`) — every
@@ -226,6 +239,13 @@ verdict becomes a comparison of the spot with itself.
 The field the copy actually describes already exists — `measured_sun_hours` —
 and is editable in two other panes. This is the single most confusing datum in
 the form.
+
+**Half fixed** (landed with P1-1, since it is the same row). The row is now
+"Light requirement" / "Lichtbehoefte", described as *"How much direct sun this
+plant wants"*, with subtitles in hours of direct sun matching the profile
+buckets — so it no longer claims to be a light-meter reading of the spot. The
+other half — surfacing `measured_sun_hours` as a second row so the form shows
+both sides of the comparison — is still open and belongs with §4.3.
 
 ---
 

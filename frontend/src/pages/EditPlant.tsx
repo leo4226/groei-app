@@ -14,8 +14,10 @@ import TileGrid from '../components/ui/TileGrid'
 import TileIcon from '../components/ui/TileIcon'
 import SegmentedControl from '../components/ui/SegmentedControl'
 import ZonePicker from '../components/add/ZonePicker'
+import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PageMasthead from '../components/ui/PageMasthead'
-import { buildEditPlantPayload, SUN_DB_TO_TILE } from './editPlantPayload'
+import { buildEditPlantPayload } from './editPlantPayload'
+import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import { zoneAdviceKey } from './addPlant/prefill'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { resolveIconUrl } from '../utils/icons'
@@ -125,7 +127,7 @@ export default function EditPlant() {
         setSownDateInput(p.sown_date ? isoToDisplay(p.sown_date) : '')
         setLastRepottedInput(p.last_repotted ? isoToDisplay(p.last_repotted) : '')
         setNotes(p.notes ?? '')
-        setSunRequirement(p.sun_requirement ? (SUN_DB_TO_TILE[p.sun_requirement] ?? p.sun_requirement) : null)
+        setSunRequirement(normalizeSunRequirement(p.sun_requirement))
         // Form only controls the potted/bare icon variant. Its canonical
         // value comes from icon_key in the catalog effect below, never plant_type.
         setFormType('pot')
@@ -306,11 +308,9 @@ export default function EditPlant() {
     established: t.addPlant.phaseEstablished,
   }
   const previewSunLabel: Record<string, string> = {
-    dark: t.addPlant.lightDark,
     shade: t.addPlant.lightShade,
-    indirect: t.addPlant.lightIndirect,
-    bright: t.addPlant.lightBright,
-    'full-sun': t.addPlant.lightFullSun,
+    partial_sun: t.addPlant.lightPartial,
+    full_sun: t.addPlant.lightFullSun,
   }
   const previewZone = selectedZoneId ? zoneList.find(z => z.id === selectedZoneId) ?? null : null
   const previewMrz = `P<FLO<<${name}<<${species}`
@@ -512,16 +512,10 @@ export default function EditPlant() {
                   />
                 </FormRow>
 
-                {/* Light measurement */}
+                {/* Light requirement — the three values the sun-fit engine knows */}
                 <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
                   <TileGrid
-                    options={[
-                      { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: <TileIcon name="light-dark" /> },
-                      { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: <TileIcon name="light-shade" /> },
-                      { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: <TileIcon name="light-indirect" /> },
-                      { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: <TileIcon name="light-bright" /> },
-                      { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: <TileIcon name="light-full" /> },
-                    ]}
+                    options={sunRequirementTiles(t)}
                     value={sunRequirement}
                     onChange={(v) => setSunRequirement(v || null)}
                   />

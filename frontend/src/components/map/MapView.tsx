@@ -28,7 +28,7 @@ import PlantSuitabilityLayer from '../sun/PlantSuitabilityLayer'
 import FixedPlantsLayer from './FixedPlantsLayer'
 import CanvasZonesLayer from './CanvasZonesLayer'
 import type { HeatmapCell } from '../../utils/heatmapCalc'
-import { PLANT_SUN_PROFILES, type PlantSunProfile } from '../../utils/plantSunRequirements'
+import { sunProfileFor, type PlantSunProfile } from '../../utils/plantSunRequirements'
 import { FIXED_PLANTS, type FixedPlant } from '../../constants/fixedPlants'
 import type { HeatmapLayer } from '../../utils/lightQuality'
 import { dispatchPlantHit } from './plantHitDispatch'
@@ -533,9 +533,7 @@ export default function MapView({ map, plants, objects, onPlantTap, onObjectTap,
   const draggingPlant = dragging?.type === 'plant'
     ? plants.find(p => p.id === dragging.id) ?? null
     : null
-  const draggingProfile = draggingPlant?.sun_requirement
-    ? PLANT_SUN_PROFILES.find(p => p.id === draggingPlant.sun_requirement) ?? null
-    : null
+  const draggingProfile = sunProfileFor(draggingPlant?.sun_requirement)
 
   function computeZoomViewBox(baseViewBox: string, z: number, px: number, py: number): string {
     if (z === 1 && px === 0 && py === 0) return baseViewBox

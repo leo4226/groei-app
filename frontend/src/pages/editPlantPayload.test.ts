@@ -64,7 +64,7 @@ const baseInput = {
   lastRepottedInput: '',
   notes: 'Still healthy',
   iconKey: 'monstera',
-  sunRequirement: 'indirect',
+  sunRequirement: 'partial_sun',
   phase: 'established' as const,
   sownDateInput: '',
   mulch: false,

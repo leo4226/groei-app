@@ -12,6 +12,50 @@ export interface PlantSunProfile {
 
 export type SunFit = 'good' | 'partial' | 'poor'
 
+/**
+ * The only sun-requirement values that exist. They are the ids of
+ * `PLANT_SUN_PROFILES`, the species-ecology `sun_preference` vocabulary and the
+ * `plants.sun_requirement` column all at once — one vocabulary, no translation
+ * layer.
+ *
+ * The forms used to offer a five-option *tile* vocabulary
+ * (`dark | shade | indirect | bright | full-sun`) that was mapped down to these
+ * three on save. Only three of the five had a mapping, so picking "dark" or
+ * "bright" persisted a literal string no profile matched: `getSunFit` returned
+ * null and the sun-fit card silently vanished from the passport, the quick
+ * sheet and the map marker (#886).
+ */
+export const SUN_REQUIREMENT_IDS = ['shade', 'partial_sun', 'full_sun'] as const
+
+export type SunRequirementId = (typeof SUN_REQUIREMENT_IDS)[number]
+
+/**
+ * Legacy spellings → canonical id. Covers both the retired tile vocabulary and
+ * the two values that were never mappable: `dark` is shade with less light
+ * still, and `bright` (10–25k lx) is bright-but-indirect, i.e. partial sun.
+ *
+ * Migration `0071` rewrites the stored rows, but reads normalize too so a plant
+ * saved by an older client — or by a cached bundle mid-deploy — still renders a
+ * fit instead of nothing.
+ */
+const LEGACY_SUN_REQUIREMENTS: Record<string, SunRequirementId> = {
+  dark: 'shade',
+  indirect: 'partial_sun',
+  bright: 'partial_sun',
+  'full-sun': 'full_sun',
+}
+
+/** Canonical id for any stored/legacy value, or null when we know nothing. */
+export function normalizeSunRequirement(
+  value: string | null | undefined,
+): SunRequirementId | null {
+  if (!value) return null
+  if ((SUN_REQUIREMENT_IDS as readonly string[]).includes(value)) {
+    return value as SunRequirementId
+  }
+  return LEGACY_SUN_REQUIREMENTS[value] ?? null
+}
+
 export type SunHoursSource = 'measured' | 'estimated'
 
 // Resolves the sun-hours a plant's fit should be judged against. A manually
@@ -26,6 +70,14 @@ export function effectiveSunHours(
     : { sunHours: modelled, source: 'estimated' }
 }
 
+/** The profile behind a stored/legacy sun requirement, or null when unknown. */
+export function sunProfileFor(
+  sunRequirement: string | null | undefined,
+): PlantSunProfile | null {
+  const id = normalizeSunRequirement(sunRequirement)
+  return id ? PLANT_SUN_PROFILES.find(p => p.id === id) ?? null : null
+}
+
 export const SUN_FIT_COLORS: Record<SunFit, string> = {
   good:    '#5B9A6F',
   partial: '#D4A843',
@@ -35,8 +87,9 @@ export const SUN_FIT_COLORS: Record<SunFit, string> = {
 // Returns how well a plant's sun requirement matches actual sun hours.
 // ±1h from the threshold is considered 'partial' rather than an immediate 'poor'.
 export function getSunFit(sunRequirement: string | null, sunHours: number): SunFit | null {
-  if (!sunRequirement) return null
-  const profile = PLANT_SUN_PROFILES.find(p => p.id === sunRequirement)
+  const id = normalizeSunRequirement(sunRequirement)
+  if (!id) return null
+  const profile = PLANT_SUN_PROFILES.find(p => p.id === id)
   if (!profile) return null
   if (sunHours >= profile.minHours && sunHours <= profile.maxHours) return 'good'
   const dist = sunHours < profile.minHours ? profile.minHours - sunHours : sunHours - profile.maxHours

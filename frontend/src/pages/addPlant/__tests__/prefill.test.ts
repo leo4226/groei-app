@@ -67,7 +67,7 @@ describe('normalizePrefill', () => {
     expect(n.name).toBe('Gatenplant')
     expect(n.species).toBe('Monstera deliciosa')
     expect(n.notes).toBe('Houdt van indirect licht.')
-    expect(n.sunRequirement).toBe('indirect') // partial_sun -> indirect tile
+    expect(n.sunRequirement).toBe('partial_sun') // tiles carry the canonical ids
     expect(n.formType).toBe('pot') // klimmer -> pot
     expect(n.careThresholds).toBeNull()
   })
@@ -162,10 +162,17 @@ describe('waterAdviceFromThresholds', () => {
 })
 
 describe('sunPreferenceToTile', () => {
-  it('maps each species sun_preference value to a tile', () => {
-    expect(sunPreferenceToTile('full_sun')).toBe('full-sun')
-    expect(sunPreferenceToTile('partial_sun')).toBe('indirect')
+  it('passes the canonical species sun_preference values straight through', () => {
+    expect(sunPreferenceToTile('full_sun')).toBe('full_sun')
+    expect(sunPreferenceToTile('partial_sun')).toBe('partial_sun')
     expect(sunPreferenceToTile('shade')).toBe('shade')
+  })
+
+  it('normalizes the retired tile spellings (#886)', () => {
+    expect(sunPreferenceToTile('dark')).toBe('shade')
+    expect(sunPreferenceToTile('bright')).toBe('partial_sun')
+    expect(sunPreferenceToTile('indirect')).toBe('partial_sun')
+    expect(sunPreferenceToTile('full-sun')).toBe('full_sun')
   })
 
   it('returns null for unknown / missing values', () => {
@@ -211,14 +218,14 @@ describe('buildCreatePayload', () => {
     name: 'Mien',
     species: 'Monstera deliciosa',
     notes: '',
-    sunRequirement: 'indirect',
+    sunRequirement: 'partial_sun',
     careSchedules: [{ care_type: 'water' as const, interval_days: 7 }],
   }
 
-  it('database path maps plant_type via DUTCH_TYPE_TO_SYSTEM and sun via SUN_TILE_TO_DB', () => {
+  it('database path maps plant_type via DUTCH_TYPE_TO_SYSTEM and normalizes sun', () => {
     const p = buildCreatePayload({ ...base, kind: 'database', databaseType: 'klimmer' })
     expect(p.plant_type).toBe('climber')      // klimmer -> climber
-    expect(p.sun_requirement).toBe('partial_sun') // indirect -> partial_sun
+    expect(p.sun_requirement).toBe('partial_sun')
     expect(p.name).toBe('Mien')
     expect(p.species).toBe('Monstera deliciosa')
     expect(p.care_schedules).toHaveLength(1)

@@ -9,6 +9,7 @@
 import type { LocalPlant } from '../../data/plants-dataset'
 import type { IdentifyCommitResult, PlantIcon, CareType, PlantCreateInput, CareScheduleInput } from '../../types'
 import { CARE_TYPE_INFO } from '../../types'
+import { normalizeSunRequirement, type SunRequirementId } from '../../utils/plantSunRequirements'
 
 // ── Constant maps (moved from AddPlant.tsx, co-located here) ──
 
@@ -28,25 +29,6 @@ export const WATER_NEEDS_TO_DAYS: Record<string, number> = {
   laag: 14,
   gemiddeld: 7,
   hoog: 3,
-}
-
-/**
- * Map database / species `sun_preference` values to TileGrid IDs.
- * Covers both the `LocalPlant.sunRequirement` vocabulary and the species
- * ecology `sun_preference` vocabulary — they share the same three values
- * (`shade` | `partial_sun` | `full_sun`, see backend models.py).
- */
-export const SUN_DB_TO_TILE: Record<string, string> = {
-  shade: 'shade',
-  partial_sun: 'indirect',
-  full_sun: 'full-sun',
-}
-
-/** Reverse: map TileGrid sunRequirement IDs back to database values. */
-export const SUN_TILE_TO_DB: Record<string, string> = {
-  shade: 'shade',
-  indirect: 'partial_sun',
-  'full-sun': 'full_sun',
 }
 
 /** Map database plant type to form type. */
@@ -173,13 +155,12 @@ export function buildSchedules(
 // ── Sun mapping ──
 
 /**
- * Map a species ecology `sun_preference` (`full_sun` | `partial_sun` | `shade`)
- * to a Light TileGrid id. Unknown / missing → null (no sun set, rather than a
- * wrong tile).
+ * Map a species ecology `sun_preference` to the Light TileGrid id. Since the
+ * tiles carry the canonical ids this is just normalization: unknown / missing →
+ * null (no sun set, rather than a wrong tile).
  */
 export function sunPreferenceToTile(sunPreference: string | null | undefined): string | null {
-  if (!sunPreference) return null
-  return SUN_DB_TO_TILE[sunPreference] ?? null
+  return normalizeSunRequirement(sunPreference)
 }
 
 // ── Zone advice ──
@@ -193,19 +174,17 @@ export function sunPreferenceToTile(sunPreference: string | null | undefined): s
  * now follows the sun requirement we actually know, and stays silent when we
  * know nothing rather than inventing a claim.
  */
-export type ZoneAdviceKey = 'shade' | 'indirect' | 'bright' | 'fullSun'
+export type ZoneAdviceKey = 'shade' | 'indirect' | 'fullSun'
 
-const SUN_TILE_TO_ADVICE: Record<string, ZoneAdviceKey> = {
-  dark: 'shade',
+const SUN_TO_ADVICE: Record<SunRequirementId, ZoneAdviceKey> = {
   shade: 'shade',
-  indirect: 'indirect',
-  bright: 'bright',
-  'full-sun': 'fullSun',
+  partial_sun: 'indirect',
+  full_sun: 'fullSun',
 }
 
 export function zoneAdviceKey(sunRequirement: string | null | undefined): ZoneAdviceKey | null {
-  if (!sunRequirement) return null
-  return SUN_TILE_TO_ADVICE[sunRequirement] ?? null
+  const id = normalizeSunRequirement(sunRequirement)
+  return id ? SUN_TO_ADVICE[id] : null
 }
 
 // ── normalizePrefill: consolidate the three-path duck-typing into one shape ──
@@ -260,7 +239,7 @@ export function normalizePrefill(
       name: prefill.dutchName,
       species: prefill.latinName,
       notes: prefill.amsterdamNotes ?? '',
-      sunRequirement: SUN_DB_TO_TILE[prefill.sunRequirement] ?? prefill.sunRequirement ?? null,
+      sunRequirement: normalizeSunRequirement(prefill.sunRequirement),
       formType: TYPE_TO_FORM[prefill.type] ?? 'pot',
       iconKeyHint: prefill.iconKey ?? null,
       speciesId: null, careThresholds: null, photoPath: null,
@@ -335,7 +314,7 @@ export function buildCreatePayload(s: CreatePayloadFormState): PlantCreateInput 
     notes: s.notes.trim() || undefined,
     icon_key: s.iconKey,
     plant_type: resolvePlantType(s),
-    sun_requirement: s.sunRequirement ? (SUN_TILE_TO_DB[s.sunRequirement] ?? s.sunRequirement) : undefined,
+    sun_requirement: normalizeSunRequirement(s.sunRequirement) ?? undefined,
     phase: s.phase,
     sown_date: s.sownDate,
     quantity: s.quantity != null && s.quantity > 1 ? s.quantity : undefined,

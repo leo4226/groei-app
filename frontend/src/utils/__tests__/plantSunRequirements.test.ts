@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { getSunFit, effectiveSunHours, PLANT_SUN_PROFILES } from '../plantSunRequirements'
+import {
+  getSunFit,
+  effectiveSunHours,
+  normalizeSunRequirement,
+  sunProfileFor,
+  PLANT_SUN_PROFILES,
+  SUN_REQUIREMENT_IDS,
+} from '../plantSunRequirements'
 
 // Thresholds must mirror the unified 4h/2h light model (lightQuality.ts +
 // backend plant_suggestions.py bucket_for) — see issue #811.
@@ -76,5 +83,70 @@ describe('effectiveSunHours', () => {
   it('falls back to modelled when measured is null', () => {
     expect(effectiveSunHours(null, 1)).toEqual({ sunHours: 1, source: 'estimated' })
     expect(effectiveSunHours(undefined, 1)).toEqual({ sunHours: 1, source: 'estimated' })
+  })
+})
+
+// ── #886: the Light row used to offer five tiles over a three-value model ──
+//
+// `dark` and `bright` had no mapping to a stored value, so they reached
+// `plants.sun_requirement` verbatim. Nothing matched them, `getSunFit` returned
+// null, and the sun-fit card vanished from the passport, the quick sheet and
+// the marker ring — silently, and without the editor looking wrong on reopen.
+describe('normalizeSunRequirement', () => {
+  it('passes the canonical ids through unchanged', () => {
+    for (const id of SUN_REQUIREMENT_IDS) {
+      expect(normalizeSunRequirement(id)).toBe(id)
+    }
+  })
+
+  it('maps every retired tile spelling onto a canonical id', () => {
+    expect(normalizeSunRequirement('dark')).toBe('shade')
+    expect(normalizeSunRequirement('bright')).toBe('partial_sun')
+    expect(normalizeSunRequirement('indirect')).toBe('partial_sun')
+    expect(normalizeSunRequirement('full-sun')).toBe('full_sun')
+  })
+
+  it('returns null for unset and genuinely unknown values', () => {
+    expect(normalizeSunRequirement(null)).toBeNull()
+    expect(normalizeSunRequirement(undefined)).toBeNull()
+    expect(normalizeSunRequirement('')).toBeNull()
+    expect(normalizeSunRequirement('twilight')).toBeNull()
+  })
+
+  it('every canonical id has a profile, so a saved value always has a fit', () => {
+    for (const id of SUN_REQUIREMENT_IDS) {
+      expect(PLANT_SUN_PROFILES.find(p => p.id === id)).toBeDefined()
+      expect(getSunFit(id, 3)).not.toBeNull()
+    }
+  })
+})
+
+describe('getSunFit with legacy values', () => {
+  it('grades a plant stored as "dark" instead of going silent', () => {
+    // The regression: this returned null, which reads as "no sun data" and
+    // removes the whole card rather than showing a poor fit.
+    expect(getSunFit('dark', 0.5)).toBe('good')
+    expect(getSunFit('dark', 8)).toBe('poor')
+  })
+
+  it('grades a plant stored as "bright"', () => {
+    expect(getSunFit('bright', 3)).toBe('good')
+  })
+
+  it('still returns null when there is genuinely no requirement', () => {
+    expect(getSunFit(null, 5)).toBeNull()
+    expect(getSunFit('twilight', 5)).toBeNull()
+  })
+})
+
+describe('sunProfileFor', () => {
+  it('resolves legacy values to the right profile', () => {
+    expect(sunProfileFor('dark')?.id).toBe('shade')
+    expect(sunProfileFor('bright')?.id).toBe('partial_sun')
+  })
+
+  it('is null for unknown input', () => {
+    expect(sunProfileFor('twilight')).toBeNull()
+    expect(sunProfileFor(null)).toBeNull()
   })
 })

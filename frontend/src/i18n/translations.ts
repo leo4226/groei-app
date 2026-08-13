@@ -1034,14 +1034,11 @@ export type Translations = {
     labelSubstrateDesc: string
     substrateHelp: string
     // Light tiles
-    lightDark: string
-    lightDarkSub: string
+    // One per SUN_REQUIREMENT_IDS — the Light row offers exactly these three.
     lightShade: string
     lightShadeSub: string
-    lightIndirect: string
-    lightIndirectSub: string
-    lightBright: string
-    lightBrightSub: string
+    lightPartial: string
+    lightPartialSub: string
     lightFullSun: string
     lightFullSunSub: string
     // Pot material tiles
@@ -1150,7 +1147,6 @@ export type Translations = {
     zoneAdvice: {
       shade: (subject: string) => string
       indirect: (subject: string) => string
-      bright: (subject: string) => string
       fullSun: (subject: string) => string
     }
     // ── Entry banner ──

@@ -1,17 +1,6 @@
 import type { MapInfo, Plant } from '../types'
 import { displayToIso } from '../utils/dateFormat'
-
-export const SUN_DB_TO_TILE: Record<string, string> = {
-  shade: 'shade',
-  partial_sun: 'indirect',
-  full_sun: 'full-sun',
-}
-
-export const SUN_TILE_TO_DB: Record<string, string> = {
-  shade: 'shade',
-  indirect: 'partial_sun',
-  'full-sun': 'full_sun',
-}
+import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 
 type PlacementMap = Pick<MapInfo, 'id' | 'viewbox'>
 
@@ -43,9 +32,7 @@ export function buildEditPlantPayload(input: BuildEditPlantPayloadInput): Partia
     last_repotted: displayToIso(input.lastRepottedInput) || null,
     notes: input.notes.trim() || null,
     icon_key: input.iconKey,
-    sun_requirement: input.sunRequirement
-      ? (SUN_TILE_TO_DB[input.sunRequirement] ?? input.sunRequirement)
-      : null,
+    sun_requirement: normalizeSunRequirement(input.sunRequirement),
     phase: input.phase,
     sown_date: displayToIso(input.sownDateInput) || null,
     // The edit form has no measured-sun control (that lives in the map quick

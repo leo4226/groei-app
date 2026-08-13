@@ -20,6 +20,8 @@ import SegmentedControl from '../components/ui/SegmentedControl'
 import ChipCluster from '../components/ui/ChipCluster'
 import ZonePicker from '../components/add/ZonePicker'
 import PlacementPicker from '../components/add/PlacementPicker'
+import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
+import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import PageMasthead from '../components/ui/PageMasthead'
 import {
   isIdentifyPrefill,
@@ -29,7 +31,6 @@ import {
   sunPreferenceToTile,
   waterAdviceFromThresholds,
   zoneAdviceKey,
-  SUN_DB_TO_TILE,
   TYPE_TO_FORM,
 } from './addPlant/prefill'
 import { resolveDefaultMapId, type MapPos } from './addPlant/placementModel'
@@ -115,7 +116,7 @@ export default function AddPlant() {
   )
   const [sunRequirement, setSunRequirement] = useState<string | null>(
     prefill && !isIdentifyPrefill(prefill) && 'latinName' in prefill
-      ? SUN_DB_TO_TILE[(prefill as LocalPlant).sunRequirement] ?? (prefill as LocalPlant).sunRequirement
+      ? normalizeSunRequirement((prefill as LocalPlant).sunRequirement)
       : null
   )
   const [iconKey, setIconKey] = useState<string | null>(
@@ -299,7 +300,7 @@ export default function AddPlant() {
       setName(displayPlantName(p, t.locale))
       setSpecies(p.latinName)
       setNotes(p.amsterdamNotes ?? '')
-      setSunRequirement(SUN_DB_TO_TILE[p.sunRequirement] ?? p.sunRequirement ?? null)
+      setSunRequirement(normalizeSunRequirement(p.sunRequirement))
       setFormType(TYPE_TO_FORM[p.type] ?? 'pot')
       // Try to auto-match an icon from the catalog
       if (iconCatalog.length > 0) {
@@ -886,18 +887,12 @@ export default function AddPlant() {
             ) : null
           })()}
 
-          {/* Light measurement — deliberately outside DETAILS: sun_requirement
+          {/* Light requirement — deliberately outside DETAILS: sun_requirement
               drives garden fit and the sun overlays, and a manual add that
               never opens DETAILS used to ship without it entirely. */}
           <FormRow label={t.addPlant.labelLight} description={t.addPlant.labelLightDesc}>
             <TileGrid
-              options={[
-                { id: 'dark', title: t.addPlant.lightDark, subtitle: t.addPlant.lightDarkSub, glyph: <TileIcon name="light-dark" /> },
-                { id: 'shade', title: t.addPlant.lightShade, subtitle: t.addPlant.lightShadeSub, glyph: <TileIcon name="light-shade" /> },
-                { id: 'indirect', title: t.addPlant.lightIndirect, subtitle: t.addPlant.lightIndirectSub, glyph: <TileIcon name="light-indirect" /> },
-                { id: 'bright', title: t.addPlant.lightBright, subtitle: t.addPlant.lightBrightSub, glyph: <TileIcon name="light-bright" /> },
-                { id: 'full-sun', title: t.addPlant.lightFullSun, subtitle: t.addPlant.lightFullSunSub, glyph: <TileIcon name="light-full" /> },
-              ]}
+              options={sunRequirementTiles(t)}
               value={sunRequirement}
               onChange={(v) => setSunRequirement(v || null)}
             />
