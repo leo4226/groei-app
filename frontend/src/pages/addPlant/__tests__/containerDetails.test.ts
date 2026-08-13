@@ -59,7 +59,9 @@ describe('buildCreatePayload — container / provenance detail', () => {
 // ── P1-3: zone advice must follow the sun requirement, not one fixed line ──
 
 describe('zoneAdviceKey', () => {
-  it('maps each sun requirement to its own advice', () => {
+  it('maps each light tile to its own advice', () => {
+    // The "tiles" are the canonical sun requirements since #886; the five-value
+    // tile vocabulary they used to carry is covered by the case below.
     expect(zoneAdviceKey('shade')).toBe('shade')
     expect(zoneAdviceKey('partial_sun')).toBe('indirect')
     expect(zoneAdviceKey('full_sun')).toBe('fullSun')

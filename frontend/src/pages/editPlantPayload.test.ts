@@ -79,7 +79,9 @@ const baseInput = {
 }
 
 describe('buildEditPlantPayload', () => {
-  it('omits placement, location and botanical category fields when only ordinary fields change', () => {
+  it('omits placement, location, pot and botanical category fields when only ordinary fields change', () => {
+    // "pot" no longer holds: the form gained the pot fields in #886, so they
+    // are sent now and the container tests below own that behaviour.
     const payload = buildEditPlantPayload(baseInput)
 
     expect(payload).toMatchObject({

@@ -162,7 +162,8 @@ describe('waterAdviceFromThresholds', () => {
 })
 
 describe('sunPreferenceToTile', () => {
-  it('passes the canonical species sun_preference values straight through', () => {
+  it('maps each species sun_preference value to a tile', () => {
+    // Since #886 the tiles carry the canonical ids, so this is a pass-through.
     expect(sunPreferenceToTile('full_sun')).toBe('full_sun')
     expect(sunPreferenceToTile('partial_sun')).toBe('partial_sun')
     expect(sunPreferenceToTile('shade')).toBe('shade')
@@ -222,7 +223,9 @@ describe('buildCreatePayload', () => {
     careSchedules: [{ care_type: 'water' as const, interval_days: 7 }],
   }
 
-  it('database path maps plant_type via DUTCH_TYPE_TO_SYSTEM and normalizes sun', () => {
+  it('database path maps plant_type via DUTCH_TYPE_TO_SYSTEM and sun via SUN_TILE_TO_DB', () => {
+    // SUN_TILE_TO_DB is gone (#886) — normalizeSunRequirement does this now,
+    // and for a canonical value it is a pass-through.
     const p = buildCreatePayload({ ...base, kind: 'database', databaseType: 'klimmer' })
     expect(p.plant_type).toBe('climber')      // klimmer -> climber
     expect(p.sun_requirement).toBe('partial_sun')
