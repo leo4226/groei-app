@@ -430,16 +430,25 @@ export default function PlantQuickSheet({
 
           {/* ── Status line + one-tap care chips ── */}
           <div className="plant-quick-sheet-care" style={{ marginBottom: 14 }}>
-            <div style={{ marginBottom: 12, minHeight: 18 }}>
-              {dueCount > 0 ? (
+            {/* Height is reserved for both lines — the status and the "next up"
+                link — so the chips below do not jump down when `detail` lands.
+                The sheet used to reserve one line's worth and render nothing,
+                then grow by the other line on load (#888). */}
+            <div style={{ marginBottom: 12, minHeight: 45 }}>
+              {detail === null ? (
+                <div aria-hidden>
+                  <div className="skeleton" style={{ height: 13, width: 132, borderRadius: 6 }} />
+                  <div className="skeleton" style={{ height: 11, width: 168, borderRadius: 6, marginTop: 6, opacity: 0.6 }} />
+                </div>
+              ) : dueCount > 0 ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-status-size, 13px)', fontWeight: 600, color: 'var(--color-overdue)' }}>
                   <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(dueCount)}
                 </span>
-              ) : detail !== null ? (
+              ) : (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 'var(--pq-status-size, 13px)', color: 'var(--color-text-muted)' }}>
                   <Glyph name="check" size={14} style={{ color: 'var(--color-primary)' }} />{t.mapPage.sheetAllGood}
                 </span>
-              ) : null}
+              )}
               {detail !== null && (
                 <button
                   onClick={() => { onClose(); navigate(`/plants/${plant.id}#${PLANT_PASSPORT_ANCHORS.care}`) }}
