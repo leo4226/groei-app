@@ -861,6 +861,8 @@ export const en: Translations = {
     careRepot: 'Repot',
     careMist: 'Mist',
     careRotate: 'Rotate',
+    carePestCheck: 'Pests',
+    careDust: 'Wipe',
     careProtectCold: 'Cold protection',
     careProtectHeat: 'Heat protection',
     undo: 'Undo',

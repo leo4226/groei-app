@@ -820,6 +820,8 @@ export type Translations = {
     careRepot: string
     careMist: string
     careRotate: string
+    carePestCheck: string
+    careDust: string
     careProtectCold: string
     careProtectHeat: string
     undo: string                        // chip label when a care action was logged — "Ongedaan" / "Undo"

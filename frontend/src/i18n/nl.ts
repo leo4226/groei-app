@@ -861,6 +861,8 @@ export const nl: Translations = {
     careRepot: 'Verpotten',
     careMist: 'Sproeien',
     careRotate: 'Draaien',
+    carePestCheck: 'Luizen',
+    careDust: 'Poetsen',
     careProtectCold: 'Beschermen tegen kou',
     careProtectHeat: 'Beschermen tegen hitte',
     undo: 'Ongedaan',

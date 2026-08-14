@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant, MapInfo, SecondaryMarker } from '../../types'
-import { CARE_TYPE_INFO } from '../../types'
+import { careChipTypes, dueChipCount, dueDaysByType } from './quickSheetCareChips'
 import { useFloreren } from '../../store/useFloreren'
 import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
@@ -162,34 +162,32 @@ export default function PlantQuickSheet({
   const iconUrl = plant.icon_key ? resolveIconUrl(plant.icon_key) : null
   const displayName = plantDisplayName(plant, t.locale)
 
-  // ── Care schedules: only overdue/today, minus already-done ──
-  const urgentSchedules = (detail?.care_schedules ?? []).filter(sched => {
-    if (doneTypes.has(sched.care_type)) return false
-    const days = Math.round((new Date(sched.next_due).getTime() - new Date().setHours(0,0,0,0)) / 86400000)
-    return days <= 0
-  })
+  // Days-until-due per scheduled care type (negative = overdue, 0 = today).
+  const dueByType = dueDaysByType(detail?.care_schedules ?? [])
+  // Quick-log chips: water + feed always, plus any other scheduled care type.
+  const chipTypes = careChipTypes(dueByType)
+  // The status line must promise exactly what the chips can deliver. It used to
+  // count every overdue schedule while the chip list silently dropped
+  // pest_check and dust, so the sheet could say "4 taken te doen" and offer two
+  // (#888).
+  const dueCount = dueChipCount(dueByType, doneTypes)
 
-  const careLabelMap: Record<string, string> = {
+  // Chip labels are deliberately shorter than the catalog's (the chip clamps at
+  // 64px and ellipsises): "Gieten", not "Water geven". The fallback is
+  // t.careTypes — localized and complete — rather than CARE_TYPE_INFO, whose
+  // labels are English-only and printed "Wipe leaves" into the Dutch UI.
+  const chipLabels: Record<string, string> = {
     water: t.plantQuickSheet.careWater,
     fertilize: t.plantQuickSheet.careFertilize,
     prune: t.plantQuickSheet.carePrune,
     repot: t.plantQuickSheet.careRepot,
     mist: t.plantQuickSheet.careMist,
     rotate: t.plantQuickSheet.careRotate,
-    frost_protect: t.plantQuickSheet.careProtectCold,
-    heat_protect: t.plantQuickSheet.careProtectHeat,
+    pest_check: t.plantQuickSheet.carePestCheck,
+    dust: t.plantQuickSheet.careDust,
   }
-
-  // Days-until-due per scheduled care type (negative = overdue, 0 = today).
-  const dueByType = new Map<string, number>()
-  for (const s of detail?.care_schedules ?? []) {
-    const days = Math.round((new Date(s.next_due).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000)
-    const prev = dueByType.get(s.care_type)
-    if (prev === undefined || days < prev) dueByType.set(s.care_type, days)
-  }
-  // Quick-log chips: water + feed always, plus any other scheduled care type.
-  const CARE_ORDER = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'frost_protect', 'heat_protect']
-  const careChipTypes = CARE_ORDER.filter((ct) => ct === 'water' || ct === 'fertilize' || dueByType.has(ct))
+  const careLabel = (ct: string) =>
+    chipLabels[ct] ?? t.careTypes[ct as keyof typeof t.careTypes] ?? ct
 
   const handleCare = async (careType: string) => {
     setSavingType(careType)
@@ -419,9 +417,9 @@ export default function PlantQuickSheet({
           {/* ── Status line + one-tap care chips ── */}
           <div className="plant-quick-sheet-care" style={{ marginBottom: 14 }}>
             <div style={{ marginBottom: 12, minHeight: 18 }}>
-              {urgentSchedules.length > 0 ? (
+              {dueCount > 0 ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-status-size, 13px)', fontWeight: 600, color: 'var(--color-overdue)' }}>
-                  <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
+                  <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(dueCount)}
                 </span>
               ) : detail !== null ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 'var(--pq-status-size, 13px)', color: 'var(--color-text-muted)' }}>
@@ -432,8 +430,7 @@ export default function PlantQuickSheet({
 
             {/* One-tap care chips — tap to log "done today"; + a progress-photo chip */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {careChipTypes.map((ct) => {
-                const info = CARE_TYPE_INFO[ct as keyof typeof CARE_TYPE_INFO]
+              {chipTypes.map((ct) => {
                 const due = dueByType.get(ct)
                 const overdue = due !== undefined && due < 0
                 const dueToday = due === 0
@@ -445,8 +442,8 @@ export default function PlantQuickSheet({
                     key={ct}
                     onClick={() => handleCare(ct)}
                     disabled={saving}
-                    aria-label={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : (careLabelMap[ct] ?? info?.label ?? ct)}
-                    title={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : undefined}
+                    aria-label={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : careLabel(ct)}
+                    title={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : undefined}
                     style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
                   >
                     <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
@@ -458,7 +455,7 @@ export default function PlantQuickSheet({
                       )}
                     </span>
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: done ? 'var(--color-primary)' : 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {done ? t.plantQuickSheet.undo : (careLabelMap[ct] ?? info?.label ?? ct)}
+                      {done ? t.plantQuickSheet.undo : careLabel(ct)}
                     </span>
                   </button>
                 )
