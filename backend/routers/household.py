@@ -179,15 +179,32 @@ async def list_members(
     current=Depends(get_current_account),
     db=Depends(db_dep),
 ):
-    """List all accounts in the current household (for settings page)."""
+    """List all accounts in the current household (for the settings page).
+
+    Each row also carries `user_id` — the legacy `users` row that `DELETE
+    /household/members/{user_id}` expects — and `is_self`.
+
+    `accounts` and `users` are two id spaces joined only by name (there is no
+    FK between them), so *somebody* has to bridge them. That used to be the
+    settings page, which matched `users.name === member.name` in the browser
+    and would remove the wrong person when two members shared a name. Doing it
+    here keeps the guesswork in one server-side place where the household is
+    already scoped, and lets the client pass an id it was given.
+    """
     rows = await db.execute_fetchall(
-        """SELECT id, name, email, avatar, created_at
-           FROM accounts
-           WHERE household_id = ?
-           ORDER BY created_at ASC""",
+        """SELECT a.id, a.name, a.email, a.avatar, a.created_at,
+                  u.id AS user_id
+           FROM accounts a
+           LEFT JOIN users u
+             ON u.household_id = a.household_id AND u.name = a.name
+           WHERE a.household_id = ?
+           ORDER BY a.created_at ASC""",
         (current["household_id"],),
     )
-    return [dict(r) for r in rows]
+    return [
+        {**dict(r), "is_self": r["id"] == current["account_id"]}
+        for r in rows
+    ]
 
 
 @router.patch("/members/{member_id}", response_model=HouseholdMemberOut)
