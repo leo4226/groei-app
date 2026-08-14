@@ -50,7 +50,7 @@ async def _active_round(db, code: str, target_embeddings: str | None, **kwargs) 
 
 
 @pytest.mark.asyncio
-async def test_create_game_prefers_stored_embeddings_over_the_worker(
+async def test_create_game_stores_best_effort_reference_embeddings(
     seeded_db, client, auth_header, monkeypatch
 ):
     """Stored photo vectors are used directly — no worker round-trip needed.
@@ -108,7 +108,7 @@ async def test_create_game_prefers_stored_embeddings_over_the_worker(
 
 
 @pytest.mark.asyncio
-async def test_answer_accepts_photo_match_when_species_name_does_not(
+async def test_answer_accepts_embedding_match_when_species_name_does_not_match(
     seeded_db, client, auth_header, monkeypatch
 ):
     await create_game_schema(seeded_db)
@@ -174,7 +174,7 @@ async def test_photo_match_rejects_an_unrelated_plant(
 
 
 @pytest.mark.asyncio
-async def test_species_name_still_scores_without_any_reference_photo(
+async def test_answer_keeps_species_name_fallback_without_embedding(
     seeded_db, client, auth_header, monkeypatch
 ):
     await create_game_schema(seeded_db)
