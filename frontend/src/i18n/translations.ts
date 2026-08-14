@@ -2137,6 +2137,45 @@ export type Translations = {
     deselectAll: string
     questionCount: string
     allQuestions: string
+    // Guest join (party mode)
+    gameName: string
+    yourName: string
+    yourNamePlaceholder: string
+    noAccountNeeded: string
+    joinFailed: string
+    gameAlreadyFinished: string
+    previewHosted: string
+    previewPlayers: string
+    sessionLost: string
+    rejoin: string
+    waitingForPlayersHint: string
+    // Maps + pacing
+    mapsSectionLabel: string
+    pacingSectionLabel: string
+    pacingRace: string
+    pacingHost: string
+    pacingRaceHint: string
+    pacingHostHint: string
+    roundLength: string
+    clueModeNameHint: string
+    clueModePhotoHint: string
+    clueModeLogbookHint: string
+    unlinkedSpeciesWarning: string
+    notIdentifiable: string
+    // Race round
+    foundCount: string
+    waitingForRoundEnd: string
+    firstToFind: string
+    skipRound: string
+    tryAgain: string
+    continue: string
+    weSaw: string
+    // Host override
+    awardHint: string
+    awardPlayer: string
+    // Sharing
+    roundsCount: string
+    pointsShort: string
     quizWhichPlant: string
     quizWhichPhoto: string
     quizAnswered: string

@@ -56,6 +56,16 @@ export default function GameQuizRound({ state, locked, submitting, onPick }: Pro
     const rand = mulberry32(roundIdx * 2654435761 + state.rounds.length)
     let pool = state.rounds.filter((r) => r.round_index !== clue.round_index)
     if (direction === 'pick-photo') pool = pool.filter((r) => r.clue_photo_url)
+    // Answers are graded by plant *name*, so a distractor sharing the target's
+    // name would score as correct when tapped. Two hostas both called
+    // "Hartlelie" is not a hypothetical in a real garden — drop the collisions.
+    const takenNames = new Set([clue.plant_name_nl.toLowerCase()])
+    pool = pool.filter((r) => {
+      const key = r.plant_name_nl.toLowerCase()
+      if (takenNames.has(key)) return false
+      takenNames.add(key)
+      return true
+    })
     const distractors = seededSample(pool, 3, rand)
     return seededSample([clue, ...distractors], distractors.length + 1, rand)
   }, [clue, roundIdx, state.rounds, direction])

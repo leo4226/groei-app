@@ -138,8 +138,9 @@ export default function MapActionCluster({
         </svg>
       </button>
 
-      {/* Garden game — outdoor only */}
-      {isOutdoor && onNewGame && (
+      {/* Plant game — indoor maps too: a hunt can cross from the living
+          room into the garden, and an indoor-only game is perfectly playable */}
+      {onNewGame && (
         <button
           onClick={onNewGame}
           title={t.game.newGame}

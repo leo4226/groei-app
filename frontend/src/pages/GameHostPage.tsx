@@ -3,17 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import { gameApi, type GameState, type AnswerResult } from '../api/game'
-import { plants as plantsApi } from '../api/client'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
+import GameRoundHeader from '../components/game/GameRoundHeader'
 import Glyph from '../components/ui/Glyph'
 import { QRCodeSVG } from 'qrcode.react'
 
-// The host is also a player (create_game registers them in game_players), so
-// the round view doubles as their play screen: clue + scan, with the answer
-// hidden behind a peek toggle so a playing host isn't spoiled but a refereeing
-// host can still nudge stuck guests (#244).
+// The host is a player too, so the round view doubles as their play screen:
+// clue + scan, with the answer behind a peek toggle so a playing host isn't
+// spoiled but a refereeing host can still nudge stuck guests (#244).
 type HostStep = 'waiting' | 'round' | 'camera' | 'analyzing' | 'result' | 'done'
 
 export default function GameHostPage() {
@@ -27,6 +26,7 @@ export default function GameHostPage() {
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
   const [answerRevealed, setAnswerRevealed] = useState(false)
   const [quizSubmitting, setQuizSubmitting] = useState(false)
+  const [awarding, setAwarding] = useState<number | null>(null)
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
     return user?.language === 'en' ? 'en' : 'nl'
@@ -37,23 +37,27 @@ export default function GameHostPage() {
     try {
       const s = await gameApi.getState(code)
       setState(s)
-      if (s.session.status === 'active' && step === 'waiting') setStep('round')
+      if (s.session.status === 'active') {
+        setStep((prev) => (prev === 'waiting' ? 'round' : prev))
+      }
       if (s.session.status === 'finished') setStep('done')
     } catch {
       // ignore transient errors
     }
-  }, [code, step])
+  }, [code])
 
   useEffect(() => {
     poll()
-    const id = setInterval(poll, 3000)
+    const interval = state?.session.pacing === 'race' ? 2000 : 3000
+    const id = setInterval(poll, interval)
     return () => clearInterval(id)
-  }, [poll])
+  }, [poll, state?.session.pacing])
+
+  const joinUrl = `${window.location.origin}/game?code=${code}`
 
   async function handleStart() {
     if (!code) return
-    const s = await gameApi.start(code)
-    setState(s)
+    setState(await gameApi.start(code))
     setStep('round')
   }
 
@@ -71,6 +75,19 @@ export default function GameHostPage() {
     }
   }
 
+  async function handleAward(playerId: number) {
+    if (!code || awarding !== null) return
+    setAwarding(playerId)
+    try {
+      await gameApi.award(code, playerId)
+      await poll()
+    } catch {
+      // Already-correct players 400 here; the poll below resyncs regardless.
+    } finally {
+      setAwarding(null)
+    }
+  }
+
   async function handleCancel() {
     if (!code) return
     try { await gameApi.delete(code) } catch { /* best effort */ }
@@ -78,7 +95,7 @@ export default function GameHostPage() {
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(`${window.location.origin}/game?code=${code}`)
+    navigator.clipboard.writeText(joinUrl)
       .then(() => {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
@@ -86,17 +103,11 @@ export default function GameHostPage() {
       .catch(() => {})
   }
 
-  // Host scans just like a player — same identify → answer flow as GamePlayerPage.
-  async function handleCapture(blob: Blob, dataUrl: string) {
+  async function handleCapture(blob: Blob) {
     if (!code) return
     setStep('analyzing')
     try {
-      const resp = await plantsApi.identify([blob], activeLang)
-      const topCandidate = resp.candidates?.[0]?.scientific_name ?? ''
-      const otherCandidates = resp.candidates?.slice(1, 3).map((c) => c.scientific_name) ?? []
-      const confidence = resp.candidates?.[0]?.confidence ?? 0
-
-      const result = await gameApi.answer(code, topCandidate, otherCandidates, confidence, dataUrl)
+      const result = await gameApi.scan(code, blob, activeLang)
       setScanResult(result)
       setStep('result')
       poll()
@@ -114,7 +125,7 @@ export default function GameHostPage() {
       setStep('result')
       poll()
     } catch {
-      // answer rejected — next poll resyncs
+      // rejected — next poll resyncs
     } finally {
       setQuizSubmitting(false)
     }
@@ -139,22 +150,27 @@ export default function GameHostPage() {
     )
   }
 
-  // ── Waiting room ────────────────────────────────────────────────────────────
+  // ── Waiting room ───────────────────────────────────────────────────────────
   if (step === 'waiting') {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6">
         <div className="text-center space-y-1">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">{t.game.joinCode}</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
+            {t.game.joinCode}
+          </p>
           <div className="text-6xl font-black tracking-[0.15em] text-primary">{code}</div>
-          <p className="text-text-muted text-sm">{state.session.map_name}</p>
+          <p className="text-text-muted text-sm">
+            {state.session.maps.map((m) => m.name).join(' · ')}
+          </p>
         </div>
 
-        {/* QR code — guests scan instead of typing the code (#242) */}
+        {/* QR — guests scan this rather than typing anything (#242) */}
         <div className="flex flex-col items-center gap-2">
           <div className="bg-white rounded-2xl p-3 border border-border">
-            <QRCodeSVG value={`${window.location.origin}/game?code=${code}`} size={132} marginSize={0} />
+            <QRCodeSVG value={joinUrl} size={168} marginSize={0} />
           </div>
           <p className="text-xs text-text-muted">{t.game.scanToJoin}</p>
+          <p className="text-xs text-text-muted/70">{t.game.noAccountNeeded}</p>
         </div>
 
         <button
@@ -170,7 +186,7 @@ export default function GameHostPage() {
             {state.players.length} {t.game.playersJoined}
           </p>
           {state.players.map((p) => (
-            <div key={p.account_id} className="flex items-center gap-3 py-1">
+            <div key={p.id} className="flex items-center gap-3 py-1">
               <div className="w-8 h-8 rounded-full bg-primary/15 text-primary font-bold text-sm flex items-center justify-center">
                 {p.player_name.charAt(0).toUpperCase()}
               </div>
@@ -179,15 +195,17 @@ export default function GameHostPage() {
           ))}
         </div>
 
+        {/* Latecomers can join after the start, so this is a nudge, not a gate. */}
         {state.players.length < 2 && (
-          <p className="text-xs text-text-muted text-center">{t.game.minPlayersHint}</p>
+          <p className="text-xs text-text-muted text-center max-w-xs">
+            {t.game.waitingForPlayersHint}
+          </p>
         )}
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             onClick={handleStart}
-            disabled={state.players.length < 2}
-            className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
+            className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm transition-opacity"
           >
             {t.game.startGame}
           </button>
@@ -202,13 +220,9 @@ export default function GameHostPage() {
     )
   }
 
-  // ── Live camera (host scanning their own answer) ────────────────────────────
   if (step === 'camera') {
     return (
-      <IdentifyCamera
-        onCapture={(blob, dataUrl) => handleCapture(blob, dataUrl)}
-        onCancel={() => setStep('round')}
-      />
+      <IdentifyCamera onCapture={(blob) => handleCapture(blob)} onCancel={() => setStep('round')} />
     )
   }
 
@@ -220,18 +234,17 @@ export default function GameHostPage() {
     )
   }
 
-  // ── Round view ──────────────────────────────────────────────────────────────
   const clue = state.current_clue
   const roundNum = state.session.current_round + 1
   const totalRounds = state.session.total_rounds
-  const answeredCount = state.players.filter((p) => p.answered_current_round).length
+  const foundCount = state.players.filter((p) => p.answered_current_round).length
   const hostAnswered = Boolean(state.my_answer?.is_correct)
-  // In name mode the clue IS the plant name, so there's no answer to hide.
-  // In logbook mode the quiz options carry the answer, so no peek either.
   const photoMode = state.session.clue_mode === 'photo'
   const logbookMode = state.session.clue_mode === 'logbook'
+  const isEN = t.locale?.startsWith('en') ?? false
+  const clueName = isEN && clue?.plant_name_en ? clue.plant_name_en : clue?.plant_name_nl
+  const altName = isEN ? clue?.plant_name_nl : clue?.plant_name_en
 
-  // Brief own-scan result overlay, then back to the round panel.
   if (step === 'result' && scanResult) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -247,6 +260,11 @@ export default function GameHostPage() {
           <>
             <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
             <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
+            {scanResult.candidates && scanResult.candidates.length > 0 && (
+              <p className="text-sm text-text-muted italic">
+                {t.game.weSaw.replace('{name}', scanResult.candidates[0])}
+              </p>
+            )}
           </>
         )}
         <div className="flex flex-col gap-2 w-full max-w-xs mt-4">
@@ -255,7 +273,7 @@ export default function GameHostPage() {
               onClick={() => setStep('camera')}
               className="px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
             >
-              {t.game.scanButton}
+              {t.game.tryAgain}
             </button>
           )}
           <button
@@ -270,111 +288,129 @@ export default function GameHostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col p-6 max-w-md mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
-          {t.game.roundTitle} {roundNum} {t.game.roundOf} {totalRounds}
-        </p>
-        <span className="text-xs text-text-muted">{answeredCount}/{state.players.length} {t.game.answered}</span>
-      </div>
+    <div className="min-h-screen bg-bg flex flex-col">
+      <GameRoundHeader state={state} foundCount={foundCount} />
 
-      {/* Logbook quiz — the host answers by tapping, like everyone else */}
-      {logbookMode && (
-        <GameQuizRound
-          key={state.session.current_round}
-          state={state}
-          locked={Boolean(state.my_answer)}
-          submitting={quizSubmitting}
-          onPick={handleQuizPick}
-        />
-      )}
+      <div className="flex-1 flex flex-col p-6 max-w-md mx-auto w-full space-y-5">
+        {logbookMode && (
+          <GameQuizRound
+            key={state.session.current_round}
+            state={state}
+            locked={Boolean(state.my_answer)}
+            submitting={quizSubmitting}
+            onPick={handleQuizPick}
+          />
+        )}
 
-      {/* Clue — same view the players get, so the host can hunt along */}
-      {!logbookMode && clue && (
-        photoMode ? (
-          clue.clue_photo_url ? (
-            <div className="w-full aspect-square max-h-64 rounded-2xl overflow-hidden shadow-lg mx-auto">
-              <img src={clue.clue_photo_url} alt="" className="w-full h-full object-cover" />
-            </div>
+        {/* Clue — the same view the players get, so the host can hunt along */}
+        {!logbookMode && clue && (
+          photoMode ? (
+            clue.clue_photo_url ? (
+              <div className="w-full aspect-square max-h-64 rounded-2xl overflow-hidden shadow-lg mx-auto">
+                <img src={clue.clue_photo_url} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-text-muted border border-border mx-auto">
+                <Glyph name="sprout" size={44} />
+              </div>
+            )
           ) : (
-            <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-text-muted border border-border mx-auto">
-              <Glyph name="sprout" size={44} />
-            </div>
-          )
-        ) : (
-          <div className="bg-surface rounded-2xl border border-border p-5 flex flex-col items-center gap-2">
-            <Glyph name="leaf" size={32} className="text-primary" />
-            <p className="text-xl font-bold text-text text-center">{clue.plant_name_nl}</p>
-            {clue.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
-              <p className="text-xs text-text-muted text-center italic">{clue.plant_name_en}</p>
-            )}
-          </div>
-        )
-      )}
-
-      {/* Host scan — the host plays too (scan modes only) */}
-      {logbookMode ? null : hostAnswered ? (
-        <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 text-green-600 text-sm font-semibold">
-          <Glyph name="check" size={16} strokeWidth={2.4} /> {t.game.correctScan}
-        </div>
-      ) : (
-        <button
-          onClick={() => setStep('camera')}
-          className="w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-base"
-        >
-          {t.game.scanButton}
-        </button>
-      )}
-
-      {/* Answer peek — collapsed by default so a playing host isn't spoiled;
-          photo mode only (in name mode the clue is the name already) */}
-      {photoMode && clue && (
-        <div className="bg-primary/10 rounded-xl px-4 py-3">
-          <button
-            onClick={() => setAnswerRevealed((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-primary/70 font-mono uppercase tracking-widest"
-          >
-            <Glyph name="eye" size={13} />
-            {answerRevealed ? t.game.hideAnswer : t.game.revealAnswer}
-          </button>
-          {answerRevealed && (
-            <div className="mt-1.5">
-              <p className="font-semibold text-primary">{clue.plant_name_nl}</p>
-              {clue.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
-                <p className="text-xs text-primary/60">{clue.plant_name_en}</p>
+            <div className="bg-surface rounded-2xl border border-border p-5 flex flex-col items-center gap-2">
+              <Glyph name="leaf" size={32} className="text-primary" />
+              <p className="text-xl font-bold text-text text-center">{clueName}</p>
+              {altName && altName !== clueName && (
+                <p className="text-xs text-text-muted text-center italic">{altName}</p>
+              )}
+              {state.session.maps.length > 1 && clue.map_name && (
+                <p className="text-xs text-primary inline-flex items-center gap-1">
+                  <Glyph name={clue.map_type === 'indoor' ? 'home' : 'sprout'} size={12} />
+                  {clue.map_name}
+                </p>
               )}
             </div>
-          )}
-        </div>
-      )}
+          )
+        )}
 
-      {/* Player answer status */}
-      <div className="bg-surface rounded-2xl border border-border p-4 space-y-2">
-        {state.players.map((p) => (
-          <div key={p.account_id} className="flex items-center justify-between py-1">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-bg border border-border text-xs font-bold flex items-center justify-center text-text-muted">
-                {p.player_name.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-sm text-text">{p.player_name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-text-muted">{p.score} pt</span>
-              {p.answered_current_round
-                ? <Glyph name="check" size={16} className="text-green-500" />
-                : <span className="text-text-muted/30 text-base">○</span>}
-            </div>
+        {/* Host scan — the host plays too (scan modes only) */}
+        {logbookMode ? null : hostAnswered ? (
+          <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 text-green-600 text-sm font-semibold">
+            <Glyph name="check" size={16} strokeWidth={2.4} /> {t.game.correctScan}
           </div>
-        ))}
-      </div>
+        ) : (
+          <button
+            onClick={() => setStep('camera')}
+            className="w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-base"
+          >
+            {t.game.scanButton}
+          </button>
+        )}
 
-      <button
-        onClick={handleNext}
-        disabled={advancing}
-        className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 transition-opacity mt-auto"
-      >
-        {advancing ? t.common.loading : roundNum === totalRounds ? t.game.endGame : t.game.nextRound}
-      </button>
+        {/* Answer peek — photo mode only; elsewhere the clue is the answer */}
+        {photoMode && clue && (
+          <div className="bg-primary/10 rounded-xl px-4 py-3">
+            <button
+              onClick={() => setAnswerRevealed((v) => !v)}
+              className="flex items-center gap-1.5 text-xs text-primary/70 font-mono uppercase tracking-widest"
+            >
+              <Glyph name="eye" size={13} />
+              {answerRevealed ? t.game.hideAnswer : t.game.revealAnswer}
+            </button>
+            {answerRevealed && (
+              <div className="mt-1.5">
+                <p className="font-semibold text-primary">{clueName}</p>
+                {altName && altName !== clueName && (
+                  <p className="text-xs text-primary/60">{altName}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Player status — tap the ○ to wave a stuck guest through */}
+        <div className="bg-surface rounded-2xl border border-border p-4 space-y-1">
+          <p className="text-xs text-text-muted mb-1">{t.game.awardHint}</p>
+          {state.players.map((p) => (
+            <div key={p.id} className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-bg border border-border text-xs font-bold flex items-center justify-center text-text-muted flex-shrink-0">
+                  {p.player_name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-text truncate">{p.player_name}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-text-muted">{t.game.pointsShort.replace('{points}', String(p.score))}</span>
+                {p.answered_current_round ? (
+                  <Glyph name="check" size={16} className="text-green-500" />
+                ) : (
+                  <button
+                    onClick={() => handleAward(p.id)}
+                    disabled={awarding !== null}
+                    title={t.game.awardPlayer}
+                    aria-label={t.game.awardPlayer.replace('{name}', p.player_name)}
+                    className="w-6 h-6 rounded-full border border-border text-text-muted/40 hover:border-primary hover:text-primary transition-colors flex items-center justify-center disabled:opacity-40"
+                  >
+                    <Glyph name="check" size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={handleNext}
+          disabled={advancing}
+          className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 transition-opacity mt-auto"
+        >
+          {advancing
+            ? t.common.loading
+            : roundNum === totalRounds
+              ? t.game.endGame
+              : state.session.pacing === 'race'
+                ? t.game.skipRound
+                : t.game.nextRound}
+        </button>
+      </div>
     </div>
   )
 }

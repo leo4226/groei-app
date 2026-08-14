@@ -49,7 +49,6 @@ export default [
       'src/components/LeonAvatar.tsx',
       'src/components/discoveries/ExpeditionMap.tsx',
       'src/components/discoveries/ExpeditionMapGL.tsx',
-      'src/components/game/GameLeaderboard.tsx',
       'src/components/map/CareNeedsList.tsx',
       'src/components/map/GlobalCareSheet.tsx',
       'src/components/map/MapView.tsx',
@@ -64,9 +63,6 @@ export default [
       'src/components/sun/HeatmapLegend.tsx',
 
       'src/pages/AdminPage.tsx',
-      'src/pages/GameHostPage.tsx',
-      'src/pages/GameJoinPage.tsx',
-      'src/pages/GamePlayerPage.tsx',
       // LoginPage is pre-auth (no account language exists yet) so it can't use
       // the account-driven catalog; it carries its own bilingual COPY dict with
       // an NL/EN toggle (Dutch default) — permanent exemption.

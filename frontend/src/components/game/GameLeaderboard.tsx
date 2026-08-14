@@ -31,11 +31,16 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
   }
 
   function shareText() {
+    // Everything here used to be hardcoded Dutch, so an English player copied a
+    // Dutch scoreboard with a Dutch date. All of it goes through the catalog now.
     const lines = [
-      `🌿 Floreren tuinspel — ${new Date().toLocaleDateString('nl-NL')}`,
-      `${state.session.map_name} · ${state.session.total_rounds} rondes`,
+      `🌿 ${t.game.gameName} — ${new Date().toLocaleDateString(isEN ? 'en-GB' : 'nl-NL')}`,
+      `${state.session.maps.map((m) => m.name).join(' · ') || state.session.map_name}`
+        + ` · ${t.game.roundsCount.replace('{count}', String(state.session.total_rounds))}`,
       '',
-      ...sorted.slice(0, 5).map((p, i) => `${medal(i)} ${p.player_name}   ${p.score} ptn`),
+      ...sorted.slice(0, 5).map(
+        (p, i) => `${medal(i)} ${p.player_name}   ${t.game.pointsShort.replace('{points}', String(p.score))}`,
+      ),
       '',
       t.game.hostedBy.replace('{name}', state.session.host_name),
     ]
@@ -55,7 +60,7 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
           const isMe = state.my_player_id != null && p.id === state.my_player_id
           return (
             <div
-              key={p.account_id}
+              key={p.id}
               className={`flex items-center justify-between px-4 py-3 podium-drop ${
                 i < sorted.length - 1 ? 'border-b border-border' : ''
               } ${isMe ? 'bg-primary/10' : ''}`}
@@ -65,7 +70,7 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
                 <span className="text-lg w-8 text-center">{medal(i)}</span>
                 <span className={`text-sm ${isMe ? 'font-semibold text-primary' : 'text-text'}`}>{p.player_name}</span>
               </div>
-              <span className={`font-semibold text-sm ${isMe ? 'text-primary' : 'text-text-muted'}`}>{p.score} pt</span>
+              <span className={`font-semibold text-sm ${isMe ? 'text-primary' : 'text-text-muted'}`}>{t.game.pointsShort.replace('{points}', String(p.score))}</span>
             </div>
           )
         })}

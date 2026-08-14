@@ -1,168 +1,128 @@
-import base64
-import struct
+"""Photo-similarity grading in the garden game.
+
+A guest photographing the right plant from the wrong angle should still score,
+so the round carries *every* stored embedding of the target plant (owner-
+confirmed anchors first, then logbook photos) and grades against the best
+match. Name matching stays the primary signal; embeddings are the rescue.
+"""
 from datetime import datetime
 
 import pytest
 
 from routers import game as game_router
+from tests.game_world import (
+    create_game_schema,
+    embedding_b64,
+    embedding_bytes,
+    seed_map,
+    seed_plants,
+)
 
 
-def _embedding_b64(values: list[float]) -> str:
-    padded = values + [0.0] * (512 - len(values))
-    return base64.b64encode(struct.pack("512f", *padded)).decode()
-
-
-async def _create_game_schema(db) -> None:
-    await db.executescript(
-        """
-        CREATE TABLE game_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            join_code TEXT NOT NULL UNIQUE,
-            host_account_id INTEGER NOT NULL,
-            map_id INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'waiting',
-            current_round INTEGER NOT NULL DEFAULT 0,
-            created_at TIMESTAMP,
-            started_at TIMESTAMP,
-            finished_at TIMESTAMP,
-            clue_mode TEXT NOT NULL DEFAULT 'photo'
-        );
-        CREATE TABLE game_players (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            account_id INTEGER NOT NULL,
-            score INTEGER NOT NULL DEFAULT 0,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (session_id, account_id)
-        );
-        CREATE TABLE game_rounds (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            round_index INTEGER NOT NULL,
-            plant_id INTEGER NOT NULL,
-            plant_name_nl TEXT NOT NULL,
-            plant_name_en TEXT,
-            target_species TEXT NOT NULL,
-            clue_photo_url TEXT,
-            clue_hint_nl TEXT,
-            clue_hint_en TEXT,
-            started_at TIMESTAMP,
-            target_embedding TEXT,
-            UNIQUE (session_id, round_index)
-        );
-        CREATE TABLE game_answers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            round_id INTEGER NOT NULL,
-            player_id INTEGER NOT NULL,
-            scanned_species TEXT NOT NULL,
-            is_correct BOOLEAN NOT NULL,
-            points_awarded INTEGER NOT NULL DEFAULT 0,
-            answered_at TIMESTAMP NOT NULL,
-            UNIQUE (round_id, player_id)
-        );
-        CREATE TABLE plant_species (
-            id INTEGER PRIMARY KEY,
-            common_name_nl TEXT,
-            common_name_en TEXT,
-            latin_name TEXT
-        );
-        """
+async def _active_round(db, code: str, target_embeddings: str | None, **kwargs) -> None:
+    """One active session on round 0 with the host as player 1."""
+    await seed_map(db, 10, "Garden")
+    await db.execute(
+        """INSERT INTO game_sessions
+           (id, join_code, host_account_id, map_id, status, current_round, created_at,
+            clue_mode, pacing)
+           VALUES (1, ?, 1, 10, 'active', 0, ?, 'photo', 'host')""",
+        (code, datetime(2026, 8, 14, 12, 0, 0)),
+    )
+    await db.execute("INSERT INTO game_session_maps (session_id, map_id) VALUES (1, 10)")
+    await db.execute(
+        "INSERT INTO game_players (id, session_id, account_id, score) VALUES (1, 1, 1, 0)"
+    )
+    await db.execute(
+        """INSERT INTO game_rounds
+           (id, session_id, round_index, plant_id, plant_name_nl, plant_name_en,
+            target_species, target_genus, clue_photo_url, started_at, target_embeddings, map_id)
+           VALUES (1, 1, 0, 101, ?, ?, ?, ?, 'https://r2.test/plant.jpg', NULL, ?, 10)""",
+        (
+            kwargs.get("name_nl", "Gatenplant"),
+            kwargs.get("name_en", "Swiss cheese plant"),
+            kwargs.get("target", "Monstera deliciosa"),
+            kwargs.get("genus", "monstera"),
+            target_embeddings,
+        ),
     )
     await db.commit()
 
 
 @pytest.mark.asyncio
-async def test_create_game_stores_best_effort_reference_embeddings(
-    seeded_db,
-    client,
-    auth_header,
-    monkeypatch,
+async def test_create_game_prefers_stored_embeddings_over_the_worker(
+    seeded_db, client, auth_header, monkeypatch
 ):
-    await _create_game_schema(seeded_db)
+    """Stored photo vectors are used directly — no worker round-trip needed.
+
+    This is what keeps a game created while the BioCLIP box is asleep from
+    silently losing its photo-matching rescue.
+    """
+    await create_game_schema(seeded_db)
+    await seed_map(seeded_db, 10, "Garden")
     await seeded_db.execute(
-        "INSERT INTO maps (id, name, map_type, household_id) VALUES (10, 'Garden', 'outdoor', 1)"
+        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name) "
+        "VALUES (7, 'Gatenplant', 'Swiss cheese plant', 'Monstera deliciosa')"
+    )
+    await seed_plants(seeded_db, 10, [101, 102, 103], species_id=7)
+
+    # Plant 101 has an owner-confirmed anchor, 102 a logbook photo, 103 nothing.
+    await seeded_db.execute(
+        "INSERT INTO user_confirmed_embeddings (species_id, embedding, source_plant_id) "
+        "VALUES (7, ?, 101)",
+        (embedding_bytes([1.0, 0.0, 0.0]),),
     )
     await seeded_db.execute(
-        "INSERT INTO plant_species (id, common_name_nl, common_name_en, latin_name) VALUES (7, 'Gatenplant', 'Swiss cheese plant', 'Monstera deliciosa')"
+        "INSERT INTO plant_photos (plant_id, url, taken_at, embedding) "
+        "VALUES (102, 'https://r2.test/log-102.jpg', '2026-08-01', ?)",
+        (embedding_bytes([0.0, 1.0, 0.0]),),
     )
-    for plant_id, photo_path in [
-        (101, "https://r2.test/plant-101.jpg"),
-        (102, "https://r2.test/plant-102.jpg"),
-        (103, None),
-    ]:
-        await seeded_db.execute(
-            """INSERT INTO plants (id, name, map_id, photo_path, is_active, species_id)
-               VALUES (?, 'Plant', 10, ?, 1, 7)""",
-            (plant_id, photo_path),
-        )
     await seeded_db.commit()
 
     embedded_urls: list[str] = []
 
-    async def fake_embed_url(url: str) -> str | None:
+    async def fake_embed_url(url: str):
         embedded_urls.append(url)
-        return f"embedded:{url}" if url else None
+        return None
 
     monkeypatch.setattr(game_router, "_embed_url", fake_embed_url)
 
     response = await client.post(
         "/api/games",
         headers=auth_header,
-        json={"map_id": 10, "plant_ids": [101, 102, 103], "clue_mode": "photo"},
+        json={"map_ids": [10], "plant_ids": [101, 102, 103], "clue_mode": "photo"},
     )
+    assert response.status_code == 201, response.text
 
-    assert response.status_code == 201
-    # Round order is shuffled at create time (random.sample), so compare as sets.
     rounds = await seeded_db.execute_fetchall(
-        "SELECT plant_id, target_embedding FROM game_rounds ORDER BY plant_id"
+        "SELECT plant_id, target_embeddings, target_genus FROM game_rounds ORDER BY plant_id"
     )
-    assert [row["plant_id"] for row in rounds] == [101, 102, 103]
-    assert rounds[0]["target_embedding"] == "embedded:https://r2.test/plant-101.jpg"
-    assert rounds[1]["target_embedding"] == "embedded:https://r2.test/plant-102.jpg"
-    assert rounds[2]["target_embedding"] is None
-    assert sorted(embedded_urls) == [
-        "",
-        "https://r2.test/plant-101.jpg",
-        "https://r2.test/plant-102.jpg",
-    ]
+    assert [r["plant_id"] for r in rounds] == [101, 102, 103]
+    # 101 and 102 got references from the DB; only 103 fell through to the worker.
+    assert rounds[0]["target_embeddings"] is not None
+    assert rounds[1]["target_embeddings"] is not None
+    assert rounds[2]["target_embeddings"] is None
+    assert embedded_urls == ["https://r2.test/profile-103.jpg"]
+    # Genus is precomputed at create time so grading never has to re-parse.
+    assert rounds[0]["target_genus"] == "monstera"
 
 
 @pytest.mark.asyncio
-async def test_answer_accepts_embedding_match_when_species_name_does_not_match(
-    seeded_db,
-    client,
-    auth_header,
-    monkeypatch,
+async def test_answer_accepts_photo_match_when_species_name_does_not(
+    seeded_db, client, auth_header, monkeypatch
 ):
-    await _create_game_schema(seeded_db)
-    target_embedding = _embedding_b64([1.0, 0.0, 0.0])
-    scan_embedding = _embedding_b64([0.99, 0.01, 0.0])
+    await create_game_schema(seeded_db)
     monkeypatch.setattr(game_router, "_EMBED_THRESHOLD", 0.82)
 
-    async def fake_embed_bytes(image_bytes: bytes) -> str:
+    async def fake_embed_bytes(image_bytes: bytes) -> bytes:
         assert image_bytes == b"scan image"
-        return scan_embedding
+        return embedding_bytes([0.99, 0.01, 0.0])
 
     monkeypatch.setattr(game_router, "_embed_bytes", fake_embed_bytes)
 
-    await seeded_db.execute(
-        """INSERT INTO game_sessions
-           (id, join_code, host_account_id, map_id, status, current_round, created_at, clue_mode)
-           VALUES (1, 'ABC123', 1, 10, 'active', 0, ?, 'photo')""",
-        (datetime(2026, 6, 26, 12, 0, 0),),
-    )
-    await seeded_db.execute(
-        "INSERT INTO game_players (id, session_id, account_id, score) VALUES (1, 1, 1, 0)"
-    )
-    await seeded_db.execute(
-        """INSERT INTO game_rounds
-           (id, session_id, round_index, plant_id, plant_name_nl, plant_name_en,
-            target_species, clue_photo_url, started_at, target_embedding)
-           VALUES (1, 1, 0, 101, 'Gatenplant', 'Swiss cheese plant',
-                   'Monstera deliciosa', 'https://r2.test/plant.jpg', NULL, ?)""",
-        (target_embedding,),
-    )
-    await seeded_db.commit()
+    # Two references: the scan resembles the second one only.
+    references = f'["{embedding_b64([0.0, 0.0, 1.0])}", "{embedding_b64([1.0, 0.0, 0.0])}"]'
+    await _active_round(seeded_db, "ABC123", references)
 
     response = await client.post(
         "/api/games/ABC123/answer",
@@ -176,47 +136,54 @@ async def test_answer_accepts_embedding_match_when_species_name_does_not_match(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"is_correct": True, "points_awarded": 100}
+    body = response.json()
+    assert body["is_correct"] is True
+    assert body["match_kind"] == "photo"
+    # First finder in the round takes the full rank bonus.
+    assert body["points_awarded"] == 150
+    assert body["finish_rank"] == 1
+
     players = await seeded_db.execute_fetchall("SELECT score FROM game_players WHERE id = 1")
-    assert players[0]["score"] == 100
-    answers = await seeded_db.execute_fetchall(
-        "SELECT scanned_species, is_correct, points_awarded FROM game_answers"
-    )
-    assert answers == [
-        {"scanned_species": "Ficus lyrata", "is_correct": 1, "points_awarded": 100}
-    ]
+    assert players[0]["score"] == 150
 
 
 @pytest.mark.asyncio
-async def test_answer_keeps_species_name_fallback_without_embedding(
-    seeded_db,
-    client,
-    auth_header,
-    monkeypatch,
+async def test_photo_match_rejects_an_unrelated_plant(
+    seeded_db, client, auth_header, monkeypatch
 ):
-    await _create_game_schema(seeded_db)
+    """The forgiving threshold must still say no to a genuinely wrong plant."""
+    await create_game_schema(seeded_db)
 
-    async def fail_if_called(_image_bytes: bytes) -> str:
-        raise AssertionError("Embedding worker should not be called without a reference embedding")
+    async def fake_embed_bytes(_image_bytes: bytes) -> bytes:
+        return embedding_bytes([0.0, 0.0, 1.0])
+
+    monkeypatch.setattr(game_router, "_embed_bytes", fake_embed_bytes)
+    await _active_round(seeded_db, "NOPE12", f'["{embedding_b64([1.0, 0.0, 0.0])}"]')
+
+    response = await client.post(
+        "/api/games/NOPE12/answer",
+        headers=auth_header,
+        json={
+            "scanned_species": "Ficus lyrata",
+            "image_data_url": "data:image/jpeg;base64,c2NhbiBpbWFnZQ==",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_correct"] is False
+
+
+@pytest.mark.asyncio
+async def test_species_name_still_scores_without_any_reference_photo(
+    seeded_db, client, auth_header, monkeypatch
+):
+    await create_game_schema(seeded_db)
+
+    async def fail_if_called(_image_bytes: bytes):
+        raise AssertionError("No image was submitted; the worker must not be called")
 
     monkeypatch.setattr(game_router, "_embed_bytes", fail_if_called)
-    await seeded_db.execute(
-        """INSERT INTO game_sessions
-           (id, join_code, host_account_id, map_id, status, current_round, created_at, clue_mode)
-           VALUES (1, 'OLD123', 1, 10, 'active', 0, ?, 'photo')""",
-        (datetime(2026, 6, 26, 12, 0, 0),),
-    )
-    await seeded_db.execute(
-        "INSERT INTO game_players (id, session_id, account_id, score) VALUES (1, 1, 1, 0)"
-    )
-    await seeded_db.execute(
-        """INSERT INTO game_rounds
-           (id, session_id, round_index, plant_id, plant_name_nl, plant_name_en,
-            target_species, clue_photo_url, started_at, target_embedding)
-           VALUES (1, 1, 0, 101, 'Gatenplant', 'Swiss cheese plant',
-                   'Monstera deliciosa', NULL, NULL, NULL)"""
-    )
-    await seeded_db.commit()
+    await _active_round(seeded_db, "OLD123", None)
 
     response = await client.post(
         "/api/games/OLD123/answer",
@@ -225,4 +192,46 @@ async def test_answer_keeps_species_name_fallback_without_embedding(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"is_correct": True, "points_awarded": 100}
+    body = response.json()
+    assert body["is_correct"] is True
+    assert body["match_kind"] == "exact"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "scanned,expected_kind",
+    [
+        # Author citation on the end — PlantNet does this constantly.
+        ("Monstera deliciosa Liebm.", "exact"),
+        # Genus right, species wrong: the most common near-miss in the field.
+        ("Monstera adansonii", "genus"),
+        # A cultivar epithet reduces to the bare genus.
+        ("Monstera 'Thai Constellation'", "genus"),
+        # The common name the app itself shows for this plant.
+        ("Gatenplant", "common"),
+        # A different genus entirely is still wrong.
+        ("Ficus lyrata", None),
+    ],
+)
+async def test_forgiving_name_grading(
+    seeded_db, client, auth_header, monkeypatch, scanned, expected_kind
+):
+    """Standing at the right plant should score even when the ID is imprecise."""
+    await create_game_schema(seeded_db)
+
+    async def no_embed(_image_bytes: bytes):
+        return None
+
+    monkeypatch.setattr(game_router, "_embed_bytes", no_embed)
+    await _active_round(seeded_db, "FORGIV", None)
+
+    response = await client.post(
+        "/api/games/FORGIV/answer",
+        headers=auth_header,
+        json={"scanned_species": scanned},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_correct"] is (expected_kind is not None)
+    assert body["match_kind"] == expected_kind
