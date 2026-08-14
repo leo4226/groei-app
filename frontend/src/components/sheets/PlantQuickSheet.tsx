@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import type { MapPlant, MapObject, GroundZone, Plant, MapInfo, SecondaryMarker } from '../../types'
-import { CARE_TYPE_INFO } from '../../types'
+import { careChipTypes, dueChipCount, dueDaysByType, nextUpcomingCare } from './quickSheetCareChips'
 import { useFloreren } from '../../store/useFloreren'
 import { plants as plantsApi } from '../../api/client'
 import { useT } from '../../context/LanguageContext'
 import { resolveIconUrl } from '../../utils/icons'
 import { plantDisplayName } from '../../utils/plantDisplayName'
+import { PLANT_PASSPORT_ANCHORS } from '../../utils/plantPassportLinks'
 import { compressImage } from '../../utils/compressImage'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 import Glyph from '../ui/Glyph'
@@ -162,34 +163,35 @@ export default function PlantQuickSheet({
   const iconUrl = plant.icon_key ? resolveIconUrl(plant.icon_key) : null
   const displayName = plantDisplayName(plant, t.locale)
 
-  // ── Care schedules: only overdue/today, minus already-done ──
-  const urgentSchedules = (detail?.care_schedules ?? []).filter(sched => {
-    if (doneTypes.has(sched.care_type)) return false
-    const days = Math.round((new Date(sched.next_due).getTime() - new Date().setHours(0,0,0,0)) / 86400000)
-    return days <= 0
-  })
+  // Days-until-due per scheduled care type (negative = overdue, 0 = today).
+  const dueByType = dueDaysByType(detail?.care_schedules ?? [])
+  // Quick-log chips: water + feed always, plus any other scheduled care type.
+  const chipTypes = careChipTypes(dueByType)
+  // The status line must promise exactly what the chips can deliver. It used to
+  // count every overdue schedule while the chip list silently dropped
+  // pest_check and dust, so the sheet could say "4 taken te doen" and offer two
+  // (#888).
+  const dueCount = dueChipCount(dueByType, doneTypes)
+  // What the plant needs next, when nothing needs doing today. Doubles as the
+  // way into care setup: the sheet otherwise never says a rhythm exists.
+  const nextCare = nextUpcomingCare(dueByType)
 
-  const careLabelMap: Record<string, string> = {
+  // Chip labels are deliberately shorter than the catalog's (the chip clamps at
+  // 64px and ellipsises): "Gieten", not "Water geven". The fallback is
+  // t.careTypes — localized and complete — rather than CARE_TYPE_INFO, whose
+  // labels are English-only and printed "Wipe leaves" into the Dutch UI.
+  const chipLabels: Record<string, string> = {
     water: t.plantQuickSheet.careWater,
     fertilize: t.plantQuickSheet.careFertilize,
     prune: t.plantQuickSheet.carePrune,
     repot: t.plantQuickSheet.careRepot,
     mist: t.plantQuickSheet.careMist,
     rotate: t.plantQuickSheet.careRotate,
-    frost_protect: t.plantQuickSheet.careProtectCold,
-    heat_protect: t.plantQuickSheet.careProtectHeat,
+    pest_check: t.plantQuickSheet.carePestCheck,
+    dust: t.plantQuickSheet.careDust,
   }
-
-  // Days-until-due per scheduled care type (negative = overdue, 0 = today).
-  const dueByType = new Map<string, number>()
-  for (const s of detail?.care_schedules ?? []) {
-    const days = Math.round((new Date(s.next_due).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000)
-    const prev = dueByType.get(s.care_type)
-    if (prev === undefined || days < prev) dueByType.set(s.care_type, days)
-  }
-  // Quick-log chips: water + feed always, plus any other scheduled care type.
-  const CARE_ORDER = ['water', 'fertilize', 'prune', 'mist', 'rotate', 'repot', 'frost_protect', 'heat_protect']
-  const careChipTypes = CARE_ORDER.filter((ct) => ct === 'water' || ct === 'fertilize' || dueByType.has(ct))
+  const careLabel = (ct: string) =>
+    chipLabels[ct] ?? t.careTypes[ct as keyof typeof t.careTypes] ?? ct
 
   const handleCare = async (careType: string) => {
     setSavingType(careType)
@@ -294,6 +296,12 @@ export default function PlantQuickSheet({
     return fit ? { fit, sunHours, source, profile } : null
   })()
 
+  // With the placement CTA gone from the body (#888), the context column is
+  // empty for plenty of plants — an indoor plant with no container and no extra
+  // spots has nothing to put there. Left alone the desktop grid still reserved
+  // a third of the sheet for it.
+  const hasContext = Boolean(sunFitInfo || container || groundZone || placements.length > 0)
+
   return createPortal(
     <>
       {/* Backdrop */}
@@ -310,7 +318,7 @@ export default function PlantQuickSheet({
         aria-modal="true"
         aria-labelledby={headingId}
         tabIndex={-1}
-        className={PLANT_QUICK_SHEET_CLASS}
+        className={`${PLANT_QUICK_SHEET_CLASS}${hasContext ? '' : ' plant-quick-sheet--no-context'}`}
         style={plantQuickSheetStyle()}
       >
         {/* Drag handle */}
@@ -388,11 +396,14 @@ export default function PlantQuickSheet({
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 61, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 6 }}>
                       <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}><Glyph name="edit" size={15} /></span>{t.plantQuickSheet.edit}</button>
                       {onMoveOnMap && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle} aria-hidden="true">↔</span>{t.plantQuickSheet.moveOnMap}</button>
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle}><Glyph name="pin" size={15} /></span>{t.plantQuickSheet.moveOnMap}</button>
                       )}
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle} aria-hidden="true">⇄</span>{t.plantQuickSheet.moveToMap}</button>
+                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle}><Glyph name="map" size={15} /></span>{t.plantQuickSheet.moveToMap}</button>
+                      {onAddPlacement && (
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onAddPlacement() }}><span style={menuIconStyle}><Glyph name="sprout" size={15} /></span>{t.plantQuickSheet.addSpot}</button>
+                      )}
                       {onDuplicate && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle} aria-hidden="true">⧉</span>{t.plantQuickSheet.duplicate}</button>
+                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle}><Glyph name="copy" size={15} /></span>{t.plantQuickSheet.duplicate}</button>
                       )}
                       <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={15} /></span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
                       {onRemove && (
@@ -407,33 +418,43 @@ export default function PlantQuickSheet({
 
             {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
             <div className="hidden lg:grid grid-cols-3 mt-2" style={{ width: 'fit-content', gap: 10 }}>
-              <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
-              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">↔</span></button>)}
-              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">⇄</span></button>
-              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} style={desktopIconStyle}><span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true">⧉</span></button>)}
-              <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
-              {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
+              <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} aria-label={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
+              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} aria-label={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><Glyph name="pin" size={14} /></button>)}
+              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} aria-label={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><Glyph name="map" size={14} /></button>
+              {onAddPlacement && (<button onClick={onAddPlacement} title={t.plantQuickSheet.addSpot} aria-label={t.plantQuickSheet.addSpot} style={desktopIconStyle}><Glyph name="sprout" size={14} /></button>)}
+              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} aria-label={t.plantQuickSheet.duplicate} style={desktopIconStyle}><Glyph name="copy" size={14} /></button>)}
+              <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} aria-label={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
+              {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} aria-label={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
             </div>
           </div>
 
           {/* ── Status line + one-tap care chips ── */}
           <div className="plant-quick-sheet-care" style={{ marginBottom: 14 }}>
             <div style={{ marginBottom: 12, minHeight: 18 }}>
-              {urgentSchedules.length > 0 ? (
+              {dueCount > 0 ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-status-size, 13px)', fontWeight: 600, color: 'var(--color-overdue)' }}>
-                  <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(urgentSchedules.length)}
+                  <Glyph name="alert" size={14} aria-hidden="true" />{t.plantQuickSheet.tasksDue(dueCount)}
                 </span>
               ) : detail !== null ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 'var(--pq-status-size, 13px)', color: 'var(--color-text-muted)' }}>
                   <Glyph name="check" size={14} style={{ color: 'var(--color-primary)' }} />{t.mapPage.sheetAllGood}
                 </span>
               ) : null}
+              {detail !== null && (
+                <button
+                  onClick={() => { onClose(); navigate(`/plants/${plant.id}#${PLANT_PASSPORT_ANCHORS.care}`) }}
+                  style={{ display: 'block', marginTop: 3, padding: 0, background: 'none', border: 'none', textAlign: 'left', fontFamily: 'var(--font-heading)', fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
+                >
+                  {nextCare
+                    ? t.plantQuickSheet.nextCare(careLabel(nextCare.careType), nextCare.days)
+                    : t.plantQuickSheet.noRhythm}
+                </button>
+              )}
             </div>
 
             {/* One-tap care chips — tap to log "done today"; + a progress-photo chip */}
             <div className="no-scrollbar" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {careChipTypes.map((ct) => {
-                const info = CARE_TYPE_INFO[ct as keyof typeof CARE_TYPE_INFO]
+              {chipTypes.map((ct) => {
                 const due = dueByType.get(ct)
                 const overdue = due !== undefined && due < 0
                 const dueToday = due === 0
@@ -445,8 +466,8 @@ export default function PlantQuickSheet({
                     key={ct}
                     onClick={() => handleCare(ct)}
                     disabled={saving}
-                    aria-label={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : (careLabelMap[ct] ?? info?.label ?? ct)}
-                    title={done ? t.plantQuickSheet.undoHint(careLabelMap[ct] ?? info?.label ?? ct) : undefined}
+                    aria-label={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : careLabel(ct)}
+                    title={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : undefined}
                     style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
                   >
                     <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
@@ -458,7 +479,7 @@ export default function PlantQuickSheet({
                       )}
                     </span>
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-chip-label-size, 11px)', color: done ? 'var(--color-primary)' : 'var(--color-text-soft)', textAlign: 'center', lineHeight: 1.1, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {done ? t.plantQuickSheet.undo : (careLabelMap[ct] ?? info?.label ?? ct)}
+                      {done ? t.plantQuickSheet.undo : careLabel(ct)}
                     </span>
                   </button>
                 )
@@ -478,6 +499,7 @@ export default function PlantQuickSheet({
             </div>
           </div>
 
+          {hasContext && (
           <div className="plant-quick-sheet-context">
           {/* ── Sun fit ── */}
           {sunFitInfo && (
@@ -539,8 +561,14 @@ export default function PlantQuickSheet({
             </div>
           )}
 
-          {/* ── Extra placements (this plant in more than one spot) ── */}
-          {onAddPlacement && (
+          {/* ── Extra placements (this plant in more than one spot) ──
+              Shown only once the plant actually has them. It used to render for
+              every plant: a heading plus a full-width dashed CTA, about a third
+              of the mobile sheet and a whole column of three on desktop, for a
+              feature most plants never use — while the care chips people come
+              here for got less room. Adding a spot lives in the ⋯ menu now,
+              beside the other placement actions (#888). */}
+          {placements.length > 0 && (
             <div style={{ marginTop: 4, marginBottom: 10 }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--color-text-muted)', marginBottom: 8 }}>
                 {t.plantQuickSheet.spotsHeading}
@@ -571,16 +599,10 @@ export default function PlantQuickSheet({
                   </button>
                 </div>
               ))}
-              <button
-                onClick={onAddPlacement}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', borderRadius: 12, background: 'var(--color-bg)', color: 'var(--color-primary)', border: '1px dashed var(--color-border)', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-              >
-                <span aria-hidden="true">＋</span>
-                {t.plantQuickSheet.addSpot}
-              </button>
             </div>
           )}
           </div>
+          )}
 
         </div>
       </div>

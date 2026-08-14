@@ -493,3 +493,14 @@ input:focus, select:focus, textarea:focus {
 [data-theme="dark"] .skeleton {
   background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
 }
+
+/* The draggable Stekkie launcher floats at z-index 90, above every bottom
+   sheet in the app (the plant quick sheet is z-60), so it sat on top of the
+   sheet's own controls — at 430px it covered the corner of the placement
+   button (#888). It is a helper, not a layer that should overlap a modal.
+
+   Scoped to real modals (`aria-modal="true"`), so the assistant's own panel —
+   which is not one — still shows its launcher. */
+body:has([role="dialog"][aria-modal="true"]) .help-assistant-launcher {
+  display: none;
+}

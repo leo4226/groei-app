@@ -13,6 +13,7 @@ export type GlyphName =
   | 'trophy' | 'clipboard' | 'link' | 'text'
   | 'chart' | 'users' | 'compass' | 'lock' | 'cloud' | 'brick'
   | 'scissors' | 'eye' | 'bulb' | 'map' | 'calendar' | 'refresh' | 'unlock'
+  | 'copy'
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
   // all / everything — a bulleted list
@@ -188,6 +189,14 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
     </>
   ),
   // clipboard — copy / share results
+  // duplicate — two offset sheets. Replaces the ⧉ character the quick sheet's
+  // management row used, which read as a box next to the ↔/⇄ arrows (#888).
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+    </>
+  ),
   clipboard: (
     <>
       <rect x="6" y="4.5" width="12" height="16" rx="1.5" />

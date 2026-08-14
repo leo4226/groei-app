@@ -12,6 +12,13 @@
   .plant-quick-sheet-body {
     display: grid;
     grid-template-columns: minmax(240px, 0.72fr) minmax(400px, 1.2fr) minmax(320px, 0.92fr);
+  }
+
+  /* Nothing to put in the context column — no sun fit, no container, no extra
+     spots — so give its share to care rather than leaving a third of the sheet
+     blank (#888). */
+  .plant-quick-sheet--no-context .plant-quick-sheet-body {
+    grid-template-columns: minmax(240px, 0.72fr) minmax(400px, 1.6fr);
     align-items: stretch;
     gap: clamp(24px, 2.5vw, 44px);
     padding-inline: clamp(24px, 3vw, 56px);
