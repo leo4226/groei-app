@@ -2,21 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
-import { gameApi, type GameState, type AnswerResult } from '../api/game'
-import { plants as plantsApi } from '../api/client'
+import { gameApi, getGuest, type GameState, type AnswerResult } from '../api/game'
 import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
+import GameRoundHeader from '../components/game/GameRoundHeader'
 import Glyph from '../components/ui/Glyph'
 
-type PlayerStep =
-  | 'waiting'
-  | 'clue'
-  | 'camera'
-  | 'analyzing'
-  | 'result'
-  | 'answered'
-  | 'done'
+type PlayerStep = 'waiting' | 'clue' | 'camera' | 'analyzing' | 'result' | 'answered' | 'done'
 
 export default function GamePlayerPage() {
   const t = useT()
@@ -25,73 +18,63 @@ export default function GamePlayerPage() {
   const [state, setState] = useState<GameState | null>(null)
   const [step, setStep] = useState<PlayerStep>('waiting')
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
-  const [countdown, setCountdown] = useState(3)
   const [quizSubmitting, setQuizSubmitting] = useState(false)
+  const [notInGame, setNotInGame] = useState(false)
   const lastRoundRef = useRef<number>(-1)
-  const activeLang = useFloreren((s) => {
+  const accountLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
     return user?.language === 'en' ? 'en' : 'nl'
   })
+  // Guests have no account, so their language comes from the UI catalog.
+  const activeLang: 'nl' | 'en' = getGuest(code) ? (t.locale?.startsWith('en') ? 'en' : 'nl') : accountLang
 
   const poll = useCallback(async () => {
     if (!code) return
     try {
       const s = await gameApi.getState(code)
       setState(s)
+      setNotInGame(false)
 
       if (s.session.status === 'finished') {
         setStep('done')
         return
       }
-
       if (s.session.status === 'active') {
         const roundIdx = s.session.current_round
         if (roundIdx !== lastRoundRef.current) {
           lastRoundRef.current = roundIdx
           setScanResult(null)
-          setStep('clue')
+          // Don't yank the camera out from under someone mid-capture.
+          setStep((prev) => (prev === 'camera' || prev === 'analyzing' ? prev : 'clue'))
         }
       }
-    } catch {
-      // ignore transient errors
+    } catch (e) {
+      // A guest whose token expired (or who opened a stale link) needs to be
+      // told, not left staring at a spinner.
+      const status = (e as { status?: number }).status
+      if (status === 401 || status === 403) setNotInGame(true)
     }
   }, [code])
 
   useEffect(() => {
     poll()
-    const id = setInterval(poll, 3000)
+    // Race rounds turn over on a deadline, so poll a little faster than the
+    // host-paced game needs — the transition should feel immediate.
+    const interval = state?.session.pacing === 'race' ? 2000 : 3000
+    const id = setInterval(poll, interval)
     return () => clearInterval(id)
-  }, [poll])
+  }, [poll, state?.session.pacing])
 
-  // Countdown after a correct scan before showing the leaderboard wait screen
-  useEffect(() => {
-    if (step !== 'result' || !scanResult?.is_correct) return
-    setCountdown(3)
-    const id = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(id)
-          setStep('answered')
-          return 0
-        }
-        return c - 1
-      })
-    }, 1000)
-    return () => clearInterval(id)
-  }, [step])
-
-  async function handleCapture(blob: Blob, dataUrl: string) {
+  async function handleCapture(blob: Blob) {
     if (!code) return
     setStep('analyzing')
     try {
-      const resp = await plantsApi.identify([blob], activeLang)
-      const topCandidate = resp.candidates?.[0]?.scientific_name ?? ''
-      const otherCandidates = resp.candidates?.slice(1, 3).map((c) => c.scientific_name) ?? []
-      const confidence = resp.candidates?.[0]?.confidence ?? 0
-
-      const result = await gameApi.answer(code, topCandidate, otherCandidates, confidence, dataUrl)
+      // One call: the backend identifies and grades. Guests never touch the
+      // account-scoped /plants/identify endpoint.
+      const result = await gameApi.scan(code, blob, activeLang)
       setScanResult(result)
       setStep('result')
+      poll()
     } catch {
       setStep('clue')
     }
@@ -104,11 +87,27 @@ export default function GamePlayerPage() {
       const result = await gameApi.answer(code, plantNameNl)
       setScanResult(result)
       setStep('result')
+      poll()
     } catch {
-      // answer rejected (e.g. round advanced) — next poll resyncs
+      // Answer rejected (round advanced) — the next poll resyncs.
     } finally {
       setQuizSubmitting(false)
     }
+  }
+
+  if (notInGame) {
+    return (
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
+        <p className="font-semibold text-text">{t.game.sessionLost}</p>
+        <button
+          onClick={() => navigate(`/game?code=${code ?? ''}`)}
+          className="px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
+        >
+          {t.game.rejoin}
+        </button>
+      </div>
+    )
   }
 
   if (!state) {
@@ -130,7 +129,7 @@ export default function GamePlayerPage() {
     )
   }
 
-  // ── Waiting for host to start ────────────────────────────────────────────────
+  // ── Waiting for the host to start ──────────────────────────────────────────
   if (step === 'waiting') {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6 text-center">
@@ -140,13 +139,19 @@ export default function GamePlayerPage() {
           <p className="text-text-muted text-sm">{t.game.waitingForHost}</p>
         </div>
         <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-4 space-y-2">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">{t.game.otherPlayers}</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
+            {t.game.otherPlayers}
+          </p>
           {state.players.map((p) => (
-            <div key={p.account_id} className="flex items-center gap-2 py-1">
+            <div key={p.id} className="flex items-center gap-2 py-1">
               <div className="w-7 h-7 rounded-full bg-primary/15 text-primary font-bold text-xs flex items-center justify-center">
                 {p.player_name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-sm text-text">{p.player_name}</span>
+              <span
+                className={`text-sm ${p.id === state.my_player_id ? 'font-semibold text-primary' : 'text-text'}`}
+              >
+                {p.player_name}
+              </span>
             </div>
           ))}
         </div>
@@ -154,17 +159,15 @@ export default function GamePlayerPage() {
     )
   }
 
-  // ── Live camera ──────────────────────────────────────────────────────────────
   if (step === 'camera') {
     return (
       <IdentifyCamera
-        onCapture={(blob, dataUrl) => handleCapture(blob, dataUrl)}
+        onCapture={(blob) => handleCapture(blob)}
         onCancel={() => setStep('clue')}
       />
     )
   }
 
-  // ── Analyzing capture ────────────────────────────────────────────────────────
   if (step === 'analyzing') {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -174,18 +177,13 @@ export default function GamePlayerPage() {
   }
 
   const clue = state.current_clue
-  const roundNum = state.session.current_round + 1
-  const totalRounds = state.session.total_rounds
+  const foundCount = state.players.filter((p) => p.answered_current_round).length
 
-  // ── Clue view — logbook quiz: photo↔name matching, one guess ────────────────
+  // ── Logbook quiz ───────────────────────────────────────────────────────────
   if (step === 'clue' && state.session.clue_mode === 'logbook' && !state.my_answer?.is_correct) {
     return (
       <div className="min-h-screen bg-bg flex flex-col">
-        <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-border">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
-            {t.game.roundTitle} {roundNum} / {totalRounds}
-          </p>
-        </div>
+        <GameRoundHeader state={state} foundCount={foundCount} />
         <div className="flex-1 p-6 max-w-md mx-auto w-full">
           <GameQuizRound
             key={state.session.current_round}
@@ -199,39 +197,45 @@ export default function GamePlayerPage() {
     )
   }
 
-  // ── Clue view — show plant photo, then tap to scan ───────────────────────────
+  // ── Clue → scan ────────────────────────────────────────────────────────────
   if (step === 'clue' && !state.my_answer?.is_correct) {
+    const isEN = t.locale?.startsWith('en') ?? false
+    const clueName = isEN && clue?.plant_name_en ? clue.plant_name_en : clue?.plant_name_nl
+    const altName = isEN ? clue?.plant_name_nl : clue?.plant_name_en
+
     return (
       <div className="min-h-screen bg-bg flex flex-col">
-        <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-border">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
-            {t.game.roundTitle} {roundNum} / {totalRounds}
-          </p>
-        </div>
+        <GameRoundHeader state={state} foundCount={foundCount} />
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
           {state.session.clue_mode === 'name' ? (
             <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-6 flex flex-col items-center gap-3 shadow-lg">
               <Glyph name="leaf" size={44} className="text-primary" />
-              <p className="text-2xl font-bold text-text text-center">{clue?.plant_name_nl}</p>
-              {clue?.plant_name_en && clue.plant_name_en !== clue.plant_name_nl && (
-                <p className="text-sm text-text-muted text-center italic">{clue.plant_name_en}</p>
+              <p className="text-2xl font-bold text-text text-center">{clueName}</p>
+              {altName && altName !== clueName && (
+                <p className="text-sm text-text-muted text-center italic">{altName}</p>
               )}
             </div>
           ) : clue?.clue_photo_url ? (
             <div className="w-full max-w-xs aspect-square rounded-2xl overflow-hidden shadow-lg">
-              <img
-                src={clue.clue_photo_url}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              <img src={clue.clue_photo_url} alt="" className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="w-40 h-40 rounded-2xl bg-surface flex items-center justify-center text-text-muted border border-border">
               <Glyph name="sprout" size={44} />
             </div>
           )}
-          <p className="text-lg font-semibold text-text text-center">{t.game.findThisPlant}</p>
+
+          <div className="text-center space-y-1">
+            <p className="text-lg font-semibold text-text">{t.game.findThisPlant}</p>
+            {/* Which space to look in — essential once a hunt spans rooms. */}
+            {state.session.maps.length > 1 && clue?.map_name && (
+              <p className="text-sm text-primary font-medium inline-flex items-center gap-1.5">
+                <Glyph name={clue.map_type === 'indoor' ? 'home' : 'sprout'} size={14} />
+                {clue.map_name}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="px-5 pb-[max(env(safe-area-inset-bottom,0px),20px)]">
@@ -246,29 +250,38 @@ export default function GamePlayerPage() {
     )
   }
 
-  // ── Already answered correctly this round ───────────────────────────────────
+  // ── Already found it this round ────────────────────────────────────────────
   if (step === 'answered' || (step === 'clue' && state.my_answer?.is_correct)) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="text-green-500"><Glyph name="check" size={48} strokeWidth={2.4} /></div>
-        <p className="font-semibold text-text">{t.game.correctScan}</p>
-        <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
-        <div className="mt-4 bg-surface rounded-2xl border border-border px-6 py-4">
-          {state.players.slice(0, 5).map((p, i) => (
-            <div key={p.account_id} className="flex justify-between items-center py-1 text-sm">
-              <span className="text-text-muted">
-                {i === 0 ? t.game.place1 : i === 1 ? t.game.place2 : i === 2 ? t.game.place3 : `${i + 1}.`}{' '}
-                {p.player_name}
-              </span>
-              <span className="text-text font-semibold">{p.score} pt</span>
-            </div>
-          ))}
+      <div className="min-h-screen bg-bg flex flex-col">
+        <GameRoundHeader state={state} foundCount={foundCount} />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+          <div className="text-green-500"><Glyph name="check" size={48} strokeWidth={2.4} /></div>
+          <p className="font-semibold text-text">{t.game.correctScan}</p>
+          <p className="text-text-muted text-sm">
+            {state.session.pacing === 'race'
+              ? t.game.waitingForRoundEnd
+              : t.game.waitingForNextRound}
+          </p>
+          <div className="mt-4 bg-surface rounded-2xl border border-border px-6 py-4 w-full max-w-xs">
+            {state.players.slice(0, 5).map((p, i) => (
+              <div key={p.id} className="flex justify-between items-center py-1 text-sm">
+                <span
+                  className={p.id === state.my_player_id ? 'text-primary font-semibold' : 'text-text-muted'}
+                >
+                  {i === 0 ? t.game.place1 : i === 1 ? t.game.place2 : i === 2 ? t.game.place3 : `${i + 1}.`}{' '}
+                  {p.player_name}
+                </span>
+                <span className="text-text font-semibold">{t.game.pointsShort.replace('{points}', String(p.score))}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
-  // ── Scan result (briefly shown before auto-advancing) ──────────────────────
+  // ── Scan verdict ───────────────────────────────────────────────────────────
   if (step === 'result' && scanResult) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -276,29 +289,40 @@ export default function GamePlayerPage() {
           <>
             <div className="text-amber-500"><Glyph name="sparkle" size={52} /></div>
             <p className="text-2xl font-bold text-text">{t.game.correct}</p>
+            {scanResult.finish_rank === 1 && (
+              <p className="text-sm font-semibold text-amber-600">{t.game.firstToFind}</p>
+            )}
             <p className="text-primary font-semibold text-lg">
               {t.game.pointsEarned.replace('{points}', String(scanResult.points_awarded))}
             </p>
+            <button
+              onClick={() => setStep('answered')}
+              className="mt-4 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
+            >
+              {t.game.continue}
+            </button>
           </>
         ) : (
           <>
             <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
             <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
+            {/* Naming what the identifier saw turns a dead end into a hint. */}
+            {scanResult.candidates && scanResult.candidates.length > 0 && (
+              <p className="text-sm text-text-muted italic">
+                {t.game.weSaw.replace('{name}', scanResult.candidates[0])}
+              </p>
+            )}
+            {state.session.clue_mode !== 'logbook' ? (
+              <button
+                onClick={() => setStep('camera')}
+                className="mt-4 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
+              >
+                {t.game.tryAgain}
+              </button>
+            ) : (
+              <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
+            )}
           </>
-        )}
-        {scanResult.is_correct && (
-          <p className="text-text-muted text-sm">{t.game.nextRoundSoon.replace('{seconds}', String(countdown))}</p>
-        )}
-        {!scanResult.is_correct && state.session.clue_mode !== 'logbook' && (
-          <button
-            onClick={() => setStep('clue')}
-            className="mt-4 px-6 py-2 rounded-full bg-primary text-white text-sm font-semibold"
-          >
-            {t.game.scanButton}
-          </button>
-        )}
-        {!scanResult.is_correct && state.session.clue_mode === 'logbook' && (
-          <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
         )}
       </div>
     )

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { maps as mapsApi } from '../../api/client'
 import { gameApi } from '../../api/game'
-import type { MapPlant } from '../../types'
+import type { MapInfo, MapPlant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../ui/Glyph'
 
@@ -13,25 +13,72 @@ interface Props {
   onClose: () => void
 }
 
+/** A plant plus which map it came from — a hunt can span several. */
+interface GamePlant extends MapPlant {
+  mapId: number
+  mapName: string
+  mapType: 'outdoor' | 'indoor'
+}
+
+const ROUND_SECONDS_CHOICES = [60, 120, 180, 300]
+
 export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
   const t = useT()
   const navigate = useNavigate()
-  const [plants, setPlants] = useState<MapPlant[]>([])
+  const [allMaps, setAllMaps] = useState<MapInfo[]>([])
+  const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set([mapId]))
+  const [plants, setPlants] = useState<GamePlant[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [clueMode, setClueMode] = useState<'photo' | 'name' | 'logbook'>('photo')
-  const [roundCount, setRoundCount] = useState<number | null>(null)  // null = all (capped at 15)
+  const [clueMode, setClueMode] = useState<'photo' | 'name' | 'logbook'>('name')
+  const [pacing, setPacing] = useState<'host' | 'race'>('race')
+  const [roundSeconds, setRoundSeconds] = useState(180)
+  const [roundCount, setRoundCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Which maps are available to pull plants from.
   useEffect(() => {
-    mapsApi.plants(mapSlug)
-      .then((ps) => {
-        setPlants(ps.filter((p) => p.photo_path))
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [mapSlug])
+    mapsApi.list()
+      .then(setAllMaps)
+      .catch(() => setAllMaps([]))
+  }, [])
+
+  // Load plants for every selected map. Maps are few and the payloads small,
+  // so re-fetching the whole selection on each toggle keeps this simple.
+  useEffect(() => {
+    const chosen = allMaps.filter((m) => selectedMaps.has(m.id))
+    // Before the map list arrives, fall back to the map we were opened from.
+    const targets = chosen.length > 0
+      ? chosen
+      : [{ id: mapId, slug: mapSlug, name: '', map_type: 'outdoor' as const }]
+
+    let cancelled = false
+    setLoading(true)
+    Promise.all(
+      targets.map((m) =>
+        mapsApi.plants(m.slug)
+          .then((ps) => ps
+            .filter((p) => p.photo_path)
+            .map((p): GamePlant => ({
+              ...p,
+              mapId: m.id,
+              mapName: m.name,
+              mapType: (m.map_type ?? 'outdoor') as 'outdoor' | 'indoor',
+            })))
+          .catch(() => [] as GamePlant[]),
+      ),
+    ).then((results) => {
+      if (cancelled) return
+      const merged = results.flat()
+      setPlants(merged)
+      // Drop selections whose map was just deselected.
+      const available = new Set(merged.map((p) => p.id))
+      setSelected((prev) => new Set([...prev].filter((id) => available.has(id))))
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [allMaps, selectedMaps, mapId, mapSlug])
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -42,18 +89,40 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
     })
   }
 
-  function selectAll() {
-    setSelected(new Set(plants.map((p) => p.id)))
+  function toggleMap(id: number) {
+    setSelectedMaps((prev) => {
+      // Always leave at least one map selected — an empty hunt has no plants.
+      if (prev.has(id) && prev.size === 1) return prev
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
+
+  const scanMode = clueMode !== 'logbook'
+
+  // Plants with no species link can't be identified by name — the target would
+  // be the nickname their owner typed, which no identifier will ever return.
+  // In scan modes they are only winnable via photo similarity, so flag them.
+  const unlinkedSelected = useMemo(
+    () => plants.filter((p) => selected.has(p.id) && !p.species_id).length,
+    [plants, selected],
+  )
 
   async function handleCreate() {
     if (selected.size < 3 || creating) return
     setCreating(true)
     setError(null)
     try {
-      const { join_code } = await gameApi.create(
-        mapId, Array.from(selected), clueMode, roundCount ?? undefined,
-      )
+      const { join_code } = await gameApi.create({
+        mapIds: [...selectedMaps],
+        plantIds: [...selected],
+        clueMode,
+        pacing,
+        roundSeconds: pacing === 'race' ? roundSeconds : undefined,
+        roundCount: roundCount ?? undefined,
+      })
       navigate(`/game/${join_code}/host`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error)
@@ -65,80 +134,167 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
   const effectiveRounds = Math.min(roundCount ?? selected.size, 15, selected.size)
   const countChoices = [5, 10, 15].filter((n) => n < selected.size)
 
+  const modeButton = (
+    mode: 'photo' | 'name' | 'logbook',
+    icon: 'camera' | 'text' | 'book',
+    label: string,
+  ) => (
+    <button
+      onClick={() => setClueMode(mode)}
+      className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+        clueMode === mode ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+      }`}
+    >
+      <Glyph name={icon} size={15} />
+      {label}
+    </button>
+  )
+
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-black/40" onClick={onClose}>
       <div
-        className="mt-auto bg-surface rounded-t-2xl max-h-[85vh] flex flex-col"
+        className="mt-auto bg-surface rounded-t-2xl max-h-[88vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
           <div>
             <h2 className="font-bold text-text">{t.game.setupTitle}</h2>
             <p className="text-xs text-text-muted mt-0.5">{t.game.setupSubtitle}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-bg text-text-muted hover:text-text">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-bg text-text-muted hover:text-text"
+          >
             <Glyph name="x" size={16} />
           </button>
         </div>
 
-        {/* Clue mode toggle */}
-        <div className="px-5 pb-3 flex-shrink-0">
-          <p className="text-xs text-text-muted mb-2">{t.game.clueModeSectionLabel}</p>
-          <div className="flex rounded-xl overflow-hidden border border-border">
-            <button
-              onClick={() => setClueMode('photo')}
-              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
-                clueMode === 'photo' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
-              }`}
-            >
-              <Glyph name="camera" size={15} />
-              {t.game.clueModePhoto}
-            </button>
-            <button
-              onClick={() => setClueMode('name')}
-              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
-                clueMode === 'name' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
-              }`}
-            >
-              <Glyph name="text" size={15} />
-              {t.game.clueModeName}
-            </button>
-            <button
-              onClick={() => setClueMode('logbook')}
-              className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
-                clueMode === 'logbook' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
-              }`}
-            >
-              <Glyph name="book" size={15} />
-              {t.game.clueModeLogbook}
-            </button>
+        <div className="overflow-y-auto flex-1 px-5 pb-2 space-y-4">
+          {/* Maps — a hunt can cross from the living room into the garden */}
+          {allMaps.length > 1 && (
+            <div>
+              <p className="text-xs text-text-muted mb-2">{t.game.mapsSectionLabel}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allMaps.map((m) => {
+                  const on = selectedMaps.has(m.id)
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleMap(m.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
+                        on ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'
+                      }`}
+                    >
+                      <Glyph name={m.map_type === 'indoor' ? 'home' : 'sprout'} size={12} />
+                      {m.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Clue mode */}
+          <div>
+            <p className="text-xs text-text-muted mb-2">{t.game.clueModeSectionLabel}</p>
+            <div className="flex rounded-xl overflow-hidden border border-border">
+              {modeButton('name', 'text', t.game.clueModeName)}
+              {modeButton('photo', 'camera', t.game.clueModePhoto)}
+              {modeButton('logbook', 'book', t.game.clueModeLogbook)}
+            </div>
+            <p className="text-xs text-text-muted mt-1.5">
+              {clueMode === 'name'
+                ? t.game.clueModeNameHint
+                : clueMode === 'photo'
+                  ? t.game.clueModePhotoHint
+                  : t.game.clueModeLogbookHint}
+            </p>
           </div>
-        </div>
 
-        {/* Notice about photos */}
-        <div className="px-5 pb-3 flex-shrink-0">
-          <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 flex items-start gap-1.5">
-            <Glyph name="camera" size={14} className="shrink-0 mt-0.5" />
-            <span>{t.game.noPhotosWarning}</span>
-          </p>
-        </div>
-
-        {/* Select all / clear */}
-        {!loading && plants.length > 0 && (
-          <div className="px-5 pb-2 flex-shrink-0 flex items-center justify-between">
-            <p className="text-xs text-text-muted">{selected.size}/{plants.length}</p>
-            <button
-              onClick={() => (selected.size === plants.length ? setSelected(new Set()) : selectAll())}
-              className="text-xs font-semibold text-primary"
-            >
-              {selected.size === plants.length ? t.game.deselectAll : t.game.selectAll}
-            </button>
+          {/* Pacing */}
+          <div>
+            <p className="text-xs text-text-muted mb-2">{t.game.pacingSectionLabel}</p>
+            <div className="flex rounded-xl overflow-hidden border border-border">
+              <button
+                onClick={() => setPacing('race')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+                  pacing === 'race' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+                }`}
+              >
+                <Glyph name="sparkle" size={15} />
+                {t.game.pacingRace}
+              </button>
+              <button
+                onClick={() => setPacing('host')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+                  pacing === 'host' ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
+                }`}
+              >
+                <Glyph name="eye" size={15} />
+                {t.game.pacingHost}
+              </button>
+            </div>
+            <p className="text-xs text-text-muted mt-1.5">
+              {pacing === 'race' ? t.game.pacingRaceHint : t.game.pacingHostHint}
+            </p>
           </div>
-        )}
 
-        {/* Plant list */}
-        <div className="overflow-y-auto flex-1 px-5 pb-2">
+          {/* Round length — race only */}
+          {pacing === 'race' && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-text-muted">{t.game.roundLength}</p>
+              <div className="flex gap-1.5">
+                {ROUND_SECONDS_CHOICES.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setRoundSeconds(s)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                      roundSeconds === s
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-border text-text-muted'
+                    }`}
+                  >
+                    {s < 60 ? `${s}s` : `${s / 60}m`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Warnings */}
+          <div className="space-y-2">
+            <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-500 rounded-lg px-3 py-2 flex items-start gap-1.5">
+              <Glyph name="camera" size={14} className="shrink-0 mt-0.5" />
+              <span>{t.game.noPhotosWarning}</span>
+            </p>
+            {scanMode && unlinkedSelected > 0 && (
+              <p className="text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-500 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                <Glyph name="leaf" size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  {t.game.unlinkedSpeciesWarning.replace('{count}', String(unlinkedSelected))}
+                </span>
+              </p>
+            )}
+          </div>
+
+          {/* Select all / clear */}
+          {!loading && plants.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-text-muted">{selected.size}/{plants.length}</p>
+              <button
+                onClick={() =>
+                  selected.size === plants.length
+                    ? setSelected(new Set())
+                    : setSelected(new Set(plants.map((p) => p.id)))
+                }
+                className="text-xs font-semibold text-primary"
+              >
+                {selected.size === plants.length ? t.game.deselectAll : t.game.selectAll}
+              </button>
+            </div>
+          )}
+
+          {/* Plant list */}
           {loading ? (
             <p className="text-text-muted text-sm py-4">{t.common.loading}</p>
           ) : plants.length === 0 ? (
@@ -150,22 +306,48 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
                 const displayName = plantDisplayName(p, t.locale)
                 return (
                   <button
-                    key={p.id}
+                    key={`${p.mapId}-${p.id}`}
                     onClick={() => toggle(p.id)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left ${
                       sel ? 'border-primary bg-primary/8' : 'border-border bg-bg hover:bg-surface'
                     }`}
                   >
                     {p.photo_path ? (
-                      <img src={p.photo_path} alt={displayName} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                      <img
+                        src={p.photo_path}
+                        alt={displayName}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                      />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-border flex items-center justify-center text-text-muted flex-shrink-0"><Glyph name="sprout" size={22} /></div>
+                      <div className="w-12 h-12 rounded-lg bg-border flex items-center justify-center text-text-muted flex-shrink-0">
+                        <Glyph name="sprout" size={22} />
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${sel ? 'text-primary' : 'text-text'}`}>{displayName}</p>
-                      {p.species && <p className="text-xs text-text-muted truncate">{p.species}</p>}
+                      <p className={`text-sm font-medium truncate ${sel ? 'text-primary' : 'text-text'}`}>
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-text-muted truncate flex items-center gap-1">
+                        {selectedMaps.size > 1 && (
+                          <>
+                            <Glyph
+                              name={p.mapType === 'indoor' ? 'home' : 'sprout'}
+                              size={11}
+                            />
+                            {p.mapName}
+                          </>
+                        )}
+                        {p.species && <span className="truncate">{p.species}</span>}
+                        {scanMode && !p.species_id && (
+                          <span className="text-amber-600">· {t.game.notIdentifiable}</span>
+                        )}
+                      </p>
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${sel ? 'border-primary bg-primary' : 'border-border'}`}>
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        sel ? 'border-primary bg-primary' : 'border-border'
+                      }`}
+                    >
                       {sel && <Glyph name="check" size={13} className="text-white" />}
                     </div>
                   </button>
@@ -187,7 +369,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
                     key={n}
                     onClick={() => setRoundCount(n)}
                     className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                      roundCount === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'
+                      roundCount === n
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-border text-text-muted'
                     }`}
                   >
                     {n}
@@ -196,7 +380,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
                 <button
                   onClick={() => setRoundCount(null)}
                   className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                    roundCount === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'
+                    roundCount === null
+                      ? 'bg-primary text-white border-primary'
+                      : 'border-border text-text-muted'
                   }`}
                 >
                   {t.game.allQuestions}

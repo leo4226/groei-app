@@ -9,99 +9,7 @@
 import pytest
 
 from routers import game as game_router
-
-
-async def _create_game_schema(db) -> None:
-    """Game tables (mirrors test_game_embeddings — cross-test imports don't resolve)."""
-    await db.executescript(
-        """
-        CREATE TABLE game_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            join_code TEXT NOT NULL UNIQUE,
-            host_account_id INTEGER NOT NULL,
-            map_id INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'waiting',
-            current_round INTEGER NOT NULL DEFAULT 0,
-            created_at TIMESTAMP,
-            started_at TIMESTAMP,
-            finished_at TIMESTAMP,
-            clue_mode TEXT NOT NULL DEFAULT 'photo'
-        );
-        CREATE TABLE game_players (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            account_id INTEGER NOT NULL,
-            score INTEGER NOT NULL DEFAULT 0,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE (session_id, account_id)
-        );
-        CREATE TABLE game_rounds (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            round_index INTEGER NOT NULL,
-            plant_id INTEGER NOT NULL,
-            plant_name_nl TEXT NOT NULL,
-            plant_name_en TEXT,
-            target_species TEXT NOT NULL,
-            clue_photo_url TEXT,
-            clue_hint_nl TEXT,
-            clue_hint_en TEXT,
-            started_at TIMESTAMP,
-            target_embedding TEXT,
-            UNIQUE (session_id, round_index)
-        );
-        CREATE TABLE game_answers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            round_id INTEGER NOT NULL,
-            player_id INTEGER NOT NULL,
-            scanned_species TEXT NOT NULL,
-            is_correct BOOLEAN NOT NULL,
-            points_awarded INTEGER NOT NULL DEFAULT 0,
-            answered_at TIMESTAMP NOT NULL,
-            UNIQUE (round_id, player_id)
-        );
-        CREATE TABLE plant_species (
-            id INTEGER PRIMARY KEY,
-            common_name_nl TEXT,
-            common_name_en TEXT,
-            latin_name TEXT
-        );
-        """
-    )
-    await db.commit()
-
-
-async def _seed_game_world(db, plant_count: int = 6) -> list[int]:
-    """Game schema + an outdoor map with N photo-bearing plants. Returns ids."""
-    await _create_game_schema(db)
-    await db.executescript(
-        """
-        CREATE TABLE plant_photos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            plant_id INTEGER NOT NULL,
-            household_id INTEGER,
-            r2_key TEXT,
-            url TEXT,
-            note TEXT,
-            taken_at TEXT,
-            care_log_id INTEGER
-        );
-        """
-    )
-    # conftest's minimal maps table has no slug, but _build_state selects it.
-    await db.execute("ALTER TABLE maps ADD COLUMN slug TEXT")
-    await db.execute(
-        "INSERT INTO maps (id, name, map_type, household_id, slug) VALUES (10, 'Garden', 'outdoor', 1, 'garden')"
-    )
-    ids = list(range(101, 101 + plant_count))
-    for plant_id in ids:
-        await db.execute(
-            """INSERT INTO plants (id, name, map_id, photo_path, is_active)
-               VALUES (?, ?, 10, ?, 1)""",
-            (plant_id, f"Plant {plant_id}", f"https://r2.test/profile-{plant_id}.jpg"),
-        )
-    await db.commit()
-    return ids
+from tests.game_world import seed_game_world as _seed_game_world
 
 
 @pytest.fixture
@@ -180,7 +88,7 @@ async def test_logbook_mode_uses_logbook_photo_with_fallback(client, seeded_db, 
     assert resp.status_code == 201, resp.text
 
     rounds = await seeded_db.execute_fetchall(
-        "SELECT plant_id, clue_photo_url, target_embedding FROM game_rounds ORDER BY plant_id"
+        "SELECT plant_id, clue_photo_url, target_embeddings FROM game_rounds ORDER BY plant_id"
     )
     by_plant = {r["plant_id"]: dict(r) for r in rounds}
     assert by_plant[ids[0]]["clue_photo_url"] == "https://r2.test/logbook-101.jpg"
@@ -188,7 +96,7 @@ async def test_logbook_mode_uses_logbook_photo_with_fallback(client, seeded_db, 
 
     # Quiz answers are taps, not scans — no embeddings generated at all.
     assert no_embeds == []
-    assert all(r["target_embedding"] is None for r in rounds)
+    assert all(r["target_embeddings"] is None for r in rounds)
 
     # The session advertises the mode so clients render the quiz UI.
     session = (await seeded_db.execute_fetchall(

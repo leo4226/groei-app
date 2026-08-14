@@ -654,7 +654,7 @@ export default function MapPage() {
           onToggleInspector={sun.toggleInspectorMode}
           onToggleMoveMode={handleToggleMoveMode}
           onAddPlant={() => navigate('/plants/add', { state: { fromMap: location.pathname } })}
-          onNewGame={isOutdoor ? () => setShowGameSetup(true) : undefined}
+          onNewGame={() => setShowGameSetup(true)}
         />
         <div className="landscape-mobile-hide">
           {isOutdoor && slug && <GardenBiodiversityCard slug={slug} mode="pill" onModalOpenChange={setBiodiversityModalOpen} />}

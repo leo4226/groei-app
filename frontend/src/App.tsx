@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { useFloreren } from './store/useFloreren'
 import { LanguageProvider } from './context/LanguageContext'
 import BottomNav from './components/BottomNav'
@@ -13,6 +13,7 @@ import UpdateToast from './components/ui/UpdateToast'
 import InstallNudge from './components/install/InstallNudge'
 import type { LocalPlant } from './data/plants-dataset'
 import { getToken } from './api/auth'
+import { getGuest } from './api/game'
 import { icons } from './api/client'
 import { Analytics } from '@vercel/analytics/react'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -55,6 +56,20 @@ function SuspenseWrapper({ children }: { children: React.ReactNode }) {
 function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />
   return <>{children}</>
+}
+
+/**
+ * Game routes accept a party guest as well as a logged-in account.
+ *
+ * Guests hold a session-scoped guest token, not a Floreren login, so RequireAuth
+ * would bounce every one of them to /login the moment they joined. Sending them
+ * to the join screen (with the code prefilled) is the right recovery here — not
+ * to a login form they have no account for.
+ */
+function RequireGameAccess({ children }: { children: React.ReactNode }) {
+  const { code } = useParams<{ code: string }>()
+  if (getToken() || getGuest(code)) return <>{children}</>
+  return <Navigate to={`/game${code ? `?code=${code}` : ''}`} replace />
 }
 
 /** Redirect /maps to the first indoor map's /map/:slug page. */
@@ -406,9 +421,9 @@ export default function App() {
               <Route
                 path="/game/:code"
                 element={
-                  <RequireAuth>
+                  <RequireGameAccess>
                     <GamePlayerPage />
-                  </RequireAuth>
+                  </RequireGameAccess>
                 }
               />
             </Routes>
