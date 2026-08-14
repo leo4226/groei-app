@@ -1984,7 +1984,15 @@ export type Translations = {
     funFactLoading: string     // "Weetje laden..."
     funFactError: string       // "Kon geen weetje laden"
     funFactRetry: string
+    closeEntry: string
+    previousEntry: string
+    nextEntry: string
     readOnWikipedia: string
+    /** Named article link, e.g. "Read on Wikipedia: Madeliefje". */
+    readOnWikipediaNamed: (title: string) => string
+    searchOnWikipedia: string
+    wikipediaLoading: string
+    wikipediaEnglishOnly: string
     /** Species lookup failed — shown instead of a fun-fact error, with a retry. */
     speciesLinkFailed: string
     /** Identified, but the species is not in the catalog: no facts to show. */
