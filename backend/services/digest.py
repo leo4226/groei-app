@@ -18,6 +18,7 @@ from auth import SECRET
 from care_types import CARE_TYPES, parse_muted_care_types
 from models import CareTask
 from services.care_task_service import fetch_household_schedule_rows, classify_care_tasks
+from services import email_template as tpl
 from services.email import send_email
 from services.push import send_push
 from services.weather_task_service import weather_task_metadata
@@ -137,24 +138,36 @@ def account_is_due(pref_row, now: datetime, last_field: str = "last_digest_sent_
 
 _STRINGS = {
     "nl": {
-        "subject": "Je planten hebben vandaag aandacht nodig 🌿",
+        "subject_one": "1 plant heeft vandaag aandacht nodig",
+        "subject_many": "{n} planten hebben vandaag aandacht nodig",
         "greeting": "Hoi {name},",
-        "intro": "Dit zijn de verzorgingstaken voor vandaag:",
+        "intro_one": "Eén plant vraagt vandaag om je aandacht.",
+        "intro_many": "{n} planten vragen vandaag om je aandacht.",
+        "preheader_one": "{plant} — {label}",
+        "preheader_many": "{first}, en nog {rest} meer",
         "overdue": "Te laat",
         "due_today": "Vandaag",
-        "days_late": "{n} dag(en) te laat",
+        "days_late_one": "1 dag te laat",
+        "days_late_many": "{n} dagen te laat",
         "open_app": "Open Floreren",
-        "unsubscribe": "Geen dagelijkse digest meer ontvangen? Afmelden",
+        "unsubscribe": "Afmelden voor de dagelijkse mail",
+        "sign_off": "Veel plezier in de tuin 🌿",
     },
     "en": {
-        "subject": "Your plants need attention today 🌿",
+        "subject_one": "1 plant needs attention today",
+        "subject_many": "{n} plants need attention today",
         "greeting": "Hi {name},",
-        "intro": "Here are today's care tasks:",
+        "intro_one": "One plant is asking for you today.",
+        "intro_many": "{n} plants are asking for you today.",
+        "preheader_one": "{plant} — {label}",
+        "preheader_many": "{first}, and {rest} more",
         "overdue": "Overdue",
         "due_today": "Today",
-        "days_late": "{n} day(s) overdue",
+        "days_late_one": "1 day overdue",
+        "days_late_many": "{n} days overdue",
         "open_app": "Open Floreren",
-        "unsubscribe": "Don't want the daily digest? Unsubscribe",
+        "unsubscribe": "Unsubscribe from the daily email",
+        "sign_off": "Enjoy the garden 🌿",
     },
 }
 
@@ -165,30 +178,81 @@ def _api_base() -> str:
     return os.environ.get("API_BASE_URL", "https://api.floreren.app").rstrip("/")
 
 
-def _task_line(task: CareTask, s: dict, lang: str) -> str:
-    care = CARE_TYPES.get(task.care_type, {})
-    icon = care.get("icon", "🌿")
-    label_key = "label_en" if lang == "en" else "label_nl"
-    label = care.get(label_key) or care.get("label_nl", task.care_type)
-    late = ""
-    if task.days_overdue > 0:
-        late = f' <span style="color:#b3261e;font-size:13px;">({s["days_late"].format(n=task.days_overdue)})</span>'
+def _care_label(care_type: str, lang: str) -> str:
+    care = CARE_TYPES.get(care_type, {})
+    key = "label_en" if lang == "en" else "label_nl"
+    return care.get(key) or care.get("label_nl") or care_type
+
+
+def _days_late(n: int, s: dict) -> str:
+    return s["days_late_one"] if n == 1 else s["days_late_many"].format(n=n)
+
+
+def _task_row(task: CareTask, s: dict, lang: str, *, late: bool) -> str:
+    """One task as its own card.
+
+    The old template put every task in a bare `<li>` with an emoji, so a plant
+    three days overdue looked exactly like one due this afternoon. Each row now
+    carries the care icon in a tinted disc and, when late, a coloured pill —
+    the same visual language the app uses for an overdue chip.
+    """
+    icon = CARE_TYPES.get(task.care_type, {}).get("icon", "🌿")
+    label = _care_label(task.care_type, lang)
+    accent = tpl.OVERDUE if late else tpl.DUE
     place = task.map_name or task.location
-    where = f' <span style="color:#999;font-size:13px;">— {place}</span>' if place else ""
+    where = (
+        f'<span class="fl-muted" style="color:{tpl.TEXT_MUTED};"> · {place}</span>'
+        if place else ""
+    )
+    pill = ""
+    if late and task.days_overdue > 0:
+        pill = (
+            f'<span style="display:inline-block;margin-top:4px;padding:2px 9px;border-radius:99px;'
+            f'background:{accent}1F;color:{accent};font-size:11px;font-weight:700;'
+            f'font-family:{tpl.BODY_FONT};">{_days_late(task.days_overdue, s)}</span>'
+        )
     return (
-        f'<li style="margin:0 0 8px;color:#333;font-size:15px;">'
-        f'{icon} <strong>{task.plant_name}</strong> · {label}{late}{where}</li>'
+        f'<tr><td class="fl-row" style="padding:11px 14px;background:{tpl.SURFACE};'
+        f'border:1px solid {tpl.BORDER_SOFT};border-left:3px solid {accent};border-radius:12px;">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td width="34" valign="top" style="width:34px;font-size:19px;line-height:1.2;">{icon}</td>'
+        '<td valign="top">'
+        f'<div class="fl-text" style="color:{tpl.TEXT};font-family:{tpl.BODY_FONT};font-size:15px;'
+        f'font-weight:600;line-height:1.35;">{task.plant_name}</div>'
+        f'<div class="fl-soft" style="color:{tpl.TEXT_SOFT};font-family:{tpl.BODY_FONT};'
+        f'font-size:13px;line-height:1.4;">{label}{where}</div>'
+        f'{pill}'
+        '</td></tr></table>'
+        '</td></tr><tr><td style="height:8px;line-height:8px;">&nbsp;</td></tr>'
     )
 
 
-def _section(title: str, tasks: list[CareTask], s: dict, lang: str) -> str:
+def _section(title: str, tasks: list[CareTask], s: dict, lang: str, *, late: bool) -> str:
     if not tasks:
         return ""
-    items = "".join(_task_line(t, s, lang) for t in tasks)
+    rows = "".join(_task_row(t, s, lang, late=late) for t in tasks)
+    accent = tpl.OVERDUE if late else tpl.DUE
     return (
-        f'<h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;'
-        f'color:#4a7c59;margin:20px 0 8px;">{title}</h2>'
-        f'<ul style="margin:0;padding-left:4px;list-style:none;">{items}</ul>'
+        f'<p style="margin:22px 0 10px;font-family:{tpl.BODY_FONT};font-size:11px;'
+        f'font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:{accent};">'
+        f'{title} · {len(tasks)}</p>'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+        f'{rows}</table>'
+    )
+
+
+def _preheader(overdue: list[CareTask], due_today: list[CareTask], s: dict, lang: str) -> str:
+    tasks = overdue + due_today
+    if not tasks:
+        return ""
+    first = tasks[0]
+    if len(tasks) == 1:
+        return s["preheader_one"].format(
+            plant=first.plant_name, label=_care_label(first.care_type, lang),
+        )
+    return s["preheader_many"].format(
+        first=f"{first.plant_name} — {_care_label(first.care_type, lang)}",
+        rest=len(tasks) - 1,
     )
 
 
@@ -199,40 +263,35 @@ def build_digest_email(
     unsubscribe_url: str,
     lang: str = "nl",
 ) -> tuple[str, str]:
-    """Return (subject, html) for the daily digest. Bilingual-ready via `lang`."""
+    """Return (subject, html) for the daily digest."""
     lang = "en" if lang == "en" else "nl"
     s = _STRINGS[lang]
-    body = _section(s["overdue"], overdue, s, lang) + _section(s["due_today"], due_today, s, lang)
-    html = f"""\
-<!DOCTYPE html>
-<html lang="{lang}">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-<tr><td style="padding:32px 32px 0;text-align:center;background:#f5f5f0;">
-<h1 style="font-family:'Fraunces',Georgia,serif;font-size:2rem;color:#4a7c59;margin:0 0 8px;">Floreren</h1>
-</td></tr>
-<tr><td style="padding:32px;">
-<p style="color:#333;font-size:16px;line-height:1.5;margin:0 0 4px;">{s["greeting"].format(name=name)}</p>
-<p style="color:#333;font-size:16px;line-height:1.5;margin:0 0 12px;">{s["intro"]}</p>
-{body}
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto 0;">
-<tr><td align="center" style="background:#4a7c59;border-radius:10px;padding:14px 32px;">
-<a href="{APP_URL}/dashboard" style="color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;display:inline-block;">{s["open_app"]}</a>
-</td></tr>
-</table>
-</td></tr>
-<tr><td style="padding:16px 32px;border-top:1px solid #eee;text-align:center;">
-<p style="color:#999;font-size:12px;margin:0;"><a href="{unsubscribe_url}" style="color:#999;">{s["unsubscribe"]}</a></p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>"""
-    return s["subject"], html
+    total = len(overdue) + len(due_today)
+
+    # The subject used to be the same sentence every day, so a week of digests
+    # was a wall of identical lines. Leading with the count makes each one
+    # skimmable from the inbox, and answers "is this urgent?" before opening.
+    subject = s["subject_one"] if total == 1 else s["subject_many"].format(n=total)
+    intro = s["intro_one"] if total == 1 else s["intro_many"].format(n=total)
+
+    body = (
+        tpl.paragraph(s["greeting"].format(name=name))
+        + tpl.paragraph(intro)
+        + _section(s["overdue"], overdue, s, lang, late=True)
+        + _section(s["due_today"], due_today, s, lang, late=False)
+        + tpl.button(s["open_app"], f"{APP_URL}/maps")
+        + f'<p class="fl-muted" style="margin:20px 0 0;text-align:center;color:{tpl.TEXT_MUTED};'
+          f'font-family:{tpl.BODY_FONT};font-size:13px;">{s["sign_off"]}</p>'
+    )
+    html = tpl.render_email(
+        lang=lang,
+        preheader=_preheader(overdue, due_today, s, lang),
+        body_html=body,
+        footer_html=tpl.footer_note(
+            f'<a href="{unsubscribe_url}" style="color:{tpl.TEXT_MUTED};">{s["unsubscribe"]}</a>'
+        ),
+    )
+    return subject, html
 
 
 # ── email digest orchestration ─────────────────────────────────────────────
@@ -247,22 +306,16 @@ async def send_due_digests(db) -> dict:
     now = _now()
     today = now.date()
 
-    # Language comes from the user profile that signup creates alongside each
-    # account (same name, same household — see routers/auth.py). Accounts have
-    # no language column of their own (yet); the scalar subquery keeps one
-    # digest row per account, with NULL falling back to NL when no profile exists.
+    # `accounts.language` (migration 0041) is the language both channels read,
+    # and PATCH /users/{id}/language keeps it current. This used to resolve the
+    # language with a correlated subquery over `users` under a comment claiming
+    # accounts had no language column — true when it was written, superseded by
+    # 0041, and it meant email and push could disagree about the same user.
     prefs = await db.execute_fetchall(
         """
         SELECT np.account_id, np.digest_time, np.digest_enabled,
                np.last_digest_sent_on, a.email, a.name, a.household_id,
-               (
-                 SELECT u.language
-                 FROM users u
-                 WHERE u.household_id = a.household_id
-                   AND LOWER(u.name) = LOWER(a.name)
-                 ORDER BY u.id
-                 LIMIT 1
-               ) AS user_language
+               a.language AS user_language
         FROM notification_preferences np
         JOIN accounts a ON a.id = np.account_id
         WHERE np.digest_enabled
@@ -290,7 +343,7 @@ async def send_due_digests(db) -> dict:
         subject, html = build_digest_email(
             pref["name"], overdue, due_today, unsubscribe_url, lang=lang
         )
-        if send_email(pref["email"], subject, html):
+        if send_email(pref["email"], subject, html, unsubscribe_url=unsubscribe_url):
             await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
             sent += 1
         else:
@@ -362,14 +415,26 @@ def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = Non
     the payload carries a `snooze_url` the service worker uses for its "remind
     me later" action buttons. `language` controls UI strings ('nl' or 'en').
     """
+    # The title used to be "Floreren" on every push, so the notification shade
+    # showed the app's name in bold and the useful part in grey underneath. The
+    # plant (or the count) is what the reader is deciding about, so it leads —
+    # the icon already says which app this is (#889).
     n = len(due_rows)
     if n == 1:
         row = due_rows[0]
         label = _care_push_label(row["care_type"], language)
-        body = f"{row['plant_name']} {'needs attention —' if language == 'en' else 'heeft aandacht nodig —'} {label}"
+        title = row["plant_name"]
+        body = f"{'Time to' if language == 'en' else 'Tijd om te'} {label}"
     else:
-        body = f"{n} {'plants need care' if language == 'en' else 'planten hebben verzorging nodig'}"
-    payload = {"title": "Floreren", "body": body, "url": f"{APP_URL}/maps"}
+        title = (
+            f"{n} plants need care" if language == "en"
+            else f"{n} planten hebben verzorging nodig"
+        )
+        leading = ", ".join(dict.fromkeys(r["plant_name"] for r in due_rows[:3]))
+        body = leading if n <= 3 else (
+            f"{leading} {'and more' if language == 'en' else 'en meer'}"
+        )
+    payload = {"title": title, "body": body, "url": f"{APP_URL}/maps"}
     if snooze_token:
         payload["snooze_url"] = f"{_api_base()}/api/notifications/snooze?token={snooze_token}"
         # Localized snooze action buttons — sw.js uses these instead of hardcoded NL

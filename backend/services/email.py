@@ -22,11 +22,35 @@ def _get_resend() -> object | None:
     return __import__("resend", fromlist=["Emails"])
 
 
-def send_email(to_email: str, subject: str, html: str) -> bool:
+# Inboxes show the display name, not the address. Without one every Floreren
+# email arrived from "noreply@floreren.app", which reads like a machine and
+# sorts badly in a threaded inbox (#889).
+FROM_ADDRESS = "Floreren <noreply@floreren.app>"
+
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html: str,
+    *,
+    unsubscribe_url: str | None = None,
+) -> bool:
     """Send a transactional email via Resend. Returns True on success.
+
+    Always sends a text/plain part alongside the HTML: some clients prefer it,
+    screen readers handle it better, and a missing plain part is a documented
+    spam signal. It is derived from the HTML so the two cannot drift.
+
+    `unsubscribe_url` adds the List-Unsubscribe headers, which turn the
+    unsubscribe link into the mail client's own button. Gmail and Outlook weigh
+    its presence in bulk-sender reputation, and a one-click header is far
+    likelier to be used than a hunt through the footer — which protects the
+    sending domain from being marked as spam instead.
 
     If RESEND_API_KEY is not set, logs the email to stdout (dev fallback).
     """
+    from services.email_template import html_to_text
+
     key = os.environ.get("RESEND_API_KEY")
     if not key:
         logger.info("[DEV] Email to %s: %s", to_email, subject)
@@ -37,12 +61,19 @@ def send_email(to_email: str, subject: str, html: str) -> bool:
     try:
         import resend  # type: ignore[import-untyped]
         resend.api_key = key
-        r = resend.Emails.send({
-            "from": "noreply@floreren.app",
+        params: dict = {
+            "from": FROM_ADDRESS,
             "to": [to_email],
             "subject": subject,
             "html": html,
-        })
+            "text": html_to_text(html),
+        }
+        if unsubscribe_url:
+            params["headers"] = {
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+        r = resend.Emails.send(params)
         logger.info("Email sent to %s: %s", to_email, r)
         return True
     except Exception as e:
@@ -50,76 +81,67 @@ def send_email(to_email: str, subject: str, html: str) -> bool:
         return False
 
 
-def send_password_reset(
-    to_email: str,
-    reset_link: str,
-) -> bool:
-    """Send a password reset email. Returns True on success, False on failure.
+_RESET_STRINGS = {
+    "nl": {
+        "subject": "Stel je Floreren-wachtwoord opnieuw in",
+        "preheader": "Deze link verloopt over een uur.",
+        "greeting": "Hoi,",
+        "intro": "Er is een nieuw wachtwoord aangevraagd voor dit e-mailadres. "
+                 "Klik op de knop om er een in te stellen.",
+        "cta": "Nieuw wachtwoord instellen",
+        "expiry": "Deze link verloopt over <strong>1 uur</strong>.",
+        "ignore": "Heb je dit niet aangevraagd? Dan kun je deze mail negeren — "
+                  "je wachtwoord verandert pas als je op de knop klikt.",
+        "footer": "Floreren — laat je tuin floreren",
+    },
+    "en": {
+        "subject": "Reset your Floreren password",
+        "preheader": "This link expires in an hour.",
+        "greeting": "Hi,",
+        "intro": "Someone asked for a new password for this email address. "
+                 "Use the button below to set one.",
+        "cta": "Set a new password",
+        "expiry": "This link expires in <strong>1 hour</strong>.",
+        "ignore": "Didn't ask for this? You can ignore this email — your "
+                  "password only changes once you click the button.",
+        "footer": "Floreren — let your garden flourish",
+    },
+}
 
-    If RESEND_API_KEY is not set, logs the reset link to stdout (dev fallback).
+
+def send_password_reset(to_email: str, reset_link: str, lang: str = "nl") -> bool:
+    """Send a password reset email in the account's language.
+
+    It was English-only and hardcoded, so a Dutch user asking to recover their
+    account got the one email they cannot afford to misread in a language they
+    may not have chosen (#889).
     """
-    link = reset_link
-    app_name = "Floreren"
+    from services.email_template import (
+        button, footer_note, paragraph, render_email,
+    )
 
-    html = f"""\
-<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-<tr><td style="padding:32px 32px 0;text-align:center;background:#f5f5f0;">
-<h1 style="font-family:'Fraunces',Georgia,serif;font-size:2rem;color:#4a7c59;margin:0 0 8px;">{app_name}</h1>
-</td></tr>
-<tr><td style="padding:32px;">
-<p style="color:#333;font-size:16px;line-height:1.5;margin:0 0 16px;">Hi,</p>
-<p style="color:#333;font-size:16px;line-height:1.5;margin:0 0 20px;">
-Someone requested a password reset for this email address. Click the button below to set a new password.
-</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
-<tr>
-<td align="center" style="background:#4a7c59;border-radius:10px;padding:14px 32px;">
-<a href="{link}" style="color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;display:inline-block;">Reset my password</a>
-</td>
-</tr>
-</table>
-<p style="color:#666;font-size:14px;line-height:1.5;margin:0 0 8px;">
-This link expires in <strong>1 hour</strong>.
-</p>
-<p style="color:#666;font-size:14px;line-height:1.5;margin:0;">
-If you didn't request this, you can safely ignore this email. Your password won't change unless you click the link above.
-</p>
-</td></tr>
-<tr><td style="padding:16px 32px;border-top:1px solid #eee;text-align:center;">
-<p style="color:#999;font-size:12px;margin:0;">{app_name} — Track your plants, grow your garden</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>"""
+    lang = "en" if lang == "en" else "nl"
+    s = _RESET_STRINGS[lang]
+
+    body = (
+        paragraph(s["greeting"])
+        + paragraph(s["intro"])
+        + button(s["cta"], reset_link)
+        + paragraph(s["expiry"], muted=True, size=14)
+        + paragraph(s["ignore"], muted=True, size=14)
+    )
+    html = render_email(
+        lang=lang,
+        preheader=s["preheader"],
+        body_html=body,
+        footer_html=footer_note(s["footer"]),
+    )
 
     key = os.environ.get("RESEND_API_KEY")
     if not key:
-        # Dev fallback: log the link
-        logger.info(f"[DEV] Password reset link for {to_email}: {link}")
+        logger.info("[DEV] Password reset link for %s: %s", to_email, reset_link)
         print(f"[DEV EMAIL] To: {to_email}")
-        print(f"[DEV EMAIL] Link: {link}")
+        print(f"[DEV EMAIL] Link: {reset_link}")
         return True
 
-    try:
-        import resend  # type: ignore[import-untyped]
-        resend.api_key = key
-        params = {
-            "from": "noreply@floreren.app",
-            "to": [to_email],
-            "subject": "Reset your Floreren password",
-            "html": html,
-        }
-        r = resend.Emails.send(params)
-        logger.info("Password reset email sent to %s: %s", to_email, r)
-        return True
-    except Exception as e:
-        logger.error("Failed to send password reset email to %s: %s", to_email, e)
-        return False
+    return send_email(to_email, s["subject"], html)
