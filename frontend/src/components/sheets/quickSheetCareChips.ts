@@ -86,3 +86,28 @@ export function dueChipCount(
     return days !== undefined && days <= 0
   }).length
 }
+
+export interface NextCare {
+  careType: string
+  days: number
+}
+
+/**
+ * The soonest care still ahead of this plant, for the sheet's "next up" line.
+ *
+ * Only future care: anything due or overdue is already shouting from the status
+ * line and the chip badges, and repeating it underneath would be noise. Null
+ * when nothing is scheduled ahead — the plant has no rhythm to report.
+ *
+ * The sheet said "Alles op schema" and nothing else, so the pane people open to
+ * check on a plant could not tell them when it next needs them, or that its
+ * rhythm was editable at all (#888).
+ */
+export function nextUpcomingCare(dueByType: Map<string, number>): NextCare | null {
+  let best: NextCare | null = null
+  for (const [careType, days] of dueByType) {
+    if (days <= 0) continue
+    if (!best || days < best.days) best = { careType, days }
+  }
+  return best
+}

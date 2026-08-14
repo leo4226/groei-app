@@ -667,7 +667,7 @@ export default function PlantDetail() {
   )
 
   const careBlock = (
-    <Section title={t.plantDetail.care}>
+    <Section id={PLANT_PASSPORT_ANCHORS.care} title={t.plantDetail.care}>
       {careScheduleRows(true)}
       {editCareLink}
     </Section>
@@ -906,7 +906,7 @@ export default function PlantDetail() {
           <div className="grid grid-cols-2 items-start gap-x-10 gap-y-8 pt-8 xl:grid-cols-3 xl:gap-x-0 xl:divide-x xl:divide-border">
             <div className="min-w-0 xl:pr-8">
               {alertsBlock}
-              <Section title={t.plantDetail.care}>
+              <Section id={PLANT_PASSPORT_ANCHORS.care} title={t.plantDetail.care}>
                 {careScheduleRows(false)}
                 {editCareLink}
               </Section>

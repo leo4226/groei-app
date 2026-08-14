@@ -1,4 +1,5 @@
 export const PLANT_PASSPORT_ANCHORS = {
+  care: 'care-schedules',
   careHistory: 'care-history',
   photoJournal: 'photo-journal',
 } as const

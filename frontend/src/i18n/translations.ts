@@ -821,6 +821,8 @@ export type Translations = {
     careMist: string
     careRotate: string
     carePestCheck: string
+    nextCare: (label: string, days: number) => string
+    noRhythm: string
     careDust: string
     careProtectCold: string
     careProtectHeat: string

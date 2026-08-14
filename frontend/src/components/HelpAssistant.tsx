@@ -490,7 +490,7 @@ export default function HelpAssistant() {
           touchAction: 'none', /* prevent scroll while dragging on mobile */
           cursor: 'grab',
         }}
-        className="rounded-full bg-surface border-2 border-primary shadow-lg hover:shadow-xl active:scale-95 active:cursor-grabbing transition-shadow duration-200 flex items-center justify-center overflow-hidden"
+        className="help-assistant-launcher rounded-full bg-surface border-2 border-primary shadow-lg hover:shadow-xl active:scale-95 active:cursor-grabbing transition-shadow duration-200 flex items-center justify-center overflow-hidden"
         aria-label={t.help.title}
       >
         <LeonAvatar size={buttonSize} className="scale-[1.3] translate-y-[-2px]" />

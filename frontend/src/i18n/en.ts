@@ -862,6 +862,9 @@ export const en: Translations = {
     careMist: 'Mist',
     careRotate: 'Rotate',
     carePestCheck: 'Pests',
+    nextCare: (label: string, days: number) =>
+      days === 1 ? `Next: ${label.toLowerCase()} tomorrow` : `Next: ${label.toLowerCase()} in ${days} days`,
+    noRhythm: 'No care scheduled yet — set one up',
     careDust: 'Wipe',
     careProtectCold: 'Cold protection',
     careProtectHeat: 'Heat protection',

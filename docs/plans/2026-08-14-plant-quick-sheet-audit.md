@@ -68,15 +68,24 @@ days is a default in every environment, so this is not an exotic setup.
 a hand-written array, so a new care type cannot be added to the model without
 appearing here.
 
-### P2-1 — The chip filter asks the wrong question
+### P2-1 — ~~The chip filter asks the wrong question~~ — **withdrawn, with one real defect underneath**
 
-`dueByType.has(ct)` means "this plant has a schedule of this type", not "this
-type is due". So **Sproeien showed a chip while due in 4 days**, taking a slot
-next to two invisible overdue tasks. Either show every scheduled type (honest,
-but the row grows) or show due ones plus the two staples. Right now it is
-neither rule, just an accident of the data structure.
+Written as "neither rule, just an accident of the data structure". On a second
+read that is wrong: the rule is exactly what the comment above it says — *water
+and feed always, plus any care type this plant is scheduled for* — and it is
+applied consistently. The mist chip appearing four days early is the rule
+working, not a bug: logging care early ("I misted it today anyway") is a normal
+thing to want, and the chip carries no badge, so it does not claim to be due.
 
-### P2-2 — "Extra plekken" dominates a sheet that is mostly about care
+The rule stands. It is now expressed as one named function, `careChipTypes`,
+with the reasoning written down.
+
+**The real defect next to it:** `dueByType` was built from
+`detail.care_schedules` with no `is_active` filter, so a **deactivated**
+schedule still produced a chip. Turn `mist` off in the edit form and its chip
+stayed on the sheet. `dueDaysByType` skips inactive rows, which fixes it.
+
+### P2-2 — "Extra plekken" dominates a sheet that is mostly about care — **FIXED**
 
 The placements block renders whenever `onAddPlacement` is passed, which
 `MapPage.tsx:799` does unconditionally — so **every plant, always**. It is a
@@ -91,13 +100,12 @@ Multi-placement is a real feature (one rhubarb, three clumps) but a rare one,
 and it is *placement* — the same category as "move on map", which correctly
 lives in the ⋯ menu. Meanwhile the thing users come here for gets the middle.
 
-**Proposal.** Show the block only when the plant already has extra placements
-(`placements.length > 0`), and move "Voeg nog een plek toe" into the ⋯ /
-desktop icon row beside "Verplaats op kaart", where the other placement actions
-already are. Users who use the feature keep it one tap away and keep seeing
-their existing spots; everyone else gets the space back.
+**Fixed** as proposed: the block renders only when `placements.length > 0`, and
+"Voeg nog een plek toe" moved into the ⋯ menu and the desktop icon row beside
+the other placement actions. Users of the feature keep their spots visible and
+stay one tap from adding; every other plant gets the space back.
 
-### P2-3 — The sheet never says what the rhythm is
+### P2-3 — The sheet never says what the rhythm is — **FIXED**
 
 "Alles op schema" is the whole story when nothing is due. Not *when* the next
 watering is, not how often this plant is watered. The passport knows; the sheet
@@ -105,7 +113,13 @@ watering is, not how often this plant is watered. The passport knows; the sheet
 ("Volgende: water over 4 dagen") would answer the question most taps are
 really asking.
 
-### P3-1 — Three sources of truth for care labels
+**Fixed.** A line under the status reads "Straks: water over 4 dagen", or
+"Nog geen verzorging ingesteld — stel iets in" when the plant has no schedule
+at all. It is a button: it closes the sheet and lands on the passport's care
+section (new `#care-schedules` anchor), which is also the answer to §3 — the
+sheet now says a rhythm exists and offers the way to it.
+
+### P3-1 — Three sources of truth for care labels — **FIXED**
 
 The sheet builds its own `careLabelMap` (`:172-181`) covering eight types,
 falls back to `CARE_TYPE_INFO[ct].label` — which is **English-only**
@@ -114,19 +128,31 @@ falls back to `CARE_TYPE_INFO[ct].label` — which is **English-only**
 eleven. Any type missing from `careLabelMap` prints English into the Dutch UI.
 Folded into the P1-1 fix by using `t.careTypes` directly.
 
-### P3-2 — The management row is glyph soup
+### P3-2 — The management row is glyph soup — **FIXED**
 
 Six actions on desktop rendered as `↔`, `⇄`, `⧉` plus three Glyphs, in a
 3-column grid, distinguished only by `title` tooltips. `↔` (move on map) and
 `⇄` (move to another map) are one arrow apart and mean different things. They
 are real `Glyph`s away from being legible.
 
-### P3-3 — The user-switcher avatar overlaps the sheet
+**Fixed:** `pin` (move on map), `map` (move to another map) and a new `copy`
+glyph (duplicate), and every icon-only button in that row gained an
+`aria-label` — they had `title` only, which screen readers do not reliably
+announce.
 
-At 430px the floating `UserSwitcher` sits on top of the placement button's
-right edge (visible in every screenshot taken for this audit). The sheet is
-`z-[60]`; the avatar renders above it. Not caused by the stub — it is chrome
-the map always shows.
+### P3-3 — The assistant launcher overlaps the sheet — **FIXED**
+
+At 430px the floating Stekkie launcher (`HelpAssistant`, `zIndex: 90`) sits on
+top of the sheet's controls — it covered the corner of the placement button in
+every screenshot taken for this audit. The sheet is `z-[60]`. Not caused by the
+stub; it is chrome the map always shows.
+
+**Fixed** in `index.css` rather than by raising the sheet, so it covers the
+class of bug rather than one instance:
+`body:has([role="dialog"][aria-modal="true"]) .help-assistant-launcher { display: none }`.
+That reaches all nine `role="dialog"` surfaces in the app, and is scoped to
+`aria-modal` so the assistant's own panel — which is not one — keeps its
+launcher.
 
 ---
 
@@ -175,11 +201,18 @@ while `detail` loads, so the sheet visibly reflows on open.
 
 ---
 
-## 5. Suggested order
+## 5. Status
 
-1. ~~P1-1 (missing care types)~~ — **done**; it is a correctness bug in the
-   most-used pane.
-2. P2-2 (placement block) — biggest visible win, needs a design call.
-3. P2-3 (next-care line) + making it the route into care setup.
-4. P2-1 (chip filter rule) — decide the rule, then implement it.
-5. P3-2, P3-3, and the load reflow.
+| | |
+|---|---|
+| P1-1 missing care types | **fixed** |
+| P2-2 placement block | **fixed** — block only when spots exist, CTA into the ⋯ menu |
+| P2-3 next-care line | **fixed** — also the route into care setup |
+| P2-1 chip filter | **withdrawn**; the inactive-schedule leak underneath it is fixed |
+| P3-1 label sources | **fixed** |
+| P3-2 glyph soup | **fixed**, plus aria-labels |
+| P3-3 launcher overlap | **fixed** for every modal in the app |
+
+Still open: the status line reserves `minHeight: 18` and renders nothing while
+`detail` loads, so the sheet reflows slightly on open. Cosmetic, and fixing it
+properly means deciding what the sheet should show before it knows anything.

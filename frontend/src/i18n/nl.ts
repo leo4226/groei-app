@@ -862,6 +862,9 @@ export const nl: Translations = {
     careMist: 'Sproeien',
     careRotate: 'Draaien',
     carePestCheck: 'Luizen',
+    nextCare: (label: string, days: number) =>
+      days === 1 ? `Volgende: ${label.toLowerCase()} morgen` : `Volgende: ${label.toLowerCase()} over ${days} dagen`,
+    noRhythm: 'Nog geen verzorging ingesteld — stel iets in',
     careDust: 'Poetsen',
     careProtectCold: 'Beschermen tegen kou',
     careProtectHeat: 'Beschermen tegen hitte',
