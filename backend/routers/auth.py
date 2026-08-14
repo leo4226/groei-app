@@ -106,7 +106,7 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
     Always returns 200 to prevent account enumeration.
     """
     account = await db.execute_fetchall(
-        "SELECT id FROM accounts WHERE email = ?", (body.email.lower().strip(),)
+        "SELECT id, language FROM accounts WHERE email = ?", (body.email.lower().strip(),)
     )
 
     if account:
@@ -120,7 +120,10 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
 
         app_url = os.environ.get("APP_URL", "http://localhost:5173")
         reset_link = f"{app_url}/reset-password?token={token}"
-        send_password_reset(body.email.lower().strip(), reset_link)
+        send_password_reset(
+            body.email.lower().strip(), reset_link,
+            lang=account[0]["language"] or "nl",
+        )
 
     return {"message": "If that email exists, a reset link has been sent."}
 

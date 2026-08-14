@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 from auth import get_current_account
 from care_types import parse_muted_care_types
 from database import db_dep
+from services import email_template as tpl
 from services.digest import (
     APP_URL,
     SNOOZE_DURATIONS,
@@ -342,15 +343,33 @@ async def unsubscribe(token: str = "", db=Depends(db_dep)):
     )
     await cur.fetchall()
     await db.commit()
+
+    # The page was hardcoded Dutch, so an English reader unsubscribing from an
+    # English email landed on a Dutch confirmation (#889).
+    lang_rows = await db.execute_fetchall(
+        "SELECT language FROM accounts WHERE id = ?", (account_id,)
+    )
+    row_lang = lang_rows[0]["language"] if lang_rows else "nl"
+    lang = "en" if (row_lang or "nl") == "en" else "nl"
+    copy = {
+        "nl": {
+            "title": "Afgemeld — Floreren",
+            "done": "Je dagelijkse mail is uitgeschakeld.",
+            "note": "Je kunt hem altijd weer aanzetten in de app, onder Instellingen.",
+        },
+        "en": {
+            "title": "Unsubscribed — Floreren",
+            "done": "Your daily email is switched off.",
+            "note": "You can turn it back on any time in the app, under Settings.",
+        },
+    }[lang]
+    body = (
+        tpl.paragraph(f'{copy["done"]} ✅')
+        + tpl.paragraph(copy["note"], muted=True, size=14)
+        + tpl.button("Floreren", APP_URL)
+    )
     return HTMLResponse(
-        """<!DOCTYPE html>
-<html lang="nl"><head><meta charset="UTF-8"><title>Afgemeld — Floreren</title></head>
-<body style="margin:0;background:#f5f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-display:flex;align-items:center;justify-content:center;min-height:100vh;">
-<div style="background:#fff;border-radius:16px;padding:40px;max-width:420px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-<h1 style="font-family:Georgia,serif;color:#4a7c59;margin:0 0 12px;">Floreren</h1>
-<p style="color:#333;font-size:16px;margin:0;">Je dagelijkse digest is uitgeschakeld. ✅</p>
-<p style="color:#999;font-size:13px;margin:12px 0 0;">Je kunt dit altijd weer aanzetten in de app onder Instellingen.</p>
-</div>
-</body></html>"""
+        tpl.render_email(lang=lang, preheader="", body_html=body)
+        .replace("<title>", "<title>")
+        .replace("</head>", f"<title>{copy['title']}</title></head>", 1)
     )

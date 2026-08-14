@@ -101,8 +101,11 @@ async def test_overdue_task_visible_on_all_surfaces(client, seeded_db, auth_head
 def sent_emails(monkeypatch):
     sent = []
 
-    def fake_send(to_email, subject, html):
-        sent.append({"to": to_email, "subject": subject, "html": html})
+    def fake_send(to_email, subject, html, *, unsubscribe_url=None):
+        sent.append({
+            "to": to_email, "subject": subject, "html": html,
+            "unsubscribe_url": unsubscribe_url,
+        })
         return True
 
     import services.digest as digest
@@ -119,15 +122,16 @@ def at_digest_hour(monkeypatch):
 async def test_digest_email_respects_user_language(
     client, seeded_db, auth_header, sent_emails, at_digest_hour, monkeypatch
 ):
-    """An English profile gets the EN template — the digest used to be
-    hardcoded Dutch because build_digest_email was called without `lang`."""
+    """An English account gets the EN template — the digest used to be
+    hardcoded Dutch because build_digest_email was called without `lang`.
+
+    `accounts.language` is the source for both channels since #889; the language
+    switch keeps it current (see the propagation test below) and migration 0071
+    re-synced it from the profiles.
+    """
     monkeypatch.setenv("DIGEST_CRON_SECRET", "s")
     await _seed_overdue_water_plant(seeded_db, today=DIGEST_NOW.date())
-    # The signup flow creates a users row mirroring the account (same name +
-    # household); that profile carries the language preference.
-    await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (9, 'Test', 1, 'en')"
-    )
+    await seeded_db.execute("UPDATE accounts SET language = 'en' WHERE id = 1")
     await seeded_db.execute(
         "INSERT INTO notification_preferences (account_id, digest_enabled, digest_time) "
         "VALUES (1, 1, '08:00')"
@@ -137,17 +141,23 @@ async def test_digest_email_respects_user_language(
     resp = await client.post("/api/internal/send-digests", headers={"X-Digest-Secret": "s"})
     assert resp.status_code == 200
     assert len(sent_emails) == 1
-    assert sent_emails[0]["subject"] == "Your plants need attention today 🌿"
-    assert "Here are today's care tasks" in sent_emails[0]["html"]
+    assert sent_emails[0]["subject"] == "1 plant needs attention today"
+    assert "asking for you today" in sent_emails[0]["html"]
 
 
 async def test_digest_language_lookup_does_not_duplicate_matching_profiles(
     client, seeded_db, auth_header, sent_emails, at_digest_hour, monkeypatch
 ):
-    """The account→profile language bridge must not multiply digest rows if
-    legacy/manual data contains two same-name profiles in one household."""
+    """One digest per account, whatever the profile table looks like.
+
+    The language used to come from a correlated subquery over `users`, which
+    could match two same-name profiles in one household and multiply the digest
+    rows. Reading `accounts.language` removes the join entirely; this pins that
+    the duplicate-profile shape still produces exactly one email (#889).
+    """
     monkeypatch.setenv("DIGEST_CRON_SECRET", "s")
     await _seed_overdue_water_plant(seeded_db, today=DIGEST_NOW.date())
+    await seeded_db.execute("UPDATE accounts SET language = 'en' WHERE id = 1")
     await seeded_db.execute(
         "INSERT INTO users (id, name, household_id, language) VALUES (9, 'Test', 1, 'en')"
     )
@@ -163,7 +173,7 @@ async def test_digest_language_lookup_does_not_duplicate_matching_profiles(
     resp = await client.post("/api/internal/send-digests", headers={"X-Digest-Secret": "s"})
     assert resp.status_code == 200
     assert len(sent_emails) == 1
-    assert sent_emails[0]["subject"] == "Your plants need attention today 🌿"
+    assert sent_emails[0]["subject"] == "1 plant needs attention today"
 
 
 async def test_digest_email_defaults_to_dutch_without_profile(
@@ -180,4 +190,26 @@ async def test_digest_email_defaults_to_dutch_without_profile(
     resp = await client.post("/api/internal/send-digests", headers={"X-Digest-Secret": "s"})
     assert resp.status_code == 200
     assert len(sent_emails) == 1
-    assert sent_emails[0]["subject"] == "Je planten hebben vandaag aandacht nodig 🌿"
+    assert sent_emails[0]["subject"] == "1 plant heeft vandaag aandacht nodig"
+
+
+async def test_language_switch_reaches_the_push_channel(client, seeded_db, auth_header):
+    """Changing the language in Settings must move `accounts.language` too.
+
+    It only ever wrote `users.language`, so the push dispatcher — which reads
+    the account column — kept speaking the signup language forever, while the
+    same user's emails switched correctly (#889).
+    """
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, language) VALUES (9, 'Test', 1, 'nl')"
+    )
+    await seeded_db.execute("UPDATE accounts SET language = 'nl' WHERE id = 1")
+    await seeded_db.commit()
+
+    resp = await client.patch(
+        "/api/users/9/language", json={"language": "en"}, headers=auth_header,
+    )
+    assert resp.status_code == 200, resp.text
+
+    rows = await seeded_db.execute_fetchall("SELECT language FROM accounts WHERE id = 1")
+    assert rows[0]["language"] == "en"

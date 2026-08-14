@@ -27,6 +27,22 @@ async def update_user_language(
         "UPDATE users SET language = ? WHERE id = ? AND household_id = ?",
         (body.language, user_id, account["household_id"])
     )
+    # Keep the account row in step. `accounts.language` is what the push
+    # dispatcher reads (services/digest.py), and it was only ever written at
+    # signup — so a user who switched the app to English kept getting Dutch
+    # pushes forever, while their emails correctly followed the toggle (#889).
+    #
+    # Matched the same way migration 0041 backfilled the column: an account is
+    # the profile with its name, in its household.
+    await db.execute(
+        """UPDATE accounts SET language = ?
+           WHERE household_id = ?
+             AND LOWER(name) = (
+               SELECT LOWER(u.name) FROM users u
+               WHERE u.id = ? AND u.household_id = ?
+             )""",
+        (body.language, account["household_id"], user_id, account["household_id"]),
+    )
     await db.commit()
     cursor = await db.execute(
         "SELECT id, name, avatar, language FROM users WHERE id = ? AND household_id = ?",

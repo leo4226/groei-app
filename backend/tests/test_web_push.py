@@ -178,7 +178,8 @@ async def test_push_sent_to_opted_in_account(
     assert res.json()["push_sent"] == 1
     assert len(sent_pushes) == 1
     assert "/maps" in sent_pushes[0]["payload"]["url"]
-    assert "Monstera" in sent_pushes[0]["payload"]["body"]
+    # A single-plant push leads with the plant name as the title (#889).
+    assert "Monstera" in sent_pushes[0]["payload"]["title"]
 
     # The due schedule is stamped with its due date so it won't re-ping until
     # completion advances next_due.
@@ -408,7 +409,9 @@ async def test_frost_alert_creates_ephemeral_task_and_pushes(
 
     assert len(sent_pushes) == 1
     payload_body = sent_pushes[0]["payload"]["body"]
-    assert "Avocado" in payload_body
+    payload_title = sent_pushes[0]["payload"]["title"]
+    # A single-plant push leads with the plant name as the title (#889).
+    assert "Avocado" in payload_title
     # Weather care types get a friendly NL label, not the raw key.
     assert "beschermen tegen kou" in payload_body
     assert "frost_protect" not in payload_body

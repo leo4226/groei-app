@@ -47,8 +47,11 @@ def sent_emails(monkeypatch):
     """Capture outgoing digest emails instead of hitting Resend."""
     sent = []
 
-    def fake_send(to_email, subject, html):
-        sent.append({"to": to_email, "subject": subject, "html": html})
+    def fake_send(to_email, subject, html, *, unsubscribe_url=None):
+        sent.append({
+            "to": to_email, "subject": subject, "html": html,
+            "unsubscribe_url": unsubscribe_url,
+        })
         return True
 
     import services.digest as digest

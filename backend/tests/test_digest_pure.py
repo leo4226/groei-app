@@ -102,7 +102,9 @@ def test_email_uses_english_care_labels_when_lang_en():
         lang="en",
     )
 
-    assert subject == "Your plants need attention today 🌿"
+    # The subject leads with the count now, so a week of digests is
+    # skimmable instead of a wall of identical lines (#889).
+    assert subject == "1 plant needs attention today"
     assert "Fertilize" in html
     assert "Mest" not in html
 
