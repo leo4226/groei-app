@@ -696,7 +696,15 @@ async def backfill_missing_facts(
     scope: str = "all",
     map_only: bool = False,
     household_id: int | None = None,
+    on_progress=None,
 ) -> dict:
+    """Generate bilingual interesting facts, one LLM call per species.
+
+    ``on_progress(done, total)`` is awaited after each species so the admin panel
+    can show a bar that actually moves. Without it the whole batch was one opaque
+    step: the job reported 0/1 until every LLM call had finished, which for 50
+    species is several minutes of a progress bar sitting still at 0%.
+    """
     scope = _normalise_fact_scope(scope)
     all_rows = _fact_rows_missing_bilingual_facts(
         await _fact_scope_rows(db, scope=scope, map_only=map_only, household_id=household_id)
@@ -721,12 +729,17 @@ async def backfill_missing_facts(
     skipped_details = []
     processed = 0
 
-    for row in rows:
+    if on_progress:
+        await on_progress(0, len(rows))
+
+    for index, row in enumerate(rows):
         species_id = row["id"]
         plant_name = row["common_name_nl"]
         latin_name = row.get("latin_name")
         phenology = _load_phenology_json(row.get("phenology_json"))
         if _has_bilingual_facts(phenology):
+            if on_progress:
+                await on_progress(index + 1, len(rows))
             continue
 
         processed += 1
@@ -751,6 +764,8 @@ async def backfill_missing_facts(
             }
             errors.append({"species_id": species_id, "name": plant_name, "error": str(e)})
             skipped_details.append(detail)
+        if on_progress:
+            await on_progress(index + 1, len(rows))
 
     if updated:
         await db.commit()
@@ -870,11 +885,15 @@ async def backfill_missing_names(
     scope: str = "all",
     map_only: bool = False,
     household_id: int | None = None,
+    on_progress=None,
 ) -> dict:
     """Fill missing NL/EN common names (and Latin) for species in one LLM call each.
 
     Reuses ``ensure_species_localized_names`` per species so display logic stays
     untouched — only the underlying data is repaired.
+
+    ``on_progress(done, total)`` is awaited per species; see
+    ``backfill_missing_facts`` for why a per-item signal matters here.
     """
     scope = _normalise_fact_scope(scope)
     all_rows = _rows_missing_localized_names(
@@ -900,7 +919,10 @@ async def backfill_missing_names(
     skipped_details = []
     processed = 0
 
-    for row in rows:
+    if on_progress:
+        await on_progress(0, len(rows))
+
+    for index, row in enumerate(rows):
         species_id = row["id"]
         name_hint = (
             _text_or_none(row.get("common_name_nl"))
@@ -927,6 +949,8 @@ async def backfill_missing_names(
                 "reason": "name_generation_failed",
                 "error": str(e),
             })
+        if on_progress:
+            await on_progress(index + 1, len(rows))
 
     result = {
         "processed": processed,

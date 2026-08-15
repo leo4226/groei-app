@@ -31,6 +31,13 @@ import {
   scopedFactsPreviewIsStaleOrUnsupported,
   scopedFactsRunParams,
 } from './adminFactsToolModel'
+import {
+  describeSkip,
+  etaSeconds,
+  formatDuration,
+  iconJobSummary,
+  skipSubject,
+} from './adminJobModel'
 
 type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'tools' | 'activity' | 'audit'
 
@@ -1324,13 +1331,26 @@ type KindJobState = {
   done: number
   total: number
   result: string
+  /** Epoch ms the run was observed to start — drives elapsed time and the ETA. */
+  startedAt: number | null
+  details: AdminSkippedDetail[]
 }
 
-const IDLE_JOB: KindJobState = { jobId: null, status: 'idle', done: 0, total: 0, result: '' }
+const IDLE_JOB: KindJobState = {
+  jobId: null, status: 'idle', done: 0, total: 0, result: '', startedAt: null, details: [],
+}
 
 function jobResultSummary(kind: string, job: AdminJob): string {
   if (job.status === 'failed') return `✗ ${job.error ?? 'Failed'}`
-  if (job.status === 'interrupted') return '✗ Interrupted (server restarted)'
+  // Jobs run inside the API process and the Fly machine stops when it goes
+  // idle, so a long run only survives while something keeps talking to the
+  // server — which, in practice, is this page polling. Everything finished
+  // before the stop is already saved, and every tool works off what is still
+  // missing, so re-running resumes rather than redoing.
+  if (job.status === 'interrupted') {
+    const done = job.progress_done ?? 0
+    return `✗ Stopped early${done ? ` after ${done}` : ''} — finished items were saved, run it again to continue`
+  }
   const r = job.result
   if (!r) return '✓ Done'
   if (kind === 'backfill_thresholds') return `✓ ${r.succeeded ?? 0} updated · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
@@ -1338,20 +1358,56 @@ function jobResultSummary(kind: string, job: AdminJob): string {
   if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} bilingual facts updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
   if (kind === 'backfill_names') return `✓ ${r.updated ?? 0} species named · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
   if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0} active candidates`
-  if (kind === 'generate_icons') {
-    const count = Number(r.count ?? 0)
-    const skipped = Number(r.skipped_count ?? 0)
-    const matched = Number((r.sync_result as { matched?: number } | null)?.matched ?? 0)
-    const remaining = Number(r.remaining ?? 0)
-    return `✓ ${count} generated · ${skipped} skipped · ${matched} plants matched · ${remaining} left`
-  }
+  if (kind === 'generate_icons') return iconJobSummary(r)
   return '✓ Done'
 }
 
-function JobProgressBar({ done, total, status }: { done: number; total: number; status: AdminJobStatus | 'idle' }) {
-  if (status === 'idle' || status === 'completed' || status === 'failed' || status === 'interrupted') return null
+/**
+ * The outcome of a finished job: the one-line summary plus, when something did
+ * not work, what and why. The details used to appear only in the Recent jobs
+ * list at the bottom of the page, so the card you had just pressed reported a
+ * bare "3 skipped" and left you to go looking.
+ */
+function JobOutcome({ job }: { job: KindJobState }) {
+  if (!job.result) return null
+  const ok = job.result.startsWith('✓')
+  return (
+    <div style={{ marginTop: 10 }}>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, margin: 0, color: ok ? 'var(--color-primary)' : 'var(--color-overdue)' }}>
+        {job.result}
+      </p>
+      <SkippedDetails details={job.details} />
+    </div>
+  )
+}
+
+/**
+ * Progress for a running job: how far, how long it has been going, and — once
+ * there is enough of the run to extrapolate from — how much longer.
+ *
+ * These jobs are one LLM call per item and routinely run for minutes, so
+ * "Running…" on its own gives no way to tell work from a hang. The elapsed
+ * clock is the honest part; the ETA is a straight-line estimate from the items
+ * completed so far and is only shown once two items are done, because the first
+ * item's timing is dominated by cold start.
+ */
+function JobProgressBar({ done, total, status, startedAt }: {
+  done: number; total: number; status: AdminJobStatus | 'idle'; startedAt?: number | null
+}) {
+  const [now, setNow] = useState(() => Date.now())
+  const live = status === 'pending' || status === 'running'
+  useEffect(() => {
+    if (!live) return
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [live])
+
+  if (!live) return null
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   const indeterminate = total === 0
+  const elapsed = startedAt ? (now - startedAt) / 1000 : null
+  const eta = elapsed != null ? etaSeconds(done, total, elapsed) : null
+
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
@@ -1362,11 +1418,11 @@ function JobProgressBar({ done, total, status }: { done: number; total: number; 
           animation: indeterminate ? 'adminJobIndeterminate 1.4s ease-in-out infinite' : 'none',
         }} />
       </div>
-      {!indeterminate && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', marginTop: 4 }}>
-          {done} / {total}
-        </div>
-      )}
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', marginTop: 4 }}>
+        {indeterminate ? 'starting…' : `${done} / ${total}`}
+        {elapsed != null && ` · ${formatDuration(elapsed)} elapsed`}
+        {eta != null && ` · ~${formatDuration(eta)} left`}
+      </div>
     </div>
   )
 }
@@ -1384,6 +1440,41 @@ function useKindJobs(onComplete?: (kind: string) => void) {
   const getJob = useCallback((kind: string): KindJobState => jobs[kind] ?? IDLE_JOB, [jobs])
   const setJob = useCallback((kind: string, patch: Partial<KindJobState>) =>
     setJobs(prev => ({ ...prev, [kind]: { ...(prev[kind] ?? IDLE_JOB), ...patch } })), [])
+
+  // Adopt jobs the server is already running. Job state used to live only in
+  // this hook's memory, so switching to another admin section and back lost the
+  // running job entirely: the card went idle, its button re-enabled, and
+  // pressing it returned 409 "a job is already running" with nothing on screen
+  // to explain why. A job is server state — read it on mount.
+  useEffect(() => {
+    let cancelled = false
+    adminPanel.listJobs(20).then(rows => {
+      if (cancelled) return
+      const live = new Map<string, AdminJob>()
+      for (const row of rows) {
+        if ((row.status === 'running' || row.status === 'pending') && !live.has(row.kind)) {
+          live.set(row.kind, row)
+        }
+      }
+      if (live.size === 0) return
+      setJobs(prev => {
+        const next = { ...prev }
+        for (const [kind, row] of live) {
+          if (next[kind]?.jobId) continue  // this session already tracks it
+          next[kind] = {
+            ...IDLE_JOB,
+            jobId: row.id,
+            status: row.status,
+            done: row.progress_done,
+            total: row.progress_total,
+            startedAt: Date.parse(row.created_at) || Date.now(),
+          }
+        }
+        return next
+      })
+    }).catch(() => { /* the views show their own load errors */ })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     const activeKinds = Object.entries(jobs)
@@ -1406,6 +1497,7 @@ function useKindJobs(onComplete?: (kind: string) => void) {
             done: j.progress_done,
             total: j.progress_total,
             result: done ? jobResultSummary(kind, j) : '',
+            details: done ? skippedDetailsFromResult(j.result) : [],
           })
           if (done) onCompleteRef.current?.(kind)
         } catch { /* network blip */ }
@@ -1416,12 +1508,23 @@ function useKindJobs(onComplete?: (kind: string) => void) {
   }, [jobs, setJob])
 
   const runJob = useCallback(async (kind: string, params: Record<string, unknown> = {}) => {
-    setJob(kind, { jobId: null, status: 'pending', done: 0, total: 0, result: '' })
+    setJob(kind, {
+      jobId: null, status: 'pending', done: 0, total: 0, result: '',
+      startedAt: Date.now(), details: [],
+    })
     try {
       const { job_id } = await adminPanel.startJob(kind, params)
       setJob(kind, { jobId: job_id, status: 'pending' })
     } catch (e) {
-      setJob(kind, { status: 'failed', result: `✗ ${e instanceof Error ? e.message : 'Failed'}` })
+      // 409 means the server already has this job in flight — most likely one
+      // this browser started before a reload. Say that instead of "Failed".
+      const status = e instanceof Error ? (e as Error & { status?: number }).status : undefined
+      setJob(kind, {
+        status: 'failed',
+        result: status === 409
+          ? '✗ Already running — see Recent jobs below for its progress'
+          : `✗ ${e instanceof Error ? e.message : 'Failed'}`,
+      })
     }
   }, [setJob])
 
@@ -1430,7 +1533,22 @@ function useKindJobs(onComplete?: (kind: string) => void) {
     return s === 'pending' || s === 'running'
   }, [jobs])
 
-  return { jobs, getJob, runJob, busy }
+  const anyRunning = Object.values(jobs).some(j => j.status === 'pending' || j.status === 'running')
+
+  // Jobs are asyncio tasks inside the API process, and the Fly machine has
+  // auto_stop_machines with min_machines_running = 0. A background task makes no
+  // requests of its own, so what keeps the machine awake through a long run is
+  // this page's 2-second poll. Close the tab and the machine can idle out
+  // mid-run, taking the job with it. Until jobs move to a worker that owns its
+  // own lifetime, the least we can do is not let it happen silently.
+  useEffect(() => {
+    if (!anyRunning) return
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [anyRunning])
+
+  return { jobs, getJob, runJob, busy, anyRunning }
 }
 
 function RecentJobsCard({ jobs, loading }: { jobs: AdminJob[] | null; loading: boolean }) {
@@ -1550,8 +1668,8 @@ function CoverageView() {
         <button onClick={() => runJob(kind, params)} disabled={isBusy || count === 0} style={fixBtnStyle(isBusy || count === 0)}>
           {isBusy ? 'Running…' : title}
         </button>
-        <JobProgressBar done={j.done} total={j.total} status={j.status} />
-        {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 8, color: j.result.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)' }}>{j.result}</p>}
+        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} />
+        <JobOutcome job={j} />
       </div>
     )
   }
@@ -1867,16 +1985,31 @@ function skippedDetailsFromResult(result: Record<string, unknown> | null): Admin
 
 function SkippedDetails({ details }: { details: AdminSkippedDetail[] }) {
   if (details.length === 0) return null
+  // One hint usually covers the whole batch (same cause), so show it once
+  // rather than repeating it on every row.
+  const hint = details.find(d => d.hint)?.hint
   return (
     <details style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }}>
-      <summary style={{ cursor: 'pointer' }}>{details.length} skipped detail{details.length !== 1 ? 's' : ''}</summary>
+      <summary style={{ cursor: 'pointer' }}>
+        {details.length} item{details.length !== 1 ? 's' : ''} needing attention
+      </summary>
       <ul style={{ margin: '6px 0 0 16px', padding: 0, lineHeight: 1.6 }}>
-        {details.slice(0, 10).map((d, i) => (
-          <li key={`${d.id ?? d.species_id ?? i}-${i}`}>
-            {d.name ?? d.icon_key ?? d.species_id ?? d.id ?? 'unknown'} — {d.reason ?? d.error ?? d.message ?? 'skipped'}
-          </li>
-        ))}
+        {details.slice(0, 10).map((d, i) => {
+          const described = describeSkip(d)
+          return (
+            <li key={`${d.id ?? d.species_id ?? i}-${i}`}>
+              {skipSubject(d)} — {described}
+              {d.reason && d.error && (
+                <div style={{ opacity: .7, marginLeft: 8 }}>{d.error}</div>
+              )}
+            </li>
+          )
+        })}
+        {details.length > 10 && <li style={{ opacity: .7 }}>…and {details.length - 10} more</li>}
       </ul>
+      {hint && (
+        <p style={{ margin: '8px 0 0', color: 'var(--color-text-soft)' }}>→ {hint}</p>
+      )}
     </details>
   )
 }
@@ -1907,7 +2040,7 @@ function ToolsView() {
   const [recentJobs, setRecentJobs] = useState<AdminJob[] | null>(null)
   const [recentLoading, setRecentLoading] = useState(true)
 
-  const { getJob, runJob, busy } = useKindJobs(kind => {
+  const { getJob, runJob, busy, anyRunning } = useKindJobs(kind => {
     if (kind === 'generate_icons') setIconRefresh(n => n + 1)
     if (kind === 'backfill_facts') setFactsRefresh(n => n + 1)
     if (kind === 'backfill_names') setNamesRefresh(n => n + 1)
@@ -1942,8 +2075,6 @@ function ToolsView() {
     cursor: isBusy ? 'not-allowed' : 'pointer', opacity: isBusy ? .6 : 1,
   } as const)
 
-  const resultColor = (r: string) => r.startsWith('✓') ? 'var(--color-primary)' : 'var(--color-overdue)'
-
   async function handleRegenIcon() {
     const id = parseInt(regenPlantId, 10)
     if (!id || id < 1) { setRegenResult('✗ Invalid plant ID'); return }
@@ -1970,8 +2101,8 @@ function ToolsView() {
         <button onClick={() => runJob(kind)} disabled={busy(kind)} style={btnStyle(busy(kind))}>
           {busy(kind) ? 'Running…' : 'Run'}
         </button>
-        <JobProgressBar done={j.done} total={j.total} status={j.status} />
-        {j.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(j.result) }}>{j.result}</p>}
+        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} />
+        <JobOutcome job={j} />
       </div>
     )
   }
@@ -2022,8 +2153,8 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={factsJob.done} total={factsJob.total} status={factsJob.status} />
-      {factsJob.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(factsJob.result) }}>{factsJob.result}</p>}
+      <JobProgressBar done={factsJob.done} total={factsJob.total} status={factsJob.status} startedAt={factsJob.startedAt} />
+      <JobOutcome job={factsJob} />
     </div>
   )
 
@@ -2068,8 +2199,8 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={namesJob.done} total={namesJob.total} status={namesJob.status} />
-      {namesJob.result && <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(namesJob.result) }}>{namesJob.result}</p>}
+      <JobProgressBar done={namesJob.done} total={namesJob.total} status={namesJob.status} startedAt={namesJob.startedAt} />
+      <JobOutcome job={namesJob} />
     </div>
   )
 
@@ -2109,10 +2240,8 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={iconsJob.done} total={iconsJob.total} status={iconsJob.status} />
-      {iconsJob.result && (
-        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, marginTop: 10, color: resultColor(iconsJob.result) }}>{iconsJob.result}</p>
-      )}
+      <JobProgressBar done={iconsJob.done} total={iconsJob.total} status={iconsJob.status} startedAt={iconsJob.startedAt} />
+      <JobOutcome job={iconsJob} />
     </div>
   )
 
@@ -2120,6 +2249,18 @@ function ToolsView() {
     <div>
       <style>{`@keyframes adminJobIndeterminate { 0%{transform:translateX(-100%)} 100%{transform:translateX(350%)} }`}</style>
       <PageHeader title="Tools" sub="One-off maintenance operations" />
+      {anyRunning && (
+        <div style={{
+          background: 'var(--color-surface)', border: '1px solid var(--color-primary)',
+          borderRadius: 12, padding: '12px 16px', marginBottom: 14,
+          fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-soft)',
+        }}>
+          A job is running — keep this tab open. The server sleeps when nothing is
+          talking to it, and this page's polling is what keeps it awake. Anything
+          already finished is saved either way, and re-running continues where it
+          stopped.
+        </div>
+      )}
       <div data-admin-tools-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {simpleTool('backfill_thresholds', 'Backfill thresholds',
           'Generate care thresholds via DeepSeek for all plants that are missing them.',

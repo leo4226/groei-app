@@ -295,6 +295,8 @@ export interface AdminSkippedDetail {
   reason?: string
   message?: string
   error?: string
+  /** What the admin can do about it, written by the backend runner. */
+  hint?: string
 }
 
 export type AdminFactsScope = 'all' | 'in_use'
@@ -744,14 +746,6 @@ export const adminPanel = {
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
-  backfillFacts: (opts: { scope?: AdminFactsScope; mapOnly?: boolean; limit?: number } = {}) => {
-    const q = new URLSearchParams()
-    if (opts.scope) q.set('scope', opts.scope)
-    if (opts.mapOnly) q.set('map_only', 'true')
-    if (opts.limit != null) q.set('limit', String(opts.limit))
-    const qs = q.toString()
-    return api<AdminBackfillFactsResult>('POST', `/admin-panel/backfill-facts${qs ? `?${qs}` : ''}`)
-  },
   backfillFactsPreview: (opts: { scope?: AdminFactsScope; mapOnly?: boolean } = {}) => {
     const q = new URLSearchParams()
     if (opts.scope) q.set('scope', opts.scope)
@@ -765,14 +759,6 @@ export const adminPanel = {
     if (opts.mapOnly) q.set('map_only', 'true')
     const qs = q.toString()
     return api<AdminBackfillNamesPreview>('GET', `/admin-panel/backfill-names/preview${qs ? `?${qs}` : ''}`)
-  },
-  generateIcons: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean; limit?: number } = {}) => {
-    const q = new URLSearchParams()
-    if (opts.scope) q.set('scope', opts.scope)
-    if (opts.mapOnly) q.set('map_only', 'true')
-    if (opts.limit != null) q.set('limit', String(opts.limit))
-    const qs = q.toString()
-    return api<IconGenerateResult>('POST', `/admin-panel/generate-icons${qs ? `?${qs}` : ''}`)
   },
   generateIconsPreview: (opts: { scope?: 'all' | 'in_use'; mapOnly?: boolean } = {}) => {
     const q = new URLSearchParams()

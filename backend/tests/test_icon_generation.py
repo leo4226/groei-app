@@ -9,6 +9,33 @@ PLANT = '<g><ellipse cx="50" cy="50" rx="9" ry="9" fill="#4A7C4E"/></g>'
 BAD_PLANT = '<foreignObject/>'
 
 
+async def _generate(db, *, scope="all", map_only=False, limit=25, household_id=1):
+    """Run the icon generation the admin panel actually uses.
+
+    These tests used to POST /api/admin-panel/generate-icons — a second, fully
+    duplicated implementation of icon generation that the panel stopped calling
+    when it moved to background jobs. So the tested path was the one nobody ran,
+    and the path every admin runs had no coverage at all; the two had already
+    drifted apart. That endpoint is gone, and these tests drive the job runner.
+
+    Returns (result, progress) where progress is every (done, total) the runner
+    reported, so tests can assert the bar actually moves.
+    """
+    from routers.admin_panel import _run_generate_icons
+
+    progress: list[tuple[int, int]] = []
+
+    async def on_progress(done, total):
+        progress.append((done, total))
+
+    result = await _run_generate_icons(
+        db,
+        {"scope": scope, "map_only": map_only, "limit": limit, "household_id": household_id},
+        on_progress,
+    )
+    return result, progress
+
+
 @pytest.fixture
 async def admin_db(seeded_db):
     await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id=1")
@@ -29,13 +56,13 @@ async def test_generate_ai_path_writes_r2_and_db(client, admin_db, auth_header):
     with patch("routers.admin_panel.generate_icon_variants",
                new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
+        body, _ = await _generate(admin_db)
     assert body["count"] == 1
     rows = await admin_db.execute_fetchall("SELECT id, source, url FROM generated_icons ORDER BY id")
     ids = {r["id"] for r in rows}
-    assert {"gen_roos", "gen_roos_bare"} <= ids
+    # Keyed on the latin name, not the Dutch common name — see test_two_species_
+    # of_one_genus_get_separate_icons for what the common name did.
+    assert {"gen_rosa_canina", "gen_rosa_canina_bare"} <= ids
     assert fake_storage.put.call_count == 2
 
 
@@ -46,10 +73,14 @@ async def test_falls_back_to_procedural_on_bad_svg(client, admin_db, auth_header
     with patch("routers.admin_panel.generate_icon_variants",
                new=AsyncMock(return_value={"plant_svg": BAD_PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
-    assert resp.status_code == 200, resp.text
+        body, _ = await _generate(admin_db)
     rows = await admin_db.execute_fetchall("SELECT source FROM generated_icons")
     assert rows and all(r["source"] == "procedural" for r in rows)
+    # The fallback is reported rather than passing as a plain success: a species
+    # that always fails AI keeps coming back as "missing", and this is the only
+    # place that says why.
+    assert body["fallback_count"] == 1
+    assert body["skipped_details"][0]["reason"] == "ai_failed_used_generic_art"
 
 
 @pytest.mark.asyncio
@@ -65,11 +96,11 @@ async def test_ai_retries_before_procedural_fallback(client, admin_db, auth_head
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants", new=flaky), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post("/api/admin-panel/generate-icons", headers=auth_header)
-    assert resp.status_code == 200, resp.text
+        body, _ = await _generate(admin_db)
     rows = await admin_db.execute_fetchall("SELECT source FROM generated_icons")
     assert rows and all(r["source"] == "ai" for r in rows)
     assert flaky.call_count == 3
+    assert body["fallback_count"] == 0
 
 
 @pytest.mark.asyncio
@@ -176,18 +207,16 @@ async def test_ai_generation_upgrades_existing_procedural_icon(client, admin_db,
     fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
     with patch("routers.admin_panel.generate_icon_variants",
                new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})),          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post(
-            "/api/admin-panel/generate-icons?scope=in_use&map_only=true&limit=25",
-            headers=auth_header,
-        )
+        body, _ = await _generate(admin_db, scope="in_use", map_only=True, limit=25)
 
-    assert resp.status_code == 200, resp.text
-    assert resp.json()["count"] == 1
+    assert body["count"] == 1
     rows = await admin_db.execute_fetchall("SELECT id, source, url FROM generated_icons ORDER BY id")
     by_id = {row["id"]: dict(row) for row in rows}
-    assert by_id["gen_roos"]["source"] == "ai"
-    assert by_id["gen_roos_bare"]["source"] == "ai"
-    assert by_id["gen_roos"]["url"] != "https://r2/old_roos.svg"
+    # The pre-existing procedural rows are keyed on the old common-name scheme;
+    # the AI upgrade lands on the latin-keyed id.
+    assert by_id["gen_rosa_canina"]["source"] == "ai"
+    assert by_id["gen_rosa_canina_bare"]["source"] == "ai"
+    assert by_id["gen_rosa_canina"]["url"] != "https://r2/old_roos.svg"
 
 
 @pytest.mark.asyncio
@@ -201,11 +230,11 @@ async def test_generate_respects_limit_and_reports_remaining(client, admin_db, a
     with patch("routers.admin_panel.generate_icon_variants",
                new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post("/api/admin-panel/generate-icons?limit=1", headers=auth_header)
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
+        body, progress = await _generate(admin_db, limit=1)
     assert body["count"] == 1
     assert body["remaining"] == 1
+    # Progress is reported per icon, so the bar moves during a long run.
+    assert progress == [(0, 1), (1, 1)]
 
 
 @pytest.mark.asyncio
@@ -226,11 +255,10 @@ async def test_dangling_icon_key_surfaces_and_is_reassigned(client, admin_db, au
     with patch("routers.admin_panel.generate_icon_variants",
                new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "edible"})), \
          patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
-        resp = await client.post("/api/admin-panel/generate-icons?scope=in_use", headers=auth_header)
-    assert resp.status_code == 200, resp.text
+        await _generate(admin_db, scope="in_use")
     # The dangling key is replaced by the freshly generated icon.
     row = (await admin_db.execute_fetchall("SELECT icon_key, icon_requested FROM plants WHERE id=1"))[0]
-    assert row["icon_key"] == "gen_basterdkool"
+    assert row["icon_key"] == "gen_bunias_orientalis"
     assert not row["icon_requested"]
 
 @pytest.mark.asyncio
@@ -285,3 +313,72 @@ async def test_sync_does_not_upgrade_generic_icon_to_procedural_generated_icon(c
     assert body['matched_plants'] == 0
     row = (await admin_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
     assert row['icon_key'] == 'daisy'
+
+
+@pytest.mark.asyncio
+async def test_two_species_of_one_genus_get_separate_icons(client, admin_db, auth_header):
+    """The bug that made every run "leave a few plants out".
+
+    The icon id came from the Dutch common name, and when a species had none the
+    code fell back to ``derive_common_name(latin)`` — which returns the *genus*.
+    So Rosa canina, Rosa gallica and Rosa rugosa all produced ``gen_rosa``, and
+    generation does DELETE-then-INSERT on that id: each species overwrote the
+    icon just made for the previous one. All three were reported as generated;
+    two were left with nothing.
+    """
+    await admin_db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, latin_name) "
+        "VALUES (2, NULL, 'Rosa gallica'), (3, NULL, 'Rosa rugosa')")
+    await admin_db.commit()
+
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        body, _ = await _generate(admin_db)
+
+    assert body["count"] == 3
+    rows = await admin_db.execute_fetchall(
+        "SELECT id, sci FROM generated_icons WHERE form = 'potted' ORDER BY id")
+    # One icon per species, and each carries its own latin name — the whole
+    # point, since `sci` is what coverage and plant matching resolve against.
+    assert len(rows) == 3, "a genus must not collapse three species onto one icon"
+    assert {r["sci"] for r in rows} == {"Rosa canina", "Rosa gallica", "Rosa rugosa"}
+
+
+@pytest.mark.asyncio
+async def test_species_sharing_a_dutch_name_get_separate_icons(client, admin_db, auth_header):
+    """Same collision, reached the other way: a duplicated common name."""
+    await admin_db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, latin_name) "
+        "VALUES (2, 'Roos', 'Rosa gallica')")
+    await admin_db.commit()
+
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        await _generate(admin_db)
+
+    rows = await admin_db.execute_fetchall(
+        "SELECT sci FROM generated_icons WHERE form = 'potted'")
+    assert {r["sci"] for r in rows} == {"Rosa canina", "Rosa gallica"}
+
+
+@pytest.mark.asyncio
+async def test_r2_failure_is_reported_with_a_hint(client, admin_db, auth_header):
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=RuntimeError("bucket unreachable"))
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        body, _ = await _generate(admin_db)
+
+    assert body["count"] == 0
+    assert body["skipped_count"] == 1
+    detail = body["skipped_details"][0]
+    assert detail["reason"] == "r2_upload_failed"
+    assert "bucket unreachable" in detail["error"]
+    assert detail["hint"], "a failure the admin cannot act on is not a report"
