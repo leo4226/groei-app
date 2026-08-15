@@ -4,6 +4,7 @@ import os
 import re
 import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -298,10 +299,42 @@ def _where_sql(where: list[str]) -> str:
     return " WHERE " + " AND ".join(where) if where else ""
 
 
+#: Response keys holding a moment in time. Every one of them comes out of a
+#: TIMESTAMP column that stores naive UTC.
+_TIME_KEYS = ("created_at", "updated_at", "done_at", "last_activity", "ts", "committed_at")
+
+
+def _iso_utc(value):
+    """Render a naive-UTC timestamp as an unambiguous ISO-8601 instant.
+
+    Postgres renders `TIMESTAMP::text` as "2026-08-15 14:30:00.123456" — no
+    zone marker. The browser's `new Date(...)` reads that as *local* time, so
+    every admin timestamp displayed an hour or two off: a job that ran at 16:30
+    Amsterdam showed as 14:30, and the elapsed clock on a job adopted after a
+    page reload started at "2h 00s" because its start time parsed two hours into
+    the past. Appending the zone is the whole fix — the browser then converts to
+    the viewer's local time correctly.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        moment = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return moment.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    text = str(value).strip()
+    if not text:
+        return text
+    if text.endswith("Z") or "+" in text[10:] or text[10:].count("-") > 0:
+        return text  # already carries a zone
+    return text.replace(" ", "T", 1) + "Z"
+
+
 def _admin_row(row) -> dict:
     data = dict(row)
     if "is_admin" in data:
         data["is_admin"] = bool(data["is_admin"])
+    for key in _TIME_KEYS:
+        if key in data:
+            data[key] = _iso_utc(data[key])
     return data
 
 
@@ -526,8 +559,13 @@ async def admin_coverage(admin=Depends(require_admin), db=Depends(db_dep)):
         "SELECT id, common_name_nl, common_name_en, latin_name, phenology_json, care_thresholds FROM plant_species"
     )]
 
-    manifest = icons_router.load_manifest()
-    valid_icon_ids = {entry.get("id") for entry in manifest if entry.get("id")}
+    # The whole catalog — curated *and* AI-generated. This used to read
+    # `load_manifest()`, which is only the curated JSON file on disk, so every
+    # plant wearing a `gen_*` icon counted as a "stale icon key". Coverage was
+    # reporting the output of the Generate icons tool as breakage: run the tool,
+    # watch the stale count go up.
+    catalog = await load_catalog(db)
+    valid_icon_ids = {entry.get("id") for entry in catalog if entry.get("id")}
 
     active_stale_icon_rows = [
         _small_plant_row(p)
@@ -734,9 +772,9 @@ async def admin_overview(admin=Depends(require_admin), db=Depends(db_dep)):
     """)
 
     activity = sorted(
-        [dict(r) for r in new_accounts] +
-        [dict(r) for r in new_plants] +
-        [dict(r) for r in icon_requests],
+        [_admin_row(r) for r in new_accounts] +
+        [_admin_row(r) for r in new_plants] +
+        [_admin_row(r) for r in icon_requests],
         key=lambda x: x["ts"] or "",
         reverse=True,
     )[:10]
@@ -1102,10 +1140,10 @@ async def admin_activity(admin=Depends(require_admin), db=Depends(db_dep)):
     """)
 
     all_events = (
-        [dict(r) for r in new_accounts] +
-        [dict(r) for r in new_plants] +
-        [dict(r) for r in icon_requests] +
-        [dict(r) for r in care_logs]
+        [_admin_row(r) for r in new_accounts] +
+        [_admin_row(r) for r in new_plants] +
+        [_admin_row(r) for r in icon_requests] +
+        [_admin_row(r) for r in care_logs]
     )
     all_events.sort(key=lambda x: x["ts"] or "", reverse=True)
     return all_events[:50]
@@ -1584,11 +1622,11 @@ async def admin_household_detail(
     return {
         "id": hh["id"],
         "name": hh["name"],
-        "created_at": hh["created_at"],
+        "created_at": _iso_utc(hh["created_at"]),
         "accounts": [_admin_row(r) for r in accounts],
-        "maps": [dict(r) for r in maps],
-        "plants": [dict(r) for r in plants],
-        "care_log": [dict(r) for r in care_log],
+        "maps": [_admin_row(r) for r in maps],
+        "plants": [_admin_row(r) for r in plants],
+        "care_log": [_admin_row(r) for r in care_log],
     }
 
 
@@ -1887,7 +1925,7 @@ async def list_admin_jobs(
     )
     result_rows = []
     for r in rows:
-        row = dict(r)
+        row = _admin_row(r)
         result = row.get("result")
         if isinstance(result, str):
             try:
@@ -1919,7 +1957,7 @@ async def get_admin_job(
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Job not found")
-    row = dict(rows[0])
+    row = _admin_row(rows[0])
     result = row.get("result")
     if isinstance(result, str):
         try:
@@ -1955,7 +1993,7 @@ async def admin_audit(
 
     result_rows = []
     for r in rows:
-        row = dict(r)
+        row = _admin_row(r)
         detail = row.get("detail")
         if isinstance(detail, str):
             try:

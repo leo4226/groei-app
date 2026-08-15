@@ -69,7 +69,14 @@ def db_override():
 
 @pytest.fixture
 def fake_manifest():
-    with patch("routers.icons.load_manifest", return_value=FAKE_MANIFEST):
+    # get_icon_gaps reads the full catalog (curated + AI-generated), not the
+    # curated manifest file. Patching load_manifest left the endpoint reading
+    # the real on-disk manifest, so these tests were asserting against whatever
+    # icons happened to be shipped rather than against FAKE_MANIFEST.
+    async def _catalog(_db, **_kw):
+        return FAKE_MANIFEST
+
+    with patch("routers.icons.load_catalog", new=_catalog):
         yield
 
 

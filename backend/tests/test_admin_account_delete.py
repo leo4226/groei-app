@@ -43,8 +43,9 @@ async def delete_fixture(seeded_db):
             (2, 2, 'anna@example.com', 'Anna', 'x'),
             (3, 2, 'bob@example.com', 'Bob', 'x'),
             (4, 3, 'carol@example.com', 'Carol', 'x');
-        INSERT INTO users (id, name, household_id) VALUES
-            (12, 'Anna', 2), (13, 'Bob', 2), (14, 'Carol', 3);
+        -- account_id is the real link since migration 0073; deletion keys off it.
+        INSERT INTO users (id, name, household_id, account_id) VALUES
+            (12, 'Anna', 2, 2), (13, 'Bob', 2, 3), (14, 'Carol', 3, 4);
         INSERT INTO plants (id, name, household_id) VALUES
             (102, 'Anna plant', 2), (103, 'Bob plant', 2), (104, 'Carol plant', 3);
         INSERT INTO maps (id, name, household_id) VALUES (22, 'Shared garden', 2), (33, 'Solo garden', 3);
@@ -173,3 +174,45 @@ async def test_cannot_delete_self(client, delete_fixture, auth_header):
         json={"account_ids": [1, 3]}, headers=auth_header,
     )
     assert res.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_delete_account_spares_an_unlinked_namesake(client, delete_fixture, auth_header):
+    """Deleting an account must take its own `users` row and nothing else.
+
+    `_delete_account` matched the users row on (name, household_id) — the last
+    surviving piece of the name-based accounts↔users bridge that migration 0073
+    retired. Any unlinked row sharing the name went with it, and its care
+    attribution was nulled on the way out.
+    """
+    db = delete_fixture
+    await db.execute(
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (99, 'Anna', 2, NULL)")
+    await db.execute(
+        "INSERT INTO care_log (id, plant_id, care_type, done_by) VALUES (7, 102, 'water', 99)")
+    await db.commit()
+
+    resp = await client.delete("/api/admin/accounts/2", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+
+    # Anna's own row is gone…
+    assert await db.execute_fetchall("SELECT id FROM users WHERE id = 12") == []
+    # …the namesake is untouched, and still owns its care history.
+    namesake = await db.execute_fetchall("SELECT id FROM users WHERE id = 99")
+    assert len(namesake) == 1, "an unlinked row sharing the name is not this account's"
+    log = await db.execute_fetchall("SELECT done_by FROM care_log WHERE id = 7")
+    assert log[0]["done_by"] == 99
+
+
+@pytest.mark.asyncio
+async def test_delete_account_removes_its_row_even_after_a_rename(
+    client, delete_fixture, auth_header
+):
+    """A users row whose name drifted from the account's was left orphaned."""
+    db = delete_fixture
+    await db.execute("UPDATE users SET name = 'Anna (old)' WHERE id = 12")
+    await db.commit()
+
+    resp = await client.delete("/api/admin/accounts/2", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    assert await db.execute_fetchall("SELECT id FROM users WHERE id = 12") == []

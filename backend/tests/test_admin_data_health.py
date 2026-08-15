@@ -21,10 +21,10 @@ async def test_backfill_plant_types_uses_active_scope_and_explains_stale_icons(
     )
     await seeded_db.commit()
 
-    monkeypatch.setattr(
-        "routers.admin.load_manifest",
-        lambda: [{"id": "basil", "cat": "herb"}],
-    )
+    async def _catalog(_db, **_kw):
+        return [{"id": "basil", "cat": "herb"}]
+
+    monkeypatch.setattr("routers.admin.load_catalog", _catalog)
 
     preview = await client.get("/api/admin/backfill-plant-types/preview", headers=auth_header)
     assert preview.status_code == 200, preview.text
@@ -190,10 +190,10 @@ async def test_admin_coverage_reports_garden_species_icon_and_bioclip_gaps(
     )
     await seeded_db.commit()
 
-    monkeypatch.setattr(
-        "routers.admin_panel.icons_router.load_manifest",
-        lambda: [{"id": "basil", "cat": "herb"}, {"id": "lavender", "cat": "flower"}],
-    )
+    async def _coverage_catalog(_db, **_kw):
+        return [{"id": "basil", "cat": "herb"}, {"id": "lavender", "cat": "flower"}]
+
+    monkeypatch.setattr("routers.admin_panel.load_catalog", _coverage_catalog)
 
     async def fake_bioclip_coverage():
         return {"status": "ok", "detail": "worker ready", "embedded_species": 1, "species_ids": [1]}
@@ -237,3 +237,97 @@ async def test_admin_coverage_reports_garden_species_icon_and_bioclip_gaps(
     assert gaps[2]["missing_facts_en"] is True
     # both species are linked to active plants, so they're flagged in-use
     assert gaps[2]["in_use"] is True
+
+
+@pytest.mark.asyncio
+async def test_coverage_does_not_call_generated_icons_stale(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """Coverage used to report the Generate icons tool's own output as breakage.
+
+    `valid_icon_ids` was built from `load_manifest()` — the curated JSON file on
+    disk — so every plant wearing a `gen_*` icon fell outside it and was counted
+    as a stale/dangling icon key. Running the tool made the stale number go up.
+    """
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    # plant_species is not in the shared conftest schema (several test files
+    # bring their own), so create the slim shape coverage reads.
+    await seeded_db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS plant_species (
+            id INTEGER PRIMARY KEY,
+            common_name_nl TEXT,
+            common_name_en TEXT,
+            latin_name TEXT,
+            phenology_json TEXT,
+            care_thresholds TEXT
+        )
+        """
+    )
+    await seeded_db.executemany(
+        """
+        INSERT INTO plants (id, name, household_id, is_active, icon_key, plant_type)
+        VALUES (?, ?, 1, 1, ?, 'herb')
+        """,
+        [
+            (201, "Curated basil", "basil"),
+            (202, "AI rose", "gen_rosa_canina"),
+            (203, "Genuinely dangling", "ghost_icon"),
+        ],
+    )
+    await seeded_db.commit()
+
+    async def _catalog(_db, **_kw):
+        return [
+            {"id": "basil", "cat": "herb", "source": "curated"},
+            {"id": "gen_rosa_canina", "cat": "flower", "source": "ai"},
+        ]
+
+    monkeypatch.setattr("routers.admin_panel.load_catalog", _catalog)
+
+    async def fake_bioclip_coverage():
+        return {"status": "unconfigured", "detail": "", "embedded_species": 0, "species_ids": []}
+
+    monkeypatch.setattr("routers.admin_panel._fetch_bioclip_coverage", fake_bioclip_coverage)
+
+    resp = await client.get("/api/admin-panel/coverage", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    icons = resp.json()["icons"]
+
+    # Only the genuinely dangling key counts.
+    stale_names = {r["name"] for r in icons["active_stale_icon_rows"]}
+    assert stale_names == {"Genuinely dangling"}
+    assert icons["active_stale_icon_key"] == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_timestamps_carry_a_timezone(client, seeded_db, auth_header):
+    """Naive UTC rendered without a zone is read as local time by the browser.
+
+    Postgres gives `TIMESTAMP::text` as "2026-08-15 14:30:00" — no marker — and
+    `new Date(...)` treats that as local, so every admin timestamp displayed an
+    hour or two out, and a job's elapsed clock started life two hours old.
+    """
+    await seeded_db.execute("UPDATE accounts SET is_admin = 1 WHERE id = 1")
+    # The users query joins care_log for last_activity; it is not in the shared
+    # schema, so provide the columns it reads.
+    await seeded_db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS care_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plant_id INTEGER NOT NULL,
+            care_type TEXT NOT NULL,
+            done_by INTEGER,
+            done_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    await seeded_db.commit()
+
+    resp = await client.get("/api/admin-panel/users", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["rows"]
+    assert rows, "seeded account should be listed"
+    created = rows[0]["created_at"]
+    assert created.endswith("Z"), f"expected an explicit UTC instant, got {created!r}"
+    assert "T" in created, f"expected ISO-8601, got {created!r}"
