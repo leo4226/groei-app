@@ -401,7 +401,7 @@ export const users = {
   list:        ()                                          => api<User[]>('GET', '/users'),
   locations:   ()                                          => api<Location[]>('GET', '/locations'),
   updateLocation: (id: number, data: Partial<Location>)         => api<Location>('PATCH', `/locations/${id}`, { body: data }),
-  deleteLocation: (id: number)                                  => api<{ok: boolean}>('DELETE', `/locations/${id}`),
+  deleteLocation: (id: number, lang: 'nl' | 'en' = 'nl')         => api<{ok: boolean}>('DELETE', `/locations/${id}`, { params: { lang } }),
   setLanguage: (userId: number, language: 'nl' | 'en')   => api<User>('PATCH', `/users/${userId}/language`, { body: { language } }),
   updateUser:  (userId: number, data: { name?: string; avatar?: string }) => api<User>('PATCH', `/users/${userId}`, { body: data }),
 }
@@ -845,11 +845,20 @@ export interface IconGenerateResult {
 }
 
 export interface HouseholdMember {
+  /** accounts.id — what PATCH /household/members/{id} expects. */
   id: number
   name: string
   email: string
   avatar: string | null
   created_at: string
+  /**
+   * The legacy `users` row for this account, resolved server-side.
+   * DELETE /household/members/{user_id} keys off this, not `id`. Null when the
+   * account has no `users` row yet, in which case removal isn't offered.
+   */
+  user_id: number | null
+  /** True for the account making the request. */
+  is_self: boolean
 }
 
 export type CalendarGroupingCareType =

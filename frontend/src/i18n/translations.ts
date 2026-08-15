@@ -644,6 +644,56 @@ export type Translations = {
     language: string
     languageNl: string
     languageEn: string
+    // ── Group headings (2026-08 settings restructure) ──
+    groupYou: string
+    groupYouDesc: string
+    groupHousehold: string
+    groupHouseholdDesc: string
+    groupCare: string
+    groupCareDesc: string
+    groupCareSummary: string
+    groupNotifications: string
+    groupNotificationsDesc: string
+    groupPlaces: string
+    groupPlacesDesc: string
+    groupApp: string
+    groupAppDesc: string
+    groupAdmin: string
+    groupAdminDesc: string
+    adminBadge: string
+    adminPanel: string
+    // Collapsed-group summaries
+    memberCountOne: string
+    memberCountMany: string
+    locationCountOne: string
+    locationCountMany: string
+    digestOnAt: string
+    digestOff: string
+    pushOn: string
+    pushOff: string
+    // Newly translated (were hardcoded)
+    profileLoadError: string
+    profileSaveError: string
+    membersLoadError: string
+    householdRenameError: string
+    inviteError: string
+    nameTakenError: string
+    logoutConfirm: string
+    you: string
+    editMember: string
+    editMemberTitle: string
+    removeMemberNamed: string
+    removeConfirmNamed: string
+    renameNamed: string
+    deleteLocationNamed: string
+    confirmDeleteLocationNamed: string
+    locationIcon: string
+    locationsDescription: string
+    noLocations: string
+    assistantDescription: string
+    themeDeviceHint: string
+    quietHoursStart: string
+    quietHoursEnd: string
     profile: string
     profileName: string
     profileAvatar: string

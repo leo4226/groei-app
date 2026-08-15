@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from database import db_dep
 from auth import get_current_account
 from models import LocationOut, LocationCreate, LocationUpdate
@@ -59,8 +59,18 @@ async def update_location(location_id: int, data: LocationUpdate, db = Depends(d
 
 
 @router.delete("/locations/{location_id}")
-async def delete_location(location_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
-    """Delete a location. Block if it still has plants."""
+async def delete_location(
+    location_id: int,
+    lang: str = Query("nl"),
+    db = Depends(db_dep),
+    account = Depends(get_current_account),
+):
+    """Delete a location. Block if it still has plants.
+
+    The 409 detail is localized to the caller's UI language rather than being
+    a hardcoded Dutch sentence — and the frontend branches on the 409 status,
+    never on this text (see the language rules in CLAUDE.md).
+    """
     # Check the location belongs to this household
     cursor = await db.execute(
         "SELECT id FROM locations WHERE id = ? AND household_id = ?",
@@ -77,7 +87,14 @@ async def delete_location(location_id: int, db = Depends(db_dep), account = Depe
     )
     count_row = await cursor2.fetchone()
     if count_row['cnt'] > 0:
-        raise HTTPException(status_code=409, detail="Verplaats eerst je planten naar een andere locatie")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Move your plants to another location first"
+                if lang == "en"
+                else "Verplaats eerst je planten naar een andere locatie"
+            ),
+        )
     
     await db.execute("DELETE FROM locations WHERE id = ?", (location_id,))
     await db.commit()

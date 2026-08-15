@@ -8,13 +8,23 @@ import pytest_asyncio
 from icalendar import Calendar
 
 import services.environment as env
+# The ICS feed windows from this exact helper. Open-Meteo is queried with
+# `timezone: Europe/Amsterdam`, so real forecast days carry Amsterdam dates too.
+# Anchoring the fabricated forecast on anything else — `date.today()` is UTC on
+# the CI runner and in production — makes the fake disagree with the window
+# between 22:00 UTC and midnight, when Amsterdam has already rolled over. The
+# heat-water day then lands one day *before* the window starts and drops out of
+# the feed, turning these tests red for two hours every night with nothing in
+# the diff to blame. Importing the production helper keeps the two in step even
+# if its timezone ever changes.
+from routers.calendar_subscription import _amsterdam_today
 from services.weather_task_service import (
     HEAT_WATER_KIND,
     _get_cached_weather,
     sync_ephemeral_schedules,
 )
 
-TODAY = date.today()
+TODAY = _amsterdam_today()
 
 
 def _forecast(*max_temps: float) -> dict:
