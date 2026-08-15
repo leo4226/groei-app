@@ -190,13 +190,22 @@ async def list_members(
     and would remove the wrong person when two members shared a name. Doing it
     here keeps the guesswork in one server-side place where the household is
     already scoped, and lets the client pass an id it was given.
+
+    The bridge is a scalar subquery, not a join. `users.name` lost its UNIQUE
+    constraint in migration 0025, so a household can hold several `users` rows
+    with the same name — and a LEFT JOIN then returns the *account* once per
+    match, which showed up in settings as the same person listed twice, same
+    email, both badged "you". One row per account, always.
+
+    MIN(id) picks the oldest matching row, which is the one care history was
+    attributed to before the duplicates appeared.
     """
     rows = await db.execute_fetchall(
         """SELECT a.id, a.name, a.email, a.avatar, a.created_at,
-                  u.id AS user_id
+                  (SELECT MIN(u.id) FROM users u
+                    WHERE u.household_id = a.household_id
+                      AND u.name = a.name) AS user_id
            FROM accounts a
-           LEFT JOIN users u
-             ON u.household_id = a.household_id AND u.name = a.name
            WHERE a.household_id = ?
            ORDER BY a.created_at ASC""",
         (current["household_id"],),
@@ -242,14 +251,24 @@ async def update_member_profile(
         (name, avatar, member_id),
     )
 
+    # Sync the legacy `users` row. Two things here used to mint duplicates:
+    #
+    #  - the lookup only tried the *old* account name, so once `accounts.name`
+    #    and `users.name` drifted apart it missed and INSERTed a second row;
+    #  - the UPDATE was keyed on the name and unbounded, so it renamed *every*
+    #    matching row, which could collapse two distinct rows onto one name.
+    #
+    # Since migration 0025 dropped the UNIQUE on `users.name` nothing stopped
+    # either. Match the old name or the new one, and update exactly one row by
+    # id, oldest first — that is the row care history is attributed to.
     legacy_rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE household_id = ? AND name = ?",
-        (household_id, member["name"]),
+        "SELECT id FROM users WHERE household_id = ? AND name IN (?, ?) ORDER BY id",
+        (household_id, member["name"], name),
     )
     if legacy_rows:
         await db.execute(
-            "UPDATE users SET name = ?, avatar = ? WHERE household_id = ? AND name = ?",
-            (name, avatar, household_id, member["name"]),
+            "UPDATE users SET name = ?, avatar = ? WHERE id = ?",
+            (name, avatar, dict(legacy_rows[0])["id"]),
         )
     else:
         await db.execute(
@@ -290,9 +309,13 @@ async def remove_member(
         raise HTTPException(status_code=404, detail="User not found in your household")
     target_user = target_rows[0]
 
-    # 2) Find current user for self-check and FK reassignment
+    # 2) Find current user for self-check and FK reassignment.
+    # ORDER BY id so the self-check is deterministic: `users.name` is not unique
+    # (migration 0025), and picking an arbitrary row among duplicates could let
+    # the "you cannot remove yourself" guard miss your own other row. MIN(id)
+    # matches how /members resolves the same bridge.
     current_rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE name = ? AND household_id = ?",
+        "SELECT id FROM users WHERE name = ? AND household_id = ? ORDER BY id",
         (account_name, household_id),
     )
     if not current_rows:
