@@ -24,7 +24,9 @@ def test_extract_fact_json_from_reasoning_finds_last_match():
 def test_extract_fact_json_from_reasoning_raises_when_no_match():
     from species_service import _extract_fact_json_from_reasoning
 
-    with pytest.raises(ValueError, match="No usable fact JSON"):
+    # The extractor is now generic over the key it looks for (the names call
+    # reuses it), so the message names the key rather than saying "fact".
+    with pytest.raises(ValueError, match="No usable JSON with 'fact_nl'"):
         _extract_fact_json_from_reasoning("just some text, no JSON here")
 
 

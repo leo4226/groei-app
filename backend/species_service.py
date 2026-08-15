@@ -16,12 +16,42 @@ _PHENOLOGY_RETRY_DELAY_SECONDS = 1
 
 
 def _llm_message_content(body: dict) -> str:
-    """Return non-empty LLM content using the existing JSON failure path."""
-    content = body["choices"][0]["message"].get("content")
+    """Return non-empty LLM content using the existing JSON failure path.
+
+    On a reasoning model an empty `content` almost always means the token
+    budget ran out during reasoning, so the error names `finish_reason`.
+    "LLM returned empty content" on its own sent us looking at the plant —
+    was the name wrong, the species too obscure? — when the answer was in the
+    request all along.
+    """
+    choice = body["choices"][0]
+    content = choice["message"].get("content")
     raw = content.strip() if isinstance(content, str) else ""
     if not raw:
-        raise json.JSONDecodeError("LLM returned empty content", "", 0)
+        reason = choice.get("finish_reason") or "unknown"
+        hint = (
+            " — the model spent its whole max_tokens budget on reasoning "
+            "before writing an answer; raise max_tokens"
+            if reason == "length" else ""
+        )
+        raise json.JSONDecodeError(
+            f"LLM returned empty content (finish_reason={reason}){hint}", "", 0
+        )
     return raw
+
+
+def _extract_json_from_reasoning(reasoning: str, *, required_key: str) -> str:
+    """Pull the last JSON object containing `required_key` out of reasoning text.
+
+    Reasoning models leave `content` null when the budget runs out mid-thought,
+    but the answer they had already worked out is usually sitting in the
+    `reasoning` block. Recovering it turns a hard failure into a result.
+    """
+    pattern = r'\{[^{}]*"' + re.escape(required_key) + r'"\s*:\s*"[^"]*"[^{}]*\}'
+    matches = list(re.finditer(pattern, reasoning))
+    if matches:
+        return matches[-1].group()
+    raise ValueError(f"No usable JSON with {required_key!r} found in reasoning text")
 
 
 def get_token_usage() -> dict:
@@ -97,9 +127,22 @@ is erger dan helemaal geen Nederlandse naam."""
 
 
 async def _generate_names(plant_name: str) -> dict:
-    """Names-only LLM call (~50 output tokens instead of ~5000)."""
+    """Names-only LLM call — the answer is ~50 tokens, the budget is not.
+
+    This asked for max_tokens=300, sized against the answer: a one-line JSON
+    object with two common names. But LLM_MODEL is DeepSeek V4 Pro, a reasoning
+    model, and reasoning tokens come out of max_tokens *before* `content` is
+    written. So the budget was spent thinking and the call returned empty, which
+    surfaced in the admin panel as "Could not generate the name / LLM returned
+    empty content" for ordinary plants — Ligustrum vulgare, wilde liguster, a
+    hedge in half the streets in Amsterdam. Nothing to do with the species.
+
+    4000 matches `generate_fact_for_species`, which hit this first and carries
+    the same note. The budget is a ceiling, not a spend: a call that answers in
+    50 tokens still costs 50.
+    """
     prompt = _NAMES_PROMPT.format(plant_name=plant_name)
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             LLM_CHAT_URL,
             headers={
@@ -108,7 +151,7 @@ async def _generate_names(plant_name: str) -> dict:
             },
             json={
                 "model": LLM_MODEL,
-                "max_tokens": 300,
+                "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
@@ -117,10 +160,15 @@ async def _generate_names(plant_name: str) -> dict:
         usage = body.get("usage", {})
         _token_usage["input"] += usage.get("prompt_tokens", 0)
         _token_usage["output"] += usage.get("completion_tokens", 0)
-        raw = _llm_message_content(body)
-    raw = re.sub(r"^```json\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-    return json.loads(raw)
+        msg = body["choices"][0]["message"]
+        raw = msg.get("content") or ""
+        # Same salvage the fact path uses: if the budget still ran out, the
+        # answer is usually already sitting in the reasoning block.
+        if not raw.strip() and msg.get("reasoning"):
+            raw = _extract_json_from_reasoning(msg["reasoning"], required_key="common_name_nl")
+        else:
+            raw = _llm_message_content(body)
+    return json.loads(_strip_json_response(raw))
 
 
 def schedule_phenology_enrichment(species_id: int, name_hint: str) -> None:
@@ -540,11 +588,7 @@ def _extract_fact_json_from_reasoning(reasoning: str) -> str:
     their reasoning block when `content` is null.  Search backwards for the
     JSON block that looks like a fact response.
     """
-    import re  # noqa: PLC0415 — never imported at module level
-    matches = list(re.finditer(r'\{[^{}]*"fact_nl"\s*:\s*"[^"]*"[^{}]*\}', reasoning))
-    if matches:
-        return matches[-1].group()
-    raise ValueError("No usable fact JSON found in reasoning text")
+    return _extract_json_from_reasoning(reasoning, required_key="fact_nl")
 
 
 async def generate_fact_for_species(plant_name: str, latin_name: str | None = None) -> dict[str, str]:
