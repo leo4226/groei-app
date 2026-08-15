@@ -1891,11 +1891,15 @@ async def _run_backfill_thresholds(db, params: dict, on_progress) -> dict:
 async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
     from routers.plants import _seed_care_schedules
 
+    # Candidates are plants with NO water schedule row at all — not "no *active*
+    # one". A plant whose water schedule is switched off has one; the seeder
+    # will not resurrect it (that was a deliberate choice), so counting it as
+    # needing seeding made it a candidate that could never be satisfied.
     rows = await db.execute_fetchall(
-        """SELECT p.id, p.care_thresholds FROM plants p
+        """SELECT p.id, p.name, p.care_thresholds FROM plants p
            WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
            AND p.id NOT IN (
-               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water'
            )"""
     )
     total = len(rows)
@@ -1904,8 +1908,24 @@ async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
     failures: list[dict] = []
     for i, row in enumerate(rows):
         try:
-            await _seed_care_schedules(db, row["id"], row["care_thresholds"])
-            seeded += 1
+            outcome = await _seed_care_schedules(db, row["id"], row["care_thresholds"])
+            if outcome in ("created", "refined"):
+                seeded += 1
+            else:
+                # The seeder ran without error but made no schedule. This used
+                # to be counted as a success, which is why the pending count
+                # never moved.
+                failures.append({
+                    "id": row["id"],
+                    "name": row["name"],
+                    "reason": outcome,
+                    "hint": (
+                        "Its care thresholds have no usable water_interval_days — "
+                        "run Backfill thresholds, or set a watering interval on the plant."
+                        if outcome in ("no_water_interval", "bad_thresholds")
+                        else "It already has a water schedule; nothing to seed."
+                    ),
+                })
         except Exception as exc:
             # Was a server-side log line only — invisible from the admin panel,
             # where the run just reported a seeded count lower than the checked
@@ -2087,12 +2107,16 @@ async def start_admin_job(
     if runner is None:
         raise HTTPException(status_code=400, detail=f"Unknown job kind: {body.kind!r}")
     if is_kind_running(body.kind):
-        raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
+        raise HTTPException(
+            status_code=409,
+            detail=f"A '{body.kind}' job is already queued or running",
+        )
     params = dict(body.params)
     if body.kind in {"backfill_facts", "backfill_names", "generate_icons",
                      "backfill_species"}:
         params["household_id"] = admin.get("household_id")
-    job_id = await start_job(db, admin, body.kind, params, runner)
+    started = await start_job(db, admin, body.kind, params, runner)
+    job_id = started["job_id"]
     # Every tool in the panel runs through here, so this is the only place an
     # admin action can be recorded. The audit log used to see none of them: the
     # two endpoints that did call log_admin_action were the direct
@@ -2103,7 +2127,7 @@ async def start_admin_job(
         target=body.kind,
         detail={"job_id": job_id, "params": params},
     )
-    return {"job_id": job_id}
+    return started
 
 
 @router.get("/admin-panel/jobs")

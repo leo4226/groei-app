@@ -212,23 +212,30 @@ async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
         raise HTTPException(status_code=404, detail="Plant not found")
 
 
-async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
+async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> str:
     """Create or refine the initial Water schedule from species thresholds.
 
     Optional care advice remains available in threshold data, but never becomes
     a recurring commitment without an explicit post-create user action.
+
+    Returns what it did, so callers can tell a real seed from a silent skip:
+    'created' | 'refined' | 'unchanged' | 'bad_thresholds' | 'no_water_interval'
+    | 'already_has_schedule'. It used to return None in every case, including
+    the ones where it did nothing — so the admin backfill counted every silent
+    skip as a success and reported "2 seeded" while creating nothing, and the
+    same 2 plants came back as needing schedules on every run.
     """
     try:
         thresholds = json.loads(thresholds_json)
     except (json.JSONDecodeError, TypeError):
-        return
+        return "bad_thresholds"
 
     water_interval = thresholds.get("water_interval_days")
     if isinstance(water_interval, bool) or not isinstance(water_interval, (int, float)):
-        return
+        return "no_water_interval"
     water_interval = int(water_interval)
     if water_interval < 1:
-        return
+        return "no_water_interval"
 
     existing = await db.execute_fetchall(
         """SELECT id, next_due, last_done, season_adjust, is_active, interval_source
@@ -237,6 +244,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
            ORDER BY is_active DESC, id LIMIT 1""",
         (plant_id,),
     )
+    outcome = "created"
     if not existing:
         # Use ? placeholders (qm_to_pg translates these); the $1/$2 form is
         # not translated and breaks under dev SQLite.
@@ -248,11 +256,16 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
         )
     else:
         row = dict(existing[0])
+        # A water schedule already exists. If it is switched off, that was a
+        # deliberate choice and this must not resurrect it — it only reports
+        # the fact so the caller stops treating the plant as unseeded.
+        outcome = "unchanged" if bool(row.get("is_active")) else "already_has_schedule"
     if (
         existing
         and bool(row.get("is_active"))
         and row.get("interval_source") == "provisional"
     ):
+        outcome = "refined"
         anchor = _care_schedule_anchor(row.get("last_done"))
         next_due = (
             calculate_next_due(anchor, water_interval, row.get("season_adjust"))
@@ -267,6 +280,7 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> None:
         )
 
     await db.commit()
+    return outcome
 
 
 @router.get("/plants", response_model=list[PlantOut])

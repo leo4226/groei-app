@@ -1335,10 +1335,13 @@ type KindJobState = {
   /** Epoch ms the run was observed to start — drives elapsed time and the ETA. */
   startedAt: number | null
   details: AdminSkippedDetail[]
+  /** Places ahead of this job in the queue when it was accepted; 0 = started at once. */
+  queuePosition: number
 }
 
 const IDLE_JOB: KindJobState = {
-  jobId: null, status: 'idle', done: 0, total: 0, result: '', startedAt: null, details: [],
+  jobId: null, status: 'idle', done: 0, total: 0, result: '', startedAt: null,
+  details: [], queuePosition: 0,
 }
 
 function jobResultSummary(kind: string, job: AdminJob): string {
@@ -1393,11 +1396,12 @@ function JobOutcome({ job }: { job: KindJobState }) {
  * completed so far and is only shown once two items are done, because the first
  * item's timing is dominated by cold start.
  */
-function JobProgressBar({ done, total, status, startedAt }: {
-  done: number; total: number; status: AdminJobStatus | 'idle'; startedAt?: number | null
+function JobProgressBar({ done, total, status, startedAt, queuePosition = 0 }: {
+  done: number; total: number; status: AdminJobStatus | 'idle'
+  startedAt?: number | null; queuePosition?: number
 }) {
   const [now, setNow] = useState(() => Date.now())
-  const live = status === 'pending' || status === 'running'
+  const live = status === 'pending' || status === 'queued' || status === 'running'
   useEffect(() => {
     if (!live) return
     const t = window.setInterval(() => setNow(Date.now()), 1000)
@@ -1405,6 +1409,15 @@ function JobProgressBar({ done, total, status, startedAt }: {
   }, [live])
 
   if (!live) return null
+  // Waiting its turn: no progress to show, so say where it is in the line
+  // rather than animating a bar for work that has not started.
+  if (status === 'queued') {
+    return (
+      <div style={{ marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }}>
+        waiting — {queuePosition} job{queuePosition === 1 ? '' : 's'} ahead of it
+      </div>
+    )
+  }
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
   const indeterminate = total === 0
   const elapsed = startedAt ? (now - startedAt) / 1000 : null
@@ -1454,7 +1467,8 @@ function useKindJobs(onComplete?: (kind: string) => void) {
       if (cancelled) return
       const live = new Map<string, AdminJob>()
       for (const row of rows) {
-        if ((row.status === 'running' || row.status === 'pending') && !live.has(row.kind)) {
+        if ((row.status === 'running' || row.status === 'pending' || row.status === 'queued')
+            && !live.has(row.kind)) {
           live.set(row.kind, row)
         }
       }
@@ -1480,7 +1494,7 @@ function useKindJobs(onComplete?: (kind: string) => void) {
 
   useEffect(() => {
     const activeKinds = Object.entries(jobs)
-      .filter(([, j]) => j.status === 'pending' || j.status === 'running')
+      .filter(([, j]) => j.status === 'pending' || j.status === 'queued' || j.status === 'running')
       .map(([kind]) => kind)
     if (activeKinds.length === 0) return
 
@@ -1515,8 +1529,12 @@ function useKindJobs(onComplete?: (kind: string) => void) {
       startedAt: Date.now(), details: [],
     })
     try {
-      const { job_id } = await adminPanel.startJob(kind, params)
-      setJob(kind, { jobId: job_id, status: 'pending' })
+      const { job_id, queue_position } = await adminPanel.startJob(kind, params)
+      setJob(kind, {
+        jobId: job_id,
+        status: queue_position > 0 ? 'queued' : 'pending',
+        queuePosition: queue_position,
+      })
     } catch (e) {
       // 409 means the server already has this job in flight — most likely one
       // this browser started before a reload. Say that instead of "Failed".
@@ -1532,23 +1550,17 @@ function useKindJobs(onComplete?: (kind: string) => void) {
 
   const busy = useCallback((kind: string) => {
     const s = (jobs[kind] ?? IDLE_JOB).status
-    return s === 'pending' || s === 'running'
+    return s === 'pending' || s === 'queued' || s === 'running'
   }, [jobs])
 
-  const anyRunning = Object.values(jobs).some(j => j.status === 'pending' || j.status === 'running')
+  const anyRunning = Object.values(jobs).some(
+    j => j.status === 'pending' || j.status === 'queued' || j.status === 'running')
 
-  // Jobs are asyncio tasks inside the API process, and the Fly machine has
-  // auto_stop_machines with min_machines_running = 0. A background task makes no
-  // requests of its own, so what keeps the machine awake through a long run is
-  // this page's 2-second poll. Close the tab and the machine can idle out
-  // mid-run, taking the job with it. Until jobs move to a worker that owns its
-  // own lifetime, the least we can do is not let it happen silently.
-  useEffect(() => {
-    if (!anyRunning) return
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [anyRunning])
+  // No unload guard any more. It existed because the Fly machine had
+  // min_machines_running = 0, so this page's poll was the only thing keeping
+  // the server awake and closing the tab killed the run. The machine now stays
+  // up, and warning about something that no longer happens is worse than
+  // saying nothing.
 
   return { jobs, getJob, runJob, busy, anyRunning }
 }
@@ -1564,7 +1576,7 @@ function RecentJobsCard({ jobs, loading }: { jobs: AdminJob[] | null; loading: b
   }
 
   const statusLabel: Record<AdminJobStatus, string> = {
-    pending: 'pending', running: 'running…', completed: 'done',
+    pending: 'pending', queued: 'queued', running: 'running…', completed: 'done',
     failed: 'failed', interrupted: 'interrupted',
   }
 
@@ -1670,7 +1682,7 @@ function CoverageView() {
         <button onClick={() => runJob(kind, params)} disabled={isBusy || count === 0} style={fixBtnStyle(isBusy || count === 0)}>
           {isBusy ? 'Running…' : title}
         </button>
-        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} />
+        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} queuePosition={j.queuePosition} />
         <JobOutcome job={j} />
       </div>
     )
@@ -2114,7 +2126,7 @@ function ToolsView() {
         <button onClick={() => runJob(kind)} disabled={busy(kind)} style={btnStyle(busy(kind))}>
           {busy(kind) ? 'Running…' : 'Run'}
         </button>
-        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} />
+        <JobProgressBar done={j.done} total={j.total} status={j.status} startedAt={j.startedAt} queuePosition={j.queuePosition} />
         <JobOutcome job={j} />
       </div>
     )
@@ -2166,7 +2178,7 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={factsJob.done} total={factsJob.total} status={factsJob.status} startedAt={factsJob.startedAt} />
+      <JobProgressBar done={factsJob.done} total={factsJob.total} status={factsJob.status} startedAt={factsJob.startedAt} queuePosition={factsJob.queuePosition} />
       <JobOutcome job={factsJob} />
     </div>
   )
@@ -2212,7 +2224,7 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={namesJob.done} total={namesJob.total} status={namesJob.status} startedAt={namesJob.startedAt} />
+      <JobProgressBar done={namesJob.done} total={namesJob.total} status={namesJob.status} startedAt={namesJob.startedAt} queuePosition={namesJob.queuePosition} />
       <JobOutcome job={namesJob} />
     </div>
   )
@@ -2262,7 +2274,7 @@ function ToolsView() {
           </button>
         </div>
       </div>
-      <JobProgressBar done={iconsJob.done} total={iconsJob.total} status={iconsJob.status} startedAt={iconsJob.startedAt} />
+      <JobProgressBar done={iconsJob.done} total={iconsJob.total} status={iconsJob.status} startedAt={iconsJob.startedAt} queuePosition={iconsJob.queuePosition} />
       <JobOutcome job={iconsJob} />
     </div>
   )
@@ -2277,10 +2289,9 @@ function ToolsView() {
           borderRadius: 12, padding: '12px 16px', marginBottom: 14,
           fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-soft)',
         }}>
-          A job is running — keep this tab open. The server sleeps when nothing is
-          talking to it, and this page's polling is what keeps it awake. Anything
-          already finished is saved either way, and re-running continues where it
-          stopped.
+          A job is running. Tools run one at a time — pressing another queues it
+          behind this one. You can leave this page or close the app; the server
+          keeps a machine awake now, so the run continues without you watching.
         </div>
       )}
       <div data-admin-tools-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
