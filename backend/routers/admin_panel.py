@@ -690,6 +690,7 @@ async def admin_growth_metrics(
     from datetime import date, timedelta
 
     # Generate complete date series
+    # Deliberately UTC: analytics buckets, not a gardening day.
     today = date.today()
     start_date = today - timedelta(days=days - 1)
     date_series = [(today - timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]

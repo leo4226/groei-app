@@ -20,6 +20,7 @@ from services.weather_warning_state import (
 )
 from services.care_profile import canonicalize_care_profile
 from care_types import CARE_TYPES, normalize_care_type
+from services.local_time import local_today
 
 
 class CareProfileEntryIn(BaseModel):
@@ -205,7 +206,7 @@ async def get_plant_warnings(
     db=Depends(db_dep),
     account=Depends(get_current_account),
 ):
-    today = today or date.today()
+    today = today or local_today()
 
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id, p.care_thresholds,
@@ -249,7 +250,7 @@ async def get_warning_summary(
     account=Depends(get_current_account),
 ):
     """Aggregated dashboard summary: KPI counts per care type + bucket lists."""
-    today = today or date.today()
+    today = today or local_today()
     household_id = account["household_id"]
 
     try:

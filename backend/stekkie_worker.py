@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from care_types import STEKKIE_ACTIONABLE_CARE_TYPES
 from llm_config import LLM_API_KEY, LLM_CHAT_URL
+from services.local_time import local_today
 
 
 _CARE_COMPLETION_TERMS = {
@@ -264,7 +265,7 @@ def _season_for_month(month: int) -> str:
 
 def build_system_prompt(request: ChatRequest) -> str:
     language = _language(request)
-    today = date.today()
+    today = local_today()
     if request.garden_context:
         context = "GARDEN CONTEXT JSON:\n" + _compact_json(request.garden_context)
     else:

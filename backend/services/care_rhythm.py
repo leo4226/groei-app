@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from services.care_sessions import project_water_session
 from services.db_transactions import database_transaction, for_update_clause
 from services.scheduling import calculate_effective_interval
+from services.local_time import local_today
 
 
 ISO_WEEKDAYS = tuple(range(1, 8))
@@ -361,7 +362,7 @@ async def get_care_rhythm_settings(
     *,
     today: date | None = None,
 ) -> dict:
-    today = today or date.today()
+    today = today or local_today()
     maps = await household_rhythm_maps(db, household_id)
     preferences = await db.execute_fetchall(
         """SELECT indoor_weekdays, outdoor_weekdays
@@ -416,7 +417,7 @@ async def preview_care_rhythm(
     config: dict,
     today: date | None = None,
 ) -> dict:
-    today = today or date.today()
+    today = today or local_today()
     canonical = await _validate_config_maps(db, household_id, config)
     schedules = await fetch_rhythm_schedule_rows(db, household_id)
     return build_rhythm_preview(
@@ -435,7 +436,7 @@ async def preview_onboarding_care_rhythm(
     interval_days: int,
     today: date | None = None,
 ) -> dict:
-    today = today or date.today()
+    today = today or local_today()
     baseline = today + timedelta(days=interval_days)
     maps = await household_rhythm_maps(db, household_id)
     selected_map = next((item for item in maps if item["id"] == map_id), None)
@@ -599,7 +600,7 @@ async def apply_care_rhythm(
     preview_hash: str,
     today: date | None = None,
 ) -> dict:
-    today = today or date.today()
+    today = today or local_today()
     canonical = normalize_rhythm_config(config)
 
     async with database_transaction(db):

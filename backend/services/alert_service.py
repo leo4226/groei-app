@@ -6,6 +6,7 @@ compute_all_alerts (all alerts for multi-badge display).
 """
 import json
 from datetime import date, datetime
+from services.local_time import local_today
 
 _SEVERITY_ORDER = {"urgent": 2, "warning": 1, "info": 0}
 _MANUAL_WATER_DAYS = 3
@@ -64,7 +65,7 @@ def compute_alerts(
     if "drought" not in skip and drought_thresh and total_mm < drought_thresh:
         recently_watered = (
             last_watered is not None
-            and (date.today() - last_watered).days < _MANUAL_WATER_DAYS
+            and (local_today() - last_watered).days < _MANUAL_WATER_DAYS
         )
         if recently_watered:
             pass  # manual watering covers it — no drought alert
@@ -116,7 +117,7 @@ def compute_alerts(
                 "icon": "🏠"})
 
     if current_month in fertilise_months:
-        fertilized_this_month = last_fertilized is not None and last_fertilized.month == current_month and last_fertilized.year == date.today().year
+        fertilized_this_month = last_fertilized is not None and last_fertilized.month == current_month and last_fertilized.year == local_today().year
         if not fertilized_this_month:
             tip = fertilise_tip or "Nu is het een goed moment om te bemesten."
             alerts.append({"type": "fertilise", "severity": "info", "message_nl": tip,

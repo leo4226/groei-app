@@ -17,6 +17,8 @@ import os
 import secrets
 from zoneinfo import ZoneInfo
 
+from services.local_time import GARDEN_TZ
+
 import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -28,7 +30,7 @@ router = APIRouter(prefix="/internal/watchdog", tags=["watchdog"])
 STALE_AFTER = datetime.timedelta(minutes=90)
 WINDOW_START = datetime.time(8, 0)
 WINDOW_END = datetime.time(23, 30)
-AMS = ZoneInfo("Europe/Amsterdam")
+AMS = GARDEN_TZ
 
 
 def _now_ams() -> datetime.datetime:

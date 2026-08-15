@@ -14,6 +14,7 @@ from auth import get_current_account
 from services.photo_check import check_photo
 from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
+from services.local_time import local_today
 
 router = APIRouter(tags=["plant-photos"])
 
@@ -200,7 +201,7 @@ async def toggle_photo_reminder(plant_id: int, body: PhotoReminderToggle,
     )
     if body.enabled:
         # date OBJECT, not isoformat — asyncpg rejects strings for DATE (#142)
-        next_due = date.today() + timedelta(days=body.interval_days)
+        next_due = local_today() + timedelta(days=body.interval_days)
         if rows:
             await db.execute(
                 "UPDATE care_schedules SET is_active = TRUE, interval_days = ?, next_due = ? WHERE id = ?",
@@ -229,7 +230,7 @@ async def _complete_photo_schedule(db, plant_id: int) -> None:
     )
     if not rows:
         return
-    next_due = calculate_next_due(date.today(), rows[0]["interval_days"], rows[0]["season_adjust"])
+    next_due = calculate_next_due(local_today(), rows[0]["interval_days"], rows[0]["season_adjust"])
     await db.execute(
         "UPDATE care_schedules SET last_done = CURRENT_TIMESTAMP, next_due = ? WHERE id = ?",
         (next_due, rows[0]["id"]),

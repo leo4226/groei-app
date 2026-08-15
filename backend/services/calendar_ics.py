@@ -11,6 +11,7 @@ import hashlib
 from typing import Any, Iterable, Literal
 
 from care_types import CARE_TYPES
+from services.local_time import local_today
 
 Language = Literal["nl", "en"]
 
@@ -166,7 +167,7 @@ def serialize_calendar(
     """Serialize Calendar events as a parser-valid, read-only ICS payload."""
     name = calendar_name or ("Floreren verzorging" if language == "nl" else "Floreren care")
     if generated_at is None:
-        generated = datetime.combine(date.today(), datetime.min.time(), timezone.utc)
+        generated = datetime.combine(local_today(), datetime.min.time(), timezone.utc)
     elif isinstance(generated_at, datetime):
         generated = generated_at.astimezone(timezone.utc)
     else:

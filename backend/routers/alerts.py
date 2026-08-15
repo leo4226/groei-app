@@ -15,6 +15,7 @@ from auth import get_current_account
 from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered
 from services.warnings import compute_plant_warnings
+from services.local_time import local_today
 
 router = APIRouter(tags=["alerts"])
 
@@ -66,7 +67,7 @@ async def _plant_warning_state(db, plant_id: int, household_id: int, today: date
 
 @router.get("/plants/{plant_id}/alerts")
 async def get_plant_alerts(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
-    state = await _plant_warning_state(db, plant_id, account["household_id"], date.today())
+    state = await _plant_warning_state(db, plant_id, account["household_id"], local_today())
     return [_warning_to_legacy_alert(w) for w in state.warnings]
 
 
@@ -81,7 +82,7 @@ async def get_alerts_summary(db=Depends(db_dep), account=Depends(get_current_acc
         return {"total_count": 0, "worst_severity": None, "plant_ids_with_alerts": []}
 
     household_id = account["household_id"]
-    today = date.today()
+    today = local_today()
     weather = await _warning_weather(db, household_id)
     total_count = 0
     worst_level = -1

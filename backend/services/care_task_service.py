@@ -12,6 +12,7 @@ from datetime import date, datetime
 
 from models import CareTask
 from care_types import normalize_care_type
+from services.local_time import local_today
 
 _EXCLUDED_CARE_TASK_TYPES = {"photo"}
 
@@ -94,7 +95,7 @@ def classify_care_tasks(rows, today: date | None = None) -> tuple[list[CareTask]
     Overdue is sorted most-overdue first; the other two preserve query order
     (which is `next_due ASC`).
     """
-    today = today or date.today()
+    today = today or local_today()
     overdue: list[CareTask] = []
     due_today: list[CareTask] = []
     upcoming: list[CareTask] = []

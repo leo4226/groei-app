@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
 from auth import get_current_account
+from services.local_time import local_today
 from care_types import CARE_TYPES
 from database import db_dep
 from routers.calendar import list_calendar_events
@@ -70,7 +71,9 @@ def _event_value(event, key: str, default=None):
 
 
 def _amsterdam_today() -> date:
-    return datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+    """Kept as a name because tests and callers reference it; the clock itself
+    now lives in services.local_time so every module shares one definition."""
+    return local_today()
 
 
 def _filter_events(events: list, config: CalendarSubscriptionConfig) -> list:

@@ -23,6 +23,7 @@ from services.moisture_check_service import (
 )
 from datetime import date, datetime, timedelta
 from auth import get_current_account
+from services.local_time import local_today
 
 router = APIRouter(tags=["care"])
 
@@ -126,7 +127,7 @@ async def complete_map_watering_round(
         map_id=map_id,
         household_id=account["household_id"],
     )
-    completed_at = body.completed_at or date.today()
+    completed_at = body.completed_at or local_today()
     try:
         result = await complete_outdoor_care(
             db,
@@ -180,7 +181,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
         raise HTTPException(status_code=404, detail="No active schedule found")
 
     now = datetime.now()
-    today = date.today()
+    today = local_today()
 
     # Insert care log (id returned so the client can attach a photo to it)
     cursor = await db.execute(
@@ -238,7 +239,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
         raise HTTPException(status_code=404, detail="No active schedule found")
 
     now = datetime.now()
-    today = date.today()
+    today = local_today()
 
     # Insert care log with skipped=1
     await db.execute(
@@ -269,7 +270,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 @router.post("/care/garden/complete", response_model=GardenCareOperationOut)
 async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
                                account=Depends(get_current_account)):
-    completed_at = body.completed_at or date.today()
+    completed_at = body.completed_at or local_today()
     try:
         result = await complete_outdoor_care(
             db,

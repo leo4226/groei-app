@@ -1,10 +1,11 @@
 import json
 from datetime import date, timedelta
+from services.local_time import local_today
 
 
 def get_current_season(d: date | None = None) -> str:
     """Get the current season based on Amsterdam calendar dates."""
-    d = d or date.today()
+    d = d or local_today()
     month, day = d.month, d.day
 
     if (month == 3 and day >= 21) or (month in (4, 5)) or (month == 6 and day <= 20):
@@ -43,6 +44,6 @@ def calculate_next_due(
     season_adjust: str | None = None,
 ) -> date:
     """Calculate the next due date from last_done (or today if never done)."""
-    start = last_done or date.today()
+    start = last_done or local_today()
     effective = calculate_effective_interval(base_days, season_adjust, start)
     return start + timedelta(days=effective)
