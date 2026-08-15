@@ -1,5 +1,43 @@
+# Line endings.
+#
+# Without a rule here, whatever line endings a file happened to be committed
+# with are what git stores forever, and the repo drifted: 167 of ~1450 text
+# files were stored CRLF (Windows-side edits) and the rest LF. Any tool that
+# reads-and-rewrites a file — most editors, and anything using Python's
+# text-mode `write_text` — silently converts, turning a two-line change into a
+# whole-file diff. That happened three times in one day on care.py,
+# frontend/package.json and test_db_seam.py.
+#
+# So: the repository stores LF for every text file. `text=auto` lets git decide
+# what counts as text; `eol=lf` is what lands in the working tree on checkout,
+# on Windows too. Nothing in the toolchain (node, python, vite, pytest) cares,
+# and every editor Leon uses handles LF.
+#
+# Committed alongside a one-time `git add --renormalize .` — without it the
+# working tree and the stored blobs disagree and every one of those 167 files
+# shows as modified.
+* text=auto eol=lf
+
 # Shell scripts must stay LF — CRLF breaks them under bash/WSL ("bad interpreter: ...^M").
 *.sh text eol=lf
 
-# PowerShell scripts are Windows-side; keep them CRLF.
+# Windows-side scripts, run by PowerShell/cmd on Leon's desktop. These are the
+# one place CRLF is the correct answer, so they are pinned rather than left to
+# the rule above.
 *.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries: never touch, never diff as text. git's own detection would catch
+# these, but being explicit means a stray 0x0D in an .avif can't be mistaken
+# for a line ending.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.mp4  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.npy  binary

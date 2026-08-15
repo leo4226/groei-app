@@ -52,7 +52,12 @@ jobs:
           git fetch origin ${{ github.base_ref }}
           # NB: git's default pathspec fnmatch lets * cross '/', so these
           # match nested files too (verified empirically — no :(glob) needed).
-          diff=$(git diff "$base"...HEAD -- 'backend/tests/**' 'frontend/**/*.test.*')
+          # --ignore-cr-at-eol: a CRLF→LF renormalisation rewrites every line of
+          # a file, so a test file that changed only its line endings looked
+          # like every test in it had been deleted (172 of them, on the PR that
+          # added .gitattributes). Carriage returns are never the reason a test
+          # went away.
+          diff=$(git diff --ignore-cr-at-eol "$base"...HEAD -- 'backend/tests/**' 'frontend/**/*.test.*')
           removed_tests=$(echo "$diff" | grep -cE '^-\s*((async )?def test_|(it|test|describe)\s*\()' || true)
           added_skips=$(echo "$diff" | grep -cE '^\+.*(pytest\.mark\.skip|pytest\.mark\.xfail|\.skip\(|it\.skip|describe\.skip)' || true)
           echo "removed test functions: $removed_tests; added skip markers: $added_skips"
