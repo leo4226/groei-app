@@ -71,3 +71,35 @@ export function iconJobSummary(result: Record<string, unknown> | null): string {
     + (fallback ? ` · ${fallback} generic fallback${fallback === 1 ? '' : 's'}` : '')
     + ` · ${skipped} failed · ${matched} plants matched · ${remaining} left`
 }
+
+/**
+ * Render an audit row's `detail` JSON as one readable line.
+ *
+ * `start_job` — now the most common audit action, since every tool in the panel
+ * goes through it — stores its params as a nested object, and `String({})` is
+ * "[object Object]". So the busiest rows in the log said nothing. One level is
+ * flattened inline; anything deeper is JSON-encoded rather than stringified.
+ */
+export function formatAuditValue(value: unknown): string {
+  if (Array.isArray(value)) return value.join(', ')
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, inner]) => inner !== null && inner !== undefined)
+      .map(([k, inner]) => {
+        const rendered = Array.isArray(inner) || typeof inner !== 'object'
+          ? String(inner)
+          : JSON.stringify(inner)
+        return `${k}=${rendered}`
+      })
+      .join(', ')
+  }
+  return String(value)
+}
+
+export function formatAuditDetail(detail: Record<string, unknown> | null): string | null {
+  if (!detail) return null
+  return Object.entries(detail)
+    .filter(([, v]) => v !== null && v !== undefined)
+    .map(([k, v]) => `${k}: ${formatAuditValue(v)}`)
+    .join(' · ')
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   describeSkip,
   etaSeconds,
+  formatAuditDetail,
   formatDuration,
   iconJobSummary,
   skipSubject,
@@ -108,5 +109,39 @@ describe('skipSubject', () => {
     expect(skipSubject({ icon_key: 'gen_roos' })).toBe('gen_roos')
     expect(skipSubject({ species_id: 7 })).toBe('7')
     expect(skipSubject({})).toBe('unknown')
+  })
+})
+
+describe('formatAuditDetail', () => {
+  it('renders a nested params object instead of [object Object]', () => {
+    // start_job is the most common audit action, and its detail is
+    // {job_id, params:{...}} — String() on that produced "[object Object]",
+    // making the busiest rows in the log useless.
+    const line = formatAuditDetail({
+      job_id: 42,
+      params: { scope: 'in_use', map_only: true, limit: 25 },
+    })
+    expect(line).not.toContain('[object Object]')
+    expect(line).toContain('job_id: 42')
+    expect(line).toContain('scope=in_use')
+    expect(line).toContain('limit=25')
+  })
+
+  it('joins arrays rather than stringifying them', () => {
+    expect(formatAuditDetail({ fields: ['name', 'latin_name'] }))
+      .toBe('fields: name, latin_name')
+  })
+
+  it('JSON-encodes anything deeper than one level', () => {
+    const line = formatAuditDetail({ params: { nested: { a: 1 } } })
+    expect(line).toContain('nested={"a":1}')
+  })
+
+  it('drops null and undefined entries', () => {
+    expect(formatAuditDetail({ a: 1, b: null, c: undefined })).toBe('a: 1')
+  })
+
+  it('returns null for no detail', () => {
+    expect(formatAuditDetail(null)).toBeNull()
   })
 })

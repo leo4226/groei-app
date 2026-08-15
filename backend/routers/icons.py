@@ -412,12 +412,19 @@ async def sync_icons(db=Depends(db_dep), admin=Depends(require_admin)):
 async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)):
     """Return three gap lists:
     - requested: plants that asked for an icon but don't have one yet
-    - species_without_icon: plant_species entries with no matching icon in the manifest
-    - icons_without_species: base icons in the manifest not matched to any species
-    """
-    manifest = load_manifest()
+    - species_without_icon: plant_species entries with no matching icon at all
+    - icons_without_species: base icons not matched to any species
 
-    # Build set of scientific names in the manifest (normalised) → icon_id
+    Reads the full catalog — curated *and* AI-generated. It used to read
+    `load_manifest()`, the curated JSON file alone, so a species covered by a
+    generated icon still counted as having none, and generated icons never
+    appeared on the other side of the report. Note the mismatch that hid it:
+    the `requested` list a few lines below already used `load_catalog`, so the
+    three lists in one report disagreed about what an icon is.
+    """
+    manifest = await load_catalog(db)
+
+    # Build set of scientific names in the catalog (normalised) → icon_id
     sci_to_icon: dict[str, str] = {}
     for entry in manifest:
         sci = entry.get("sci", "")
@@ -429,7 +436,7 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
 
     # 1. requested — plants that lack a usable icon: flagged, placeholdered, missing,
     #    or carrying a dangling icon_key that no longer resolves to a real icon.
-    valid_ids = {e["id"] for e in await load_catalog(db)}
+    valid_ids = {e["id"] for e in manifest}
     requested_rows = await db.execute_fetchall(
         "SELECT id, name, species, icon_key, icon_requested "
         "FROM plants WHERE is_active = 1 AND household_id = ?",

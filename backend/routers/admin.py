@@ -8,7 +8,7 @@ from database import db_dep
 from auth import get_current_account, require_admin
 from threshold_service import generate_thresholds
 from routers.plants import _seed_care_schedules
-from routers.icons import load_manifest
+from services.icon_catalog import load_catalog
 import logging
 logger = logging.getLogger(__name__)
 from services.admin_audit import log_admin_action
@@ -186,10 +186,17 @@ async def backfill_plant_types_preview(db = Depends(db_dep)):
 
 @router.post("/admin/backfill-plant-types")
 async def backfill_plant_types(db = Depends(db_dep)):
-    """Backfill NULL plant_type from icon manifest cat field for active plants."""
-    manifest = load_manifest()
+    """Backfill NULL plant_type from the icon catalog's cat field for active plants.
+
+    Reads curated *and* generated icons. With the curated manifest alone, a
+    plant wearing an AI-generated icon could never get a plant_type — it was
+    skipped as "icon_key_not_in_catalog" every run. The equivalent job runner
+    (`_run_backfill_plant_types`, which is what the admin panel actually calls)
+    already used the full catalog; this is the copy that drifted.
+    """
+    manifest = await load_catalog(db)
     icon_to_cat: dict[str, str] = {
-        p["id"]: p["cat"] for p in manifest if "cat" in p and p["cat"]
+        p["id"]: p["cat"] for p in manifest if p.get("cat")
     }
 
     rows = await db.execute_fetchall(
@@ -330,16 +337,23 @@ async def _delete_account(db, target: dict):
     """Delete one account and everything owned by it personally — but NOT the
     household's shared data. target: {id, household_id, name}."""
     await _cascade_delete_account_links(db, target["id"], target["household_id"])
-    await _delete_users_for_account(db, target["name"], target["household_id"])
+    await _delete_users_for_account(db, target["id"])
     await db.execute("DELETE FROM accounts WHERE id = ?", (target["id"],))
 
 
-async def _delete_users_for_account(db, account_name: str, household_id: int):
-    """Delete the users row matching this account (mapped by name + household,
-    the same convention household.remove_member uses) after NULL-ing FK refs."""
+async def _delete_users_for_account(db, account_id: int):
+    """Delete the account's `users` row, after NULL-ing what points at it.
+
+    Keyed on `users.account_id` — the real foreign key added by migration 0073.
+    This used to match on (name, household_id), the last surviving instance of
+    the name-based bridge that migration retired, and it was the worst place for
+    it: an unlinked `users` row that merely shared the name was deleted along
+    with the account (taking its care attribution with it), while a row whose
+    name had drifted from the account's was left behind as an orphan.
+    """
     rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE name = ? AND household_id = ?",
-        (account_name, household_id),
+        "SELECT id FROM users WHERE account_id = ?",
+        (account_id,),
     )
     for row in rows:
         user_id = row["id"]

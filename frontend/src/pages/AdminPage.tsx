@@ -34,6 +34,7 @@ import {
 import {
   describeSkip,
   etaSeconds,
+  formatAuditDetail,
   formatDuration,
   iconJobSummary,
   skipSubject,
@@ -2355,6 +2356,10 @@ const ACTION_LABEL: Record<string, string> = {
   regenerate_species_thresholds:   'Regen thresholds',
   regenerate_species_fact:         'Regen fact',
   merge_species:                   'Merge species',
+  // Every tool in the panel goes through start_job; the audit row's target is
+  // the job kind, so the label stays generic and the target carries the detail.
+  start_job:                       'Run tool',
+  regenerate_icon:                 'Regen plant icon',
 }
 
 function AuditView() {
@@ -2385,14 +2390,6 @@ function AuditView() {
   const formatTs = (iso: string) =>
     new Date(iso).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-  const formatDetail = (detail: Record<string, unknown> | null) => {
-    if (!detail) return null
-    return Object.entries(detail)
-      .filter(([, v]) => v !== null && v !== undefined)
-      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
-      .join(' · ')
-  }
-
   return (
     <div>
       <PageHeader title="Audit log" sub={`${rows != null ? total : '…'} admin actions recorded`} />
@@ -2411,7 +2408,7 @@ function AuditView() {
                 <Td>{r.target ?? '—'}</Td>
                 <Td>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }}>
-                    {formatDetail(r.detail) ?? '—'}
+                    {formatAuditDetail(r.detail) ?? '—'}
                   </span>
                 </Td>
               </tr>
