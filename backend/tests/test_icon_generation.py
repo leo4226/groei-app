@@ -382,3 +382,90 @@ async def test_r2_failure_is_reported_with_a_hint(client, admin_db, auth_header)
     assert detail["reason"] == "r2_upload_failed"
     assert "bucket unreachable" in detail["error"]
     assert detail["hint"], "a failure the admin cannot act on is not a report"
+
+
+@pytest.mark.asyncio
+async def test_plants_generation_cannot_reach_are_reported(client, admin_db, auth_header):
+    """Why Settings says 3 plants and the panel offers to generate for 2.
+
+    Generation works per species and keys the icon on the latin name, so a plant
+    with no species link — or one whose species has no latin name — is invisible
+    to `_target_species` no matter how often the tool runs. Settings counts
+    plants; the panel counts species. Neither was wrong, but the plant that could
+    never be served was nowhere on screen.
+    """
+    await admin_db.execute(
+        "INSERT INTO plant_species (id, common_name_nl, latin_name) VALUES (2, 'Naamloos', NULL)")
+    await admin_db.executemany(
+        "INSERT INTO plants (id,name,species_id,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (?,?,?,NULL,1,1,1)",
+        [
+            (1, "Mijn roos", 1),        # linked + latin → generatable
+            (2, "Oregon grape", None),  # no species link → unreachable
+            (3, "Naamloos kruid", 2),   # species without a latin name → unreachable
+        ],
+    )
+    await admin_db.commit()
+
+    resp = await client.get(
+        "/api/admin-panel/generate-icons/preview?scope=in_use", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["count"] == 1, "one species is actually generatable"
+    assert body["blocked_count"] == 2
+    by_name = {b["name"]: b for b in body["blocked"]}
+    assert by_name["Oregon grape"]["reason"] == "no_species_link"
+    assert by_name["Naamloos kruid"]["reason"] == "species_has_no_latin_name"
+    assert all(b["hint"] for b in body["blocked"]), "each needs a next step"
+
+
+@pytest.mark.asyncio
+async def test_blocked_plants_ride_along_on_the_run_result(client, admin_db, auth_header):
+    await admin_db.execute(
+        "INSERT INTO plants (id,name,species_id,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (2,'Oregon grape',NULL,NULL,1,1,1)")
+    await admin_db.commit()
+
+    fake_storage = MagicMock()
+    fake_storage.put = MagicMock(side_effect=lambda key, data, ct: f"https://r2/{key}")
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        body, _ = await _generate(admin_db, scope="in_use")
+
+    assert body["blocked_count"] == 1
+    assert any(d.get("reason") == "no_species_link" for d in body["skipped_details"])
+
+
+@pytest.mark.asyncio
+async def test_uploads_do_not_block_the_event_loop(client, admin_db, auth_header):
+    """R2 uploads are synchronous boto3; on the loop they starve the health check.
+
+    Fly probes /health every 30s with a 5s timeout. A blocking upload per icon
+    (two per species) parked the loop, the probe timed out, Fly restarted the
+    machine, and the restart marked the running job `interrupted` — the
+    "Stopped early" the panel kept showing. This asserts the upload is handed to
+    a worker thread, by checking it does not run on the event loop's thread.
+    """
+    import threading
+
+    loop_thread = threading.get_ident()
+    upload_threads: list[int] = []
+
+    fake_storage = MagicMock()
+
+    def _put(key, data, ct):
+        upload_threads.append(threading.get_ident())
+        return f"https://r2/{key}"
+
+    fake_storage.put = MagicMock(side_effect=_put)
+    with patch("routers.admin_panel.generate_icon_variants",
+               new=AsyncMock(return_value={"plant_svg": PLANT, "cat": "flower"})), \
+         patch("routers.admin_panel.build_storage_from_env", return_value=fake_storage):
+        await _generate(admin_db)
+
+    assert upload_threads, "the run should have uploaded something"
+    assert all(t != loop_thread for t in upload_threads), (
+        "a synchronous R2 upload must not run on the event loop thread"
+    )
