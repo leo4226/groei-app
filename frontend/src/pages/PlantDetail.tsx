@@ -122,11 +122,14 @@ function PlantCareSignals({ plantId, phenology, waterSchedule }: {
               <p className="text-sm text-text leading-snug">
                 {t.locale?.startsWith('en') ? w.message_en : w.message_nl}
               </p>
-              {/* For water, the plant's own reading replaces the generic
-                  threshold sentence: "0 mm is below 15mm/week" is true of the
-                  whole garden, while "watered 8 days ago · 0 mm since · 1 day
-                  overdue" is why THIS plant is listed. */}
-              {w.care_type === 'water' && waterSchedule ? (
+              {/* For a plant that may be short of water, its own reading
+                  replaces the generic threshold sentence: "0 mm is below
+                  15mm/week" is true of the whole garden, while "watered 8 days
+                  ago · 0 mm since · 1 day overdue" is why THIS plant is listed.
+                  Waterlogging warnings are care_type 'water' too but mean the
+                  opposite — "3 days overdue" under "check drainage" would
+                  contradict the action — so they keep their own reason. */}
+              {w.care_type === 'water' && w.code !== 'water_waterlog' && waterSchedule ? (
                 <p className="text-xs text-text-muted mt-1">
                   <PlantWaterEvidence schedule={waterSchedule} />
                 </p>
