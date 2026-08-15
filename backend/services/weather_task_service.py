@@ -5,6 +5,7 @@ import json
 from database import get_db
 from services.care_profile import environment_for_plant, load_care_profile
 from services.warnings import canonical_weather_warning_id_for_fields
+from services.local_time import local_today
 
 
 def _as_date(value) -> date:
@@ -107,7 +108,7 @@ async def _get_cached_weather() -> dict:
     # of the 7-day window (#785).
     forecast = days[0]
     raw_date = forecast.get("date")
-    forecast_date = date.fromisoformat(raw_date) if raw_date else date.today()
+    forecast_date = date.fromisoformat(raw_date) if raw_date else local_today()
     return {
         "temp_days": days,
         "min_24h": forecast["min"],
@@ -213,7 +214,7 @@ async def _sync_weather_type(
 async def _sync_ephemeral_schedules(db) -> dict:
     created = 0
     deleted = 0
-    today = date.today()
+    today = local_today()
 
     weather = await _get_cached_weather()
     min_24h = weather["min_24h"]

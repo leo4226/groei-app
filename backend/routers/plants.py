@@ -19,6 +19,7 @@ from services.phenology import parse_phenology
 from species_service import get_or_create_species, regenerate_species_phenology
 from threshold_service import generate_thresholds
 from services.deferred import fire_and_forget
+from services.local_time import local_today
 
 router = APIRouter(tags=["plants"])
 logger = logging.getLogger(__name__)
@@ -281,7 +282,7 @@ async def list_plants(db = Depends(db_dep), account = Depends(get_current_accoun
         WHERE p.is_active = 1 AND p.household_id = ?
         ORDER BY p.name
     """, (account["household_id"],))
-    today = _date.today().isoformat()
+    today = local_today().isoformat()
     plants = [dict(r) for r in rows]
 
     plant_ids = [p["id"] for p in plants]
@@ -332,7 +333,7 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Plant not found")
-    today = _date.today().isoformat()
+    today = local_today().isoformat()
     return await enrich_plant_full(db, dict(row), today)
 
 
@@ -467,7 +468,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, next_due, interval_source)
                VALUES (?, 'water', ?, ?, 'provisional')""",
-            (plant_id, 7, _date.today()),
+            (plant_id, 7, local_today()),
         )
         await db.commit()
 

@@ -16,6 +16,7 @@ from services.care_task_service import classify_care_tasks, fetch_household_sche
 from services.garden_biodiversity import compute_for_map
 from services.plant_suggestions import bucket_for, fit_grade, recommend_for_garden, recommend_for_spot
 from services.warnings import compute_plant_warnings
+from services.local_time import local_today
 
 router = APIRouter()
 
@@ -506,7 +507,7 @@ async def _fetch_plants_packet(
     ordered = (focus_group + rest)[:MAX_CONTEXT_PLANTS]
     ordered_ids = {p["id"] for p in ordered}
     context_plants: list[dict[str, Any]] = []
-    today = date.today()
+    today = local_today()
     warning_weather = {"temp": (weather or {}).get("temp")}
 
     for p in ordered:
@@ -744,7 +745,7 @@ async def _fetch_spot_recommendations_packet(
     if page_context.direct_sun_hours is None or page_context.sky_view_factor is None:
         return selected_spot, None
 
-    month = date.today().month
+    month = local_today().month
     base_packet = {
         "map_id": int(map_row["id"]),
         "map_slug": map_row.get("slug"),

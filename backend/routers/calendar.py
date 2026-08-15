@@ -25,6 +25,7 @@ from services.weather_forecast import get_map_forecast
 from services.water_pressure import WeatherDay, calculate_water_pressure
 from services.moisture_check_service import sync_moisture_checks
 from care_types import CARE_TYPES, WEATHER_COLDHEAT_COLORS, normalize_care_type
+from services.local_time import GARDEN_TZ, local_today
 
 import logging
 logger = logging.getLogger(__name__)
@@ -34,12 +35,12 @@ router = APIRouter(tags=["calendar"])
 MAX_RANGE_DAYS = 366   # refuse ranges longer than a year
 MAX_OCCURRENCES = 200  # per schedule
 MAX_ROUTINE_LOOKAHEAD_DAYS = 6  # latest preferred day before a due date
-AMSTERDAM_TZ = ZoneInfo("Europe/Amsterdam")
+AMSTERDAM_TZ = GARDEN_TZ
 UTC_TZ = ZoneInfo("UTC")
 
 
 def _water_pressure_today() -> date:
-    return datetime.now(AMSTERDAM_TZ).date()
+    return local_today()
 
 
 def _as_date(value) -> date:

@@ -22,19 +22,20 @@ from services import email_template as tpl
 from services.email import send_email
 from services.push import send_push
 from services.weather_task_service import weather_task_metadata
+from services.local_time import GARDEN_TZ, local_now
 from services.weather_warning_state import (
     mark_weather_warning_push_sent,
     weather_warning_push_is_suppressed,
 )
 
-AMSTERDAM = ZoneInfo("Europe/Amsterdam")
+AMSTERDAM = GARDEN_TZ
 
 _UNSUB_CONTEXT = b"floreren-digest-unsubscribe:"
 
 
 def _now() -> datetime:
     """Current time in Europe/Amsterdam. Separate function so tests can freeze it."""
-    return datetime.now(AMSTERDAM)
+    return local_now()
 
 
 # ── unsubscribe token ────────────────────────────────────────────────────

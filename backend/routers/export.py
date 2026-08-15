@@ -12,6 +12,7 @@ from fastapi.responses import Response
 
 from auth import get_current_account
 from database import db_dep
+from services.local_time import local_today
 
 router = APIRouter(tags=["export"])
 
@@ -259,7 +260,7 @@ async def export_care_log_csv(
     for row in rows:
         writer.writerow({key: row.get(key) for key in columns})
 
-    filename = f"floreren-care-log-{date.today().isoformat()}.csv"
+    filename = f"floreren-care-log-{local_today().isoformat()}.csv"
     return Response(
         content=output.getvalue(),
         media_type="text/csv; charset=utf-8",

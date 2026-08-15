@@ -350,6 +350,9 @@ async def _check_quota(db, account: dict, lang: str = "nl") -> str | None:
     if bool(rows[0]["is_admin"]):
         return email
 
+    # Deliberately UTC: this is a rate-limit window, not a gardening day, and
+    # a quota that resets at a fixed instant is easier to reason about than one
+    # that shifts with daylight saving. See services/local_time.py.
     today = date.today().isoformat()
     quota_rows = await db.execute_fetchall(
         "SELECT \"count\" FROM plantnet_quota WHERE account_id = ? AND date = ?",

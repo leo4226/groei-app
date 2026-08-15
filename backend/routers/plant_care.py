@@ -35,6 +35,7 @@ from models import RecommendationsOut, PlantRecommendationOut
 router = APIRouter()
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+from services.local_time import local_today
 
 _grow_here_cache: dict = {}  # key: (sun_hours_rounded, month) → response dict
 
@@ -202,7 +203,7 @@ class WaterLogCreate(BaseModel):
 @router.post("/garden/water-log")
 async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     household_id = account["household_id"]
-    watered_at = body.watered_at or date.today()
+    watered_at = body.watered_at or local_today()
     updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount, household_id)
     await db.commit()
     return {"watered_at": watered_at, "schedules_updated": updated, "water_amount": body.water_amount}
@@ -229,7 +230,7 @@ async def get_garden_water_status(db = Depends(db_dep), account = Depends(get_cu
     last_watered = await get_last_garden_watered(household_id)
     total_14d    = rain.get("total_14day_mm", 0)
     total_7d     = rain.get("total_7day_mm", 0)
-    days_since   = (date.today() - last_watered).days if last_watered else None
+    days_since   = (local_today() - last_watered).days if last_watered else None
 
     result = compute_water_status(total_14d, total_7d, days_since)
     result["watered_at"] = last_watered.isoformat() if last_watered else None
@@ -259,7 +260,7 @@ class FertilizeLogCreate(BaseModel):
 @router.post("/garden/fertilize-log")
 async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
     household_id = account["household_id"]
-    fertilized_at = body.fertilized_at or date.today()
+    fertilized_at = body.fertilized_at or local_today()
     updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by, household_id)
     await db.commit()
     return {"fertilized_at": fertilized_at, "schedules_updated": updated}

@@ -20,6 +20,7 @@ from services.plant_suggestions import recommend_for_garden, recommend_for_stree
 from services.streek import streek_for, all_streken
 from services.bees import bee_support_for_map
 from services.geocode import reverse_geocode
+from services.local_time import local_today
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +358,7 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
            WHERE p.map_id = ? AND p.is_active = 1 AND p.map_x IS NOT NULL AND p.map_y IS NOT NULL""",
         (map_id,),
     )
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     temp_data = await get_temp_data()
     rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered(account["household_id"])
@@ -374,7 +375,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
         raise HTTPException(404, "Map not found")
     map_id = map_row[0]["id"]
     map_type = map_row[0]["map_type"] or "outdoor"
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     temp_data = await get_temp_data()
     rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered(account["household_id"])
