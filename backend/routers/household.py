@@ -121,8 +121,9 @@ async def join_household(
     # 4. Create a user entry
     try:
         await db.execute(
-            "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-            (body.name.strip(), household_id, body.language),
+            "INSERT INTO users (name, household_id, language, account_id) "
+            "VALUES (?, ?, ?, ?)",
+            (body.name.strip(), household_id, body.language, account_id),
         )
     except asyncpg.exceptions.UniqueViolationError:
         # Roll back the account we just created
@@ -181,31 +182,18 @@ async def list_members(
 ):
     """List all accounts in the current household (for the settings page).
 
-    Each row also carries `user_id` — the legacy `users` row that `DELETE
-    /household/members/{user_id}` expects — and `is_self`.
+    Each row carries `user_id` — the `users` row `DELETE /household/members/`
+    keys off — and `is_self`.
 
-    `accounts` and `users` are two id spaces joined only by name (there is no
-    FK between them), so *somebody* has to bridge them. That used to be the
-    settings page, which matched `users.name === member.name` in the browser
-    and would remove the wrong person when two members shared a name. Doing it
-    here keeps the guesswork in one server-side place where the household is
-    already scoped, and lets the client pass an id it was given.
-
-    The bridge is a scalar subquery, not a join. `users.name` lost its UNIQUE
-    constraint in migration 0025, so a household can hold several `users` rows
-    with the same name — and a LEFT JOIN then returns the *account* once per
-    match, which showed up in settings as the same person listed twice, same
-    email, both badged "you". One row per account, always.
-
-    MIN(id) picks the oldest matching row, which is the one care history was
-    attributed to before the duplicates appeared.
+    `users.account_id` is a real foreign key since migration 0073, so this is a
+    plain join. It used to match on name, which is not unique: the join returned
+    the account once per duplicate and settings showed the same person twice.
     """
     rows = await db.execute_fetchall(
         """SELECT a.id, a.name, a.email, a.avatar, a.created_at,
-                  (SELECT MIN(u.id) FROM users u
-                    WHERE u.household_id = a.household_id
-                      AND u.name = a.name) AS user_id
+                  u.id AS user_id
            FROM accounts a
+           LEFT JOIN users u ON u.account_id = a.id
            WHERE a.household_id = ?
            ORDER BY a.created_at ASC""",
         (current["household_id"],),
@@ -251,29 +239,22 @@ async def update_member_profile(
         (name, avatar, member_id),
     )
 
-    # Sync the legacy `users` row. Two things here used to mint duplicates:
-    #
-    #  - the lookup only tried the *old* account name, so once `accounts.name`
-    #    and `users.name` drifted apart it missed and INSERTed a second row;
-    #  - the UPDATE was keyed on the name and unbounded, so it renamed *every*
-    #    matching row, which could collapse two distinct rows onto one name.
-    #
-    # Since migration 0025 dropped the UNIQUE on `users.name` nothing stopped
-    # either. Match the old name or the new one, and update exactly one row by
-    # id, oldest first — that is the row care history is attributed to.
-    legacy_rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE household_id = ? AND name IN (?, ?) ORDER BY id",
-        (household_id, member["name"], name),
+    # Sync the `users` row. Keyed on account_id, so renaming is just a rename —
+    # it cannot miss, cannot insert a second row, and cannot drag someone else's
+    # row along, which is how the duplicates got made in the first place.
+    linked = await db.execute_fetchall(
+        "SELECT id FROM users WHERE account_id = ?", (member_id,)
     )
-    if legacy_rows:
+    if linked:
         await db.execute(
-            "UPDATE users SET name = ?, avatar = ? WHERE id = ?",
-            (name, avatar, dict(legacy_rows[0])["id"]),
+            "UPDATE users SET name = ?, avatar = ? WHERE account_id = ?",
+            (name, avatar, member_id),
         )
     else:
         await db.execute(
-            "INSERT INTO users (name, avatar, household_id, language) VALUES (?, ?, ?, ?)",
-            (name, avatar, household_id, "nl"),
+            "INSERT INTO users (name, avatar, household_id, language, account_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (name, avatar, household_id, "nl", member_id),
         )
     await db.commit()
 
@@ -298,39 +279,33 @@ async def remove_member(
     in care_log, care_schedules, garden_water_log, garden_fertilize_log.
     """
     household_id = current["household_id"]
-    account_name = current["name"]
 
     # 1) Look up target user in same household
     target_rows = await db.execute_fetchall(
-        "SELECT id, name FROM users WHERE id = ? AND household_id = ?",
+        "SELECT id, name, account_id FROM users WHERE id = ? AND household_id = ?",
         (user_id, household_id),
     )
     if not target_rows:
         raise HTTPException(status_code=404, detail="User not found in your household")
-    target_user = target_rows[0]
+    target_user = dict(target_rows[0])
 
-    # 2) Find current user for self-check and FK reassignment.
-    # ORDER BY id so the self-check is deterministic: `users.name` is not unique
-    # (migration 0025), and picking an arbitrary row among duplicates could let
-    # the "you cannot remove yourself" guard miss your own other row. MIN(id)
-    # matches how /members resolves the same bridge.
+    # 2) Resolve the caller's own `users` row through the account FK.
+    # This used to look the row up by the caller's *name*, taking whichever
+    # duplicate came back first — so the "you cannot remove yourself" guard
+    # could wave through your own other row. account_id is unique per user
+    # (migration 0073), so there is nothing left to pick between.
     current_rows = await db.execute_fetchall(
-        "SELECT id FROM users WHERE name = ? AND household_id = ? ORDER BY id",
-        (account_name, household_id),
+        "SELECT id FROM users WHERE account_id = ?", (current["account_id"],)
     )
     if not current_rows:
         raise HTTPException(status_code=500, detail="Current user record not found")
     current_user_id = current_rows[0]["id"]
 
-    if user_id == current_user_id:
+    if user_id == current_user_id or target_user["account_id"] == current["account_id"]:
         raise HTTPException(status_code=400, detail="You cannot remove yourself")
 
-    # 3) Find corresponding account by (name, household_id)
-    account_rows = await db.execute_fetchall(
-        "SELECT id FROM accounts WHERE name = ? AND household_id = ?",
-        (target_user["name"], household_id),
-    )
-    account_to_delete = account_rows[0]["id"] if account_rows else None
+    # 3) The account to delete comes straight off the row, no name lookup.
+    account_to_delete = target_user["account_id"]
 
     # 4) Clean up FK references → reassign NOT NULL columns, NULL others
     await db.execute(
