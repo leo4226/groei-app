@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../../context/LanguageContext'
 import { dataExport } from '../../api/client'
 import Glyph from '../../components/ui/Glyph'
+import { resetAssistant } from '../../components/HelpAssistant'
 
 interface Props {
   onInstallClick: () => void
@@ -65,8 +66,9 @@ export default function AppDataPanel({ onInstallClick }: Props) {
         </div>
         <button
           onClick={onInstallClick}
-          className="shrink-0 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:border-primary/50"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:border-primary/50"
         >
+          <Glyph name="monitor" size={14} />
           {t.installPrompt.androidCta}
         </button>
       </div>
@@ -83,7 +85,7 @@ export default function AppDataPanel({ onInstallClick }: Props) {
           >
             {busy === 'json' ? (
               <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t.settings.downloading}</>
-            ) : t.settings.downloadData}
+            ) : <><Glyph name="clipboard" size={15} /> {t.settings.downloadData}</>}
           </button>
           <button
             onClick={() => download('csv')}
@@ -92,7 +94,7 @@ export default function AppDataPanel({ onInstallClick }: Props) {
           >
             {busy === 'csv' ? (
               <><span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" /> {t.settings.downloading}</>
-            ) : t.settings.downloadCareLogCsv}
+            ) : <><Glyph name="chart" size={15} /> {t.settings.downloadCareLogCsv}</>}
           </button>
         </div>
         {ready && <p className="mt-2 text-sm text-primary">{t.settings.downloadReady}</p>}
@@ -106,20 +108,22 @@ export default function AppDataPanel({ onInstallClick }: Props) {
             <div className="text-sm font-semibold">{t.settings.assistantTitle}</div>
             <div className="mt-0.5 text-xs text-text-muted">{t.settings.assistantDescription}</div>
           </div>
+          {/* resetAssistant() also notifies the live HelpAssistant — clearing
+              localStorage alone left Stekkie hidden until a page reload. */}
           <button
             onClick={() => {
-              localStorage.removeItem('floreren_stekkie_pos')
-              localStorage.removeItem('floreren_help_dismissed')
+              resetAssistant()
               setAssistantReset(true)
               setTimeout(() => setAssistantReset(false), 2500)
             }}
-            className="shrink-0 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-text transition-transform active:scale-[0.98]"
+            className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors active:scale-[0.98] ${
+              assistantReset
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-text hover:border-primary/50'
+            }`}
           >
-            {assistantReset ? (
-              <span className="inline-flex items-center gap-1.5 text-primary">
-                <Glyph name="check" size={14} /> {t.settings.resetAssistantDone}
-              </span>
-            ) : t.settings.resetAssistant}
+            <Glyph name={assistantReset ? 'check' : 'refresh'} size={14} />
+            {assistantReset ? t.settings.resetAssistantDone : t.settings.resetAssistant}
           </button>
         </div>
       </div>

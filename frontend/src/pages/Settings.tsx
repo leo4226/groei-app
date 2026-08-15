@@ -248,20 +248,59 @@ export default function Settings() {
                 >
                   {syncing ? (
                     <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t.settings.icons.syncing}</>
-                  ) : t.settings.icons.syncButton}
+                  ) : (
+                    <><Glyph name="refresh" size={15} /> {t.settings.icons.syncButton}</>
+                  )}
                 </button>
-                {syncError && <p className="mt-2 text-sm text-fiery-red">{syncError}</p>}
+
+                {syncError && (
+                  <p className="mt-2 flex items-start gap-1.5 text-sm text-fiery-red">
+                    <Glyph name="alert" size={14} className="mt-0.5 shrink-0" />
+                    {syncError}
+                  </p>
+                )}
+
+                {/* The result used to be two bare sentences with the plant names
+                    comma-joined into them, which read as a wall of text and gave
+                    no sense of scale. Lead with the counts. */}
                 {syncResult && (
-                  <div className="mt-2 space-y-1 text-sm">
+                  <div className="mt-3 space-y-2 rounded-xl border border-border bg-bg p-3">
                     {syncResult.matched_plants > 0 ? (
-                      <p>{t.settings.icons.linked} {syncResult.matches.map((m) => m.plant_name).join(', ')}</p>
+                      <div>
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+                          <Glyph name="check" size={14} />
+                          {t.settings.icons.linkedCount.replace(
+                            '{count}', String(syncResult.matched_plants),
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                          {syncResult.matches.map((m) => m.plant_name).join(' · ')}
+                        </p>
+                      </div>
                     ) : (
-                      <p>{t.settings.icons.noChanges}</p>
-                    )}
-                    {syncResult.unmatched_plants > 0 && (
-                      <p className="text-fiery-red">
-                        {t.settings.icons.stillMissing}: {syncResult.unmatched.map((u) => u.plant_name).join(', ')}
+                      <p className="flex items-center gap-1.5 text-sm text-text-muted">
+                        <Glyph name="check" size={14} />
+                        {syncResult.unmatched_plants > 0
+                          ? t.settings.icons.noChanges
+                          : t.settings.icons.upToDate}
                       </p>
+                    )}
+
+                    {syncResult.unmatched_plants > 0 && (
+                      <div className="border-t border-border pt-2">
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-500">
+                          <Glyph name="alert" size={14} />
+                          {t.settings.icons.stillMissingCount.replace(
+                            '{count}', String(syncResult.unmatched_plants),
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                          {syncResult.unmatched.map((u) => u.plant_name).join(' · ')}
+                        </p>
+                        <p className="mt-1.5 text-xs text-text-muted">
+                          {t.settings.icons.setManually}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}

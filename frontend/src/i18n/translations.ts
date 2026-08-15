@@ -714,6 +714,8 @@ export type Translations = {
       syncing: string
       result: string
       linked: string
+      linkedCount: string
+      stillMissingCount: string
       noIconFor: string
       setManually: string
       upToDate: string
@@ -1875,6 +1877,10 @@ export type Translations = {
     installing: string       // "Bezig…"
     doneTitle: string        // "Floreren staat op je beginscherm! 🎉"
     doneLede: string         // "Open het de volgende keer vanaf je beginscherm — geen computer nodig."
+    noPromptTitle: string
+    noPromptLede: string
+    noPromptHint: string
+    noPromptClose: string
     later: string            // "Later"
   }
 

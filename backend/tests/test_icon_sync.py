@@ -91,3 +91,68 @@ async def test_sync_dangling_bare_key_keeps_form(client, seeded_db, auth_header)
     assert resp.status_code == 200, resp.text
     row = (await seeded_db.execute_fetchall("SELECT icon_key FROM plants WHERE id=1"))[0]
     assert row["icon_key"] == "gen_muurbloem_bare"
+
+
+@pytest.mark.asyncio
+async def test_sync_only_touches_the_callers_own_household(
+    client, seeded_db, auth_header
+):
+    """Admin means "maintain my own garden", not "reach into everyone's".
+
+    Sync used to select every active plant in the database, so one admin
+    pressing the button rewrote other households' icons — and the response
+    listed their plant names straight back.
+    """
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await seeded_db.execute("INSERT INTO households (id, name) VALUES (2, 'Someone else')")
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Monstera','placeholder_houseplant',1,1,1)")
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (2,'Andermans Monstera','placeholder_houseplant',1,1,2)")
+    await seeded_db.commit()
+
+    resp = await client.post(
+        "/api/icon-catalog/sync", headers=await _admin_headers(seeded_db, auth_header)
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    # Only our own plant is matched, and only our own name comes back.
+    assert body["matched_plants"] == 1
+    reported = {m["plant_name"] for m in body["matches"]} | {
+        u["plant_name"] for u in body["unmatched"]
+    }
+    assert reported == {"Monstera"}
+
+    # The other household's plant is left exactly as it was.
+    other = (await seeded_db.execute_fetchall(
+        "SELECT icon_key, icon_requested FROM plants WHERE id = 2"))[0]
+    assert other["icon_key"] == "placeholder_houseplant"
+    assert other["icon_requested"]
+
+
+@pytest.mark.asyncio
+async def test_gaps_report_does_not_expose_other_households(
+    client, seeded_db, auth_header
+):
+    """/gaps is open to any signed-in account, so its plant list must be scoped."""
+    await seeded_db.execute("ALTER TABLE plants ADD COLUMN icon_requested INTEGER DEFAULT 0")
+    await seeded_db.execute(
+        "CREATE TABLE plant_species (id INTEGER PRIMARY KEY, common_name_nl TEXT, latin_name TEXT)")
+    await seeded_db.execute("INSERT INTO households (id, name) VALUES (2, 'Someone else')")
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (1,'Mijn plant',NULL,1,1,1)")
+    await seeded_db.execute(
+        "INSERT INTO plants (id,name,icon_key,icon_requested,is_active,household_id) "
+        "VALUES (2,'Geheime plant',NULL,1,1,2)")
+    await seeded_db.commit()
+
+    resp = await client.get("/api/icon-catalog/gaps", headers=auth_header)
+    assert resp.status_code == 200, resp.text
+
+    names = {p["name"] for p in resp.json()["requested"]}
+    assert "Mijn plant" in names
+    assert "Geheime plant" not in names

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../../context/LanguageContext'
 import Glyph from '../ui/Glyph'
-import { useInstallPrompt } from '../../hooks/useInstallPrompt'
+import { installActionFor, useInstallPrompt } from '../../hooks/useInstallPrompt'
 
 /**
  * Install prompt sheet — the single entry point for "put Floreren on your
@@ -22,22 +22,39 @@ interface Props {
 
 export default function InstallPromptSheet({ onClose }: Props) {
   const t = useT()
-  const { isIos, canNativePrompt, promptInstall } = useInstallPrompt()
+  const { isIos, canNativePrompt, promptInstall, dismiss } = useInstallPrompt()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  // Set when there is no install mechanism we can drive from here.
+  const [unavailable, setUnavailable] = useState(false)
 
   async function handleInstall() {
     if (done) return
+
+    const action = installActionFor({ isIos, canNativePrompt })
+
+    // iOS: the button reads "I've done this" — an acknowledgement, not a
+    // trigger. Take them at their word and close.
+    if (action === 'acknowledge') {
+      dismiss()
+      onClose()
+      return
+    }
+
+    if (action === 'unavailable') {
+      setUnavailable(true)
+      return
+    }
+
     setBusy(true)
     const ok = await promptInstall()
     setBusy(false)
+
     if (ok) {
       setDone(true)
       setTimeout(onClose, 900)
-    } else if (!isIos && !canNativePrompt) {
-      // No native prompt available (e.g. desktop with its own address-bar
-      // install UI, or criteria not met yet) — fall back to guidance.
-      setDone(true)
+    } else {
+      setUnavailable(true)
     }
   }
 
@@ -48,7 +65,7 @@ export default function InstallPromptSheet({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45"
-      onClick={done ? onClose : onClose}
+      onClick={onClose}
     >
       <div
         role="dialog"
@@ -62,10 +79,10 @@ export default function InstallPromptSheet({ onClose }: Props) {
           {kicker}
         </div>
         <h2 className="mb-2 text-center font-heading text-[20px] font-medium text-text">
-          {done ? t.installPrompt.doneTitle : title}
+          {done ? t.installPrompt.doneTitle : unavailable ? t.installPrompt.noPromptTitle : title}
         </h2>
         <p className="mb-4 text-center text-[13px] leading-snug text-text-soft">
-          {done ? t.installPrompt.doneLede : lede}
+          {done ? t.installPrompt.doneLede : unavailable ? t.installPrompt.noPromptLede : lede}
         </p>
 
         {!done && isIos && (
@@ -85,14 +102,22 @@ export default function InstallPromptSheet({ onClose }: Props) {
           </ol>
         )}
 
-        {!done && (
+        {!done && !unavailable && (
           <p className="mb-4 flex items-center justify-center gap-1.5 text-center text-[12px] text-text-muted">
             <Glyph name="alert" size={13} />
             {isIos ? t.installPrompt.iosPushHook : t.installPrompt.androidPushHook}
           </p>
         )}
 
+        {unavailable && (
+          <p className="mb-4 flex items-start justify-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[12px] leading-snug text-amber-700 dark:bg-amber-900/20 dark:text-amber-500">
+            <Glyph name="alert" size={13} className="mt-0.5 shrink-0" />
+            <span>{t.installPrompt.noPromptHint}</span>
+          </p>
+        )}
+
         <div className="flex flex-col gap-2">
+          {!unavailable && (
           <button
             onClick={() => void handleInstall()}
             disabled={busy || done}
@@ -104,11 +129,12 @@ export default function InstallPromptSheet({ onClose }: Props) {
                 ? t.installPrompt.iosCta
                 : t.installPrompt.androidCta}
           </button>
+          )}
           <button
             onClick={onClose}
             className="w-full cursor-pointer rounded-full border border-border bg-surface py-3 text-[14px] font-medium text-text"
           >
-            {t.installPrompt.later}
+            {unavailable ? t.installPrompt.noPromptClose : t.installPrompt.later}
           </button>
         </div>
       </div>

@@ -25,6 +25,23 @@ type PageKey = 'calendar' | 'settings' | 'editor' | 'map' | 'plants' | 'identify
 const STORAGE_KEY_POS = 'floreren_stekkie_pos'
 const DISMISS_KEY = 'floreren_help_dismissed'
 
+/**
+ * Fired by Settings when someone resets the assistant.
+ *
+ * Both flags are read from localStorage exactly once, when this component
+ * mounts. Settings clearing those keys therefore did nothing visible until the
+ * next full page load — you pressed "reset", got a tick, and Stekkie stayed
+ * hidden. Listening for this event brings him back on the spot.
+ */
+export const ASSISTANT_RESET_EVENT = 'floreren:assistant-reset'
+
+/** Clear the assistant's stored state and tell any live instance to re-read it. */
+export function resetAssistant(): void {
+  localStorage.removeItem(STORAGE_KEY_POS)
+  localStorage.removeItem(DISMISS_KEY)
+  window.dispatchEvent(new Event(ASSISTANT_RESET_EVENT))
+}
+
 const BTN_SIZE_DESKTOP = 48
 const BTN_SIZE_MOBILE = 44
 const DEFAULT_RIGHT = 16 // right-4
@@ -176,6 +193,16 @@ export default function HelpAssistant() {
     }
     return null
   })
+
+  useEffect(() => {
+    function handleReset() {
+      setDismissed(false)
+      setButtonPos(null)   // back to the default corner
+      setOpen(false)
+    }
+    window.addEventListener(ASSISTANT_RESET_EVENT, handleReset)
+    return () => window.removeEventListener(ASSISTANT_RESET_EVENT, handleReset)
+  }, [])
 
   const buttonSize = isMobile ? BTN_SIZE_MOBILE : BTN_SIZE_DESKTOP
   const pos = buttonPos ?? getDefaultPos(buttonSize)
