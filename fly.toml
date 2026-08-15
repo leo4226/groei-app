@@ -23,10 +23,13 @@ primary_region = "ams"
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  # 0 = machine slaapt bij inactiviteit (geen vaste maandkosten); eerste request
-  # na een stille periode heeft ~1s cold start. Digest-cron wekt hem via
-  # auto_start (zie #137).
-  min_machines_running = 0
+  # 1, niet 0. Admin-jobs (icoongeneratie, backfills) draaien als asyncio-taken
+  # ín dit proces en doen zelf geen requests, dus met 0 hield alleen het
+  # openstaande admin-tabblad de machine wakker: telefoon op de achtergrond of
+  # naar een andere pagina navigeren en de machine viel in slaap midden in een
+  # run — de "Stopped early" die het paneel bleef melden. Een draaiende machine
+  # kost ~$2-3/maand en haalt meteen de cold start van de eerste request weg.
+  min_machines_running = 1
   processes = ["app"]
 
   [[http_service.checks]]

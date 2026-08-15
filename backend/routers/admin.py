@@ -96,12 +96,18 @@ async def backfill_care_schedules(account=Depends(get_current_account), db = Dep
 
 @router.get("/admin/backfill-care-schedules/preview")
 async def backfill_care_schedules_preview(db = Depends(db_dep)):
-    """Preview: count plants that backfill-care-schedules would seed."""
+    """Preview: count plants that backfill-care-schedules would seed.
+
+    Matches the runner: a plant with a *switched-off* water schedule is not a
+    candidate. It used to filter on `is_active = 1`, so such a plant was counted
+    as needing a schedule while the seeder refused to resurrect it — a pending
+    count that could never reach zero.
+    """
     rows = await db.execute_fetchall(
         """SELECT p.id FROM plants p
            WHERE p.care_thresholds IS NOT NULL AND p.is_active = 1
            AND p.id NOT IN (
-               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water' AND is_active = 1
+               SELECT DISTINCT plant_id FROM care_schedules WHERE care_type = 'water'
            )"""
     )
     total_with_thresholds = await db.execute_fetchall(

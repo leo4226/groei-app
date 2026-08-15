@@ -802,7 +802,7 @@ export const adminPanel = {
     return api<{ rows: AdminAuditRow[]; total: number }>('GET', '/admin-panel/audit', { params: p })
   },
   startJob: (kind: string, params: Record<string, unknown> = {}) =>
-    api<{ job_id: number }>('POST', '/admin-panel/jobs', { body: { kind, params } }),
+    api<{ job_id: number; queue_position: number }>('POST', '/admin-panel/jobs', { body: { kind, params } }),
   getJob: (id: number) =>
     api<AdminJob>('GET', `/admin-panel/jobs/${id}`),
   listJobs: (limit = 20) =>
@@ -819,7 +819,8 @@ export interface AdminAuditRow {
   admin_name: string | null
 }
 
-export type AdminJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'interrupted'
+/** 'queued' means accepted and waiting behind another job — one runs at a time. */
+export type AdminJobStatus = 'pending' | 'queued' | 'running' | 'completed' | 'failed' | 'interrupted'
 
 export interface AdminJob {
   id: number
