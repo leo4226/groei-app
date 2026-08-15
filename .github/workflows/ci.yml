@@ -75,3 +75,45 @@ jobs:
         # (test_db_adapter's adapter-vs-asyncpg tests) skip themselves when
         # DATABASE_URL is unreachable.
         run: python -m pytest -q
+
+  migrations:
+    name: Backend · migrations
+    # The test suite runs against the SQLite seam, so nothing here ever
+    # executed a migration against real Postgres — migrations were only
+    # exercised by the Fly release command, i.e. in production. Migration 0073
+    # shipped naming a column on the wrong table (`previous_last_done_by` is on
+    # garden_care_operation_members, not garden_care_operations) and the first
+    # thing to notice was the aborted deploy. This job runs the whole chain on
+    # a throwaway Postgres so a broken migration fails the PR instead.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: alembic upgrade head
+        run: python -m alembic upgrade head
+      - name: Re-run head migration (must be idempotent)
+        # A release command that fails halfway leaves the deploy to be retried,
+        # so the newest migration has to survive being applied twice.
+        run: |
+          python -m alembic downgrade -1
+          python -m alembic upgrade head
