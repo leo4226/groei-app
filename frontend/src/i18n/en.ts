@@ -1012,6 +1012,7 @@ export const en: Translations = {
 
   ecology: {
     title: 'Ecology',
+    aboutSpecies: 'About this species',
     native: '🇳🇱 Native to the Netherlands',
     nonNative: 'Not native',
     invasive: '⚠️ Invasive in the Netherlands',
@@ -1056,6 +1057,14 @@ export const en: Translations = {
   },
 
   careInfo: {
+    waterLastGiven: (days: number) =>
+      days === 0 ? 'Watered today' :
+      days === 1 ? 'Watered yesterday' : `Watered ${days} days ago`,
+    waterNeverGiven: 'Never watered',
+    waterRainSince: (mm: number) => `${mm} mm rain since`,
+    waterNormalInterval: (days: number) => `usually every ${days} days`,
+    waterOverdue: (days: number) => `${days} days overdue`,
+    waterDry: 'dry',
     more: 'More info',
     less: 'Less',
     loadFailed: 'Could not load care info',

@@ -8,7 +8,7 @@ import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
-import PlantCareInfo from '../components/PlantCareInfo'
+import PlantWaterContext from '../components/plant/PlantWaterContext'
 import PhotoJournal from '../components/plant/PhotoJournal'
 import { PassportEditLink } from '../components/plant/PassportEditLink'
 import { photos as photosApi } from '../api/client'
@@ -545,7 +545,7 @@ export default function PlantDetail() {
   )
 
   const ecologyBlock = plant.species_id != null
-    ? <EcologyCard speciesId={plant.species_id} />
+    ? <EcologyCard speciesId={plant.species_id} plantId={plantId} />
     : null
 
   const alertsBlock = <PlantCareSignals plantId={plantId} phenology={plant.phenology ?? null} />
@@ -675,9 +675,15 @@ export default function PlantDetail() {
 
   const showGardenWeather = showsGardenWeather(mapInfo)
 
-  const speciesInfoBlock = (
-    <PlantCareInfo plantId={plantId} showWeather={showGardenWeather} />
-  )
+  // The species profile moved into the ecology card ("Over deze soort"); what
+  // is left here is this plant's own watering picture, which is the decision
+  // you are actually making on this screen. Outdoor only — rainfall says
+  // nothing about a houseplant.
+  const waterSchedule = plant.care_schedules.find(
+    cs => cs.care_type === 'water' && cs.is_active)
+  const speciesInfoBlock = showGardenWeather ? (
+    <PlantWaterContext schedule={waterSchedule} />
+  ) : null
 
   const journalBlock = (
     <Section id={PLANT_PASSPORT_ANCHORS.photoJournal} title={t.plantDetail.photoJournal}>
@@ -912,7 +918,7 @@ export default function PlantDetail() {
               </Section>
             </div>
             <div className="min-w-0 xl:px-8">
-              <PlantCareInfo plantId={plantId} layout="split" showWeather={showGardenWeather} />
+              {speciesInfoBlock}
             </div>
             <div className="min-w-0 xl:pl-8">
               {journalBlock}
