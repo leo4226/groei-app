@@ -51,10 +51,12 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     )
     account_id = cur2.lastrowid
 
-    # Create a user entry for this account so the language endpoint works
+    # Create a user entry for this account so the language endpoint works.
+    # account_id is the link between the two tables — the name is just a label
+    # (migration 0073; it used to be the only thing joining them).
     cur3 = await db.execute(
-        "INSERT INTO users (name, household_id, language) VALUES (?, ?, ?)",
-        (body.name.strip(), household_id, body.language),
+        "INSERT INTO users (name, household_id, language, account_id) VALUES (?, ?, ?, ?)",
+        (body.name.strip(), household_id, body.language, account_id),
     )
     user_id = cur3.lastrowid
 

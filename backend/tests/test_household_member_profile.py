@@ -56,7 +56,8 @@ async def test_household_member_profile_update_syncs_existing_legacy_user(
            VALUES (2, 1, 'lis@example.com', 'Lis', 'x', 'old_avatar')"""
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, avatar, household_id, language) VALUES (22, 'Lis', 'old_avatar', 1, 'en')"
+        "INSERT INTO users (id, name, avatar, household_id, language, account_id) "
+        "VALUES (22, 'Lis', 'old_avatar', 1, 'en', 2)"
     )
     await seeded_db.commit()
 
@@ -92,7 +93,7 @@ async def test_members_carry_the_legacy_user_id_and_self_flag(
            VALUES (2, 1, 'lis@example.com', 'Lisbeth', 'x')"""
     )
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id) VALUES (77, 'Lisbeth', 1)"
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (77, 'Lisbeth', 1, 2)"
     )
     await seeded_db.commit()
 
@@ -125,3 +126,89 @@ async def test_member_without_a_legacy_user_row_reports_null_user_id(
     assert response.status_code == 200
     ghost = next(m for m in response.json() if m["name"] == "Ghost")
     assert ghost["user_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_duplicate_legacy_users_do_not_duplicate_the_member(
+    client, seeded_db, auth_header,
+):
+    """One row per account, however many `users` rows share the name.
+
+    `users.name` lost its UNIQUE constraint in migration 0025, and bridging
+    accounts→users on the name returned the account once per match — settings
+    showed the same person twice, same email, both badged "you". Since 0073 the
+    bridge is `users.account_id`, so a namesake is simply not linked.
+    """
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (41, 'Leon', 1, 1)")
+    # A second row with the identical name, linked to nobody.
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id) VALUES (42, 'Leon', 1)")
+    await seeded_db.execute("UPDATE accounts SET name = 'Leon' WHERE id = 1")
+    await seeded_db.commit()
+
+    response = await client.get("/api/household/members", headers=auth_header)
+    assert response.status_code == 200, response.text
+    members = response.json()
+
+    leons = [m for m in members if m["name"] == "Leon"]
+    assert len(leons) == 1, f"account listed {len(leons)} times: {leons}"
+    ids = [m["id"] for m in members]
+    assert len(ids) == len(set(ids))
+    assert sum(1 for m in members if m["is_self"]) == 1
+    assert leons[0]["user_id"] == 41
+
+
+@pytest.mark.asyncio
+async def test_profile_save_does_not_mint_a_second_legacy_user(
+    client, seeded_db, auth_header,
+):
+    """Renaming reuses the linked row instead of adding another.
+
+    The lookup used to try the *old* account name only, so once accounts.name
+    and users.name drifted apart it missed and inserted a duplicate. Keyed on
+    account_id there is nothing to drift.
+    """
+    await seeded_db.execute(
+        "INSERT INTO accounts (id, household_id, email, name, password_hash) "
+        "VALUES (2, 1, 'lis@example.com', 'Lis', 'x')")
+    # Already out of sync with the account name — previously fatal.
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (50, 'Lisbeth', 1, 2)")
+    await seeded_db.commit()
+
+    resp = await client.patch(
+        "/api/household/members/2", headers=auth_header, json={"name": "Lisbeth"})
+    assert resp.status_code == 200, resp.text
+
+    rows = await seeded_db.execute_fetchall(
+        "SELECT id FROM users WHERE household_id = 1 AND name = 'Lisbeth'")
+    assert len(rows) == 1, f"expected one row, got {[dict(r) for r in rows]}"
+    assert rows[0]["id"] == 50, "should have reused the linked row"
+
+
+@pytest.mark.asyncio
+async def test_rename_does_not_collapse_two_people_onto_one_name(
+    client, seeded_db, auth_header,
+):
+    """The UPDATE was name-keyed and unbounded, so it renamed every match."""
+    await seeded_db.execute(
+        "INSERT INTO accounts (id, household_id, email, name, password_hash) "
+        "VALUES (2, 1, 'lis@example.com', 'Lis', 'x')")
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id, account_id) VALUES (60, 'Lis', 1, 2)")
+    # Someone else's row that merely shares the name.
+    await seeded_db.execute(
+        "INSERT INTO users (id, name, household_id) VALUES (61, 'Lis', 1)")
+    await seeded_db.commit()
+
+    resp = await client.patch(
+        "/api/household/members/2", headers=auth_header, json={"name": "Lisbeth"})
+    assert resp.status_code == 200, resp.text
+
+    renamed = await seeded_db.execute_fetchall(
+        "SELECT id FROM users WHERE household_id = 1 AND name = 'Lisbeth'")
+    assert len(renamed) == 1, "only the linked row should have been renamed"
+    assert renamed[0]["id"] == 60
+    other = await seeded_db.execute_fetchall("SELECT name FROM users WHERE id = 61")
+    assert other[0]["name"] == "Lis"

@@ -128,7 +128,8 @@ SCHEMA = """
         name TEXT,
         avatar TEXT,
         household_id INTEGER,
-        language TEXT
+        language TEXT,
+        account_id INTEGER
     );
     CREATE TABLE garden_water_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

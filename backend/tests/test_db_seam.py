@@ -39,7 +39,7 @@ def _db_cache():
                 season_adjust TEXT, created_at TEXT, is_ephemeral INTEGER DEFAULT 0,
                 interval_source TEXT NOT NULL DEFAULT 'manual'
             );
-            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER, language TEXT);
+            CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, avatar TEXT, household_id INTEGER, language TEXT, account_id INTEGER);
             CREATE TABLE households (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
