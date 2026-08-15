@@ -1358,6 +1358,7 @@ function jobResultSummary(kind: string, job: AdminJob): string {
   if (kind === 'backfill_care_schedules') return `✓ ${r.seeded ?? 0} schedules seeded out of ${r.checked ?? 0} checked`
   if (kind === 'backfill_facts') return `✓ ${r.updated ?? 0} bilingual facts updated · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
   if (kind === 'backfill_names') return `✓ ${r.updated ?? 0} species named · ${r.skipped ?? 0} skipped out of ${r.processed ?? 0} candidates`
+  if (kind === 'backfill_species') return `✓ ${r.linked ?? 0} plants linked · ${r.failed ?? 0} failed out of ${r.processed ?? 0}`
   if (kind === 'backfill_plant_types') return `✓ ${r.updated ?? 0} updated · ${r.skipped ?? 0} skipped out of ${r.found ?? 0} active candidates`
   if (kind === 'generate_icons') return iconJobSummary(r)
   return '✓ Done'
@@ -2035,6 +2036,7 @@ function ToolsView() {
   const [npAll, setNpAll] = useState<AdminBackfillNamesPreview | null>(null)
   const [npInUse, setNpInUse] = useState<AdminBackfillNamesPreview | null>(null)
   const [pp, setPp] = useState<{ total_active_plants: number; missing_plant_type: number } | null>(null)
+  const [spLink, setSpLink] = useState<{ active_total: number; missing_count: number } | null>(null)
   const [regenPlantId, setRegenPlantId] = useState('')
   const [regenBusy, setRegenBusy] = useState(false)
   const [regenResult, setRegenResult] = useState<string | null>(null)
@@ -2046,6 +2048,12 @@ function ToolsView() {
     if (kind === 'generate_icons') setIconRefresh(n => n + 1)
     if (kind === 'backfill_facts') setFactsRefresh(n => n + 1)
     if (kind === 'backfill_names') setNamesRefresh(n => n + 1)
+    if (kind === 'backfill_species') {
+      adminPanel.backfillSpeciesPreview().then(setSpLink).catch(() => {})
+      // Linking a plant to a species is what unblocks icon generation for it,
+      // so refresh the icon card's "cannot reach" list too.
+      setIconRefresh(n => n + 1)
+    }
     adminPanel.listJobs(20).then(setRecentJobs).catch(() => {})
   })
 
@@ -2053,6 +2061,7 @@ function ToolsView() {
     admin.thresholdsPreview().then(setTp).catch(() => {})
     admin.schedulesPreview().then(setSp).catch(() => {})
     admin.backfillPlantTypesPreview().then(setPp).catch(() => {})
+    adminPanel.backfillSpeciesPreview().then(setSpLink).catch(() => {})
     adminPanel.listJobs(20).then(j => { setRecentJobs(j); setRecentLoading(false) }).catch(() => setRecentLoading(false))
   }, [])
 
@@ -2275,6 +2284,9 @@ function ToolsView() {
         </div>
       )}
       <div data-admin-tools-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {simpleTool('backfill_species', 'Link plants to a species',
+          'Give active plants with no species link one, matching an existing species by name or creating it from the plant\u2019s own name. Species is what icons, facts, names and BioCLIP coverage all key on, so an unlinked plant is invisible to every one of those tools.',
+          spLink ? `${spLink.missing_count} of ${spLink.active_total} active plants have no species link` : 'Loading…')}
         {simpleTool('backfill_thresholds', 'Backfill thresholds',
           'Generate care thresholds via DeepSeek for all plants that are missing them.',
           tp ? `${tp.missing_thresholds} of ${tp.active_total} active plants need thresholds` : 'Loading…')}

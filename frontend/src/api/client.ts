@@ -746,8 +746,6 @@ export const admin = {
   schedulesPreview:      ()           => api<{ total_with_thresholds: number; missing_schedules: number; has_schedules: number }>('GET', '/admin/backfill-care-schedules/preview'),
   backfillPlantTypes:    ()           => api<AdminBackfillPlantTypesResult>('POST', '/admin/backfill-plant-types'),
   backfillPlantTypesPreview: ()     => api<{ total_active_plants: number; missing_plant_type: number }>('GET', '/admin/backfill-plant-types/preview'),
-  backfillSpecies:   ()           => api<{ processed: number; succeeded: number; failed: number; failures: Array<{plant_id: number; name: string; error: string}> }>('POST', '/admin/backfill-species'),
-  backfillSpeciesPreview: ()    => api<{ active_total: number; missing_species: Array<{plant_id: number; name: string}>; missing_count: number }>('GET', '/admin/backfill-species/preview'),
 }
 
 export const adminPanel = {
@@ -760,6 +758,9 @@ export const adminPanel = {
   species:  (params: AdminTableParams = {}) => api<AdminPagedResponse<AdminSpeciesRow>>('GET', '/admin-panel/species', { params: adminTableParams(params) }),
   activity: () => api<AdminActivityEvent[]>('GET', '/admin-panel/activity'),
   me:       () => api<{ email: string }>('GET', '/admin-panel/me'),
+  backfillSpeciesPreview: () =>
+    api<{ active_total: number; missing_species: Array<{ id: number; name: string }>; missing_count: number }>(
+      'GET', '/admin-panel/backfill-species/preview'),
   backfillFactsPreview: (opts: { scope?: AdminFactsScope; mapOnly?: boolean } = {}) => {
     const q = new URLSearchParams()
     if (opts.scope) q.set('scope', opts.scope)

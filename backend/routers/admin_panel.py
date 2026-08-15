@@ -1218,8 +1218,9 @@ async def _unservable_plants(
         if row["species_id"] is None:
             reason, hint = (
                 "no_species_link",
-                "This plant is not linked to a species. Open Plant bewerken and "
-                "set its species, then run this again.",
+                "Run the \"Link plants to a species\" tool, then generate icons "
+                "again. It links the plant to a species (creating one from its "
+                "name if needed), which is what an icon is keyed on.",
             )
         elif not (row["latin_name"] or "").strip():
             reason, hint = (
@@ -1420,6 +1421,29 @@ async def backfill_facts_preview(
         map_only=map_only,
         household_id=admin.get("household_id"),
     )
+
+
+@router.get("/admin-panel/backfill-species/preview")
+async def backfill_species_preview(
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Preview: this household's active plants with no species link."""
+    household_id = admin.get("household_id")
+    rows = await db.execute_fetchall(
+        "SELECT id, name FROM plants "
+        "WHERE species_id IS NULL AND is_active = 1 AND household_id = ?",
+        (household_id,),
+    )
+    total = await db.execute_fetchall(
+        "SELECT COUNT(*) as n FROM plants WHERE is_active = 1 AND household_id = ?",
+        (household_id,),
+    )
+    return {
+        "active_total": int(total[0]["n"]),
+        "missing_species": [dict(r) for r in rows],
+        "missing_count": len(rows),
+    }
 
 
 @router.get("/admin-panel/backfill-names/preview")
@@ -1931,6 +1955,68 @@ async def _run_backfill_names(db, params: dict, on_progress) -> dict:
     )
 
 
+async def _run_backfill_species(db, params: dict, on_progress) -> dict:
+    """Link active plants that have no species_id to a species row.
+
+    A plant with no species link is invisible to icon generation, to the facts
+    and names backfills, and to BioCLIP coverage — every one of those works per
+    species. It is the single upstream gap that makes several tools quietly
+    unable to help a plant, which is why the icon card can list three plants it
+    "cannot reach".
+
+    `get_or_create_species` matches an existing species on any of its names and
+    otherwise creates one from the plant's own name, so this is usually a link
+    rather than a new row.
+
+    There was already an endpoint for this — POST /admin/backfill-species — and
+    it had never worked: `get_or_create_species` was never imported there, so
+    every plant failed with a NameError that the loop swallowed into a failure
+    list nothing displayed. Nothing in the UI called it either. It is gone; this
+    runs through the job system like every other tool, scoped to the household.
+    """
+    from species_service import get_or_create_species
+
+    household_id = params.get("household_id")
+    sql = ("SELECT id, name, species FROM plants "
+           "WHERE species_id IS NULL AND is_active = 1 ")
+    sql_params: list[object] = []
+    if household_id is not None:
+        sql += "AND household_id = ? "
+        sql_params.append(int(household_id))
+    rows = await db.execute_fetchall(sql, tuple(sql_params)) if sql_params else await db.execute_fetchall(sql)
+
+    total = len(rows)
+    await on_progress(0, total)
+    linked = 0
+    failures: list[dict] = []
+    for index, row in enumerate(rows):
+        # The user-entered species text is the better hint when present; the
+        # plant's display name is the fallback.
+        lookup = (row["species"] or "").strip() or row["name"]
+        try:
+            species_id = await get_or_create_species(db, lookup)
+            await db.execute(
+                "UPDATE plants SET species_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (int(species_id), row["id"]),
+            )
+            linked += 1
+        except Exception as exc:  # noqa: BLE001 — one bad plant must not stop the run
+            failures.append({
+                "id": row["id"],
+                "name": row["name"],
+                "reason": "species_lookup_failed",
+                "error": f"{type(exc).__name__}: {exc}",
+                "hint": "Usually the LLM call behind the species lookup — check "
+                        "NOUS_API_KEY under Health, then re-run.",
+            })
+        await on_progress(index + 1, total)
+
+    return {
+        "processed": total, "linked": linked, "failed": len(failures),
+        "skipped_details": failures,
+    }
+
+
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     await on_progress(0, 1)
     rows = await db.execute_fetchall(
@@ -1982,6 +2068,7 @@ _JOB_RUNNERS = {
     "backfill_facts":         _run_backfill_facts,
     "backfill_names":         _run_backfill_names,
     "backfill_plant_types":   _run_backfill_plant_types,
+    "backfill_species":       _run_backfill_species,
 }
 
 
@@ -2002,7 +2089,8 @@ async def start_admin_job(
     if is_kind_running(body.kind):
         raise HTTPException(status_code=409, detail=f"A '{body.kind}' job is already running")
     params = dict(body.params)
-    if body.kind in {"backfill_facts", "backfill_names", "generate_icons"}:
+    if body.kind in {"backfill_facts", "backfill_names", "generate_icons",
+                     "backfill_species"}:
         params["household_id"] = admin.get("household_id")
     job_id = await start_job(db, admin, body.kind, params, runner)
     # Every tool in the panel runs through here, so this is the only place an

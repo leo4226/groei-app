@@ -42,7 +42,8 @@ export const SKIP_REASON_LABEL: Record<string, string> = {
   // Generation works per species and keys the icon on the latin name, so these
   // two are structural: the tool can never serve the plant, however often it
   // runs. They are why Settings' plant count exceeds the panel's species count.
-  no_species_link: 'Not linked to a species, so icon generation cannot reach it',
+  no_species_link: 'Not linked to a species — run "Link plants to a species" first',
+  species_lookup_failed: 'Could not work out which species this plant is',
   species_has_no_latin_name: 'Its species has no latin name, which the icon is keyed on',
 }
 
