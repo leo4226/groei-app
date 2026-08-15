@@ -151,8 +151,10 @@ describe('structural icon blockers', () => {
     // These are why Settings can say "3 plants without an icon" while the admin
     // panel offers to generate for 2: it counts species, and some plants are
     // unreachable regardless of how many runs you do.
+    // The label names the tool that fixes it, rather than sending the reader
+    // to edit each plant by hand.
     expect(describeSkip({ reason: 'no_species_link' }))
-      .toContain('cannot reach it')
+      .toContain('Link plants to a species')
     expect(describeSkip({ reason: 'species_has_no_latin_name' }))
       .toContain('latin name')
   })
