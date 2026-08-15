@@ -39,6 +39,11 @@ export const SKIP_REASON_LABEL: Record<string, string> = {
   name_generation_failed: 'Could not generate the name',
   no_localized_name_generated: 'The model returned no usable Dutch/English name',
   icon_key_not_in_catalog: 'Its icon key is not in the icon catalog',
+  // Generation works per species and keys the icon on the latin name, so these
+  // two are structural: the tool can never serve the plant, however often it
+  // runs. They are why Settings' plant count exceeds the panel's species count.
+  no_species_link: 'Not linked to a species, so icon generation cannot reach it',
+  species_has_no_latin_name: 'Its species has no latin name, which the icon is keyed on',
 }
 
 export function describeSkip(detail: AdminSkippedDetail): string {

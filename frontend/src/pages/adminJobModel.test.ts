@@ -145,3 +145,15 @@ describe('formatAuditDetail', () => {
     expect(formatAuditDetail(null)).toBeNull()
   })
 })
+
+describe('structural icon blockers', () => {
+  it('explains the two reasons a plant can never get a generated icon', () => {
+    // These are why Settings can say "3 plants without an icon" while the admin
+    // panel offers to generate for 2: it counts species, and some plants are
+    // unreachable regardless of how many runs you do.
+    expect(describeSkip({ reason: 'no_species_link' }))
+      .toContain('cannot reach it')
+    expect(describeSkip({ reason: 'species_has_no_latin_name' }))
+      .toContain('latin name')
+  })
+})

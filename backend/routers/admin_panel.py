@@ -216,6 +216,11 @@ async def _generate_icon_assets(name_nl: str, latin: str, base_id: str) -> dict:
     icons deliberately do not count as covered (see `_existing_sci`). The species
     therefore reappeared in the "missing" count forever with nothing anywhere
     explaining why. Reporting the error is what makes that state actionable.
+
+    SVG validation and the procedural renderer are CPU-bound and synchronous, so
+    they run in a worker thread. On a shared-cpu-1x machine a long generation run
+    otherwise holds the event loop for stretches at a time, and Fly's health
+    check (30s interval, 5s timeout) is what notices — see `_put_icon`.
     """
     for _attempt in range(3):
         try:
@@ -223,9 +228,13 @@ async def _generate_icon_assets(name_nl: str, latin: str, base_id: str) -> dict:
             plant = ai["plant_svg"]
             # Composite the plant onto the standard pot / ground shadow, then
             # validate the finished icon (same pot as every curated icon).
+            potted, bare = await asyncio.gather(
+                asyncio.to_thread(validate_icon_svg, _compose_icon(plant, potted=True)),
+                asyncio.to_thread(validate_icon_svg, _compose_icon(plant, potted=False)),
+            )
             return {
-                "potted": validate_icon_svg(_compose_icon(plant, potted=True)),
-                "bare": validate_icon_svg(_compose_icon(plant, potted=False)),
+                "potted": potted,
+                "bare": bare,
                 "cat": ai.get("cat") or guess_category(latin) or "unknown",
                 "source": "ai",
                 "ai_error": None,
@@ -234,13 +243,32 @@ async def _generate_icon_assets(name_nl: str, latin: str, base_id: str) -> dict:
             ai_error = f"{type(exc).__name__}: {exc}"
 
     cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+    potted, bare = await asyncio.gather(
+        asyncio.to_thread(generate_icon_svg, name=name_nl, sci=latin, cat=cat,
+                          form="potted", icon_id=base_id),
+        asyncio.to_thread(generate_icon_svg, name=name_nl, sci=latin, cat=cat,
+                          form="bare", icon_id=base_id),
+    )
     return {
-        "potted": generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id),
-        "bare": generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id),
+        "potted": potted,
+        "bare": bare,
         "cat": cat,
         "source": "procedural",
         "ai_error": ai_error,
     }
+
+
+async def _put_icon(storage, key: str, svg: str) -> str:
+    """Upload one SVG to R2 without blocking the event loop.
+
+    `Storage.put` is synchronous boto3. Called straight from the job runner it
+    parked the whole event loop for each upload — two per icon, dozens per run —
+    on a shared-cpu-1x machine. Fly health-checks `/health` every 30s with a 5s
+    timeout, so one slow upload is enough to make the machine look dead; Fly
+    restarts it, and the restart marks the in-flight job `interrupted`. That is
+    the "Stopped early" the panel kept reporting.
+    """
+    return await asyncio.to_thread(storage.put, key, svg.encode("utf-8"), "image/svg+xml")
 
 
 def _compose_icon(plant_svg: str, *, potted: bool) -> str:
@@ -1149,6 +1177,65 @@ async def admin_activity(admin=Depends(require_admin), db=Depends(db_dep)):
     return all_events[:50]
 
 
+async def _unservable_plants(
+    db,
+    *,
+    map_only: bool,
+    household_id: int | None,
+) -> list[dict]:
+    """Plants needing an icon that generation structurally cannot reach.
+
+    Generation works per *species*: `_target_species` inner-joins plant_species
+    and requires a latin name, because the latin name is the icon's identity. A
+    plant with no species link, or whose species has no latin name, is therefore
+    invisible to the tool — no matter how many times you run it.
+
+    That is why Settings said "3 plants still without an icon" while the admin
+    panel offered to generate for 2. Neither number was wrong; they count
+    different things, and the third plant was one this tool can never serve.
+    Listing them turns "the numbers disagree" into "here is the one to fix, and
+    how".
+    """
+    sql = (
+        "SELECT p.id, p.name, p.species, p.species_id, p.icon_key, p.icon_requested, "
+        "       ps.latin_name "
+        "FROM plants p LEFT JOIN plant_species ps ON p.species_id = ps.id "
+        "WHERE p.is_active = 1 "
+    )
+    params: list[object] = []
+    if household_id is not None:
+        sql += "AND p.household_id = ? "
+        params.append(household_id)
+    if map_only:
+        sql += "AND p.map_id IS NOT NULL "
+    rows = await db.execute_fetchall(sql, tuple(params)) if params else await db.execute_fetchall(sql)
+
+    valid_ids = {e["id"] for e in await load_catalog(db) if not _is_procedural_icon(e)}
+    blocked: list[dict] = []
+    for row in rows:
+        if not (row["icon_requested"] or icons_router._needs_real_icon(row["icon_key"], valid_ids)):
+            continue
+        if row["species_id"] is None:
+            reason, hint = (
+                "no_species_link",
+                "This plant is not linked to a species. Open Plant bewerken and "
+                "set its species, then run this again.",
+            )
+        elif not (row["latin_name"] or "").strip():
+            reason, hint = (
+                "species_has_no_latin_name",
+                "Its species has no latin name, which is what an icon is keyed on. "
+                "Run Backfill Dutch & English names first.",
+            )
+        else:
+            continue
+        blocked.append({
+            "id": row["id"], "name": row["name"], "species": row["species"],
+            "reason": reason, "hint": hint,
+        })
+    return blocked
+
+
 async def _target_species(
     db,
     *,
@@ -1158,6 +1245,9 @@ async def _target_species(
 ) -> list[dict]:
     """The plant_species rows that need an icon generated, deduped by latin name
     and excluding species already covered by a curated/generated icon.
+
+    Counts SPECIES, not plants: several plants of one species share one icon, and
+    a plant with no species link is not here at all (see `_unservable_plants`).
 
     scope="all"     → the whole species catalog (every species with a latin name).
     scope="in_use"  → only species linked to this admin household's active plants
@@ -1203,9 +1293,23 @@ async def _target_species(
 @router.get("/admin-panel/generate-icons/preview")
 async def generate_icons_preview(scope: str = "all", map_only: bool = False,
                                  admin=Depends(require_admin), db=Depends(db_dep)):
-    """How many icons a generate-icons run would create — generates nothing."""
-    targets = await _target_species(db, scope=scope, map_only=map_only, household_id=admin.get("household_id"))
-    return {"scope": scope, "map_only": map_only, "count": len(targets)}
+    """How many icons a generate-icons run would create — generates nothing.
+
+    `count` is SPECIES the run would draw. `blocked` is plants that need an icon
+    but that generation cannot reach at all (no species link, or a species with
+    no latin name) — the reason this number and Settings’ "plants still without
+    an icon" legitimately differ.
+    """
+    household_id = admin.get("household_id")
+    targets = await _target_species(db, scope=scope, map_only=map_only, household_id=household_id)
+    blocked = (
+        await _unservable_plants(db, map_only=map_only, household_id=household_id)
+        if scope == "in_use" else []
+    )
+    return {
+        "scope": scope, "map_only": map_only, "count": len(targets),
+        "blocked": blocked, "blocked_count": len(blocked),
+    }
 
 
 @router.post("/admin-panel/plants/{plant_id}/regenerate-icon")
@@ -1242,8 +1346,8 @@ async def regenerate_plant_icon(
     cat, source = art["cat"], art["source"]
 
     try:
-        potted_url = storage.put(f"icons/generated/{base_id}.svg", art["potted"].encode("utf-8"), "image/svg+xml")
-        bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", art["bare"].encode("utf-8"), "image/svg+xml")
+        potted_url = await _put_icon(storage, f"icons/generated/{base_id}.svg", art["potted"])
+        bare_url = await _put_icon(storage, f"icons/generated/{base_id}_bare.svg", art["bare"])
     except Exception as exc:
         raise HTTPException(500, f"R2 upload failed: {exc}")
 
@@ -1659,8 +1763,8 @@ async def _run_generate_icons(db, params: dict, on_progress) -> dict:
         art = await _generate_icon_assets(name_nl, latin, base_id)
 
         try:
-            potted_url = storage.put(f"icons/generated/{base_id}.svg", art["potted"].encode("utf-8"), "image/svg+xml")
-            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", art["bare"].encode("utf-8"), "image/svg+xml")
+            potted_url = await _put_icon(storage, f"icons/generated/{base_id}.svg", art["potted"])
+            bare_url = await _put_icon(storage, f"icons/generated/{base_id}_bare.svg", art["bare"])
         except Exception as exc:
             skipped.append({
                 "id": row["id"], "name": name_nl, "latin": latin,
@@ -1700,13 +1804,24 @@ async def _run_generate_icons(db, params: dict, on_progress) -> dict:
         await on_progress(i + 1, len(targets))
 
     sync_result = await _sync_from_admin(db)
+    # Plants this tool structurally cannot serve. Reported on the run, not only
+    # in the preview, so "2 generated" next to Settings' "3 still without an
+    # icon" explains itself instead of looking like a miscount.
+    blocked = (
+        await _unservable_plants(
+            db, map_only=map_only,
+            household_id=int(household_id) if household_id is not None else None,
+        )
+        if scope == "in_use" else []
+    )
     return {
         "generated": generated, "count": len(generated),
+        "blocked": blocked, "blocked_count": len(blocked),
         "ai_count": sum(1 for g in generated if g["source"] == "ai"),
         "skipped": skipped, "skipped_count": len(skipped),
         "fallback_count": len(fallbacks),
-        # Both lists feed the same "what went wrong" disclosure in the UI.
-        "skipped_details": skipped + fallbacks,
+        # All three feed the same "what needs attention" disclosure in the UI.
+        "skipped_details": skipped + fallbacks + blocked,
         "sync_result": sync_result,
         "scope": scope, "map_only": map_only,
         "remaining": max(0, total_targets - len(generated)),

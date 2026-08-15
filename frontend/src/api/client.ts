@@ -299,6 +299,20 @@ export interface AdminSkippedDetail {
   hint?: string
 }
 
+/**
+ * `count` is SPECIES a run would draw; `blocked` is PLANTS it cannot reach at
+ * all (no species link, or a species with no latin name). Settings counts
+ * plants, so the two screens legitimately differ — `blocked` is what explains
+ * the gap.
+ */
+export interface AdminIconPreview {
+  scope: string
+  map_only: boolean
+  count: number
+  blocked: AdminSkippedDetail[]
+  blocked_count: number
+}
+
 export type AdminFactsScope = 'all' | 'in_use'
 
 export interface AdminBackfillFactsResult {
@@ -765,7 +779,7 @@ export const adminPanel = {
     if (opts.scope) q.set('scope', opts.scope)
     if (opts.mapOnly) q.set('map_only', 'true')
     const qs = q.toString()
-    return api<{ scope: string; map_only: boolean; count: number }>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
+    return api<AdminIconPreview>('GET', `/admin-panel/generate-icons/preview${qs ? `?${qs}` : ''}`)
   },
   household: (id: number) => api<AdminHouseholdDetail>('GET', `/admin-panel/households/${id}`),
   incompleteSpeciesNames: (limit: number = 100) =>

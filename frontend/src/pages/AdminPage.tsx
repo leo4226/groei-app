@@ -2024,6 +2024,7 @@ function ToolsView() {
   const [namesLimit, setNamesLimit] = useState(50)
   const [ipAll, setIpAll] = useState<number | null>(null)
   const [ipInUse, setIpInUse] = useState<number | null>(null)
+  const [ipBlocked, setIpBlocked] = useState<AdminSkippedDetail[]>([])
   const [iconRefresh, setIconRefresh] = useState(0)
   const [factsRefresh, setFactsRefresh] = useState(0)
   const [namesRefresh, setNamesRefresh] = useState(0)
@@ -2057,7 +2058,9 @@ function ToolsView() {
 
   useEffect(() => {
     adminPanel.generateIconsPreview({ scope: 'all' }).then(r => setIpAll(r.count)).catch(() => {})
-    adminPanel.generateIconsPreview({ scope: 'in_use', mapOnly }).then(r => setIpInUse(r.count)).catch(() => {})
+    adminPanel.generateIconsPreview({ scope: 'in_use', mapOnly })
+      .then(r => { setIpInUse(r.count); setIpBlocked(r.blocked ?? []) })
+      .catch(() => {})
   }, [mapOnly, iconRefresh])
 
   useEffect(() => {
@@ -2226,15 +2229,24 @@ function ToolsView() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-primary)', marginBottom: 8 }}>
-            My plants{mapOnly ? ' on a map' : ''} needing an icon: {ipInUse ?? '…'}
+            My species{mapOnly ? ' on a map' : ''} needing an icon: {ipInUse ?? '…'}
           </div>
+          {/* Settings counts plants, this counts species — and some plants can
+              never be reached at all. Saying so here is what reconciles the two
+              screens; without it the numbers just look wrong. */}
+          {ipBlocked.length > 0 && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-overdue)', marginBottom: 8 }}>
+              {ipBlocked.length} plant{ipBlocked.length === 1 ? '' : 's'} this tool cannot reach
+              <SkippedDetails details={ipBlocked} />
+            </div>
+          )}
           <button onClick={() => runJob('generate_icons', { scope: 'in_use', map_only: mapOnly, limit: iconLimit })} disabled={iconsBusy} style={btnStyle(iconsBusy)}>
             {iconsBusy ? 'Generating…' : `Generate for my plants${ipInUse != null ? ` (${Math.min(ipInUse, iconLimit)})` : ''}`}
           </button>
         </div>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 14px' }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-            Whole species catalog uncovered: {ipAll ?? '…'}
+            Whole species catalog uncovered: {ipAll ?? '…'} species
           </div>
           <button onClick={() => runJob('generate_icons', { scope: 'all', map_only: false, limit: iconLimit })} disabled={iconsBusy} style={btnStyle(iconsBusy)}>
             {iconsBusy ? 'Generating…' : `Generate all catalog${ipAll != null ? ` (${Math.min(ipAll, iconLimit)})` : ''}`}
