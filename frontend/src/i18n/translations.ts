@@ -970,6 +970,8 @@ export type Translations = {
 
   ecology: {
     title: string
+    /** Title once the species profile rows moved in — it is no longer only ecology. */
+    aboutSpecies: string
     native: string
     nonNative: string
     invasive: string
@@ -1011,6 +1013,13 @@ export type Translations = {
 
   // ── PlantCareInfo card (species profile) ───────────────────────
   careInfo: {
+    /** Per-plant watering context; replaced the global garden-weather card. */
+    waterLastGiven: (days: number) => string
+    waterNeverGiven: string
+    waterRainSince: (mm: number) => string
+    waterNormalInterval: (days: number) => string
+    waterOverdue: (days: number) => string
+    waterDry: string
     more: string
     less: string
     loadFailed: string

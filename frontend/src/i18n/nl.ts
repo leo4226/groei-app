@@ -1012,6 +1012,7 @@ export const nl: Translations = {
 
   ecology: {
     title: 'Ecologie',
+    aboutSpecies: 'Over deze soort',
     native: '🇳🇱 Inheems in Nederland',
     nonNative: 'Niet inheems',
     invasive: '⚠️ Invasief in Nederland',
@@ -1056,6 +1057,14 @@ export const nl: Translations = {
   },
 
   careInfo: {
+    waterLastGiven: (days: number) =>
+      days === 0 ? 'Vandaag water gegeven' :
+      days === 1 ? 'Gisteren water gegeven' : `${days} dagen geleden water gegeven`,
+    waterNeverGiven: 'Nog nooit water gegeven',
+    waterRainSince: (mm: number) => `${mm} mm regen sindsdien`,
+    waterNormalInterval: (days: number) => `normaal elke ${days} dagen`,
+    waterOverdue: (days: number) => `${days} dagen over tijd`,
+    waterDry: 'droog',
     more: 'Meer info',
     less: 'Minder',
     loadFailed: 'Kon verzorgingsinfo niet laden',

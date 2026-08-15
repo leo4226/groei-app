@@ -2,9 +2,18 @@ import { useEffect, useState } from 'react'
 import { species as speciesApi } from '../api/client'
 import { useT } from '../context/LanguageContext'
 import type { EcologyOut, EcologyDataSource } from '../types'
+import SpeciesProfileRows from './plant/SpeciesProfileRows'
 
 interface Props {
   speciesId: number
+  /**
+   * When given, the card also carries this plant's species profile (light,
+   * habit, size, safety) and is titled "About this species" rather than
+   * "Ecology". Those rows used to be a separate "Soortprofiel" card further
+   * down the page describing the same species from the other direction, with
+   * flowering months duplicated — and contradicted — between the two.
+   */
+  plantId?: number
 }
 
 // Floreren tokens — see index.css :root. Picked to harmonise with the
@@ -91,7 +100,7 @@ function pollinatorLine(v: number, t: ReturnType<typeof useT>): string {
   return t.ecology.pollinatorNone
 }
 
-export default function EcologyCard({ speciesId }: Props) {
+export default function EcologyCard({ speciesId, plantId }: Props) {
   const t = useT()
   const [ecology, setEcology] = useState<EcologyOut | null>(null)
   const [loading, setLoading] = useState(true)
@@ -144,8 +153,11 @@ export default function EcologyCard({ speciesId }: Props) {
     day: 'numeric', month: 'short',
   })
 
-  // Suppress entirely-empty cards (no facts and no flowering data).
-  if (facts.length === 0 && (!ecology.flowering_months || ecology.flowering_months.length === 0)) {
+  // Suppress entirely-empty cards — but not when the species profile is
+  // carrying the card on its own.
+  const hasEcology = facts.length > 0
+    || (ecology.flowering_months != null && ecology.flowering_months.length > 0)
+  if (!hasEcology && plantId == null) {
     return null
   }
 
@@ -154,7 +166,7 @@ export default function EcologyCard({ speciesId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-mono text-[11px] font-bold tracking-widest uppercase text-text-muted">
-          {t.ecology.title}
+          {plantId != null ? t.ecology.aboutSpecies : t.ecology.title}
         </h3>
         <SourceBadge source={ecology.data_source} t={t} />
       </div>
@@ -187,6 +199,15 @@ export default function EcologyCard({ speciesId }: Props) {
         <div className="flex items-center gap-2 mb-3">
           <span className="text-sm text-text-muted shrink-0">{t.ecology.floweringPrefix}:</span>
           <MonthChips months={ecology.flowering_months} locale={t.locale} />
+        </div>
+      )}
+
+      {/* Species profile — light, habit, size, safety. Sits under the ecology
+          facts because "is it safe / how big" is what you check second, after
+          "what is this". */}
+      {plantId != null && (
+        <div className={hasEcology ? 'pt-3 border-t border-border/40 mb-3' : 'mb-3'}>
+          <SpeciesProfileRows plantId={plantId} />
         </div>
       )}
 

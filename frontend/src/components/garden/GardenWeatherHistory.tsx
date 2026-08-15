@@ -26,7 +26,9 @@ export const RAIN_BADGE_CLASS: Record<string, string> = {
  * This is a *garden-level* fact — the backend fetches one hardcoded lat/lon and
  * the endpoints take no map or household — so it belongs on the map's weather
  * popover, next to the forecast, rather than repeated inside every plant (#878).
- * The plant passport shows `GardenWeatherSummary` instead.
+ * The plant page shows its own watering context instead (PlantWaterContext):
+ * this data is household-wide, so on a plant page it was the same two
+ * numbers on every plant.
  *
  * Per-day mm and min/max labels only appear from `sm:` up: at 8px across 14
  * bars they are unreadable on a phone, and the badge plus total carry the
@@ -148,42 +150,6 @@ export default function GardenWeatherHistory({ compact = false }: { compact?: bo
           <div className="h-14 bg-border/50 rounded animate-pulse" />
         </div>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * One-line stand-in for the charts above, for places that need the conclusion
- * rather than the data — currently the plant passport.
- */
-export function GardenWeatherSummary() {
-  const t = useT()
-  const gw = t.gardenWeather
-  const rain = useRainContext()
-  const temp = useTemperatureContext()
-
-  if (!rain.data && !temp.data) return null
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-surface/50 px-3 py-2.5">
-      {rain.data && (
-        <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
-          <Glyph name="droplet" size={14} className="text-sky-500" />
-          {gw.rainSummary(rain.data.total_14day_mm ?? rain.data.total_7day_mm)}
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${RAIN_BADGE_CLASS[rain.data.assessment] ?? ''}`}>
-            {gw.rainBadges[rain.data.assessment] ?? rain.data.assessment}
-          </span>
-        </span>
-      )}
-      {temp.data && (
-        <span className="inline-flex items-center gap-1.5 text-sm text-text-muted">
-          <Glyph name="thermometer" size={14} className="text-rose-500" />
-          {gw.tempSummary(temp.data.avg_max_7day)}
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${TEMP_BADGE_CLASS[temp.data.assessment] ?? ''}`}>
-            {gw.tempBadges[temp.data.assessment] ?? temp.data.assessment}
-          </span>
-        </span>
-      )}
     </div>
   )
 }
