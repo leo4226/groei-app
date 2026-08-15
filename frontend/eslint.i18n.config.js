@@ -62,6 +62,12 @@ export default [
       'src/components/sun/DebugSvfOverlay.tsx',
       'src/components/sun/HeatmapLegend.tsx',
 
+      // AdminPage is the operator console — one admin, not an end user, and
+      // every label in it is a term of art tied to backend job kinds, column
+      // names and service names. The baseline note above left this as a
+      // per-file decision; taking it: English-only, permanently, like the two
+      // exemptions below. It moves out of the "translate later" group so the
+      // baseline count reflects real remaining work.
       'src/pages/AdminPage.tsx',
       // LoginPage is pre-auth (no account language exists yet) so it can't use
       // the account-driven catalog; it carries its own bilingual COPY dict with

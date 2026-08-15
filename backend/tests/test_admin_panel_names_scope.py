@@ -171,7 +171,10 @@ async def test_backfill_names_job_runner_fills_both_languages(admin_names_db, mo
         on_progress,
     )
 
-    assert progress == [(0, 1), (1, 1)]
+    # One tick per species rather than a single opaque step. The job used to
+    # report 0/1 until the whole batch of LLM calls had finished, so the admin
+    # panel showed a determinate bar frozen at 0% for the entire run.
+    assert progress == [(0, 4), (1, 4), (2, 4), (3, 4), (4, 4)]
     # species 1, 2, 4, 5 all had a gap and get updated
     assert result["processed"] == 4
     assert result["updated"] == 4

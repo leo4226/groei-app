@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import os
 import re
 import time
@@ -169,6 +170,76 @@ async def _check_email_config() -> dict:
 def _slug(text: str) -> str:
     s = re.sub(r"[^a-z0-9_]", "", text.lower().replace(" ", "_").replace("-", "_"))
     return s or "plant"
+
+
+async def _icon_base_id(db, latin: str) -> str:
+    """The `generated_icons.id` for a species, derived from its LATIN name.
+
+    This used to be derived from the Dutch common name, which is not unique and
+    is frequently absent. When it was absent the code fell back to
+    ``derive_common_name(latin)`` — which returns the *genus* — so every species
+    in a genus collapsed onto one id: Acer palmatum, Acer campestre and Acer
+    platanoides all became ``gen_acer``. Generation then does
+    ``DELETE FROM generated_icons WHERE id = ?`` before inserting, so the last
+    species in the batch silently overwrote the icons just made for the others.
+    All three were counted as generated; two ended up with no icon of their own.
+    That is why a run reported success and left plants without icons. Two species
+    sharing a Dutch common name collided the same way, and `_slug` drops every
+    character outside [a-z0-9_], so names differing only in diacritics folded
+    together too.
+
+    The latin name is what `_target_species` dedupes on and what `sci` matching
+    resolves against, so keying on it makes the id as unique as the target set.
+
+    Slug collisions between genuinely different latin names are still possible
+    (punctuation is stripped), so an id already held by a *different* species
+    gets a short digest suffix rather than stealing the row.
+    """
+    base = f"gen_{_slug(latin)}"
+    norm = icons_router._normalize(latin)
+    rows = await db.execute_fetchall(
+        "SELECT sci FROM generated_icons WHERE id = ?", (base,)
+    )
+    if rows and icons_router._normalize(rows[0]["sci"] or "") != norm:
+        return f"{base}_{hashlib.sha1(norm.encode('utf-8')).hexdigest()[:6]}"
+    return base
+
+
+async def _generate_icon_assets(name_nl: str, latin: str, base_id: str) -> dict:
+    """Draw one species' icon pair, AI first with a procedural fallback.
+
+    Returns the two SVGs, the category, which engine produced them, and — when
+    the AI attempts failed — the last error. That error used to be swallowed by
+    a bare ``except Exception: continue``, so a species that failed AI generation
+    every single run just kept getting a generic procedural icon, and procedural
+    icons deliberately do not count as covered (see `_existing_sci`). The species
+    therefore reappeared in the "missing" count forever with nothing anywhere
+    explaining why. Reporting the error is what makes that state actionable.
+    """
+    for _attempt in range(3):
+        try:
+            ai = await generate_icon_variants(name=name_nl, sci=latin)
+            plant = ai["plant_svg"]
+            # Composite the plant onto the standard pot / ground shadow, then
+            # validate the finished icon (same pot as every curated icon).
+            return {
+                "potted": validate_icon_svg(_compose_icon(plant, potted=True)),
+                "bare": validate_icon_svg(_compose_icon(plant, potted=False)),
+                "cat": ai.get("cat") or guess_category(latin) or "unknown",
+                "source": "ai",
+                "ai_error": None,
+            }
+        except Exception as exc:  # noqa: BLE001 — timeout / empty / invalid → retry
+            ai_error = f"{type(exc).__name__}: {exc}"
+
+    cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
+    return {
+        "potted": generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id),
+        "bare": generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id),
+        "cat": cat,
+        "source": "procedural",
+        "ai_error": ai_error,
+    }
 
 
 def _compose_icon(plant_svg: str, *, potted: bool) -> str:
@@ -1099,82 +1170,6 @@ async def generate_icons_preview(scope: str = "all", map_only: bool = False,
     return {"scope": scope, "map_only": map_only, "count": len(targets)}
 
 
-@router.post("/admin-panel/generate-icons")
-async def generate_plant_icons(scope: str = "all", map_only: bool = False, limit: int = 25,
-                               admin=Depends(require_admin), db=Depends(db_dep)):
-    """Generate distinctive icons (AI, validated; procedural fallback) for the
-    target species, store SVGs in R2 + metadata in generated_icons, then re-match
-    plants. `scope`/`map_only` pick the target set (see _target_species); `limit`
-    caps how many are processed per run (0 = no cap)."""
-    storage = build_storage_from_env()
-    targets = await _target_species(db, scope=scope, map_only=map_only, household_id=admin.get("household_id"))
-    total_targets = len(targets)
-    if limit and limit > 0:
-        targets = targets[:limit]
-
-    generated, skipped = [], []
-    for row in targets:
-        latin = row["latin_name"]
-        name_nl = row["common_name_nl"] or derive_common_name(latin)
-        base_id = f"gen_{_slug(name_nl)}"
-
-        # 1. AI attempt — retry a few times before giving up, because the reasoning
-        #    model is non-deterministic (occasional timeout / empty content). Only
-        #    fall back to the (category-generic) procedural icon if every try fails.
-        source = "ai"
-        ai_svgs = None
-        for _attempt in range(3):
-            try:
-                ai = await generate_icon_variants(name=name_nl, sci=latin)
-                plant = ai["plant_svg"]
-                # Composite the plant onto the standard pot / ground shadow, then
-                # validate the finished icon (same pot as every curated icon).
-                potted = validate_icon_svg(_compose_icon(plant, potted=True))
-                bare = validate_icon_svg(_compose_icon(plant, potted=False))
-                cat = ai.get("cat") or guess_category(latin) or "unknown"
-                ai_svgs = (potted, bare, cat)
-                break
-            except Exception:  # noqa: BLE001 — timeout / empty / invalid → retry
-                continue
-        if ai_svgs is not None:
-            potted, bare, cat = ai_svgs
-        else:
-            source = "procedural"
-            cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
-            potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
-            bare = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
-
-        # 2. Upload both variants to R2
-        try:
-            potted_url = storage.put(f"icons/generated/{base_id}.svg", potted.encode("utf-8"), "image/svg+xml")
-            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare.encode("utf-8"), "image/svg+xml")
-        except Exception as exc:  # noqa: BLE001
-            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": f"r2: {exc}"})
-            continue
-
-        # 3. Upsert two rows (base potted + bare variant)
-        for icon_id, form, variant_of, url in [
-            (base_id, "potted", None, potted_url),
-            (f"{base_id}_bare", "bare", base_id, bare_url),
-        ]:
-            await db.execute("DELETE FROM generated_icons WHERE id = ?", (icon_id,))
-            await db.execute(
-                "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
-                (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
-            )
-        await db.commit()
-        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
-
-    sync_result = await _sync_from_admin(db)
-    result = {"generated": generated, "count": len(generated),
-              "skipped": skipped, "skipped_count": len(skipped), "sync_result": sync_result,
-              "scope": scope, "map_only": map_only,
-              "remaining": max(0, total_targets - len(generated))}
-    await log_admin_action(db, admin, "generate_icons", target=f"scope={scope}", detail={"count": len(generated), "skipped": len(skipped), "scope": scope, "map_only": map_only})
-    return result
-
-
 @router.post("/admin-panel/plants/{plant_id}/regenerate-icon")
 async def regenerate_plant_icon(
     plant_id: int,
@@ -1203,33 +1198,14 @@ async def regenerate_plant_icon(
     sp = dict(species_rows[0])
     name_nl = sp["common_name_nl"] or plant["name"] or derive_common_name(sp["latin_name"])
     latin = sp["latin_name"]
-    base_id = f"gen_{_slug(name_nl)}"
+    base_id = await _icon_base_id(db, latin)
 
-    source = "ai"
-    ai_svgs = None
-    for _attempt in range(3):
-        try:
-            ai = await generate_icon_variants(name=name_nl, sci=latin)
-            plant_svg = ai["plant_svg"]
-            potted = validate_icon_svg(_compose_icon(plant_svg, potted=True))
-            bare = validate_icon_svg(_compose_icon(plant_svg, potted=False))
-            cat = ai.get("cat") or guess_category(latin) or "unknown"
-            ai_svgs = (potted, bare, cat)
-            break
-        except Exception:
-            continue
-
-    if ai_svgs is not None:
-        potted_svg, bare_svg, cat = ai_svgs
-    else:
-        source = "procedural"
-        cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
-        potted_svg = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
-        bare_svg = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+    art = await _generate_icon_assets(name_nl, latin, base_id)
+    cat, source = art["cat"], art["source"]
 
     try:
-        potted_url = storage.put(f"icons/generated/{base_id}.svg", potted_svg.encode("utf-8"), "image/svg+xml")
-        bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare_svg.encode("utf-8"), "image/svg+xml")
+        potted_url = storage.put(f"icons/generated/{base_id}.svg", art["potted"].encode("utf-8"), "image/svg+xml")
+        bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", art["bare"].encode("utf-8"), "image/svg+xml")
     except Exception as exc:
         raise HTTPException(500, f"R2 upload failed: {exc}")
 
@@ -1320,40 +1296,6 @@ async def backfill_names_preview(
         map_only=map_only,
         household_id=admin.get("household_id"),
     )
-
-
-@router.post("/admin-panel/backfill-facts")
-async def backfill_plant_facts(
-    limit: int = 50,
-    scope: str = "all",
-    map_only: bool = False,
-    admin=Depends(require_admin),
-    db=Depends(db_dep),
-):
-    """Generate bilingual interesting facts for selected plant_species entries."""
-    from species_service import backfill_missing_facts
-
-    result = await backfill_missing_facts(
-        db,
-        limit=limit,
-        scope=scope,
-        map_only=map_only,
-        household_id=admin.get("household_id"),
-    )
-    await log_admin_action(
-        db,
-        admin,
-        "backfill_facts",
-        target=f"scope={scope};limit={limit}",
-        detail={
-            "processed": result.get("processed"),
-            "updated": result.get("updated"),
-            "skipped": result.get("skipped"),
-            "scope": scope,
-            "map_only": map_only,
-        },
-    )
-    return result
 
 
 @router.patch("/admin-panel/species/{species_id}")
@@ -1670,38 +1612,24 @@ async def _run_generate_icons(db, params: dict, on_progress) -> dict:
         targets = targets[:limit]
 
     await on_progress(0, len(targets))
-    generated, skipped = [], []
+    generated, skipped, fallbacks = [], [], []
     for i, row in enumerate(targets):
         latin = row["latin_name"]
         name_nl = row["common_name_nl"] or derive_common_name(latin)
-        base_id = f"gen_{_slug(name_nl)}"
+        base_id = await _icon_base_id(db, latin)
 
-        source = "ai"
-        ai_svgs = None
-        for _attempt in range(3):
-            try:
-                ai = await generate_icon_variants(name=name_nl, sci=latin)
-                plant = ai["plant_svg"]
-                potted = validate_icon_svg(_compose_icon(plant, potted=True))
-                bare = validate_icon_svg(_compose_icon(plant, potted=False))
-                cat = ai.get("cat") or guess_category(latin) or "unknown"
-                ai_svgs = (potted, bare, cat)
-                break
-            except Exception:
-                continue
-        if ai_svgs is not None:
-            potted, bare, cat = ai_svgs
-        else:
-            source = "procedural"
-            cat = guess_category(latin) or guess_category(name_nl) or "houseplant"
-            potted = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="potted", icon_id=base_id)
-            bare = generate_icon_svg(name=name_nl, sci=latin, cat=cat, form="bare", icon_id=base_id)
+        art = await _generate_icon_assets(name_nl, latin, base_id)
 
         try:
-            potted_url = storage.put(f"icons/generated/{base_id}.svg", potted.encode("utf-8"), "image/svg+xml")
-            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", bare.encode("utf-8"), "image/svg+xml")
+            potted_url = storage.put(f"icons/generated/{base_id}.svg", art["potted"].encode("utf-8"), "image/svg+xml")
+            bare_url = storage.put(f"icons/generated/{base_id}_bare.svg", art["bare"].encode("utf-8"), "image/svg+xml")
         except Exception as exc:
-            skipped.append({"id": row["id"], "name": name_nl, "latin": latin, "error": f"r2: {exc}"})
+            skipped.append({
+                "id": row["id"], "name": name_nl, "latin": latin,
+                "reason": "r2_upload_failed",
+                "error": str(exc),
+                "hint": "Check the R2_* secrets on Fly — Health shows R2 storage status.",
+            })
             await on_progress(i + 1, len(targets))
             continue
 
@@ -1713,15 +1641,34 @@ async def _run_generate_icons(db, params: dict, on_progress) -> dict:
             await db.execute(
                 "INSERT INTO generated_icons (id,name,sci,cat,form,variant_of,family,url,source) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                (icon_id, name_nl, latin, cat, form, variant_of, "", url, source),
+                (icon_id, name_nl, latin, art["cat"], form, variant_of, "", url, art["source"]),
             )
-        generated.append({"id": row["id"], "name": name_nl, "latin": latin, "icon_id": base_id, "cat": cat, "source": source})
+        generated.append({
+            "id": row["id"], "name": name_nl, "latin": latin,
+            "icon_id": base_id, "cat": art["cat"], "source": art["source"],
+        })
+        if art["source"] == "procedural":
+            # Not a failure — the plant renders — but a generic icon does not
+            # count as covered, so this species comes back next run. Surface it
+            # so a permanently-failing species is visible instead of silently
+            # inflating the "still missing" count forever.
+            fallbacks.append({
+                "id": row["id"], "name": name_nl, "latin": latin,
+                "reason": "ai_failed_used_generic_art",
+                "error": art["ai_error"],
+                "hint": "Generic art was stored so the plant renders. Retry later, "
+                        "or use Regenerate plant icon for a single species.",
+            })
         await on_progress(i + 1, len(targets))
 
     sync_result = await _sync_from_admin(db)
     return {
         "generated": generated, "count": len(generated),
+        "ai_count": sum(1 for g in generated if g["source"] == "ai"),
         "skipped": skipped, "skipped_count": len(skipped),
+        "fallback_count": len(fallbacks),
+        # Both lists feed the same "what went wrong" disclosure in the UI.
+        "skipped_details": skipped + fallbacks,
         "sync_result": sync_result,
         "scope": scope, "map_only": map_only,
         "remaining": max(0, total_targets - len(generated)),
@@ -1748,9 +1695,20 @@ async def _run_backfill_thresholds(db, params: dict, on_progress) -> dict:
             )
             succeeded += 1
         except Exception as exc:
-            failures.append({"plant_id": row["id"], "name": row["name"], "error": str(exc)})
+            failures.append({
+                "id": row["id"],
+                "name": row["name"],
+                "reason": "threshold_generation_failed",
+                "error": str(exc),
+                "hint": "Usually the LLM call — check NOUS_API_KEY under Health, then re-run.",
+            })
         await on_progress(i + 1, total)
-    return {"processed": total, "succeeded": succeeded, "failed": len(failures)}
+    # `failures` used to be built and then dropped, so the panel could only say
+    # "N failed" with no way to find out why. The details ride along now.
+    return {
+        "processed": total, "succeeded": succeeded, "failed": len(failures),
+        "skipped_details": failures,
+    }
 
 
 async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
@@ -1766,14 +1724,24 @@ async def _run_backfill_care_schedules(db, params: dict, on_progress) -> dict:
     total = len(rows)
     await on_progress(0, total)
     seeded = 0
+    failures: list[dict] = []
     for i, row in enumerate(rows):
         try:
             await _seed_care_schedules(db, row["id"], row["care_thresholds"])
             seeded += 1
         except Exception as exc:
+            # Was a server-side log line only — invisible from the admin panel,
+            # where the run just reported a seeded count lower than the checked
+            # count with no explanation.
             logger.warning("Care schedule seed failed for plant %s: %s", row["id"], exc)
+            failures.append({
+                "id": row["id"],
+                "reason": "schedule_seed_failed",
+                "error": str(exc),
+                "hint": "Usually malformed care_thresholds — re-run Backfill thresholds first.",
+            })
         await on_progress(i + 1, total)
-    return {"checked": total, "seeded": seeded}
+    return {"checked": total, "seeded": seeded, "skipped_details": failures}
 
 
 async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
@@ -1783,16 +1751,14 @@ async def _run_backfill_facts(db, params: dict, on_progress) -> dict:
     scope = str(params.get("scope", "all"))
     map_only = bool(params.get("map_only", False))
     household_id = params.get("household_id")
-    await on_progress(0, 1)
-    result = await backfill_missing_facts(
+    return await backfill_missing_facts(
         db,
         limit=limit,
         scope=scope,
         map_only=map_only,
         household_id=int(household_id) if household_id is not None else None,
+        on_progress=on_progress,
     )
-    await on_progress(1, 1)
-    return result
 
 
 async def _run_backfill_names(db, params: dict, on_progress) -> dict:
@@ -1802,16 +1768,14 @@ async def _run_backfill_names(db, params: dict, on_progress) -> dict:
     scope = str(params.get("scope", "all"))
     map_only = bool(params.get("map_only", False))
     household_id = params.get("household_id")
-    await on_progress(0, 1)
-    result = await backfill_missing_names(
+    return await backfill_missing_names(
         db,
         limit=limit,
         scope=scope,
         map_only=map_only,
         household_id=int(household_id) if household_id is not None else None,
+        on_progress=on_progress,
     )
-    await on_progress(1, 1)
-    return result
 
 
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
@@ -1888,6 +1852,16 @@ async def start_admin_job(
     if body.kind in {"backfill_facts", "backfill_names", "generate_icons"}:
         params["household_id"] = admin.get("household_id")
     job_id = await start_job(db, admin, body.kind, params, runner)
+    # Every tool in the panel runs through here, so this is the only place an
+    # admin action can be recorded. The audit log used to see none of them: the
+    # two endpoints that did call log_admin_action were the direct
+    # generate-icons / backfill-facts routes, which nothing has called since the
+    # panel moved to jobs (they are gone now).
+    await log_admin_action(
+        db, admin, "start_job",
+        target=body.kind,
+        detail={"job_id": job_id, "params": params},
+    )
     return {"job_id": job_id}
 
 

@@ -82,12 +82,19 @@ async def test_backfill_facts_run_only_updates_current_household_active_garden_s
 
     monkeypatch.setattr("species_service.generate_fact_for_species", fake_generate)
 
-    res = await client.post(
-        "/api/admin-panel/backfill-facts?scope=in_use&map_only=true&limit=25",
-        headers=auth_header,
+    # Was a POST to /api/admin-panel/backfill-facts — a duplicate of the job
+    # runner that the admin panel stopped calling when it moved to background
+    # jobs, and which has been removed. Drive the real path instead.
+    from routers.admin_panel import _run_backfill_facts
+
+    async def on_progress(done, total):
+        pass
+
+    body = await _run_backfill_facts(
+        admin_facts_db,
+        {"scope": "in_use", "map_only": True, "limit": 25, "household_id": 1},
+        on_progress,
     )
-    assert res.status_code == 200, res.text
-    body = res.json()
     assert body["scope"] == "in_use"
     assert body["map_only"] is True
     assert body["processed"] == 1
