@@ -83,7 +83,7 @@ def seed(cache, sql, params=()):
 # ── Tests: GET /api/icon-catalog/gaps ──
 
 def test_gaps_returns_requested_plants(db_override, fake_manifest):
-    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key) VALUES ('Monstera', 1, NULL)")
+    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key, household_id) VALUES ('Monstera', 1, NULL, 1)")
     resp = TestClient(app).get("/api/icon-catalog/gaps")
     assert resp.status_code == 200
     data = resp.json()
@@ -93,7 +93,7 @@ def test_gaps_returns_requested_plants(db_override, fake_manifest):
 
 def test_gaps_requested_excludes_unflagged_plants(db_override, fake_manifest):
     # A plant with icon_requested=0 must NOT appear in requested, even if it has no icon_key.
-    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key) VALUES ('Tomato', 0, 'tomato')")
+    seed(db_override, "INSERT INTO plants (name, icon_requested, icon_key, household_id) VALUES ('Tomato', 0, 'tomato', 1)")
     resp = TestClient(app).get("/api/icon-catalog/gaps")
     assert resp.status_code == 200
     assert len(resp.json()["requested"]) == 0

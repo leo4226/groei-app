@@ -370,18 +370,25 @@ async def get_catalog(db=Depends(db_dep)):
 
 @router.post("/sync")
 async def sync_icons(db=Depends(db_dep), admin=Depends(require_admin)):
-    """Re-match plants against the unified catalog.
+    """Re-match this household's plants against the unified catalog.
 
     Existing behaviour: requested, placeholdered, icon-less, or dangling keys are
     assigned a real catalog icon when one exists. Upgrade behaviour: if a plant
     already has a valid generic/shared icon but an exact AI-generated icon exists
     for its own name/species, switch to that distinctive generated icon. Does NOT
     generate new files. Idempotent.
+
+    Scoped to the caller's household. It used to select every active plant in the
+    database: an admin pressing "sync icons" rewrote other households' plants and
+    got their plant names listed back in the response. Admin here means "may run
+    maintenance on my own garden", not "may reach into everyone's".
     """
     catalog = await load_catalog(db)
     valid_ids = {e["id"] for e in catalog}
     plants = [dict(r) for r in await db.execute_fetchall(
-        "SELECT id, name, species, species_id, icon_key, icon_requested FROM plants WHERE is_active = 1"
+        "SELECT id, name, species, species_id, icon_key, icon_requested "
+        "FROM plants WHERE is_active = 1 AND household_id = ?",
+        (admin["household_id"],),
     )]
     matched: list[dict] = []
     unmatched: list[dict] = []
@@ -389,8 +396,9 @@ async def sync_icons(db=Depends(db_dep), admin=Depends(require_admin)):
         found = await sync_match_icon_key(db, plant, catalog=catalog, valid_ids=valid_ids)
         if found and found in valid_ids and not found.startswith("placeholder"):
             await db.execute(
-                "UPDATE plants SET icon_key = ?, icon_requested = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (found, plant["id"]))
+                "UPDATE plants SET icon_key = ?, icon_requested = FALSE, "
+                "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND household_id = ?",
+                (found, plant["id"], admin["household_id"]))
             matched.append({"plant_id": plant["id"], "plant_name": plant["name"], "icon_key": found})
         elif plant["icon_requested"] or _needs_real_icon(plant["icon_key"], valid_ids):
             unmatched.append({"plant_id": plant["id"], "plant_name": plant["name"]})
@@ -423,7 +431,9 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
     #    or carrying a dangling icon_key that no longer resolves to a real icon.
     valid_ids = {e["id"] for e in await load_catalog(db)}
     requested_rows = await db.execute_fetchall(
-        "SELECT id, name, species, icon_key, icon_requested FROM plants WHERE is_active = 1"
+        "SELECT id, name, species, icon_key, icon_requested "
+        "FROM plants WHERE is_active = 1 AND household_id = ?",
+        (account["household_id"],),
     )
     requested = [{"id": r["id"], "name": r["name"], "species": r["species"]}
                  for r in requested_rows

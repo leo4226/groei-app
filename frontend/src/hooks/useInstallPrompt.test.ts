@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldOfferInstall, RE_SHOW_AFTER_DAYS, DAY_MS } from './useInstallPrompt'
+import { installActionFor, shouldOfferInstall, RE_SHOW_AFTER_DAYS, DAY_MS } from './useInstallPrompt'
 
 const NOW = 1_800_000_000_000
 
@@ -90,5 +90,39 @@ describe('shouldOfferInstall', () => {
       dismissedAt: NOW - 60_000,
       now: NOW,
     })).toBe(false)
+  })
+})
+
+describe('installActionFor', () => {
+  it('treats the iOS button as an acknowledgement, not an install trigger', () => {
+    // "Ik heb dit gedaan" — there is no beforeinstallprompt on iOS, so the
+    // only sensible response is to believe them and close the sheet. This
+    // used to call promptInstall(), get false, and fall through a branch that
+    // excluded iOS, leaving a button that did nothing at all.
+    expect(installActionFor({ isIos: true, canNativePrompt: false })).toBe('acknowledge')
+  })
+
+  it('still acknowledges on iOS even if a prompt were somehow captured', () => {
+    expect(installActionFor({ isIos: true, canNativePrompt: true })).toBe('acknowledge')
+  })
+
+  it('fires the native dialog when the browser gave us one', () => {
+    expect(installActionFor({ isIos: false, canNativePrompt: true })).toBe('native-prompt')
+  })
+
+  it('reports unavailable rather than faking success', () => {
+    // Desktop, or criteria not met. The sheet used to show "Floreren is on
+    // your home screen!" here, which was simply untrue.
+    expect(installActionFor({ isIos: false, canNativePrompt: false })).toBe('unavailable')
+  })
+
+  it('never returns native-prompt without a captured prompt', () => {
+    const combos = [
+      { isIos: true, canNativePrompt: false },
+      { isIos: false, canNativePrompt: false },
+    ]
+    for (const c of combos) {
+      expect(installActionFor(c)).not.toBe('native-prompt')
+    }
   })
 })

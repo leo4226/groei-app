@@ -67,6 +67,30 @@ export function shouldOfferInstall({
   return now - dismissed >= RE_SHOW_AFTER_DAYS * DAY_MS
 }
 
+/** What pressing the sheet's primary button should actually do. */
+export type InstallAction = 'acknowledge' | 'native-prompt' | 'unavailable'
+
+/**
+ * Pure decision for the install sheet's primary button, extracted so the
+ * dead-button case stays pinned (the repo tests hook logic this way rather
+ * than rendering).
+ *
+ * On iOS the button reads "I've done this" — there is no `beforeinstallprompt`
+ * to fire, so it is an acknowledgement and must simply close the sheet. It used
+ * to call promptInstall() regardless, get `false` back, and fall through a
+ * branch that excluded iOS, so the button did nothing whatsoever.
+ */
+export function installActionFor(
+  { isIos, canNativePrompt }: { isIos: boolean; canNativePrompt: boolean },
+): InstallAction {
+  if (isIos) return 'acknowledge'
+  if (canNativePrompt) return 'native-prompt'
+  // Desktop, or the browser's install criteria aren't met. Claiming success
+  // here would be a lie — nothing was installed.
+  return 'unavailable'
+}
+
+
 export function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isStandalone, setIsStandalone] = useState(isStandaloneMode)
