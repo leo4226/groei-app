@@ -64,20 +64,3 @@ export function buildWaterContext(
       daysSinceWatered != null ? Math.max(0, daysSinceWatered - schedule.interval_days) : 0,
   }
 }
-
-/**
- * How much attention the line should draw.
- *
- * 'dry' is the case the old card could never express: past due *and* no
- * meaningful rain since. Past due after a wet week is not the same situation,
- * and colouring both the same is what made the garden-weather badge noise.
- */
-export type WaterTone = 'ok' | 'due' | 'dry'
-
-export const DRY_THRESHOLD_MM = 5
-
-export function waterTone(ctx: WaterContext): WaterTone {
-  if (ctx.overdueDays <= 0) return 'ok'
-  if (ctx.mmSinceWatered != null && ctx.mmSinceWatered < DRY_THRESHOLD_MM) return 'dry'
-  return 'due'
-}
