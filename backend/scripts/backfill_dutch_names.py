@@ -75,7 +75,11 @@ async def get_dutch_name(client: httpx.AsyncClient, latin_name: str, max_retries
                 },
                 json={
                     "model": LLM_MODEL,
-                    "max_tokens": 50,
+                    # DeepSeek V4 Pro bills reasoning tokens against
+                    # max_tokens before writing `content`, so a budget
+                    # sized to the answer (a single common name) comes
+                    # back empty every time. See _generate_names.
+                    "max_tokens": 4000,
                     "messages": [{"role": "user", "content": _PROMPT.format(latin_name=latin_name)}],
                 },
                 timeout=30,
