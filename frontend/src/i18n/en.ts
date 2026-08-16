@@ -813,6 +813,16 @@ export const en: Translations = {
     themeDark: 'Dark',
     themeSystem: 'System',
     logout: 'Log out',
+    // ── Read-only viewer mode (2026-08 capability gating) ──
+    readOnlyBanner: 'Read-only · You can look, but only editors can change this.',
+    onlyEditorsCanChange: 'Only editors can change this.',
+    editorOnlyPage: 'This is an editing page. Ask an editor to do this.',
+    roleOwner: 'Owner',
+    roleEditor: 'Editor',
+    roleViewer: 'Viewer',
+    memberRoleLabel: 'Role',
+    rolePickerLabel: 'Change role',
+    inviteRoleLabel: 'Invite as',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────

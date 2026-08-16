@@ -1,9 +1,13 @@
 import { create } from 'zustand'
 import type { User, Location, Plant, RecentLogEntry, PlantCreateInput, MapInfo, PlantFactOut, WarningSummaryOut, WeatherWarningGroupOut } from '../types'
-import { users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi, weatherWarnings as weatherWarningsApi } from '../api/client'
+import { auth as authApi, users as usersApi, plants as plantsApi, care as careApi, maps as mapsApi, icons as iconsApi, weatherWarnings as weatherWarningsApi } from '../api/client'
+import type { AccountMe } from '../api/client'
 import type { PageContext } from '../api/chat'
 
 interface FlorerStore {
+  /** The signed-in account (role + server-derived capabilities). Seed of every
+   * capability-gated surface; fetched with load()/refreshAll(), never per page. */
+  me: AccountMe | null
   users: User[]
   locations: Location[]
   maps: MapInfo[]
@@ -26,6 +30,7 @@ interface FlorerStore {
 
   load: () => Promise<void>
   refreshAll: () => Promise<void>
+  loadMe: () => Promise<void>
   loadMaps: () => Promise<void>
   resetForNewSession: () => void
   loadRecentLog: () => Promise<void>
@@ -60,6 +65,7 @@ function getSavedUserId(): number | null {
 
 
 export const useFloreren = create<FlorerStore>((set, get) => ({
+  me: null,
   users: [],
   locations: [],
   maps: [],
@@ -82,18 +88,20 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
     hasLoaded: false, isLoading: false, error: null,
     plants: [], maps: [], users: [], locations: [],
     recentLog: [], warningSummary: null, plantFact: null,
+    me: null,
   }),
 
   load: async () => {
     set({ isLoading: true, error: null })
     try {
-      const [users, locations, maps, plants] = await Promise.all([
+      const [users, locations, maps, plants, me] = await Promise.all([
         usersApi.list(),
         usersApi.locations(),
         mapsApi.list(),
         plantsApi.list(),
+        authApi.me(),
       ])
-      const state: Partial<FlorerStore> = { users, locations, maps, plants, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
+      const state: Partial<FlorerStore> = { users, locations, maps, plants, me, isLoading: false, hasLoaded: true, lastRefreshAt: Date.now() }
       // Validate stored active user against loaded data — a stale
       // localStorage entry from a different account/household causes
       // every PATCH /users/:id/… to 404.
@@ -119,7 +127,19 @@ export const useFloreren = create<FlorerStore>((set, get) => ({
       get().loadMaps(),
       get().loadRecentLog(),
       get().loadWarningSummary(),
+      get().loadMe(),
     ])
+  },
+
+  /** Quiet account fetch — never sets `error`; callers decide how to surface a
+   * failure (load() lets it reject, refreshAll() swallows it via allSettled). */
+  loadMe: async () => {
+    try {
+      const me = await authApi.me()
+      set({ me })
+    } catch {
+      /* keep the previous account — a stale capability is safer than a blank one */
+    }
   },
 
   loadMaps: async () => {

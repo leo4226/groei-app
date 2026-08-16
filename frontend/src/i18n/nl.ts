@@ -813,6 +813,16 @@ export const nl: Translations = {
     themeDark: 'Donker',
     themeSystem: 'Systeem',
     logout: 'Log uit',
+    // ── Read-only viewer mode (2026-08 capability gating) ──
+    readOnlyBanner: 'Alleen lezen · Je kunt kijken, maar alleen bewerkers kunnen dit aanpassen.',
+    onlyEditorsCanChange: 'Alleen bewerkers kunnen dit aanpassen.',
+    editorOnlyPage: 'Dit is een bewerkingspagina. Vraag een bewerker dit te doen.',
+    roleOwner: 'Eigenaar',
+    roleEditor: 'Bewerker',
+    roleViewer: 'Bekijker',
+    memberRoleLabel: 'Rol',
+    rolePickerLabel: 'Rol wijzigen',
+    inviteRoleLabel: 'Uitnodigen als',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────

@@ -767,6 +767,16 @@ export type Translations = {
     themeDark: string
     themeSystem: string
     logout: string
+    // ── Read-only viewer mode (2026-08 capability gating) ──
+    readOnlyBanner: string        // "Read-only · You can look, but only editors can change this."
+    onlyEditorsCanChange: string  // "Only editors can change this."
+    editorOnlyPage: string        // "This is an editing page. Ask an editor to do this."
+    roleOwner: string             // "Owner"
+    roleEditor: string            // "Editor"
+    roleViewer: string            // "Viewer"
+    memberRoleLabel: string       // "Role" — aria label for the role picker
+    rolePickerLabel: string       // "Change role" — owner-only member role control
+    inviteRoleLabel: string       // "Invite as" — owner-only invite-role choice
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────
