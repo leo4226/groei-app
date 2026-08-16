@@ -7,7 +7,7 @@ from collections import Counter
 import pytest
 from fastapi.routing import APIRoute
 
-from auth import create_token, get_current_account, require_admin, require_editor
+from auth import create_token, get_current_account, require_admin, require_editor, require_owner
 from main import app
 from routers import bug_report, chat, game, icons, plant_id
 from services.feedback_composer import FeedbackDraft
@@ -17,6 +17,7 @@ from tests.test_quiz import _seed_quiz_world
 
 WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 EDITOR_REQUIRED = "editor-or-owner"
+OWNER_REQUIRED = "owner-only household administration"
 VIEWER_READ_ACTION = "viewer-allowed authenticated read-only action"
 GUEST_OR_PUBLIC = "public or guest-token action"
 PLATFORM_ADMIN = "platform-admin or internal-secret operation"
@@ -61,11 +62,8 @@ POLICY_ENTRIES = (
         ("POST", "/api/garden/grow-here"),
         ("POST", "/api/garden/water-log"),
         ("DELETE", "/api/garden/water-log/latest"),
-        ("PATCH", "/api/household"),
         ("PUT", "/api/household/calendar-grouping"),
-        ("POST", "/api/household/invite"),
         ("PATCH", "/api/household/members/{member_id}"),
-        ("DELETE", "/api/household/members/{user_id}"),
         ("PATCH", "/api/icon-catalog/request/{plant_id}"),
         ("POST", "/api/locations"),
         ("DELETE", "/api/locations/{location_id}"),
@@ -120,6 +118,14 @@ POLICY_ENTRIES = (
         ("POST", "/api/weather-warnings/{warning_id}/acknowledgment"),
         ("POST", "/api/weed-sightings"),
         ("DELETE", "/api/weed-sightings/{sighting_id}"),
+    ),
+    *_policies(
+        OWNER_REQUIRED,
+        "Household administration: only the owner may invite, rename the household, remove a member, or change a member's role.",
+        ("PATCH", "/api/household"),
+        ("POST", "/api/household/invite"),
+        ("DELETE", "/api/household/members/{user_id}"),
+        ("PATCH", "/api/household/members/{member_id}/role"),
     ),
     *_policies(
         GAME_ACCOUNT_OR_GUEST,
@@ -234,6 +240,9 @@ def test_complete_mounted_write_route_inventory_has_one_policy_and_correct_depen
         route = mounted_routes[(method, path)]
         if category == EDITOR_REQUIRED:
             assert _has_dependency(route, require_editor), (method, path)
+        elif category == OWNER_REQUIRED:
+            assert _has_dependency(route, require_owner), (method, path)
+            assert not _has_dependency(route, require_editor), (method, path)
         elif category == GAME_ACCOUNT_OR_GUEST:
             assert game_mutation_actor is not None
             assert _has_dependency(route, game_mutation_actor), (method, path)

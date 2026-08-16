@@ -855,6 +855,11 @@ export interface IconGenerateResult {
   remaining?: number
 }
 
+export interface HouseholdMemberCapabilities {
+  can_edit: boolean
+  can_manage_household: boolean
+}
+
 export interface HouseholdMember {
   /** accounts.id — what PATCH /household/members/{id} expects. */
   id: number
@@ -862,6 +867,10 @@ export interface HouseholdMember {
   email: string
   avatar: string | null
   created_at: string
+  /** The household role: owner (manages the household), editor (can edit), viewer (read-only). */
+  role: 'owner' | 'editor' | 'viewer'
+  /** Server-derived capabilities for the role — what the UI may render. */
+  capabilities: HouseholdMemberCapabilities
   /**
    * The legacy `users` row for this account, resolved server-side.
    * DELETE /household/members/{user_id} keys off this, not `id`. Null when the
@@ -1007,11 +1016,16 @@ export interface CareRhythmOnboardingPreview {
 }
 
 export const household = {
-  invite:      ()                             => api<{ code: string; expires_at: string }>('POST', '/household/invite'),
+  invite:      (role?: 'editor' | 'viewer') =>
+    api<{ code: string; expires_at: string; role: 'editor' | 'viewer' }>(
+      'POST', '/household/invite', role ? { body: { role } } : {},
+    ),
   join:        (data: { code: string; email: string; password: string; name: string; language?: 'nl' | 'en' }) => api<import('../api/auth').AuthResponse>('POST', '/household/join', { body: data }),
   members:     ()                             => api<HouseholdMember[]>('GET', '/household/members'),
   updateMember:(memberId: number, data: { name: string; avatar: string | null }) =>
     api<HouseholdMember>('PATCH', `/household/members/${memberId}`, { body: data }),
+  changeRole:  (memberId: number, role: 'editor' | 'viewer') =>
+    api<HouseholdMember>('PATCH', `/household/members/${memberId}/role`, { body: { role } }),
   removeMember:(userId: number)               => api<void>('DELETE', `/household/members/${userId}`),
   rename:      (name: string)                  => api<{ name: string }>('PATCH', '/household', { body: { name } }),
   calendarGrouping: ()                         => api<CalendarGroupingPreferences>('GET', '/household/calendar-grouping'),

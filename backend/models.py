@@ -935,12 +935,18 @@ class ChangePasswordInput(BaseModel):
 
 
 class InviteInput(BaseModel):
-    """Generate an invite code (from the creator's household)."""
+    """Generate an invite code (from the creator's household).
+
+    Only the owner may create invites; the role defaults to `viewer` for least
+    privilege and may never be `owner`.
+    """
+    role: Literal['editor', 'viewer'] = 'viewer'
 
 
 class InviteOutput(BaseModel):
     code: str
     expires_at: str
+    role: Literal['editor', 'viewer']
 
 
 class JoinInput(BaseModel):
@@ -990,6 +996,13 @@ class HouseholdMemberOut(BaseModel):
     email: str
     avatar: str | None = None
     created_at: datetime
+    role: Literal['owner', 'editor', 'viewer']
+    capabilities: AccountCapabilities
+
+
+class RoleChangeInput(BaseModel):
+    """Change a household member's role (owner-only, editor/viewer only)."""
+    role: Literal['editor', 'viewer']
 
 
 class OutdoorMapOut(BaseModel):
@@ -1148,20 +1161,6 @@ class CareRhythmOnboardingOut(BaseModel):
     proposed_date: str | None = None
     movement_days: int
     reason: str
-
-
-class HouseholdUpdate(BaseModel):
-    """Rename the household."""
-    name: str
-
-
-
-    id: int
-    household_id: int
-    email: str
-    name: str
-    avatar: str | None = None
-    is_admin: bool = False
 
 
 class CalendarGroupMemberOut(BaseModel):

@@ -9,13 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from database import db_dep
 from models import (
     InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate,
-    HouseholdMemberOut, HouseholdMemberUpdate, CalendarGroupingPreferencesIn,
-    CalendarGroupingPreferencesOut,
+    HouseholdMemberOut, HouseholdMemberUpdate, RoleChangeInput,
+    CalendarGroupingPreferencesIn, CalendarGroupingPreferencesOut,
 )
 from services.calendar_grouping import (
     get_calendar_grouping_preferences, save_calendar_grouping_preferences,
 )
-from auth import hash_password, create_token, get_current_account, require_editor
+from auth import (
+    capabilities_for_role, hash_password, create_token,
+    get_current_account, require_editor, require_owner,
+)
 import asyncpg
 
 router = APIRouter(prefix="/household", tags=["household"])
@@ -31,12 +34,22 @@ def _generate_code(length: int = 6) -> str:
 
 @router.post("/invite", response_model=InviteOutput)
 async def create_invite(
-    current=Depends(require_editor),
+    body: InviteInput | None = None,
+    current=Depends(require_owner),
     db=Depends(db_dep),
 ):
-    """Generate an invite code for the current user's household (7-day expiry)."""
+    """Generate an invite code for the current user's household (7-day expiry).
+
+    Owner-only. The requested role defaults to `viewer` for least privilege;
+    the invite row is the single authority for the role a joining account gets.
+    """
     household_id = current["household_id"]
     account_id = current["account_id"]
+    role = body.role if body is not None else "viewer"
+    # Never an owner: the model only accepts editor/viewer, but keep the
+    # invariant explicit in case a future caller forgets.
+    if role not in ("editor", "viewer"):
+        raise HTTPException(status_code=422, detail="Role must be editor or viewer")
 
     # Remove any existing unused invites for this household (one active at a time)
     await db.execute(
@@ -60,13 +73,13 @@ async def create_invite(
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
 
     await db.execute(
-        """INSERT INTO household_invites (household_id, code, created_by, expires_at)
-           VALUES (?, ?, ?, ?)""",
-        (household_id, code, account_id, expires_at),
+        """INSERT INTO household_invites (household_id, code, created_by, expires_at, role)
+           VALUES (?, ?, ?, ?, ?)""",
+        (household_id, code, account_id, expires_at, role),
     )
     await db.commit()
 
-    return InviteOutput(code=code, expires_at=expires_at.isoformat())
+    return InviteOutput(code=code, expires_at=expires_at.isoformat(), role=role)
 
 
 @router.post("/join", response_model=AuthResponse)
@@ -74,10 +87,15 @@ async def join_household(
     body: JoinInput,
     db=Depends(db_dep),
 ):
-    """Join an existing household using an invite code."""
+    """Join an existing household using an invite code.
+
+    The new account's role comes from the invite row — the joining browser
+    never gets to choose it. `JoinInput` deliberately has no role field, and
+    any role smuggled into the request body is ignored.
+    """
     # 1. Validate the invite code
     invites = await db.execute_fetchall(
-        """SELECT id, household_id, expires_at, used_at
+        """SELECT id, household_id, expires_at, used_at, role
            FROM household_invites WHERE code = ?""",
         (body.code.strip().upper(),),
     )
@@ -100,6 +118,13 @@ async def join_household(
 
     household_id = invite["household_id"]
 
+    # The invite row is the authority. Invites created before roles existed
+    # (or written without a role) keep editor-level access, matching the
+    # migration backfill. Anything unexpected defaults to editor — never owner.
+    invite_role = invite.get("role") or "editor"
+    if invite_role not in ("editor", "viewer"):
+        invite_role = "editor"
+
     # 2. Check email doesn't already exist
     existing = await db.execute_fetchall(
         "SELECT id FROM accounts WHERE email = ?",
@@ -115,7 +140,7 @@ async def join_household(
         """INSERT INTO accounts
            (household_id, email, name, password_hash, language, role)
            VALUES (?, ?, ?, ?, ?, ?)""",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, "editor"),
+        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, invite_role),
     )
     account_id = cur.lastrowid
 
@@ -184,14 +209,16 @@ async def list_members(
     """List all accounts in the current household (for the settings page).
 
     Each row carries `user_id` — the `users` row `DELETE /household/members/`
-    keys off — and `is_self`.
+    keys off — and `is_self`, plus the member's role and the server-derived
+    capabilities for that role (what #927's UI will render). Never exposes
+    password hashes, session details, or invite secrets.
 
     `users.account_id` is a real foreign key since migration 0073, so this is a
     plain join. It used to match on name, which is not unique: the join returned
     the account once per duplicate and settings showed the same person twice.
     """
     rows = await db.execute_fetchall(
-        """SELECT a.id, a.name, a.email, a.avatar, a.created_at,
+        """SELECT a.id, a.name, a.email, a.avatar, a.created_at, a.role,
                   u.id AS user_id
            FROM accounts a
            LEFT JOIN users u ON u.account_id = a.id
@@ -200,9 +227,59 @@ async def list_members(
         (current["household_id"],),
     )
     return [
-        {**dict(r), "is_self": r["id"] == current["account_id"]}
+        {
+            **dict(r),
+            "is_self": r["id"] == current["account_id"],
+            "capabilities": capabilities_for_role(r["role"]),
+        }
         for r in rows
     ]
+
+
+@router.patch("/members/{member_id}/role", response_model=HouseholdMemberOut)
+async def change_member_role(
+    member_id: int,
+    body: RoleChangeInput,
+    current=Depends(require_owner),
+    db=Depends(db_dep),
+):
+    """Change another member's role between editor and viewer (owner-only).
+
+    Rejects `owner` as a target role (the model only accepts editor/viewer),
+    rejects attempts to alter the caller/owner, and never assigns the owner
+    role — so the household keeps exactly one owner.
+    """
+    household_id = current["household_id"]
+
+    rows = await db.execute_fetchall(
+        """SELECT id, name, email, avatar, created_at, role
+           FROM accounts WHERE id = ? AND household_id = ?""",
+        (member_id, household_id),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Member not found in your household")
+    member = dict(rows[0])
+
+    if member_id == current["account_id"]:
+        raise HTTPException(status_code=400, detail="You cannot change your own role")
+    if member["role"] == "owner":
+        raise HTTPException(status_code=400, detail="You cannot change the owner's role")
+
+    await db.execute(
+        "UPDATE accounts SET role = ? WHERE id = ? AND household_id = ?",
+        (body.role, member_id, household_id),
+    )
+    await db.commit()
+
+    return {
+        "id": member["id"],
+        "name": member["name"],
+        "email": member["email"],
+        "avatar": member["avatar"],
+        "created_at": member["created_at"],
+        "role": body.role,
+        "capabilities": capabilities_for_role(body.role),
+    }
 
 
 @router.patch("/members/{member_id}", response_model=HouseholdMemberOut)
@@ -212,14 +289,22 @@ async def update_member_profile(
     current=Depends(require_editor),
     db=Depends(db_dep),
 ):
-    """Update a household member's account profile and sync care attribution."""
+    """Update a household member's account profile and sync care attribution.
+
+    Only the owner may edit another member's profile; a non-owner editor may
+    change only their own. A viewer is already blocked by require_editor (#923).
+    """
     household_id = current["household_id"]
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Member name cannot be empty")
 
+    # Editor can edit only their own profile; the owner can edit anyone's.
+    if current["role"] != "owner" and member_id != current["account_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     rows = await db.execute_fetchall(
-        """SELECT id, name, email, avatar, created_at
+        """SELECT id, name, email, avatar, created_at, role
            FROM accounts WHERE id = ? AND household_id = ?""",
         (member_id, household_id),
     )
@@ -265,16 +350,18 @@ async def update_member_profile(
         "email": member["email"],
         "avatar": avatar,
         "created_at": member["created_at"],
+        "role": member["role"],
+        "capabilities": capabilities_for_role(member["role"]),
     }
 
 
 @router.delete("/members/{user_id}", status_code=204)
 async def remove_member(
     user_id: int,
-    current=Depends(require_editor),
+    current=Depends(require_owner),
     db=Depends(db_dep),
 ):
-    """Remove a member from the current household by user_id.
+    """Remove a member from the current household by user_id (owner-only).
 
     Cleans up both users and accounts tables, plus FK references
     in care_log, care_schedules, garden_water_log, garden_fertilize_log.
@@ -338,10 +425,10 @@ async def remove_member(
 @router.patch("", status_code=200)
 async def rename_household(
     body: HouseholdUpdate,
-    current=Depends(require_editor),
+    current=Depends(require_owner),
     db=Depends(db_dep),
 ):
-    """Rename the current user's household."""
+    """Rename the current user's household (owner-only)."""
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Household name cannot be empty")

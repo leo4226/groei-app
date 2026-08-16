@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 from fastapi.routing import APIRoute
 
-from auth import create_token, get_current_account, hash_password, require_editor
+from auth import create_token, get_current_account, hash_password, require_editor, require_owner
 from main import app
 import routers.auth as auth_router
 import routers.calendar_subscription as calendar_subscription_router
@@ -36,6 +36,7 @@ PROTECTED_WRITE_ROUTES = {
     ("POST", "/api/household/invite"),
     ("PUT", "/api/household/calendar-grouping"),
     ("PATCH", "/api/household/members/{member_id}"),
+    ("PATCH", "/api/household/members/{member_id}/role"),
     ("DELETE", "/api/household/members/{user_id}"),
     ("PATCH", "/api/household"),
     ("PATCH", "/api/users/{user_id}/language"),
@@ -57,6 +58,16 @@ PROTECTED_WRITE_ROUTES = {
     ("PATCH", "/api/discover/{discovery_id}/location"),
     ("POST", "/api/discover/{discovery_id}/share"),
     ("DELETE", "/api/discover/{discovery_id}"),
+}
+
+# Household administration is owner-only since #925. These still appear in the
+# write inventory (a viewer must be blocked from them), but the dependency is
+# require_owner, not require_editor.
+OWNER_ONLY_WRITE_ROUTES = {
+    ("POST", "/api/household/invite"),
+    ("PATCH", "/api/household/members/{member_id}/role"),
+    ("DELETE", "/api/household/members/{user_id}"),
+    ("PATCH", "/api/household"),
 }
 
 # These write-method routes have deliberately different authorization models or
@@ -205,8 +216,9 @@ def test_issue_923_mounted_write_inventory_is_complete_and_protects_every_editor
     assert set(mounted_routes) == expected_routes
 
     for route_key in PROTECTED_WRITE_ROUTES:
-        assert _has_dependency(scoped_routes[route_key], require_editor), route_key
-        assert _has_dependency(mounted_routes[route_key], require_editor), route_key
+        expected = require_owner if route_key in OWNER_ONLY_WRITE_ROUTES else require_editor
+        assert _has_dependency(scoped_routes[route_key], expected), route_key
+        assert _has_dependency(mounted_routes[route_key], expected), route_key
 
 
 def test_issue_923_intentional_non_editor_routes_keep_their_existing_auth_models():
