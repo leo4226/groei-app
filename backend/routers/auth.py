@@ -18,7 +18,13 @@ from models import (
     ResetPasswordInput,
     ChangePasswordInput,
 )
-from auth import hash_password, verify_password, create_token, get_current_account
+from auth import (
+    capabilities_for_role,
+    create_token,
+    get_current_account,
+    hash_password,
+    verify_password,
+)
 from services.email import send_password_reset
 from services.rate_limit import rate_limit
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -46,8 +52,10 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
     # New accounts get the language chosen on the landing page (NL/EN toggle,
     # Dutch default) so the app opens in the language the visitor signed up in.
     cur2 = await db.execute(
-        "INSERT INTO accounts (household_id, email, name, password_hash, language) VALUES (?, ?, ?, ?, ?)",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language),
+        """INSERT INTO accounts
+           (household_id, email, name, password_hash, language, role)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, "owner"),
     )
     account_id = cur2.lastrowid
 
@@ -217,7 +225,7 @@ async def change_password(body: ChangePasswordInput, current=Depends(get_current
 @router.get("/me", response_model=AccountOut)
 async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     rows = await db.execute_fetchall(
-        """SELECT a.id, a.household_id, a.email, a.name, a.avatar, a.is_admin,
+        """SELECT a.id, a.household_id, a.email, a.name, a.avatar, a.is_admin, a.role,
                   h.name AS household_name
            FROM accounts a
            JOIN households h ON h.id = a.household_id
@@ -227,4 +235,8 @@ async def me(current=Depends(get_current_account), db=Depends(db_dep)):
     if not rows:
         raise HTTPException(status_code=404, detail="Account not found")
     account = dict(rows[0])
-    return {**account, "is_admin": bool(account["is_admin"])}
+    return {
+        **account,
+        "is_admin": bool(account["is_admin"]),
+        "capabilities": capabilities_for_role(account["role"]),
+    }

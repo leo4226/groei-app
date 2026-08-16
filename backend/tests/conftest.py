@@ -52,8 +52,11 @@ SCHEMA = """
         avatar TEXT,
         is_admin INTEGER NOT NULL DEFAULT 0,
         language TEXT DEFAULT 'nl',
+        role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('owner', 'editor', 'viewer')),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE UNIQUE INDEX uq_accounts_owner_per_household
+        ON accounts(household_id) WHERE role = 'owner';
     CREATE TABLE plants (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -260,8 +263,8 @@ async def seeded_db():
         "INSERT INTO households (id, name) VALUES (1, 'Test Household')"
     )
     await db.execute(
-        "INSERT INTO accounts (id, household_id, email, name, password_hash) "
-        "VALUES (1, 1, 'test@example.com', 'Test', 'x')"
+        "INSERT INTO accounts (id, household_id, email, name, password_hash, role) "
+        "VALUES (1, 1, 'test@example.com', 'Test', 'x', 'owner')"
     )
     await db.commit()
 

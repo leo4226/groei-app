@@ -52,9 +52,13 @@ def _db_cache():
                 name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
                 avatar TEXT,
+                is_admin INTEGER NOT NULL DEFAULT 0,
                 language TEXT DEFAULT 'nl',
+                role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('owner', 'editor', 'viewer')),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE UNIQUE INDEX uq_accounts_owner_per_household
+                ON accounts(household_id) WHERE role = 'owner';
             CREATE TABLE plant_species (
                 id INTEGER PRIMARY KEY, slug TEXT UNIQUE, common_name_nl TEXT,
                 common_name_en TEXT, latin_name TEXT, phenology_json TEXT,
@@ -129,7 +133,12 @@ def override_auth():
     from main import app
 
     async def _fake_account():
-        return {"account_id": 1, "household_id": 1}
+        return {
+            "account_id": 1,
+            "household_id": 1,
+            "role": "owner",
+            "capabilities": {"can_edit": True, "can_manage_household": True},
+        }
 
     app.dependency_overrides[get_current_account] = _fake_account
     yield

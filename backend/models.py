@@ -956,6 +956,11 @@ class JoinInput(BaseModel):
         return _validate_email(v)
 
 
+class AccountCapabilities(BaseModel):
+    can_edit: bool
+    can_manage_household: bool
+
+
 class AccountOut(BaseModel):
     id: int
     household_id: int
@@ -964,6 +969,8 @@ class AccountOut(BaseModel):
     avatar: str | None = None
     is_admin: bool = False
     household_name: str = ''
+    role: Literal['owner', 'editor', 'viewer']
+    capabilities: AccountCapabilities
 
 
 class HouseholdUpdate(BaseModel):
