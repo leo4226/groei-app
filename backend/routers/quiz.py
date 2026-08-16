@@ -20,7 +20,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from auth import get_current_account
+from auth import require_editor
 from database import db_dep
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -163,7 +163,7 @@ def _row_to_reveal(row: dict) -> dict:
 async def create_rounds(
     body: RoundsRequest,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     rows = await db.execute_fetchall(
         _PLANT_SELECT + " ORDER BY p.id", (account["household_id"],)
@@ -185,7 +185,7 @@ async def create_rounds(
 async def guess_plant(
     body: GuessRequest,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     rows = await db.execute_fetchall(
         _PLANT_SELECT + " AND p.id = ?", (account["household_id"], body.plant_id)
@@ -237,7 +237,7 @@ async def guess_plant(
 async def mc_pick(
     body: McRequest,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     rows = await db.execute_fetchall(
         _PLANT_SELECT + " AND p.id = ?", (account["household_id"], body.plant_id)

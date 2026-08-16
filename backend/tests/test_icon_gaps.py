@@ -58,7 +58,12 @@ def db_override():
         yield cache["db"]
 
     app.dependency_overrides[db_dep] = _get_db
-    app.dependency_overrides[get_current_account] = lambda: {"account_id": 1, "household_id": 1}
+    app.dependency_overrides[get_current_account] = lambda: {
+        "account_id": 1,
+        "household_id": 1,
+        "role": "owner",
+        "capabilities": {"can_edit": True},
+    }
     yield cache
     app.dependency_overrides.pop(db_dep, None)
     app.dependency_overrides.pop(get_current_account, None)

@@ -172,6 +172,7 @@ async def _resolve_actor(
     return GameActor(
         account_id=account["account_id"], player_id=None, is_guest=False,
         household_id=account["household_id"], session_id=None,
+        role=account["role"], capabilities=account["capabilities"],
     )
 
 
@@ -181,6 +182,13 @@ async def game_actor(
 ) -> GameActor:
     """Dependency accepting either an account token or a game guest token."""
     return await _resolve_actor(db, credentials)
+
+
+async def game_mutation_actor(actor: GameActor = Depends(game_actor)) -> GameActor:
+    """Allow game guests, but reject viewer accounts before game work begins."""
+    if not actor["is_guest"] and not actor["capabilities"]["can_edit"]:
+        raise HTTPException(403, "Forbidden")
+    return actor
 
 
 async def _player_row(db, session_id: int, actor: GameActor) -> dict | None:
@@ -508,7 +516,7 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
 async def create_game(
     body: GameCreateRequest,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     if actor["is_guest"]:
         raise HTTPException(403, "Guests cannot create games")
@@ -705,7 +713,7 @@ async def join_as_guest(code: str, body: GuestJoinRequest, db=Depends(db_dep)):
 async def join_game(
     code: str,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     """Join with a Floreren account. Idempotent, and open to latecomers."""
     rows = await db.execute_fetchall(
@@ -764,7 +772,7 @@ async def _require_host(db, code: str, actor: GameActor) -> dict:
 async def start_game(
     code: str,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     session = await _require_host(db, code, actor)
     if session["status"] != "waiting":
@@ -794,7 +802,7 @@ async def start_game(
 async def next_round(
     code: str,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     session = await _require_host(db, code, actor)
     if session["status"] != "active":
@@ -808,7 +816,7 @@ async def award_player(
     code: str,
     player_id: int,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     """Host override — mark a stuck guest correct for the current round.
 
@@ -846,7 +854,7 @@ async def award_player(
 async def delete_game(
     code: str,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     session = await _require_host(db, code, actor)
     await db.execute("DELETE FROM game_sessions WHERE id = ?", (session["id"],))
@@ -965,7 +973,7 @@ async def submit_answer(
     code: str,
     body: AnswerRequest,
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     """Grade a client-side identification (logbook quiz, or an account player)."""
     session = await _session_by_code(db, code.upper())
@@ -1005,7 +1013,7 @@ async def scan_answer(
     image: UploadFile = File(...),
     lang: str = Query("nl"),
     db=Depends(db_dep),
-    actor: GameActor = Depends(game_actor),
+    actor: GameActor = Depends(game_mutation_actor),
 ):
     """Identify a photo and grade it in one call — the only identify path guests reach.
 

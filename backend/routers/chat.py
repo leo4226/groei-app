@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from auth import get_current_account
+from auth import require_editor
 from care_types import STEKKIE_ACTIONABLE_CARE_TYPES
 from database import db_dep
 from services.environment import get_rain_data, get_temp_data
@@ -1181,7 +1181,7 @@ async def _build_garden_context(
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(get_current_account)):
+async def proxy_chat(req: ChatRequest, db=Depends(db_dep), account=Depends(require_editor)):
     """Forward chat message to Stekkie with structured bounded garden context."""
     try:
         garden_context, plants_ctx, maps_ctx, bio_ctx = await _build_garden_context(

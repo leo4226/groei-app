@@ -5,7 +5,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import db_dep
-from auth import get_current_account, require_admin
+from auth import get_current_account, require_admin, require_editor
 from services.icon_catalog import load_catalog
 
 router = APIRouter(prefix="/icon-catalog", tags=["icons"])
@@ -472,7 +472,7 @@ async def get_icon_gaps(db=Depends(db_dep), account=Depends(get_current_account)
 
 
 @router.patch("/request/{plant_id}")
-async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+async def request_icon(plant_id: int, db=Depends(db_dep), account=Depends(require_editor)):
     """Flag a plant as needing an icon."""
     row = await db.execute_fetchall(
         "SELECT id FROM plants WHERE id = ? AND household_id = ? AND is_active = 1",
