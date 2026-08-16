@@ -23,6 +23,7 @@ class MapErrorBoundary extends Component<{ fallback: ReactNode; children: ReactN
 import { useIsMobile } from '../../hooks/useIsMobile'
 import Glyph from '../ui/Glyph'
 import PageDecor from '../PageDecor'
+import { useCapabilities } from '../../hooks/useCapabilities'
 
 export type DiscoveryStats = { finds: number; species: number; places: number }
 
@@ -112,6 +113,7 @@ function EcologyChips({ chips, max }: { chips: Chip[]; max?: number }) {
 export default function DiscoveriesSection({ onStats }: Props) {
   const t = useT()
   const navigate = useNavigate()
+  const { canEdit } = useCapabilities()
   const isEN = (t.locale ?? 'nl-NL').toLowerCase().startsWith('en')
   const refreshTick = useFloreren((s) => s.refreshTick)
   // Smaller SVG canvas on phones so pins keep a tappable on-screen size.
@@ -686,13 +688,15 @@ export default function DiscoveriesSection({ onStats }: Props) {
                     <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
                       {t.discovery.journalLocation}
                     </p>
-                    <button
-                      onClick={() => void handleCaptureLocation(selected)}
-                      disabled={locationCapturing}
-                      className="cursor-pointer rounded-full border border-primary/35 bg-primary/8 px-3 py-1.5 text-xs font-semibold text-primary disabled:cursor-wait disabled:opacity-50"
-                    >
-                      {locationCapturing ? t.discovery.journalAddingLocation : t.discovery.journalAddLocation}
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => void handleCaptureLocation(selected)}
+                        disabled={locationCapturing}
+                        className="cursor-pointer rounded-full border border-primary/35 bg-primary/8 px-3 py-1.5 text-xs font-semibold text-primary disabled:cursor-wait disabled:opacity-50"
+                      >
+                        {locationCapturing ? t.discovery.journalAddingLocation : t.discovery.journalAddLocation}
+                      </button>
+                    )}
                     {locationError && (
                       <p role="alert" className="mb-0 mt-2 text-xs leading-snug text-overdue">
                         {t.discovery.journalLocationError}
@@ -760,9 +764,11 @@ export default function DiscoveriesSection({ onStats }: Props) {
                     {funFactFailedId === selected.id ? (
                       <div className="flex items-center gap-2">
                         <p className="m-0 text-sm text-text-muted">{t.discovery.funFactError}</p>
-                        <button onClick={() => void loadMissingFunFact(selected)} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary">
-                          {t.discovery.funFactRetry}
-                        </button>
+                        {canEdit && (
+                          <button onClick={() => void loadMissingFunFact(selected)} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary">
+                            {t.discovery.funFactRetry}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <p className="m-0 text-sm text-text-muted">{t.discovery.funFactLoading}</p>
@@ -777,7 +783,7 @@ export default function DiscoveriesSection({ onStats }: Props) {
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <p className="m-0 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">{t.discovery.journalNotes}</p>
-                    {!editingNotes && (
+                    {!editingNotes && canEdit && (
                       <button
                         onClick={() => { setNotesDraft(selected.notes ?? ''); setEditingNotes(true) }}
                         className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-primary"
@@ -818,26 +824,32 @@ export default function DiscoveriesSection({ onStats }: Props) {
                 </p>
 
                 <div className="mt-auto flex flex-wrap gap-2 pt-1.5">
-                  <button
-                    onClick={(e) => stopAction(e, () => handleAddToGarden(selected))}
-                    className="flex-1 cursor-pointer rounded-full border-none bg-primary px-4 py-2.5 text-sm font-semibold text-white"
-                  >
-                    {t.discovery.addToGarden}
-                  </button>
-                  <button
-                    onClick={(e) => stopAction(e, () => void handleShare(selected))}
-                    className="cursor-pointer rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-text"
-                  >
-                    {copiedId === selected.id ? t.discovery.shareCopied : t.discovery.share}
-                  </button>
-                  <button
-                    onClick={(e) => stopAction(e, () => void handleDelete(selected.id))}
-                    className="flex cursor-pointer items-center justify-center rounded-full border border-overdue/25 bg-transparent px-4 py-2.5 text-sm text-overdue/70 hover:bg-overdue/5"
-                    aria-label={t.common.delete}
-                    title={t.common.delete}
-                  >
-                    <Glyph name="trash" size={15} aria-hidden />
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={(e) => stopAction(e, () => handleAddToGarden(selected))}
+                      className="flex-1 cursor-pointer rounded-full border-none bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                      {t.discovery.addToGarden}
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={(e) => stopAction(e, () => void handleShare(selected))}
+                      className="cursor-pointer rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-text"
+                    >
+                      {copiedId === selected.id ? t.discovery.shareCopied : t.discovery.share}
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={(e) => stopAction(e, () => void handleDelete(selected.id))}
+                      className="flex cursor-pointer items-center justify-center rounded-full border border-overdue/25 bg-transparent px-4 py-2.5 text-sm text-overdue/70 hover:bg-overdue/5"
+                      aria-label={t.common.delete}
+                      title={t.common.delete}
+                    >
+                      <Glyph name="trash" size={15} aria-hidden />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -54,7 +54,6 @@ export default [
       'src/components/map/SelectionOverlay.tsx',
       'src/components/map/SunDebugOverlay.tsx',
       'src/components/map/WeatherPill.tsx',
-      'src/components/plant/PhotoJournal.tsx',
       'src/components/sheets/SpotInspectorSheet.tsx',
       'src/components/sun/DebugSvfOverlay.tsx',
       'src/components/sun/HeatmapLegend.tsx',
@@ -96,7 +95,7 @@ export default [
               // ↗ is deliberately NOT excluded: U+2197 renders as a colour
               // emoji on iOS, so external-link arrows must be inline SVG
               // (see components/discoveries/WikipediaLink.tsx).
-              '[—–·×→↓↑←\\s]+',
+              '[—–·×→↓↑←‹›\\s]+',
               'Floreren',
               'floreren.app',
               'BioCLIP',

@@ -31,6 +31,8 @@ import {
 } from './plantPassportModel'
 import { careEnvironmentForPlant } from './editPlantCareSchedules'
 import MeasuredSunEditor from '../components/plant/MeasuredSunEditor'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
+import { useCapabilities } from '../hooks/useCapabilities'
 
 function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
@@ -169,6 +171,7 @@ export default function PlantDetail() {
   const maps = useFloreren(s => s.maps)
   const loadPlants = useFloreren(s => s.loadPlants)
   const { markCareDone, archivePlant } = useFloreren()
+  const { canEdit } = useCapabilities()
 
   const [plant, setPlant]         = useState<typeof plants[number] | null>(null)
   const [loading, setLoading]     = useState(true)
@@ -495,13 +498,15 @@ export default function PlantDetail() {
       >
         {sunFitInfo.fit === 'good' ? t.plantDetail.fitGood : sunFitInfo.fit === 'partial' ? t.plantDetail.fitPartial : t.plantDetail.fitInsufficient}
       </span>
-      <button
-        onClick={() => setSunEditorOpen(v => !v)}
-        aria-label={t.plantQuickSheet.sunMeasureOpen}
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border ${sunEditorOpen ? 'bg-primary text-white' : 'bg-surface text-text-muted'}`}
-      >
-        <Glyph name="edit" size={13} />
-      </button>
+      {canEdit && (
+        <button
+          onClick={() => setSunEditorOpen(v => !v)}
+          aria-label={t.plantQuickSheet.sunMeasureOpen}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border ${sunEditorOpen ? 'bg-primary text-white' : 'bg-surface text-text-muted'}`}
+        >
+          <Glyph name="edit" size={13} />
+        </button>
+      )}
     </div>
   )
 
@@ -541,15 +546,17 @@ export default function PlantDetail() {
         <p className="text-sm text-text-muted mb-3">
           {isEN ? 'No year calendar available yet' : 'Nog geen jaarkalender beschikbaar'}
         </p>
-        <button
-          onClick={handleRetrySpecies}
-          disabled={retryingSpecies}
-          className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          {retryingSpecies
-            ? (isEN ? 'Loading...' : 'Bezig...')
-            : (<><Glyph name="refresh" size={14} />{isEN ? 'Fetch species data' : 'Soortgegevens ophalen'}</>)}
-        </button>
+        {canEdit && (
+          <button
+            onClick={handleRetrySpecies}
+            disabled={retryingSpecies}
+            className="px-5 py-2 bg-primary text-white rounded-full text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {retryingSpecies
+              ? (isEN ? 'Loading...' : 'Bezig...')
+              : (<><Glyph name="refresh" size={14} />{isEN ? 'Fetch species data' : 'Soortgegevens ophalen'}</>)}
+          </button>
+        )}
         {retryFailed && !retryingSpecies && (
           <p className="text-xs text-text-muted mt-3">
             {isEN
@@ -627,7 +634,7 @@ export default function PlantDetail() {
                       {t.common.cancel}
                     </button>
                   </div>
-                ) : (
+                ) : canEdit ? (
                   <button
                     onClick={() => {
                       setEditingInterval(sched.id)
@@ -640,6 +647,10 @@ export default function PlantDetail() {
                     {t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}
                     <Glyph name="edit" size={11} aria-hidden />
                   </button>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-text-muted">
+                    {t.plantDetail.xDays.replace('{n}', String(sched.interval_days))}
+                  </span>
                 )}
                 {intervalError && editingInterval === sched.id && (
                   <p className="mt-1 text-xs text-overdue">{t.plantDetail.addCareFailed}</p>
@@ -669,7 +680,7 @@ export default function PlantDetail() {
                   <p className="text-[11px] text-text-muted">{t.plantDetail.byPerson.replace('{name}', sched.last_done_by_name)}</p>
                 )}
               </div>
-              {withLogButton && (
+              {withLogButton && canEdit && (
                 <button
                   onClick={() => sched.care_type === 'photo' ? openCarePhotoPicker(null) : handleQuickAction(sched.care_type)}
                   className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-white active:scale-95 transition-transform"
@@ -689,12 +700,14 @@ export default function PlantDetail() {
   // one tap away, where the same screen also shows the interval and the rhythm
   // switch for every type at once (#886 §4.1).
   const editCareLink = (
-    <Link
-      to={`/plants/${plantId}/edit${EDIT_PLANT_CARE_HASH}`}
-      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-primary no-underline"
-    >
-      <Glyph name="sprout" size={14} aria-hidden />{t.plantDetail.manageCare}
-    </Link>
+    canEdit ? (
+      <Link
+        to={`/plants/${plantId}/edit${EDIT_PLANT_CARE_HASH}`}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm font-semibold text-primary no-underline"
+      >
+        <Glyph name="sprout" size={14} aria-hidden />{t.plantDetail.manageCare}
+      </Link>
+    ) : null
   )
 
   const careBlock = (
@@ -724,9 +737,11 @@ export default function PlantDetail() {
   // Non-blocking "add a photo?" + undo affordance after logging care
   const carePhotoUi = (
     <>
-      <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
-             className="hidden" onChange={handleCarePhotoPick} />
-      {(pendingCareLogId != null || undoInfo != null) && (
+      {canEdit && (
+        <input ref={carePhotoRef} type="file" accept="image/*" capture="environment"
+               className="hidden" onChange={handleCarePhotoPick} />
+      )}
+      {canEdit && (pendingCareLogId != null || undoInfo != null) && (
         <div className="fixed bottom-20 inset-x-4 z-40 card p-3 flex items-center gap-3 shadow-lg">
           {undoInfo && (
             <button
@@ -782,12 +797,14 @@ export default function PlantDetail() {
   )
 
   const archiveButton = (
-    <button
-      onClick={handleArchive}
-      className="w-full py-2.5 text-sm text-overdue/70 border border-overdue/20 rounded-xl hover:bg-overdue/5 transition-colors mt-2"
-    >
-      {t.plantDetail.archivePlant}
-    </button>
+    canEdit ? (
+      <button
+        onClick={handleArchive}
+        className="w-full py-2.5 text-sm text-overdue/70 border border-overdue/20 rounded-xl hover:bg-overdue/5 transition-colors mt-2"
+      >
+        {t.plantDetail.archivePlant}
+      </button>
+    ) : null
   )
 
   // ── Desktop (≥721px): editorial masthead + zoned layout ──
@@ -825,6 +842,11 @@ export default function PlantDetail() {
 
     return (
       <div style={{ paddingBottom: 80 }}>
+        {!canEdit && (
+          <div style={{ maxWidth: 1800, margin: '0 auto', padding: '24px clamp(24px, 3vw, 56px) 0' }}>
+            <ReadOnlyBanner />
+          </div>
+        )}
         {/* ── Masthead — wide rhythm matching Plants / Calendar ── */}
         <div style={{ maxWidth: 1800, margin: '0 auto' }}>
           <PageMasthead
@@ -845,19 +867,23 @@ export default function PlantDetail() {
                 >
                   <Glyph name="arrow-left" size={18} aria-hidden />
                 </button>
-                <button
-                  onClick={handleDuplicate}
-                  disabled={duplicating}
-                  className="cursor-pointer rounded-full border border-border bg-transparent px-4 py-2 text-[13px] font-medium text-text-soft transition-all hover:border-primary hover:text-primary disabled:opacity-50"
-                >
-                  {duplicating ? '…' : t.plantDetail.copyPlant}
-                </button>
-                <Link
-                  to={`/plants/${plantId}/edit`}
-                  className="rounded-full border border-primary px-4 py-2 text-[13px] font-medium text-primary no-underline transition-all hover:bg-primary hover:text-white"
-                >
-                  {t.plantDetail.edit}
-                </Link>
+                {canEdit && (
+                  <button
+                    onClick={handleDuplicate}
+                    disabled={duplicating}
+                    className="cursor-pointer rounded-full border border-border bg-transparent px-4 py-2 text-[13px] font-medium text-text-soft transition-all hover:border-primary hover:text-primary disabled:opacity-50"
+                  >
+                    {duplicating ? '…' : t.plantDetail.copyPlant}
+                  </button>
+                )}
+                {canEdit && (
+                  <Link
+                    to={`/plants/${plantId}/edit`}
+                    className="rounded-full border border-primary px-4 py-2 text-[13px] font-medium text-primary no-underline transition-all hover:bg-primary hover:text-white"
+                  >
+                    {t.plantDetail.edit}
+                  </Link>
+                )}
               </>
             }
           />
@@ -956,14 +982,16 @@ export default function PlantDetail() {
           )}
 
           {/* Archive, tucked away */}
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={handleArchive}
-              className="cursor-pointer rounded-full border border-overdue/25 bg-transparent px-4 py-2 text-[13px] text-overdue/70 transition-colors hover:bg-overdue/5"
-            >
-              {t.plantDetail.archivePlant}
-            </button>
-          </div>
+          {canEdit && (
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={handleArchive}
+                className="cursor-pointer rounded-full border border-overdue/25 bg-transparent px-4 py-2 text-[13px] text-overdue/70 transition-colors hover:bg-overdue/5"
+              >
+                {t.plantDetail.archivePlant}
+              </button>
+            </div>
+          )}
         </div>
 
         {carePhotoUi}
@@ -974,6 +1002,11 @@ export default function PlantDetail() {
   // ── Mobile (<721px): with prev/next arrows and swipe ──
   return (
     <div className="pb-10">
+      {!canEdit && (
+        <div style={{ padding: '0 16px 10px' }}>
+          <ReadOnlyBanner />
+        </div>
+      )}
       {/* Hero */}
       <div className="relative" onTouchStart={onHeroTouchStart} onTouchEnd={onHeroTouchEnd}>
         {heroMedia('w-full h-52')}
@@ -1006,18 +1039,20 @@ export default function PlantDetail() {
           <Glyph name="arrow-left" size={18} aria-hidden />
         </button>
 
-        <div className={`absolute right-4 flex gap-1.5 ${CHROME_TOP_CLASS}`}>
-          <button
-            onClick={handleDuplicate}
-            disabled={duplicating}
-            className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text-muted disabled:opacity-50"
-            title={t.plantDetail.copyPlant}
-            aria-label={t.plantDetail.copyPlant}
-          >
-            {duplicating ? '…' : '⎘'}
-          </button>
-          <PassportEditLink to={`/plants/${plantId}/edit`} label={t.plantDetail.edit} />
-        </div>
+        {canEdit && (
+          <div className={`absolute right-4 flex gap-1.5 ${CHROME_TOP_CLASS}`}>
+            <button
+              onClick={handleDuplicate}
+              disabled={duplicating}
+              className="w-9 h-9 rounded-full bg-surface/90 backdrop-blur-sm flex items-center justify-center text-text-muted disabled:opacity-50"
+              title={t.plantDetail.copyPlant}
+              aria-label={t.plantDetail.copyPlant}
+            >
+              {duplicating ? '…' : '⎘'}
+            </button>
+            <PassportEditLink to={`/plants/${plantId}/edit`} label={t.plantDetail.edit} />
+          </div>
+        )}
       </div>
 
       <div className="px-4 -mt-6 relative z-10">
