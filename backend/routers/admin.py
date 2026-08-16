@@ -122,6 +122,34 @@ async def backfill_care_schedules_preview(db = Depends(db_dep)):
 
 
 
+@router.get("/admin/photo-embeddings/preview")
+async def photo_embeddings_preview(db=Depends(db_dep), account=Depends(get_current_account)):
+    """How many journal photos carry no BioCLIP embedding.
+
+    A photo uploaded while the worker was unreachable is stored and displayed
+    normally but has no embedding, so it feeds neither identification nor the
+    garden game. Nothing surfaced that, which is how a whole photo round could
+    look successful and be inert.
+    """
+    missing = await db.execute_fetchall(
+        """SELECT pp.id FROM plant_photos pp
+             JOIN plants p ON p.id = pp.plant_id
+            WHERE pp.embedding IS NULL AND p.household_id = ?""",
+        (account["household_id"],),
+    )
+    total = await db.execute_fetchall(
+        """SELECT pp.id FROM plant_photos pp
+             JOIN plants p ON p.id = pp.plant_id
+            WHERE p.household_id = ?""",
+        (account["household_id"],),
+    )
+    return {
+        "total_photos": len(total),
+        "missing_embedding": len(missing),
+        "embedded": len(total) - len(missing),
+    }
+
+
 @router.get("/admin/backfill-plant-types/preview")
 async def backfill_plant_types_preview(db = Depends(db_dep)):
     """Preview: count active plants that backfill-plant-types would process."""

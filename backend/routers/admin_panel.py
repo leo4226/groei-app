@@ -2037,6 +2037,117 @@ async def _run_backfill_species(db, params: dict, on_progress) -> dict:
     }
 
 
+async def _run_backfill_photo_embeddings(db, params: dict, on_progress) -> dict:
+    """Re-embed journal photos that were stored while the BioCLIP worker was down.
+
+    `check_photo` returns None when the worker is unreachable, and
+    `_run_photo_check` then stores nothing — no embedding, no anchor. The photo
+    itself uploads and displays perfectly, so a photo round done while the
+    Windows machine is asleep looks like a complete success and silently
+    produces none of the identification or game value it exists for.
+
+    The images are in R2, so this is recoverable: fetch each photo that has no
+    embedding, run the same check, and take the same anchor decision that the
+    upload path would have taken.
+
+    Fails fast when the worker is unreachable rather than walking the whole
+    backlog turning every row into a skip — the failure that matters is
+    "your worker is off", said once.
+    """
+    import httpx
+
+    from services.photo_check import check_photo
+    from services.user_refs import add_anchor
+
+    household_id = params.get("household_id")
+    rows = await db.execute_fetchall(
+        """SELECT pp.id, pp.url, pp.plant_id, p.name AS plant_name, p.species_id
+             FROM plant_photos pp
+             JOIN plants p ON p.id = pp.plant_id
+            WHERE pp.embedding IS NULL AND p.household_id = ?
+         ORDER BY pp.taken_at DESC""",
+        (household_id,),
+    )
+    total = len(rows)
+    await on_progress(0, total)
+    if total == 0:
+        return {"checked": 0, "embedded": 0, "anchored": 0, "skipped_details": []}
+
+    embedded = 0
+    anchored = 0
+    failures: list[dict] = []
+
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        for i, row in enumerate(rows):
+            url = row["url"]
+            try:
+                if not url:
+                    failures.append({
+                        "id": row["id"], "name": row["plant_name"], "reason": "no_url",
+                        "hint": "The photo row has no stored URL; nothing to fetch.",
+                    })
+                    continue
+                resp = await client.get(url)
+                resp.raise_for_status()
+                image_bytes = resp.content
+            except Exception as exc:
+                logger.warning("Photo %s could not be fetched: %s", row["id"], exc)
+                failures.append({
+                    "id": row["id"], "name": row["plant_name"],
+                    "reason": "download_failed", "error": str(exc),
+                    "hint": "The image is missing from R2 or the URL is stale.",
+                })
+                await on_progress(i + 1, total)
+                continue
+
+            result = await check_photo(image_bytes, row["species_id"])
+            if result is None:
+                # One unreachable worker means every remaining row fails the same
+                # way. Stop and say so, instead of a run that reports 0 embedded.
+                raise RuntimeError(
+                    "The BioCLIP worker is unreachable, so no photo can be embedded. "
+                    "Check https://bioclip.floreren.app/health and that the "
+                    "'Floreren Workers' task is running, then run this again — "
+                    f"{embedded} of {total} photos were done before it stopped."
+                )
+
+            await db.execute(
+                """UPDATE plant_photos SET bioclip_species_id = ?, bioclip_confidence = ?,
+                   species_mismatch = ?, embedding = ? WHERE id = ?""",
+                (result["bioclip_species_id"], result["bioclip_confidence"],
+                 result["species_mismatch"], result["embedding"], row["id"]),
+            )
+            await db.commit()
+            embedded += 1
+
+            # Same guard as the upload path: only anchor a label we can trust.
+            if row["species_id"] and not result["species_mismatch"]:
+                outcome = await add_anchor(
+                    db, row["species_id"], result["embedding"],
+                    photo_url=url, plant_id=row["plant_id"],
+                )
+                if outcome == "added":
+                    anchored += 1
+            elif row["species_id"] and result["species_mismatch"]:
+                failures.append({
+                    "id": row["id"], "name": row["plant_name"],
+                    "reason": "species_mismatch",
+                    "hint": "Embedded, but not used as a reference: BioCLIP thinks this is a different species.",
+                })
+            elif not row["species_id"]:
+                failures.append({
+                    "id": row["id"], "name": row["plant_name"],
+                    "reason": "no_species_link",
+                    "hint": "Embedded and usable by the game, but it cannot train identification until the plant is linked to a species.",
+                })
+            await on_progress(i + 1, total)
+
+    return {
+        "checked": total, "embedded": embedded, "anchored": anchored,
+        "skipped_details": failures,
+    }
+
+
 async def _run_backfill_plant_types(db, params: dict, on_progress) -> dict:
     await on_progress(0, 1)
     rows = await db.execute_fetchall(
@@ -2089,6 +2200,7 @@ _JOB_RUNNERS = {
     "backfill_names":         _run_backfill_names,
     "backfill_plant_types":   _run_backfill_plant_types,
     "backfill_species":       _run_backfill_species,
+    "backfill_photo_embeddings": _run_backfill_photo_embeddings,
 }
 
 
@@ -2113,7 +2225,7 @@ async def start_admin_job(
         )
     params = dict(body.params)
     if body.kind in {"backfill_facts", "backfill_names", "generate_icons",
-                     "backfill_species"}:
+                     "backfill_species", "backfill_photo_embeddings"}:
         params["household_id"] = admin.get("household_id")
     started = await start_job(db, admin, body.kind, params, runner)
     job_id = started["job_id"]
