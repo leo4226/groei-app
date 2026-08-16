@@ -143,6 +143,11 @@ export interface AccountMe {
   avatar: string | null
   is_admin: boolean
   household_name: string
+  role: 'owner' | 'editor' | 'viewer'
+  capabilities: {
+    can_edit: boolean
+    can_manage_household: boolean
+  }
 }
 
 export interface AdminUserRow {

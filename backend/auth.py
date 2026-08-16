@@ -17,6 +17,12 @@ EXPIRE_DAYS = 30
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer = HTTPBearer()
 
+_CAPABILITIES_BY_ROLE = {
+    "owner": {"can_edit": True, "can_manage_household": True},
+    "editor": {"can_edit": True, "can_manage_household": False},
+    "viewer": {"can_edit": False, "can_manage_household": False},
+}
+
 
 def hash_password(plain: str) -> str:
     return _pwd.hash(plain)
@@ -24,6 +30,14 @@ def hash_password(plain: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return _pwd.verify(plain, hashed)
+
+
+def capabilities_for_role(role: str) -> dict[str, bool]:
+    """Return the stable server-defined capabilities for a household role."""
+    try:
+        return dict(_CAPABILITIES_BY_ROLE[role])
+    except KeyError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
 def create_token(account_id: int, household_id: int) -> str:
@@ -60,7 +74,7 @@ async def get_current_account_from_token(token: str, db) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     rows = await db.execute_fetchall(
-        """SELECT a.id, a.household_id
+        """SELECT a.id, a.household_id, a.role
            FROM accounts a
            JOIN households h ON h.id = a.household_id
            WHERE a.id = ?""",
@@ -73,15 +87,34 @@ async def get_current_account_from_token(token: str, db) -> dict:
     if account["household_id"] != claims["household_id"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
-    return {"account_id": account["id"], "household_id": account["household_id"]}
+    return {
+        "account_id": account["id"],
+        "household_id": account["household_id"],
+        "role": account["role"],
+        "capabilities": capabilities_for_role(account["role"]),
+    }
 
 
 async def get_current_account(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     db=Depends(db_dep),
 ) -> dict:
-    """FastAPI dependency — injects {"account_id": int, "household_id": int}."""
+    """FastAPI dependency — injects the current database-backed account context."""
     return await get_current_account_from_token(credentials.credentials, db)
+
+
+async def require_editor(account=Depends(get_current_account)) -> dict:
+    """FastAPI dependency — 403 unless the caller can edit household data."""
+    if not account["capabilities"]["can_edit"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return account
+
+
+async def require_owner(account=Depends(get_current_account)) -> dict:
+    """FastAPI dependency — 403 unless the caller can manage their household."""
+    if not account["capabilities"]["can_manage_household"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return account
 
 
 # ── Guest tokens (garden game) ───────────────────────────────────────────────

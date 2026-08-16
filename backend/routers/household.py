@@ -112,9 +112,10 @@ async def join_household(
     # (NL/EN toggle, Dutch default)
     pw_hash = hash_password(body.password)
     cur = await db.execute(
-        """INSERT INTO accounts (household_id, email, name, password_hash, language)
-           VALUES (?, ?, ?, ?, ?)""",
-        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language),
+        """INSERT INTO accounts
+           (household_id, email, name, password_hash, language, role)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (household_id, body.email.lower(), body.name.strip(), pw_hash, body.language, "editor"),
     )
     account_id = cur.lastrowid
 
