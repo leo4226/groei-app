@@ -336,15 +336,21 @@ see their output:
   and is unit-tested (`tests/test_bug_detector.py`).
 - **PR review** (`.github/workflows/pr-review.yml`, every PR): a
   **blocking** grep-based guard fails the check if a diff deletes tests or
-  adds skip/xfail markers (agents may add tests, never weaken them), plus
-  an **advisory** adversarial DeepSeek review posted as a PR comment. The
-  review is input for Leon — it is not a merge gate and it can be wrong.
-  Because the guard is a grep, it also fires when a PR deletes the tests of
-  code it deletes. That case is legitimate, and **Leon** unblocks it with the
-  `tests-intentionally-removed` label: the guard downgrades to a warning and
-  re-runs on the label alone (no new push needed); removing the label
-  re-blocks. An agent must never label its own PR — the label *is* the human
-  saying the removal was intended.
+  adds skip/xfail markers, plus an **advisory** adversarial DeepSeek review
+  posted as a PR comment. The review is input for Leon — it is not a merge
+  gate and it can be wrong.
+
+  Deleting a test is allowed when the thing it tested is gone: a helper with
+  no callers left, an endpoint that was replaced, a branch the refactor
+  removed. Deleting a test because it fails is not — fix the code, or fix the
+  test if the test was the thing that was wrong. The guard cannot tell those
+  apart (it is a grep over the diff), so it blocks either way and **Leon**
+  unblocks the legitimate case with the `tests-intentionally-removed` label:
+  the guard downgrades to a warning and re-runs on the label alone (no new
+  push needed); removing the label re-blocks. An agent must never label its
+  own PR — the label *is* the human agreeing the removal was intended. Say in
+  the PR body which tests went and what they covered, so there is something
+  to agree with.
 
 The human chain is unchanged: detector files → Leon/Claude triage (set
 difficulty + route) → executor agent fixes → CI + review → **Leon merges**.
