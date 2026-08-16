@@ -10,8 +10,11 @@ name: Dev DB migrate
 #
 # Two triggers:
 #   - push to master touching a migration — the common case, hands-off
-#   - workflow_dispatch — a manual "Run workflow" button, which is also how an
-#     agent runs this on demand. Agents get a button, not the credential.
+#   - workflow_dispatch — a "Run workflow" button for the rare manual catch-up.
+#     Leon-only: an agent token has no `actions: write` and gets
+#     `403 Resource not accessible by integration` on the dispatch endpoint.
+#     An agent that needs dev migrated off the automatic path asks him to press
+#     it — it does not get the credential as a consolation prize.
 #
 # The credential lives in exactly one place: the DEV_DATABASE_URL repository
 # secret. Nobody needs a copy of it to keep dev current.
