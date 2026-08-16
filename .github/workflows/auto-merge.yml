@@ -2,10 +2,13 @@ name: Auto-merge
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, reopened, ready_for_review]
     branches: [master]
 
-# Squash-merge as soon as all required checks pass — no human review needed.
+# Take a PR from "just opened" all the way to master without a human step:
+# mark it ready if it was opened as a draft, then squash-merge as soon as all
+# required checks pass. A merge to master deploys the backend to Fly, so a
+# green PR ships to production — there is no review gate behind this.
 permissions:
   pull-requests: write
   contents: write
@@ -13,9 +16,35 @@ permissions:
 jobs:
   enable-auto-merge:
     name: Enable auto-merge
-    if: '!github.event.pull_request.draft'
+    # Same-repo branches only. The repo is public, so without this a stranger's
+    # fork PR would be marked ready and queued for merge; required checks would
+    # still have to pass, but nothing about that is a review. Fork PRs also get
+    # no secrets, so DEPLOY_PAT would be empty and the guard below would fail
+    # the run on every outside contribution — noise on top of the risk.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      - name: Mark ready for review
+        # Agents are instructed to open PRs as drafts, which left Leon clicking
+        # "Ready for review" on every one. The click is what this replaces.
+        #
+        # It MUST use DEPLOY_PAT, not GITHUB_TOKEN. GitHub does not deliver
+        # events caused by GITHUB_TOKEN (the same recursion guard documented in
+        # deploy.yml), so a GITHUB_TOKEN-authored ready_for_review would be
+        # invisible: pr-review.yml skips drafts, so test-guard — a required
+        # check — would never run, and the PR would wait forever for a status
+        # that is never reported. Fail loudly instead of creating that.
+        if: github.event.pull_request.draft
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_PAT }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::DEPLOY_PAT is not set. Marking a PR ready with GITHUB_TOKEN fires no ready_for_review event, so test-guard (required) would never run and this PR would be stuck. Leaving it as a draft."
+            exit 1
+          fi
+          gh pr ready "$PR_URL"
+
       - name: Enable auto-merge (squash)
         # Merge with DEPLOY_PAT when present so the resulting push to master is
         # attributed to a real user and triggers the Fly Deploy workflow

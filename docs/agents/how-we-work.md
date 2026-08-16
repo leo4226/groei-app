@@ -14,7 +14,7 @@ Several agents work on this project at the same time, plus Leon (the human owner
 
 | Who | Role |
 |---|---|
-| **Leon (human)** | Logs ideas & bugs, triages issues, reviews and **merges** all work, deploys. |
+| **Leon (human)** | Logs ideas & bugs, triages issues, sets the direction. He does **not** gate merges — see §1.5; work that passes CI ships without him. |
 | **Claude (planner)** | Writes plans/specs when the goal is fuzzy; takes the hard or ambiguous coding where there's no clear target yet. Picks up `ready-for-human` issues. |
 | **DeepSeek agents (executors, several at once)** | Implement well-specified issues in parallel. This is most of the coding volume. Pick up `ready-for-agent` issues. |
 
@@ -46,8 +46,15 @@ helper at `scripts/agent-worktree.ps1` (PowerShell) or `scripts/agent-worktree.s
 3. **Always run the tests before committing.** If your change breaks a test, fix it.
    Do not commit broken code.
 4. **One issue → one branch → one pull request.** Keep each change focused.
-5. **Do not merge your own PR, deploy, rewrite git history, or delete branches/tags.**
-   Leon merges and deploys.
+5. **Do not merge, deploy, rewrite git history, or delete branches/tags by hand.**
+   You do not need to: opening a PR is shipping it. `auto-merge.yml` marks it
+   ready and squash-merges the moment the required checks pass, and a merge to
+   master deploys the backend to Fly. **Nobody reads it in between.** Green CI
+   is the only thing standing between your diff and floreren.app, so treat
+   "the checks passed" as "this is live", not as "this is ready to be
+   reviewed". If a change needs a human to look first, say so in the PR body
+   and open it somewhere the automation does not reach — or ask Leon before
+   you push.
 6. **Match the existing code style** in the file you're editing.
 7. **When unsure, stop and ask.**
 
@@ -114,7 +121,7 @@ Leon's bug  ──► GitHub Issue            (needs-triage)
                      │                    ├─ clear & contained ► ready-for-agent  (DeepSeek)
                      │                    └─ needs a plan       ► ready-for-human  (Claude/Leon)
                      ▼
-   pick it ► worktree+branch ► fix ► test ► open PR ► (Leon reviews & merges) ► deployed
+   pick it ► worktree+branch ► fix ► test ► open PR ► CI green ► auto-merged ► deployed
 ```
 
 See **`docs/agents/triage-cheatsheet.md`** for the triage step-by-step.
@@ -132,7 +139,7 @@ Floreren's config in `docs/agents/` and follows the rules in this file.
 | Turn a discussion into a plan + docs | `grill-with-docs` | ADRs → `docs/archive/`, glossary → `CONTEXT.md`, designs → `docs/plans/`. |
 | Publish a plan as a PRD | `to-prd` | Creates a GitHub issue (§6), not a file. |
 | Break a plan into issues | `to-issues` | Keep a coupled epic as **one** issue (§2); split only if slices are independent. |
-| Implement a `ready-for-*` issue | `tdd` + `implement` | Follow §5/§7: claim `in-progress`, own worktree, test (§8), PR with `Closes #n`, never self-merge. |
+| Implement a `ready-for-*` issue | `tdd` + `implement` | Follow §5/§7: claim `in-progress`, own worktree, test (§8), PR with `Closes #n` — which auto-merges and deploys once green (§1.5). |
 | Hard bug / regression | `diagnosing-bugs` | Reads `CONTEXT.md` + `docs/archive/`. |
 | Mid-merge/rebase conflict | `resolving-merge-conflicts` | — |
 | Design or deepen a module | `codebase-design` / `domain-modeling` | Use the glossary's vocabulary (`CONTEXT.md`). |
@@ -352,8 +359,9 @@ see their output:
   the PR body which tests went and what they covered, so there is something
   to agree with.
 
-The human chain is unchanged: detector files → Leon/Claude triage (set
-difficulty + route) → executor agent fixes → CI + review → **Leon merges**.
+The chain: detector files → Leon/Claude triage (set difficulty + route) →
+executor agent fixes → CI + review → **auto-merge and deploy**. Leon's only
+guaranteed involvement is triage, at the front. Nobody approves at the end.
 
 ---
 
