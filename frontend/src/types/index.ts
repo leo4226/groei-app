@@ -544,6 +544,20 @@ export function isCareTypeValidForEnv(careType: CareType, isIndoor: boolean): bo
   return isIndoor || !INDOOR_ONLY_CARE_TYPES.includes(careType)
 }
 
+export interface PhotoRoundPlant {
+  plant_id: number
+  name: string
+  map_id: number | null
+  map_name: string | null
+  map_x: number | null
+  map_y: number | null
+  icon_key: string | null
+  /** Null = a photo of this plant cannot become a BioCLIP species anchor. */
+  species_id: number | null
+  photo_count: number
+  last_photo_at: string | null
+}
+
 // ── Care warning types (Phase C) ──
 
 export interface CareWarningOut {

@@ -380,6 +380,18 @@ export default function Plants() {
                   </svg>
                   {t.discovery.identifyWild}
                 </button>
+                <button onClick={() => navigate('/photo-round')} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                  color: 'var(--color-text-soft)', padding: '10px 16px',
+                  border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                  transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+                >
+                  {t.photoRound.startFromPlants}
+                </button>
                 <button onClick={() => navigate('/plants/add')} style={{
                   fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
                   color: 'var(--color-surface)', textDecoration: 'none', padding: '10px 17px',

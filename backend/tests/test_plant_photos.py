@@ -291,3 +291,62 @@ async def test_upload_succeeds_when_check_returns_none(client, photo_db, auth_he
         "SELECT species_mismatch FROM plant_photos WHERE id = ?", (res.json()["id"],)
     )
     assert not rows[0]["species_mismatch"]
+
+
+# ── Photo round (GET /photo-round) ────────────────────────────────────────────
+# The round is the reason one garden walk can serve three purposes at once
+# (plant record, BioCLIP anchors, game references), so its ORDER BY is the
+# feature: stopping half way must still leave the worst-covered plants done.
+
+
+@pytest.mark.asyncio
+async def test_photo_round_requires_auth(client, photo_db):
+    res = await client.get("/api/photo-round")
+    assert res.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_photo_round_puts_unphotographed_first_then_oldest(client, photo_db, auth_header):
+    db, _ = photo_db
+    await db.executescript("""
+        INSERT INTO plants (id, name, household_id) VALUES
+            (3, 'Recently shot', 1), (4, 'Long ago', 1), (5, 'Never shot', 1);
+        INSERT INTO plant_photos (plant_id, household_id, r2_key, url, taken_at) VALUES
+            (3, 1, 'k3', 'u3', '2026-08-01T10:00:00'),
+            (4, 1, 'k4', 'u4', '2026-01-05T10:00:00'),
+            (4, 1, 'k4b', 'u4b', '2026-02-05T10:00:00');
+    """)
+    await db.commit()
+
+    res = await client.get("/api/photo-round", headers=auth_header)
+    assert res.status_code == 200
+    names = [row["name"] for row in res.json()]
+
+    # Both never-photographed plants lead; among the rest, oldest newest-photo first.
+    assert set(names[:2]) == {"Monstera", "Never shot"}
+    assert names[2:] == ["Long ago", "Recently shot"]
+
+
+@pytest.mark.asyncio
+async def test_photo_round_reports_anchor_eligibility_and_counts(client, photo_db, auth_header):
+    db, _ = photo_db
+    await db.executescript("""
+        UPDATE plants SET species_id = 7 WHERE id = 1;
+        INSERT INTO plant_photos (plant_id, household_id, r2_key, url, taken_at)
+             VALUES (1, 1, 'k1', 'u1', '2026-03-03T09:00:00');
+    """)
+    await db.commit()
+
+    res = await client.get("/api/photo-round", headers=auth_header)
+    row = next(r for r in res.json() if r["plant_id"] == 1)
+
+    # species_id is what tells the client this photo can become an anchor.
+    assert row["species_id"] == 7
+    assert row["photo_count"] == 1
+    assert row["last_photo_at"].startswith("2026-03-03T09:00:00")
+
+
+@pytest.mark.asyncio
+async def test_photo_round_excludes_other_households(client, photo_db, auth_header):
+    res = await client.get("/api/photo-round", headers=auth_header)
+    assert all(r["plant_id"] != 2 for r in res.json())

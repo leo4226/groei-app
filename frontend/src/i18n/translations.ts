@@ -485,6 +485,29 @@ export type Translations = {
     mismatchHint: string
   }
 
+  photoRound: {
+    title: string
+    lede: string
+    scopeAll: string
+    scopeLabel: string
+    loading: string
+    progress: (done: number, total: number) => string
+    neverPhotographed: string
+    lastPhoto: (days: number) => string
+    noSpeciesWarning: string
+    takePhoto: string
+    uploading: string
+    skip: string
+    finish: string
+    doneTitle: string
+    doneBody: (count: number) => string
+    doneNothing: string
+    empty: string
+    uploadFailed: string
+    retry: string
+    startFromPlants: string
+  }
+
   settings: {
     title: string
     mastheadEyebrow: string

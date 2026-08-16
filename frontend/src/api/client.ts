@@ -482,6 +482,9 @@ export const weatherWarnings = {
 }
 
 export const photos = {
+  /** Plants to walk past on a photo round, worst-photographed first. */
+  round: (mapId?: number) => api<import('../types').PhotoRoundPlant[]>(
+    'GET', `/photo-round${mapId != null ? `?map_id=${mapId}` : ''}`),
   list: (plantId: number) => api<import('../types').PlantPhoto[]>('GET', `/plants/${plantId}/photos`),
   upload: (plantId: number, image: Blob, opts: { note?: string; takenAt?: string; careLogId?: number } = {}) => {
     const f = new FormData()
