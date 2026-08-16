@@ -43,17 +43,22 @@ export default function PhotoRound() {
   const [done, setDone] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [failed, setFailed] = useState(false)
+  // A failed load is not an empty garden. Collapsing the two would tell someone
+  // standing outside with a phone that they have no plants, and offer no way back.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
     setQueue(null)
     setIndex(0)
+    setLoadFailed(false)
     photosApi.round(mapId)
       .then(rows => { if (!cancelled) setQueue(rows) })
-      .catch(() => { if (!cancelled) setQueue([]) })
+      .catch(() => { if (!cancelled) setLoadFailed(true) })
     return () => { cancelled = true }
-  }, [mapId])
+  }, [mapId, reloadKey])
 
   const current = queue && index < queue.length ? queue[index] : null
   const total = queue?.length ?? 0
@@ -117,15 +122,30 @@ export default function PhotoRound() {
         </span>
         <select
           value={mapId ?? ''}
+          disabled={uploading}
           onChange={e => setParams(e.target.value ? { map: e.target.value } : {})}
-          className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text disabled:opacity-60"
         >
           <option value="">{t.photoRound.scopeAll}</option>
           {maps.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       </label>
 
-      {queue === null && <p className="text-sm text-text-muted">{t.photoRound.loading}</p>}
+      {queue === null && !loadFailed && (
+        <p className="text-sm text-text-muted">{t.photoRound.loading}</p>
+      )}
+
+      {loadFailed && (
+        <div className="card px-4 py-4">
+          <p className="text-sm text-text">{t.photoRound.loadFailed}</p>
+          <button
+            onClick={() => setReloadKey(k => k + 1)}
+            className="mt-3 rounded-xl border border-border px-4 py-2 text-sm text-text-soft"
+          >
+            {t.photoRound.retry}
+          </button>
+        </div>
+      )}
 
       {queue !== null && total === 0 && (
         <p className="text-sm text-text-muted">{t.photoRound.empty}</p>

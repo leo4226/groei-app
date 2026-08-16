@@ -550,6 +550,7 @@ export const nl: Translations = {
     doneNothing: 'Geen foto’s gemaakt.',
     empty: 'Geen planten om te fotograferen.',
     uploadFailed: 'Uploaden mislukt. Probeer opnieuw.',
+    loadFailed: 'Kon de plantenlijst niet laden.',
     retry: 'Opnieuw',
     startFromPlants: 'Fotoronde',
   },

@@ -504,6 +504,7 @@ export type Translations = {
     doneNothing: string
     empty: string
     uploadFailed: string
+    loadFailed: string
     retry: string
     startFromPlants: string
   }
