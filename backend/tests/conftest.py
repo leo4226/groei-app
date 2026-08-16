@@ -57,6 +57,16 @@ SCHEMA = """
     );
     CREATE UNIQUE INDEX uq_accounts_owner_per_household
         ON accounts(household_id) WHERE role = 'owner';
+    CREATE TABLE household_invites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        household_id INTEGER NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        created_by INTEGER NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        role TEXT NOT NULL DEFAULT 'editor' CHECK (role IN ('editor', 'viewer'))
+    );
     CREATE TABLE plants (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,

@@ -98,16 +98,9 @@ async def test_register_creates_an_owner_account(client, seeded_db):
 
 @pytest.mark.asyncio
 async def test_legacy_join_creates_an_editor_account(client, seeded_db):
-    await seeded_db.execute(
-        """CREATE TABLE household_invites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            household_id INTEGER NOT NULL,
-            code TEXT NOT NULL UNIQUE,
-            created_by INTEGER NOT NULL,
-            expires_at DATETIME NOT NULL,
-            used_at DATETIME
-        )"""
-    )
+    # The shared conftest schema now carries household_invites (with role,
+    # default 'editor') — a legacy invite inserted without a role behaves like
+    # the pre-#925 rows the migration backfilled to editor.
     await seeded_db.execute(
         """INSERT INTO household_invites
            (household_id, code, created_by, expires_at)

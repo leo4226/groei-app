@@ -21,10 +21,6 @@ EXTRA_SCHEMA = """
     CREATE TABLE zones (id INTEGER PRIMARY KEY AUTOINCREMENT, map_id INTEGER);
     CREATE TABLE ground_zones (id TEXT PRIMARY KEY, map_id INTEGER);
     CREATE TABLE objects (id INTEGER PRIMARY KEY AUTOINCREMENT, map_id INTEGER);
-    CREATE TABLE household_invites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, household_id INTEGER, code TEXT,
-        created_by INTEGER, expires_at TEXT, used_at TEXT
-    );
     CREATE TABLE password_reset_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER,
         token TEXT, expires_at TEXT, used_at TEXT
