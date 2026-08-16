@@ -2060,6 +2060,47 @@ async def _run_backfill_photo_embeddings(db, params: dict, on_progress) -> dict:
     from services.user_refs import add_anchor
 
     household_id = params.get("household_id")
+
+    # ── Pass 1: photos already embedded, but never anchored ──────────────────
+    #
+    # An embedding is only kept as a species anchor if the plant had a species
+    # link at upload time. Link the species afterwards and the existing photos
+    # stay embedded and unanchored forever — the upload path has long since run,
+    # and the re-embed pass below skips them because they DO have an embedding.
+    # That is the gap: photograph first, link later, and those photos never
+    # train identification.
+    #
+    # This needs no worker. The embedding is already in the row; only the
+    # anchor decision was missed, and it can be taken now.
+    adoptable = await db.execute_fetchall(
+        """SELECT pp.id, pp.url, pp.plant_id, pp.embedding, p.name AS plant_name,
+                  p.species_id
+             FROM plant_photos pp
+             JOIN plants p ON p.id = pp.plant_id
+            WHERE pp.embedding IS NOT NULL
+              AND p.species_id IS NOT NULL
+              AND NOT pp.species_mismatch
+              AND p.household_id = ?
+              AND NOT EXISTS (
+                    SELECT 1 FROM user_confirmed_embeddings u
+                     WHERE u.source_plant_id = pp.plant_id
+                       AND u.source_photo_url = pp.url)
+         ORDER BY pp.taken_at DESC""",
+        (household_id,),
+    )
+    adopted = 0
+    for row in adoptable:
+        embedding = row["embedding"]
+        if isinstance(embedding, memoryview):
+            embedding = bytes(embedding)
+        outcome = await add_anchor(
+            db, row["species_id"], embedding,
+            photo_url=row["url"], plant_id=row["plant_id"],
+        )
+        if outcome == "added":
+            adopted += 1
+
+    # ── Pass 2: photos with no embedding at all (worker was down) ────────────
     rows = await db.execute_fetchall(
         """SELECT pp.id, pp.url, pp.plant_id, p.name AS plant_name, p.species_id
              FROM plant_photos pp
@@ -2071,7 +2112,10 @@ async def _run_backfill_photo_embeddings(db, params: dict, on_progress) -> dict:
     total = len(rows)
     await on_progress(0, total)
     if total == 0:
-        return {"checked": 0, "embedded": 0, "anchored": 0, "skipped_details": []}
+        return {
+            "checked": 0, "embedded": 0, "anchored": adopted,
+            "adopted": adopted, "skipped_details": [],
+        }
 
     embedded = 0
     anchored = 0
@@ -2108,7 +2152,9 @@ async def _run_backfill_photo_embeddings(db, params: dict, on_progress) -> dict:
                     "The BioCLIP worker is unreachable, so no photo can be embedded. "
                     "Check https://bioclip.floreren.app/health and that the "
                     "'Floreren Workers' task is running, then run this again — "
-                    f"{embedded} of {total} photos were done before it stopped."
+                    f"{embedded} of {total} photos were embedded before it stopped"
+                    f", and {adopted} already-embedded photos became references "
+                    "(that part needs no worker and is saved)."
                 )
 
             await db.execute(
@@ -2143,8 +2189,8 @@ async def _run_backfill_photo_embeddings(db, params: dict, on_progress) -> dict:
             await on_progress(i + 1, total)
 
     return {
-        "checked": total, "embedded": embedded, "anchored": anchored,
-        "skipped_details": failures,
+        "checked": total, "embedded": embedded, "anchored": anchored + adopted,
+        "adopted": adopted, "skipped_details": failures,
     }
 
 

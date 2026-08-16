@@ -143,10 +143,26 @@ async def photo_embeddings_preview(db=Depends(db_dep), account=Depends(get_curre
             WHERE p.household_id = ?""",
         (account["household_id"],),
     )
+    # Embedded, species-linked, agreed-with by BioCLIP — and still not a
+    # reference, because the species link arrived after the photo did.
+    unanchored = await db.execute_fetchall(
+        """SELECT pp.id FROM plant_photos pp
+             JOIN plants p ON p.id = pp.plant_id
+            WHERE pp.embedding IS NOT NULL
+              AND p.species_id IS NOT NULL
+              AND NOT pp.species_mismatch
+              AND p.household_id = ?
+              AND NOT EXISTS (
+                    SELECT 1 FROM user_confirmed_embeddings u
+                     WHERE u.source_plant_id = pp.plant_id
+                       AND u.source_photo_url = pp.url)""",
+        (account["household_id"],),
+    )
     return {
         "total_photos": len(total),
         "missing_embedding": len(missing),
         "embedded": len(total) - len(missing),
+        "unanchored": len(unanchored),
     }
 
 

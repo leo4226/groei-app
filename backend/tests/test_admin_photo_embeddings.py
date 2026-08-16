@@ -158,3 +158,72 @@ async def _ok(species_id):
 
 async def _none():
     return None
+
+
+@pytest.mark.asyncio
+async def test_adopts_embedded_photos_whose_species_arrived_later(photo_db, monkeypatch):
+    """The gap this closes: photograph first, link the species afterwards.
+
+    The upload path took its anchor decision when the plant had no species, and
+    the re-embed pass skips the photo because it HAS an embedding. Without this
+    the photo stays embedded and unanchored forever — it helps the game and
+    never trains identification.
+    """
+    # Photo 11's plant had no species when it was shot; it does now.
+    await photo_db.execute(
+        "UPDATE plant_photos SET embedding = ? WHERE id = 11", (EMBEDDING,))
+    await photo_db.execute("UPDATE plants SET species_id = 12 WHERE id = 2")
+    await photo_db.commit()
+    _fake_httpx(monkeypatch)
+    monkeypatch.setattr(
+        'services.photo_check.check_photo', lambda img, sid: _ok(sid))
+
+    result = await ap._run_backfill_photo_embeddings(
+        photo_db, {"household_id": 1}, _noop_progress)
+
+    anchors = await photo_db.execute_fetchall(
+        "SELECT species_id, source_plant_id FROM user_confirmed_embeddings "
+        "WHERE source_plant_id = 2")
+    assert [(a["species_id"], a["source_plant_id"]) for a in anchors] == [(12, 2)]
+    assert result["adopted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_adoption_survives_an_unreachable_worker(photo_db, monkeypatch):
+    """Adoption needs no worker — the embedding is already stored. So a dead
+    worker must not throw that work away along with the embedding pass."""
+    await photo_db.execute(
+        "UPDATE plant_photos SET embedding = ? WHERE id = 11", (EMBEDDING,))
+    await photo_db.execute("UPDATE plants SET species_id = 12 WHERE id = 2")
+    await photo_db.commit()
+    _fake_httpx(monkeypatch)
+    monkeypatch.setattr('services.photo_check.check_photo', lambda img, sid: _none())
+
+    with pytest.raises(RuntimeError) as excinfo:
+        await ap._run_backfill_photo_embeddings(
+            photo_db, {"household_id": 1}, _noop_progress)
+
+    assert "needs no worker and is saved" in str(excinfo.value)
+    anchors = await photo_db.execute_fetchall(
+        "SELECT id FROM user_confirmed_embeddings WHERE source_plant_id = 2")
+    assert len(anchors) == 1, "the anchor was committed before the worker failure"
+
+
+@pytest.mark.asyncio
+async def test_does_not_anchor_the_same_photo_twice(photo_db, monkeypatch):
+    await photo_db.execute(
+        "UPDATE plant_photos SET embedding = ? WHERE id = 10", (EMBEDDING,))
+    await photo_db.executescript("""
+        INSERT INTO user_confirmed_embeddings
+            (species_id, embedding, source_photo_url, source_plant_id)
+        VALUES (7, x'00', 'https://cdn.test/10.jpg', 1);
+    """)
+    await photo_db.commit()
+    _fake_httpx(monkeypatch)
+    monkeypatch.setattr(
+        'services.photo_check.check_photo', lambda img, sid: _ok(sid))
+
+    result = await ap._run_backfill_photo_embeddings(
+        photo_db, {"household_id": 1}, _noop_progress)
+
+    assert result["adopted"] == 0, "photo 10 already has its anchor"
