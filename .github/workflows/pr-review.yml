@@ -4,9 +4,9 @@ name: PR review
 # Two layers, deliberately separate:
 #
 #  1. test-guard (deterministic, BLOCKING): fails the check if the diff
-#     deletes tests or adds skip/xfail markers. Executor agents may add
-#     tests, never weaken them — this is the rule a cheap model could
-#     otherwise silently break, so it is enforced by grep, not by a model.
+#     deletes tests or adds skip/xfail markers. Deleting a test whose subject
+#     is gone is fine; deleting one because it fails is the thing a cheap
+#     model could otherwise do silently, so the check is a grep, not a model.
 #
 #     Being a grep, it cannot tell "weakened the suite" from "deleted the
 #     tests of deleted code". For the legitimate second case Leon applies
@@ -66,7 +66,7 @@ jobs:
               echo "::warning::This diff removes tests or adds skip/xfail markers, allowed by the 'tests-intentionally-removed' label. Removing the label re-blocks the merge."
               exit 0
             fi
-            echo "::error::This diff removes tests or adds skip/xfail markers. Agents may add tests, never weaken them (how-we-work.md). If this is intentional, Leon labels the PR 'tests-intentionally-removed' — do not apply that label to your own PR."
+            echo "::error::This diff removes tests or adds skip/xfail markers. That is allowed only when the code they covered is gone too, never to make a failure go away (how-we-work.md). If the removal is intentional, say so in the PR body and Leon labels it 'tests-intentionally-removed' — do not apply that label to your own PR."
             exit 1
           fi
 
