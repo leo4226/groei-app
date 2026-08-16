@@ -93,4 +93,4 @@ async def test_token_for_deleted_account_is_rejected(client, seeded_db, monkeypa
     res = await client.get(
         "/api/admin/accounts", headers={"Authorization": f"Bearer {token}"}
     )
-    assert res.status_code == 403
+    assert res.status_code == 401

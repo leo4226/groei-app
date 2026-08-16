@@ -29,7 +29,7 @@ from database import db_dep
 from auth import (
     create_guest_token,
     decode_guest_token,
-    decode_token,
+    get_current_account_from_token,
 )
 from services.game_matching import (
     as_vector,
@@ -168,10 +168,7 @@ async def _resolve_actor(
             session_id=player["session_id"],
         )
 
-    try:
-        account = decode_token(token)
-    except JWTError:
-        raise HTTPException(401, "Invalid or expired token")
+    account = await get_current_account_from_token(token, db)
     return GameActor(
         account_id=account["account_id"], player_id=None, is_guest=False,
         household_id=account["household_id"], session_id=None,
