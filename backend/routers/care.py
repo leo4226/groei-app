@@ -22,7 +22,7 @@ from services.moisture_check_service import (
     resolve_moisture_checks,
 )
 from datetime import date, datetime, timedelta
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from services.local_time import local_today
 
 router = APIRouter(tags=["care"])
@@ -120,7 +120,7 @@ async def complete_map_watering_round(
     map_id: int,
     body: MapWateringRoundCompleteIn,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     await _get_household_map(
         db,
@@ -158,7 +158,7 @@ async def complete_map_watering_round(
 
 @router.post("/care/done")
 async def mark_care_done(action: CareAction, db = Depends(db_dep),
-                         account = Depends(get_current_account)):
+                         account = Depends(require_editor)):
     # Find the matching schedule — scoped to the caller's household
     schedule_query = """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
                                cs.next_due, cs.last_done, cs.last_done_by,
@@ -224,7 +224,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
 
 @router.post("/care/skip")
 async def skip_care(action: CareAction, db = Depends(db_dep),
-                    account = Depends(get_current_account)):
+                    account = Depends(require_editor)):
     cursor = await db.execute(
         """SELECT cs.id, cs.interval_days, cs.season_adjust, cs.is_ephemeral,
                   p.container_id, COALESCE(m.map_type, 'outdoor') AS map_type
@@ -269,7 +269,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 
 @router.post("/care/garden/complete", response_model=GardenCareOperationOut)
 async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
-                               account=Depends(get_current_account)):
+                               account=Depends(require_editor)):
     completed_at = body.completed_at or local_today()
     try:
         result = await complete_outdoor_care(
@@ -303,7 +303,7 @@ async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
 )
 async def resolve_moisture_check_session(
     body: MoistureCheckResolveIn,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     try:
@@ -325,7 +325,7 @@ async def resolve_moisture_check_session(
 
 @router.post("/care/garden/{operation_id}/undo")
 async def undo_garden_care(operation_id: int, db=Depends(db_dep),
-                           account=Depends(get_current_account)):
+                           account=Depends(require_editor)):
     try:
         restored = await undo_outdoor_care(
             db, household_id=account["household_id"], operation_id=operation_id,
@@ -342,7 +342,7 @@ async def undo_garden_care(operation_id: int, db=Depends(db_dep),
 
 @router.delete("/care/schedules/{schedule_id}")
 async def delete_care_schedule(schedule_id: int, db = Depends(db_dep),
-                               account = Depends(get_current_account)):
+                               account = Depends(require_editor)):
     cursor = await db.execute(
         """SELECT cs.id FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
@@ -409,7 +409,7 @@ async def get_care_log(plant_id: int, db = Depends(db_dep),
 
 @router.post("/care/undo")
 async def undo_care_done(action: CareUndo, db = Depends(db_dep),
-                          account = Depends(get_current_account)):
+                          account = Depends(require_editor)):
     # Find the care log — scoped to the caller's household
     cursor = await db.execute(
         """SELECT cl.id, cl.plant_id, cl.care_type
@@ -455,7 +455,7 @@ async def update_schedule_interval(
     schedule_id: int,
     body: dict,
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     interval = body.get("interval_days")
     if not isinstance(interval, int) or interval < 1:

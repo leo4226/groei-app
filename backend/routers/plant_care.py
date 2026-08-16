@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from services.environment import get_rain_data, get_temp_data
 from services.species_knowledge import get_species_knowledge
 from services.garden_log import (
@@ -77,7 +77,7 @@ class GrowHereRequest(BaseModel):
 
 
 @router.post("/garden/grow-here")
-async def grow_here(req: GrowHereRequest, account = Depends(get_current_account)):
+async def grow_here(req: GrowHereRequest, account = Depends(require_editor)):
     if not LLM_API_KEY:
         raise HTTPException(status_code=503, detail="AI service not configured")
 
@@ -201,7 +201,7 @@ class WaterLogCreate(BaseModel):
 
 
 @router.post("/garden/water-log")
-async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     watered_at = body.watered_at or local_today()
     updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount, household_id)
@@ -238,7 +238,7 @@ async def get_garden_water_status(db = Depends(db_dep), account = Depends(get_cu
 
 
 @router.delete("/garden/water-log/latest")
-async def delete_latest_garden_watering(db = Depends(db_dep), account = Depends(get_current_account)):
+async def delete_latest_garden_watering(db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     rows = await db.execute_fetchall(
         "SELECT id FROM garden_water_log WHERE household_id = ? ORDER BY watered_at DESC LIMIT 1",
@@ -258,7 +258,7 @@ class FertilizeLogCreate(BaseModel):
 
 
 @router.post("/garden/fertilize-log")
-async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     fertilized_at = body.fertilized_at or local_today()
     updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by, household_id)
@@ -285,7 +285,7 @@ async def get_garden_fertilize_status(db = Depends(db_dep), account = Depends(ge
 
 
 @router.delete("/garden/fertilize-log/latest")
-async def delete_latest_garden_fertilizing(db = Depends(db_dep), account = Depends(get_current_account)):
+async def delete_latest_garden_fertilizing(db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     rows = await db.execute_fetchall(
         "SELECT id FROM garden_fertilize_log WHERE household_id = ? ORDER BY fertilized_at DESC LIMIT 1",

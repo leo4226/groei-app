@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from pydantic import BaseModel, Field
 
 from database import db_dep, get_db as _get_db
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from services.photo_check import check_photo
 from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
@@ -163,7 +163,7 @@ async def upload_plant_photo(
     taken_at: str | None = Form(None),
     care_log_id: int | None = Form(None),
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     plant = await _owned_plant(db, plant_id, account["household_id"])
 
@@ -259,7 +259,7 @@ class PhotoReminderToggle(BaseModel):
 
 @router.put("/plants/{plant_id}/photo-reminder")
 async def toggle_photo_reminder(plant_id: int, body: PhotoReminderToggle,
-                                db=Depends(db_dep), account=Depends(get_current_account)):
+                                db=Depends(db_dep), account=Depends(require_editor)):
     """Opt-in progress-photo reminder — rides care_schedules as care_type='photo'."""
     await _owned_plant(db, plant_id, account["household_id"])
     rows = await db.execute_fetchall(
@@ -326,7 +326,7 @@ async def _owned_photo(db, photo_id: int, household_id: int) -> dict:
 
 @router.patch("/photos/{photo_id}", response_model=PhotoOut)
 async def update_photo(photo_id: int, patch: PhotoPatch,
-                       db=Depends(db_dep), account=Depends(get_current_account)):
+                       db=Depends(db_dep), account=Depends(require_editor)):
     photo = await _owned_photo(db, photo_id, account["household_id"])
     note = patch.note if patch.note is not None else photo["note"]
     taken_at = _parse_taken_at(patch.taken_at) if patch.taken_at is not None else photo["taken_at"]
@@ -342,7 +342,7 @@ async def update_photo(photo_id: int, patch: PhotoPatch,
 
 @router.delete("/photos/{photo_id}")
 async def delete_photo(photo_id: int,
-                       db=Depends(db_dep), account=Depends(get_current_account)):
+                       db=Depends(db_dep), account=Depends(require_editor)):
     photo = await _owned_photo(db, photo_id, account["household_id"])
     storage = build_storage_from_env()
     try:

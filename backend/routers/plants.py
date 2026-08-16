@@ -7,7 +7,7 @@ from datetime import date as _date, datetime as _datetime, timedelta as _timedel
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException, Depends
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import PlantOut, PlantCreate, PlantUpdate, CareScheduleOut, CareScheduleSyncInput, PlantPositionUpdate, PlantContainerUpdate, PlantGroundZoneUpdate, BulkArchiveInput, PlacementCreate, PlacementUpdate, SecondaryMarkerOut
 from routers.icons import resolve_placement_icon, match_icon_key
 from routers.icon_generator import guess_category
@@ -352,7 +352,7 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
 
 
 @router.post("/plants", response_model=PlantOut)
-async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(require_editor)):
     quantity = max(1, int(data.quantity or 1))
     # pot_size_cm stays the canonical container size (it drives the potted/bare
     # icon variant); the form asks for a diameter, so fall back to that.
@@ -499,7 +499,7 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
 
 
 @router.post("/plants/{plant_id}/retry-species", response_model=PlantOut)
-async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     """Retry generating species data for a plant with missing/incomplete data.
 
     Links a species (LLM via get_or_create_species) when one isn't linked, and
@@ -583,7 +583,7 @@ async def retry_plant_species(plant_id: int, db = Depends(db_dep), account = Dep
 
 
 @router.put("/plants/{plant_id}", response_model=PlantOut)
-async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     # Only touch fields the client actually sent. Pass values through as-is —
     # date objects MUST stay date objects: asyncpg binds them to DATE columns
     # directly and raises DataError on ISO strings (#142). create_plant binds
@@ -853,7 +853,7 @@ async def sync_care_schedules(
     plant_id: int,
     data: CareScheduleSyncInput,
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     """Atomically reconcile a plant's user-managed recurring care schedules."""
     async with _care_schedule_transaction(db):
@@ -890,7 +890,7 @@ async def _owned_placement(db, plant_id: int, placement_id: int, household_id: i
 
 
 @router.post("/plants/{plant_id}/placements", response_model=SecondaryMarkerOut)
-async def add_placement(plant_id: int, data: PlacementCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def add_placement(plant_id: int, data: PlacementCreate, db = Depends(db_dep), account = Depends(require_editor)):
     cur = await db.execute(
         "SELECT id, name, icon_key FROM plants WHERE id = ? AND is_active = 1 AND household_id = ?",
         (plant_id, account["household_id"]),
@@ -922,7 +922,7 @@ async def add_placement(plant_id: int, data: PlacementCreate, db = Depends(db_de
 
 
 @router.patch("/plants/{plant_id}/placements/{placement_id}", response_model=SecondaryMarkerOut)
-async def update_placement(plant_id: int, placement_id: int, data: PlacementUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_placement(plant_id: int, placement_id: int, data: PlacementUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     if not await _owned_placement(db, plant_id, placement_id, account["household_id"]):
         raise HTTPException(status_code=404, detail="Placement not found")
     updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
@@ -940,7 +940,7 @@ async def update_placement(plant_id: int, placement_id: int, data: PlacementUpda
 
 
 @router.delete("/plants/{plant_id}/placements/{placement_id}")
-async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     if not await _owned_placement(db, plant_id, placement_id, account["household_id"]):
         raise HTTPException(status_code=404, detail="Placement not found")
     await db.execute("DELETE FROM plant_placements WHERE id = ?", (placement_id,))
@@ -949,7 +949,7 @@ async def delete_placement(plant_id: int, placement_id: int, db = Depends(db_dep
 
 
 @router.put("/plants/{plant_id}/position", response_model=PlantOut)
-async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     map_rows = await db.execute_fetchall(
         "SELECT id FROM maps WHERE id = ? AND household_id = ?",
         (data.map_id, account["household_id"]),
@@ -991,7 +991,7 @@ async def update_position(plant_id: int, data: PlantPositionUpdate, db = Depends
 
 
 @router.put("/plants/{plant_id}/container", response_model=PlantOut)
-async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     if data.container_id is not None:
         container_rows = await db.execute_fetchall(
             """SELECT o.id FROM objects o JOIN maps m ON m.id = o.map_id
@@ -1022,7 +1022,7 @@ async def update_container(plant_id: int, data: PlantContainerUpdate, db = Depen
 
 
 @router.put("/plants/{plant_id}/ground-zone", response_model=PlantOut)
-async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     if data.ground_zone_id is not None:
         zone_rows = await db.execute_fetchall(
             """SELECT gz.id FROM ground_zones gz JOIN maps m ON m.id = gz.map_id
@@ -1066,7 +1066,7 @@ async def update_ground_zone(plant_id: int, data: PlantGroundZoneUpdate, db = De
 
 
 @router.post("/plants/{plant_id}/duplicate", response_model=PlantOut)
-async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     """Duplicate a plant: copies name, species, type, watering schedules, notes, photo ref, display_radius_cm.
     Does NOT copy: position, container, care log."""
     cursor = await db.execute("""
@@ -1110,7 +1110,7 @@ async def duplicate_plant(plant_id: int, db = Depends(db_dep), account = Depends
 
 
 @router.patch("/plants/{plant_id}/lock")
-async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account = Depends(get_current_account)):
+async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account = Depends(require_editor)):
     cursor = await db.execute("SELECT id FROM plants WHERE id = ? AND household_id = ? AND is_active = 1", (plant_id, account["household_id"]))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -1127,7 +1127,7 @@ async def toggle_lock(plant_id: int, locked: bool, db = Depends(db_dep), account
 async def bulk_archive_plants(
     body: BulkArchiveInput,
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     if not body.plant_ids:
         return {"ok": True, "count": 0}
@@ -1145,7 +1145,7 @@ async def bulk_archive_plants(
 
 
 @router.delete("/plants/{plant_id}")
-async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_plant(db, plant_id, account["household_id"])
     await db.execute(
         "UPDATE plants SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -1156,7 +1156,7 @@ async def archive_plant(plant_id: int, db = Depends(db_dep), account = Depends(g
 
 
 @router.patch("/plants/{plant_id}/restore")
-async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_plant(db, plant_id, account["household_id"])
     await db.execute(
         "UPDATE plants SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -1168,7 +1168,7 @@ async def restore_plant(plant_id: int, db = Depends(db_dep), account = Depends(g
 
 @router.post("/plants/{plant_id}/photo", response_model=PlantOut)
 async def upload_photo(plant_id: int, background: BackgroundTasks, file: UploadFile = File(...),
-                       db = Depends(db_dep), account = Depends(get_current_account)):
+                       db = Depends(db_dep), account = Depends(require_editor)):
     """Legacy single-photo endpoint — now creates a photo-journal entry
     (which also gains the household ownership check and thumbnail sync)."""
     from routers.plant_photos import upload_plant_photo
