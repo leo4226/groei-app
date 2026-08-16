@@ -55,7 +55,6 @@ export default [
       'src/components/map/SunDebugOverlay.tsx',
       'src/components/map/WeatherPill.tsx',
       'src/components/plant/PhotoJournal.tsx',
-      'src/components/settings/CompassBearingPicker.tsx',
       'src/components/sheets/SpotInspectorSheet.tsx',
       'src/components/sun/DebugSvfOverlay.tsx',
       'src/components/sun/HeatmapLegend.tsx',
@@ -72,8 +71,6 @@ export default [
       // an NL/EN toggle (Dutch default) — permanent exemption.
       'src/pages/LoginPage.tsx',
 
-      'src/pages/MapSettingsPage.tsx',
-      'src/pages/MapsListPage.tsx',
       'src/pages/ResetPasswordPage.tsx',
       'src/pages/calendar/CalendarAlmanac.tsx',
       'src/pages/calendar/CalendarGrid.tsx',

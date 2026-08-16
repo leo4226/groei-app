@@ -176,6 +176,12 @@ export type Translations = {
     failedDelete: string
     indoor: string
     outdoor: string
+    // Map card actions (were hardcoded English in the pre-i18n baseline)
+    creating: string        // "Creating…"
+    create: string          // "Create"
+    view: string            // "View"
+    svgImport: string       // "SVG import"
+    deleteConfirmName: (name: string) => string  // "Delete \"{name}\"?"
     // PageMasthead keys (issue #180)
     mastheadEyebrow: string
     mastheadTitle: string
@@ -247,6 +253,8 @@ export type Translations = {
     photosToggleLabel: string
     photosToggleHint: string
     outdoorOnlyHint: string
+    // Dimension value (read-only display), was hardcoded Dutch in the baseline
+    dimensionsValue: (w: string, h: string) => string  // "{w}m wide × {h}m deep"
   }
 
   editor: {
@@ -274,6 +282,9 @@ export type Translations = {
       saving: string
       unsaved: string
     }
+    // Read-only block screen for viewer accounts (the editor is a write surface)
+    readOnlyTitle: string     // "Layout editing is for editors"
+    readOnlyBody: string      // "You can view this map, but only editors can change its layout."
     zoom: {
       in: string
       out: string

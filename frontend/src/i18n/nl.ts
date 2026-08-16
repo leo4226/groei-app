@@ -206,6 +206,11 @@ export const nl: Translations = {
     failedDelete: 'Verwijderen mislukt',
     indoor: 'Binnen',
     outdoor: 'Buiten',
+    creating: 'Aanmaken…',
+    create: 'Aanmaken',
+    view: 'Bekijken',
+    svgImport: 'SVG importeren',
+    deleteConfirmName: (name: string) => `"${name}" verwijderen?`,
     mastheadEyebrow: 'Tuin & binnenruimtes',
     mastheadTitle: 'Jouw',
     mastheadAccent: 'kaarten',
@@ -273,6 +278,7 @@ export const nl: Translations = {
     photosToggleLabel: 'Deel ook foto\'s',
     photosToggleHint: 'Foto\'s blijven verborgen tenzij je ze ook deelt.',
     outdoorOnlyHint: 'Alleen buitentuinen kunnen in de atlas worden gedeeld.',
+    dimensionsValue: (w: string, h: string) => `${w}m breed × ${h}m diep`,
   },
 
   editor: {
@@ -312,6 +318,8 @@ export const nl: Translations = {
       saving: 'Opslaan...',
       unsaved: 'Niet opgeslagen',
     },
+    readOnlyTitle: 'Layout bewerken is voor bewerkers',
+    readOnlyBody: 'Je kunt deze kaart bekijken, maar alleen bewerkers kunnen de layout aanpassen.',
     zoom: {
       in: 'Inzoomen',
       out: 'Uitzoomen',

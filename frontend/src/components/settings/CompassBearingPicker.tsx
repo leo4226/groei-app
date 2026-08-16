@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react'
+import { useT } from '../../context/LanguageContext'
 
 const CARDINALS: [number, string][] = [
   [0, 'N'], [45, 'NO'], [90, 'O'], [135, 'ZO'],
@@ -15,6 +16,8 @@ function bearingToCardinal(deg: number): string {
 interface Props {
   value: number
   onChange: (bearing: number) => void
+  /** When true the dial renders statically — viewers see the bearing but cannot drag it. */
+  disabled?: boolean
 }
 
 const SIZE = 180
@@ -22,10 +25,12 @@ const CENTER = SIZE / 2
 const RING_R = 78
 const SNAP_DEG = 3
 
-export default function CompassBearingPicker({ value, onChange }: Props) {
+export default function CompassBearingPicker({ value, onChange, disabled = false }: Props) {
+  const t = useT()
   const svgRef = useRef<SVGSVGElement>(null)
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (disabled) return
     const svg = svgRef.current
     if (!svg) return
     svg.setPointerCapture(e.pointerId)
@@ -51,24 +56,25 @@ export default function CompassBearingPicker({ value, onChange }: Props) {
     }
     svg.addEventListener('pointermove', onMove)
     svg.addEventListener('pointerup', onUp)
-  }, [onChange])
+  }, [onChange, disabled])
 
   return (
-    <div className="flex flex-col items-center gap-3 select-none">
+    <div className={`flex flex-col items-center gap-3 select-none ${disabled ? 'opacity-70' : ''}`}>
       <svg
         ref={svgRef}
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="touch-none cursor-grab active:cursor-grabbing"
-        tabIndex={0}
+        className={disabled ? 'touch-none' : 'touch-none cursor-grab active:cursor-grabbing'}
+        tabIndex={disabled ? -1 : 0}
         role="slider"
-        aria-label="Kompasrichting"
+        aria-label={t.mapSettings.compassBearing}
         aria-valuenow={Math.round(value)}
         aria-valuemin={0}
         aria-valuemax={359}
         onPointerDown={handlePointerDown}
         onKeyDown={(e) => {
+          if (disabled) return
           const step = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 :
                        e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 :
                        e.key === 'PageUp' ? 15 : e.key === 'PageDown' ? -15 :

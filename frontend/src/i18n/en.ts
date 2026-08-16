@@ -206,6 +206,11 @@ export const en: Translations = {
     failedDelete: 'Failed to delete map',
     indoor: 'Indoor',
     outdoor: 'Outdoor',
+    creating: 'Creating…',
+    create: 'Create',
+    view: 'View',
+    svgImport: 'SVG import',
+    deleteConfirmName: (name: string) => `Delete "${name}"?`,
     mastheadEyebrow: 'Garden & indoor spaces',
     mastheadTitle: 'Your',
     mastheadAccent: 'maps',
@@ -273,6 +278,7 @@ export const en: Translations = {
     photosToggleLabel: 'Also share photos',
     photosToggleHint: 'Photos stay hidden unless you share them too.',
     outdoorOnlyHint: 'Only outdoor gardens can be shared in the atlas.',
+    dimensionsValue: (w: string, h: string) => `${w}m wide × ${h}m deep`,
   },
 
   editor: {
@@ -312,6 +318,8 @@ export const en: Translations = {
       saving: 'Saving...',
       unsaved: 'Unsaved changes',
     },
+    readOnlyTitle: 'Layout editing is for editors',
+    readOnlyBody: 'You can view this map, but only editors can change its layout.',
     zoom: {
       in: 'Zoom in',
       out: 'Zoom out',

@@ -5,6 +5,8 @@ import { useT } from '../context/LanguageContext'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import AppLoadingView from '../components/ui/AppLoadingView'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
+import { useCapabilities } from '../hooks/useCapabilities'
 import type { MapInfo } from '../types'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
@@ -47,6 +49,7 @@ export default function MapsListPage() {
   const loadMaps = useFloreren(s => s.loadMaps)
   const createMap = useFloreren(s => s.createMap)
   const deleteMap = useFloreren(s => s.deleteMap)
+  const { canEdit } = useCapabilities()
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newMapType, setNewMapType] = useState<'outdoor' | 'indoor'>('outdoor')
@@ -73,7 +76,7 @@ export default function MapsListPage() {
   }
 
   async function handleDelete(map: MapInfo) {
-    if (!confirm(`Delete "${map.name}"?`)) return
+    if (!window.confirm(t.maps.deleteConfirmName(map.name))) return
     setError(null)
     try {
       await deleteMap(map.id)
@@ -104,16 +107,20 @@ export default function MapsListPage() {
           { value: maps.length, label: t.maps.mastheadStatLabel },
         ]}
         actions={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="rounded-full border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary hover:text-surface max-[720px]:bg-primary max-[720px]:text-white max-[720px]:hover:bg-primary"
-          >
-            {t.maps.newMap}
-          </button>
+          canEdit ? (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="rounded-full border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary transition-all hover:bg-primary hover:text-surface max-[720px]:bg-primary max-[720px]:text-white max-[720px]:hover:bg-primary"
+            >
+              {t.maps.newMap}
+            </button>
+          ) : undefined
         }
       />
 
-      {showCreate && (
+      {!canEdit && <ReadOnlyBanner className="mb-4" />}
+
+      {canEdit && showCreate && (
         <div className="bg-surface border border-border rounded-xl p-4 mb-4">
           <label className="text-sm text-text-muted block mb-1">{t.maps.mapNameLabel}</label>
           <input
@@ -146,7 +153,7 @@ export default function MapsListPage() {
               disabled={!newName.trim() || creating}
               className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
             >
-              {creating ? 'Creating...' : 'Create'}
+              {creating ? t.maps.creating : t.maps.create}
             </button>
             <button
               onClick={() => { setShowCreate(false); setNewName(''); setNewMapType('outdoor') }}
@@ -165,12 +172,14 @@ export default function MapsListPage() {
           </div>
           <h2 className="font-heading text-lg font-medium text-text mb-1">{t.maps.noMaps}</h2>
           <p className="text-sm text-text-muted mb-5 max-w-xs mx-auto leading-relaxed">{t.maps.createFirstLede}</p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-          >
-            {t.maps.createFirstMap}
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              {t.maps.createFirstMap}
+            </button>
+          )}
         </div>
       )}
 
@@ -196,15 +205,17 @@ export default function MapsListPage() {
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
                 </button>
-                <button
-                  onClick={() => handleDelete(map)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-overdue transition-colors"
-                  title={t.common.delete}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleDelete(map)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-overdue transition-colors"
+                    title={t.common.delete}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex gap-2">
@@ -212,20 +223,20 @@ export default function MapsListPage() {
                 onClick={() => navigate(`/map/${map.slug}`)}
                 className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-text font-medium"
               >
-                View
+                {t.maps.view}
               </button>
-              {map.canvas_data ? (
+              {canEdit && map.canvas_data ? (
                 <button
                   onClick={() => navigate(`/maps/${map.id}/edit-layout`)}
                   className="flex-1 border border-primary/30 bg-primary/5 rounded-lg px-3 py-2 text-sm text-primary font-medium"
                 >
-                  Edit layout
+                  {t.mapSettings.editLayout}
                 </button>
-              ) : (
+              ) : canEdit ? (
                 <div className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-text-muted text-center opacity-50">
-                  SVG import
+                  {t.maps.svgImport}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         ))}
