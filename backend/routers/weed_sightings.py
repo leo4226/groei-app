@@ -5,7 +5,7 @@ import base64
 import json
 import time
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import WeedSightingCreate, WeedSightingOut
 from services.storage import build_storage_from_env, Storage
 
@@ -166,7 +166,7 @@ async def get_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(get
 
 
 @router.post("/weed-sightings", status_code=201, response_model=WeedSightingOut)
-async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=Depends(get_current_account)):
+async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=Depends(require_editor)):
     # Only allow attaching a sighting to a map the caller owns.
     map_rows = await db.execute_fetchall(
         "SELECT id FROM maps WHERE id = ? AND household_id = ?",
@@ -198,7 +198,7 @@ async def create_sighting(body: WeedSightingCreate, db=Depends(db_dep), account=
 
 
 @router.delete("/weed-sightings/{sighting_id}", status_code=204)
-async def delete_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(get_current_account)):
+async def delete_sighting(sighting_id: int, db=Depends(db_dep), account=Depends(require_editor)):
     cursor = await db.execute(
         """SELECT ws.photo_url FROM weed_sightings ws
            JOIN maps m ON ws.map_id = m.id

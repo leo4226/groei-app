@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from datetime import date
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate, GardenSuggestionsOut, PlantRecommendationOut
 from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
@@ -129,7 +129,7 @@ async def get_map_biodiversity(slug: str, account = Depends(get_current_account)
 async def update_map_circularity(
     slug: str,
     data: CircularityIn,
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
     db = Depends(db_dep),
 ):
     """Self-reported kringloop practices for a garden (advice-only, not scored)."""
@@ -157,7 +157,7 @@ class GardenFeatureIn(BaseModel):
 async def update_map_feature(
     slug: str,
     data: GardenFeatureIn,
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
     db = Depends(db_dep),
 ):
     """Set the count of one physical garden feature (insectenhotel, nestkast,
@@ -271,7 +271,7 @@ async def _owned_map_id(db, slug: str, household_id: int) -> int:
 
 @router.post("/maps/{slug}/dismiss-recommendation")
 async def dismiss_recommendation(
-    slug: str, data: DismissIn, account = Depends(get_current_account), db = Depends(db_dep)
+    slug: str, data: DismissIn, account = Depends(require_editor), db = Depends(db_dep)
 ):
     """Wave off a recommended species for this garden — it won't be suggested
     here again until un-dismissed. Idempotent."""
@@ -291,7 +291,7 @@ async def dismiss_recommendation(
 
 @router.delete("/maps/{slug}/dismiss-recommendation/{species_id}")
 async def undismiss_recommendation(
-    slug: str, species_id: int, account = Depends(get_current_account), db = Depends(db_dep)
+    slug: str, species_id: int, account = Depends(require_editor), db = Depends(db_dep)
 ):
     """Undo a dismissal — the species can be recommended here again."""
     map_id = await _owned_map_id(db, slug, account["household_id"])
@@ -460,7 +460,7 @@ async def get_map_by_id(map_id: int, account = Depends(get_current_account), db 
 
 
 @router.post("/maps", response_model=MapOut)
-async def create_map(data: MapCreate, account = Depends(get_current_account), db = Depends(db_dep)):
+async def create_map(data: MapCreate, account = Depends(require_editor), db = Depends(db_dep)):
     base_slug = _slugify(data.name)
     slug = base_slug
     # Ensure unique slug
@@ -515,7 +515,7 @@ async def create_map(data: MapCreate, account = Depends(get_current_account), db
 
 
 @router.put("/maps/{map_id}", response_model=MapOut)
-async def update_map(map_id: int, data: MapUpdate, account = Depends(get_current_account), db = Depends(db_dep)):
+async def update_map(map_id: int, data: MapUpdate, account = Depends(require_editor), db = Depends(db_dep)):
     existing = await db.execute_fetchall("SELECT id, slug, lat, lon, streek_source, place_name FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
     if not existing:
         raise HTTPException(404, "Map not found")
@@ -674,7 +674,7 @@ _UNDERLAY_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"
 async def upload_map_underlay(
     map_id: int,
     file: UploadFile = File(...),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
     db = Depends(db_dep),
 ):
     """Store a trace-over background image for a map in R2 and return its URL.
@@ -708,7 +708,7 @@ async def upload_map_underlay(
 
 
 @router.delete("/maps/{map_id}")
-async def delete_map(map_id: int, account = Depends(get_current_account), db = Depends(db_dep)):
+async def delete_map(map_id: int, account = Depends(require_editor), db = Depends(db_dep)):
     existing = await db.execute_fetchall("SELECT id FROM maps WHERE id = ? AND household_id = ?", (map_id, account["household_id"]))
     if not existing:
         raise HTTPException(404, "Map not found")

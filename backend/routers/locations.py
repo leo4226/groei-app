@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import LocationOut, LocationCreate, LocationUpdate
 
 router = APIRouter(tags=["locations"])
@@ -17,7 +17,7 @@ async def list_locations(db = Depends(db_dep), account = Depends(get_current_acc
 
 
 @router.post("/locations", response_model=LocationOut)
-async def create_location(data: LocationCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def create_location(data: LocationCreate, db = Depends(db_dep), account = Depends(require_editor)):
     cursor = await db.execute(
         "INSERT INTO locations (name, icon, household_id) VALUES (?, ?, ?)",
         (data.name, data.icon, account["household_id"]),
@@ -27,7 +27,7 @@ async def create_location(data: LocationCreate, db = Depends(db_dep), account = 
     return {"id": loc_id, "name": data.name, "icon": data.icon, "sort_order": 0}
 
 @router.patch("/locations/{location_id}", response_model=LocationOut)
-async def update_location(location_id: int, data: LocationUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_location(location_id: int, data: LocationUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     """Update a location (name, icon, sort_order). Scoped to household_id."""
     # Build dynamic SET clause
     fields = []
@@ -63,7 +63,7 @@ async def delete_location(
     location_id: int,
     lang: str = Query("nl"),
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     """Delete a location. Block if it still has plants.
 

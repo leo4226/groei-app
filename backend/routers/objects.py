@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import ObjectOut, ObjectCreate, ObjectUpdate, ObjectPositionUpdate, MapObjectOut, MapPlantOut
 
 router = APIRouter(tags=["objects"])
@@ -103,7 +103,7 @@ async def _get_contained_plants(db, object_id: int) -> list[dict]:
 
 
 @router.post("/objects", response_model=ObjectOut)
-async def create_object(data: ObjectCreate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def create_object(data: ObjectCreate, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_map(db, data.map_id, account["household_id"])
     cursor = await db.execute(
         """INSERT INTO objects (name, object_type, shape, diameter_cm, width_cm, depth_cm,
@@ -123,7 +123,7 @@ async def create_object(data: ObjectCreate, db = Depends(db_dep), account = Depe
 
 
 @router.put("/objects/{object_id}", response_model=ObjectOut)
-async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_object(db, object_id, account["household_id"])
     updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
     if not updates:
@@ -145,7 +145,7 @@ async def update_object(object_id: int, data: ObjectUpdate, db = Depends(db_dep)
 
 
 @router.put("/objects/{object_id}/position", response_model=ObjectOut)
-async def update_object_position(object_id: int, data: ObjectPositionUpdate, db = Depends(db_dep), account = Depends(get_current_account)):
+async def update_object_position(object_id: int, data: ObjectPositionUpdate, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_object(db, object_id, account["household_id"])
 
     if data.rotation is not None:
@@ -165,7 +165,7 @@ async def update_object_position(object_id: int, data: ObjectPositionUpdate, db 
 
 
 @router.delete("/objects/{object_id}")
-async def archive_object(object_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def archive_object(object_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_object(db, object_id, account["household_id"])
     # Release any contained plants
     await db.execute(
@@ -181,7 +181,7 @@ async def archive_object(object_id: int, db = Depends(db_dep), account = Depends
 
 
 @router.patch("/objects/{object_id}/restore")
-async def restore_object(object_id: int, db = Depends(db_dep), account = Depends(get_current_account)):
+async def restore_object(object_id: int, db = Depends(db_dep), account = Depends(require_editor)):
     await _assert_owned_object(db, object_id, account["household_id"])
     await db.execute(
         "UPDATE objects SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
