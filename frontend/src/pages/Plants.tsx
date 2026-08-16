@@ -602,9 +602,15 @@ export default function Plants() {
         position: 'sticky', top: 0, zIndex: 20,
         background: 'var(--color-bg)', paddingTop: 12,
       }}>
-        {/* Title row */}
+        {/* Title row.
+            Wraps: at 390px the title, count, three icon buttons, "Toevoegen"
+            and "Selecteer" do not fit on one line, and without wrapping the
+            last control is simply clipped off the right edge — invisible to a
+            document-level overflow check, because the row spills inside a
+            clipping parent rather than widening the page. */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', rowGap: 8,
           padding: '0 16px 8px',
         }}>
           <h1 style={{
@@ -621,7 +627,10 @@ export default function Plants() {
               borderRadius: 20, border: '1px solid var(--color-border)',
             }}>{filtered.length}</span>
           </h1>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{
+            display: 'flex', gap: 6, alignItems: 'center',
+            flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto',
+          }}>
             {/* The photo round is a phone-in-the-garden activity, so it needs a
                 door on the phone. Its first version only had one in the desktop
                 header, which is the one place it is useless. */}
