@@ -2,7 +2,11 @@ name: Auto-merge
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    # `synchronize` (a push to the PR branch) is here so a transient failure
+    # heals itself: if marking ready fails on a rate limit, the next push
+    # retries instead of leaving the PR a draft until someone notices.
+    # Re-enabling auto-merge on an already-ready PR is a no-op.
+    types: [opened, reopened, ready_for_review, synchronize]
     branches: [master]
 
 # Take a PR from "just opened" all the way to master without a human step:
@@ -43,7 +47,24 @@ jobs:
             echo "::error::DEPLOY_PAT is not set. Marking a PR ready with GITHUB_TOKEN fires no ready_for_review event, so test-guard (required) would never run and this PR would be stuck. Leaving it as a draft."
             exit 1
           fi
-          gh pr ready "$PR_URL"
+          # Retry: the very first run of this workflow died on
+          # "API rate limit already exceeded for user ID ...". GitHub's
+          # secondary (burst) limit clears in about a minute, and several
+          # agents pushing at once hit it easily. A sustained primary-limit
+          # exhaustion lasts until the hour rolls over and will still fail
+          # here — loudly, which is what we want, since the fallback is Leon
+          # clicking Ready in the browser (the web UI does not use this quota).
+          for attempt in 1 2 3; do
+            if gh pr ready "$PR_URL"; then
+              exit 0
+            fi
+            # Not `[ ... ] && sleep`: the runner's shell is `bash -e`, so on the
+            # last iteration the false test would abort the script and swallow
+            # the message below.
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 30)); fi
+          done
+          echo "::error::Could not mark PR ready after 3 attempts — see the error above. The PR stays a draft; mark it ready by hand to unblock it."
+          exit 1
 
       - name: Enable auto-merge (squash)
         # Merge with DEPLOY_PAT when present so the resulting push to master is
