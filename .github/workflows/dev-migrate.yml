@@ -1,0 +1,85 @@
+name: Dev DB migrate
+
+# Keeps the Neon **dev** branch's schema current, the way Fly's release command
+# already keeps production's current.
+#
+# Production migrates itself on every deploy; dev had no equivalent because
+# nothing deploys to it, so catching it up was a manual chore nobody
+# remembered. Dev then drifted several migrations behind production and local
+# dev broke in ways that looked like application bugs.
+#
+# Two triggers:
+#   - push to master touching a migration — the common case, hands-off
+#   - workflow_dispatch — a manual "Run workflow" button, which is also how an
+#     agent runs this on demand. Agents get a button, not the credential.
+#
+# The credential lives in exactly one place: the DEV_DATABASE_URL repository
+# secret. Nobody needs a copy of it to keep dev current.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/alembic/**'
+  workflow_dispatch:
+
+# Two overlapping runs would race each other applying the same migrations.
+concurrency:
+  group: dev-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Dev DB · migrate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+
+      - name: Refuse to run against anything but the dev branch
+        # The one way this workflow could do real damage is by pointing at
+        # production, so it checks before connecting rather than trusting the
+        # secret's name. Fails closed: an unrecognised endpoint stops the run.
+        #
+        # `grep -q` is silent — the URL is never echoed, printed or interpolated
+        # into a log line. GitHub masks registered secrets, but not echoing one
+        # is better than relying on the mask.
+        env:
+          DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+        run: |
+          if [ -z "$DEV_DATABASE_URL" ]; then
+            echo "::error::DEV_DATABASE_URL secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if printf '%s' "$DEV_DATABASE_URL" | grep -q 'ep-weathered-lake-al5q450z'; then
+            echo "::error::DEV_DATABASE_URL points at the PRODUCTION Neon branch. Refusing to migrate. Fix the secret."
+            exit 1
+          fi
+          if ! printf '%s' "$DEV_DATABASE_URL" | grep -q 'ep-crimson-darkness-alvzvh16'; then
+            echo "::error::DEV_DATABASE_URL is not the known dev endpoint (ep-crimson-darkness-alvzvh16). If the dev branch was recreated, update this check and the secret together."
+            exit 1
+          fi
+          echo "Target confirmed: Neon dev branch."
+
+      - name: Revision before
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+        run: alembic current
+
+      - name: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+        run: alembic upgrade head
+
+      - name: Revision after
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+        run: alembic current
