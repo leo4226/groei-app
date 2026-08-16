@@ -222,8 +222,13 @@ async def _generate_icon_assets(name_nl: str, latin: str, base_id: str) -> dict:
     otherwise holds the event loop for stretches at a time, and Fly's health
     check (30s interval, 5s timeout) is what notices — see `_put_icon`.
     """
-    for _attempt in range(3):
+    for attempt in range(3):
         try:
+            if attempt:
+                # Back off before retrying. These used to fire back-to-back, so
+                # a struggling endpoint got three immediate hits and the run
+                # spent minutes per species collecting the same failure (#890).
+                await asyncio.sleep(2 ** attempt)
             ai = await generate_icon_variants(name=name_nl, sci=latin)
             plant = ai["plant_svg"]
             # Composite the plant onto the standard pot / ground shadow, then
