@@ -8,17 +8,19 @@ from fastapi.routing import APIRoute
 
 from auth import create_token, require_editor
 from main import app
+import routers.care as care_router
+import routers.plant_care as plant_care_router
 import routers.plant_photos as plant_photos_router
 import routers.plants as plants_router
 
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-ISSUE_ROUTE_MODULES = {
-    "routers.plants",
-    "routers.plant_photos",
-    "routers.care",
-    "routers.plant_care",
-}
+ISSUE_ROUTERS = (
+    plants_router.router,
+    plant_photos_router.router,
+    care_router.router,
+    plant_care_router.router,
+)
 PROTECTED_WRITE_ROUTES = {
     ("POST", "/api/plants"),
     ("POST", "/api/plants/{plant_id}/retry-species"),
@@ -105,20 +107,60 @@ class FakeStorage:
         return None
 
 
-def _issue_write_routes() -> dict[tuple[str, str], APIRoute]:
+def _scoped_write_routes() -> dict[tuple[str, str], APIRoute]:
     routes = {}
-    # FastAPI flattens included routers into app.routes. Inspecting this table
-    # verifies the live /api mount instead of router metadata that is discarded.
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        if route.path != "/api" and not route.path.startswith("/api/"):
-            continue
-        if route.endpoint.__module__ not in ISSUE_ROUTE_MODULES:
-            continue
-        for method in route.methods & WRITE_METHODS:
-            routes[(method, route.path)] = route
+    for router in ISSUE_ROUTERS:
+        for route in router.routes:
+            if not isinstance(route, APIRoute):
+                continue
+            for method in route.methods & WRITE_METHODS:
+                key = (method, f"/api{route.path}")
+                assert key not in routes, f"Duplicate scoped route: {key}"
+                routes[key] = route
     return routes
+
+
+def _mounted_api_write_routes() -> dict[tuple[str, str], list[object]]:
+    routes = {}
+    for app_route in app.routes:
+        # FastAPI 0.141+ keeps included routers lazy. Older supported versions
+        # expose their mounted APIRoute objects directly in app.routes.
+        effective_route_contexts = getattr(app_route, "effective_route_contexts", None)
+        if callable(effective_route_contexts):
+            mounted_routes = effective_route_contexts()
+        elif isinstance(app_route, APIRoute):
+            mounted_routes = (app_route,)
+        else:
+            continue
+
+        for mounted_route in mounted_routes:
+            original_route = getattr(mounted_route, "original_route", mounted_route)
+            if not isinstance(original_route, APIRoute):
+                continue
+
+            path = getattr(mounted_route, "path", original_route.path)
+            methods = getattr(mounted_route, "methods", original_route.methods)
+            if path != "/api" and not path.startswith("/api/"):
+                continue
+            for method in methods & WRITE_METHODS:
+                routes.setdefault((method, path), []).append(mounted_route)
+    return routes
+
+
+def _issue_write_routes(scoped_routes: dict[tuple[str, str], APIRoute]) -> dict[tuple[str, str], object]:
+    mounted_api_routes = _mounted_api_write_routes()
+    mounted_routes = {}
+    for key, scoped_route in scoped_routes.items():
+        matches = mounted_api_routes.get(key, [])
+        assert len(matches) == 1, f"Expected one mounted route for {key}, found {len(matches)}"
+        mounted_route = matches[0]
+        original_route = getattr(mounted_route, "original_route", None)
+        if original_route is None:
+            assert mounted_route.endpoint is scoped_route.endpoint, f"Mounted route changed for {key}"
+        else:
+            assert original_route is scoped_route, f"Mounted route changed for {key}"
+        mounted_routes[key] = mounted_route
+    return mounted_routes
 
 
 def _has_editor_guard(route: APIRoute) -> bool:
@@ -176,11 +218,19 @@ async def core_write_db(seeded_db, monkeypatch):
 
 
 def test_issue_921_write_inventory_is_complete_and_every_route_requires_an_editor():
-    routes = _issue_write_routes()
+    scoped_routes = _scoped_write_routes()
+    routes = _issue_write_routes(scoped_routes)
 
+    assert set(scoped_routes) == PROTECTED_WRITE_ROUTES
     assert set(routes) == PROTECTED_WRITE_ROUTES
-    unguarded = sorted(route_key for route_key, route in routes.items() if not _has_editor_guard(route))
-    assert unguarded == []
+    unguarded_scoped_routes = sorted(
+        route_key for route_key, route in scoped_routes.items() if not _has_editor_guard(route)
+    )
+    unguarded_mounted_routes = sorted(
+        route_key for route_key, route in routes.items() if not _has_editor_guard(route)
+    )
+    assert unguarded_scoped_routes == []
+    assert unguarded_mounted_routes == []
 
 
 @pytest.mark.asyncio
