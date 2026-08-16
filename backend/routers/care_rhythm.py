@@ -1,7 +1,7 @@
 """Household Care-rhythm proposal and preview endpoints."""
 from fastapi import APIRouter, Depends, HTTPException
 
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from database import db_dep
 from models import (
     CareRhythmApplyIn,
@@ -50,7 +50,7 @@ async def preview_household_care_rhythm(
 @router.post("/care-rhythm/apply", response_model=CareRhythmOperationOut)
 async def apply_household_care_rhythm(
     body: CareRhythmApplyIn,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     try:
@@ -87,7 +87,7 @@ async def preview_onboarding_rhythm(
 @router.post("/care-rhythm/{operation_id}/undo")
 async def undo_household_care_rhythm(
     operation_id: int,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     try:

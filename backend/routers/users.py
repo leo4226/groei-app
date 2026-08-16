@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from models import UserOut, UserLanguageUpdate, UserUpdate
 
 router = APIRouter(tags=["users"])
@@ -21,7 +21,7 @@ async def update_user_language(
     user_id: int,
     body: UserLanguageUpdate,
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     await db.execute(
         "UPDATE users SET language = ? WHERE id = ? AND household_id = ?",
@@ -58,7 +58,7 @@ async def update_user(
     user_id: int,
     body: UserUpdate,
     db = Depends(db_dep),
-    account = Depends(get_current_account),
+    account = Depends(require_editor),
 ):
     """Update name and/or avatar for a user. Only the caller's own household."""
     updates = {}
