@@ -622,6 +622,17 @@ export default function Plants() {
             }}>{filtered.length}</span>
           </h1>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {/* The photo round is a phone-in-the-garden activity, so it needs a
+                door on the phone. Its first version only had one in the desktop
+                header, which is the one place it is useless. */}
+            <button onClick={() => navigate('/photo-round')} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
+            }} aria-label={t.photoRound.startFromPlants} title={t.photoRound.startFromPlants}>
+              <Glyph name="clipboard" size={16} aria-hidden />
+            </button>
             <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 34, height: 34, borderRadius: '50%',
