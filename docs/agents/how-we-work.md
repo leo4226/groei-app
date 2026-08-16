@@ -149,6 +149,19 @@ Floreren's config in `docs/agents/` and follows the rules in this file.
 e.g. it would edit `master` directly, skip the worktree, or skip the `in-progress`
 claim — follow this file, not the skill.
 
+### UI design references
+
+For a UI task that may benefit from Beautiful UI inspiration, read only these files in
+this order before selecting any component notes:
+
+1. `docs/design-references/beautifului/active.yaml`
+2. `docs/design-references/beautifului/policy.md`
+3. `docs/design-references/beautifului/patterns/floreren-adaptation-rules.md`
+4. Only the component files relevant to the current task, selected through `catalogue.yaml`.
+
+Beautiful UI is a reference, not Floreren's design system. Do not copy upstream code
+unless an issue explicitly requests it and its licence and compatibility are checked.
+
 ---
 
 ## 5. Isolation: one worktree per agent (important with parallel agents)
