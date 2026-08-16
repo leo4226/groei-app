@@ -23,6 +23,7 @@ from auth import (
     create_token,
     get_current_account,
     hash_password,
+    require_editor,
     verify_password,
 )
 from services.email import send_password_reset
@@ -197,7 +198,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
 
 
 @router.post("/change-password")
-async def change_password(body: ChangePasswordInput, current=Depends(get_current_account), db=Depends(db_dep)):
+async def change_password(body: ChangePasswordInput, current=Depends(require_editor), db=Depends(db_dep)):
     """Change the current account's password. Requires current password verification."""
     rows = await db.execute_fetchall(
         "SELECT id, password_hash FROM accounts WHERE id = ?",

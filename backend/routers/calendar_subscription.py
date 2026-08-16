@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from services.local_time import local_today
 from care_types import CARE_TYPES
 from database import db_dep
@@ -236,7 +236,7 @@ async def get_subscription_status(
 async def update_subscription_config(
     config: CalendarSubscriptionConfig,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     await _validate_maps(db, account["household_id"], config.map_ids)
     rows = await db.execute_fetchall(
@@ -271,7 +271,7 @@ async def update_subscription_config(
 async def create_or_regenerate_subscription(
     config: CalendarSubscriptionConfig,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     await _validate_maps(db, account["household_id"], config.map_ids)
     raw = secrets.token_urlsafe(32)
@@ -305,7 +305,7 @@ async def create_or_regenerate_subscription(
 @router.delete("/subscription", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_subscription(
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     await db.execute(
         """UPDATE calendar_subscriptions

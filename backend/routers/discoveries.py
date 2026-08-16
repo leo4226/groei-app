@@ -15,7 +15,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from database import db_dep
 from services.phenology import parse_phenology
 from services.geocode import reverse_geocode
@@ -58,7 +58,7 @@ class DiscoveryOut(BaseModel):
 async def save_discovery(
     body: DiscoveryCreate,
     background: BackgroundTasks,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -172,7 +172,7 @@ class DiscoveryLocationUpdate(BaseModel):
 async def update_discovery(
     discovery_id: int,
     body: DiscoveryUpdate,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Update a discovery's field notes (the only mutable part of an entry)."""
@@ -196,7 +196,7 @@ async def update_discovery_location(
     discovery_id: int,
     body: DiscoveryLocationUpdate,
     background: BackgroundTasks,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Attach the current browser location to an existing field discovery."""
@@ -226,7 +226,7 @@ class ShareOut(BaseModel):
 @router.post("/{discovery_id}/share", response_model=ShareOut)
 async def share_discovery(
     discovery_id: int,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Mint (or return) the public share link for a find.
@@ -266,7 +266,7 @@ async def share_discovery(
 @router.delete("/{discovery_id}", status_code=204)
 async def delete_discovery(
     discovery_id: int,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db=Depends(db_dep),
 ):
     rows = await db.execute_fetchall(

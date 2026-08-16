@@ -15,7 +15,7 @@ from models import (
 from services.calendar_grouping import (
     get_calendar_grouping_preferences, save_calendar_grouping_preferences,
 )
-from auth import hash_password, create_token, get_current_account
+from auth import hash_password, create_token, get_current_account, require_editor
 import asyncpg
 
 router = APIRouter(prefix="/household", tags=["household"])
@@ -31,7 +31,7 @@ def _generate_code(length: int = 6) -> str:
 
 @router.post("/invite", response_model=InviteOutput)
 async def create_invite(
-    current=Depends(get_current_account),
+    current=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Generate an invite code for the current user's household (7-day expiry)."""
@@ -163,7 +163,7 @@ async def get_calendar_grouping(
 @router.put("/calendar-grouping", response_model=CalendarGroupingPreferencesOut)
 async def update_calendar_grouping(
     body: CalendarGroupingPreferencesIn,
-    current=Depends(get_current_account),
+    current=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Save shared Calendar grouping choices after household/map validation."""
@@ -209,7 +209,7 @@ async def list_members(
 async def update_member_profile(
     member_id: int,
     body: HouseholdMemberUpdate,
-    current=Depends(get_current_account),
+    current=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Update a household member's account profile and sync care attribution."""
@@ -271,7 +271,7 @@ async def update_member_profile(
 @router.delete("/members/{user_id}", status_code=204)
 async def remove_member(
     user_id: int,
-    current=Depends(get_current_account),
+    current=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Remove a member from the current household by user_id.
@@ -338,7 +338,7 @@ async def remove_member(
 @router.patch("", status_code=200)
 async def rename_household(
     body: HouseholdUpdate,
-    current=Depends(get_current_account),
+    current=Depends(require_editor),
     db=Depends(db_dep),
 ):
     """Rename the current user's household."""

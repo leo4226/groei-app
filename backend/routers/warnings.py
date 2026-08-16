@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from database import db_dep
-from auth import get_current_account
+from auth import get_current_account, require_editor
 from services.warnings import (
     canonical_weather_warning_id,
     canonical_weather_warning_id_for_fields,
@@ -57,7 +57,7 @@ async def acknowledge_warning(
     warning_id: str,
     payload: WeatherWarningAcknowledgmentIn,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     try:
         expected_id = canonical_weather_warning_id_for_fields(
@@ -87,7 +87,7 @@ async def acknowledge_warning(
 async def restore_warning(
     warning_id: str,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     await restore_weather_warning(
         db,
@@ -476,7 +476,7 @@ async def patch_care_profile(
     plant_id: int,
     body: PatchCareProfileIn,
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     """Partially update a plant's care_profile. Only specified care_types are merged.
 
