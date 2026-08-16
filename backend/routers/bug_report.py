@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from auth import get_current_account
+from auth import require_editor
 from database import db_dep
 from services.db_adapter import DbAdapter
 from services.feedback_composer import (
@@ -139,7 +139,7 @@ def _build_issue_body(
 @router.post("/bug-report/draft", response_model=FeedbackDraftResponse)
 async def draft_bug_report(
     req: FeedbackDraftRequest,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     """Compose (but do not file) a GitHub issue from a free-text report.
 
@@ -167,7 +167,7 @@ async def draft_bug_report(
 @router.post("/bug-report", response_model=BugReportResponse)
 async def submit_bug_report(
     req: BugReportRequest,
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
     db: DbAdapter = Depends(db_dep),
 ):
     """File a user's bug report or feature request as a GitHub issue."""

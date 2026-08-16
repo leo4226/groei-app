@@ -23,7 +23,7 @@ from starlette.concurrency import run_in_threadpool
 from services.deferred import fire_and_forget
 
 from database import db_dep
-from auth import get_current_account
+from auth import require_editor
 from services.plant_id import identify, PlantIdQuotaExceeded, PlantIdServiceError
 # bioclip_id is lazily imported in _bioclip_identify (local fallback branch)
 # to avoid requiring numpy/scipy/torch on Fly.io (which uses remote worker)
@@ -669,7 +669,7 @@ async def identify_endpoint(
     engine: str = Query("bioclip"),
     lang: str = Query("en"),
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     lang = lang if lang in _SUPPORTED_PLANTNET_LANGS else "en"
     # 1. Validate images: 1 primary + up to 2 extra angles (multi-angle ensemble #807)
@@ -917,7 +917,7 @@ async def identify_commit(
     body: IdentifyCommitRequest,
     lang: str = Query("nl"),
     db=Depends(db_dep),
-    account=Depends(get_current_account),
+    account=Depends(require_editor),
 ):
     lang = "en" if lang == "en" else "nl"
     try:
