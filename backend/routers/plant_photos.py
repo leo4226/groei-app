@@ -37,6 +37,21 @@ class PhotoPatch(BaseModel):
     taken_at: str | None = None
 
 
+class PhotoRoundPlant(BaseModel):
+    """One stop on a photo round — see `photo_round` for why this exists."""
+    plant_id: int
+    name: str
+    map_id: int | None = None
+    map_name: str | None = None
+    map_x: float | None = None
+    map_y: float | None = None
+    icon_key: str | None = None
+    #: Null means a journal photo of this plant cannot become a species anchor.
+    species_id: int | None = None
+    photo_count: int = 0
+    last_photo_at: str | None = None
+
+
 async def _owned_plant(db, plant_id: int, household_id: int) -> dict:
     rows = await db.execute_fetchall(
         "SELECT id, household_id, species_id FROM plants WHERE id = ? AND household_id = ?",
@@ -85,6 +100,58 @@ def _row_to_out(row) -> PhotoOut:
         taken_at=_iso_t(row["taken_at"]), care_log_id=row["care_log_id"],
         species_mismatch=bool(row["species_mismatch"]),
     )
+
+
+@router.get("/photo-round", response_model=list[PhotoRoundPlant])
+async def photo_round(
+    map_id: int | None = None,
+    db=Depends(db_dep),
+    account=Depends(get_current_account),
+):
+    """The plants to walk past, worst-photographed first.
+
+    One journal photo per plant feeds three things at once, which is why a
+    guided round is worth having rather than opening 80 plant pages by hand:
+
+      - the plant's own record (`plants.photo_path` is the newest journal photo)
+      - the species' BioCLIP anchors, via `_run_photo_check` → `add_anchor`
+      - the garden game's per-plant references (`_gather_references`)
+
+    Ordered so that stopping early still leaves the set better off: plants with
+    no photo at all come first, then the ones whose newest photo is oldest.
+    `species_id` rides along so the client can say which plants will not
+    produce an anchor — an unlinked plant still helps the game, but
+    `add_anchor` refuses a label it cannot trust.
+    """
+    params: list = [account["household_id"]]
+    map_filter = ""
+    if map_id is not None:
+        map_filter = " AND p.map_id = ?"
+        params.append(map_id)
+
+    rows = await db.execute_fetchall(
+        f"""SELECT p.id, p.name, p.map_id, p.map_x, p.map_y, p.icon_key, p.species_id,
+                   m.name AS map_name,
+                   COUNT(ph.id) AS photo_count,
+                   MAX(ph.taken_at) AS last_photo_at
+              FROM plants p
+              LEFT JOIN plant_photos ph ON ph.plant_id = p.id
+              LEFT JOIN maps m ON m.id = p.map_id
+             WHERE p.household_id = ? AND p.is_active = 1{map_filter}
+          GROUP BY p.id, p.name, p.map_id, p.map_x, p.map_y, p.icon_key, p.species_id, m.name
+          -- FALSE sorts first ascending, so "never photographed" leads.
+          ORDER BY (MAX(ph.taken_at) IS NOT NULL), MAX(ph.taken_at) ASC, p.name ASC""",
+        tuple(params),
+    )
+    return [
+        PhotoRoundPlant(
+            plant_id=r["id"], name=r["name"], map_id=r["map_id"], map_name=r["map_name"],
+            map_x=r["map_x"], map_y=r["map_y"], icon_key=r["icon_key"],
+            species_id=r["species_id"], photo_count=int(r["photo_count"] or 0),
+            last_photo_at=_iso_t(r["last_photo_at"]) if r["last_photo_at"] else None,
+        )
+        for r in rows
+    ]
 
 
 @router.post("/plants/{plant_id}/photos", response_model=PhotoOut)

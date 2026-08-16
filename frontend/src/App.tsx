@@ -28,6 +28,7 @@ const LandingTour = lazy(() => import('./pages/LoginPage').then(m => ({ default:
 const MapPage = lazy(() => import('./pages/MapPage'))
 const Plants = lazy(() => import('./pages/Plants'))
 const AddPlant = lazy(() => import('./pages/AddPlant'))
+const PhotoRound = lazy(() => import('./pages/PhotoRound'))
 const PlantDetail = lazy(() => import('./pages/PlantDetail'))
 const EditPlant = lazy(() => import('./pages/EditPlant'))
 const IdentifyPlantPage = lazy(() => import('./pages/IdentifyPlant').then(m => ({ default: m.IdentifyPlantPage })))
@@ -318,6 +319,14 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <AddPlant />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/photo-round"
+                element={
+                  <RequireAuth>
+                    <PhotoRound />
                   </RequireAuth>
                 }
               />

@@ -529,6 +529,31 @@ export const nl: Translations = {
     mismatchHint: 'Dit lijkt niet op deze plantensoort',
   },
 
+  photoRound: {
+    title: 'Fotoronde',
+    lede: 'Loop je tuin langs en geef elke plant een verse foto. Eén foto werkt de plant bij, traint de plantherkenning en levert het tuinspel referentiebeelden.',
+    scopeAll: 'Alle planten',
+    scopeLabel: 'Kaart',
+    loading: 'Planten laden…',
+    progress: (done, total) => `${done} van ${total}`,
+    neverPhotographed: 'Nog nooit gefotografeerd',
+    lastPhoto: (days) => days === 0
+      ? 'Laatste foto vandaag'
+      : days === 1 ? 'Laatste foto 1 dag geleden' : `Laatste foto ${days} dagen geleden`,
+    noSpeciesWarning: 'Geen soort gekoppeld — deze foto helpt het spel, maar traint de herkenning niet.',
+    takePhoto: 'Foto maken',
+    uploading: 'Uploaden…',
+    skip: 'Overslaan',
+    finish: 'Stoppen',
+    doneTitle: 'Ronde klaar',
+    doneBody: (count) => count === 1 ? '1 plant gefotografeerd.' : `${count} planten gefotografeerd.`,
+    doneNothing: 'Geen foto’s gemaakt.',
+    empty: 'Geen planten om te fotograferen.',
+    uploadFailed: 'Uploaden mislukt. Probeer opnieuw.',
+    retry: 'Opnieuw',
+    startFromPlants: 'Fotoronde',
+  },
+
   settings: {
     title: 'Instellingen',
     mastheadEyebrow: 'Voorkeuren & account',

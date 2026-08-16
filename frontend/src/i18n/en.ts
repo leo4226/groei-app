@@ -529,6 +529,31 @@ export const en: Translations = {
     mismatchHint: "This doesn't look like this plant's species",
   },
 
+  photoRound: {
+    title: 'Photo round',
+    lede: 'Walk your garden and give every plant a fresh photo. One photo updates the plant, trains identification, and gives the garden game reference images.',
+    scopeAll: 'All plants',
+    scopeLabel: 'Map',
+    loading: 'Loading plants…',
+    progress: (done, total) => `${done} of ${total}`,
+    neverPhotographed: 'Never photographed',
+    lastPhoto: (days) => days === 0
+      ? 'Last photo today'
+      : days === 1 ? 'Last photo 1 day ago' : `Last photo ${days} days ago`,
+    noSpeciesWarning: 'No species linked — this photo helps the game but will not train identification.',
+    takePhoto: 'Take photo',
+    uploading: 'Uploading…',
+    skip: 'Skip',
+    finish: 'Stop',
+    doneTitle: 'Round complete',
+    doneBody: (count) => count === 1 ? '1 plant photographed.' : `${count} plants photographed.`,
+    doneNothing: 'No photos taken.',
+    empty: 'No plants to photograph.',
+    uploadFailed: 'Upload failed. Please try again.',
+    retry: 'Retry',
+    startFromPlants: 'Photo round',
+  },
+
   settings: {
     title: 'Settings',
     mastheadEyebrow: 'Preferences & account',
