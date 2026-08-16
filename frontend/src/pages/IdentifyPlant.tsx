@@ -7,6 +7,8 @@ import { IdentifyResults } from '../components/identify/IdentifyResults'
 import { WeedSightingSheet } from '../components/identify/WeedSightingSheet'
 import Glyph from '../components/ui/Glyph'
 import AppLoadingView from '../components/ui/AppLoadingView'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 import { identifyEnrichmentLoadingCopy } from '../components/identify/identifyLoadingCopy'
 import type { PlantIdCandidate, IdentifyConfidence } from '../types'
 
@@ -51,6 +53,7 @@ export function IdentifyPlantPage() {
   // on the results screen; the confirm there names the third party explicitly.
   const [step, setStep] = useState<Step>({ kind: 'camera', photos: [] })
   const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null)
+  const { canEdit } = useCapabilities()
   const mapSlug = routeState?.mapSlug ?? null
   useEffect(() => {
     if (!mapSlug) return
@@ -219,6 +222,19 @@ export function IdentifyPlantPage() {
     }
   }
 
+  // Identify is a pure write surface: camera, commit to journal/garden, weed
+  // sightings. A viewer gets the calm block instead of a camera that would 403
+  // on every commit.
+  if (!canEdit) {
+    return (
+      <ReadOnlyWritePage
+        title={t.identify.readOnlyTitle}
+        body={t.identify.readOnlyBody}
+        onBack={() => navigate(-1)}
+      />
+    )
+  }
+
   if (step.kind === 'camera') {
     const isMultiAngle = step.photos.length > 0
     return (
@@ -230,7 +246,6 @@ export function IdentifyPlantPage() {
       />
     )
   }
-
   if (step.kind === 'review') {
     const count = step.photos.length
     const identifyLabel = count === 1

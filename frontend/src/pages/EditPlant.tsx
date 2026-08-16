@@ -18,6 +18,8 @@ import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PotDetailsFields from '../components/add/PotDetailsFields'
 import SpeciesPicker from '../components/plant/SpeciesPicker'
 import PageMasthead from '../components/ui/PageMasthead'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 import { buildEditPlantPayload, resolveFormType } from './editPlantPayload'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import { EDIT_PLANT_CARE_HASH, PLANT_PASSPORT_ANCHORS } from '../utils/plantPassportLinks'
@@ -39,6 +41,7 @@ export default function EditPlant() {
   const navigate = useNavigate()
   const t = useT()
   const { maps, plants, updatePlant, uploadPhoto } = useFloreren()
+  const { canEdit } = useCapabilities()
   const plantId = Number(id)
 
   const [plant, setPlant] = useState<Plant | null>(null)
@@ -383,6 +386,18 @@ export default function EditPlant() {
         <div className="h-12 bg-surface rounded-xl animate-pulse" />
         <div className="h-12 bg-surface rounded-xl animate-pulse" />
       </div>
+    )
+  }
+
+  // The edit form is a pure write surface — a viewer gets the same calm block
+  // as /plants/add instead of a form whose every save would 403.
+  if (!canEdit) {
+    return (
+      <ReadOnlyWritePage
+        title={t.editPlant.readOnlyTitle}
+        body={t.editPlant.readOnlyBody}
+        onBack={() => navigate(`/plants/${plantId}`)}
+      />
     )
   }
 

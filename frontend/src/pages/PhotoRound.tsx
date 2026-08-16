@@ -21,6 +21,8 @@ import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import { resolveIconUrl } from '../utils/icons'
 import Glyph from '../components/ui/Glyph'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 
 function daysSince(iso: string): number {
   const then = new Date(iso).getTime()
@@ -31,6 +33,7 @@ function daysSince(iso: string): number {
 export default function PhotoRound() {
   const t = useT()
   const navigate = useNavigate()
+  const { canEdit } = useCapabilities()
   const [params, setParams] = useSearchParams()
   const maps = useFloreren(s => s.maps)
   const loadPlants = useFloreren(s => s.loadPlants)
@@ -95,6 +98,18 @@ export default function PhotoRound() {
     () => maps.find(m => m.id === mapId)?.name ?? t.photoRound.scopeAll,
     [maps, mapId, t],
   )
+
+  // The photo round uploads a photo per plant — a pure write surface. A viewer
+  // gets the calm block instead of a queue that would 403 on every upload.
+  if (!canEdit) {
+    return (
+      <ReadOnlyWritePage
+        title={t.photoRound.readOnlyTitle}
+        body={t.photoRound.readOnlyBody}
+        onBack={() => navigate('/plants')}
+      />
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-bg px-4 pt-6 pb-24 max-w-lg mx-auto">

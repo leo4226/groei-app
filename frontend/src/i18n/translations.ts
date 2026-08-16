@@ -499,6 +499,8 @@ export type Translations = {
   photoRound: {
     title: string
     lede: string
+    readOnlyTitle: string   // "The photo round is for editors"
+    readOnlyBody: string    // "It photographs every plant, which only editors can do."
     scopeAll: string
     scopeLabel: string
     loading: string
@@ -1103,6 +1105,9 @@ export type Translations = {
   addPlant: {
     title: string  // "Add plant 🌱"
     preview: string
+    // Read-only block for viewer accounts (the add form is a pure write surface)
+    readOnlyTitle: string     // "Adding plants is for editors"
+    readOnlyBody: string      // "You can browse the collection, but only editors can add plants."
     entry: {
       identify: string         // "Identify with photo"
       identifySubtitle: string // "Fastest — let AI recognise the species"
@@ -1317,6 +1322,8 @@ export type Translations = {
 
   // ── Plant identification flow ───────────────────────────────────
   identify: {
+    readOnlyTitle: string  // "Identifying is for editors"
+    readOnlyBody: string   // "You can browse the guide, but only editors can identify plants."
     camera: {
       title: string     // "Take a photo"
       capture: string   // "Capture"
@@ -1413,6 +1420,8 @@ export type Translations = {
     previewEyebrow: string   // desktop preview rail label
     changePhoto: string      // desktop preview photo hover pill
     addPhoto: string         // "Add photo"
+    readOnlyTitle: string    // "Editing plants is for editors"
+    readOnlyBody: string     // "You can read the plant's page, but only editors can change it."
     plantPhoto: string       // "Plant photo"
     tapToChangePhoto: string // "Tap to change photo"
     previewAlt: string       // "Preview"

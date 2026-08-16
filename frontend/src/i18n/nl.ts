@@ -540,6 +540,8 @@ export const nl: Translations = {
   photoRound: {
     title: 'Fotoronde',
     lede: 'Loop je tuin langs en geef elke plant een verse foto. Eén foto werkt de plant bij, traint de plantherkenning en levert het tuinspel referentiebeelden.',
+    readOnlyTitle: 'Fotorondes zijn voor bewerkers',
+    readOnlyBody: 'Een fotoronde fotografeert elke plant — dat kunnen alleen bewerkers.',
     scopeAll: 'Alle planten',
     scopeLabel: 'Kaart',
     loading: 'Planten laden…',
@@ -1151,6 +1153,8 @@ export const nl: Translations = {
   addPlant: {
     title: 'Plant toevoegen',
     preview: 'Preview',
+    readOnlyTitle: 'Planten toevoegen is voor bewerkers',
+    readOnlyBody: 'Je kunt de collectie bekijken, maar alleen bewerkers kunnen planten toevoegen.',
     entry: {
       identify: 'Identificeer met foto',
       identifySubtitle: 'Snelste — laat AI het type herkennen',
@@ -1338,6 +1342,8 @@ export const nl: Translations = {
 
   // ── Plant identification flow ────────────────────────────
   identify: {
+    readOnlyTitle: 'Determineren is voor bewerkers',
+    readOnlyBody: 'Je kunt de gids bekijken, maar alleen bewerkers kunnen planten determineren.',
     camera: {
       title: 'Maak een foto',
       capture: 'Foto maken',
@@ -1450,6 +1456,8 @@ export const nl: Translations = {
     previewEyebrow: 'Live voorbeeld',
     changePhoto: 'Wijzig foto',
     addPhoto: 'Foto toevoegen',
+    readOnlyTitle: 'Planten bewerken is voor bewerkers',
+    readOnlyBody: 'Je kunt de pagina van de plant bekijken, maar alleen bewerkers kunnen hem aanpassen.',
     plantPhoto: 'Plantfoto',
     tapToChangePhoto: 'Tik om foto te wijzigen',
     previewAlt: 'Preview',

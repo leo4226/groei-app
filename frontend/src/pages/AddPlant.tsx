@@ -23,6 +23,8 @@ import { sunRequirementTiles } from '../components/add/sunRequirementTiles'
 import PotDetailsFields from '../components/add/PotDetailsFields'
 import { normalizeSunRequirement } from '../utils/plantSunRequirements'
 import PageMasthead from '../components/ui/PageMasthead'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 import {
   isIdentifyPrefill,
   findMatchingIcon,
@@ -47,6 +49,7 @@ export default function AddPlant() {
   const t = useT()
   const navigate = useNavigate()
   const location = useLocation()
+  const { canEdit } = useCapabilities()
   const locState = (location.state ?? null) as AddPlantLocState
   const prefill = locState?.prefill
   // Single consolidated view of the prefill across all three entry paths.
@@ -573,6 +576,19 @@ export default function AddPlant() {
         </div>
       </div>
   )
+
+  // A viewer cannot create plants — this page is a pure write surface (the
+  // entry screen's three routes all lead to writes). Show a calm notice instead
+  // of an entry screen or a form whose every save would 403.
+  if (!canEdit) {
+    return (
+      <ReadOnlyWritePage
+        title={t.addPlant.readOnlyTitle}
+        body={t.addPlant.readOnlyBody}
+        onBack={handleCancel}
+      />
+    )
+  }
 
   if (locState?.from == null) return entryChoiceScreen
 

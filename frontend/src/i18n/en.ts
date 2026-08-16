@@ -540,6 +540,8 @@ export const en: Translations = {
   photoRound: {
     title: 'Photo round',
     lede: 'Walk your garden and give every plant a fresh photo. One photo updates the plant, trains identification, and gives the garden game reference images.',
+    readOnlyTitle: 'Photo rounds are for editors',
+    readOnlyBody: 'A photo round photographs every plant, which only editors can do.',
     scopeAll: 'All plants',
     scopeLabel: 'Map',
     loading: 'Loading plants…',
@@ -1151,6 +1153,8 @@ export const en: Translations = {
   addPlant: {
     title: 'Add plant',
     preview: 'Preview',
+    readOnlyTitle: 'Adding plants is for editors',
+    readOnlyBody: 'You can browse the collection, but only editors can add plants.',
     entry: {
       identify: 'Identify with photo',
       identifySubtitle: 'Fastest — let AI recognise the species',
@@ -1338,6 +1342,8 @@ export const en: Translations = {
 
   // ── Plant identification flow ────────────────────────────
   identify: {
+    readOnlyTitle: 'Identifying is for editors',
+    readOnlyBody: 'You can browse the guide, but only editors can identify plants.',
     camera: {
       title: 'Take a photo',
       capture: 'Capture',
@@ -1450,6 +1456,8 @@ export const en: Translations = {
     previewEyebrow: 'Live preview',
     changePhoto: 'Change photo',
     addPhoto: 'Add photo',
+    readOnlyTitle: 'Editing plants is for editors',
+    readOnlyBody: "You can read the plant's page, but only editors can change it.",
     plantPhoto: 'Plant photo',
     tapToChangePhoto: 'Tap to change photo',
     previewAlt: 'Preview',
