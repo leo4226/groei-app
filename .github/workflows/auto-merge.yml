@@ -72,7 +72,25 @@ jobs:
         # (GitHub suppresses on:push for GITHUB_TOKEN-authored merges). Falls
         # back to GITHUB_TOKEN if the secret isn't set — auto-merge still works,
         # it just won't auto-deploy the backend.
-        run: gh pr merge --auto --squash "$PR_URL"
+        #
+        # Retried for the same reason as the step above, plus a race this
+        # workflow creates for itself: it fires the instant a PR opens or turns
+        # ready, which can be before the required checks have registered, and
+        # GitHub then rejects the call outright —
+        #   Repository rule violations found
+        #   Required status check "test-guard" is queued.
+        # Seconds later the same call succeeds. Without the retry every PR
+        # lands a red X and needs auto-merge enabling by hand, which is the
+        # friction this workflow exists to remove.
+        run: |
+          for attempt in 1 2 3; do
+            if gh pr merge --auto --squash "$PR_URL"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); fi
+          done
+          echo "::error::Could not enable auto-merge after 3 attempts — see the error above. Merge the PR by hand once its checks are green."
+          exit 1
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.DEPLOY_PAT || secrets.GITHUB_TOKEN }}
