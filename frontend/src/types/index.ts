@@ -548,6 +548,8 @@ export function isCareTypeValidForEnv(careType: CareType, isIndoor: boolean): bo
 
 export interface CareWarningOut {
   care_type: string
+  /** Discriminator within a care_type: 'water_drought' | 'water_waterlog'. */
+  code?: string | null
   severity: string
   trigger: string
   days_overdue: number | null

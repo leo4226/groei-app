@@ -1013,13 +1013,15 @@ export type Translations = {
 
   // ── PlantCareInfo card (species profile) ───────────────────────
   careInfo: {
-    /** Per-plant watering context; replaced the global garden-weather card. */
+    /**
+     * Evidence under the water warning in "Aandacht nodig" — the plant-specific
+     * version of the claim the warning makes. Lowercase fragments: they are
+     * joined with separators, not read as sentences.
+     */
     waterLastGiven: (days: number) => string
     waterNeverGiven: string
     waterRainSince: (mm: number) => string
-    waterNormalInterval: (days: number) => string
     waterOverdue: (days: number) => string
-    waterDry: string
     more: string
     less: string
     loadFailed: string

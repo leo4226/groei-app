@@ -98,6 +98,7 @@ async def restore_warning(
 
 class CareWarningOut(BaseModel):
     care_type: str
+    code: str | None = None
     severity: str
     trigger: str
     days_overdue: int | None

@@ -522,6 +522,33 @@ def test_compute_outdoor_drought_warning_uses_rain_data():
     assert state.top_warning.severity == "urgent"
     assert state.top_warning.weather_metric == "rain_7day_mm"
     assert state.top_warning.action_en is not None
+    assert state.top_warning.code == "water_drought"
+
+
+def test_waterlog_and_drought_warnings_are_distinguishable_without_reading_prose():
+    """Both are care_type 'water' and mean opposite things.
+
+    The plant page swaps a water warning's reason line for the plant's own
+    watering reading ("N days overdue"), which contradicts "check drainage".
+    `code` is what lets the client tell them apart — the messages differ only
+    in prose, which the frontend must never branch on.
+    """
+    plant = {
+        "id": 11,
+        "map_type": "outdoor",
+        "container_id": 4,
+        "ground_zone_id": None,
+        "care_thresholds": '{"drought_mm_per_week": 10, "waterlog_mm_per_week": 40}',
+    }
+    weather = {
+        "rain": {"total_7day_mm": 95.0, "total_14day_mm": 190.0},
+        "last_watered": None,
+    }
+
+    state = compute_plant_warnings(plant, [], weather=weather, today=date(2026, 5, 16))
+
+    water = [w for w in state.warnings if w.care_type == "water"]
+    assert [w.code for w in water] == ["water_waterlog"]
 
 
 def test_compute_outdoor_ground_uses_14_day_effective_rainfall():

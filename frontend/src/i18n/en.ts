@@ -1058,13 +1058,12 @@ export const en: Translations = {
 
   careInfo: {
     waterLastGiven: (days: number) =>
-      days === 0 ? 'Watered today' :
-      days === 1 ? 'Watered yesterday' : `Watered ${days} days ago`,
-    waterNeverGiven: 'Never watered',
+      days === 0 ? 'watered today' :
+      days === 1 ? 'watered yesterday' : `watered ${days} days ago`,
+    waterNeverGiven: 'never watered',
     waterRainSince: (mm: number) => `${mm} mm rain since`,
-    waterNormalInterval: (days: number) => `usually every ${days} days`,
-    waterOverdue: (days: number) => `${days} days overdue`,
-    waterDry: 'dry',
+    waterOverdue: (days: number) =>
+      days === 1 ? '1 day overdue' : `${days} days overdue`,
     more: 'More info',
     less: 'Less',
     loadFailed: 'Could not load care info',

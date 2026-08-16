@@ -8,7 +8,7 @@ import Glyph from '../components/ui/Glyph'
 import { plants as plantsApi, care } from '../api/client'
 import { useCareLog } from '../hooks/useCareLog'
 import { useSunAt } from '../hooks/useSunAt'
-import PlantWaterContext from '../components/plant/PlantWaterContext'
+import PlantWaterEvidence from '../components/plant/PlantWaterEvidence'
 import PhotoJournal from '../components/plant/PhotoJournal'
 import { PassportEditLink } from '../components/plant/PassportEditLink'
 import { photos as photosApi } from '../api/client'
@@ -74,7 +74,12 @@ const ALERT_BG: Record<string, string> = {
   info:    'bg-aqua-glow/8',
 }
 
-function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: Phenology | null }) {
+function PlantCareSignals({ plantId, phenology, waterSchedule }: {
+  plantId: number
+  phenology: Phenology | null
+  /** Drives the plant-specific reading under a water warning. */
+  waterSchedule?: { last_done: string | null; interval_days: number }
+}) {
   const [warningState, setWarningState] = useState<PlantWarningStateOut | null>(null)
   const t = useT()
 
@@ -99,43 +104,59 @@ function PlantCareSignals({ plantId, phenology }: { plantId: number; phenology: 
 
   if (warnings.length === 0 && displayActions.length === 0) return null
 
+  // One card: what needs attention, and what to do about it. These were three
+  // separately-styled blocks — a warning strip, a bordered "what can you do"
+  // box nested inside it, and (briefly) a naked watering line on the page
+  // background. Same information, three visual languages, and the reader had to
+  // work out they were about the same thing.
   return (
     <Section title={t.plantDetail.signalsHeading}>
-      {warnings.length > 0 && (
-        <div className="space-y-2">
-          {warnings.map((w, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-l-4 ${ALERT_BORDER[w.severity] ?? 'border-l-aqua-glow'} ${ALERT_BG[w.severity] ?? 'bg-aqua-glow/8'}`}
-            >
-              <CareIcon type={w.care_type as CareIconType} size={18} />
-              <div className="flex-1">
-                <p className="text-sm text-text leading-snug">
-                  {t.locale?.startsWith('en') ? w.message_en : w.message_nl}
+      <div className="card overflow-hidden">
+        {warnings.map((w, i) => (
+          <div
+            key={i}
+            className={`flex items-start gap-3 px-3.5 py-3 border-l-4 ${ALERT_BORDER[w.severity] ?? 'border-l-aqua-glow'} ${ALERT_BG[w.severity] ?? 'bg-aqua-glow/8'} ${i > 0 ? 'border-t border-t-border/50' : ''}`}
+          >
+            <CareIcon type={w.care_type as CareIconType} size={18} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text leading-snug">
+                {t.locale?.startsWith('en') ? w.message_en : w.message_nl}
+              </p>
+              {/* For a plant that may be short of water, its own reading
+                  replaces the generic threshold sentence: "0 mm is below
+                  15mm/week" is true of the whole garden, while "watered 8 days
+                  ago · 0 mm since · 1 day overdue" is why THIS plant is listed.
+                  Waterlogging warnings are care_type 'water' too but mean the
+                  opposite — "3 days overdue" under "check drainage" would
+                  contradict the action — so they keep their own reason. */}
+              {w.care_type === 'water' && w.code !== 'water_waterlog' && waterSchedule ? (
+                <p className="text-xs text-text-muted mt-1">
+                  <PlantWaterEvidence schedule={waterSchedule} />
                 </p>
-                {(w.reason_nl || w.reason_en) && (
-                  <p className="text-xs text-text-muted mt-1">
-                    {t.locale?.startsWith('en') ? w.reason_en : w.reason_nl}
-                  </p>
-                )}
-              </div>
+              ) : (w.reason_nl || w.reason_en) ? (
+                <p className="text-xs text-text-muted mt-1">
+                  {t.locale?.startsWith('en') ? w.reason_en : w.reason_nl}
+                </p>
+              ) : null}
             </div>
-          ))}
-        </div>
-      )}
-      {displayActions.length > 0 && (
-        <div className="mt-2 rounded-xl border border-border bg-surface/50 p-3">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2">{t.plantDetail.whatCanYouDo}</p>
-          <ul className="space-y-1">
-            {displayActions.map((action, i) => (
-              <li key={i} className="text-sm text-text flex gap-1.5">
-                <span className="text-primary shrink-0"><Glyph name="chevron-right" size={14} aria-hidden /></span>
-                <span>{action}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+          </div>
+        ))}
+        {displayActions.length > 0 && (
+          <div className={`px-3.5 py-3 ${warnings.length > 0 ? 'border-t border-border/60' : ''}`}>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
+              {t.plantDetail.whatCanYouDo}
+            </p>
+            <ul className="space-y-1.5">
+              {displayActions.map((action, i) => (
+                <li key={i} className="text-sm text-text flex gap-1.5">
+                  <span className="text-primary shrink-0 mt-0.5"><Glyph name="chevron-right" size={14} aria-hidden /></span>
+                  <span className="leading-snug">{action}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </Section>
   )
 }
@@ -548,7 +569,17 @@ export default function PlantDetail() {
     ? <EcologyCard speciesId={plant.species_id} plantId={plantId} />
     : null
 
-  const alertsBlock = <PlantCareSignals plantId={plantId} phenology={plant.phenology ?? null} />
+  const alertsBlock = (
+    <PlantCareSignals
+      plantId={plantId}
+      phenology={plant.phenology ?? null}
+      waterSchedule={
+        showsGardenWeather(mapInfo)
+          ? plant.care_schedules.find(cs => cs.care_type === 'water' && cs.is_active)
+          : undefined
+      }
+    />
+  )
 
   // One row per schedule. `withLogButton` puts the "mark done" action on the
   // row itself (mobile, which used to carry a separate pill per schedule right
@@ -673,17 +704,9 @@ export default function PlantDetail() {
     </Section>
   )
 
-  const showGardenWeather = showsGardenWeather(mapInfo)
-
-  // The species profile moved into the ecology card ("Over deze soort"); what
-  // is left here is this plant's own watering picture, which is the decision
-  // you are actually making on this screen. Outdoor only — rainfall says
-  // nothing about a houseplant.
-  const waterSchedule = plant.care_schedules.find(
-    cs => cs.care_type === 'water' && cs.is_active)
-  const speciesInfoBlock = showGardenWeather ? (
-    <PlantWaterContext schedule={waterSchedule} />
-  ) : null
+  // The species profile lives in the ecology card ("Over deze soort") and the
+  // watering reading is evidence inside the attention card, so neither needs a
+  // block of its own down here any more.
 
   const journalBlock = (
     <Section id={PLANT_PASSPORT_ANCHORS.photoJournal} title={t.plantDetail.photoJournal}>
@@ -918,10 +941,9 @@ export default function PlantDetail() {
               </Section>
             </div>
             <div className="min-w-0 xl:px-8">
-              {speciesInfoBlock}
+              {journalBlock}
             </div>
             <div className="min-w-0 xl:pl-8">
-              {journalBlock}
               {ecologyBlock}
             </div>
           </div>
@@ -1046,10 +1068,7 @@ export default function PlantDetail() {
         {/* Photo journal (Groeidagboek) */}
         {journalBlock}
 
-        {/* Species profile + garden weather */}
-        {speciesInfoBlock}
-
-        {/* Ecology */}
+        {/* Everything about the species, in one card */}
         {ecologyBlock}
 
         {carePhotoUi}

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildWaterContext,
-  daysBetween,
-  rainSince,
-  waterTone,
-} from './plantWaterModel'
+import { buildWaterContext, daysBetween, rainSince } from './plantWaterModel'
 
 const NOW = new Date('2026-08-15T20:00:00Z')
 
@@ -76,29 +71,5 @@ describe('buildWaterContext', () => {
       { last_done: '2026-08-03', interval_days: 5 }, null, NOW)
     expect(ctx.daysSinceWatered).toBe(12)
     expect(ctx.mmSinceWatered).toBeNull()
-  })
-})
-
-describe('waterTone', () => {
-  const base = { daysSinceWatered: 12, intervalDays: 5, overdueDays: 7 }
-
-  it('flags dry only when overdue AND barely any rain since', () => {
-    expect(waterTone({ ...base, mmSinceWatered: 1 })).toBe('dry')
-  })
-
-  it('is merely due when rain has done the job', () => {
-    // The distinction the old global badge could not make: past due after a
-    // wet week is not the same situation as past due in a drought.
-    expect(waterTone({ ...base, mmSinceWatered: 22 })).toBe('due')
-  })
-
-  it('is ok before the interval elapses, however dry', () => {
-    expect(waterTone({
-      daysSinceWatered: 2, intervalDays: 30, overdueDays: 0, mmSinceWatered: 0,
-    })).toBe('ok')
-  })
-
-  it('falls back to due when there is no rain figure at all', () => {
-    expect(waterTone({ ...base, mmSinceWatered: null })).toBe('due')
   })
 })

@@ -48,6 +48,11 @@ class CareWarning:
     message_en: str
     icon: str
     color: str
+    # Machine-readable discriminator for clients that must tell two warnings of
+    # the same care_type apart. Drought and waterlogging are both care_type
+    # 'water' and mean opposite things, and the only other difference is the
+    # prose — which the frontend must never branch on.
+    code: str | None = None
     reason_nl: str | None = None
     reason_en: str | None = None
     action_nl: str | None = None
@@ -316,6 +321,7 @@ def _rain_warnings_for_plant(
         )
         warnings.append(CareWarning(
             care_type="water",
+            code="water_drought",
             severity=severity,
             trigger="weather_event",
             days_overdue=None,
@@ -345,6 +351,7 @@ def _rain_warnings_for_plant(
         )
         warnings.append(CareWarning(
             care_type="water",
+            code="water_waterlog",
             severity=severity,
             trigger="weather_event",
             days_overdue=None,

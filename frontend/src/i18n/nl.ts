@@ -1058,13 +1058,12 @@ export const nl: Translations = {
 
   careInfo: {
     waterLastGiven: (days: number) =>
-      days === 0 ? 'Vandaag water gegeven' :
-      days === 1 ? 'Gisteren water gegeven' : `${days} dagen geleden water gegeven`,
-    waterNeverGiven: 'Nog nooit water gegeven',
+      days === 0 ? 'vandaag water gegeven' :
+      days === 1 ? 'gisteren water gegeven' : `${days} dagen geleden water gegeven`,
+    waterNeverGiven: 'nog nooit water gegeven',
     waterRainSince: (mm: number) => `${mm} mm regen sindsdien`,
-    waterNormalInterval: (days: number) => `normaal elke ${days} dagen`,
-    waterOverdue: (days: number) => `${days} dagen over tijd`,
-    waterDry: 'droog',
+    waterOverdue: (days: number) =>
+      days === 1 ? '1 dag over tijd' : `${days} dagen over tijd`,
     more: 'Meer info',
     less: 'Minder',
     loadFailed: 'Kon verzorgingsinfo niet laden',
