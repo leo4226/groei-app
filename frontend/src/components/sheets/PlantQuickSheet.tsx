@@ -34,6 +34,11 @@ interface Props {
   heatmapCells?: HeatmapCell[]
   mapId: number
   mapName: string
+  /** Server-derived write capability (me.capabilities.can_edit). When false,
+   * every write control (care chips, photo, move, duplicate, remove, lock,
+   * measured sun, container/zone edits) renders disabled and the handlers
+   * no-op; viewing (passport, sun info, placements) stays. */
+  canEdit?: boolean
   onClose: () => void
   onCareAction: () => void
   onAction: () => void
@@ -48,12 +53,13 @@ interface Props {
 
 export default function PlantQuickSheet({
   plant, objects, soilGroundZones = [], heatmapCells,
-  mapId, mapName,
+  mapId, mapName, canEdit = true,
   onClose, onCareAction, onAction, onMoveOnMap, onDuplicate, onRemove,
   placements = [], onAddPlacement, onDeletePlacement, onUpdatePlacementPhase,
 }: Props) {
   const t = useT()
   const navigate = useNavigate()
+  const writeDisabled = !canEdit
   const markCareDone = useFloreren((s) => s.markCareDone)
   const undoCare = useFloreren((s) => s.undoCare)
   const [locked, setLocked] = useState(plant.is_locked)
@@ -79,6 +85,7 @@ export default function PlantQuickSheet({
   const [savingSun, setSavingSun] = useState(false)
 
   async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    if (writeDisabled) return
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
@@ -95,6 +102,7 @@ export default function PlantQuickSheet({
   }
 
   const handleMovePlant = async (targetMap: MapInfo) => {
+    if (writeDisabled) return
     setMoveError(false)
     // The plant's old map_x/map_y are meaningless on a different map (different
     // viewbox), so drop it at a fresh spot inside the target map — mirrors how
@@ -146,6 +154,7 @@ export default function PlantQuickSheet({
 
   // Persist a measured-sun value (or null to clear) and refresh map markers.
   const handleSetMeasuredSun = async (value: number | null) => {
+    if (writeDisabled) return
     const prev = measuredSun
     setMeasuredSun(value)
     setSavingSun(true)
@@ -194,6 +203,7 @@ export default function PlantQuickSheet({
     chipLabels[ct] ?? t.careTypes[ct as keyof typeof t.careTypes] ?? ct
 
   const handleCare = async (careType: string) => {
+    if (writeDisabled) return
     setSavingType(careType)
     try {
       if (doneTypes.has(careType)) {
@@ -235,6 +245,7 @@ export default function PlantQuickSheet({
   }
 
   const handleToggleLock = async () => {
+    if (writeDisabled) return
     const next = !locked
     setLocked(next)
     try {
@@ -246,6 +257,7 @@ export default function PlantQuickSheet({
   }
 
   const handleMoveOnMap = async () => {
+    if (writeDisabled) return
     if (!onMoveOnMap) return
     setStartingMapMove(true)
     try {
@@ -257,11 +269,13 @@ export default function PlantQuickSheet({
   }
 
   const handleRemoveFromContainer = async () => {
+    if (writeDisabled) return
     await plantsApi.setContainer(plant.id, null)
     onAction()
   }
 
   const handleLiftFromZone = async () => {
+    if (writeDisabled) return
     await plantsApi.setGroundZone(plant.id, null, plant.map_x, plant.map_y)
     onAction()
   }
@@ -342,12 +356,15 @@ export default function PlantQuickSheet({
               {/* Photo / icon tile — tap to log a progress photo */}
               <button
                 onClick={() => photoInputRef.current?.click()}
-                aria-label={t.plantQuickSheet.addPhoto}
+                disabled={writeDisabled}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.addPhoto}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
                 style={{
                   position: 'relative', width: 'var(--plant-quick-sheet-photo-size)', height: 'var(--plant-quick-sheet-photo-size)', borderRadius: 12, padding: 0,
-                  overflow: 'hidden', flexShrink: 0, cursor: 'pointer',
+                  overflow: 'hidden', flexShrink: 0, cursor: writeDisabled ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: 'linear-gradient(145deg,#FDFAF1,#F4EEDB)', border: '1px solid var(--color-border-soft)',
+                  opacity: writeDisabled ? 0.4 : 1,
                 }}
               >
                 {plant.photo_path ? (
@@ -394,20 +411,55 @@ export default function PlantQuickSheet({
                   <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 60 }} onClick={() => setMenuOpen(false)} />
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 61, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 6 }}>
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}><span style={menuIconStyle}><Glyph name="edit" size={15} /></span>{t.plantQuickSheet.edit}</button>
+                      <button
+                        disabled={writeDisabled}
+                        title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                        style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                        onClick={() => { setMenuOpen(false); onClose(); navigate(`/plants/${plant.id}/edit`) }}
+                      ><span style={menuIconStyle}><Glyph name="edit" size={15} /></span>{t.plantQuickSheet.edit}</button>
                       {onMoveOnMap && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}><span style={menuIconStyle}><Glyph name="pin" size={15} /></span>{t.plantQuickSheet.moveOnMap}</button>
+                        <button
+                          disabled={writeDisabled}
+                          title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                          style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                          onClick={() => { setMenuOpen(false); void handleMoveOnMap() }}
+                        ><span style={menuIconStyle}><Glyph name="pin" size={15} /></span>{t.plantQuickSheet.moveOnMap}</button>
                       )}
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}><span style={menuIconStyle}><Glyph name="map" size={15} /></span>{t.plantQuickSheet.moveToMap}</button>
+                      <button
+                        disabled={writeDisabled}
+                        title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                        style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                        onClick={() => { setMenuOpen(false); setMoveError(false); setShowMoveSheet(true) }}
+                      ><span style={menuIconStyle}><Glyph name="map" size={15} /></span>{t.plantQuickSheet.moveToMap}</button>
                       {onAddPlacement && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onAddPlacement() }}><span style={menuIconStyle}><Glyph name="sprout" size={15} /></span>{t.plantQuickSheet.addSpot}</button>
+                        <button
+                          disabled={writeDisabled}
+                          title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                          style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                          onClick={() => { setMenuOpen(false); onAddPlacement() }}
+                        ><span style={menuIconStyle}><Glyph name="sprout" size={15} /></span>{t.plantQuickSheet.addSpot}</button>
                       )}
                       {onDuplicate && (
-                        <button style={menuItemStyle} onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}><span style={menuIconStyle}><Glyph name="copy" size={15} /></span>{t.plantQuickSheet.duplicate}</button>
+                        <button
+                          disabled={writeDisabled}
+                          title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                          style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                          onClick={() => { setMenuOpen(false); onDuplicate(plant.id); onClose() }}
+                        ><span style={menuIconStyle}><Glyph name="copy" size={15} /></span>{t.plantQuickSheet.duplicate}</button>
                       )}
-                      <button style={menuItemStyle} onClick={() => { setMenuOpen(false); void handleToggleLock() }}><span style={menuIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={15} /></span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
+                      <button
+                        disabled={writeDisabled}
+                        title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                        style={{ ...menuItemStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                        onClick={() => { setMenuOpen(false); void handleToggleLock() }}
+                      ><span style={menuIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={15} /></span>{locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock}</button>
                       {onRemove && (
-                        <button style={{ ...menuItemStyle, color: 'var(--color-overdue)' }} onClick={() => { setMenuOpen(false); onRemove(plant.id); onClose() }}><span style={menuIconStyle}><Glyph name="trash" size={15} /></span>{t.plantQuickSheet.remove}</button>
+                        <button
+                          disabled={writeDisabled}
+                          title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                          style={{ ...menuItemStyle, color: 'var(--color-overdue)', opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+                          onClick={() => { setMenuOpen(false); onRemove(plant.id); onClose() }}
+                        ><span style={menuIconStyle}><Glyph name="trash" size={15} /></span>{t.plantQuickSheet.remove}</button>
                       )}
                     </div>
                   </>
@@ -418,13 +470,55 @@ export default function PlantQuickSheet({
 
             {/* Desktop management icon row — replaces the ⋯ dropdown at ≥1024px */}
             <div className="hidden lg:grid grid-cols-3 mt-2" style={{ width: 'fit-content', gap: 10 }}>
-              <button onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }} title={t.plantQuickSheet.edit} aria-label={t.plantQuickSheet.edit} style={desktopIconStyle}><Glyph name="edit" size={14} /></button>
-              {onMoveOnMap && (<button onClick={() => void handleMoveOnMap()} title={t.plantQuickSheet.moveOnMap} aria-label={t.plantQuickSheet.moveOnMap} style={desktopIconStyle}><Glyph name="pin" size={14} /></button>)}
-              <button onClick={() => { setMoveError(false); setShowMoveSheet(true) }} title={t.plantQuickSheet.moveToMap} aria-label={t.plantQuickSheet.moveToMap} style={desktopIconStyle}><Glyph name="map" size={14} /></button>
-              {onAddPlacement && (<button onClick={onAddPlacement} title={t.plantQuickSheet.addSpot} aria-label={t.plantQuickSheet.addSpot} style={desktopIconStyle}><Glyph name="sprout" size={14} /></button>)}
-              {onDuplicate && (<button onClick={() => { onDuplicate(plant.id); onClose() }} title={t.plantQuickSheet.duplicate} aria-label={t.plantQuickSheet.duplicate} style={desktopIconStyle}><Glyph name="copy" size={14} /></button>)}
-              <button onClick={() => void handleToggleLock()} title={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} aria-label={locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock} style={desktopIconStyle}><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
-              {onRemove && (<button onClick={() => { onRemove(plant.id); onClose() }} title={t.plantQuickSheet.remove} aria-label={t.plantQuickSheet.remove} style={{ ...desktopIconStyle, color: 'var(--color-overdue)' }}><Glyph name="trash" size={14} /></button>)}
+              <button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.edit}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.edit}
+                onClick={() => { onClose(); navigate(`/plants/${plant.id}/edit`) }}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="edit" size={14} /></button>
+              {onMoveOnMap && (<button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.moveOnMap}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.moveOnMap}
+                onClick={() => void handleMoveOnMap()}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="pin" size={14} /></button>)}
+              <button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.moveToMap}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.moveToMap}
+                onClick={() => { setMoveError(false); setShowMoveSheet(true) }}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="map" size={14} /></button>
+              {onAddPlacement && (<button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.addSpot}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.addSpot}
+                onClick={onAddPlacement}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="sprout" size={14} /></button>)}
+              {onDuplicate && (<button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.duplicate}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.duplicate}
+                onClick={() => { onDuplicate(plant.id); onClose() }}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="copy" size={14} /></button>)}
+              <button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : (locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock)}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : (locked ? t.plantQuickSheet.unlock : t.plantQuickSheet.lock)}
+                onClick={() => void handleToggleLock()}
+                style={{ ...desktopIconStyle, opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name={locked ? 'unlock' : 'lock'} size={14} /></button>
+              {onRemove && (<button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.remove}
+                aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.remove}
+                onClick={() => { onRemove(plant.id); onClose() }}
+                style={{ ...desktopIconStyle, color: 'var(--color-overdue)', opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
+              ><Glyph name="trash" size={14} /></button>)}
             </div>
           </div>
 
@@ -474,10 +568,10 @@ export default function PlantQuickSheet({
                   <button
                     key={ct}
                     onClick={() => handleCare(ct)}
-                    disabled={saving}
-                    aria-label={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : careLabel(ct)}
-                    title={done ? t.plantQuickSheet.undoHint(careLabel(ct)) : undefined}
-                    style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1, padding: 0 }}
+                    disabled={saving || writeDisabled}
+                    aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : (done ? t.plantQuickSheet.undoHint(careLabel(ct)) : careLabel(ct))}
+                    title={writeDisabled ? t.settings.onlyEditorsCanChange : (done ? t.plantQuickSheet.undoHint(careLabel(ct)) : undefined)}
+                    style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : writeDisabled ? 0.4 : 1, padding: 0 }}
                   >
                     <span style={{ position: 'relative', width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--color-primary)' : 'var(--color-bg)', border: `2px solid ${ring}`, transition: 'all 0.15s', color: overdue ? 'var(--color-overdue)' : dueToday ? 'var(--color-due)' : 'var(--color-text-soft)' }}>
                       {done ? <Glyph name="check" size={24} strokeWidth={2.4} style={{ color: '#fff' }} /> : <CareIcon type={ct as CareIconType} size={24} />}
@@ -495,8 +589,9 @@ export default function PlantQuickSheet({
               })}
               <button
                 onClick={() => photoInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', opacity: uploadingPhoto ? 0.5 : 1, padding: 0 }}
+                disabled={uploadingPhoto || writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                style={{ flex: '0 0 auto', width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: uploadingPhoto ? 0.5 : writeDisabled ? 0.4 : 1, padding: 0 }}
               >
                 <span style={{ width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', border: '2px dashed var(--color-border)', color: 'var(--color-text-soft)' }}>
                   {uploadingPhoto ? '…' : <CareIcon type="photo" size={24} />}
@@ -527,8 +622,10 @@ export default function PlantQuickSheet({
                 </span>
                 <button
                   onClick={() => setSunEditorOpen((v) => !v)}
-                  aria-label={t.plantQuickSheet.sunMeasureOpen}
-                  style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, border: '1px solid var(--color-border-soft)', background: sunEditorOpen ? 'var(--color-primary)' : 'var(--color-surface)', color: sunEditorOpen ? '#fff' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  disabled={writeDisabled}
+                  aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.sunMeasureOpen}
+                  title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                  style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, border: '1px solid var(--color-border-soft)', background: sunEditorOpen ? 'var(--color-primary)' : 'var(--color-surface)', color: sunEditorOpen ? '#fff' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: writeDisabled ? 0.4 : 1 }}
                 >
                   <Glyph name="edit" size={12} />
                 </button>
@@ -551,7 +648,12 @@ export default function PlantQuickSheet({
               <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontSize: 'var(--pq-info-size, 13px)', color: 'var(--color-text-muted)' }}>
                 {t.plantQuickSheet.plantedIn} <strong style={{ color: 'var(--color-text)', fontWeight: 500 }}>{container.name}</strong>
               </span>
-              <button onClick={handleRemoveFromContainer} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+              <button
+                disabled={writeDisabled}
+                title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                onClick={handleRemoveFromContainer}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: writeDisabled ? 0.4 : 1 }}
+              >
                 {t.plantQuickSheet.removeFrom}
               </button>
             </div>
@@ -564,7 +666,7 @@ export default function PlantQuickSheet({
                 </span>
                 {groundZone.soil_note && <p style={{ margin: '2px 0 0', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 11, color: 'var(--color-text-muted)' }}>{groundZone.soil_note}</p>}
               </div>
-              <button onClick={handleLiftFromZone} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+              <button onClick={handleLiftFromZone} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: writeDisabled ? 0.4 : 1, flexShrink: 0 }}>
                 {t.plantQuickSheet.move}
               </button>
             </div>
@@ -589,8 +691,9 @@ export default function PlantQuickSheet({
                   </span>
                   <select
                     value={pl.phase ?? ''}
+                    disabled={writeDisabled}
                     onChange={(e) => onUpdatePlacementPhase?.(pl.id, e.target.value)}
-                    style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 6px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                    style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-body)', fontSize: 12, padding: '4px 6px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', opacity: writeDisabled ? 0.4 : 1, cursor: writeDisabled ? 'not-allowed' : 'pointer' }}
                   >
                     <option value="">{t.plantQuickSheet.spotSameAge}</option>
                     <option value="seed">{t.addPlant.phaseSeed}</option>
@@ -600,9 +703,11 @@ export default function PlantQuickSheet({
                     <option value="established">{t.addPlant.phaseEstablished}</option>
                   </select>
                   <button
+                    disabled={writeDisabled}
                     onClick={() => onDeletePlacement?.(pl.id)}
-                    aria-label={t.plantQuickSheet.removeSpot}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-overdue)', flexShrink: 0, padding: 4, display: 'inline-flex' }}
+                    title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+                    aria-label={writeDisabled ? t.settings.onlyEditorsCanChange : t.plantQuickSheet.removeSpot}
+                    style={{ background: 'none', border: 'none', cursor: writeDisabled ? 'not-allowed' : 'pointer', color: 'var(--color-overdue)', flexShrink: 0, padding: 4, display: 'inline-flex', opacity: writeDisabled ? 0.4 : 1 }}
                   >
                     <Glyph name="x" size={14} />
                   </button>
@@ -620,6 +725,7 @@ export default function PlantQuickSheet({
         <MovePlantSheet
           currentMapId={mapId}
           currentMapName={mapName}
+          canEdit={canEdit}
           error={moveError}
           onSelect={handleMovePlant}
           onClose={() => setShowMoveSheet(false)}

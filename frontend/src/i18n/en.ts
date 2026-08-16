@@ -985,6 +985,16 @@ export const en: Translations = {
     editPlant: '✏️ Edit',
   },
 
+  movePlantSheet: {
+    title: 'Move to another map',
+    currentMap: 'Current map: {name}',
+    error: 'Moving failed. Try again.',
+    loading: 'Loading…',
+    noOtherMaps: 'No other maps available.',
+    typeIndoor: 'Indoor',
+    typeOutdoor: 'Outdoor',
+  },
+
   // ── Plant picker sheet ───────────────────────────────────
   plantPicker: {
     close: 'Close',

@@ -29,6 +29,8 @@ import { useGardenFertilize } from '../hooks/useGardenActions'
 import { useMapWateringRound } from '../hooks/useMapWateringRound'
 import { useUndoableRemove } from '../hooks/useUndoableRemove'
 import { useFloreren } from '../store/useFloreren'
+import { useCapabilities } from '../hooks/useCapabilities'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
 import { CONTAINER_PRESETS } from '../hooks/useEditorState'
 import type { ObjectPreset } from '../hooks/useEditorState'
 import * as clientApis from '../api/client'
@@ -56,6 +58,7 @@ export default function MapPage() {
   const hasLoaded = useFloreren((s) => s.hasLoaded)
   const activeUserId = useFloreren((s) => s.activeUserId)
   const setAssistantPageContext = useFloreren((s) => s.setAssistantPageContext)
+  const { canEdit, isViewer } = useCapabilities()
   useEffect(() => {
     if (allPlants.length === 0) loadPlantsStore()
   }, [loadPlantsStore])
@@ -638,12 +641,20 @@ export default function MapPage() {
         <UnplacedPlantsTray plants={unplacedPlants} onPlace={handlePlaceUnplaced} />
       </div>
 
+      {/* Read-only banner for viewer accounts — centered under the top chrome. */}
+      {isViewer && (
+        <div className={`absolute z-40 left-1/2 -translate-x-1/2 landscape-mobile-hide ${CHROME_TOP_ROW2_CLASS}`}>
+          <ReadOnlyBanner className="max-w-[calc(100vw-2rem)] shadow-sm" />
+        </div>
+      )}
+
       {/* Action cluster: top-right in portrait, bottom-center in landscape */}
       <div className={`absolute z-20 flex flex-col items-end gap-2 md:gap-3 landscape-action-bottom ${CHROME_TOP_CLASS} ${CHROME_RIGHT_CLASS}`}>
         <MapActionCluster
           isOutdoor={isOutdoor}
           waterStatus={mapWaterStatus}
           lastWateredAt={wateringRoundData?.history[0]?.completed_at ?? null}
+          canEdit={canEdit}
           sunActive={sun.active}
           sunAvailable={sun.available}
           inspectorMode={sun.inspectorMode}
@@ -708,6 +719,7 @@ export default function MapPage() {
             useGlobalCare
               ? (
                 <GlobalCareSheet
+                  canEdit={canEdit}
                   currentMapName={map?.name ?? null}
                   onPlantTap={handleGlobalPlantTap}
                   highlightedWeatherWarningId={highlightedWeatherWarningId}
@@ -789,6 +801,7 @@ export default function MapPage() {
           heatmapCells={sun.cells}
           mapId={map.id}
           mapName={map.name}
+          canEdit={canEdit}
           onClose={handleCloseSheet}
           onCareAction={handleCareAction}
           onAction={handleCareAction}

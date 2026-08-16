@@ -985,6 +985,16 @@ export const nl: Translations = {
     editPlant: '✏️ Bewerken',
   },
 
+  movePlantSheet: {
+    title: 'Verplaats naar een andere kaart',
+    currentMap: 'Huidige kaart: {name}',
+    error: 'Verplaatsen mislukt. Probeer het opnieuw.',
+    loading: 'Laden…',
+    noOtherMaps: 'Geen andere kaarten beschikbaar.',
+    typeIndoor: 'Binnen',
+    typeOutdoor: 'Buiten',
+  },
+
   // ── Plant picker sheet ───────────────────────────────────
   plantPicker: {
     close: 'Sluiten',

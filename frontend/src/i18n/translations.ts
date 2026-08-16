@@ -941,6 +941,17 @@ export type Translations = {
     editPlant: string
   }
 
+  // ── Move-plant sheet ─────────────────────────────────────────
+  movePlantSheet: {
+    title: string          // "Move to another map"
+    currentMap: string     // "Current map: {name}"
+    error: string          // "Moving failed. Try again."
+    loading: string        // "Loading…"
+    noOtherMaps: string    // "No other maps available."
+    typeIndoor: string     // "Indoor"
+    typeOutdoor: string    // "Outdoor"
+  }
+
   // ── Plant picker sheet ──────────────────────────────────────────
   plantPicker: {
     close: string

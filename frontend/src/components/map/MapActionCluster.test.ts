@@ -82,3 +82,74 @@ describe('MapActionCluster watering recency', () => {
     expect(formatWaterRecency('2026-07-22', localNow)).toBe('1d')
   })
 })
+
+describe('MapActionCluster capability gating', () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    localStorage.clear()
+    localStorage.setItem('floreren_lang', 'en')
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+    vi.clearAllMocks()
+  })
+
+  function render(canEdit: boolean) {
+    act(() => {
+      root.render(createElement(
+        LanguageProvider,
+        null,
+        createElement(MapActionCluster, {
+          isOutdoor: true,
+          waterStatus: 'hydrated',
+          lastWateredAt: null,
+          sunActive: false,
+          sunAvailable: true,
+          inspectorMode: false,
+          moveModeActive: false,
+          canEdit,
+          onNewGame: vi.fn(),
+          ...callbacks,
+        }),
+      ))
+    })
+  }
+
+  function buttons() {
+    return Array.from(container.querySelectorAll('button')) as HTMLButtonElement[]
+  }
+
+  it('enables every write control for an editor', () => {
+    render(true)
+    const disabled = buttons().filter((b) => b.disabled)
+    expect(disabled).toEqual([])
+  })
+
+  it('disables water/fertilize/move/add/game but keeps sun and inspect for a viewer', () => {
+    render(false)
+    const byTitle: Record<string, HTMLButtonElement> = {}
+    for (const b of buttons()) byTitle[b.title] = b
+
+    // Sun + inspect stay usable
+    expect(byTitle['Sun']).toBeDefined()
+    expect(byTitle['Sun'].disabled).toBe(false)
+    expect(byTitle['Inspect']).toBeDefined()
+    expect(byTitle['Inspect'].disabled).toBe(false)
+
+    // Write controls disabled with the read-only explanation
+    expect(byTitle['Only editors can change this.']).toBeDefined()
+    for (const b of buttons()) {
+      if (b.title === 'Only editors can change this.') expect(b.disabled).toBe(true)
+    }
+    // The five write controls must all be disabled
+    const water = buttons().find((b) => b.querySelector('[data-water-recency]'))
+    expect(water?.disabled).toBe(true)
+  })
+})
