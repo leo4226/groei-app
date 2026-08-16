@@ -550,6 +550,7 @@ export const en: Translations = {
     doneNothing: 'No photos taken.',
     empty: 'No plants to photograph.',
     uploadFailed: 'Upload failed. Please try again.',
+    loadFailed: 'Could not load the plant list.',
     retry: 'Retry',
     startFromPlants: 'Photo round',
   },
