@@ -76,6 +76,34 @@ jobs:
         # DATABASE_URL is unreachable.
         run: python -m pytest -q
 
+  layout:
+    # Three mobile bugs reached Leon's phone in one day — a control added only
+    # to the desktop header, the same control then clipping its neighbour off
+    # the right edge, and a card laid out wrong. tsc, the build, the unit tests
+    # and the i18n guard passed on all three, because none of them render
+    # anything at a width. This job does.
+    name: Frontend · layout
+    runs-on: ubuntu-latest
+    # Bounded deliberately: the guard drives a real browser, and a stalled
+    # navigation would otherwise hold a runner for hours.
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Layout guard (320 / 360 / 393 / 430 / desktop)
+        run: node tests/visual/layout-check.mjs
+
   migrations:
     name: Backend · migrations
     # The test suite runs against the SQLite seam, so nothing here ever
