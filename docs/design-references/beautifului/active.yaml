@@ -1,0 +1,54 @@
+schema_version: 1
+library:
+  id: beautifului-reference
+  title: Beautiful UI design-reference library
+  version: 1.0.0
+  status: active
+  default_mode: inspiration-only
+  source_name: Beautiful UI
+  source_url: https://www.beautifului.dev/
+  license_url: https://www.beautifului.dev/license
+  captured_on: "2026-08-16"
+  update_policy: manual, issue-scoped updates only; no watcher or scheduled job
+agent_read_order:
+  - policy.md
+  - patterns/floreren-adaptation-rules.md
+  - catalogue.yaml
+  - selected component notes only
+entrypoints:
+  policy: policy.md
+  adaptation_rules: patterns/floreren-adaptation-rules.md
+  catalogue: catalogue.yaml
+  visuals: visuals/manifest.yaml
+task_profiles:
+  loading_or_async_feedback:
+    - bui.loading-state
+    - bui.tool-chips
+    - bui.task-rows
+    - bui.streaming-text
+  confirmation_or_suggestion:
+    - bui.approval-card
+    - bui.recommendation-card
+    - bui.diff-table
+  search_navigation_or_composition:
+    - bui.search
+    - bui.sidebar-nav
+    - bui.prompt-bar
+    - bui.chat
+  data_review_or_filtering:
+    - bui.context-cards
+    - bui.records-table
+    - bui.filter-table
+    - bui.insight-cards
+  technical_or_editor_tools:
+    - bui.code-block
+    - bui.fine-tune-card
+    - bui.selection-actions
+  motion_or_visual_style:
+    - patterns/visual-language.md
+    - patterns/motion-and-accessibility.md
+    - patterns/interaction-rules.md
+guardrails:
+  - Beautiful UI is reference material, not Floreren's design system.
+  - Do not copy upstream code unless an issue explicitly requests it and licensing and compatibility are checked.
+  - Use Floreren's existing components, tokens, i18n, and accessibility patterns first.

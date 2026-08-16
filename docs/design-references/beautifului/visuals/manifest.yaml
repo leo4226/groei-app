@@ -1,0 +1,23 @@
+schema_version: 1
+purpose: Internal visual reference evidence only; never ship as Floreren product assets.
+capture_policy:
+  maximum_scope: Small, representative overview or component-state captures only.
+  required_metadata:
+    - id
+    - path
+    - source_url
+    - captured_on
+    - viewport
+    - theme
+    - description
+    - sha256
+  forbidden_content:
+    - logos
+    - marketing copy
+    - upstream source code
+    - example business data unless necessary and explicitly scoped
+captures: []
+gaps:
+  - captured_on: "2026-08-16"
+    reason: Browser automation rendered visual evidence but did not expose a reliable repository-readable screenshot file.
+    action: Keep this manifest ready for a future reliable manual capture; do not invent an image or checksum.

@@ -1,0 +1,121 @@
+schema_version: 1
+source:
+  name: Beautiful UI
+  catalogue_url: https://www.beautifului.dev/
+  captured_on: "2026-08-16"
+  mode: inspiration-only
+components:
+  - id: bui.loading-state
+    name: Loading State
+    source_url: https://www.beautifului.dev/#loading-state
+    path: components/loading-state.md
+    tags: [async-feedback, loading, progress]
+    load_when: A task needs a clear waiting or in-progress state.
+  - id: bui.thinking
+    name: Thinking
+    source_url: https://www.beautifului.dev/#thinking-state
+    path: components/thinking.md
+    tags: [disclosure, trace, progressive-detail]
+    load_when: A task needs optional detail behind an expandable summary.
+  - id: bui.streaming-text
+    name: Streaming Text
+    source_url: https://www.beautifului.dev/#streaming-text
+    path: components/streaming-text.md
+    tags: [async-feedback, sources, follow-up]
+    load_when: A task presents incremental text, sources, or follow-up actions.
+  - id: bui.approval-card
+    name: Approval Card
+    source_url: https://www.beautifului.dev/#approval-card
+    path: components/approval-card.md
+    tags: [confirmation, choice, human-in-the-loop]
+    load_when: A task needs a bounded choice before a consequential action.
+  - id: bui.tool-chips
+    name: Tool Chips
+    source_url: https://www.beautifului.dev/#tool-chips
+    path: components/tool-chips.md
+    tags: [async-feedback, compact-status, disclosure]
+    load_when: A task needs compact summaries of background work or changes.
+  - id: bui.task-rows
+    name: Task Rows
+    source_url: https://www.beautifului.dev/#task-rows
+    path: components/task-rows.md
+    tags: [status, progress, error]
+    load_when: A task needs a readable list of running, complete, or failed items.
+  - id: bui.chat
+    name: Chat
+    source_url: https://www.beautifului.dev/#chat-composer
+    path: components/chat.md
+    tags: [conversation, tabs, composer]
+    load_when: A task concerns a conversational surface or response history.
+  - id: bui.prompt-bar
+    name: Prompt Bar
+    source_url: https://www.beautifului.dev/#prompt-bar
+    path: components/prompt-bar.md
+    tags: [composer, attachments, commands]
+    load_when: A task needs structured text entry with optional context.
+  - id: bui.recommendation-card
+    name: Recommendation Card
+    source_url: https://www.beautifului.dev/#recommendation-card
+    path: components/recommendation-card.md
+    tags: [recommendation, confidence, confirmation]
+    load_when: A task shows a suggested action with alternatives.
+  - id: bui.context-cards
+    name: Context Cards
+    source_url: https://www.beautifului.dev/#context-cards
+    path: components/context-cards.md
+    tags: [provenance, metadata, disclosure]
+    load_when: A task needs traceable supporting records or sources.
+  - id: bui.diff-table
+    name: Diff Table
+    source_url: https://www.beautifului.dev/#diff-table
+    path: components/diff-table.md
+    tags: [review, proposed-change, table]
+    load_when: A task needs review of additions, deletions, or modifications.
+  - id: bui.records-table
+    name: Records Table
+    source_url: https://www.beautifului.dev/#records-table
+    path: components/records-table.md
+    tags: [table, sorting, selection]
+    load_when: A task needs a dense, accessible data grid.
+  - id: bui.filter-table
+    name: Filter Table
+    source_url: https://www.beautifului.dev/#filter-table
+    path: components/filter-table.md
+    tags: [filtering, status, table]
+    load_when: A task needs visible filters that reorganise a small data list.
+  - id: bui.sidebar-nav
+    name: Sidebar Nav
+    source_url: https://www.beautifului.dev/#sidebar-nav
+    path: components/sidebar-nav.md
+    tags: [navigation, search, hierarchy]
+    load_when: A task concerns desktop navigation or grouped destinations.
+  - id: bui.search
+    name: Search
+    source_url: https://www.beautifului.dev/#search
+    path: components/search.md
+    tags: [search, command, empty-state]
+    load_when: A task needs focused search results or command selection.
+  - id: bui.insight-cards
+    name: Insight Cards
+    source_url: https://www.beautifului.dev/#insight-cards
+    path: components/insight-cards.md
+    tags: [insight, chart, pagination]
+    load_when: A task needs a compact evidence-backed metric or insight.
+  - id: bui.code-block
+    name: Code Block
+    source_url: https://www.beautifului.dev/#code-block
+    path: components/code-block.md
+    tags: [technical, streaming, copy]
+    load_when: A task displays technical text that benefits from code formatting.
+  - id: bui.fine-tune-card
+    name: Fine-tune Card
+    source_url: https://www.beautifului.dev/#fine-tune-card
+    path: components/fine-tune-card.md
+    tags: [inspector, properties, controls]
+    load_when: A task exposes a compact expert property inspector.
+  - id: bui.selection-actions
+    name: Selection Actions
+    source_url: https://www.beautifului.dev/#selection-actions
+    path: components/selection-actions.md
+    tags: [selection, contextual-actions, text]
+    load_when: A task offers actions for a selected text range.
