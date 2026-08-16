@@ -52,14 +52,36 @@ def decode_token(token: str) -> dict:
         raise JWTError("Not an account token")
 
 
-async def get_current_account(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-) -> dict:
-    """FastAPI dependency — injects {"account_id": int, "household_id": int}."""
+async def get_current_account_from_token(token: str, db) -> dict:
+    """Validate a bearer token and its current account membership from the database."""
     try:
-        return decode_token(credentials.credentials)
+        claims = decode_token(token)
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    rows = await db.execute_fetchall(
+        """SELECT a.id, a.household_id
+           FROM accounts a
+           JOIN households h ON h.id = a.household_id
+           WHERE a.id = ?""",
+        (claims["account_id"],),
+    )
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    account = dict(rows[0])
+    if account["household_id"] != claims["household_id"]:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    return {"account_id": account["id"], "household_id": account["household_id"]}
+
+
+async def get_current_account(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    db=Depends(db_dep),
+) -> dict:
+    """FastAPI dependency — injects {"account_id": int, "household_id": int}."""
+    return await get_current_account_from_token(credentials.credentials, db)
 
 
 # ── Guest tokens (garden game) ───────────────────────────────────────────────
