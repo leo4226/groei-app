@@ -10,6 +10,8 @@ import { resolveIconUrl } from '../utils/icons'
 import { plantDisplayName, plantSearchText } from '../utils/plantDisplayName'
 import Glyph from '../components/ui/Glyph'
 import PageDecor from '../components/PageDecor'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
+import { useCapabilities } from '../hooks/useCapabilities'
 
 const DiscoveriesSection = lazy(() => import('../components/discoveries/DiscoveriesSection'))
 import RecentCareSection from '../components/plants/RecentCareSection'
@@ -62,6 +64,7 @@ export default function Plants() {
   const FORM_LABELS = useFormLabels()
   const t = useT()
   const isMobile = useIsMobile()
+  const { canEdit } = useCapabilities()
   const [filterArea, setFilterArea] = useState<'all' | 'tuin' | 'huis'>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterForm, setFilterForm] = useState<string>('all')
@@ -202,6 +205,11 @@ export default function Plants() {
   if (!isMobile) {
     return (
       <div style={{ paddingBottom: 80 }}>
+        {!canEdit && (
+          <div style={{ maxWidth: 1800, margin: '0 auto', padding: '24px clamp(24px, 3vw, 56px) 0' }}>
+            <ReadOnlyBanner />
+          </div>
+        )}
         {/* Header */}
         <header className="plants-header" style={{
           maxWidth: 1800,
@@ -364,45 +372,49 @@ export default function Plants() {
               </div>
 
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
-                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-                  color: 'var(--color-text-soft)', padding: '10px 16px',
-                  border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
-                  transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
-                  {t.discovery.identifyWild}
-                </button>
-                <button onClick={() => navigate('/photo-round')} style={{
-                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
-                  color: 'var(--color-text-soft)', padding: '10px 16px',
-                  border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
-                  transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
-                >
-                  {t.photoRound.startFromPlants}
-                </button>
-                <button onClick={() => navigate('/plants/add')} style={{
-                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
-                  color: 'var(--color-surface)', textDecoration: 'none', padding: '10px 17px',
-                  border: '1px solid var(--color-primary)', borderRadius: 100, whiteSpace: 'nowrap',
-                  transition: 'all 0.15s', flexShrink: 0, background: 'var(--color-primary)', cursor: 'pointer',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  {t.plantsPage.addButton}
-                </button>
+                {canEdit && (
+                  <>
+                    <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
+                      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                      color: 'var(--color-text-soft)', padding: '10px 16px',
+                      border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                      transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                      </svg>
+                      {t.discovery.identifyWild}
+                    </button>
+                    <button onClick={() => navigate('/photo-round')} style={{
+                      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
+                      color: 'var(--color-text-soft)', padding: '10px 16px',
+                      border: '1px solid var(--color-border)', borderRadius: 100, whiteSpace: 'nowrap',
+                      transition: 'all 0.15s', flexShrink: 0, background: 'transparent', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-soft)'; }}
+                    >
+                      {t.photoRound.startFromPlants}
+                    </button>
+                    <button onClick={() => navigate('/plants/add')} style={{
+                      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+                      color: 'var(--color-surface)', textDecoration: 'none', padding: '10px 17px',
+                      border: '1px solid var(--color-primary)', borderRadius: 100, whiteSpace: 'nowrap',
+                      transition: 'all 0.15s', flexShrink: 0, background: 'var(--color-primary)', cursor: 'pointer',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {t.plantsPage.addButton}
+                    </button>
+                  </>
+                )}
                 {isSelecting ? (
                   <button onClick={clearSelection} style={{
                     fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
@@ -412,7 +424,7 @@ export default function Plants() {
                   }}>
                     {t.common.cancel}
                   </button>
-                ) : (
+                ) : canEdit && (
                   <button onClick={() => setIsSelecting(true)} style={{
                     fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500,
                     color: 'var(--color-text-soft)', padding: '10px 16px',
@@ -553,7 +565,7 @@ export default function Plants() {
             </>
           )}
 
-          {isSelecting && (
+          {canEdit && isSelecting && (
             <div style={{
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
               background: 'var(--color-surface)',
@@ -597,6 +609,11 @@ export default function Plants() {
     <div style={{ paddingBottom: 80 }}>
       {/* Browser chrome spacer — zorgt dat sticky header niet achter URL bar verdwijnt op mobiel */}
       <div style={{ height: 'max(env(safe-area-inset-top, 0px), 48px)' }} />
+      {!canEdit && (
+        <div style={{ padding: '0 16px 10px' }}>
+          <ReadOnlyBanner />
+        </div>
+      )}
       {/* Sticky compact header */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20,
@@ -634,45 +651,49 @@ export default function Plants() {
             {/* The photo round is a phone-in-the-garden activity, so it needs a
                 door on the phone. Its first version only had one in the desktop
                 header, which is the one place it is useless. */}
-            <button onClick={() => navigate('/photo-round')} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
-            }} aria-label={t.photoRound.startFromPlants} title={t.photoRound.startFromPlants}>
-              <Glyph name="clipboard" size={16} aria-hidden />
-            </button>
-            <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
-            }} aria-label={t.discovery.identifyWild}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-            <button onClick={() => navigate('/plants/add')} style={{
-              fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
-              color: 'var(--color-surface)', background: 'var(--color-primary)',
-              border: 'none', borderRadius: 100, padding: '6px 14px',
-              cursor: 'pointer', whiteSpace: 'nowrap',
-            }}>
-              {t.plantsPage.addButton}
-            </button>
-            <button
-              onClick={() => isSelecting ? clearSelection() : setIsSelecting(true)}
-              style={{
-                fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
-                color: isSelecting ? 'var(--color-primary)' : 'var(--color-text-soft)',
-                background: isSelecting ? 'var(--color-bg-warm)' : 'transparent',
-                border: '1px solid var(--color-border)', borderRadius: 100,
-                padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
-            >
-              {isSelecting ? t.common.cancel : t.plantsPage.select}
-            </button>
+            {canEdit && (
+              <>
+                <button onClick={() => navigate('/photo-round')} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 34, height: 34, borderRadius: '50%',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
+                }} aria-label={t.photoRound.startFromPlants} title={t.photoRound.startFromPlants}>
+                  <Glyph name="clipboard" size={16} aria-hidden />
+                </button>
+                <button onClick={() => navigate('/identify', { state: { mode: 'discover' } })} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 34, height: 34, borderRadius: '50%',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  cursor: 'pointer', flexShrink: 0, color: 'var(--color-text-soft)',
+                }} aria-label={t.discovery.identifyWild}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </button>
+                <button onClick={() => navigate('/plants/add')} style={{
+                  fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+                  color: 'var(--color-surface)', background: 'var(--color-primary)',
+                  border: 'none', borderRadius: 100, padding: '6px 14px',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>
+                  {t.plantsPage.addButton}
+                </button>
+                <button
+                  onClick={() => isSelecting ? clearSelection() : setIsSelecting(true)}
+                  style={{
+                    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+                    color: isSelecting ? 'var(--color-primary)' : 'var(--color-text-soft)',
+                    background: isSelecting ? 'var(--color-bg-warm)' : 'transparent',
+                    border: '1px solid var(--color-border)', borderRadius: 100,
+                    padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isSelecting ? t.common.cancel : t.plantsPage.select}
+                </button>
+              </>
+            )}
           </div>
         </div>
 

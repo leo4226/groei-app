@@ -18,6 +18,8 @@ import EditorTour from '../components/editor/EditorTour'
 import SelectionSheet from '../components/editor/SelectionSheet'
 import StarterWizard, { type StarterWizardResult } from './editor/StarterWizard'
 import { useIsTouch } from '../hooks/useIsTouch'
+import { useCapabilities } from '../hooks/useCapabilities'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
 import { CHROME_TOP_CLASS, CHROME_TOP_ROW3_CLASS, CHROME_LEFT_CLASS, CHROME_RIGHT_CLASS, CHROME_BOTTOM_CLASS } from '../components/safeAreaLayout'
 
 export default function LayoutEditorPage() {
@@ -25,6 +27,7 @@ export default function LayoutEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const mapId = id ? parseInt(id, 10) : null
+  const { canEdit } = useCapabilities()
 
   const [map, setMap] = useState<MapInfo | null>(null)
   const [mapObjects, setMapObjects] = useState<MapObject[]>([])
@@ -414,6 +417,37 @@ export default function LayoutEditorPage() {
     setSelectedObjectId(null)
   }
 
+
+  if (!canEdit) {
+    // The layout editor is a pure write surface — there is nothing read-only to
+    // see in it (the map view is the read surface). Viewers get a calm block
+    // screen instead of a palette of tools that would all 403.
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+        <ReadOnlyBanner />
+        <div>
+          <p className="font-heading text-lg font-medium text-text">{t.editor.readOnlyTitle}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-text-muted">{t.editor.readOnlyBody}</p>
+        </div>
+        <div className="flex gap-3">
+          {map && (
+            <button
+              onClick={() => navigate(`/map/${map.slug}`)}
+              className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text hover:bg-surface"
+            >
+              {t.editor.viewMap}
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/maps')}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white"
+          >
+            {t.editor.toolbar.back}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) return <div className="p-6 text-text-muted text-center">{t.editor.loading}</div>
   if (!map) return <div className="p-6 text-overdue text-center">{t.editor.notFound}</div>

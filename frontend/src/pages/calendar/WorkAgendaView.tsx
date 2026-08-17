@@ -14,6 +14,7 @@ import CalendarRefreshNotice from './CalendarRefreshNotice'
 import WateringRoundDialog from './WateringRoundDialog'
 import MoistureCheckDialog from './MoistureCheckDialog'
 import { useFloreren } from '../../store/useFloreren'
+import { useCapabilities } from '../../hooks/useCapabilities'
 
 interface Props {
   env: string
@@ -24,6 +25,8 @@ interface Props {
 
 export default function WorkAgendaView({ env, environmentFilter, viewNavigation, onSetView }: Props) {
   const t = useT()
+  const { canEdit } = useCapabilities()
+  const readOnly = !canEdit
   const today = new Date()
   const todayIso = isoDate(today)
   const currentMonth1 = today.getMonth() + 1
@@ -112,6 +115,7 @@ export default function WorkAgendaView({ env, environmentFilter, viewNavigation,
               actionError={actionError}
               mapSlugs={mapSlugs}
               onWeatherChanged={retry}
+              readOnly={readOnly}
             />
           )}
         </div>

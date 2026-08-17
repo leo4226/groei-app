@@ -25,6 +25,8 @@ interface Props {
   mapSlugs: ReadonlyMap<number, string>
   weatherAdvisories?: CalendarWeatherAdvisory[]
   onWeatherChanged?(): Promise<void> | void
+  /** Viewer mode: completion/acknowledge controls render disabled. */
+  readOnly?: boolean
 }
 
 export default function CalendarAgendaCard({
@@ -40,9 +42,12 @@ export default function CalendarAgendaCard({
   mapSlugs,
   weatherAdvisories = [],
   onWeatherChanged = () => undefined,
+  readOnly = false,
 }: Props) {
   const t = useT()
   const locale = t.locale || 'nl-NL'
+  const writeDisabled = readOnly
+  const writeTitle = t.settings.onlyEditorsCanChange
   const [y, m, d] = selectedIso.split('-').map(Number)
   const dateObj = new Date(y, m - 1, d)
   const dayName = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
@@ -141,6 +146,7 @@ export default function CalendarAgendaCard({
         <CalendarWeatherAdvisories
           advisories={weatherAdvisories}
           onChanged={onWeatherChanged}
+          readOnly={readOnly}
         />
         {Object.entries(groups).map(([groupId, groupEvents]) => {
           const firstEvent = groupEvents[0]
@@ -181,9 +187,12 @@ export default function CalendarAgendaCard({
               )}
               {groupEvents.some(e => isActionable(e, todayIso)) ? (
                 <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                  <button disabled={busyGroup}
+                  <button disabled={busyGroup || writeDisabled}
                     onClick={() => handleBatchDone(groupId, groupEvents)}
-                    className="ag-btn ag-btn-done">
+                    title={writeDisabled ? writeTitle : undefined}
+                    aria-label={writeDisabled ? writeTitle : undefined}
+                    className="ag-btn ag-btn-done"
+                    style={writeDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>
                     {firstEvent.type === 'moisture_check'
                       ? t.calendar.moistureCheckTitle
                       : firstEvent.grouped
@@ -191,9 +200,12 @@ export default function CalendarAgendaCard({
                         : t.dashboard.actions.done}
                   </button>
                   {!firstEvent.grouped && (
-                    <button disabled={busyGroup}
+                    <button disabled={busyGroup || writeDisabled}
                       onClick={() => handleBatchSkip(groupId, groupEvents)}
-                      className="ag-btn ag-btn-skip">
+                      title={writeDisabled ? writeTitle : undefined}
+                      aria-label={writeDisabled ? writeTitle : undefined}
+                      className="ag-btn ag-btn-skip"
+                      style={writeDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>
                       {t.dashboard.actions.skip}
                     </button>
                   )}
@@ -254,7 +266,7 @@ export default function CalendarAgendaCard({
           <p className="sc-sub" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
             {undoMsg}
           </p>
-          <button onClick={onGardenUndo} className="ag-btn ag-btn-skip" style={{ fontSize: 12 }}>
+          <button onClick={onGardenUndo} disabled={writeDisabled} title={writeDisabled ? writeTitle : undefined} className="ag-btn ag-btn-skip" style={{ fontSize: 12, ...(writeDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }}>
             {t.calendar.undoGroup}
           </button>
         </div>

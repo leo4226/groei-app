@@ -40,7 +40,7 @@ function statusCode(error: unknown): number | undefined {
     : undefined
 }
 
-export default function CareRhythmSettings() {
+export default function CareRhythmSettings({ canEdit = true }: { canEdit?: boolean }) {
   const t = useT()
   const [settings, setSettings] = useState<CareRhythmSettingsData | null>(null)
   const [config, setConfig] = useState<CareRhythmConfig | null>(null)
@@ -241,7 +241,9 @@ export default function CareRhythmSettings() {
             {t.settings.careRhythmDescription}
           </p>
         </div>
-        {settings && !open && (
+        {/* Viewers read the current rhythm but cannot change it: the editor is
+            a write surface (apply/undo), so the entry button is omitted. */}
+        {settings && !open && canEdit && (
           <button
             type="button"
             onClick={() => setOpen(true)}

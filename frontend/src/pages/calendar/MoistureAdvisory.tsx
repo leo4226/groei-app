@@ -9,6 +9,8 @@ interface Props {
   saving: string | null
   onCheck(event: CalendarEvent): void
   mapSlugs: ReadonlyMap<number, string>
+  /** Viewer mode: the check button renders disabled. */
+  readOnly?: boolean
 }
 
 function affectedCount(event: CalendarEvent): number {
@@ -18,11 +20,12 @@ function affectedCount(event: CalendarEvent): number {
     ?? 0
 }
 
-export default function MoistureAdvisory({ advisory, todayIso, saving, onCheck, mapSlugs }: Props) {
+export default function MoistureAdvisory({ advisory, todayIso, saving, onCheck, mapSlugs, readOnly = false }: Props) {
   const t = useT()
   const english = t.locale.startsWith('en')
   const reason = english ? advisory.reasonEn : advisory.reasonNl
   const action = english ? advisory.actionEn : advisory.actionNl
+  const writeTitle = t.settings.onlyEditorsCanChange
 
   return (
     <section
@@ -68,7 +71,8 @@ export default function MoistureAdvisory({ advisory, todayIso, saving, onCheck, 
                 <button
                   type="button"
                   className="calendar-moisture-check-button"
-                  disabled={busy}
+                  disabled={busy || readOnly}
+                  title={readOnly ? writeTitle : undefined}
                   onClick={() => onCheck(event)}
                 >
                   {busy ? t.common.loading : t.calendar.moistureCheckAction}

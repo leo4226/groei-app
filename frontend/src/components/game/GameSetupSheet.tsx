@@ -6,11 +6,16 @@ import { gameApi } from '../../api/game'
 import type { MapInfo, MapPlant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../ui/Glyph'
+import ReadOnlyBanner from '../ui/ReadOnlyBanner'
 
 interface Props {
   mapId: number
   mapSlug: string
   onClose: () => void
+  /** Server-derived write capability — creating a game is an editor write
+   * (POST /games is require_editor). Defaults to true for non-gated call
+   * sites; the map gamepad already hides this sheet from viewers. */
+  canEdit?: boolean
 }
 
 /** A plant plus which map it came from — a hunt can span several. */
@@ -22,9 +27,10 @@ interface GamePlant extends MapPlant {
 
 const ROUND_SECONDS_CHOICES = [60, 120, 180, 300]
 
-export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
+export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true }: Props) {
   const t = useT()
   const navigate = useNavigate()
+  const writeDisabled = !canEdit
   const [allMaps, setAllMaps] = useState<MapInfo[]>([])
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set([mapId]))
   const [plants, setPlants] = useState<GamePlant[]>([])
@@ -170,6 +176,8 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 pb-2 space-y-4">
+          {writeDisabled && <ReadOnlyBanner />}
+
           {/* Maps — a hunt can cross from the living room into the garden */}
           {allMaps.length > 1 && (
             <div>
@@ -397,7 +405,8 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose }: Props) {
           )}
           <button
             onClick={handleCreate}
-            disabled={!canCreate || creating}
+            disabled={!canCreate || creating || writeDisabled}
+            title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
             className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
           >
             {creating ? t.game.creating : `${t.game.createGame} (${effectiveRounds})`}

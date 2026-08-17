@@ -8,6 +8,8 @@ import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
 import GameRoundHeader from '../components/game/GameRoundHeader'
 import Glyph from '../components/ui/Glyph'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 import { QRCodeSVG } from 'qrcode.react'
 
 // The host is a player too, so the round view doubles as their play screen:
@@ -19,6 +21,7 @@ export default function GameHostPage() {
   const t = useT()
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
+  const { canEdit } = useCapabilities()
   const [state, setState] = useState<GameState | null>(null)
   const [step, setStep] = useState<HostStep>('waiting')
   const [advancing, setAdvancing] = useState(false)
@@ -129,6 +132,13 @@ export default function GameHostPage() {
     } finally {
       setQuizSubmitting(false)
     }
+  }
+
+  // Hosting a game is an editor-only write surface (creating, starting and
+  // advancing rounds all 403 a viewer server-side). A viewer reaching this
+  // route directly sees the calm read-only notice instead of a broken host UI.
+  if (!canEdit) {
+    return <ReadOnlyWritePage onBack={() => navigate('/maps')} />
   }
 
   if (!state) {

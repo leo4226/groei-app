@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFloreren } from '../store/useFloreren'
 import { useT } from '../context/LanguageContext'
-import { auth, icons, type AccountMe, type HouseholdMember, type NotificationPrefs } from '../api/client'
+import { icons, type HouseholdMember, type NotificationPrefs } from '../api/client'
 import type { IconSyncResult } from '../types'
 import { clearToken } from '../api/auth'
 import PageMasthead from '../components/ui/PageMasthead'
 import Glyph from '../components/ui/Glyph'
 import SettingsGroup from '../components/settings/SettingsGroup'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
+import { useCapabilities } from '../hooks/useCapabilities'
 import InstallPromptSheet from '../components/install/InstallPromptSheet'
 import YouPanel, { type Theme } from './settings/YouPanel'
 import HouseholdPanel from './settings/HouseholdPanel'
@@ -42,6 +44,16 @@ export default function Settings() {
   const t = useT()
   const navigate = useNavigate()
   const { users, locations, activeUserId } = useFloreren()
+  // The signed-in account now lives in the store (fetched by load() /
+  // refreshAll()), so every capability-gated page reads the same source
+  // instead of firing its own /auth/me.
+  const me = useFloreren((s) => s.me)
+  const loadMe = useFloreren((s) => s.loadMe)
+  const { isViewer } = useCapabilities()
+  // Panels gate their write controls on these server-derived flags; the safe
+  // default while the account is still loading is not-allowed.
+  const canEdit = me?.capabilities.can_edit ?? false
+  const canManageHousehold = me?.capabilities.can_manage_household ?? false
 
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem(THEME_KEY)
@@ -50,7 +62,6 @@ export default function Settings() {
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
-  const [me, setMe] = useState<AccountMe | null>(null)
   const [showInstall, setShowInstall] = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)
 
@@ -65,18 +76,17 @@ export default function Settings() {
   const [syncResult, setSyncResult] = useState<IconSyncResult | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
 
-  // One account fetch for the whole page. This used to be two effects here and
-  // is the only place it happens now — the panels take what they need as props
-  // rather than each firing their own /auth/me.
+  // Seed the page summaries from the store's account; fetch it only if the
+  // app-wide load hasn't reached us yet (deep link / slow first load). The
+  // panels take what they need as props rather than firing their own /auth/me.
   useEffect(() => {
-    auth.me()
-      .then((account) => {
-        setMe(account)
-        setProfileName(account.name)
-        setHouseholdName(account.household_name)
-      })
-      .catch(() => setMe(null))
-  }, [])
+    if (me) {
+      setProfileName(me.name)
+      setHouseholdName(me.household_name)
+      return
+    }
+    loadMe()
+  }, [me, loadMe])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -156,6 +166,8 @@ export default function Settings() {
           not a dashboard. The old two-column desktop grid split the sections by
           DOM position, so reading order jumped between columns mid-topic. */}
       <div className="mx-auto w-full max-w-[900px] space-y-3 px-4 pb-12 pt-6 md:px-[clamp(24px,3vw,56px)]">
+        {isViewer && <ReadOnlyBanner />}
+
         <SettingsGroup
           id="you"
           icon="users"
@@ -177,6 +189,8 @@ export default function Settings() {
             initialName={householdName}
             onMembersChange={setMembers}
             onHouseholdNameChange={setHouseholdName}
+            canEdit={canEdit}
+            canManageHousehold={canManageHousehold}
           />
         </SettingsGroup>
 
@@ -188,9 +202,9 @@ export default function Settings() {
           summary={t.settings.groupCareSummary}
         >
           <div className="space-y-3">
-            <CareRhythmSettings />
-            <CalendarGroupingSettings embedded />
-            <CalendarSubscriptionSettings />
+            <CareRhythmSettings canEdit={canEdit} />
+            <CalendarGroupingSettings embedded canEdit={canEdit} />
+            <CalendarSubscriptionSettings canEdit={canEdit} />
           </div>
         </SettingsGroup>
 
@@ -202,6 +216,7 @@ export default function Settings() {
           summary={notificationsSummary}
         >
           <NotificationsPanel
+            canEdit={canEdit}
             onPrefsChange={(p, push) => { setPrefs(p); setPushOnHere(push) }}
           />
         </SettingsGroup>
@@ -213,7 +228,7 @@ export default function Settings() {
           description={t.settings.groupPlacesDesc}
           summary={placesSummary}
         >
-          <PlacesPanel />
+          <PlacesPanel canEdit={canEdit} />
         </SettingsGroup>
 
         <SettingsGroup

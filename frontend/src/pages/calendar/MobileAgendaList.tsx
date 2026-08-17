@@ -25,6 +25,10 @@ interface Props {
   actionError: string | null
   mapSlugs?: ReadonlyMap<number, string>
   onWeatherChanged?(): Promise<void> | void
+  /** Viewer mode: care completion / skip / acknowledge controls render
+   * disabled so the agenda stays readable without offering writes the
+   * server would 403. Defaults to false (editable). */
+  readOnly?: boolean
 }
 
 export default function MobileAgendaList({
@@ -38,8 +42,11 @@ export default function MobileAgendaList({
   actionError,
   mapSlugs = EMPTY_MAP_SLUGS,
   onWeatherChanged = () => undefined,
+  readOnly = false,
 }: Props) {
   const t = useT()
+  const writeDisabled = readOnly
+  const writeTitle = t.settings.onlyEditorsCanChange
   const grouped = useMemo(() => {
     const m = new Map<string, CalendarEvent[]>()
     events.forEach(e => {
@@ -65,13 +72,15 @@ export default function MobileAgendaList({
         }}>
           <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{undoMsg}</span>
           <button
-            disabled={saving === 'undo-garden'}
+            disabled={saving === 'undo-garden' || writeDisabled}
             onClick={onGardenUndo}
             aria-busy={saving === 'undo-garden'}
+            title={writeDisabled ? writeTitle : undefined}
             style={{
               padding: '5px 10px', borderRadius: 99, background: 'transparent',
               color: 'var(--color-text-muted)', border: '1px solid var(--color-border)',
-              fontFamily: 'Fraunces, serif', fontSize: 11, cursor: 'pointer', flexShrink: 0,
+              fontFamily: 'Fraunces, serif', fontSize: 11, cursor: writeDisabled ? 'not-allowed' : 'pointer', flexShrink: 0,
+              opacity: writeDisabled ? 0.4 : 1,
             }}
           >
             {saving === 'undo-garden' ? t.common.loading : t.calendar.undoGroup}
@@ -103,11 +112,13 @@ export default function MobileAgendaList({
                 saving={saving}
                 onCheck={onDone}
                 mapSlugs={mapSlugs}
+                readOnly={readOnly}
               />
             ))}
             <CalendarWeatherAdvisories
               advisories={presentation.weatherAdvisories}
               onChanged={onWeatherChanged}
+              readOnly={readOnly}
             />
             {ordinaryEvents.map(e => {
               const def = EVENT_TYPE_BY_ID[e.type as EventTypeId]
@@ -148,7 +159,7 @@ export default function MobileAgendaList({
                   </span>
                   {isActionable(e, todayIso) ? (
                     <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexShrink: 0 }}>
-                      <button disabled={busy} onClick={() => onDone(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: 'pointer' }}>
+                      <button disabled={busy || writeDisabled} onClick={() => onDone(e)} title={writeDisabled ? writeTitle : undefined} aria-label={writeDisabled ? writeTitle : undefined} style={{ padding: '4px 10px', borderRadius: 99, background: 'var(--color-primary)', color: '#fff', border: 'none', fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 10, cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: writeDisabled ? 0.4 : 1 }}>
                         {busy
                           ? t.common.loading
                           : e.type === 'moisture_check'
@@ -158,7 +169,7 @@ export default function MobileAgendaList({
                               : t.dashboard.actions.done}
                       </button>
                       {!e.grouped && (
-                        <button disabled={busy} onClick={() => onSkip(e)} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: 'pointer' }}>
+                        <button disabled={busy || writeDisabled} onClick={() => onSkip(e)} title={writeDisabled ? writeTitle : undefined} aria-label={writeDisabled ? writeTitle : undefined} style={{ padding: '4px 10px', borderRadius: 99, background: 'transparent', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'Fraunces, serif', fontSize: 10, cursor: writeDisabled ? 'not-allowed' : 'pointer', opacity: writeDisabled ? 0.4 : 1 }}>
                           {t.dashboard.actions.skip}
                         </button>
                       )}

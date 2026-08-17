@@ -13,6 +13,10 @@ import { partitionWeatherWarnings } from './weatherWarningModel'
 import CareIcon, { type CareIconType } from '../ui/CareIcon'
 
 interface Props {
+  /** Server-derived write capability (me.capabilities.can_edit). When false,
+   * every Done/Skip/acknowledge/restore control is disabled and the handlers
+   * no-op — a viewer can read the list but not act on it. */
+  canEdit?: boolean
   /** Current map's name, so we can flag plants that live in another garden. */
   currentMapName?: string | null
   /** Tap a plant — pan to it (same map) or navigate to its garden (other map). */
@@ -82,12 +86,14 @@ function groupByCareType(plants: BucketPlantOut[], doneIds: Set<string>): {
  * global `warningSummary` so a user sees every garden without leaving the map.
  */
 export default function GlobalCareSheet({
+  canEdit = true,
   currentMapName,
   onPlantTap,
   highlightedWeatherWarningId,
   onHighlightWeatherWarning,
 }: Props) {
   const t = useT()
+  const readOnly = !canEdit
   const summary = useFloreren((s) => s.warningSummary)
   const markCareDone = useFloreren((s) => s.markCareDone)
   const skipCare = useFloreren((s) => s.skipCare)
@@ -117,7 +123,7 @@ export default function GlobalCareSheet({
   }
 
   async function handleDone(plant: BucketPlantOut) {
-    if (!plant.care_type) return
+    if (readOnly || !plant.care_type) return
     const key = keyOf(plant)
     setSaving(key)
     try {
@@ -129,7 +135,7 @@ export default function GlobalCareSheet({
   }
 
   async function handleSkip(plant: BucketPlantOut) {
-    if (!plant.care_type) return
+    if (readOnly || !plant.care_type) return
     const key = keyOf(plant)
     setSaving(key)
     try {
@@ -141,6 +147,7 @@ export default function GlobalCareSheet({
   }
 
   async function handleDoneGroup(cardId: string, group: CareGroup) {
+    if (readOnly) return
     setSaving(`group_${cardId}`)
     try {
       await Promise.all(group.plants.map((p) => markCareDone(p.plant_id, group.care_type)))
@@ -157,6 +164,7 @@ export default function GlobalCareSheet({
   }
 
   async function handleAcknowledgeWeather(warning: WeatherWarningGroupOut) {
+    if (readOnly) return
     setSaving(`weather_${warning.warning_id}`)
     try {
       await acknowledgeWeatherWarning(warning)
@@ -169,6 +177,7 @@ export default function GlobalCareSheet({
   }
 
   async function handleRestoreWeather(warning: WeatherWarningGroupOut) {
+    if (readOnly) return
     setSaving(`weather_${warning.warning_id}`)
     try {
       await restoreWeatherWarning(warning.warning_id)
@@ -207,6 +216,7 @@ export default function GlobalCareSheet({
               key={warning.warning_id}
               warning={warning}
               t={t}
+              readOnly={readOnly}
               saving={saving === `weather_${warning.warning_id}`}
               highlighted={highlightedWeatherWarningId === warning.warning_id}
               onHighlight={() => onHighlightWeatherWarning?.(
@@ -223,6 +233,7 @@ export default function GlobalCareSheet({
                 cardId={id}
                 group={g}
                 t={t}
+                readOnly={readOnly}
                 currentMapName={currentMapName}
                 expanded={expanded.has(id)}
                 saving={saving}
@@ -265,6 +276,7 @@ export default function GlobalCareSheet({
                     cardId={id}
                     group={g}
                     t={t}
+                    readOnly={readOnly}
                     muted
                     currentMapName={currentMapName}
                     expanded={expanded.has(id)}
@@ -305,6 +317,7 @@ export default function GlobalCareSheet({
                   key={warning.warning_id}
                   warning={warning}
                   t={t}
+                  readOnly={readOnly}
                   saving={saving === `weather_${warning.warning_id}`}
                   onRestore={() => handleRestoreWeather(warning)}
                 />
@@ -323,9 +336,10 @@ export default function GlobalCareSheet({
   )
 }
 
-function WeatherAdvisoryCard({ warning, t, saving, highlighted, onHighlight, onAcknowledge }: {
+function WeatherAdvisoryCard({ warning, t, readOnly, saving, highlighted, onHighlight, onAcknowledge }: {
   warning: WeatherWarningGroupOut
   t: ReturnType<typeof useT>
+  readOnly: boolean
   saving: boolean
   highlighted: boolean
   onHighlight: () => void
@@ -365,9 +379,10 @@ function WeatherAdvisoryCard({ warning, t, saving, highlighted, onHighlight, onA
           {highlighted ? t.mapPage.weatherHidePlantMarkers : t.mapPage.weatherHighlightPlants}
         </button>
         <button
-          disabled={saving}
+          disabled={readOnly || saving}
           onClick={onAcknowledge}
-          className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold disabled:opacity-50"
+          title={readOnly ? t.settings.onlyEditorsCanChange : undefined}
+          className={`px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed ${readOnly ? 'opacity-40' : ''}`}
         >
           {t.mapPage.weatherGotIt}
         </button>
@@ -376,9 +391,10 @@ function WeatherAdvisoryCard({ warning, t, saving, highlighted, onHighlight, onA
   )
 }
 
-function SeenWeatherAdvisory({ warning, t, saving, onRestore }: {
+function SeenWeatherAdvisory({ warning, t, readOnly, saving, onRestore }: {
   warning: WeatherWarningGroupOut
   t: ReturnType<typeof useT>
+  readOnly: boolean
   saving: boolean
   onRestore: () => void
 }) {
@@ -393,9 +409,10 @@ function SeenWeatherAdvisory({ warning, t, saving, onRestore }: {
         </span>
       </div>
       <button
-        disabled={saving}
+        disabled={readOnly || saving}
         onClick={onRestore}
-        className="px-2.5 py-1 rounded-full bg-bg text-text text-[11px] font-semibold disabled:opacity-50"
+        title={readOnly ? t.settings.onlyEditorsCanChange : undefined}
+        className={`px-2.5 py-1 rounded-full bg-bg text-text text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed ${readOnly ? 'opacity-40' : ''}`}
       >
         {t.mapPage.weatherRestore}
       </button>
@@ -407,6 +424,7 @@ interface CareCardProps {
   cardId: string
   group: CareGroup
   t: ReturnType<typeof useT>
+  readOnly?: boolean
   muted?: boolean
   currentMapName?: string | null
   expanded: boolean
@@ -419,7 +437,7 @@ interface CareCardProps {
 }
 
 function CareCard({
-  cardId, group, t, muted, currentMapName, expanded, saving,
+  cardId, group, t, readOnly = false, muted, currentMapName, expanded, saving,
   onToggle, onDoneGroup, onPlantTap, onDone, onSkip,
 }: CareCardProps) {
   const { label } = getCareTypeDisplay(group.care_type, t)
@@ -447,7 +465,7 @@ function CareCard({
               {label}
               {!muted && group.maxDaysOverdue > 0 && (
                 <span className="ml-1.5 text-[10px] font-medium" style={{ color: accent }}>
-                  +{group.maxDaysOverdue}d
+                  {`+${group.maxDaysOverdue}d`}
                 </span>
               )}
             </span>
@@ -461,9 +479,10 @@ function CareCard({
           </span>
         ) : (
           <button
-            disabled={isSaving}
+            disabled={readOnly || isSaving}
             onClick={onDoneGroup}
-            className="px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-50"
+            title={readOnly ? t.settings.onlyEditorsCanChange : undefined}
+            className={`px-3 py-1.5 rounded-full bg-primary text-white text-[11px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${readOnly ? 'opacity-40' : ''}`}
           >
             {t.mapPage.careDoneAll}
           </button>
@@ -479,6 +498,7 @@ function CareCard({
               key={keyOf(p)}
               plant={p}
               t={t}
+              readOnly={readOnly}
               currentMapName={currentMapName}
               saving={saving}
               onTap={onPlantTap}
@@ -492,9 +512,10 @@ function CareCard({
   )
 }
 
-function PlantRow({ plant, t, currentMapName, saving, onTap, onDone, onSkip }: {
+function PlantRow({ plant, t, readOnly, currentMapName, saving, onTap, onDone, onSkip }: {
   plant: BucketPlantOut
   t: ReturnType<typeof useT>
+  readOnly?: boolean
   currentMapName?: string | null
   saving: string | null
   onTap?: (plantId: number, mapName: string | null) => void
@@ -526,10 +547,12 @@ function PlantRow({ plant, t, currentMapName, saving, onTap, onDone, onSkip }: {
       ) : (
         <CareActions
           disabled={isSaving}
+          readOnly={readOnly}
           onDone={() => onDone(plant)}
           onSkip={() => onSkip(plant)}
           doneLabel={t.mapPage.careDone}
           skipLabel={t.mapPage.careSkip}
+          readOnlyTitle={t.settings.onlyEditorsCanChange}
         />
       )}
     </div>
@@ -580,27 +603,30 @@ function WeatherWarningInline({ copy, t }: { copy: LocalizedWarningCopy; t: Retu
   )
 }
 
-function CareActions({ disabled, onDone, onSkip, doneLabel, skipLabel }: {
+function CareActions({ disabled, readOnly = false, onDone, onSkip, doneLabel, skipLabel, readOnlyTitle }: {
   disabled: boolean
+  readOnly?: boolean
   onDone: () => void
   onSkip: () => void
   doneLabel: string
   skipLabel: string
+  readOnlyTitle?: string
 }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
       <button
-        disabled={disabled}
+        disabled={disabled || readOnly}
         onClick={onDone}
-        className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold whitespace-nowrap disabled:opacity-50"
+        title={readOnly ? undefined : doneLabel}
+        className={`px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-semibold whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${readOnly ? 'opacity-40' : ''}`}
       >
         {doneLabel}
       </button>
       <button
-        disabled={disabled}
+        disabled={disabled || readOnly}
         onClick={onSkip}
-        title={skipLabel}
-        className="w-6 h-6 rounded-full text-text-muted text-sm flex items-center justify-center opacity-60 disabled:opacity-30"
+        title={readOnly ? readOnlyTitle : skipLabel}
+        className={`w-6 h-6 rounded-full text-text-muted text-sm flex items-center justify-center opacity-60 disabled:opacity-30 ${readOnly ? 'opacity-30 cursor-not-allowed' : ''}`}
       >
         ×
       </button>

@@ -33,6 +33,11 @@ interface Props {
 export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: Props) {
   const t = useT()
   const { users, activeUserId, updateUserLanguage } = useFloreren()
+  // Name/avatar/password are profile writes the backend gates by can_edit
+  // (PATCH /household/members/{id}, POST /auth/change-password). Language and
+  // theme stay editable: they are self/device preferences, not household data.
+  const canEdit = me?.capabilities.can_edit ?? false
+  const onlyEditorsTitle = t.settings.onlyEditorsCanChange
 
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState('')
@@ -122,8 +127,10 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
             <label className="mb-1.5 block text-sm font-semibold">{t.settings.profileAvatar}</label>
             <button
               onClick={() => setPickerOpen((v) => !v)}
+              disabled={!canEdit}
               aria-expanded={pickerOpen}
-              className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-primary/10 transition-transform active:scale-90"
+              title={canEdit ? undefined : onlyEditorsTitle}
+              className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-primary/10 transition-transform active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Avatar value={avatar} size={40} />
             </button>
@@ -135,7 +142,8 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
             </label>
             <input
               id="profile-name"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+              disabled={!canEdit}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t.settings.profileName}
@@ -174,8 +182,9 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
 
         <button
           onClick={handleSave}
-          disabled={saving || !name.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+          disabled={saving || !name.trim() || !canEdit}
+          title={canEdit ? undefined : onlyEditorsTitle}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? (
             <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t.common.saving}</>
@@ -239,8 +248,10 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
       <div className="border-t border-border pt-4">
         <button
           onClick={() => setShowPassword((v) => !v)}
+          disabled={!canEdit}
           aria-expanded={showPassword}
-          className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold text-text transition-transform active:scale-[0.98]"
+          title={canEdit ? undefined : onlyEditorsTitle}
+          className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold text-text transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t.settings.changePassword}
         </button>
@@ -249,7 +260,8 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
             <input
               type="password"
               autoComplete="current-password"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+              disabled={!canEdit}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50 disabled:opacity-50"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder={t.settings.currentPassword}
@@ -257,7 +269,8 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
             <input
               type="password"
               autoComplete="new-password"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50"
+              disabled={!canEdit}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium outline-none focus:border-primary/50 disabled:opacity-50"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder={t.settings.newPassword}
@@ -265,7 +278,7 @@ export default function YouPanel({ me, theme, onThemeChange, onProfileSaved }: P
             <p className="text-[11px] text-text-muted">{t.settings.passwordMinLength}</p>
             <button
               onClick={handleChangePassword}
-              disabled={changing || !currentPassword || !newPassword}
+              disabled={changing || !currentPassword || !newPassword || !canEdit}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
             >
               {changing ? (

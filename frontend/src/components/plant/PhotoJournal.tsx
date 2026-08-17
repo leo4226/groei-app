@@ -6,6 +6,7 @@ import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import { photoViewerControlsClassName } from './photoJournalLayout'
 import Glyph from '../ui/Glyph'
+import { useCapabilities } from '../../hooks/useCapabilities'
 
 const REMINDER_PRESETS = [14, 30, 90]
 
@@ -19,6 +20,7 @@ interface Props {
 
 export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Props) {
   const t = useT()
+  const { canEdit } = useCapabilities()
   const [photos, setPhotos] = useState<PlantPhoto[]>([])
   const [uploading, setUploading] = useState(false)
   const [viewer, setViewer] = useState<number | null>(null)  // index into photos
@@ -79,7 +81,9 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
              className="hidden" onChange={onPick} />
       <button
         className="w-full flex items-center justify-center gap-2 py-2.5 mb-3 rounded-full bg-primary text-white font-semibold text-sm active:scale-[0.98] transition-transform disabled:opacity-60"
-        disabled={uploading}
+        disabled={uploading || !canEdit}
+        title={canEdit ? undefined : t.settings.onlyEditorsCanChange}
+        aria-label={canEdit ? (uploading ? t.photoJournal.uploading : t.photoJournal.addPhoto) : t.settings.onlyEditorsCanChange}
         onClick={() => fileRef.current?.click()}
       >
         <Glyph name="camera" size={16} />
@@ -95,8 +99,9 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
           {reminderOn && (
             <select
               value={reminderDays}
+              disabled={!canEdit}
               onChange={e => setReminder(true, Number(e.target.value))}
-              className="bg-surface border border-border rounded-lg px-2 py-1 text-xs font-semibold"
+              className="bg-surface border border-border rounded-lg px-2 py-1 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {REMINDER_PRESETS.map(d => (
                 <option key={d} value={d}>{d} {t.photoJournal.daysSuffix}</option>
@@ -105,7 +110,10 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
           )}
           <button
             onClick={() => setReminder(!reminderOn, reminderDays)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${reminderOn ? 'bg-primary' : 'bg-border'}`}
+            disabled={!canEdit}
+            title={canEdit ? undefined : t.settings.onlyEditorsCanChange}
+            aria-label={canEdit ? undefined : t.settings.onlyEditorsCanChange}
+            className={`relative w-11 h-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${reminderOn ? 'bg-primary' : 'bg-border'}`}
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${reminderOn ? 'translate-x-5' : 'translate-x-0'}`} />
           </button>
@@ -166,8 +174,10 @@ export default function PhotoJournal({ plantId, refreshKey = 0, reminder }: Prop
                   {compare ? t.photoJournal.compareOff : t.photoJournal.compare}
                 </button>
               )}
-              <button className="ml-auto shrink-0 text-red-300 font-semibold"
-                      onClick={() => onDelete(photos[viewer])}>{t.photoJournal.delete}</button>
+              {canEdit && (
+                <button className="ml-auto shrink-0 text-red-300 font-semibold"
+                        onClick={() => onDelete(photos[viewer])}>{t.photoJournal.delete}</button>
+              )}
             </div>
           </div>
         </div>

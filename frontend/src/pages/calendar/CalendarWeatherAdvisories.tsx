@@ -11,9 +11,11 @@ interface CardProps {
   advisory: CalendarWeatherAdvisory
   seen?: boolean
   onChanged(): Promise<void> | void
+  /** Viewer mode: acknowledge/restore renders disabled. */
+  readOnly?: boolean
 }
 
-function AdvisoryCard({ advisory, seen = false, onChanged }: CardProps) {
+function AdvisoryCard({ advisory, seen = false, onChanged, readOnly = false }: CardProps) {
   const t = useT()
   const [expanded, setExpanded] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -23,6 +25,7 @@ function AdvisoryCard({ advisory, seen = false, onChanged }: CardProps) {
   const action = english ? advisory.actionEn : advisory.actionNl
   const label = t.utility[EVENT_TYPE_UTILITY_KEY[advisory.type as EventTypeId]]
   const canAcknowledge = Boolean(advisory.warningId && advisory.severity)
+  const writeTitle = t.settings.onlyEditorsCanChange
 
   async function updateAcknowledgment() {
     if (!advisory.warningId || !advisory.severity) return
@@ -95,7 +98,8 @@ function AdvisoryCard({ advisory, seen = false, onChanged }: CardProps) {
         <button
           type="button"
           className="calendar-weather-state-action"
-          disabled={saving}
+          disabled={saving || readOnly}
+          title={readOnly ? writeTitle : undefined}
           onClick={updateAcknowledgment}
         >
           {seen ? t.mapPage.weatherRestore : t.mapPage.weatherGotIt}
@@ -108,23 +112,25 @@ function AdvisoryCard({ advisory, seen = false, onChanged }: CardProps) {
 interface Props {
   advisories: CalendarWeatherAdvisory[]
   onChanged(): Promise<void> | void
+  /** Viewer mode: acknowledge/restore controls render disabled. */
+  readOnly?: boolean
 }
 
-export default function CalendarWeatherAdvisories({ advisories, onChanged }: Props) {
+export default function CalendarWeatherAdvisories({ advisories, onChanged, readOnly = false }: Props) {
   const t = useT()
   const { active, seen } = partitionCalendarWeather(advisories)
 
   return (
     <>
       {active.map(advisory => (
-        <AdvisoryCard key={advisory.key} advisory={advisory} onChanged={onChanged} />
+        <AdvisoryCard key={advisory.key} advisory={advisory} onChanged={onChanged} readOnly={readOnly} />
       ))}
       {seen.length > 0 && (
         <details className="calendar-weather-seen">
           <summary>{t.mapPage.weatherSeenGuidance} · {seen.length}</summary>
           <div className="calendar-weather-seen-list">
             {seen.map(advisory => (
-              <AdvisoryCard key={advisory.key} advisory={advisory} seen onChanged={onChanged} />
+              <AdvisoryCard key={advisory.key} advisory={advisory} seen onChanged={onChanged} readOnly={readOnly} />
             ))}
           </div>
         </details>

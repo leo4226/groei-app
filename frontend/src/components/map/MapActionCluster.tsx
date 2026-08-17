@@ -10,6 +10,11 @@ interface Props {
   isOutdoor: boolean
   waterStatus: GardenWaterStatus['status']
   lastWateredAt: string | null
+  /** Server-derived write capability (me.capabilities.can_edit). When false,
+   * water/fertilize/move/add/game render disabled with a read-only tooltip;
+   * sun + inspect stay usable. Defaults to true so non-gated call sites and
+   * older tests keep their behaviour. */
+  canEdit?: boolean
   sunActive: boolean
   sunAvailable: boolean
   inspectorMode: boolean
@@ -37,7 +42,7 @@ export function formatWaterRecency(
 }
 
 export default function MapActionCluster({
-  isOutdoor, waterStatus, lastWateredAt,
+  isOutdoor, waterStatus, lastWateredAt, canEdit = true,
   sunActive, sunAvailable, inspectorMode, moveModeActive,
   onWater, onFertilize, onToggleSun, onToggleInspector, onToggleMoveMode,
   onAddPlant, onNewGame,
@@ -61,17 +66,23 @@ export default function MapActionCluster({
   }, [sunAvailable, onToggleSun, showGpsHintTemporarily])
 
   const iconBtn = "w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full transition-colors"
-  const waterTitle = lastWateredAt
-    ? t.mapPage.mapWateringLastWateredTitle(isoToDisplay(lastWateredAt))
-    : t.mapPage.mapWateringNoHistoryTitle
+  const writeDisabled = !canEdit
+  const writeTitle = t.settings.onlyEditorsCanChange
+  const waterTitle = writeDisabled
+    ? writeTitle
+    : lastWateredAt
+      ? t.mapPage.mapWateringLastWateredTitle(isoToDisplay(lastWateredAt))
+      : t.mapPage.mapWateringNoHistoryTitle
+  const disabledIconBtn = `${iconBtn} disabled:opacity-40 disabled:cursor-not-allowed`
 
   return (
     <div className="flex items-center gap-0.5 md:gap-1 bg-surface/85 rounded-full border border-border/60 shadow-lg p-1 md:p-1.5" style={{ backdropFilter: 'blur(10px)' }}>
       <button
         onClick={onWater}
+        disabled={writeDisabled}
         title={waterTitle}
         aria-label={waterTitle}
-        className={`${iconBtn} relative text-blue-600 hover:bg-blue-500/15`}
+        className={`${disabledIconBtn} relative text-blue-600 hover:bg-blue-500/15 disabled:hover:bg-transparent`}
       >
         <WaterStatusIcon status={waterStatus} size={14} className="md:scale-110" />
         <span
@@ -82,7 +93,13 @@ export default function MapActionCluster({
           {formatWaterRecency(lastWateredAt)}
         </span>
       </button>
-      <button onClick={onFertilize} title={t.mapPage.fertilize} className={`${iconBtn} text-emerald-600 hover:bg-emerald-500/15`}>
+      <button
+        onClick={onFertilize}
+        disabled={writeDisabled}
+        title={writeDisabled ? writeTitle : t.mapPage.fertilize}
+        aria-label={writeDisabled ? writeTitle : t.mapPage.fertilize}
+        className={`${disabledIconBtn} text-emerald-600 hover:bg-emerald-500/15 disabled:hover:bg-transparent`}
+      >
         <CareIcon type="fertilize" size={15} className="md:scale-110" />
       </button>
 
@@ -128,9 +145,11 @@ export default function MapActionCluster({
       <button
         type="button"
         onClick={onToggleMoveMode}
+        disabled={writeDisabled}
         onPointerDown={(e) => e.stopPropagation()}
-        title={moveModeActive ? t.mapPage.moveModeDone : t.mapPage.moveMode}
-        className={`${iconBtn} ${moveModeActive ? 'bg-primary text-white' : 'text-primary hover:bg-primary/15'}`}
+        title={writeDisabled ? writeTitle : moveModeActive ? t.mapPage.moveModeDone : t.mapPage.moveMode}
+        aria-label={writeDisabled ? writeTitle : moveModeActive ? t.mapPage.moveModeDone : t.mapPage.moveMode}
+        className={`${disabledIconBtn} ${moveModeActive ? 'bg-primary text-white' : 'text-primary hover:bg-primary/15'} disabled:hover:bg-transparent`}
         style={{ touchAction: 'manipulation' }}
       >
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -143,8 +162,10 @@ export default function MapActionCluster({
       {onNewGame && (
         <button
           onClick={onNewGame}
-          title={t.game.newGame}
-          className={`${iconBtn} text-emerald-700 hover:bg-emerald-500/15`}
+          disabled={writeDisabled}
+          title={writeDisabled ? writeTitle : t.game.newGame}
+          aria-label={writeDisabled ? writeTitle : t.game.newGame}
+          className={`${disabledIconBtn} text-emerald-700 hover:bg-emerald-500/15 disabled:hover:bg-transparent`}
         >
           <Glyph name="gamepad" size={15} />
         </button>
@@ -154,9 +175,11 @@ export default function MapActionCluster({
       <button
         type="button"
         onClick={onAddPlant}
+        disabled={writeDisabled}
         onPointerDown={(e) => e.stopPropagation()}
-        title={t.mapPage.plant}
-        className={`${iconBtn} bg-primary text-white hover:opacity-90`}
+        title={writeDisabled ? writeTitle : t.mapPage.plant}
+        aria-label={writeDisabled ? writeTitle : t.mapPage.plant}
+        className={`${disabledIconBtn} bg-primary text-white hover:opacity-90 disabled:hover:opacity-40`}
         style={{ touchAction: 'manipulation' }}
       >
         <span className="text-base font-bold leading-none">+</span>

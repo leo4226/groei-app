@@ -170,3 +170,86 @@ describe('PlantQuickSheet care chips', () => {
     expect(mocks.undoCare).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('PlantQuickSheet capability gating', () => {
+  let container: HTMLDivElement
+  let root: Root
+  const onCareAction = vi.fn()
+  const onAction = vi.fn()
+
+  beforeEach(() => {
+    localStorage.clear()
+    localStorage.setItem('floreren_lang', 'en')
+    mocks.markCareDone.mockReset()
+    mocks.undoCare.mockReset()
+    mocks.plantGet.mockReset()
+    mocks.plantGet.mockResolvedValue({
+      care_schedules: [{ care_type: 'water', next_due: '2026-12-01' }],
+    })
+    mocks.markCareDone.mockResolvedValue({
+      care_log_id: 42,
+      previous_next_due: '2026-08-01',
+      previous_last_done: null,
+      previous_last_done_by: null,
+    })
+    onCareAction.mockClear()
+    onAction.mockClear()
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+    vi.clearAllMocks()
+  })
+
+  async function render(canEdit: boolean) {
+    await act(async () => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(PlantQuickSheet, {
+            plant: plant(),
+            objects: [],
+            mapId: 1,
+            mapName: 'Back garden',
+            canEdit,
+            onClose: () => {},
+            onCareAction,
+            onAction,
+            onDuplicate: vi.fn(),
+            onRemove: vi.fn(),
+            onMoveOnMap: vi.fn(),
+            onAddPlacement: vi.fn(),
+            onDeletePlacement: vi.fn(),
+            onUpdatePlacementPhase: vi.fn(),
+          }),
+        ),
+      )
+    })
+  }
+
+  it('keeps care chips enabled and callable for an editor', async () => {
+    await render(true)
+    const waterChip = buttonWithText(document.body, 'Water')
+    expect(waterChip.disabled).toBe(false)
+    await act(async () => { waterChip.click() })
+    expect(mocks.markCareDone).toHaveBeenCalledWith(1, 'water')
+  })
+
+  it('disables care chips and photo upload for a viewer, and never logs care', async () => {
+    await render(false)
+    const waterChip = buttonWithText(document.body, 'Water')
+    expect(waterChip.disabled).toBe(true)
+    // Photo chip (no text label other than "Photo") is disabled too
+    const photoChip = buttonWithText(document.body, 'Photo')
+    expect(photoChip.disabled).toBe(true)
+
+    await act(async () => { waterChip.click() })
+    expect(mocks.markCareDone).not.toHaveBeenCalled()
+    expect(mocks.undoCare).not.toHaveBeenCalled()
+  })
+})

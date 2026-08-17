@@ -206,6 +206,11 @@ export const nl: Translations = {
     failedDelete: 'Verwijderen mislukt',
     indoor: 'Binnen',
     outdoor: 'Buiten',
+    creating: 'Aanmaken…',
+    create: 'Aanmaken',
+    view: 'Bekijken',
+    svgImport: 'SVG importeren',
+    deleteConfirmName: (name: string) => `"${name}" verwijderen?`,
     mastheadEyebrow: 'Tuin & binnenruimtes',
     mastheadTitle: 'Jouw',
     mastheadAccent: 'kaarten',
@@ -273,6 +278,7 @@ export const nl: Translations = {
     photosToggleLabel: 'Deel ook foto\'s',
     photosToggleHint: 'Foto\'s blijven verborgen tenzij je ze ook deelt.',
     outdoorOnlyHint: 'Alleen buitentuinen kunnen in de atlas worden gedeeld.',
+    dimensionsValue: (w: string, h: string) => `${w}m breed × ${h}m diep`,
   },
 
   editor: {
@@ -312,6 +318,8 @@ export const nl: Translations = {
       saving: 'Opslaan...',
       unsaved: 'Niet opgeslagen',
     },
+    readOnlyTitle: 'Layout bewerken is voor bewerkers',
+    readOnlyBody: 'Je kunt deze kaart bekijken, maar alleen bewerkers kunnen de layout aanpassen.',
     zoom: {
       in: 'Inzoomen',
       out: 'Uitzoomen',
@@ -532,6 +540,8 @@ export const nl: Translations = {
   photoRound: {
     title: 'Fotoronde',
     lede: 'Loop je tuin langs en geef elke plant een verse foto. Eén foto werkt de plant bij, traint de plantherkenning en levert het tuinspel referentiebeelden.',
+    readOnlyTitle: 'Fotorondes zijn voor bewerkers',
+    readOnlyBody: 'Een fotoronde fotografeert elke plant — dat kunnen alleen bewerkers.',
     scopeAll: 'Alle planten',
     scopeLabel: 'Kaart',
     loading: 'Planten laden…',
@@ -813,6 +823,17 @@ export const nl: Translations = {
     themeDark: 'Donker',
     themeSystem: 'Systeem',
     logout: 'Log uit',
+    // ── Read-only viewer mode (2026-08 capability gating) ──
+    readOnlyBanner: 'Alleen lezen · Je kunt kijken, maar alleen bewerkers kunnen dit aanpassen.',
+    onlyEditorsCanChange: 'Alleen bewerkers kunnen dit aanpassen.',
+    editorOnlyPage: 'Dit is een bewerkingspagina. Vraag een bewerker dit te doen.',
+    roleOwner: 'Eigenaar',
+    roleEditor: 'Bewerker',
+    roleViewer: 'Bekijker',
+    memberRoleLabel: 'Rol',
+    rolePickerLabel: 'Rol wijzigen',
+    inviteRoleLabel: 'Uitnodigen als',
+    roleChangeError: 'Fout bij het wijzigen van de rol',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────
@@ -975,6 +996,16 @@ export const nl: Translations = {
     editPlant: '✏️ Bewerken',
   },
 
+  movePlantSheet: {
+    title: 'Verplaats naar een andere kaart',
+    currentMap: 'Huidige kaart: {name}',
+    error: 'Verplaatsen mislukt. Probeer het opnieuw.',
+    loading: 'Laden…',
+    noOtherMaps: 'Geen andere kaarten beschikbaar.',
+    typeIndoor: 'Binnen',
+    typeOutdoor: 'Buiten',
+  },
+
   // ── Plant picker sheet ───────────────────────────────────
   plantPicker: {
     close: 'Sluiten',
@@ -1123,6 +1154,8 @@ export const nl: Translations = {
   addPlant: {
     title: 'Plant toevoegen',
     preview: 'Preview',
+    readOnlyTitle: 'Planten toevoegen is voor bewerkers',
+    readOnlyBody: 'Je kunt de collectie bekijken, maar alleen bewerkers kunnen planten toevoegen.',
     entry: {
       identify: 'Identificeer met foto',
       identifySubtitle: 'Snelste — laat AI het type herkennen',
@@ -1310,6 +1343,8 @@ export const nl: Translations = {
 
   // ── Plant identification flow ────────────────────────────
   identify: {
+    readOnlyTitle: 'Determineren is voor bewerkers',
+    readOnlyBody: 'Je kunt de gids bekijken, maar alleen bewerkers kunnen planten determineren.',
     camera: {
       title: 'Maak een foto',
       capture: 'Foto maken',
@@ -1422,6 +1457,8 @@ export const nl: Translations = {
     previewEyebrow: 'Live voorbeeld',
     changePhoto: 'Wijzig foto',
     addPhoto: 'Foto toevoegen',
+    readOnlyTitle: 'Planten bewerken is voor bewerkers',
+    readOnlyBody: 'Je kunt de pagina van de plant bekijken, maar alleen bewerkers kunnen hem aanpassen.',
     plantPhoto: 'Plantfoto',
     tapToChangePhoto: 'Tik om foto te wijzigen',
     previewAlt: 'Preview',

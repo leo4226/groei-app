@@ -176,6 +176,12 @@ export type Translations = {
     failedDelete: string
     indoor: string
     outdoor: string
+    // Map card actions (were hardcoded English in the pre-i18n baseline)
+    creating: string        // "Creating…"
+    create: string          // "Create"
+    view: string            // "View"
+    svgImport: string       // "SVG import"
+    deleteConfirmName: (name: string) => string  // "Delete \"{name}\"?"
     // PageMasthead keys (issue #180)
     mastheadEyebrow: string
     mastheadTitle: string
@@ -247,6 +253,8 @@ export type Translations = {
     photosToggleLabel: string
     photosToggleHint: string
     outdoorOnlyHint: string
+    // Dimension value (read-only display), was hardcoded Dutch in the baseline
+    dimensionsValue: (w: string, h: string) => string  // "{w}m wide × {h}m deep"
   }
 
   editor: {
@@ -274,6 +282,9 @@ export type Translations = {
       saving: string
       unsaved: string
     }
+    // Read-only block screen for viewer accounts (the editor is a write surface)
+    readOnlyTitle: string     // "Layout editing is for editors"
+    readOnlyBody: string      // "You can view this map, but only editors can change its layout."
     zoom: {
       in: string
       out: string
@@ -488,6 +499,8 @@ export type Translations = {
   photoRound: {
     title: string
     lede: string
+    readOnlyTitle: string   // "The photo round is for editors"
+    readOnlyBody: string    // "It photographs every plant, which only editors can do."
     scopeAll: string
     scopeLabel: string
     loading: string
@@ -767,6 +780,17 @@ export type Translations = {
     themeDark: string
     themeSystem: string
     logout: string
+    // ── Read-only viewer mode (2026-08 capability gating) ──
+    readOnlyBanner: string        // "Read-only · You can look, but only editors can change this."
+    onlyEditorsCanChange: string  // "Only editors can change this."
+    editorOnlyPage: string        // "This is an editing page. Ask an editor to do this."
+    roleOwner: string             // "Owner"
+    roleEditor: string            // "Editor"
+    roleViewer: string            // "Viewer"
+    memberRoleLabel: string       // "Role" — aria label for the role picker
+    rolePickerLabel: string       // "Change role" — owner-only member role control
+    inviteRoleLabel: string       // "Invite as" — owner-only invite-role choice
+    roleChangeError: string       // "Fout bij rol wijzigen" / "Error changing role"
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────
@@ -931,6 +955,17 @@ export type Translations = {
     editPlant: string
   }
 
+  // ── Move-plant sheet ─────────────────────────────────────────
+  movePlantSheet: {
+    title: string          // "Move to another map"
+    currentMap: string     // "Current map: {name}"
+    error: string          // "Moving failed. Try again."
+    loading: string        // "Loading…"
+    noOtherMaps: string    // "No other maps available."
+    typeIndoor: string     // "Indoor"
+    typeOutdoor: string    // "Outdoor"
+  }
+
   // ── Plant picker sheet ──────────────────────────────────────────
   plantPicker: {
     close: string
@@ -1071,6 +1106,9 @@ export type Translations = {
   addPlant: {
     title: string  // "Add plant 🌱"
     preview: string
+    // Read-only block for viewer accounts (the add form is a pure write surface)
+    readOnlyTitle: string     // "Adding plants is for editors"
+    readOnlyBody: string      // "You can browse the collection, but only editors can add plants."
     entry: {
       identify: string         // "Identify with photo"
       identifySubtitle: string // "Fastest — let AI recognise the species"
@@ -1285,6 +1323,8 @@ export type Translations = {
 
   // ── Plant identification flow ───────────────────────────────────
   identify: {
+    readOnlyTitle: string  // "Identifying is for editors"
+    readOnlyBody: string   // "You can browse the guide, but only editors can identify plants."
     camera: {
       title: string     // "Take a photo"
       capture: string   // "Capture"
@@ -1381,6 +1421,8 @@ export type Translations = {
     previewEyebrow: string   // desktop preview rail label
     changePhoto: string      // desktop preview photo hover pill
     addPhoto: string         // "Add photo"
+    readOnlyTitle: string    // "Editing plants is for editors"
+    readOnlyBody: string     // "You can read the plant's page, but only editors can change it."
     plantPhoto: string       // "Plant photo"
     tapToChangePhoto: string // "Tap to change photo"
     previewAlt: string       // "Preview"

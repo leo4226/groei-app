@@ -7,12 +7,13 @@ import Glyph from '../../components/ui/Glyph'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 
 /** Reorder arrows, hoisted out of the render body so React keeps the instance. */
-function OrderButtons({ loc, locations, onReorder, upLabel, downLabel }: {
+function OrderButtons({ loc, locations, onReorder, upLabel, downLabel, disabled = false }: {
   loc: Location
   locations: Location[]
   onReorder: (loc: Location, dir: 'up' | 'down') => void
   upLabel: string
   downLabel: string
+  disabled?: boolean
 }) {
   const sorted = [...locations].sort((a, b) => a.sort_order - b.sort_order)
   const idx = sorted.findIndex((l) => l.id === loc.id)
@@ -20,7 +21,7 @@ function OrderButtons({ loc, locations, onReorder, upLabel, downLabel }: {
     <div className="flex flex-col items-center gap-0.5">
       <button
         onClick={() => onReorder(loc, 'up')}
-        disabled={idx === 0}
+        disabled={disabled || idx === 0}
         title={upLabel}
         aria-label={upLabel}
         className="flex h-4 w-6 items-center justify-center leading-none text-text-muted transition-all hover:text-text active:scale-90 disabled:opacity-20"
@@ -29,7 +30,7 @@ function OrderButtons({ loc, locations, onReorder, upLabel, downLabel }: {
       </button>
       <button
         onClick={() => onReorder(loc, 'down')}
-        disabled={idx === sorted.length - 1}
+        disabled={disabled || idx === sorted.length - 1}
         title={downLabel}
         aria-label={downLabel}
         className="flex h-4 w-6 items-center justify-center leading-none text-text-muted transition-all hover:text-text active:scale-90 disabled:opacity-20"
@@ -46,7 +47,7 @@ function OrderButtons({ loc, locations, onReorder, upLabel, downLabel }: {
  * Distinct from maps, which are drawn floor plans; these are the plain labels
  * used when a plant isn't placed on a map.
  */
-export default function PlacesPanel() {
+export default function PlacesPanel({ canEdit = true }: { canEdit?: boolean }) {
   const t = useT()
   const locations = useFloreren((s) => s.locations)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -57,6 +58,9 @@ export default function PlacesPanel() {
   const [newIcon, setNewIcon] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<Location | null>(null)
+  // Locations are shared household labels; add/rename/delete/reorder all write.
+  const writeDisabled = !canEdit
+  const writeTitle = t.settings.onlyEditorsCanChange
 
   const lang: 'nl' | 'en' = t.locale?.startsWith('en') ? 'en' : 'nl'
 
@@ -177,9 +181,10 @@ export default function PlacesPanel() {
                     setEditIcon(loc.icon ?? '')
                     setError(null)
                   }}
-                  title={t.settings.rename}
-                  aria-label={t.settings.renameNamed.replace('{name}', loc.name)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-all hover:bg-surface active:scale-90"
+                  disabled={writeDisabled}
+                  title={writeDisabled ? writeTitle : t.settings.rename}
+                  aria-label={writeDisabled ? writeTitle : t.settings.renameNamed.replace('{name}', loc.name)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-all hover:bg-surface active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Glyph name="edit" size={14} />
                 </button>
@@ -189,12 +194,14 @@ export default function PlacesPanel() {
                   onReorder={handleReorder}
                   upLabel={t.settings.moveUp}
                   downLabel={t.settings.moveDown}
+                  disabled={writeDisabled}
                 />
                 <button
                   onClick={() => setDeleting(loc)}
-                  title={t.settings.deleteLocation}
-                  aria-label={t.settings.deleteLocationNamed.replace('{name}', loc.name)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-red-400 transition-all hover:bg-red-50 active:scale-90 dark:hover:bg-red-500/10"
+                  disabled={writeDisabled}
+                  title={writeDisabled ? writeTitle : t.settings.deleteLocation}
+                  aria-label={writeDisabled ? writeTitle : t.settings.deleteLocationNamed.replace('{name}', loc.name)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-red-400 transition-all hover:bg-red-50 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-500/10"
                 >
                   <Glyph name="trash" size={15} />
                 </button>
@@ -241,7 +248,9 @@ export default function PlacesPanel() {
         ) : (
           <button
             onClick={() => setAdding(true)}
-            className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-primary transition-colors active:bg-surface/50"
+            disabled={writeDisabled}
+            title={writeDisabled ? writeTitle : undefined}
+            className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-primary transition-colors active:bg-surface/50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Glyph name="sprout" size={15} />
             {t.settings.addLocation}

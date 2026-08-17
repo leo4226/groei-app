@@ -6,6 +6,8 @@ import CompassBearingPicker from '../components/settings/CompassBearingPicker'
 import { useT } from '../context/LanguageContext'
 import { useFloreren } from '../store/useFloreren'
 import PageMasthead from '../components/ui/PageMasthead'
+import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
+import { useCapabilities } from '../hooks/useCapabilities'
 
 export default function MapSettingsPage() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +15,7 @@ export default function MapSettingsPage() {
   const t = useT()
   const mapId = Number(id)
   const deleteMap = useFloreren(s => s.deleteMap)
+  const { canEdit } = useCapabilities()
 
   const [map, setMap] = useState<MapInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,12 +62,13 @@ export default function MapSettingsPage() {
   }, [])
 
   function handleStreekChange(slug: string) {
+    if (!canEdit) return
     setStreekSlug(slug)
     doSave({ streek_slug: slug || null })  // explicit choice → 'manual' server-side
   }
 
   const doSave = useCallback((fields: Record<string, unknown>) => {
-    if (!mapId) return
+    if (!canEdit || !mapId) return
     setSaveStatus('saving')
     maps.update(mapId, fields).then(updated => {
       if (mounted.current) {
@@ -77,7 +81,7 @@ export default function MapSettingsPage() {
     }).catch(() => {
       if (mounted.current) setSaveStatus('idle')
     })
-  }, [mapId])
+  }, [mapId, canEdit])
 
   const debouncedSave = useCallback((fields: Record<string, unknown>) => {
     clearTimeout(saveTimer.current)
@@ -142,6 +146,7 @@ export default function MapSettingsPage() {
   }
 
   async function handleDelete() {
+    if (!canEdit) return
     setDeleting(true)
     try {
       await deleteMap(mapId)
@@ -204,14 +209,17 @@ export default function MapSettingsPage() {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
-              {saveStatus === 'saving' && t.mapSettings.saving}
-              {saveStatus === 'saved' && <span className="text-emerald-green">{t.mapSettings.saved}</span>}
-            </span>
+            {canEdit && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                {saveStatus === 'saving' && t.mapSettings.saving}
+                {saveStatus === 'saved' && <span className="text-emerald-green">{t.mapSettings.saved}</span>}
+              </span>
+            )}
           </div>
         }
       />
       <div className="p-4 max-w-lg mx-auto pb-8">
+      {!canEdit && <ReadOnlyBanner className="mb-6" />}
 
       {/* Naam */}
       <section className="mb-6">
@@ -219,8 +227,9 @@ export default function MapSettingsPage() {
         <input
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
+          disabled={!canEdit}
           placeholder={t.mapSettings.namePlaceholder}
-          className="w-full border border-border rounded-xl px-4 py-2.5 text-sm bg-bg text-text"
+          className="w-full border border-border rounded-xl px-4 py-2.5 text-sm bg-bg text-text disabled:opacity-60"
         />
       </section>
 
@@ -232,7 +241,9 @@ export default function MapSettingsPage() {
             <button
               key={type}
               onClick={() => handleTypeChange(type)}
-              className={`flex-1 py-2.5 rounded-full text-sm font-semibold border transition-colors ${
+              disabled={!canEdit}
+              title={!canEdit ? t.settings.onlyEditorsCanChange : undefined}
+              className={`flex-1 py-2.5 rounded-full text-sm font-semibold border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 mapType === type
                   ? 'bg-primary text-white border-primary'
                   : 'bg-bg text-text-muted border-border hover:bg-surface'
@@ -254,8 +265,9 @@ export default function MapSettingsPage() {
               <input
                 value={lat}
                 onChange={(e) => handleLatChange(e.target.value)}
+                disabled={!canEdit}
                 placeholder={t.mapSettings.latPlaceholder}
-                className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text disabled:opacity-60"
               />
             </div>
             <div className="flex-1">
@@ -263,17 +275,20 @@ export default function MapSettingsPage() {
               <input
                 value={lon}
                 onChange={(e) => handleLonChange(e.target.value)}
+                disabled={!canEdit}
                 placeholder={t.mapSettings.lonPlaceholder}
-                className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text"
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg text-text disabled:opacity-60"
               />
             </div>
           </div>
-          <button
-            onClick={handleUseCurrentLocation}
-            className="w-full py-2 rounded-full border border-border text-sm text-text-muted hover:bg-surface transition-colors"
-          >
-            {t.mapSettings.useCurrentLocation}
-          </button>
+          {canEdit && (
+            <button
+              onClick={handleUseCurrentLocation}
+              className="w-full py-2 rounded-full border border-border text-sm text-text-muted hover:bg-surface transition-colors"
+            >
+              {t.mapSettings.useCurrentLocation}
+            </button>
+          )}
         </section>
       )}
 
@@ -283,7 +298,7 @@ export default function MapSettingsPage() {
           <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.compassBearing}</label>
           <p className="text-xs text-text-muted mb-3" dangerouslySetInnerHTML={{ __html: t.mapSettings.compassHint }} />
           <div className="flex justify-center">
-            <CompassBearingPicker value={bearing} onChange={handleBearingChange} />
+            <CompassBearingPicker value={bearing} onChange={handleBearingChange} disabled={!canEdit} />
           </div>
         </section>
       )}
@@ -294,9 +309,10 @@ export default function MapSettingsPage() {
           <label className="text-sm font-medium text-text-muted block mb-1.5">{t.garden.streek.pickTitle}</label>
           <p className="text-xs text-text-muted mb-3">{t.garden.streek.pickHint}</p>
           <select
-            className="w-full bg-surface rounded-xl px-4 py-2.5 text-sm text-text border border-border/50"
+            className="w-full bg-surface rounded-xl px-4 py-2.5 text-sm text-text border border-border/50 disabled:opacity-60"
             value={streekSlug}
             onChange={(e) => handleStreekChange(e.target.value)}
+            disabled={!canEdit}
           >
             <option value="">{t.garden.streek.pickNone}</option>
             {streken.map(s => (
@@ -312,11 +328,12 @@ export default function MapSettingsPage() {
         <section className="mb-6">
           <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.publicSectionTitle}</label>
           <div className="space-y-2">
-            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-paper p-3">
+            <label className={`flex min-h-11 items-start gap-3 rounded-2xl border border-border bg-paper p-3 ${!canEdit ? 'opacity-60' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 accent-primary"
                 checked={isPublic}
+                disabled={!canEdit}
                 onChange={(e) => handlePublicToggle(e.target.checked)}
               />
               <span>
@@ -327,11 +344,12 @@ export default function MapSettingsPage() {
             </label>
 
             {isPublic && (
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-paper p-3">
+              <label className={`flex min-h-11 items-start gap-3 rounded-2xl border border-border bg-paper p-3 ${!canEdit ? 'opacity-60' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   className="mt-0.5 h-4 w-4 accent-primary"
                   checked={photosPublic}
+                  disabled={!canEdit}
                   onChange={(e) => handlePhotosToggle(e.target.checked)}
                 />
                 <span>
@@ -355,7 +373,7 @@ export default function MapSettingsPage() {
         <section className="mb-6">
           <label className="text-sm font-medium text-text-muted block mb-1.5">{t.mapSettings.dimensions}</label>
           <p className="text-sm text-text bg-surface rounded-xl px-4 py-2.5">
-            {dimensions.w}m breed &times; {dimensions.h}m diep
+            {t.mapSettings.dimensionsValue(dimensions.w, dimensions.h)}
           </p>
           <p className="text-xs text-text-muted mt-1">
             {t.mapSettings.dimensionsHint}
@@ -364,47 +382,51 @@ export default function MapSettingsPage() {
       )}
 
       {/* Navigation back to editor */}
-      <button
-        onClick={() => navigate(`/maps/${mapId}/edit-layout`)}
-        className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
-      >
-        {t.mapSettings.editLayout}
-      </button>
+      {canEdit && (
+        <button
+          onClick={() => navigate(`/maps/${mapId}/edit-layout`)}
+          className="w-full py-3 rounded-full bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+        >
+          {t.mapSettings.editLayout}
+        </button>
+      )}
 
       {/* Danger zone */}
-      <div className="mt-10 pt-6 border-t border-border">
-        <p className="text-xs font-medium text-text-muted uppercase tracking-widest mb-3">{t.mapSettings.dangerZone}</p>
-        {!deleteConfirm ? (
-          <button
-            onClick={() => setDeleteConfirm(true)}
-            className="w-full py-3 rounded-full border border-red-300 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
-          >
-            {t.mapSettings.deleteMap}
-          </button>
-        ) : (
-          <div className="rounded-xl border border-red-300 overflow-hidden">
-            <p className="text-sm text-text px-4 pt-4 pb-3">
-              {t.mapSettings.deleteConfirm}
-            </p>
-            <div className="flex border-t border-red-200">
-              <button
-                onClick={() => setDeleteConfirm(false)}
-                disabled={deleting}
-                className="flex-1 py-3 text-sm text-text-muted hover:bg-surface transition-colors border-r border-red-200"
-              >
-                {t.common.cancel}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors"
-              >
-                {deleting ? t.mapSettings.deleting : t.mapSettings.confirmDelete}
-              </button>
+      {canEdit && (
+        <div className="mt-10 pt-6 border-t border-border">
+          <p className="text-xs font-medium text-text-muted uppercase tracking-widest mb-3">{t.mapSettings.dangerZone}</p>
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="w-full py-3 rounded-full border border-red-300 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
+            >
+              {t.mapSettings.deleteMap}
+            </button>
+          ) : (
+            <div className="rounded-xl border border-red-300 overflow-hidden">
+              <p className="text-sm text-text px-4 pt-4 pb-3">
+                {t.mapSettings.deleteConfirm}
+              </p>
+              <div className="flex border-t border-red-200">
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="flex-1 py-3 text-sm text-text-muted hover:bg-surface transition-colors border-r border-red-200"
+                >
+                  {t.common.cancel}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 py-3 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  {deleting ? t.mapSettings.deleting : t.mapSettings.confirmDelete}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
     </div>
   )
