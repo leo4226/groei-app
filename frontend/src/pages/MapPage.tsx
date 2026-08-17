@@ -891,6 +891,7 @@ export default function MapPage() {
             mapId={map.id}
             mapSlug={map.slug}
             onClose={() => setShowGameSetup(false)}
+            canEdit={canEdit}
           />
         </Suspense>
       )}

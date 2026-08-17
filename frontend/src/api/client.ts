@@ -38,13 +38,15 @@ async function handleAuthErrors(res: Response): Promise<void> {
   if (res.status === 401) {
     localStorage.removeItem('floreren-token')
     window.location.href = '/login'
-    throw new Error('Session expired — redirecting to login')
+    throw Object.assign(new Error('Session expired — redirecting to login'), { status: res.status })
   }
 
   if (res.status === 403) {
     let detail = 'Forbidden'
     try { const body = await res.json(); if (body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail) } catch {}
-    throw new Error(detail)
+    // Carry the HTTP status so callers can branch on it instead of matching
+    // (language-dependent) detail strings — same contract as ensureOk.
+    throw Object.assign(new Error(detail), { status: res.status })
   }
 }
 

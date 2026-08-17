@@ -8,6 +8,8 @@ import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
 import GameRoundHeader from '../components/game/GameRoundHeader'
 import Glyph from '../components/ui/Glyph'
+import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
+import { useCapabilities } from '../hooks/useCapabilities'
 
 type PlayerStep = 'waiting' | 'clue' | 'camera' | 'analyzing' | 'result' | 'answered' | 'done'
 
@@ -15,6 +17,7 @@ export default function GamePlayerPage() {
   const t = useT()
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
+  const { canEdit } = useCapabilities()
   const [state, setState] = useState<GameState | null>(null)
   const [step, setStep] = useState<PlayerStep>('waiting')
   const [scanResult, setScanResult] = useState<AnswerResult | null>(null)
@@ -27,6 +30,10 @@ export default function GamePlayerPage() {
   })
   // Guests have no account, so their language comes from the UI catalog.
   const activeLang: 'nl' | 'en' = getGuest(code) ? (t.locale?.startsWith('en') ? 'en' : 'nl') : accountLang
+  // The player page is public so party guests can join without an account.
+  // A signed-in viewer has no guest token, and answering quiz rounds is an
+  // editor write — show the calm read-only notice instead of a broken play UI.
+  const isGuest = Boolean(getGuest(code))
 
   const poll = useCallback(async () => {
     if (!code) return
@@ -93,6 +100,12 @@ export default function GamePlayerPage() {
     } finally {
       setQuizSubmitting(false)
     }
+  }
+
+  // Account viewers cannot answer quiz rounds; guests (session guest token)
+  // are unaffected and play normally.
+  if (!canEdit && !isGuest) {
+    return <ReadOnlyWritePage onBack={() => navigate('/maps')} />
   }
 
   if (notInGame) {
