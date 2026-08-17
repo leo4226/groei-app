@@ -46,6 +46,54 @@ def qm_to_pg(sql: str) -> str:
     return sql
 
 
+#: Tables whose primary key is NOT a column called `id` — join tables and
+#: singleton-per-owner rows. `execute()` emulates SQLite's lastrowid by
+#: appending "RETURNING id" to bare INSERTs, which asks these tables for a
+#: column they do not have and fails the whole statement with
+#: `UndefinedColumnError: column "id" does not exist`.
+#:
+#: That is how creating ANY game 500'd: `INSERT INTO game_session_maps` runs on
+#: every game creation. Call sites had been working around it one at a time by
+#: adding an explicit RETURNING (see `_get_or_create_prefs` in
+#: routers/notifications.py, which even documents the trap) — which fixes that
+#: caller and leaves the next one to discover it in production.
+#:
+#: Regenerate after adding a table:
+#:   grep -A20 'CREATE TABLE' alembic/versions/*.py   # any without an `id` column
+_TABLES_WITHOUT_ID = frozenset({
+    "care_rhythm_operation_members",
+    "game_session_maps",
+    "garden_care_operation_members",
+    "household_calendar_grouping_preferences",
+    "household_calendar_grouping_rules",
+    "household_care_rhythm_preferences",
+    "map_care_rhythm_overrides",
+    "notification_preferences",
+    "plantnet_quota",
+    "streken",
+    "weather_cache",
+    "weather_warning_account_state",
+})
+
+_INSERT_TARGET = re.compile(r'^\s*INSERT\s+INTO\s+"?(\w+)"?', re.IGNORECASE)
+
+
+def insert_target_table(sql: str) -> str | None:
+    """The table an INSERT writes to, or None when `sql` is not an INSERT."""
+    match = _INSERT_TARGET.match(sql)
+    return match.group(1).lower() if match else None
+
+
+def can_return_id(sql: str) -> bool:
+    """Whether appending "RETURNING id" to this INSERT is safe.
+
+    False for a table with no `id` column — asking for one there is not a
+    missing value, it is a statement that cannot be prepared.
+    """
+    table = insert_target_table(sql)
+    return table is not None and table not in _TABLES_WITHOUT_ID
+
+
 # Known boolean columns in the PG schema that were compared to 1/0 in SQLite
 _BOOLEAN_COLUMNS = frozenset({
     "is_active",
@@ -87,10 +135,16 @@ class DbAdapter:
         pg_sql = qm_to_pg(sql)
         head = pg_sql.lstrip().upper()
 
-        if head.startswith("INSERT") and "RETURNING" not in head:
+        if head.startswith("INSERT") and "RETURNING" not in head and can_return_id(pg_sql):
             pg_sql_returning = pg_sql.rstrip(" ;") + " RETURNING id"
             row = await self._conn.fetchrow(pg_sql_returning, *params)
             self.lastrowid = row["id"] if row else None
+            self._last_result = None
+        elif head.startswith("INSERT") and "RETURNING" not in head:
+            # A table with no id column: run it as-is. There is no row id to
+            # report, and callers writing to these tables do not ask for one.
+            await self._conn.execute(pg_sql, *params)
+            self.lastrowid = None
             self._last_result = None
         elif head.startswith("INSERT") and "RETURNING ID" in head:
             row = await self._conn.fetchrow(pg_sql, *params)
