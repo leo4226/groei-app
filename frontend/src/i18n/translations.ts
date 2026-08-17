@@ -2214,6 +2214,13 @@ export type Translations = {
     shareResults: string
     newGame2: string
     roundBreakdown: string
+    matchHow: string
+    matchPhoto: string
+    matchName: string
+    matchNameNear: string
+    matchCommon: string
+    matchGenus: string
+    matchUnknown: string
     scanToJoin: string
     hostedBy: string
     place1: string

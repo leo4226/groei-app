@@ -140,6 +140,12 @@ export interface RoundStat {
   plant_name_en: string | null
   answered_count: number
   avg_seconds: number | null
+  /**
+   * How the correct answers were accepted, keyed by match kind
+   * (photo / exact / exact_below_threshold / common / genus / unknown).
+   * Null for anyone who is not the host — the server withholds it.
+   */
+  match_kinds: Record<string, number> | null
 }
 
 export interface GameState {

@@ -53,6 +53,12 @@ _BIOCLIP_WORKER_TOKEN = os.environ.get("BIOCLIP_WORKER_TOKEN", "")
 # Lower than the identify flow's bar on purpose: a guest photographing the right
 # plant from a different angle should pass. See services/game_matching.py.
 _EMBED_THRESHOLD = float(os.environ.get("GAME_EMBED_THRESHOLD", "0.74"))
+# How close to the threshold a photo must land before an exact species name is
+# allowed to rescue it. At the default threshold this is a similarity of 0.63 —
+# a scan that plausibly shows the target under bad light or from an odd angle
+# (the two real scans measured so far sat at 0.71 and 0.88), while a photo of a
+# different plant scores far below it.
+_NEAR_MISS_RATIO = float(os.environ.get("GAME_NEAR_MISS_RATIO", "0.85"))
 
 # How many stored photos of a plant we keep as visual references per round.
 _MAX_REFERENCES = 8
@@ -446,10 +452,14 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
         if ends_at:
             seconds_remaining = max(0, int((ends_at - _now()).total_seconds()))
 
+    is_host = (
+        not actor["is_guest"] and actor["account_id"] == session["host_account_id"]
+    )
+
     round_stats = None
     if session["status"] == "finished" and rounds:
         ans_rows = await db.execute_fetchall(
-            """SELECT ga.answered_at, gr.started_at, gr.round_index
+            """SELECT ga.answered_at, ga.match_kind, gr.started_at, gr.round_index
                FROM game_answers ga
                JOIN game_rounds gr ON gr.id = ga.round_id
                WHERE gr.session_id = ? AND ga.is_correct = TRUE""",
@@ -457,6 +467,7 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
         )
         counts: dict[int, int] = {}
         times: dict[int, list[float]] = {}
+        kinds: dict[int, dict[str, int]] = {}
         for row in ans_rows:
             a = dict(row)
             ridx = a["round_index"]
@@ -464,6 +475,10 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
             started, answered = _as_dt(a.get("started_at")), _as_dt(a.get("answered_at"))
             if started and answered:
                 times.setdefault(ridx, []).append((answered - started).total_seconds())
+            # Answers predating the match_kind column have no route recorded;
+            # they are counted as 'unknown' rather than guessed at.
+            kind = a.get("match_kind") or "unknown"
+            kinds.setdefault(ridx, {})[kind] = kinds.setdefault(ridx, {}).get(kind, 0) + 1
         round_stats = [
             {
                 "round_index": r["round_index"],
@@ -475,13 +490,14 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
                     if times.get(r["round_index"])
                     else None
                 ),
+                # How each correct answer was accepted. Host-only: it is a
+                # diagnostic about the grader, not part of anyone's score, and
+                # telling a player their find was carried by a name match would
+                # only take the win away from them.
+                "match_kinds": kinds.get(r["round_index"], {}) if is_host else None,
             }
             for r in rounds
         ]
-
-    is_host = (
-        not actor["is_guest"] and actor["account_id"] == session["host_account_id"]
-    )
 
     return {
         "session": {
@@ -893,16 +909,18 @@ async def _record_answer(
     if existing:
         await db.execute(
             "UPDATE game_answers SET scanned_species = ?, is_correct = ?, "
-            "points_awarded = ?, answered_at = ?, finish_rank = ? "
+            "points_awarded = ?, answered_at = ?, finish_rank = ?, match_kind = ? "
             "WHERE round_id = ? AND player_id = ?",
-            (scanned, is_correct, points, now, finish_rank, round_id, player_id),
+            (scanned, is_correct, points, now, finish_rank, match_kind,
+             round_id, player_id),
         )
     else:
         await db.execute(
             "INSERT INTO game_answers (round_id, player_id, scanned_species, "
-            "is_correct, points_awarded, answered_at, finish_rank) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (round_id, player_id, scanned, is_correct, points, now, finish_rank),
+            "is_correct, points_awarded, answered_at, finish_rank, match_kind) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (round_id, player_id, scanned, is_correct, points, now, finish_rank,
+             match_kind),
         )
 
     if is_correct:
@@ -921,20 +939,25 @@ async def _record_answer(
 async def _grade(
     db, rnd: dict, candidates: list[str], scan_embedding: bytes | None
 ) -> tuple[bool, str | None]:
-    """Name match first, then photo similarity. Returns (correct, match_kind)."""
-    common_names = [rnd.get("plant_name_nl"), rnd.get("plant_name_en")]
-    kind = best_name_match(
-        [c for c in candidates if c],
-        rnd["target_species"],
-        rnd.get("target_genus") or "",
-        [c for c in common_names if c],
-    )
-    if kind:
-        return True, kind
+    """Grade a scan. Returns (correct, match_kind).
 
-    if scan_embedding is None:
-        return False, None
+    Photo first when we have references, name only as the fallback. The two
+    signals answer different questions, and only one of them answers this game's:
 
+      - name matching asks "what species is this?"
+      - the photo comparison asks "is this the plant we sent you to find?"
+
+    A hunt asks the second. Species identification cannot tell two plants of the
+    same species apart, and it confidently confuses lookalikes: a red-leaved
+    climber was graded correct for a Scindapsus round because BioCLIP called it
+    a Scindapsus, with high confidence, and the name path returned before the
+    photo comparison ever ran. Photo similarity against THAT plant's own photos
+    would have rejected it.
+
+    So the name path is now the fallback for a plant with no reference photos —
+    a new plant, or one whose photos never got embedded — where a species guess
+    is the only signal available and being generous beats being useless.
+    """
     references = []
     raw_refs = rnd.get("target_embeddings")
     if raw_refs:
@@ -946,6 +969,24 @@ async def _grade(
         except (ValueError, TypeError):
             references = []
 
+    def name_kind() -> str | None:
+        common_names = [rnd.get("plant_name_nl"), rnd.get("plant_name_en")]
+        return best_name_match(
+            [c for c in candidates if c],
+            rnd["target_species"],
+            rnd.get("target_genus") or "",
+            [c for c in common_names if c],
+        )
+
+    # No references, or no embedding to compare: the species guess is all there is.
+    if not references or scan_embedding is None:
+        kind = name_kind()
+        logger.info(
+            "Game graded by name (refs=%d, embedding=%s): kind=%s",
+            len(references), scan_embedding is not None, kind,
+        )
+        return (True, kind) if kind else (False, None)
+
     similarity = best_similarity(as_vector(scan_embedding), references)
     logger.info(
         "Game photo similarity=%.4f threshold=%.2f refs=%d",
@@ -953,6 +994,20 @@ async def _grade(
     )
     if similarity >= _EMBED_THRESHOLD:
         return True, "photo"
+
+    # Below the line, an exact species match can still rescue the round — but
+    # only a near miss. Without the floor this rescue reinstates the exact bug
+    # it sits below: the red climber scored 0.0 against the Scindapsus photos
+    # and BioCLIP still called it "Scindapsus pictus", so an unfloored rescue
+    # grades it correct again. A photo that resembles nothing about the target
+    # is not a near miss, however confident the identifier is about the name.
+    if similarity >= _EMBED_THRESHOLD * _NEAR_MISS_RATIO and name_kind() == "exact":
+        logger.info(
+            "Game rescued below threshold by an exact species name match "
+            "(similarity=%.4f)", similarity,
+        )
+        return True, "exact_below_threshold"
+
     return False, None
 
 

@@ -67,6 +67,7 @@ CREATE TABLE game_answers (
     points_awarded INTEGER NOT NULL DEFAULT 0,
     answered_at TIMESTAMP NOT NULL,
     finish_rank INTEGER,
+    match_kind TEXT,
     UNIQUE (round_id, player_id)
 );
 CREATE TABLE plant_species (

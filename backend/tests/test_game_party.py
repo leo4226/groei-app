@@ -359,3 +359,49 @@ async def test_race_round_ends_early_once_everyone_has_found_it(
     )
     moved = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
     assert moved["session"]["current_round"] == 1
+
+
+# ── Grading transparency ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_the_host_sees_how_each_round_was_accepted(
+    client, seeded_db, auth_header, no_embeds
+):
+    """A hunt won on name matching looks identical, on the scoreboard, to one
+    won on photographs — which is how a red climber passed as a Scindapsus and
+    left nothing behind to find. The host now gets the route each correct
+    answer took; the players do not, because it is a diagnostic about the
+    grader and would only take their win away from them.
+    """
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    guest_token = (await client.post(
+        f"/api/games/{code}/join-guest", json={"name": "Lisbeth"}
+    )).json()["guest_token"]
+    guest_header = {"Authorization": f"Bearer {guest_token}"}
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+
+    state = (await client.get(f"/api/games/{code}", headers=guest_header)).json()
+    target = state["current_clue"]["plant_name_nl"]
+    resp = await client.post(
+        f"/api/games/{code}/answer", headers=guest_header,
+        json={"scanned_species": target},
+    )
+    assert resp.json()["is_correct"] is True
+
+    for _ in range(5):
+        await client.post(f"/api/games/{code}/next", headers=auth_header)
+
+    host_state = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+    assert host_state["session"]["status"] == "finished"
+    first = host_state["round_stats"][0]
+    assert first["answered_count"] == 1
+    # These plants have no reference photos, so the name path graded it — which
+    # is precisely the thing worth being able to see.
+    assert sum(first["match_kinds"].values()) == 1
+    assert "photo" not in first["match_kinds"]
+
+    guest_state = (await client.get(f"/api/games/{code}", headers=guest_header)).json()
+    assert guest_state["round_stats"][0]["answered_count"] == 1
+    assert guest_state["round_stats"][0]["match_kinds"] is None, (
+        "only the host sees how the grader reached its verdict")
