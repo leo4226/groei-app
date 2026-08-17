@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass
 
 import httpx
 
@@ -30,12 +31,19 @@ from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 
 logger = logging.getLogger(__name__)
 
-# Room for one SVG plus a reasoning model's thinking. It was 12000, justified by
-# a comment saying the prompt "asks for TWO full SVGs" — it does not, and has not
-# for some time: the response carries a single `plant_svg` and the caller derives
-# the potted and bare variants from it. A budget this size mostly bought a longer
-# generation, which is what pushed the request past Cloudflare's ceiling.
-MAX_TOKENS = 4000
+# Room for one SVG plus a reasoning model's thinking, which is the expensive
+# half. `LLM_MODEL` is DeepSeek V4 *pro* and reasoning tokens count against
+# `max_tokens`, so a tight cap is spent thinking and the reply arrives with
+# `content` empty and the drawing stranded in the reasoning channel — every
+# species failing identically, which is what a budget problem looks like.
+#
+# This was briefly cut to 4000 on the theory that the comment defending 12000 was
+# stale. Half of it was: the prompt no longer "asks for TWO full SVGs". The other
+# half — a tight cap gets eaten by reasoning — was correct and load-bearing, and
+# cutting it turned every icon into `ValueError: LLM returned empty content`.
+# Duration is not a reason to keep this low any more: streaming means a long
+# generation no longer risks Cloudflare's origin window.
+MAX_TOKENS = 12000
 
 # Under Cloudflare's ~100s origin window on every axis, so a stall surfaces as
 # our own TimeoutException — a thing we can recognise and retry — instead of an
@@ -86,17 +94,39 @@ def _headers() -> dict:
     }
 
 
-def content_from_sse(lines) -> str:
-    """Assemble `choices[0].delta.content` from an OpenAI-style SSE stream.
+#: Field names a reasoning model may put its thinking under, across gateways.
+_REASONING_KEYS = ("reasoning_content", "reasoning")
+
+
+@dataclass
+class Reply:
+    """What a completion produced, whichever channel it came out of."""
+    content: str = ""
+    reasoning: str = ""
+    finish_reason: str | None = None
+
+    @property
+    def truncated(self) -> bool:
+        return self.finish_reason == "length"
+
+
+def reply_from_sse(lines) -> Reply:
+    """Assemble a `Reply` from an OpenAI-style SSE stream.
 
     Deliberately forgiving. A gateway may interleave comment lines, send
-    keep-alive blanks, split a frame oddly, or emit a chunk with no `content`
-    (reasoning models put their thinking in a separate field, and the final
-    frame usually carries only `finish_reason`). None of that is worth failing a
-    drawing over, so anything unparseable is skipped rather than raised — if the
-    result really is empty, the caller notices that instead.
+    keep-alive blanks, split a frame oddly, or emit a chunk with no `content`.
+    None of that is worth failing a drawing over, so anything unparseable is
+    skipped rather than raised — if the result really is empty, the caller
+    notices that instead.
+
+    Reasoning is collected as well as content. A reasoning model spends its token
+    budget thinking *before* it writes `content`, and when the budget runs out
+    the finished drawing is often sitting in the reasoning channel with `content`
+    empty — throwing it away loses a generation we already paid for.
     """
-    parts: list[str] = []
+    reply = Reply()
+    content: list[str] = []
+    reasoning: list[str] = []
     for raw in lines:
         line = (raw or "").strip()
         if not line or not line.startswith("data:"):
@@ -109,21 +139,72 @@ def content_from_sse(lines) -> str:
         except (json.JSONDecodeError, TypeError):
             continue
         try:
-            delta = chunk["choices"][0].get("delta") or {}
+            choice = chunk["choices"][0]
+            delta = choice.get("delta") or {}
         except (KeyError, IndexError, TypeError, AttributeError):
             continue
+        if choice.get("finish_reason"):
+            reply.finish_reason = choice["finish_reason"]
         piece = delta.get("content")
         if isinstance(piece, str):
-            parts.append(piece)
-    return "".join(parts)
+            content.append(piece)
+        for key in _REASONING_KEYS:
+            thought = delta.get(key)
+            if isinstance(thought, str):
+                reasoning.append(thought)
+    reply.content = "".join(content)
+    reply.reasoning = "".join(reasoning)
+    return reply
+
+
+def content_from_sse(lines) -> str:
+    """Just the content channel of an SSE stream."""
+    return reply_from_sse(lines).content
+
+
+def _json_objects(text: str):
+    """Every balanced top-level {...} span in `text`, in order.
+
+    A brace-depth scan rather than `find("{")`/`rfind("}")`, because reasoning
+    transcripts contain several JSON-ish blobs — a sketch, a revision, the final
+    answer — and the outermost span across all of them is not valid JSON. Quoted
+    strings and escapes are tracked so a `{` inside an SVG path or a `\\"` cannot
+    unbalance the count.
+    """
+    depth = start = 0
+    in_string = escaped = False
+    for i, ch in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth:
+                depth -= 1
+                if depth == 0:
+                    yield text[start:i + 1]
 
 
 def parse_icon_payload(content: str) -> dict:
     """Turn the model's reply into {plant_svg, cat}.
 
     Handles the ```json fences the model sometimes adds despite being told not
-    to, and falls back to the outermost {...} span when it wraps the JSON in
-    prose — cheaper than losing a whole generation to a stray sentence.
+    to, and falls back to scanning for an embedded JSON object when it wraps the
+    reply in prose — cheaper than losing a whole generation to a stray sentence.
+
+    When several objects are embedded (a reasoning transcript talking its way to
+    an answer), the *last* one carrying a `plant_svg` wins: that is the model's
+    settled answer rather than a draft it went on to revise.
     """
     raw = (content or "").strip()
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
@@ -131,16 +212,22 @@ def parse_icon_payload(content: str) -> dict:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        start, end = raw.find("{"), raw.rfind("}")
-        if start == -1 or end <= start:
+        data = None
+        for span in _json_objects(raw):
+            try:
+                candidate = json.loads(span)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict) and candidate.get("plant_svg"):
+                data = candidate
+        if data is None:
             raise
-        data = json.loads(raw[start:end + 1])
     if not isinstance(data, dict) or not data.get("plant_svg"):
         raise ValueError("LLM reply had no plant_svg")
     return {"plant_svg": data["plant_svg"], "cat": data.get("cat") or "unknown"}
 
 
-async def _generate_streaming(prompt: str) -> str:
+async def _generate_streaming(prompt: str) -> Reply:
     async with httpx.AsyncClient(timeout=STREAM_TIMEOUT) as client:
         async with client.stream(
             "POST", LLM_CHAT_URL, headers=_headers(),
@@ -152,17 +239,24 @@ async def _generate_streaming(prompt: str) -> str:
                 await resp.aread()
             resp.raise_for_status()
             lines = [line async for line in resp.aiter_lines()]
-    return content_from_sse(lines)
+    return reply_from_sse(lines)
 
 
-async def _generate_blocking(prompt: str) -> str:
+async def _generate_blocking(prompt: str) -> Reply:
     async with httpx.AsyncClient(timeout=NON_STREAM_TIMEOUT) as client:
         resp = await client.post(
             LLM_CHAT_URL, headers=_headers(),
             json=_request_body(prompt, stream=False),
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"].get("content") or ""
+        choice = resp.json()["choices"][0]
+        message = choice.get("message") or {}
+        thoughts = [message.get(k) for k in _REASONING_KEYS]
+        return Reply(
+            content=message.get("content") or "",
+            reasoning=next((t for t in thoughts if isinstance(t, str)), ""),
+            finish_reason=choice.get("finish_reason"),
+        )
 
 
 # Everything that means "streaming itself did not work", and is therefore worth
@@ -202,13 +296,32 @@ async def generate_icon_variants(*, name: str, sci: str = "") -> dict:
     prompt = _build_prompt(name, sci)
 
     try:
-        content = await _generate_streaming(prompt)
+        reply = await _generate_streaming(prompt)
     except httpx.TimeoutException:
         raise
     except _STREAM_FALLBACK_ERRORS as exc:
         logger.warning("icon stream failed (%s), retrying without streaming", exc)
-        content = await _generate_blocking(prompt)
+        reply = await _generate_blocking(prompt)
 
-    if not content.strip():
-        raise ValueError("LLM returned empty content")
-    return parse_icon_payload(content)
+    if reply.content.strip():
+        return parse_icon_payload(reply.content)
+
+    # No content, but a reasoning model that ran out of budget mid-thought has
+    # usually already drawn the thing — it just never got to copy it into the
+    # answer. Digging it out of the transcript is free; the alternative is a
+    # generic procedural icon for a generation we already paid for.
+    if reply.reasoning.strip():
+        try:
+            drawing = parse_icon_payload(reply.reasoning)
+        except (ValueError, json.JSONDecodeError):
+            pass
+        else:
+            logger.info("icon recovered from reasoning channel for %r", name)
+            return drawing
+
+    raise ValueError(
+        "LLM returned empty content"
+        + (" (token budget exhausted while reasoning)" if reply.truncated else "")
+        + (f"; {len(reply.reasoning)} chars of reasoning had no usable drawing"
+           if reply.reasoning.strip() else "")
+    )
