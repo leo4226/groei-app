@@ -19,6 +19,7 @@ import { filterSeasonalPlantsByEnvironment } from './seasonalMonthModel'
 import type { CalendarViewMode } from './calendarViewModel'
 import { useFloreren } from '../../store/useFloreren'
 import { buildCalendarPresentation } from './calendarWeatherAdvisoryModel'
+import { useCapabilities } from '../../hooks/useCapabilities'
 
 interface Props {
   onSetView(v: CalendarViewMode): void
@@ -38,6 +39,8 @@ export default function MonthView({
   const todayIso = isoDate(now)
   const showingCurrentMonth = year === now.getFullYear() && month1 === now.getMonth() + 1
   const [selectedIso, setSelectedIso] = useState(todayIso)
+  const { canEdit } = useCapabilities()
+  const readOnly = !canEdit
 
   const maps = useFloreren(state => state.maps)
   const plants = useFloreren(state => state.plants)
@@ -134,6 +137,7 @@ export default function MonthView({
                 actionError={actionError}
                 mapSlugs={mapSlugs}
                 onWeatherChanged={retry}
+                readOnly={readOnly}
               />
               <div className="seasonal-mobile-wrap">
                 {showingCurrentMonth && <WaterOutlookPanel env={env} />}
@@ -156,7 +160,7 @@ export default function MonthView({
                 onSelect={setSelectedIso}
               />
               <aside className="col-side">
-                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} completedEvents={selectedCompletedEvents} weatherAdvisories={selectedWeatherAdvisories} onWeatherChanged={retry} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} />
+                <CalendarAgendaCard selectedIso={selectedIso} events={selectedEvents} completedEvents={selectedCompletedEvents} weatherAdvisories={selectedWeatherAdvisories} onWeatherChanged={retry} todayIso={todayIso} saving={saving} onDone={handleDone} onSkip={handleSkip} undoMsg={undoMsg} onGardenUndo={handleGardenUndo} mapSlugs={mapSlugs} readOnly={readOnly} />
                 {showingCurrentMonth && <WaterOutlookPanel env={env} />}
                 <MonthSeasonalPanel
                   month1={month1}

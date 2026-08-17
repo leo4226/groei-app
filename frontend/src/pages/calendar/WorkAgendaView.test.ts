@@ -69,8 +69,14 @@ vi.mock('../../store/useFloreren', () => ({
     plants: never[]
     users: never[]
     activeUserId: null
+    me: {
+      capabilities: { can_edit: boolean; can_manage_household: boolean }
+    } | null
   }) => unknown) => (
-    selector({ maps: [], plants: [], users: [], activeUserId: null })
+    selector({
+      maps: [], plants: [], users: [], activeUserId: null,
+      me: { capabilities: { can_edit: true, can_manage_household: true } },
+    })
   ),
 }))
 
