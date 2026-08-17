@@ -1,6 +1,23 @@
+# ⚠️ Patterns here are anchored at the CONTEXT ROOT unless they start with `**/`.
+# `frontend/` excludes ./frontend and nothing else — it does NOT reach
+# .worktrees/xyz/frontend. The four separate .venv lines below are the scar
+# tissue from learning that once; everything nested needs `**/` or its own line.
+#
+# Only the root .dockerignore is read. backend/.dockerignore was inert (Docker
+# ignores nested ones) and its rules are folded in here.
+
 # Git
 .git/
 .gitignore
+
+# Git worktrees — each is a COMPLETE second checkout: its own frontend, its own
+# node_modules, its own venv. None of the rules below reach inside one, so every
+# worktree added ~30 MB of tree plus ~310 MB of node_modules to the upload: four
+# of them turn an 18 MB context into the observed 1.5 GB. Nothing in the image
+# comes from here (the Dockerfile only COPYs backend/ and the icons), so this
+# cost build time and bandwidth rather than image size.
+.worktrees/
+**/.worktrees/
 
 # Frontend — alleen icons worden gekopieerd
 frontend/
@@ -32,6 +49,24 @@ backend/uploads/
 
 # Node
 node_modules/
+**/node_modules/
+
+# Folded in from the inert backend/.dockerignore. These did ship into the image
+# before, since only the root file is ever read: backend/tests is ~6 MB of test
+# data the container never runs, and a leftover SQLite file would have been
+# baked into a release that talks exclusively to Postgres.
+backend/tests/
+backend/photos/
+backend/static/maps/
+**/__pycache__/
+**/*.db
+.pytest_cache/
+
+# Context-only weight: nothing in the image is built from these.
+docs/
+.github/
+.claude/
+.hermes/
 
 # IDE
 .vscode/
