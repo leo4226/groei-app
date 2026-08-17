@@ -235,3 +235,104 @@ async def test_forgiving_name_grading(
     body = response.json()
     assert body["is_correct"] is (expected_kind is not None)
     assert body["match_kind"] == expected_kind
+
+
+@pytest.mark.asyncio
+async def test_a_lookalike_named_as_the_target_is_still_wrong(
+    seeded_db, client, auth_header, monkeypatch
+):
+    """The false positive from the field, 2026-08-17.
+
+    The round asked for a Scindapsus. Leon scanned a red-leaved climber — a
+    different plant, same aroid look — and BioCLIP called it a Scindapsus with
+    HIGH confidence. Name matching ran first, returned "exact", and the round
+    was graded correct without the photo comparison ever running.
+
+    Species identification answers "what species is this?". A hunt asks "is this
+    the plant we sent you to find?". When the target has reference photos, that
+    second question is answerable and must be the one that decides.
+    """
+    await create_game_schema(seeded_db)
+
+    async def fake_embed_bytes(_image_bytes: bytes) -> bytes:
+        return embedding_bytes([0.0, 0.0, 1.0])      # nothing like the target
+
+    monkeypatch.setattr(game_router, "_embed_bytes", fake_embed_bytes)
+    await _active_round(
+        seeded_db, "LOOK12", f'["{embedding_b64([1.0, 0.0, 0.0])}"]',
+        target="Scindapsus pictus", genus="scindapsus",
+        name_nl="Scindapsus", name_en="Satin pothos",
+    )
+
+    response = await client.post(
+        "/api/games/LOOK12/answer",
+        headers=auth_header,
+        json={
+            # The identifier is confident and wrong — exactly the target's name.
+            "scanned_species": "Scindapsus pictus",
+            "candidates": ["Scindapsus pictus"],
+            "confidence": 0.91,
+            "image_data_url": "data:image/jpeg;base64,c2NhbiBpbWFnZQ==",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_correct"] is False, (
+        "a confident species name must not outrank this plant's own photos")
+
+
+@pytest.mark.asyncio
+async def test_genus_guess_cannot_carry_a_round_that_has_photos(
+    seeded_db, client, auth_header, monkeypatch
+):
+    """Genus rescue is for plants with nothing better. With references, no."""
+    await create_game_schema(seeded_db)
+
+    async def fake_embed_bytes(_image_bytes: bytes) -> bytes:
+        return embedding_bytes([0.0, 0.0, 1.0])
+
+    monkeypatch.setattr(game_router, "_embed_bytes", fake_embed_bytes)
+    await _active_round(seeded_db, "GENU12", f'["{embedding_b64([1.0, 0.0, 0.0])}"]')
+
+    response = await client.post(
+        "/api/games/GENU12/answer",
+        headers=auth_header,
+        json={
+            "scanned_species": "Monstera adansonii",   # same genus, wrong plant
+            "image_data_url": "data:image/jpeg;base64,c2NhbiBpbWFnZQ==",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["is_correct"] is False
+
+
+@pytest.mark.asyncio
+async def test_an_exact_name_still_rescues_a_near_miss_photo(
+    seeded_db, client, auth_header, monkeypatch
+):
+    """Naming the species outright is strong evidence, so it still rescues a
+    scan that fell short on similarity — recorded under its own kind so a run
+    of them is visible rather than passing as a clean photo match."""
+    await create_game_schema(seeded_db)
+    monkeypatch.setattr(game_router, "_EMBED_THRESHOLD", 0.99)
+
+    async def fake_embed_bytes(_image_bytes: bytes) -> bytes:
+        return embedding_bytes([0.9, 0.436, 0.0])    # close, but under 0.99
+
+    monkeypatch.setattr(game_router, "_embed_bytes", fake_embed_bytes)
+    await _active_round(seeded_db, "NEAR12", f'["{embedding_b64([1.0, 0.0, 0.0])}"]')
+
+    response = await client.post(
+        "/api/games/NEAR12/answer",
+        headers=auth_header,
+        json={
+            "scanned_species": "Monstera deliciosa",   # the target, exactly
+            "image_data_url": "data:image/jpeg;base64,c2NhbiBpbWFnZQ==",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["is_correct"] is True
+    assert body["match_kind"] == "exact_below_threshold"

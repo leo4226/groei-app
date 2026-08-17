@@ -23,6 +23,29 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
     ? sorted.findIndex((p) => p.id === state.my_player_id) + 1
     : 0
 
+  /**
+   * "2 foto · 1 naam" — how the grader accepted each correct answer.
+   *
+   * Worth reading after a hunt: a round carried by name matches is a round
+   * where the target's own photos never decided anything, which is how a
+   * red climber once passed as a Scindapsus. Unknown kinds are shown raw
+   * rather than dropped, so a new one added server-side is visible here.
+   */
+  function matchSummary(kinds: Record<string, number>): string {
+    const label: Record<string, string> = {
+      photo: t.game.matchPhoto,
+      exact: t.game.matchName,
+      exact_below_threshold: t.game.matchNameNear,
+      common: t.game.matchCommon,
+      genus: t.game.matchGenus,
+      unknown: t.game.matchUnknown,
+    }
+    return Object.entries(kinds)
+      .sort((a, b) => b[1] - a[1])
+      .map(([kind, n]) => `${n} ${label[kind] ?? kind}`)
+      .join(' · ')
+  }
+
   function medal(i: number) {
     if (i === 0) return t.game.place1
     if (i === 1) return t.game.place2
@@ -89,14 +112,21 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
         <div className="w-full bg-surface rounded-2xl border border-border p-4 space-y-2">
           <p className="text-xs font-mono uppercase tracking-widest text-text-muted">{t.game.roundBreakdown}</p>
           {state.round_stats.map((r) => (
-            <div key={r.round_index} className="flex items-center justify-between py-0.5 text-sm">
-              <span className="text-text truncate mr-3">
-                {r.round_index + 1}. {isEN && r.plant_name_en ? r.plant_name_en : r.plant_name_nl}
-              </span>
-              <span className="text-text-muted whitespace-nowrap">
-                {r.answered_count}/{state.players.length}
-                {r.avg_seconds != null && ` · Ø ${r.avg_seconds}s`}
-              </span>
+            <div key={r.round_index} className="py-0.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text truncate mr-3">
+                  {r.round_index + 1}. {isEN && r.plant_name_en ? r.plant_name_en : r.plant_name_nl}
+                </span>
+                <span className="text-text-muted whitespace-nowrap">
+                  {r.answered_count}/{state.players.length}
+                  {r.avg_seconds != null && ` · Ø ${r.avg_seconds}s`}
+                </span>
+              </div>
+              {r.match_kinds && Object.keys(r.match_kinds).length > 0 && (
+                <p className="text-xs text-text-muted/80">
+                  {t.game.matchHow}: {matchSummary(r.match_kinds)}
+                </p>
+              )}
             </div>
           ))}
         </div>
