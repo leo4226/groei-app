@@ -552,6 +552,7 @@ function PlantRow({ plant, t, readOnly, currentMapName, saving, onTap, onDone, o
           onSkip={() => onSkip(plant)}
           doneLabel={t.mapPage.careDone}
           skipLabel={t.mapPage.careSkip}
+          readOnlyTitle={t.settings.onlyEditorsCanChange}
         />
       )}
     </div>
@@ -602,13 +603,14 @@ function WeatherWarningInline({ copy, t }: { copy: LocalizedWarningCopy; t: Retu
   )
 }
 
-function CareActions({ disabled, readOnly = false, onDone, onSkip, doneLabel, skipLabel }: {
+function CareActions({ disabled, readOnly = false, onDone, onSkip, doneLabel, skipLabel, readOnlyTitle }: {
   disabled: boolean
-  readOnly: boolean
+  readOnly?: boolean
   onDone: () => void
   onSkip: () => void
   doneLabel: string
   skipLabel: string
+  readOnlyTitle?: string
 }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
@@ -623,7 +625,7 @@ function CareActions({ disabled, readOnly = false, onDone, onSkip, doneLabel, sk
       <button
         disabled={disabled || readOnly}
         onClick={onSkip}
-        title={readOnly ? t.settings.onlyEditorsCanChange : skipLabel}
+        title={readOnly ? readOnlyTitle : skipLabel}
         className={`w-6 h-6 rounded-full text-text-muted text-sm flex items-center justify-center opacity-60 disabled:opacity-30 ${readOnly ? 'opacity-30 cursor-not-allowed' : ''}`}
       >
         ×

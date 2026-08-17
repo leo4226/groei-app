@@ -4,7 +4,6 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LanguageProvider } from '../context/LanguageContext'
-import type { AccountMe } from '../api/client'
 import LayoutEditorPage from './LayoutEditorPage'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -51,12 +50,6 @@ vi.mock('../hooks/useEditorTour', () => ({
 vi.mock('../hooks/useIsTouch', () => ({
   useIsTouch: () => false,
 }))
-
-const viewerMe: AccountMe = {
-  id: 1, household_id: 1, email: 'a@example.com', name: 'A', avatar: null,
-  is_admin: false, household_name: 'House', role: 'viewer',
-  capabilities: { can_edit: false, can_manage_household: false },
-}
 
 describe('LayoutEditorPage — viewer gate', () => {
   let container: HTMLDivElement

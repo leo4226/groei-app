@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   createMap: vi.fn(),
   deleteMap: vi.fn(),
   me: null as AccountMe | null,
+  maps: [] as MapInfo[],
 }))
 
 vi.mock('react-router-dom', () => ({
