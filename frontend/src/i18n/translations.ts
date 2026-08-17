@@ -790,6 +790,7 @@ export type Translations = {
     memberRoleLabel: string       // "Role" — aria label for the role picker
     rolePickerLabel: string       // "Change role" — owner-only member role control
     inviteRoleLabel: string       // "Invite as" — owner-only invite-role choice
+    roleChangeError: string       // "Fout bij rol wijzigen" / "Error changing role"
   }
 
   // ── Sun / heatmap controls ──────────────────────────────────────

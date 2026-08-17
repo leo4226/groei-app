@@ -12,6 +12,9 @@ const PUSH_CARE_TYPES = [
 
 interface Props {
   onPrefsChange?: (prefs: NotificationPrefs | null, pushOnHere: boolean) => void
+  /** Viewer mode: every notification write (prefs, push, test) renders
+   * disabled; the current state stays visible. */
+  canEdit?: boolean
 }
 
 function Row({ label, description, children }: {
@@ -66,7 +69,7 @@ const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')
  * where someone would look for it, and the push row explains the dependency
  * itself when the platform needs it.
  */
-export default function NotificationsPanel({ onPrefsChange }: Props) {
+export default function NotificationsPanel({ onPrefsChange, canEdit = true }: Props) {
   const t = useT()
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +77,7 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
   const [pushBusy, setPushBusy] = useState(false)
   const [testBusy, setTestBusy] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
+  const writeDisabled = !canEdit
 
   useEffect(() => {
     notifications.getPrefs()
@@ -167,7 +171,7 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
       <Row label={t.settings.digestToggle} description={t.settings.digestToggleDesc}>
         <Toggle
           on={Boolean(prefs?.digest_enabled)}
-          disabled={!prefs}
+          disabled={!prefs || writeDisabled}
           label={t.settings.digestToggle}
           onClick={() => prefs && save({ ...prefs, digest_enabled: !prefs.digest_enabled })}
         />
@@ -177,9 +181,10 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
         <Row label={t.settings.digestTimeLabel} description={t.settings.digestTimeDesc}>
           <select
             aria-label={t.settings.digestTimeLabel}
+            disabled={writeDisabled}
             value={`${prefs.digest_time.slice(0, 2)}:00`}
             onChange={(e) => save({ ...prefs, digest_time: e.target.value })}
-            className="rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text"
+            className="rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text disabled:opacity-50"
           >
             {HOURS.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -189,7 +194,7 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
       <Row label={t.settings.pushToggle} description={pushHint}>
         <Toggle
           on={pushOnHere}
-          disabled={!prefs || pushBusy || availability !== 'supported'}
+          disabled={!prefs || pushBusy || writeDisabled || availability !== 'supported'}
           label={t.settings.pushToggle}
           onClick={togglePush}
         />
@@ -201,18 +206,20 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
             <div className="flex items-center gap-1.5">
               <select
                 aria-label={t.settings.quietHoursStart}
+                disabled={writeDisabled}
                 value={`${(prefs.quiet_start ?? '21:00').slice(0, 2)}:00`}
                 onChange={(e) => save({ ...prefs, quiet_start: e.target.value })}
-                className="rounded-xl border border-border bg-surface px-2.5 py-2 text-sm font-semibold text-text"
+                className="rounded-xl border border-border bg-surface px-2.5 py-2 text-sm font-semibold text-text disabled:opacity-50"
               >
                 {HOURS.map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
               <span className="text-xs text-text-muted">–</span>
               <select
                 aria-label={t.settings.quietHoursEnd}
+                disabled={writeDisabled}
                 value={`${(prefs.quiet_end ?? '08:00').slice(0, 2)}:00`}
                 onChange={(e) => save({ ...prefs, quiet_end: e.target.value })}
-                className="rounded-xl border border-border bg-surface px-2.5 py-2 text-sm font-semibold text-text"
+                className="rounded-xl border border-border bg-surface px-2.5 py-2 text-sm font-semibold text-text disabled:opacity-50"
               >
                 {HOURS.map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
@@ -229,6 +236,7 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
                   <button
                     key={ct}
                     aria-pressed={!muted}
+                    disabled={writeDisabled}
                     onClick={() => save({
                       ...prefs,
                       muted_care_types: muted
@@ -251,9 +259,9 @@ export default function NotificationsPanel({ onPrefsChange }: Props) {
           <Row label={t.settings.pushTestButton} description={testMsg ?? undefined}>
             <button
               onClick={sendTest}
-              disabled={testBusy}
+              disabled={testBusy || writeDisabled}
               className={`rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:border-primary/50 ${
-                testBusy ? 'opacity-50' : ''
+                testBusy || writeDisabled ? 'opacity-50' : ''
               }`}
             >
               {testBusy ? t.settings.pushTestSending : t.settings.pushTestButton}

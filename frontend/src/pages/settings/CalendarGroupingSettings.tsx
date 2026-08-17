@@ -32,11 +32,12 @@ function replaceRule(
   return next
 }
 
-export default function CalendarGroupingSettings({ embedded = false }: { embedded?: boolean }) {
+export default function CalendarGroupingSettings({ embedded = false, canEdit = true }: { embedded?: boolean; canEdit?: boolean }) {
   const t = useT()
   const [preferences, setPreferences] = useState<CalendarGroupingPreferences | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(false)
+  const writeDisabled = !canEdit
 
   useEffect(() => {
     let cancelled = false
@@ -155,7 +156,7 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || writeDisabled}
                       onClick={() => setMapTypes(map.id, map.recommended_care_types)}
                       className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                     >
@@ -163,7 +164,7 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                     </button>
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || writeDisabled}
                       onClick={() => setMapTypes(map.id, map.recurring_care_types)}
                       className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                     >
@@ -171,7 +172,7 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                     </button>
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || writeDisabled}
                       onClick={() => setMapTypes(map.id, [])}
                       className="min-h-11 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-text-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                     >
@@ -187,7 +188,7 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                           key={careType}
                           type="button"
                           aria-pressed={isSelected}
-                          disabled={saving}
+                          disabled={saving || writeDisabled}
                           onClick={() => setMapTypes(
                             map.id,
                             isSelected
@@ -218,7 +219,7 @@ export default function CalendarGroupingSettings({ embedded = false }: { embedde
                     {similarCount > 1 && (
                       <button
                         type="button"
-                        disabled={saving}
+                        disabled={saving || writeDisabled}
                         onClick={() => copyToSimilarMaps(map.id)}
                         className="inline-flex min-h-11 max-w-full items-center text-left text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                       >

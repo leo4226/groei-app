@@ -32,7 +32,7 @@ const DEFAULT_CONFIG: CalendarSubscriptionConfig = {
   privacy: false,
 }
 
-export default function CalendarSubscriptionSettings() {
+export default function CalendarSubscriptionSettings({ canEdit = true }: { canEdit?: boolean }) {
   const t = useT()
   const [active, setActive] = useState(false)
   const [config, setConfig] = useState<CalendarSubscriptionConfig>(DEFAULT_CONFIG)
@@ -43,6 +43,9 @@ export default function CalendarSubscriptionSettings() {
   const [error, setError] = useState<'load' | 'action' | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmingRegeneration, setConfirmingRegeneration] = useState(false)
+  // Creating/saving/revoking a subscription writes household-wide calendar
+  // data, so a viewer can inspect the active feed but not change it.
+  const writeDisabled = !canEdit
 
   useEffect(() => {
     let cancelled = false
@@ -225,6 +228,7 @@ export default function CalendarSubscriptionSettings() {
                   key={value}
                   type="button"
                   aria-pressed={config.environment === value}
+                  disabled={writeDisabled}
                   className={pillClass(config.environment === value)}
                   onClick={() => setEnvironment(value)}
                 >
@@ -240,6 +244,7 @@ export default function CalendarSubscriptionSettings() {
               <button
                 type="button"
                 aria-pressed={config.map_ids.length === 0}
+                disabled={writeDisabled}
                 className={pillClass(config.map_ids.length === 0)}
                 onClick={() => updateConfig((current) => ({ ...current, map_ids: [] }))}
               >
@@ -250,6 +255,7 @@ export default function CalendarSubscriptionSettings() {
                   key={map.id}
                   type="button"
                   aria-pressed={config.map_ids.includes(map.id)}
+                  disabled={writeDisabled}
                   className={pillClass(config.map_ids.includes(map.id))}
                   onClick={() => toggleMap(map.id)}
                 >
@@ -265,6 +271,7 @@ export default function CalendarSubscriptionSettings() {
               <button
                 type="button"
                 aria-pressed={config.care_types.length === 0}
+                disabled={writeDisabled}
                 className={pillClass(config.care_types.length === 0)}
                 onClick={() => updateConfig((current) => ({ ...current, care_types: [] }))}
               >
@@ -275,6 +282,7 @@ export default function CalendarSubscriptionSettings() {
                   key={careType}
                   type="button"
                   aria-pressed={config.care_types.includes(careType)}
+                  disabled={writeDisabled}
                   className={pillClass(config.care_types.includes(careType))}
                   onClick={() => toggleCareType(careType)}
                 >
@@ -290,6 +298,7 @@ export default function CalendarSubscriptionSettings() {
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 accent-primary"
                 checked={config.include_context}
+                disabled={writeDisabled}
                 onChange={(event) => updateConfig((current) => ({ ...current, include_context: event.target.checked }))}
               />
               <span>
@@ -302,6 +311,7 @@ export default function CalendarSubscriptionSettings() {
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 accent-primary"
                 checked={config.privacy}
+                disabled={writeDisabled}
                 onChange={(event) => updateConfig((current) => ({ ...current, privacy: event.target.checked }))}
               />
               <span>
@@ -342,7 +352,7 @@ export default function CalendarSubscriptionSettings() {
           <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap">
             <button
               type="button"
-              disabled={busy !== null}
+              disabled={busy !== null || writeDisabled}
               className={`${PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
               onClick={() => void (active ? saveSubscription() : createSubscription())}
             >
@@ -364,7 +374,7 @@ export default function CalendarSubscriptionSettings() {
               <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
                 <button
                   type="button"
-                  disabled={busy !== null}
+                  disabled={busy !== null || writeDisabled}
                   className={SECONDARY_BUTTON_CLASS}
                   onClick={() => setConfirmingRegeneration(true)}
                 >
@@ -372,7 +382,7 @@ export default function CalendarSubscriptionSettings() {
                 </button>
                 <button
                   type="button"
-                  disabled={busy !== null}
+                  disabled={busy !== null || writeDisabled}
                   className="min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/20"
                   onClick={() => void revokeSubscription()}
                 >
@@ -389,7 +399,7 @@ export default function CalendarSubscriptionSettings() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  disabled={busy !== null}
+                  disabled={busy !== null || writeDisabled}
                   className={`${PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
                   onClick={() => void createSubscription('regenerate')}
                 >

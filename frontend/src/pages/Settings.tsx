@@ -50,6 +50,10 @@ export default function Settings() {
   const me = useFloreren((s) => s.me)
   const loadMe = useFloreren((s) => s.loadMe)
   const { isViewer } = useCapabilities()
+  // Panels gate their write controls on these server-derived flags; the safe
+  // default while the account is still loading is not-allowed.
+  const canEdit = me?.capabilities.can_edit ?? false
+  const canManageHousehold = me?.capabilities.can_manage_household ?? false
 
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem(THEME_KEY)
@@ -185,6 +189,8 @@ export default function Settings() {
             initialName={householdName}
             onMembersChange={setMembers}
             onHouseholdNameChange={setHouseholdName}
+            canEdit={canEdit}
+            canManageHousehold={canManageHousehold}
           />
         </SettingsGroup>
 
@@ -196,9 +202,9 @@ export default function Settings() {
           summary={t.settings.groupCareSummary}
         >
           <div className="space-y-3">
-            <CareRhythmSettings />
-            <CalendarGroupingSettings embedded />
-            <CalendarSubscriptionSettings />
+            <CareRhythmSettings canEdit={canEdit} />
+            <CalendarGroupingSettings embedded canEdit={canEdit} />
+            <CalendarSubscriptionSettings canEdit={canEdit} />
           </div>
         </SettingsGroup>
 
@@ -210,6 +216,7 @@ export default function Settings() {
           summary={notificationsSummary}
         >
           <NotificationsPanel
+            canEdit={canEdit}
             onPrefsChange={(p, push) => { setPrefs(p); setPushOnHere(push) }}
           />
         </SettingsGroup>
@@ -221,7 +228,7 @@ export default function Settings() {
           description={t.settings.groupPlacesDesc}
           summary={placesSummary}
         >
-          <PlacesPanel />
+          <PlacesPanel canEdit={canEdit} />
         </SettingsGroup>
 
         <SettingsGroup

@@ -833,6 +833,7 @@ export const en: Translations = {
     memberRoleLabel: 'Role',
     rolePickerLabel: 'Change role',
     inviteRoleLabel: 'Invite as',
+    roleChangeError: 'Error changing role',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────

@@ -315,4 +315,17 @@ describe('CareRhythmSettings', () => {
 
     expect(container.textContent).toContain('Valt al op deze rondedag')
   })
+
+  it('lets a viewer read the current rhythm but omits the editor entry', async () => {
+    await act(async () => {
+      root.render(createElement(LanguageProvider, null, createElement(CareRhythmSettings, { canEdit: false })))
+      await flush()
+    })
+
+    expect(container.textContent).toContain('Water care rhythm')
+    expect(container.textContent).toContain('Proposed')
+    // The editor is a write surface (apply/undo) — no entry button for viewers.
+    expect(container.textContent).not.toContain('Organize watering')
+    expect(careRhythm.preview).not.toHaveBeenCalled()
+  })
 })

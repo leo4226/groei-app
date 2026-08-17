@@ -833,6 +833,7 @@ export const nl: Translations = {
     memberRoleLabel: 'Rol',
     rolePickerLabel: 'Rol wijzigen',
     inviteRoleLabel: 'Uitnodigen als',
+    roleChangeError: 'Fout bij het wijzigen van de rol',
   },
 
   // ── Sun / heatmap controls ──────────────────────────────
