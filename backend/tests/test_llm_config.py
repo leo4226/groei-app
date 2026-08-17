@@ -16,8 +16,20 @@ def test_defaults_to_nous_portal(monkeypatch):
     cfg = _reload(monkeypatch, NOUS_API_KEY="secret")
     assert cfg.LLM_API_KEY == "secret"
     assert cfg.LLM_CHAT_URL == "https://inference-api.nousresearch.com/v1/chat/completions"
-    assert cfg.LLM_MODEL == "deepseek/deepseek-v4-pro"
+    assert cfg.LLM_MODEL == "deepseek/deepseek-v4-pro-0813"
     assert cfg.LLM_FUN_FACT_MODEL == "deepseek/deepseek-v4-flash-0731"
+
+
+def test_model_defaults_are_pinned_to_a_dated_build(monkeypatch):
+    # A bare `deepseek-v4-pro` is not "the latest pro"; the gateway resolves it
+    # to a fixed snapshot (-20260423) that quietly ages. Dating the id keeps the
+    # version visible here, so a model change is a diff rather than a drift.
+    cfg = _reload(monkeypatch, NOUS_API_KEY="k")
+    for model in (cfg.LLM_MODEL, cfg.LLM_FUN_FACT_MODEL):
+        assert model.split("-")[-1].isdigit(), f"{model} is not pinned to a dated build"
+        # `~` marks the gateway's genuinely floating aliases — a model swapping
+        # under a running app changes output with no commit to point at.
+        assert not model.startswith("~")
 
 
 def test_env_overrides_url_and_model(monkeypatch):

@@ -156,7 +156,7 @@ Key Fly secrets:
 | `BIOCLIP_WORKER_URL` | `https://bioclip.floreren.app` — remote GPU worker |
 | `BIOCLIP_WORKER_TOKEN` | Shared secret sent as `X-Worker-Token`; the worker rejects `/identify`, `/embed-image`, `/embed-text` and `/coverage` without it. Must match the Windows worker's env var of the same name. |
 | `BIOCLIP_SYNC_INTERVAL_S` | Catalog-sync loop interval (default `21600` = 6h; `0` disables). |
-| `NOUS_API_KEY` | LLM calls (care thresholds, species, icon generation) via Nous Portal — DeepSeek V4 Flash |
+| `NOUS_API_KEY` | LLM calls (care thresholds, species, icon generation) via Nous Portal. Models are pinned to dated builds in `backend/llm_config.py` — DeepSeek V4 Pro `-0813` for general calls, Flash for phenology/fun facts — and overridable per environment via `LLM_MODEL` etc. A bare id like `deepseek-v4-pro` is *not* "latest"; the gateway resolves it to a fixed older snapshot, so pin the date. |
 | `RESEND_API_KEY` | Transactional email |
 | `PLANTNET_API_KEY` | PlantNet fallback identification |
 | `R2_*` | Cloudflare R2 for image uploads |
