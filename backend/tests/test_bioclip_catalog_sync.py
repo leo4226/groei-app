@@ -72,6 +72,18 @@ def sent(monkeypatch):
     return batches
 
 
+@pytest.fixture(autouse=True)
+def gbif_resolves(monkeypatch):
+    """Tests that predate GBIF-backbone validation (#941) treat every name as
+    valid — no test may hit the real GBIF API. GBIF-specific tests re-patch
+    `resolve_latin_name` with their own fake (same monkeypatch, last wins)."""
+
+    async def _always(client, name):
+        return True
+
+    monkeypatch.setattr(sync, "resolve_latin_name", _always)
+
+
 # ── the queue ───────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
@@ -296,3 +308,77 @@ def test_accepts_botanical_names(name):
 ])
 def test_rejects_junk_names(name):
     assert sync.is_embeddable_latin_name(name) is False
+
+
+# ── GBIF-backbone validation (#941) ────────────────────────────────────────
+
+
+async def _species_row(db, species_id):
+    rows = await db.execute_fetchall(
+        "SELECT latin_name, id_enabled, embedded_at FROM plant_species WHERE id = ?",
+        (species_id,),
+    )
+    return dict(rows[0])
+
+
+@pytest.mark.asyncio
+async def test_unresolved_name_is_disabled_and_never_embedded(
+    db, worker_configured, sent, monkeypatch
+):
+    """A misspelled LLM name that GBIF cannot resolve must not enter the
+    identification catalog: id_enabled = FALSE, embedded_at stays NULL so a
+    later name fix + re-enable re-queues it."""
+    await _insert(db, 7, "Rosa caninna")  # typo
+    await _insert(db, 8, "Urtica dioica")
+
+    async def _resolve(client, name):
+        return name == "Urtica dioica"
+
+    monkeypatch.setattr(sync, "resolve_latin_name", _resolve)
+
+    result = await sync.sync_pending(db)
+
+    assert result == {"status": "ok", "embedded": 1, "skipped": 1, "failed": 0}
+    assert [s["species_id"] for batch in sent for s in batch] == [8]
+    row = await _species_row(db, 7)
+    assert row["id_enabled"] == 0
+    assert row["embedded_at"] is None
+    assert await _embedded_ids(db) == [8]
+
+
+@pytest.mark.asyncio
+async def test_resolved_name_still_flows_through(db, worker_configured, sent):
+    """A name GBIF knows behaves exactly like before the guardrail."""
+    await _insert(db, 42, "Silene dioica", common="Red campion")
+
+    result = await sync.sync_pending(db)
+
+    assert result == {"status": "ok", "embedded": 1, "skipped": 0, "failed": 0}
+    assert sent == [[{
+        "species_id": 42,
+        "latin_name": "Silene dioica",
+        "common_name_en": "Red campion",
+    }]]
+    assert await _embedded_ids(db) == [42]
+
+
+@pytest.mark.asyncio
+async def test_gbif_outage_leaves_species_queued(
+    db, worker_configured, sent, monkeypatch
+):
+    """GBIF being down must not fail the sync nor disable anything: the species
+    stays queued and is retried on the next run."""
+    await _insert(db, 42, "Silene dioica")
+
+    async def _unavailable(client, name):
+        return None
+
+    monkeypatch.setattr(sync, "resolve_latin_name", _unavailable)
+
+    result = await sync.sync_pending(db)
+
+    assert result == {"status": "ok", "embedded": 0, "skipped": 1, "failed": 0}
+    assert sent == []
+    row = await _species_row(db, 42)
+    assert row["id_enabled"] == 1  # still enabled
+    assert row["embedded_at"] is None  # still queued

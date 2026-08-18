@@ -28,14 +28,15 @@ except ImportError:
 from species_service import upsert_species_from_gbif, insert_species_image
 
 # ── GBIF API ──
-GBIF_API = "https://api.gbif.org/v1"
-GBIF_SPECIES_SEARCH = f"{GBIF_API}/species/search"
-
-# Rate limiting: 8 req/s to be safe
-_MIN_INTERVAL = 0.125
-
-# GBIF nubKey for Tracheophyta (vascular plants) — excludes archaea, algae, fungi
-TRACHEOPHYTA_KEY = 7707728
+# Constants + HTTP helpers live in the shared service so the BioCLIP
+# catalog sync can reuse them without importing from this ETL script (#941).
+from services.gbif_client import (
+    GBIF_API,
+    GBIF_SPECIES_SEARCH,
+    TRACHEOPHYTA_KEY,
+    fetch_json,
+    fetch_species_by_genus,
+)
 
 # ── Houseplant genera ──
 HOUSEPLANT_GENERA = [
@@ -94,44 +95,6 @@ def parse_vernacular(vernacular_list: list[dict]) -> tuple[str | None, str | Non
         if nl_name and en_name:
             break
     return nl_name, en_name
-
-
-async def fetch_json(client: httpx.AsyncClient, url: str, params: dict | None = None) -> dict:
-    await asyncio.sleep(_MIN_INTERVAL)
-    resp = await client.get(url, params=params)
-    resp.raise_for_status()
-    return resp.json()
-
-
-async def fetch_species_by_genus(
-    client: httpx.AsyncClient, genus: str, limit: int = 100
-) -> list[dict]:
-    """
-    Fetch species for a genus via GBIF species/search.
-    IMPORTANT: GBIF's species/search is a TEXT search engine — filter params
-    (genus=, kingdom=, etc.) are silently IGNORED without a 'q' query string.
-    We use q={genus} + post-filter by genus name for correctness.
-    """
-    results = []
-    offset = 0
-    while len(results) < limit:
-        resp = await fetch_json(client, GBIF_SPECIES_SEARCH, {
-            "q": genus,
-            "limit": min(100, limit - len(results)),
-            "offset": offset,
-            "status": "ACCEPTED",
-            "higherTaxonKey": TRACHEOPHYTA_KEY,
-            "rank": "SPECIES",
-        })
-        # Post-filter: only keep results that match the requested genus
-        valid = [r for r in resp.get("results", [])
-                 if (r.get("genus") or "").lower() == genus.lower()]
-        results.extend(valid)
-        if not resp.get("endOfRecords", True):
-            offset += 100
-        else:
-            break
-    return results[:limit]
 
 
 async def fetch_media(client: httpx.AsyncClient, taxon_key: int) -> list[dict]:
