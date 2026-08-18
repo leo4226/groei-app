@@ -151,6 +151,7 @@ POLICY_ENTRIES = (
     *_policies(
         PLATFORM_ADMIN,
         "Protected by the platform-admin dependency, outside household roles.",
+        ("POST", "/api/admin-panel/anchors/{anchor_id}/retract"),
         ("POST", "/api/admin-panel/bioclip/sync"),
         ("POST", "/api/admin-panel/jobs"),
         ("POST", "/api/admin-panel/plants/{plant_id}/regenerate-icon"),

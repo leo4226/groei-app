@@ -9,6 +9,7 @@ import {
   type AdminGrowthMetrics, type AdminGrowthMetricPoint,
   type AdminHouseholdDetail, type AdminAuditRow,
   type AdminJob, type AdminJobStatus, type AdminCoverage, type AdminSkippedDetail,
+  type AdminAnchorRow,
   type AdminBackfillFactsPreview, type AdminBackfillNamesPreview,
 } from '../api/client'
 import {
@@ -40,7 +41,7 @@ import {
   skipSubject,
 } from './adminJobModel'
 
-type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'tools' | 'activity' | 'audit'
+type Section = 'overview' | 'users' | 'plants' | 'species' | 'coverage' | 'anchors' | 'tools' | 'activity' | 'audit'
 
 const NAV: { id: Section; icon: GlyphName; label: string }[] = [
   { id: 'overview', icon: 'chart',     label: 'Overview' },
@@ -48,6 +49,7 @@ const NAV: { id: Section; icon: GlyphName; label: string }[] = [
   { id: 'plants',   icon: 'leaf',      label: 'Plants' },
   { id: 'species',  icon: 'flask',     label: 'Species' },
   { id: 'coverage', icon: 'compass',   label: 'Coverage' },
+  { id: 'anchors',  icon: 'camera',    label: 'Anchors' },
   { id: 'tools',    icon: 'wrench',    label: 'Tools' },
   { id: 'activity', icon: 'clipboard', label: 'Activity' },
   { id: 'audit',    icon: 'lock',      label: 'Audit log' },
@@ -152,6 +154,7 @@ export default function AdminPage() {
           {section === 'plants'    && <PlantsView />}
           {section === 'species'   && <SpeciesView />}
           {section === 'coverage'  && <CoverageView />}
+          {section === 'anchors'   && <AnchorsView />}
           {section === 'tools'     && <ToolsView />}
           {section === 'activity'  && <ActivityView />}
           {section === 'audit'     && <AuditView />}
@@ -2402,6 +2405,156 @@ const ACTION_LABEL: Record<string, string> = {
   // the job kind, so the label stays generic and the target carries the detail.
   start_job:                       'Run tool',
   regenerate_icon:                 'Regen plant icon',
+}
+
+function AnchorsView() {
+  const [anchors, setAnchors] = useState<AdminAnchorRow[] | null>(null)
+  const [total, setTotal] = useState(0)
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
+  const [sortState, setSortState] = useState<SortState>({ sort: 'created_at', dir: 'desc' })
+  const [offset, setOffset] = useState(0)
+  const [retracting, setRetracting] = useState<number | null>(null)
+
+  const load = useCallback(() => {
+    let cancelled = false
+    const params: AdminTableParams = { limit: PAGE_SIZE, offset, q: debouncedSearch, filter, sort: sortState.sort, dir: sortState.dir }
+    setLoading(true)
+    setErr('')
+    adminPanel.anchors(params)
+      .then(data => {
+        if (cancelled) return
+        setAnchors(data.rows)
+        setTotal(data.total)
+      })
+      .catch(e => {
+        if (cancelled) return
+        setErr(e instanceof Error ? e.message : 'Failed to load anchors')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [debouncedSearch, filter, offset, sortState])
+
+  useEffect(() => load(), [load])
+
+  function handleSearch(value: string) {
+    setSearch(value)
+    setOffset(0)
+  }
+
+  function handleFilter(value: string) {
+    setFilter(value)
+    setOffset(0)
+  }
+
+  function handleSort(sortKey: string) {
+    setSortState(current => ({
+      sort: sortKey,
+      dir: nextSortDir(current, sortKey),
+    }))
+    setOffset(0)
+  }
+
+  async function handleRetract(anchor: AdminAnchorRow) {
+    const species = anchor.latin_name || anchor.common_name_nl || `species ${anchor.species_id}`
+    if (!window.confirm(`Remove this anchor for ${species}? It will stop influencing identifications for everyone.`)) return
+    setRetracting(anchor.id)
+    setErr('')
+    try {
+      await adminPanel.retractAnchor(anchor.id)
+      load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Retraction failed')
+    } finally {
+      setRetracting(null)
+    }
+  }
+
+  const rows = anchors ?? []
+  const formatTs = (iso: string) =>
+    new Date(iso).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  return (
+    <div>
+      <PageHeader title="Identification anchors" sub={`${anchors != null ? total : '…'} user-confirmed photos powering image rescue`} />
+
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search by species or household…"
+          style={{ flex: 1, minWidth: 200, maxWidth: 360, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', fontFamily: 'var(--font-body)', fontSize: 13, boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <FilterBar
+        active={filter}
+        onChange={handleFilter}
+        options={[
+          { id: 'all', label: 'All' },
+          { id: 'unprovenanced', label: 'Unprovenanced' },
+        ]}
+      />
+
+      {err && <ErrorMsg msg={err} />}
+      {loading && !anchors && !err && <Loading />}
+
+      {anchors && (
+        <SectionCard title={`${total} anchors`}>
+          <AdminTable
+            heads={[
+              { label: 'Species', sortKey: 'species' },
+              { label: 'Source household', sortKey: 'household' },
+              'Source account',
+              'Photo',
+              { label: 'Backing households' },
+              { label: 'Age', sortKey: 'created_at' },
+              '',
+            ]}
+            sort={sortState}
+            onSort={handleSort}
+            scrollable
+          >
+            {rows.map(a => (
+              <tr key={a.id}>
+                <Td>
+                  <strong>{a.common_name_nl || '—'}</strong>{' '}
+                  {a.latin_name ? <em style={{ color: 'var(--color-text-muted)' }}>{a.latin_name}</em> : null}
+                </Td>
+                <Td>{a.source_household_name ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>unknown</span>}</Td>
+                <Td mono>{a.source_account_email ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</Td>
+                <Td>
+                  {a.source_photo_url ? (
+                    <a href={a.source_photo_url} target="_blank" rel="noreferrer" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)' }} title={a.source_photo_url}>
+                      {a.source_photo_url.split('/').pop()}
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
+                  )}
+                </Td>
+                <Td><Pill label={a.backing_households >= 2 ? String(a.backing_households) : 'single'} tone={a.backing_households >= 2 ? 'green' : 'amber'} /></Td>
+                <Td mono>{formatTs(a.created_at)}</Td>
+                <Td>
+                  <button
+                    onClick={() => handleRetract(a)}
+                    disabled={retracting === a.id}
+                    style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 5, padding: '3px 8px', fontFamily: 'var(--font-mono)', fontSize: 9, cursor: retracting === a.id ? 'default' : 'pointer', color: 'var(--color-due)', opacity: retracting === a.id ? .5 : 1 }}
+                  >
+                    <Glyph name="trash" size={11} className="inline-block align-[-1px] mr-1" /> {retracting === a.id ? '…' : 'Retract'}
+                  </button>
+                </Td>
+              </tr>
+            ))}
+          </AdminTable>
+          {rows.length === 0 && <div style={{ padding: '20px 18px', fontFamily: 'var(--font-heading)', fontStyle: 'italic', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center' }}>No anchors found.</div>}
+          <PaginationFooter total={total} limit={PAGE_SIZE} offset={offset} onOffsetChange={setOffset} loading={loading} />
+        </SectionCard>
+      )}
+    </div>
+  )
 }
 
 function AuditView() {

@@ -16,6 +16,7 @@ from services.user_refs import (
     DEDUPE_MAX_COSINE,
     MAX_ANCHORS_PER_SPECIES,
     add_anchor,
+    retract_anchor,
     retract_photo_anchor,
     retract_plant_anchors,
 )
@@ -245,3 +246,23 @@ async def test_a_broken_table_never_raises_into_the_caller(db, monkeypatch):
     assert await retract_plant_anchors(db, 7) == 0
     assert await retract_photo_anchor(db, "https://r2/a.jpg") == 0
     assert user_refs.EMBEDDING_BYTES == 2048
+
+
+# ── single-anchor retraction (admin review, #940) ───────────────────────────
+
+@pytest.mark.asyncio
+async def test_admin_can_retract_one_anchor_by_id(db):
+    await add_anchor(db, 42, _embedding(1), account_id=1, photo_url="https://r2/a.jpg")
+    await add_anchor(db, 42, _embedding(2), account_id=2, photo_url="https://r2/b.jpg")
+
+    assert await retract_anchor(db, 1) is True
+    remaining = await _anchors(db)
+    assert [r["id"] for r in remaining] == [2]
+
+
+@pytest.mark.asyncio
+async def test_retracting_a_missing_anchor_is_false(db):
+    await add_anchor(db, 42, _embedding(1), account_id=1)
+
+    assert await retract_anchor(db, 999) is False
+    assert len(await _anchors(db)) == 1

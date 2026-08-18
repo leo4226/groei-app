@@ -145,7 +145,7 @@ async def test_identify_endpoint_passes_all_images_to_bioclip(client, seeded_db,
     """Multi-angle: the endpoint forwards every uploaded image to _bioclip_identify."""
     from routers.plant_id import IdentifyResponse
 
-    async def fake_bioclip(image_bytes_list, db, lang="nl"):
+    async def fake_bioclip(image_bytes_list, db, lang="nl", household_id=None):
         assert isinstance(image_bytes_list, list)
         assert len(image_bytes_list) == 3
         return IdentifyResponse(candidates=[], confidence="no_match", low_confidence=False, source="bioclip")
@@ -169,7 +169,7 @@ async def test_identify_endpoint_single_image_still_one_element(client, seeded_d
     """Single-image behavior is unchanged: exactly one element in the list."""
     from routers.plant_id import IdentifyResponse
 
-    async def fake_bioclip(image_bytes_list, db, lang="nl"):
+    async def fake_bioclip(image_bytes_list, db, lang="nl", household_id=None):
         assert isinstance(image_bytes_list, list)
         assert len(image_bytes_list) == 1
         return IdentifyResponse(candidates=[], confidence="no_match", low_confidence=False, source="bioclip")

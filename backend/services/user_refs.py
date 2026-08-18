@@ -166,3 +166,31 @@ async def retract_photo_anchor(db, photo_url: str) -> int:
     except Exception:
         logger.warning("Anchor retraction failed for photo %s", photo_url, exc_info=True)
         return 0
+
+
+async def retract_anchor(db, anchor_id: int) -> bool:
+    """Drop a single anchor row by id (admin anchor review, #940).
+
+    The admin panel lists anchors with their provenance so a poisoning
+    incident can be reviewed; this is the removal half of that surface.
+    Returns True when a row was removed. Never raises: anchor management is
+    housekeeping, not a user-facing flow.
+    """
+    if not anchor_id:
+        return False
+    try:
+        rows = await db.execute_fetchall(
+            "SELECT id FROM user_confirmed_embeddings WHERE id = ?",
+            (int(anchor_id),),
+        )
+        if not rows:
+            return False
+        await db.execute(
+            "DELETE FROM user_confirmed_embeddings WHERE id = ?",
+            (int(anchor_id),),
+        )
+        await db.commit()
+        return True
+    except Exception:
+        logger.warning("Anchor retraction failed for anchor_id=%s", anchor_id, exc_info=True)
+        return False

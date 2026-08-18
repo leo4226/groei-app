@@ -2357,6 +2357,104 @@ async def get_admin_job(
     return row
 
 
+@router.get("/admin-panel/anchors")
+async def admin_anchors(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    q: str | None = None,
+    filter: str = "all",
+    sort: str = "created_at",
+    direction: str = Query("desc", alias="dir"),
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """List user-confirmed image anchors for review (#940).
+
+    Anchors are the labelled photos that can rescue a species during
+    identification, so a mistaken or malicious confirmation becomes a
+    permanent candidate for every household. This surface makes poisoning
+    incidents visible: each row shows where the anchor came from and how many
+    distinct source households back the species.
+    """
+    where: list[str] = []
+    params: list[object] = []
+    _add_search(where, params, q, ["ps.latin_name", "ps.common_name_nl", "h.name"])
+    if filter == "unprovenanced":
+        # Anchors whose source account is NULL can never be tied to a
+        # household — under #940 they can never corroborate anything, so they
+        # are the first candidates for review.
+        where.append("u.source_account_id IS NULL")
+    order_by = _sort_clause(
+        sort,
+        direction,
+        {
+            "id": "u.id",
+            "species": "ps.latin_name",
+            "household": "h.name",
+            "created_at": "u.created_at",
+        },
+        "created_at",
+        "desc",
+    )
+    return await _fetch_admin_page(
+        db,
+        select_sql="""
+            SELECT
+                u.id,
+                u.species_id,
+                u.source_account_id,
+                u.source_photo_url,
+                u.source_plant_id,
+                ps.latin_name,
+                ps.common_name_nl,
+                a.household_id as source_household_id,
+                h.name as source_household_name,
+                a.email as source_account_email,
+                (SELECT COUNT(DISTINCT a2.household_id)
+                 FROM user_confirmed_embeddings u2
+                 LEFT JOIN accounts a2 ON a2.id = u2.source_account_id
+                 WHERE u2.species_id = u.species_id
+                   AND a2.household_id IS NOT NULL) as backing_households,
+                CAST(u.created_at AS TEXT) as created_at
+        """,
+        from_sql="""
+            FROM user_confirmed_embeddings u
+            JOIN plant_species ps ON ps.id = u.species_id
+            LEFT JOIN accounts a ON a.id = u.source_account_id
+            LEFT JOIN households h ON h.id = a.household_id
+        """,
+        where=where,
+        params=params,
+        order_by=order_by,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.post("/admin-panel/anchors/{anchor_id}/retract")
+async def admin_retract_anchor(
+    anchor_id: int,
+    admin=Depends(require_admin),
+    db=Depends(db_dep),
+):
+    """Remove a single anchor from the identification pool (#940).
+
+    The anchor disappears from every future blend as soon as the refs cache
+    refreshes (at most _USER_REFS_CACHE_TTL_S in routers/plant_id).
+    """
+    from services.user_refs import retract_anchor
+
+    removed = await retract_anchor(db, int(anchor_id))
+    if not removed:
+        raise HTTPException(status_code=404, detail="Anchor not found")
+    await log_admin_action(
+        db, admin, "retract_anchor",
+        target=f"anchor/{anchor_id}",
+        detail={"anchor_id": int(anchor_id)},
+    )
+    return {"ok": True, "anchor_id": int(anchor_id)}
+
+
 @router.get("/admin-panel/audit")
 async def admin_audit(
     limit: int = Query(50, ge=1, le=200),

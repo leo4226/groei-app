@@ -818,6 +818,10 @@ export const adminPanel = {
     api<AdminJob>('GET', `/admin-panel/jobs/${id}`),
   listJobs: (limit = 20) =>
     api<AdminJob[]>('GET', '/admin-panel/jobs', { params: { limit: String(limit) } }),
+  anchors: (params: AdminTableParams = {}) =>
+    api<AdminPagedResponse<AdminAnchorRow>>('GET', '/admin-panel/anchors', { params: adminTableParams(params) }),
+  retractAnchor: (anchorId: number) =>
+    api<{ ok: boolean; anchor_id: number }>('POST', `/admin-panel/anchors/${anchorId}/retract`),
 }
 
 export interface AdminAuditRow {
@@ -828,6 +832,22 @@ export interface AdminAuditRow {
   created_at: string
   admin_email: string | null
   admin_name: string | null
+}
+
+export interface AdminAnchorRow {
+  id: number
+  species_id: number
+  source_account_id: number | null
+  source_photo_url: string | null
+  source_plant_id: number | null
+  latin_name: string | null
+  common_name_nl: string | null
+  source_household_id: number | null
+  source_household_name: string | null
+  source_account_email: string | null
+  /** Number of distinct source households backing this species' anchors. */
+  backing_households: number
+  created_at: string
 }
 
 /** 'queued' means accepted and waiting behind another job — one runs at a time. */
