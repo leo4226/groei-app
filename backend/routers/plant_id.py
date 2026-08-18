@@ -103,29 +103,34 @@ _IMAGE_MATCH_MIN = 0.45
 def _blend_scores(
     text_matches: list[tuple[int, float]],
     query_embedding: np.ndarray,
-    refs_by_species: dict[int, np.ndarray],
+    refs_by_species: dict[int, object],
     top_k: int = 5,
+    household_id: int | None = None,
 ) -> list[tuple[int, float]]:
     """Combine text-based top-K matches with image-to-image similarity from
     user-confirmed embeddings, return new top-K.
 
     A confirmed-photo match is used only when it is strong (best ref cosine
     >= _IMAGE_MATCH_MIN). Such a match can RESCUE a species missing from the
-    text top-K (union), not just re-rank the ones already present, and a single
-    confirmed ref is enough. Weak image matches are ignored, so the result never
-    drops below pure-text behaviour. Per-species score: max(text, strong_image).
+    text top-K (union), not just re-rank the ones already present. Weak image
+    matches are ignored, so the result never drops below pure-text behaviour.
+    Per-species score: max(text, strong_image).
+
+    Provenance weighting (#940): with the requesting `household_id` known, the
+    requesting household's OWN anchors count at full strength — a single own
+    ref rescues, exactly as before the un-gating (#442) — while anchors from
+    OTHER households only count once they are corroborated by enough distinct
+    source households. Without `household_id` (legacy callers/tests) every ref
+    is treated as own, preserving the old single-ref semantics.
     """
     text_score_map: dict[int, float] = {sid: s for sid, s in text_matches}
 
     # Best image-to-image cosine per species, kept only if it clears the floor.
-    # A single confirmed ref counts (ref_matrix has ≥1 row by construction).
     strong_image: dict[int, float] = {}
-    for sid, ref_matrix in refs_by_species.items():
-        if ref_matrix.shape[0] < 1:
-            continue
-        best = float((ref_matrix @ query_embedding).max())  # (N,512)@(512,) -> (N,)
-        if best >= _IMAGE_MATCH_MIN:
-            strong_image[sid] = best
+    for sid, refs in refs_by_species.items():
+        score = _provenance_image_score(refs, query_embedding, household_id)
+        if score is not None:
+            strong_image[sid] = score
 
     combined: dict[int, float] = {}
     # Text candidates, boosted only by a strong image match for the same species.
@@ -139,13 +144,100 @@ def _blend_scores(
     return ranked[:top_k]
 
 
+#: Provenance weighting (#940). Own-household anchors are the strongest signal:
+#: the household itself confirmed that photo. Foreign anchors must not let one
+#: household rescue a species for everyone else, so they need corroboration.
+#:
+#: - _MIN_CORROBORATING_HOUSEHOLDS is the number of DISTINCT source households
+#:   (excluding the requesting one) whose strong matches are required before a
+#:   foreign-only species can rescue or re-rank. It does NOT re-introduce the
+#:   >=2-refs intersection gate from #442: the requesting household's own
+#:   single ref still counts alone, and several refs from ONE foreign household
+#:   still count as one source.
+#: - _OWN_REF_BOOST nudges an own-household strong match above an equally-strong
+#:   corroborated foreign one for ranking. It is small enough that the
+#:   displayed confidence stays honest (dominated by the raw cosine).
+_OWN_REF_BOOST = 0.01
+_MIN_CORROBORATING_HOUSEHOLDS = 2
+
+
+def _refs_by_provenance(
+    refs: object,
+) -> tuple[np.ndarray | None, dict[int, np.ndarray]]:
+    """Split one species' ref entry into (own_matrix, {household: matrix}).
+
+    Legacy entries are plain stacked arrays without provenance — they are
+    treated as own refs, so pre-#940 callers and tests keep the single-ref
+    rescue semantics. New entries are dicts {"own": ..., "foreign": {...}}.
+    """
+    if isinstance(refs, np.ndarray):
+        return refs, {}
+    if isinstance(refs, dict):
+        own = refs.get("own")
+        foreign = refs.get("foreign", {}) if isinstance(refs.get("foreign"), dict) else {}
+        return (own if isinstance(own, np.ndarray) else None), dict(foreign)
+    return None, {}
+
+
+def _provenance_image_score(
+    refs: object,
+    query_embedding: np.ndarray,
+    household_id: int | None,
+) -> float | None:
+    """Best strong image cosine for a species under the provenance rules, or
+    None when the species has no usable image signal.
+
+    Own refs: a single strong own anchor is enough (un-gated rescue preserved).
+    Foreign refs: count only when >= _MIN_CORROBORATING_HOUSEHOLDS distinct
+    source households each have a strong match. Ref groups without provenance
+    (source_account_id NULL) each form their own single "household", so orphan
+    anchors can never corroborate each other.
+    """
+    own_refs, foreign_by_house = _refs_by_provenance(refs)
+    if household_id is None:
+        # No requester identity: every ref is treated as own (legacy behaviour).
+        # This is what keeps pre-#940 callers (and the guest game scan, which
+        # has no household at all) on the old single-ref semantics.
+        matrices = []
+        if own_refs is not None:
+            matrices.append(own_refs)
+        matrices.extend(foreign_by_house.values())
+        if not matrices:
+            return None
+        best = float((np.vstack(matrices) @ query_embedding).max())
+        if best >= _IMAGE_MATCH_MIN:
+            return best
+        return None
+
+    if own_refs is not None and own_refs.shape[0] >= 1:
+        own_best = float((own_refs @ query_embedding).max())
+        if own_best >= _IMAGE_MATCH_MIN:
+            return min(own_best + _OWN_REF_BOOST, 1.0)
+
+    strong_households = 0
+    best_foreign = 0.0
+    for house_refs in foreign_by_house.values():
+        if house_refs.shape[0] < 1:
+            continue
+        best = float((house_refs @ query_embedding).max())
+        if best >= _IMAGE_MATCH_MIN:
+            strong_households += 1
+            best_foreign = max(best_foreign, best)
+    if strong_households >= _MIN_CORROBORATING_HOUSEHOLDS:
+        return best_foreign
+    return None
+
+
 _USER_REFS_CACHE_TTL_S = 300  # 5 min
-_user_refs_cache: dict = {"loaded_at": None, "by_species": {}}
+_user_refs_cache: dict = {"loaded_at": None, "rows": None}
 
 
-async def _load_user_refs_cache(db) -> dict[int, np.ndarray]:
-    """Load all user_confirmed_embeddings into an in-memory dict, refreshing
-    at most every _USER_REFS_CACHE_TTL_S seconds.
+async def _load_user_refs_rows(db) -> list[dict]:
+    """Load all user_confirmed_embeddings rows (with their source household),
+    refreshing at most every _USER_REFS_CACHE_TTL_S seconds.
+
+    The rows are cached, not the per-household split: the split depends on who
+    is asking, and one shared cache serves every household.
     """
     global _user_refs_cache
     now = time.time()
@@ -153,25 +245,57 @@ async def _load_user_refs_cache(db) -> dict[int, np.ndarray]:
         _user_refs_cache["loaded_at"] is not None
         and now - _user_refs_cache["loaded_at"] < _USER_REFS_CACHE_TTL_S
     ):
-        return _user_refs_cache["by_species"]
+        return _user_refs_cache["rows"] or []
 
     rows = await db.execute_fetchall(
-        "SELECT species_id, embedding FROM user_confirmed_embeddings"
+        """SELECT u.species_id, u.embedding, a.household_id AS source_household_id
+           FROM user_confirmed_embeddings u
+           LEFT JOIN accounts a ON a.id = u.source_account_id"""
     )
-    by_species: dict[int, list[np.ndarray]] = {}
+
+    _user_refs_cache = {"loaded_at": now, "rows": rows}
+    return rows
+
+
+def _group_refs_by_provenance(
+    rows: list[dict], household_id: int | None
+) -> dict[int, dict]:
+    """Group raw anchor rows per species into {"own", "foreign"} matrices.
+
+    `foreign` is keyed by source household id (None for anchors without
+    provenance) so the corroboration rule can count DISTINCT households.
+    """
+    own: dict[int, list[np.ndarray]] = {}
+    foreign: dict[int, dict[int, list[np.ndarray]]] = {}
     for r in rows:
         emb = np.frombuffer(r["embedding"], dtype=np.float32)
-        by_species.setdefault(r["species_id"], []).append(emb)
-    stacked = {sid: np.stack(arrs) for sid, arrs in by_species.items()}
+        sid = int(r["species_id"])
+        src_household = r.get("source_household_id")
+        if household_id is not None and src_household == household_id:
+            own.setdefault(sid, []).append(emb)
+        else:
+            foreign.setdefault(sid, {}).setdefault(src_household, []).append(emb)
 
-    _user_refs_cache = {"loaded_at": now, "by_species": stacked}
-    return stacked
+    by_species: dict[int, dict] = {}
+    for sid in set(own) | set(foreign):
+        own_arrs = own.get(sid) or []
+        foreign_by_house = {
+            h: np.stack(arrs)
+            for h, arrs in (foreign.get(sid) or {}).items()
+            if arrs
+        }
+        by_species[sid] = {
+            "own": np.stack(own_arrs) if own_arrs else None,
+            "foreign": foreign_by_house,
+        }
+    return by_species
 
 
 async def _apply_user_refs(
     text_matches: list[tuple[int, float]],
     query_embedding: np.ndarray | None,
     db,
+    household_id: int | None = None,
 ) -> list[tuple[int, float]]:
     """Async wrapper: load refs from cache, blend with text matches. If query
     embedding is None (worker didn't return one — old version), short-circuit
@@ -179,10 +303,14 @@ async def _apply_user_refs(
     """
     if query_embedding is None:
         return text_matches
-    refs = await _load_user_refs_cache(db)
+    rows = await _load_user_refs_rows(db)
+    if not rows:
+        return text_matches
+    refs = _group_refs_by_provenance(rows, household_id)
     if not refs:
         return text_matches
-    return _blend_scores(text_matches, query_embedding, refs)
+    return _blend_scores(text_matches, query_embedding, refs, household_id=household_id)
+
 
 
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "icons")
@@ -452,7 +580,7 @@ def _elapsed_ms(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 1)
 
 
-async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl") -> IdentifyResponse | None:
+async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl", household_id: int | None = None) -> IdentifyResponse | None:
     """Identify a plant image using BioCLIP worker (remote or local).
 
     Accepts 1-3 image byte blobs (multi-angle ensemble, #807). When multiple
@@ -495,7 +623,7 @@ async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl")
                             query_embedding = np.frombuffer(base64.b64decode(emb_b64), dtype=np.float32)
                             if query_embedding.shape == (512,):
                                 refs_started = time.perf_counter()
-                                matches = await _apply_user_refs(matches, query_embedding, db)
+                                matches = await _apply_user_refs(matches, query_embedding, db, household_id)
                                 user_ref_ms = _elapsed_ms(refs_started)
                         except Exception as exc:
                             logger.warning("Failed to decode query embedding for blend: %s", exc)
@@ -697,7 +825,7 @@ async def identify_endpoint(
     # 2. Try BioCLIP first (self-hosted, no quota) — unless user explicitly chose PlantNet
     if engine != "plantnet":
         try:
-            result = await _bioclip_identify(image_bytes_list, db, lang)
+            result = await _bioclip_identify(image_bytes_list, db, lang, account["household_id"])
             if result is not None:
                 top = result.candidates[0] if result.candidates else None
                 result.identify_id = await _log_identify(
