@@ -2092,6 +2092,7 @@ export type Translations = {
     notFound: string
     save: string
     cancel: string
+    close: string       // "Close" / "Sluiten"
     delete: string
     back: string
     error: string
@@ -2203,6 +2204,7 @@ export type Translations = {
     createGame: string
     creating: string
     noPhotosWarning: string
+    noPlantsWithPhotos: string
     // Waiting room (host)
     joinCode: string
     copyLink: string

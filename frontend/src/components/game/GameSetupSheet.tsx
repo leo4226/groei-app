@@ -147,11 +147,11 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   ) => (
     <button
       onClick={() => setClueMode(mode)}
-      className={`flex-1 py-2 text-sm font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+      className={`flex-1 min-h-[64px] py-2 text-sm font-medium transition-colors flex flex-col items-center justify-center gap-1.5 ${
         clueMode === mode ? 'bg-primary text-white' : 'bg-bg text-text-muted hover:bg-surface'
       }`}
     >
-      <Glyph name={icon} size={15} />
+      <Glyph name={icon} size={20} />
       {label}
     </button>
   )
@@ -159,16 +159,20 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-black/40" onClick={onClose}>
       <div
-        className="mt-auto bg-surface rounded-t-2xl max-h-[88vh] flex flex-col"
+        className="mt-auto bg-surface rounded-t-2xl max-h-[88vh] flex flex-col max-w-md mx-auto w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+        <div className="flex justify-center pt-3 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-3 flex-shrink-0">
           <div>
-            <h2 className="font-bold text-text">{t.game.setupTitle}</h2>
+            <h2 className="font-heading text-lg font-semibold text-text">{t.game.setupTitle}</h2>
             <p className="text-xs text-text-muted mt-0.5">{t.game.setupSubtitle}</p>
           </div>
           <button
             onClick={onClose}
+            aria-label={t.common.close}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-bg text-text-muted hover:text-text"
           >
             <Glyph name="x" size={16} />
@@ -306,7 +310,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
           {loading ? (
             <p className="text-text-muted text-sm py-4">{t.common.loading}</p>
           ) : plants.length === 0 ? (
-            <p className="text-text-muted text-sm py-4">{t.game.noPhotosWarning}</p>
+            <p className="text-text-muted text-sm py-4">{t.game.noPlantsWithPhotos}</p>
           ) : (
             <div className="space-y-2">
               {plants.map((p) => {
@@ -369,14 +373,14 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
         <div className="px-5 pt-3 pb-[max(env(safe-area-inset-bottom,0px),20px)] flex-shrink-0 border-t border-border space-y-3">
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
           {selected.size > 3 && (
-            <div className="flex items-center justify-between gap-2">
+            <div className="space-y-2">
               <p className="text-xs text-text-muted">{t.game.questionCount}</p>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {countChoices.map((n) => (
                   <button
                     key={n}
                     onClick={() => setRoundCount(n)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                    className={`px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
                       roundCount === n
                         ? 'bg-primary text-white border-primary'
                         : 'border-border text-text-muted'
@@ -387,7 +391,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
                 ))}
                 <button
                   onClick={() => setRoundCount(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-full text-xs font-semibold border transition-colors ${
                     roundCount === null
                       ? 'bg-primary text-white border-primary'
                       : 'border-border text-text-muted'
@@ -407,7 +411,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
             onClick={handleCreate}
             disabled={!canCreate || creating || writeDisabled}
             title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
-            className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
+            className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-base disabled:opacity-40 transition-opacity"
           >
             {creating ? t.game.creating : `${t.game.createGame} (${effectiveRounds})`}
           </button>

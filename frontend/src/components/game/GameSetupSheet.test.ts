@@ -73,7 +73,7 @@ describe('GameSetupSheet — capability rendering', () => {
     await render(true)
 
     const createButton = Array.from(container.querySelectorAll('button'))
-      .find((b) => b.textContent?.includes('Create game'))
+      .find((b) => b.textContent?.includes('Start game'))
     expect(createButton).toBeDefined()
     // Without ≥3 plants the button stays disabled; the editor path is proven
     // by the banner being absent and the button not carrying the read-only title.
@@ -86,7 +86,7 @@ describe('GameSetupSheet — capability rendering', () => {
 
     expect(container.textContent).toContain('Read-only')
     const createButton = Array.from(container.querySelectorAll('button'))
-      .find((b) => b.textContent?.includes('Create game'))
+      .find((b) => b.textContent?.includes('Start game'))
     expect(createButton).toBeDefined()
     expect((createButton as HTMLButtonElement).disabled).toBe(true)
     expect((createButton as HTMLButtonElement).title).toContain('Only editors can change this.')
