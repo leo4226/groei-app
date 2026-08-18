@@ -18,12 +18,20 @@ endpoint:
 
 Both are best-effort: identification keeps working (minus the new species) if
 the worker is unreachable, so no caller should fail because of a sync error.
+
+Name validation (#941): before a pending species is embedded, its latin name is
+resolved against the GBIF backbone. A name GBIF does not know is set to
+`id_enabled = FALSE` — the plant record stays fully usable, but the species
+never enters the identification catalog. A GBIF outage leaves the species
+queued for the next run; it never fails a caller.
 """
 import asyncio
 import logging
 import os
 import re
 from datetime import datetime, timezone
+
+from services.gbif_client import resolve_latin_name
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +46,9 @@ _MAX_PER_RUN = 500
 _HTTP_TIMEOUT_S = 60.0
 
 # Cheap sanity filter on LLM/PlantNet-provided names before they enter the
-# identification catalog. Full GBIF-backbone validation is the follow-up; this
-# only keeps obvious junk ("Unknown plant 2", "???") out of the reference set.
+# identification catalog. It only keeps obvious junk ("Unknown plant 2", "???")
+# out of the reference set; the full GBIF-backbone check runs per-species in
+# _drain_queue (see resolve_latin_name).
 _LATIN_NAME_RE = re.compile(r"^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\-'.×x]{2,}$")
 
 
@@ -152,6 +161,21 @@ async def _mark_embedded(db, species_ids: list[int]) -> None:
     await db.commit()
 
 
+async def _disable_for_identification(db, species_id: int) -> None:
+    """Exclude a species from the identification catalog without touching the
+    plant record (#941).
+
+    `id_enabled = FALSE` drops the row from every sync/embedding query, while
+    `embedded_at` stays NULL — so if the latin name is later fixed and the row
+    re-enabled, it lands back on the queue and is re-validated.
+    """
+    await db.execute(
+        "UPDATE plant_species SET id_enabled = FALSE WHERE id = ?",
+        (int(species_id),),
+    )
+    await db.commit()
+
+
 # Only one sync may run at a time. Each run holds a pooled DB connection while
 # it waits on the worker (up to _HTTP_TIMEOUT_S), and the worker serializes the
 # GPU work anyway — so a burst of identify commits must not each start their own
@@ -165,7 +189,9 @@ async def sync_pending(db, limit: int = _MAX_PER_RUN, *, skip_if_busy: bool = Fa
 
     Returns a summary dict; never raises. Species whose latin name fails the
     sanity check are skipped and left queued, so a later name fix picks them up
-    instead of them being silently marked done.
+    instead of them being silently marked done. Species that pass the sanity
+    check are validated against the GBIF backbone before embedding (#941):
+    unresolved names get `id_enabled = FALSE` (see _drain_queue).
     """
     if not _worker_url():
         return {"status": "unconfigured", "embedded": 0, "skipped": 0, "failed": 0}
@@ -181,10 +207,11 @@ async def _drain_queue(db, limit: int) -> dict:
     if not pending:
         return {"status": "ok", "embedded": 0, "skipped": 0, "failed": 0}
 
-    embeddable, skipped = [], 0
+    # Cheap local filter first — no network for obvious junk.
+    candidates, skipped = [], 0
     for row in pending:
         if is_embeddable_latin_name(row.get("latin_name")):
-            embeddable.append(row)
+            candidates.append(row)
         else:
             skipped += 1
             logger.info(
@@ -192,9 +219,38 @@ async def _drain_queue(db, limit: int) -> dict:
                 row.get("id"), row.get("latin_name"),
             )
 
+    # GBIF-backbone validation (#941): a name that cannot be resolved must
+    # never enter the identification catalog. Unresolved -> id_enabled = FALSE
+    # (plant record stays, row drops out of this queue). GBIF outage -> leave
+    # queued so the next run retries — never fail a caller over GBIF.
+    validated: list[dict] = []
+    if candidates:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT_S) as client:
+            for row in candidates:
+                name = row.get("latin_name")
+                resolved = await resolve_latin_name(client, name)
+                if resolved:
+                    validated.append(row)
+                elif resolved is None:
+                    skipped += 1
+                    logger.warning(
+                        "GBIF validation unavailable for species_id=%s (%r) — "
+                        "leaving queued for retry",
+                        row.get("id"), name,
+                    )
+                else:
+                    skipped += 1
+                    await _disable_for_identification(db, int(row["id"]))
+                    logger.info(
+                        "species_id=%s (%r) unresolved on GBIF — id_enabled=FALSE",
+                        row.get("id"), name,
+                    )
+
     embedded, failed = 0, 0
-    for start in range(0, len(embeddable), _BATCH_SIZE):
-        batch = embeddable[start : start + _BATCH_SIZE]
+    for start in range(0, len(validated), _BATCH_SIZE):
+        batch = validated[start : start + _BATCH_SIZE]
         payload = [
             {
                 "species_id": int(r["id"]),
