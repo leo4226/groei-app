@@ -215,7 +215,7 @@ export default function GameHostPage() {
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             onClick={handleStart}
-            className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm transition-opacity"
+            className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-base transition-opacity"
           >
             {t.game.startGame}
           </button>
