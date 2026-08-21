@@ -263,15 +263,35 @@ What the git record actually shows:
 
 | Signal | Count |
 |---|---|
+| Total commits in history | 1081 |
+| Commits carrying **at least one** co-author trailer | 500 |
+| **Commits with no co-author trailer at all** | **581** |
 | `Co-authored-by: Hermes Agent` | 10 (all 2026-06-06 → 2026-06-10) |
-| Claude co-author trailers (all forms) | ~734 |
-| **Commits with no co-author trailer at all** | **337** (245 in May, 136 Jun, 137 Jul, 61 Aug) |
 
-The 337 untrailed commits are the important number: **git cannot tell us who
-wrote those**, so the 10 Hermes trailers are a floor, not a count. Anyone
-reasoning about "who does the work here" from trailers alone — as that draft
-did — will get it wrong. Leon's recollection is that DeepSeek-via-Hermes did a
-lot of the volume, and nothing in the git record contradicts that.
+Untrailed commits by month: 2026-04: 2 · 05: 245 · 06: 136 · 07: 137 · 08: 61
+— summing to 581.
+
+**More than half of this repository's history is unattributed.** That is the
+number that matters: git cannot tell us who wrote those commits, so the 10
+Hermes trailers are a floor, not a count. Anyone reasoning about "who does the
+work here" from trailers alone — as the earlier draft did — will get it wrong.
+Leon's recollection is that DeepSeek-via-Hermes did a lot of the volume, and
+nothing in the git record contradicts that.
+
+> **Two measurement bugs, both caught in review, both worth recording** — this
+> section is about a faulty git audit, so its own arithmetic has to survive
+> inspection:
+>
+> 1. An earlier revision put the untrailed total at **337**, from
+>    `1081 − 744`. That subtracts a *line* count from a *commit* count:
+>    `git log --pretty=format:"%b" | grep -c` counts trailer **lines**, and 747
+>    trailer lines span only 500 commits because some commits carry several.
+>    The DeepSeek reviewer caught it on PR #949 by noticing the month
+>    breakdown could not sum to the stated total.
+> 2. Recounting per-commit first gave **580**, one short. `git log
+>    --pretty=format:` emits no trailing newline, so `while read` silently
+>    discards the final commit. Appending a newline before the loop gives 581
+>    and makes the month breakdown sum exactly.
 
 What does hold up is the narrower, present-tense claim: **the last 150 commits
 carry no Hermes trailer**, and the explicit Hermes cluster is a five-day window
