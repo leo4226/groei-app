@@ -3,8 +3,16 @@
 Read this whole file before doing anything. It explains how this project is
 organised and the exact steps to do work in it.
 
-**If a step is unclear, a command fails, or you are unsure: STOP and ask Leon. A
-wrong guess is worse than a question.**
+**Default: decide and proceed.** State any assumption you made in the PR body.
+If it turns out wrong, the fix is another PR — this repo merges and deploys in
+about two minutes, so a small mistake is cheap to correct.
+
+**Stop and ask Leon when the work is hard to undo**, however confident you are:
+a schema migration, deleting or backfilling user data, deploy or secret config,
+anything touching money, or any change whose blast radius you cannot state in
+one sentence. "Am I unsure?" is not the test — a confident agent answers no,
+which is exactly when you would want it to stop. "Can this be undone with
+another PR?" is the test.
 
 ---
 
@@ -15,12 +23,18 @@ Several agents work on this project at the same time, plus Leon (the human owner
 | Who | Role |
 |---|---|
 | **Leon (human)** | Logs ideas & bugs, triages issues, sets the direction. He does **not** gate merges — see §1.5; work that passes CI ships without him. |
-| **Claude (planner)** | Writes plans/specs when the goal is fuzzy; takes the hard or ambiguous coding where there's no clear target yet. Picks up `ready-for-human` issues. |
-| **DeepSeek agents (executors, several at once)** | Implement well-specified issues in parallel. This is most of the coding volume. Pick up `ready-for-agent` issues. |
+| **Agents (several at once)** | Everything else: planning, implementation, review follow-up. Whoever is running picks up whatever is ready. |
 
-If you are a DeepSeek/executor agent, your lane is **`ready-for-agent`** issues. If
-you are Claude, your lane is planning + **`ready-for-human`** issues. Either way the
-mechanics below are the same.
+**There is no executor/planner caste.** Earlier versions of this file split the
+work between "DeepSeek executors" and "Claude planners" and routed issues to
+each. That is no longer how it works — agents of several kinds and vendors run
+here, they are all capable of planning and of implementing, and the labels no
+longer name a species (§3). What still matters is whether an issue is *specified
+enough to build*, which is what `needs-plan` records.
+
+Triage is the one step where Leon is guaranteed to be involved, and it happens
+at the **front** of the process, not the end. Nobody reviews your diff before it
+ships (§1.5).
 
 ---
 
@@ -56,7 +70,10 @@ helper at `scripts/agent-worktree.ps1` (PowerShell) or `scripts/agent-worktree.s
    and open it somewhere the automation does not reach — or ask Leon before
    you push.
 6. **Match the existing code style** in the file you're editing.
-7. **When unsure, stop and ask.**
+7. **Decide and proceed; stop only for the irreversible.** See the top of this
+   file. State assumptions in the PR body rather than blocking on them, but
+   never guess your way through a migration, a data backfill, deploy/secret
+   config, or anything touching money.
 
 ---
 
@@ -86,13 +103,19 @@ independent (different files, no ordering).
 ## 3. Labels
 
 ### a) Triage state — where the issue is, and **who** works it
-| Label | Meaning | Who picks it up |
+| Label | Meaning | What to do with it |
 |---|---|---|
-| `needs-triage` | New, not yet reviewed | nobody yet — wait for triage |
-| `needs-info` | Waiting on info from Leon | nobody — blocked |
-| `ready-for-agent` | Clear, fully specified | **DeepSeek / executor agents** |
-| `ready-for-human` | Needs a plan or judgment, no obvious solution | **Claude / Leon** |
-| `wontfix` | Decided against | nobody — ignore |
+| `needs-triage` | New, not yet reviewed | leave it — wait for triage |
+| `needs-info` | Waiting on info from Leon | leave it — blocked |
+| `ready` | Triaged and specified enough to build | pick it up and build it |
+| `needs-plan` | Triaged and real, but underspecified | pick it up and **scope it before you code** |
+| `wontfix` | Decided against | ignore |
+
+`ready` and `needs-plan` are both *go* — the difference is whether you can start
+writing code immediately or need to nail the shape first. Neither says who is
+allowed to take it. (These replaced `ready-for-agent` / `ready-for-human`, which
+named agent species that no longer exist and caused agents to skip work they
+were perfectly able to do.)
 
 ### b) Difficulty — how hard it is
 | Label | Stars | Meaning |
@@ -106,7 +129,7 @@ Prefer lower difficulty first unless told otherwise.
 
 ### c) `in-progress` — a soft lock (because several agents run at once)
 Not a triage state. An agent adds `in-progress` the moment it starts an issue (§7) so
-the others skip it. **Only pick issues that are `ready-for-agent` and NOT
+the others skip it. **Only pick issues that are `ready` or `needs-plan` and NOT
 `in-progress`.** If you abandon an issue, remove the label so it's free again.
 
 ---
@@ -118,8 +141,8 @@ Leon's idea ──► TODO.md                 (just a thought)
 Leon's bug  ──► GitHub Issue            (needs-triage)
                      │
             Leon/Claude triages  ──► difficulty label + route:
-                     │                    ├─ clear & contained ► ready-for-agent  (DeepSeek)
-                     │                    └─ needs a plan       ► ready-for-human  (Claude/Leon)
+                     │                    ├─ clear & contained ► ready
+                     │                    └─ needs scoping first ► needs-plan
                      ▼
    pick it ► worktree+branch ► fix ► test ► open PR ► CI green ► auto-merged ► deployed
 ```
@@ -139,7 +162,7 @@ Floreren's config in `docs/agents/` and follows the rules in this file.
 | Turn a discussion into a plan + docs | `grill-with-docs` | ADRs → `docs/archive/`, glossary → `CONTEXT.md`, designs → `docs/plans/`. |
 | Publish a plan as a PRD | `to-prd` | Creates a GitHub issue (§6), not a file. |
 | Break a plan into issues | `to-issues` | Keep a coupled epic as **one** issue (§2); split only if slices are independent. |
-| Implement a `ready-for-*` issue | `tdd` + `implement` | Follow §5/§7: claim `in-progress`, own worktree, test (§8), PR with `Closes #n` — which auto-merges and deploys once green (§1.5). |
+| Implement a `ready` / `needs-plan` issue | `tdd` + `implement` | Follow §5/§7: claim `in-progress`, own worktree, test (§8), PR with `Closes #n` — which auto-merges and deploys once green (§1.5). |
 | Hard bug / regression | `diagnosing-bugs` | Reads `CONTEXT.md` + `docs/archive/`. |
 | Mid-merge/rebase conflict | `resolving-merge-conflicts` | — |
 | Design or deepen a module | `codebase-design` / `domain-modeling` | Use the glossary's vocabulary (`CONTEXT.md`). |
@@ -224,10 +247,11 @@ Because each worktree has its **own** `backend/.venv`, venvs from different work
 ## 6. Issue commands (`gh` CLI — auto-detects the repo inside the clone)
 
 ```bash
-# Find work — list ready-for-agent, then SKIP any row whose labels include
+# Find work — list what is ready, then SKIP any row whose labels include
 # "in-progress" (another agent already claimed it). The labels show in the output.
 # (Use --label, not --search: a just-added label takes seconds to become searchable.)
-gh issue list --label "ready-for-agent" --state open
+gh issue list --label "ready" --state open
+gh issue list --label "needs-plan" --state open      # scope these before coding
 gh issue view <number> --comments                        # read it fully
 
 # Create an issue (e.g. turning a TODO idea into a real task)
@@ -274,7 +298,11 @@ Closes #<n>"
 git push -u origin HEAD
 gh pr create --fill --base master
 
-# 7. Tell Leon it's ready. DO NOT merge it yourself.
+# 7. Nothing else to do. Do NOT merge by hand — you do not need to:
+#    auto-merge.yml marks the PR ready and squash-merges the moment the
+#    required checks pass, and that merge deploys the backend to Fly.
+#    Nobody reads the diff in between (§1.5). Your PR going green IS it
+#    shipping to floreren.app.
 ```
 
 If you stop without opening a PR, **free the issue** so another agent can take it:
@@ -330,14 +358,19 @@ check and a **red ❌ blocks the merge** — so catch it locally. In a fresh wor
 
 ## 10. Do / Don't
 
-**Do** — work your lane (`ready-for-agent` for executors, `ready-for-human` for
-Claude); use a worktree; test; open a PR; let Leon merge; keep changes small; ask
-when unsure.
+**Do** — pick up any `ready` or `needs-plan` issue (scope the latter first); use a
+worktree; test; open a PR; state your assumptions in the PR body; keep each change
+coherent; ask before anything irreversible.
 
 **Don't** — edit `master`'s folder while others work; commit `.env`/secrets; merge
-your own PR or deploy; start `needs-triage` / `needs-info` issues; rewrite history or
+or deploy by hand; start `needs-triage` / `needs-info` issues; rewrite history or
 delete branches/tags; change `CLAUDE.md`, deploy configs, or `backend/llm_config.py`
 unless the issue is specifically about them.
+
+**Note on "keep changes small":** this used to be an absolute. It is not. A
+coupled refactor landing as one coherent PR is better than three that leave
+master in intermediate states. Keep a change *focused on one issue* (§1.4) —
+that is not the same as keeping it short.
 
 ---
 
@@ -372,9 +405,16 @@ see their output:
   the PR body which tests went and what they covered, so there is something
   to agree with.
 
-The chain: detector files → Leon/Claude triage (set difficulty + route) →
-executor agent fixes → CI + review → **auto-merge and deploy**. Leon's only
+The chain: detector files → Leon triages (difficulty + `ready`/`needs-plan`) →
+an agent fixes it → CI + advisory review → **auto-merge and deploy**. Leon's only
 guaranteed involvement is triage, at the front. Nobody approves at the end.
+
+Note what the advisory review is and is not. It is a genuine second pair of eyes
+and it does catch real defects. It is also **non-blocking and variable in
+quality** — it has returned a correct finding on one PR and a page of
+non-findings on the next, and a PR can merge before its comment even posts. Treat
+it as a useful signal, never as a gate you passed. Verify a finding against the
+code before acting on it, and say so in the PR when you decline one.
 
 ---
 
@@ -382,7 +422,8 @@ guaranteed involvement is triage, at the front. Nobody approves at the end.
 
 ```bash
 # find work (skip any row that already shows the "in-progress" label), then read it
-gh issue list --label "ready-for-agent" --state open
+gh issue list --label "ready" --state open
+gh issue list --label "needs-plan" --state open      # scope these before coding
 gh issue view <n> --comments
 
 # claim it so no other agent grabs it
@@ -404,6 +445,6 @@ git commit -m "fix(scope): summary (#<n>)
 Closes #<n>"
 git push -u origin HEAD
 gh pr create --fill --base master
-# tell Leon — do not merge yourself
+# that's it — auto-merge squash-merges on green and master deploys to Fly (§1.5)
 # (abandoning? gh issue edit <n> --remove-label "in-progress")
 ```
