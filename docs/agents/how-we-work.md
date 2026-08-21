@@ -394,7 +394,7 @@ git fetch origin master
 git worktree add ../floreren-<n> -b fix/<n>-slug origin/master
 cd ../floreren-<n>
 #   ...edit...
-cd backend && python -m pytest -q --ignore=tests/test_water_amount.py
+cd backend && python -m pytest -q
 cd ../frontend && npm run build
 
 # commit, push, PR
