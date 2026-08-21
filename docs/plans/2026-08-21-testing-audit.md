@@ -251,13 +251,40 @@ guard does not block it.
 ## 7. On loosening `how-we-work.md` because models improved
 
 The document was written for a fleet of cheap DeepSeek executors doing "most
-of the coding volume" (§0). **That is no longer what happens.** Across the
-last 150 commits, 127 carry a Claude co-author trailer. **None carry a
-DeepSeek one — and no commit in the repository's entire recorded history
-does.** (DeepSeek appears 37 times in commit bodies, but every one of those
-is about `llm_config`'s *runtime model* for app features, not authorship.)
-The two-lane `ready-for-agent` / `ready-for-human` split the doc is built
-around describes a team that never materialised in the git record.
+of the coding volume" (§0).
+
+**Correction to an earlier draft of this section.** That draft searched commit
+trailers for "deepseek", found nothing, and concluded the executor lane "never
+materialised in the git record". That was a bad search, not a finding: DeepSeek
+ran through **Hermes**, and its commits are attributed
+`Co-authored-by: Hermes Agent`. The lane was real and did substantial work.
+
+What the git record actually shows:
+
+| Signal | Count |
+|---|---|
+| `Co-authored-by: Hermes Agent` | 10 (all 2026-06-06 → 2026-06-10) |
+| Claude co-author trailers (all forms) | ~734 |
+| **Commits with no co-author trailer at all** | **337** (245 in May, 136 Jun, 137 Jul, 61 Aug) |
+
+The 337 untrailed commits are the important number: **git cannot tell us who
+wrote those**, so the 10 Hermes trailers are a floor, not a count. Anyone
+reasoning about "who does the work here" from trailers alone — as that draft
+did — will get it wrong. Leon's recollection is that DeepSeek-via-Hermes did a
+lot of the volume, and nothing in the git record contradicts that.
+
+What does hold up is the narrower, present-tense claim: **the last 150 commits
+carry no Hermes trailer**, and the explicit Hermes cluster is a five-day window
+in June. So §0's two-lane split describes how work was organised *then*, not
+how it is organised now.
+
+And the capability premise has moved underneath it too. `llm_config.py` now
+pins `deepseek-v4-pro-0813` for general calls and `deepseek-v4-flash-0731` for
+fun facts — both substantially stronger than the Flash build the guardrails in
+this document were written against. The argument for loosening is therefore
+*stronger* than the earlier draft's version of it, and rests on better ground:
+not "the executors never existed" but "the executors were real, and they have
+since got much better."
 
 So yes — parts of it are miscalibrated. But the split matters: some rules are
 about *model capability* and have genuinely relaxed; others are about
