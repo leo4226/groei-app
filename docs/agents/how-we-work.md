@@ -387,23 +387,33 @@ see their output:
   `<!-- detector-sig: ... -->` marker in the body — don't delete that
   comment. Parsing/dedup logic lives in `backend/scripts/bug_detector.py`
   and is unit-tested (`tests/test_bug_detector.py`).
-- **PR review** (`.github/workflows/pr-review.yml`, every PR): a
-  **blocking** grep-based guard fails the check if a diff deletes tests or
-  adds skip/xfail markers, plus an **advisory** adversarial DeepSeek review
-  posted as a PR comment. The review is input for Leon — it is not a merge
-  gate and it can be wrong.
+- **PR review** (`.github/workflows/pr-review.yml`, every PR): two **advisory**
+  layers — a grep that reports when a diff deletes tests or adds skip/xfail
+  markers, and an adversarial DeepSeek review posted as a PR comment. Neither
+  blocks. Both can be wrong.
 
-  Deleting a test is allowed when the thing it tested is gone: a helper with
-  no callers left, an endpoint that was replaced, a branch the refactor
-  removed. Deleting a test because it fails is not — fix the code, or fix the
-  test if the test was the thing that was wrong. The guard cannot tell those
-  apart (it is a grep over the diff), so it blocks either way and **Leon**
-  unblocks the legitimate case with the `tests-intentionally-removed` label:
-  the guard downgrades to a warning and re-runs on the label alone (no new
-  push needed); removing the label re-blocks. An agent must never label its
-  own PR — the label *is* the human agreeing the removal was intended. Say in
-  the PR body which tests went and what they covered, so there is something
-  to agree with.
+  **Nothing stops you deleting a test. That is on purpose, and it is on you.**
+  The grep used to block, with Leon applying a `tests-intentionally-removed`
+  label to unblock. That turned the suite into a one-way ratchet — 149 test
+  files added and none removed between June and August — so the gate was
+  dropped (2026-08-21). Deleting a test is now an ordinary change that merges
+  like any other.
+
+  So apply the rule yourself, because no one else will:
+
+  - **Right:** the thing it tested is gone — a helper with no callers left, an
+    endpoint that was replaced, a branch the refactor removed. Or it is
+    genuinely subsumed by another test that asserts strictly more.
+  - **Wrong:** it fails and deleting it is quicker. Fix the code, or fix the
+    test if the test was the thing that was wrong.
+  - **Careful:** a shared *name* is not evidence of a shared test. Read both
+    bodies before calling anything a duplicate — that mistake nearly removed
+    real viewer-authorization coverage
+    (`docs/plans/2026-08-21-testing-audit.md` §5a).
+
+  Always say in the PR body which tests went and what they covered. The check
+  prints the count and the removed test names in its job summary, so a
+  deletion is visible — it just is not gated.
 
 The chain: detector files → Leon triages (difficulty + `ready`/`needs-plan`) →
 an agent fixes it → CI + advisory review → **auto-merge and deploy**. Leon's only

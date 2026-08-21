@@ -3,19 +3,32 @@ name: PR review
 # VERIFY stage of the agent loop (docs/agents/how-we-work.md §12).
 # Two layers, deliberately separate:
 #
-#  1. test-guard (deterministic, BLOCKING): fails the check if the diff
-#     deletes tests or adds skip/xfail markers. Deleting a test whose subject
-#     is gone is fine; deleting one because it fails is the thing a cheap
-#     model could otherwise do silently, so the check is a grep, not a model.
+#  1. test-guard (deterministic, ADVISORY): reports — but no longer fails on —
+#     a diff that deletes tests or adds skip/xfail markers.
 #
-#     Being a grep, it cannot tell "weakened the suite" from "deleted the
-#     tests of deleted code". For the legitimate second case Leon applies
-#     the `tests-intentionally-removed` label, which downgrades the failure
-#     to a warning — the escape hatch the guard's own error message always
-#     assumed ("if this is intentional, Leon must say so in the PR") but
-#     never had. Labelling re-runs this workflow, so the check turns green
-#     without a new push; removing the label re-tightens it. The label is
-#     the human saying so — an agent must not apply it to its own PR.
+#     It used to block, with a `tests-intentionally-removed` label as the only
+#     escape hatch, applied by Leon. That made the suite a one-way ratchet:
+#     adding tests was free, removing one needed a human in the loop at exactly
+#     the moment nobody was looking, so between 2026-06 and 2026-08 the repo
+#     added 149 test files and deleted none
+#     (docs/plans/2026-08-21-testing-audit.md §4). The gate was not catching
+#     bad deletions; it was preventing all deletions, including the legitimate
+#     consolidation that audit identified.
+#
+#     Leon's call (2026-08-21): he does not want to hand-approve removals, so
+#     the label is gone rather than left as a step nobody performs. The grep
+#     stays and still reports what went — loudly, in the check output and the
+#     job summary. The signal is kept; the gate is dropped.
+#
+#     THE JOB MUST KEEP RUNNING AND REPORTING. "test-guard" is a required
+#     status check in branch protection, so deleting the job would leave every
+#     PR waiting forever for a status that never arrives — the same failure
+#     mode documented in auto-merge.yml. Always exit 0; never remove the job.
+#
+#     Nothing automatic replaces the gate. A deletion is visible in the diff,
+#     in this check's output, and in the PR body. If test counts start sliding,
+#     restore the old behaviour by flipping the `exit 0` below back to `exit 1`
+#     and re-adding the OVERRIDE label check — see this file's git history.
 #
 #  2. deepseek-review (advisory, NON-blocking): an adversarial reviewer —
 #     a fresh DeepSeek call that did not write the code — reads the diff
@@ -24,9 +37,10 @@ name: PR review
 on:
   pull_request:
     branches: [master]
-    # labeled/unlabeled so applying (or removing) tests-intentionally-removed
-    # re-evaluates test-guard immediately, with no empty commit to force it.
-    types: [opened, synchronize, ready_for_review, labeled, unlabeled]
+    # labeled/unlabeled are gone with the override label: nothing here reacts
+    # to a label any more, and re-running both jobs on every label edit was
+    # pure noise (and an extra LLM call).
+    types: [opened, synchronize, ready_for_review]
 
 permissions:
   contents: read
@@ -44,9 +58,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Diff must not weaken tests
-        env:
-          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'tests-intentionally-removed') }}
+      - name: Report tests removed or skipped (advisory)
         run: |
           base="origin/${{ github.base_ref }}"
           git fetch origin ${{ github.base_ref }}
@@ -62,21 +74,26 @@ jobs:
           added_skips=$(echo "$diff" | grep -cE '^\+.*(pytest\.mark\.skip|pytest\.mark\.xfail|\.skip\(|it\.skip|describe\.skip)' || true)
           echo "removed test functions: $removed_tests; added skip markers: $added_skips"
           if [ "$removed_tests" -gt 0 ] || [ "$added_skips" -gt 0 ]; then
-            if [ "$OVERRIDE" = "true" ]; then
-              echo "::warning::This diff removes tests or adds skip/xfail markers, allowed by the 'tests-intentionally-removed' label. Removing the label re-blocks the merge."
-              exit 0
-            fi
-            echo "::error::This diff removes tests or adds skip/xfail markers. That is allowed only when the code they covered is gone too, never to make a failure go away (how-we-work.md). If the removal is intentional, say so in the PR body and Leon labels it 'tests-intentionally-removed' — do not apply that label to your own PR."
-            exit 1
+            echo "::warning::This diff removes $removed_tests test function(s) and adds $added_skips skip/xfail marker(s). Advisory only — it does not block the merge. Deleting a test is right when the thing it covered is gone; deleting one because it fails is not. Say in the PR body which tests went and what they covered."
+            {
+              echo "### :warning: This PR weakens the test suite"
+              echo
+              echo "- test functions removed: **$removed_tests**"
+              echo "- skip/xfail markers added: **$added_skips**"
+              echo
+              echo "Advisory only — the merge is not blocked. The PR body should say which tests went and what they covered."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
+          # Always succeed. Advisory by design, and a required check that never
+          # reports a conclusion would hang every PR. Read the header comment
+          # at the top of this file before changing this line.
+          exit 0
 
   deepseek-review:
-    # Skipped on label events: the diff hasn't changed, and a re-review would
-    # burn an LLM call and overwrite the existing comment for nothing.
-    if: >-
-      ${{ !github.event.pull_request.draft
-          && github.event.action != 'labeled'
-          && github.event.action != 'unlabeled' }}
+    # The labeled/unlabeled exclusions that used to live here are gone with the
+    # override label — this workflow no longer runs on label events at all, so
+    # guarding against them was dead weight.
+    if: '!github.event.pull_request.draft'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
