@@ -122,14 +122,27 @@ entry, with the correct dependency, across a richer category model
 
 The #924 inventory is a **strict superset** of the three earlier partial
 inventories. Those three meta-tests are provably subsumed and can go.
-`test_viewer_read_routes_remain_available` also appears verbatim in three of
-the four files.
 
-**Important:** the *behavioural* tests in those files (viewer create is
-rejected before a write lands, owner/editor still can, cross-household is
-refused) are **not** redundant — they exercise runtime behaviour, not route
-wiring. Delete the three subsumed inventory meta-tests and de-duplicate the
-read-routes test; keep everything else.
+**That is the whole of the redundancy — the scope here is three meta-tests,
+not three files.** An earlier draft of this audit also called
+`test_viewer_read_routes_remain_available` "verbatim-triplicated" because the
+function name is identical in three files. It was wrong: the bodies are
+disjoint and cover different route groups —
+
+| File | Routes it reads |
+|---|---|
+| core (#921) | `/api/plants/1`, `/api/care/log` |
+| map (#922) | `/api/maps`, `/api/objects`, `/api/locations`, `/api/weed-sightings` |
+| household (#923) | `/api/users`, `/api/household/members`, `/api/calendar/subscription`, `/api/discover` |
+
+Collapsing them would delete real viewer-access coverage for two entire route
+groups. **All three stay.** (Caught by the Codex reviewer on PR #948 — a
+useful reminder that a shared test *name* is not evidence of a shared test.)
+
+The *behavioural* tests in these files (viewer create is rejected before a
+write lands, owner/editor still can, cross-household is refused) are likewise
+not redundant — they exercise runtime behaviour, not route wiring. Delete the
+three subsumed inventory meta-tests; keep everything else.
 
 This is the pattern to watch for generally: **each issue spawned a sibling
 file instead of extending the existing one.**
@@ -143,9 +156,27 @@ file instead of extending the existing one.**
 
 12s of the 34s total. Both are good tests. They are slow because
 `routers/admin_panel.py:231` does a real `await asyncio.sleep(2 ** attempt)`
-exponential backoff (2s + 4s) that the tests cannot patch — the delay is
-inline rather than injectable. Making the backoff overridable cuts the
-backend suite by roughly a third for no loss of coverage.
+exponential backoff (2s + 4s).
+
+An earlier draft of this audit claimed the tests "cannot patch" this and
+recommended adding a production injection seam. **That was wrong, and the fix
+is much cheaper than advertised** — `admin_panel` does a plain
+`import asyncio`, so the call is patchable as-is, with no production change
+at all:
+
+```python
+@pytest.fixture(autouse=True)
+def _no_backoff():
+    with patch("routers.admin_panel.asyncio.sleep", new=AsyncMock()):
+        yield
+```
+
+Measured with that fixture added to `test_icon_generation.py`:
+**12.3s → 0.51s, all 18 tests still passing.** Roughly a third off the backend
+suite for a four-line test-only change. (Also caught by the Codex reviewer on
+PR #948.) Note the patch swaps `asyncio.sleep` process-wide for the duration
+of each test, which is fine here but is the reason to scope it to this file
+rather than to `conftest.py`.
 
 ### 5c. Brittle exact-copy assertions
 
@@ -186,10 +217,19 @@ guard does not block it.
 
 ### Fix the ratchet (the structural one)
 
-1. **Add a scheduled pruning path.** A recurring "test consolidation" issue,
-   opened by Leon with `tests-intentionally-removed` applied up front, where
-   deletion is the *purpose* of the PR. The guard stays fully armed for all
-   normal work; pruning gets a sanctioned lane instead of never happening.
+1. **Add a scheduled pruning path.** A recurring "test consolidation" issue
+   where deletion is the *purpose* of the PR. The guard stays fully armed for
+   all normal work; pruning gets a sanctioned lane instead of never happening.
+
+   **Mechanical caveat:** `pr-review.yml` reads
+   `github.event.pull_request.labels`, so labelling the *issue* does nothing —
+   GitHub does not copy issue labels onto a PR. Leon must apply
+   `tests-intentionally-removed` to the **PR**, after it exists. Since
+   labelling re-runs the workflow with no new push, that is one click at
+   review time — but it does mean this lane still needs Leon in the loop once
+   per pruning PR, and the recommendation should not be written as if the
+   authorisation can be granted in advance. (Caught by the Codex reviewer on
+   PR #948.)
 2. **Add a rule to `how-we-work.md` §8:** before adding a test *file*, check
    whether one already covers that surface and extend it. New file only for a
    genuinely new surface. This is what would have prevented §5a.
@@ -202,7 +242,7 @@ guard does not block it.
 ### Then the four specific fixes
 
 4. Consolidate the viewer authz inventory meta-tests (§5a) — needs the label.
-5. Make the icon-generation backoff injectable (§5b) — no label needed, −12s.
+5. Add the `_no_backoff` fixture to `test_icon_generation.py` (§5b) — test-only, no label needed, −12s (verified).
 6. Loosen the exact-copy assertions to structural ones (§5c) — no label needed.
 7. Correct §12's stale `--ignore` flag and the §7/§10 merge contradiction (§5d).
 
