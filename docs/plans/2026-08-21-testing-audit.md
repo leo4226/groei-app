@@ -271,8 +271,9 @@ What the git record actually shows:
 Untrailed commits by month: 2026-04: 2 · 05: 245 · 06: 136 · 07: 137 · 08: 61
 — summing to 581.
 
-**More than half of this repository's history is unattributed.** That is the
-number that matters: git cannot tell us who wrote those commits, so the 10
+**581 of 1081 commits — 53.7% of this repository's history — carry no
+co-author trailer of any kind, and are therefore unattributable from git
+alone.** That is the number that matters: git cannot tell us who wrote those commits, so the 10
 Hermes trailers are a floor, not a count. Anyone reasoning about "who does the
 work here" from trailers alone — as the earlier draft did — will get it wrong.
 Leon's recollection is that DeepSeek-via-Hermes did a lot of the volume, and
