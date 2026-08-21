@@ -9,6 +9,25 @@ PLANT = '<g><ellipse cx="50" cy="50" rx="9" ry="9" fill="#4A7C4E"/></g>'
 BAD_PLANT = '<foreignObject/>'
 
 
+@pytest.fixture(autouse=True)
+def _no_backoff():
+    """Skip the real retry backoff so the AI-failure tests are not 6s each.
+
+    `_run_generate_icons` retries a flaky generator three times with
+    `await asyncio.sleep(2 ** attempt)` (admin_panel.py) — a deliberate 2s + 4s
+    wait so a struggling endpoint is not hammered (#890). The delay is right in
+    production and pure dead time here: the two tests that exercise the retry
+    path accounted for 12s of the backend suite's 34s.
+
+    Patching the module attribute is enough; no production seam is needed.
+    Scoped to this file on purpose — `routers.admin_panel.asyncio` *is* the
+    asyncio module, so this swaps `asyncio.sleep` process-wide for the duration
+    of each test, which is fine here but not something to do suite-wide.
+    """
+    with patch("routers.admin_panel.asyncio.sleep", new=AsyncMock()):
+        yield
+
+
 async def _generate(db, *, scope="all", map_only=False, limit=25, household_id=1):
     """Run the icon generation the admin panel actually uses.
 
