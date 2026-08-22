@@ -21,7 +21,8 @@ CREATE TABLE game_sessions (
     finished_at TIMESTAMP,
     clue_mode TEXT NOT NULL DEFAULT 'photo',
     pacing TEXT NOT NULL DEFAULT 'host',
-    round_seconds INTEGER
+    round_seconds INTEGER,
+    forfeit TEXT
 );
 CREATE TABLE game_session_maps (
     session_id INTEGER NOT NULL,
@@ -68,6 +69,7 @@ CREATE TABLE game_answers (
     answered_at TIMESTAMP NOT NULL,
     finish_rank INTEGER,
     match_kind TEXT,
+    wrong_attempts INTEGER NOT NULL DEFAULT 0,
     UNIQUE (round_id, player_id)
 );
 CREATE TABLE plant_species (

@@ -94,6 +94,9 @@ export interface GameClue {
   round_index: number
   plant_name_nl: string
   plant_name_en: string | null
+  /** Latin name. Present only in `name` clue mode — in photo mode it is the
+   *  answer, so the server withholds it rather than the client hiding it. */
+  target_species?: string | null
   clue_photo_url: string | null
   clue_hint_nl: string | null
   clue_hint_en: string | null
@@ -125,6 +128,11 @@ export interface GameSession {
   round_seconds: number | null
   /** Server-computed countdown for race rounds; null in host-paced games. */
   seconds_remaining: number | null
+  /** What the loser has to do, in the host's own words. Null = no forfeit. */
+  forfeit: string | null
+  /** Wrong scans allowed per plant. Sent so the client counts down the
+   *  server's limit rather than hard-coding its own copy of it. */
+  max_wrong_attempts: number
 }
 
 export interface MyAnswer {
@@ -132,6 +140,11 @@ export interface MyAnswer {
   points_awarded: number
   answered_at: string
   finish_rank: number | null
+  wrong_attempts: number
+  attempts_left: number
+  /** No scans left for this plant. Carried in the state, so a reload or a
+   *  reopened PWA does not hand the attempts back. */
+  locked: boolean
 }
 
 export interface RoundStat {
@@ -166,6 +179,10 @@ export interface AnswerResult {
   /** How the answer was accepted: exact / genus / common / photo. */
   match_kind: string | null
   candidates?: string[]
+  /** Wrong scans still allowed on this plant. */
+  attempts_left?: number
+  /** Out of scans for this plant — the round is closed for this player. */
+  locked?: boolean
 }
 
 export interface GamePreview {
@@ -188,6 +205,7 @@ export interface GameCreateOptions {
   pacing: 'host' | 'race'
   roundSeconds?: number
   roundCount?: number
+  forfeit?: string
 }
 
 // ── Endpoints ────────────────────────────────────────────────────────────────
@@ -202,6 +220,7 @@ export const gameApi = {
         pacing: opts.pacing,
         round_seconds: opts.roundSeconds ?? null,
         round_count: opts.roundCount ?? null,
+        forfeit: opts.forfeit ?? null,
       },
     }),
 
