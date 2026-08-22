@@ -170,7 +170,11 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     pool.length = Math.min(pool.length, 50)
     void createGame({
       plantIds: pool.map((p) => p.id),
-      clueMode: 'photo',
+      // Name clue, not photo. It reads at a glance in bright sun, needs no
+      // image to load on a guest's phone, and shows all three names — so a
+      // guest who knows only the English or only the Latin can still play.
+      // A photo clue also gives away the answer to anyone who recognises it.
+      clueMode: 'name',
       pacing: 'race',
       roundSeconds: allIndoor ? QUICK_SECONDS_INDOOR : QUICK_SECONDS_OUTDOOR,
       roundCount: QUICK_ROUNDS,
