@@ -143,7 +143,7 @@ export default function GameHostPage() {
 
   if (!state) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="min-h-dvh bg-bg flex items-center justify-center">
         <p className="text-text-muted">{t.common.loading}</p>
       </div>
     )
@@ -161,9 +161,17 @@ export default function GameHostPage() {
   }
 
   // ── Waiting room ───────────────────────────────────────────────────────────
+  //
+  // Pinned actions over a scrolling middle, rather than one centred column.
+  // The player list grows as guests arrive, so a plain column pushes "Start
+  // spel" further off the bottom with every person who joins — precisely when
+  // the host needs to reach it. Everything above it may scroll; the actions
+  // may not.
   if (step === 'waiting') {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6">
+      <div className="h-dvh bg-bg flex flex-col p-6">
+       <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+        <div className="min-h-full flex flex-col items-center justify-center space-y-6">
         <div className="text-center space-y-1">
           <p className="text-xs font-mono uppercase tracking-widest text-text-muted">
             {t.game.joinCode}
@@ -211,8 +219,10 @@ export default function GameHostPage() {
             {t.game.waitingForPlayersHint}
           </p>
         )}
+        </div>
+       </div>
 
-        <div className="flex flex-col gap-3 w-full max-w-xs">
+        <div className="flex flex-col gap-3 w-full max-w-xs mx-auto flex-shrink-0 pt-4">
           <button
             onClick={handleStart}
             className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-base transition-opacity"
@@ -238,7 +248,7 @@ export default function GameHostPage() {
 
   if (step === 'analyzing') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-dvh bg-black flex items-center justify-center">
         <p className="text-white text-sm">{t.game.scanning}</p>
       </div>
     )
@@ -257,7 +267,7 @@ export default function GameHostPage() {
 
   if (step === 'result' && scanResult) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
         {scanResult.is_correct ? (
           <>
             <div className="text-amber-500"><Glyph name="sparkle" size={52} /></div>
@@ -297,11 +307,15 @@ export default function GameHostPage() {
     )
   }
 
+  // Same pinned-action shape as the lobby. The player-status card grows with
+  // the party, so at eight guests "Ronde overslaan" drops off the bottom even
+  // with the viewport height fixed — the round view has to scroll its middle
+  // too, not just be sized correctly.
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="h-dvh bg-bg flex flex-col">
       <GameRoundHeader state={state} foundCount={foundCount} />
 
-      <div className="flex-1 flex flex-col p-6 max-w-md mx-auto w-full space-y-5">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col p-6 max-w-md mx-auto w-full space-y-5">
         {logbookMode && (
           <GameQuizRound
             key={state.session.current_round}
@@ -407,10 +421,13 @@ export default function GameHostPage() {
           ))}
         </div>
 
+      </div>
+
+      <div className="p-6 pt-4 max-w-md mx-auto w-full flex-shrink-0">
         <button
           onClick={handleNext}
           disabled={advancing}
-          className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 transition-opacity mt-auto"
+          className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 transition-opacity"
         >
           {advancing
             ? t.common.loading

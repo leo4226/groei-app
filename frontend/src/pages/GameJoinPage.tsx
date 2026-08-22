@@ -65,7 +65,7 @@ export default function GameJoinPage() {
   const canJoin = code.trim().length === 6 && name.trim().length > 0 && !loading
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6">
+    <div className="min-h-dvh bg-bg flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4 text-primary"><Glyph name="leaf" size={44} /></div>

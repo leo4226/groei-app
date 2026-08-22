@@ -110,7 +110,7 @@ export default function GamePlayerPage() {
 
   if (notInGame) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
         <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
         <p className="font-semibold text-text">{t.game.sessionLost}</p>
         <button
@@ -125,7 +125,7 @@ export default function GamePlayerPage() {
 
   if (!state) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="min-h-dvh bg-bg flex items-center justify-center">
         <p className="text-text-muted">{t.common.loading}</p>
       </div>
     )
@@ -145,7 +145,7 @@ export default function GamePlayerPage() {
   // ── Waiting for the host to start ──────────────────────────────────────────
   if (step === 'waiting') {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 space-y-6 text-center">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center p-6 space-y-6 text-center">
         <div className="animate-bounce text-primary"><Glyph name="sprout" size={44} /></div>
         <div className="space-y-1">
           <p className="font-semibold text-text">{t.game.youAreIn}</p>
@@ -183,7 +183,7 @@ export default function GamePlayerPage() {
 
   if (step === 'analyzing') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-dvh bg-black flex items-center justify-center">
         <p className="text-white text-sm">{t.game.scanning}</p>
       </div>
     )
@@ -195,7 +195,7 @@ export default function GamePlayerPage() {
   // ── Logbook quiz ───────────────────────────────────────────────────────────
   if (step === 'clue' && state.session.clue_mode === 'logbook' && !state.my_answer?.is_correct) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col">
+      <div className="min-h-dvh bg-bg flex flex-col">
         <GameRoundHeader state={state} foundCount={foundCount} />
         <div className="flex-1 p-6 max-w-md mx-auto w-full">
           <GameQuizRound
@@ -217,7 +217,7 @@ export default function GamePlayerPage() {
     const altName = isEN ? clue?.plant_name_nl : clue?.plant_name_en
 
     return (
-      <div className="min-h-screen bg-bg flex flex-col">
+      <div className="min-h-dvh bg-bg flex flex-col">
         <GameRoundHeader state={state} foundCount={foundCount} />
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
@@ -266,7 +266,7 @@ export default function GamePlayerPage() {
   // ── Already found it this round ────────────────────────────────────────────
   if (step === 'answered' || (step === 'clue' && state.my_answer?.is_correct)) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col">
+      <div className="min-h-dvh bg-bg flex flex-col">
         <GameRoundHeader state={state} foundCount={foundCount} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
           <div className="text-green-500"><Glyph name="check" size={48} strokeWidth={2.4} /></div>
@@ -297,7 +297,7 @@ export default function GamePlayerPage() {
   // ── Scan verdict ───────────────────────────────────────────────────────────
   if (step === 'result' && scanResult) {
     return (
-      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <div className="min-h-dvh bg-bg flex flex-col items-center justify-center p-6 text-center space-y-4">
         {scanResult.is_correct ? (
           <>
             <div className="text-amber-500"><Glyph name="sparkle" size={52} /></div>
@@ -342,7 +342,7 @@ export default function GamePlayerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
+    <div className="min-h-dvh bg-bg flex items-center justify-center">
       <p className="text-text-muted">{t.common.loading}</p>
     </div>
   )

@@ -11,7 +11,8 @@
     "lint:i18n": "eslint --config eslint.i18n.config.js src",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:layout": "npm run build && node tests/visual/layout-check.mjs"
+    "test:layout": "npm run build && node tests/visual/layout-check.mjs",
+    "test:game-fit": "npm run build && node tests/visual/game-fit-check.mjs"
   },
   "dependencies": {
     "@use-gesture/react": "^10.3.1",
