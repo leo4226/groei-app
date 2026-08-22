@@ -204,6 +204,11 @@ export default function App() {
   // On map pages, BottomNav hides in landscape-mobile so the map can fill the viewport.
   // Outside map pages we always show it (otherwise users couldn't navigate after rotating).
   const isMapPage = location.pathname.startsWith('/map')
+  // A hunt is a focused mode, like the identify flow and the layout editor.
+  // The bottom nav costs ~70px of a phone screen that the round view needs —
+  // it was covering "Ronde overslaan" outright — and mid-round it only offers
+  // a guest ways to wander off into the calendar.
+  const isGamePage = location.pathname.startsWith('/game')
 
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
@@ -441,15 +446,15 @@ export default function App() {
         </PullToRefresh>
       </main>
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && (
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && <InstallNudge />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && <InstallNudge />}
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && <HelpAssistant />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && !isGamePage && <HelpAssistant />}
 
       {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && <UpdateToast />}
 
