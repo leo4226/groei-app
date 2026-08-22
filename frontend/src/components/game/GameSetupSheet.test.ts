@@ -131,4 +131,47 @@ describe('GameSetupSheet — capability rendering', () => {
       .find((b) => b.textContent?.includes('Start quick game'))
     expect((quickButton as HTMLButtonElement).disabled).toBe(false)
   })
+
+  it('will not start on a readiness answer that describes other maps', async () => {
+    // The plant list and the readiness answer come from two independent
+    // requests. Between a map toggle and the second reply landing, the old
+    // ready-plant pool is still in state — starting then submits the NEW map
+    // ids with the OLD plants, which the backend either rejects outright
+    // (fewer than three still valid) or accepts as a hunt with no clues from
+    // the map that was just added.
+    vi.mocked(mapsApi.list).mockResolvedValue([
+      { id: 1, name: 'Garden', slug: 'garden', map_type: 'outdoor' },
+      { id: 2, name: 'House', slug: 'house', map_type: 'indoor' },
+    ] as never)
+    vi.mocked(mapsApi.plants).mockResolvedValue(
+      [1, 2, 3].map((id) => ({ id, name: `Plant ${id}`, photo_path: 'x.jpg' })) as never,
+    )
+    // Answers for map 1 only; the component asked about {1}.
+    vi.mocked(gameApi.plantReadiness).mockResolvedValue({
+      ready_plant_ids: [1, 2, 3], total: 3,
+    })
+    await render(true)
+
+    const quick = () => Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Start quick game')) as HTMLButtonElement
+    expect(quick().disabled).toBe(false)
+
+    // Add the second map, and hold the new readiness answer in flight.
+    let settle: (v: { ready_plant_ids: number[]; total: number }) => void = () => {}
+    vi.mocked(gameApi.plantReadiness).mockReturnValue(
+      new Promise((resolve) => { settle = resolve }),
+    )
+    const houseChip = Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('House')) as HTMLButtonElement
+    await act(async () => { houseChip.click(); await flush() })
+
+    expect(quick().disabled).toBe(true)
+
+    await act(async () => {
+      settle({ ready_plant_ids: [1, 2, 3], total: 3 })
+      await flush()
+      await flush()
+    })
+    expect(quick().disabled).toBe(false)
+  })
 })
