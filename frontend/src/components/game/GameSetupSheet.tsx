@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { maps as mapsApi } from '../../api/client'
-import { gameApi } from '../../api/game'
+import { gameApi, type GameCreateOptions } from '../../api/game'
 import type { MapInfo, MapPlant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../ui/Glyph'
@@ -27,6 +27,19 @@ interface GamePlant extends MapPlant {
 
 const ROUND_SECONDS_CHOICES = [60, 120, 180, 300]
 
+/** Rounds in a quick game. The backend floor is 3, so this is also the minimum. */
+const QUICK_ROUNDS = 3
+/**
+ * Quick-game round length, by where the hunt runs.
+ *
+ * Indoors everything is a few steps away and 60s is generous. In the garden the
+ * walking IS the game — the far end is a good half-minute away — so a 60s round
+ * there is a sprint or a shrug, not an introduction. A mixed selection gets the
+ * outdoor budget, since any round could be the far corner.
+ */
+const QUICK_SECONDS_INDOOR = 60
+const QUICK_SECONDS_OUTDOOR = 120
+
 export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true }: Props) {
   const t = useT()
   const navigate = useNavigate()
@@ -42,6 +55,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Plants we hold photo embeddings for. Null while unknown — an empty Set
+  // would claim "none are ready", which is a different and alarming statement.
+  const [readyIds, setReadyIds] = useState<Set<number> | null>(null)
 
   // Which maps are available to pull plants from.
   useEffect(() => {
@@ -86,6 +102,65 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     return () => { cancelled = true }
   }, [allMaps, selectedMaps, mapId, mapSlug])
 
+  // Readiness follows the map selection, not the plant selection.
+  useEffect(() => {
+    const ids = [...selectedMaps]
+    if (ids.length === 0) return
+    let cancelled = false
+    // Readiness is an enhancement, so nothing it does may take the sheet down
+    // with it. `.catch()` alone is not enough — it only covers a REJECTED
+    // promise, and a call that throws synchronously (a stubbed client, a
+    // module that failed to load) escapes the effect and unmounts the tree.
+    // That is not theoretical: it rendered this sheet as an empty box.
+    Promise.resolve()
+      .then(() => gameApi.plantReadiness(ids))
+      .then((r) => { if (!cancelled) setReadyIds(new Set(r.ready_plant_ids)) })
+      // null means "unknown", and every badge and hint below says nothing then.
+      .catch(() => { if (!cancelled) setReadyIds(null) })
+    return () => { cancelled = true }
+  }, [selectedMaps])
+
+  const readyPlants = useMemo(
+    () => (readyIds ? plants.filter((p) => readyIds.has(p.id)) : []),
+    [plants, readyIds],
+  )
+
+  /**
+   * The 60-second introduction: hand someone the QR, they photograph three
+   * plants against the clock.
+   *
+   * It picks only plants we hold photographs of, which is the whole reason it
+   * beats setting this up by hand. Grading falls back to species-name matching
+   * for a plant with no references, and a name cannot tell two plants of a
+   * species apart — so an unready plant is a round that can tell a guest they
+   * are wrong when they are right. That is a poor first minute with the app.
+   */
+  function startQuickGame() {
+    if (readyPlants.length < QUICK_ROUNDS || creating) return
+    const chosenMaps = allMaps.filter((m) => selectedMaps.has(m.id))
+    const allIndoor = chosenMaps.length > 0
+      && chosenMaps.every((m) => m.map_type === 'indoor')
+    // The backend rejects more than MAX_SELECTABLE (50) plants, and a garden
+    // can hold more ready ones than that. Shuffle before trimming so repeat
+    // games draw from the whole collection instead of the same first fifty.
+    // Fisher-Yates, not `sort(() => Math.random() - 0.5)`: that comparator is
+    // inconsistent, and the engine's sort leaves the front of the array barely
+    // moved — the exact positions the slice below keeps.
+    const pool = [...readyPlants]
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[pool[i], pool[j]] = [pool[j], pool[i]]
+    }
+    pool.length = Math.min(pool.length, 50)
+    void createGame({
+      plantIds: pool.map((p) => p.id),
+      clueMode: 'photo',
+      pacing: 'race',
+      roundSeconds: allIndoor ? QUICK_SECONDS_INDOOR : QUICK_SECONDS_OUTDOOR,
+      roundCount: QUICK_ROUNDS,
+    })
+  }
+
   function toggle(id: number) {
     setSelected((prev) => {
       const next = new Set(prev)
@@ -116,24 +191,28 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     [plants, selected],
   )
 
-  async function handleCreate() {
-    if (selected.size < 3 || creating) return
+  /** One create path for both the quick preset and the hand-built hunt. */
+  async function createGame(opts: Omit<GameCreateOptions, 'mapIds'>) {
     setCreating(true)
     setError(null)
     try {
-      const { join_code } = await gameApi.create({
-        mapIds: [...selectedMaps],
-        plantIds: [...selected],
-        clueMode,
-        pacing,
-        roundSeconds: pacing === 'race' ? roundSeconds : undefined,
-        roundCount: roundCount ?? undefined,
-      })
+      const { join_code } = await gameApi.create({ mapIds: [...selectedMaps], ...opts })
       navigate(`/game/${join_code}/host`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error)
       setCreating(false)
     }
+  }
+
+  function handleCreate() {
+    if (selected.size < 3 || creating) return
+    void createGame({
+      plantIds: [...selected],
+      clueMode,
+      pacing,
+      roundSeconds: pacing === 'race' ? roundSeconds : undefined,
+      roundCount: roundCount ?? undefined,
+    })
   }
 
   const canCreate = selected.size >= 3 && selected.size <= 50
@@ -205,6 +284,38 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
               </div>
             </div>
           )}
+
+          {/* Quick game — the 60-second introduction for someone who just
+              scanned the QR. Sits above the manual controls because it is the
+              answer to "can they just play?", and skips all of them. */}
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <Glyph name="sparkle" size={16} className="text-primary shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-text">{t.game.quickTitle}</p>
+                <p className="text-xs text-text-muted">
+                  {t.game.quickSubtitle.replace('{count}', String(QUICK_ROUNDS))}
+                </p>
+              </div>
+            </div>
+            {readyIds !== null && (
+              <p className="text-xs text-text-muted">
+                {readyPlants.length >= QUICK_ROUNDS
+                  ? t.game.quickReadyCount.replace('{count}', String(readyPlants.length))
+                  : t.game.quickNotEnough.replace('{count}', String(QUICK_ROUNDS))}
+              </p>
+            )}
+            <button
+              onClick={startQuickGame}
+              // Same gate as the manual create button: POST /games is an
+              // editor write, so a viewer must not get a one-tap path past it.
+              disabled={creating || readyPlants.length < QUICK_ROUNDS || writeDisabled}
+              title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
+              className="w-full py-2.5 rounded-lg bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
+            >
+              {creating ? t.game.creating : t.game.quickStart}
+            </button>
+          </div>
 
           {/* Clue mode */}
           <div>
@@ -352,6 +463,15 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
                         {p.species && <span className="truncate">{p.species}</span>}
                         {scanMode && !p.species_id && (
                           <span className="text-amber-600">· {t.game.notIdentifiable}</span>
+                        )}
+                        {/* Only ever shown as a positive: a plant we hold
+                            photographs of is graded on them. Its absence is
+                            not flagged as a fault — plenty of good rounds are
+                            won on a name, and readiness may simply be unknown. */}
+                        {readyIds?.has(p.id) && (
+                          <span className="text-primary inline-flex items-center gap-0.5 shrink-0">
+                            · <Glyph name="camera" size={11} /> {t.game.photoReady}
+                          </span>
                         )}
                       </p>
                     </div>
