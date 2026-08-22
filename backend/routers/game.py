@@ -850,6 +850,48 @@ async def join_game(
     return await _build_state(db, code.upper(), actor)
 
 
+@router.post("/games/{code}/leave")
+async def leave_game(
+    code: str,
+    db=Depends(db_dep),
+    actor: GameActor = Depends(game_mutation_actor),
+):
+    """Step out of the hunt without ending it.
+
+    A host who is running the party rather than playing it should not be on the
+    scoreboard: they are the one holding the phone with the QR on it, they can
+    see the answer behind the peek toggle, and a "winner" who never left the
+    terrace is not much of a result. Hosting and playing are separate things,
+    and this is what separates them — the host keeps every host power (start,
+    skip, award) and simply stops being a competitor.
+
+    Rejoining is the existing `POST /games/{code}/join`, so this is a toggle
+    rather than a door that locks behind you.
+    """
+    session = await _session_by_code(db, code.upper())
+    me = await _player_row(db, session["id"], actor)
+    if not me:
+        return await _build_state(db, code.upper(), actor)
+
+    others = await db.execute_fetchall(
+        "SELECT COUNT(*) AS cnt FROM game_players WHERE session_id = ? AND id != ?",
+        (session["id"], me["id"]),
+    )
+    if int(dict(others[0])["cnt"]) == 0:
+        # A hunt with nobody in it has no rounds to grade and no scoreboard to
+        # show. Leaving is for stepping back from a party, not for emptying it.
+        raise HTTPException(400, "Someone has to play")
+
+    # The answers go with the player: leaving them behind would keep this
+    # person in every round's found-count while they are no longer on the
+    # scoreboard, which reads as a bug to everyone still playing.
+    await db.execute(
+        "DELETE FROM game_answers WHERE player_id = ?", (me["id"],))
+    await db.execute("DELETE FROM game_players WHERE id = ?", (me["id"],))
+    await db.commit()
+    return await _build_state(db, code.upper(), actor)
+
+
 @router.get("/games/{code}")
 async def get_game_state(
     code: str,

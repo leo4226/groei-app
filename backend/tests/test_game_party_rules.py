@@ -283,3 +283,79 @@ async def test_a_locked_scan_never_reaches_the_identifier(
     assert resp.status_code == 200, resp.text
     assert resp.json()["locked"] is True
     assert called == [], "a locked player's photo must not reach the GPU at all"
+
+
+# ── Hosting without playing ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_the_host_can_step_out_and_still_run_the_game(
+    client, seeded_db, auth_header, no_embeds
+):
+    """Running the party is not the same as playing it. A host holding the QR
+    phone can see the answer behind the peek toggle, so being on the scoreboard
+    is neither fair nor interesting — but they keep every host power."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    guest = await _guest(client, code)
+
+    resp = await client.post(f"/api/games/{code}/leave", headers=auth_header)
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["my_player_id"] is None
+    assert [p["player_name"] for p in body["players"]] == ["Lisbeth"]
+    assert body["is_host"] is True, "stepping out of the hunt is not resigning as host"
+
+    # Still runs the game.
+    assert (await client.post(
+        f"/api/games/{code}/start", headers=auth_header)).status_code == 200
+    state = (await client.get(f"/api/games/{code}", headers=guest)).json()
+    assert state["session"]["status"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_stepping_out_takes_your_answers_with_you(
+    client, seeded_db, auth_header, no_embeds
+):
+    """Leaving the rows behind keeps the host in every round's found-count
+    while off the scoreboard, which reads as a bug to everyone still playing."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    await _guest(client, code)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+    state = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+    await client.post(
+        f"/api/games/{code}/answer", headers=auth_header,
+        json={"scanned_species": state["current_clue"]["plant_name_nl"]})
+
+    await client.post(f"/api/games/{code}/leave", headers=auth_header)
+
+    for _ in range(5):
+        await client.post(f"/api/games/{code}/next", headers=auth_header)
+    final = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+    assert all(r["answered_count"] == 0 for r in final["round_stats"])
+
+
+@pytest.mark.asyncio
+async def test_the_last_player_cannot_leave(client, seeded_db, auth_header, no_embeds):
+    """A hunt with nobody in it has no rounds to grade and no scoreboard."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+
+    resp = await client.post(f"/api/games/{code}/leave", headers=auth_header)
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_stepping_back_in_is_the_same_door(
+    client, seeded_db, auth_header, no_embeds
+):
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    await _guest(client, code)
+    await client.post(f"/api/games/{code}/leave", headers=auth_header)
+
+    resp = await client.post(f"/api/games/{code}/join", headers=auth_header)
+
+    assert resp.json()["my_player_id"] is not None

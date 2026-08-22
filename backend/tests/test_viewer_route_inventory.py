@@ -134,6 +134,7 @@ POLICY_ENTRIES = (
         ("DELETE", "/api/games/{code}"),
         ("POST", "/api/games/{code}/answer"),
         ("POST", "/api/games/{code}/join"),
+        ("POST", "/api/games/{code}/leave"),
         ("POST", "/api/games/{code}/next"),
         ("POST", "/api/games/{code}/players/{player_id}/award"),
         ("POST", "/api/games/{code}/scan"),

@@ -2321,6 +2321,8 @@ export const en: Translations = {
     pacingRaceHint: 'Everyone gets the same plant at once. The round ends on its own when time runs out.',
     pacingHostHint: 'You tap "next round" yourself. Nice for a small group.',
     roundLength: 'Round length',
+    sitOut: "I'm not playing myself",
+    joinIn: 'Play along after all',
     forfeitSectionLabel: 'Forfeit for the loser (optional)',
     forfeitPlaceholder: 'e.g. a shot of Hierbas',
     forfeitHint: 'Shown on the final scoreboard. Leave empty for no forfeit.',

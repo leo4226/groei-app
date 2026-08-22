@@ -2323,6 +2323,8 @@ export const nl: Translations = {
     pacingRaceHint: 'Iedereen krijgt dezelfde plant tegelijk. De ronde stopt vanzelf als de tijd om is.',
     pacingHostHint: 'Jij tikt zelf op "volgende ronde". Fijn voor een klein groepje.',
     roundLength: 'Rondetijd',
+    sitOut: 'Ik speel zelf niet mee',
+    joinIn: 'Toch zelf meespelen',
     forfeitSectionLabel: 'Straf voor de verliezer (optioneel)',
     forfeitPlaceholder: 'bijv. een shotje Hierbas',
     forfeitHint: 'Verschijnt op de eindstand. Laat leeg voor geen straf.',
