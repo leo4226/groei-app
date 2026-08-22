@@ -325,6 +325,13 @@ export default function GamePlayerPage() {
             <p className="text-primary font-semibold text-lg">
               {t.game.pointsEarned.replace('{points}', String(scanResult.points_awarded))}
             </p>
+            {/* Naming the bonus is the whole point of having one: a single
+                number tells nobody that being quick was worth anything. */}
+            {!!scanResult.speed_bonus && scanResult.speed_bonus > 0 && (
+              <p className="text-sm font-semibold text-amber-600">
+                {t.game.speedBonus.replace('{points}', String(scanResult.speed_bonus))}
+              </p>
+            )}
             <button
               onClick={() => setStep('answered')}
               className="mt-4 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"

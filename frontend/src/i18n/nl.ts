@@ -2324,6 +2324,7 @@ export const nl: Translations = {
     pacingHostHint: 'Jij tikt zelf op "volgende ronde". Fijn voor een klein groepje.',
     roundLength: 'Rondetijd',
     sitOut: 'Ik speel zelf niet mee',
+    speedBonus: 'waarvan +{points} snelheidsbonus \u26a1',
     joinIn: 'Toch zelf meespelen',
     forfeitSectionLabel: 'Straf voor de verliezer (optioneel)',
     forfeitPlaceholder: 'bijv. een shotje Hierbas',

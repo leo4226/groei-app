@@ -183,6 +183,8 @@ export interface AnswerResult {
   attempts_left?: number
   /** Out of scans for this plant — the round is closed for this player. */
   locked?: boolean
+  /** Part of `points_awarded` earned by the clock, in race rounds. */
+  speed_bonus?: number
 }
 
 export interface GamePreview {

@@ -67,6 +67,11 @@ MAX_WRONG_ATTEMPTS = int(os.environ.get("GAME_MAX_WRONG_ATTEMPTS", "2"))
 # The host types the loser's forfeit; the app supplies the mechanic, not the
 # penalty. Bounded so it stays a caption rather than an essay.
 MAX_FORFEIT_LEN = 80
+# Extra points for finding it early in the round, on top of the rank bonus.
+# Rank already orders people by speed, but only by a hair — 150 vs 140 does not
+# feel like a race. This makes the clock worth something: everything left on it
+# when you find the plant, scaled to this much.
+MAX_SPEED_BONUS = int(os.environ.get("GAME_MAX_SPEED_BONUS", "50"))
 
 # How many stored photos of a plant we keep as visual references per round.
 _MAX_REFERENCES = 8
@@ -1064,17 +1069,21 @@ async def _record_answer(
         return {
             "is_correct": False, "points_awarded": 0, "finish_rank": None,
             "match_kind": None, "wrong_attempts": wrong_attempts,
-            "attempts_left": 0, "locked": True,
+            "attempts_left": 0, "locked": True, "speed_bonus": 0,
         }
     if not is_correct:
         wrong_attempts += 1
 
+    now = _now()
     points = 0
     finish_rank = None
+    speed_bonus = 0
     if is_correct:
-        # Rank-based scoring: finding it first is worth more than finding it
-        # fast on a stopwatch, which keeps a big group's race meaningful even
-        # when the far end of the garden is a two-minute walk away.
+        # Two parts, because they answer different questions. Rank rewards
+        # beating the others to it and keeps a big group's race meaningful even
+        # when the far end of the garden is a two-minute walk away. The speed
+        # bonus rewards the clock: rank alone separates first from second by ten
+        # points out of a hundred and fifty, which nobody can feel.
         rank_rows = await db.execute_fetchall(
             "SELECT COUNT(*) AS cnt FROM game_answers WHERE round_id = ? AND is_correct = TRUE",
             (round_id,),
@@ -1082,7 +1091,21 @@ async def _record_answer(
         finish_rank = dict(rank_rows[0])["cnt"] + 1
         points = 100 + max(0, 50 - (finish_rank - 1) * 10)
 
-    now = _now()
+        # Race pacing only: a host-paced round has no clock to be quick against,
+        # and timing someone against a round the host ends by hand would score
+        # the host's attention span rather than the player's speed.
+        if session.get("pacing") == "race":
+            round_rows = await db.execute_fetchall(
+                "SELECT started_at FROM game_rounds WHERE id = ?", (round_id,))
+            started = _as_dt(dict(round_rows[0])["started_at"]) if round_rows else None
+            limit = session.get("round_seconds") or DEFAULT_ROUND_SECONDS
+            if started and limit > 0:
+                elapsed = (now - started).total_seconds()
+                # Whatever is left on the clock, as a fraction of the round.
+                remaining = max(0.0, min(1.0, 1.0 - elapsed / limit))
+                speed_bonus = int(round(MAX_SPEED_BONUS * remaining))
+                points += speed_bonus
+
     if existing:
         await db.execute(
             "UPDATE game_answers SET scanned_species = ?, is_correct = ?, "
@@ -1116,6 +1139,9 @@ async def _record_answer(
         # A correct answer is never a lockout, however many wrong ones came
         # before it.
         "locked": (not is_correct) and attempts_left == 0,
+        # Broken out so the result screen can show what the clock was worth,
+        # rather than a single number nobody can account for.
+        "speed_bonus": speed_bonus,
     }
 
 
@@ -1284,7 +1310,7 @@ async def scan_answer(
         return {
             "is_correct": False, "points_awarded": 0, "finish_rank": None,
             "match_kind": None, "wrong_attempts": MAX_WRONG_ATTEMPTS,
-            "attempts_left": 0, "locked": True, "candidates": [],
+            "attempts_left": 0, "locked": True, "speed_bonus": 0, "candidates": [],
         }
 
     # Two independent signals, gathered in whatever order succeeds: the

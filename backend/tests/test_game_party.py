@@ -248,8 +248,15 @@ async def test_race_scoring_rewards_finishing_order(
             json={"scanned_species": target},
         )
         assert resp.status_code == 200, resp.text
-        awarded.append((resp.json()["finish_rank"], resp.json()["points_awarded"]))
+        body = resp.json()
+        awarded.append((
+            body["finish_rank"],
+            body["points_awarded"] - body["speed_bonus"],
+        ))
 
+    # Ranks and the rank component only. All three answered in the same second,
+    # so they each earned the same speed bonus on top — subtracting it is what
+    # keeps this test about finishing ORDER, which is the thing it names.
     assert awarded == [(1, 150), (2, 140), (3, 130)]
 
 
