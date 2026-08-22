@@ -359,3 +359,61 @@ async def test_stepping_back_in_is_the_same_door(
     resp = await client.post(f"/api/games/{code}/join", headers=auth_header)
 
     assert resp.json()["my_player_id"] is not None
+
+
+# ── Speed bonus ──────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_finding_it_early_is_worth_more_than_finding_it_late(
+    client, seeded_db, auth_header, no_embeds
+):
+    """Rank alone separates first from second by ten points out of a hundred
+    and fifty, which nobody can feel. The clock is what makes it a race."""
+    from datetime import timedelta
+    from routers import game as g
+
+    await _world(seeded_db)
+    code = await _create(client, auth_header, pacing="race", round_seconds=60)
+    await _guest(client, code)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+    state = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+    target = state["current_clue"]["plant_name_nl"]
+
+    quick = await client.post(
+        f"/api/games/{code}/answer", headers=auth_header,
+        json={"scanned_species": target})
+
+    assert quick.json()["speed_bonus"] > 0
+    assert quick.json()["points_awarded"] == 150 + quick.json()["speed_bonus"]
+
+    # The same find, most of the round later, is worth the base only.
+    await seeded_db.execute(
+        "UPDATE game_rounds SET started_at = ? WHERE session_id = 1 AND round_index = 0",
+        (g._now() - timedelta(seconds=120),))
+    await seeded_db.commit()
+    guest2 = await _guest(client, code, name="Laatkomer")
+    late = await client.post(
+        f"/api/games/{code}/answer", headers=guest2,
+        json={"scanned_species": target})
+
+    assert late.json()["speed_bonus"] == 0, "the clock ran out; nothing left to win"
+
+
+@pytest.mark.asyncio
+async def test_a_host_paced_round_has_no_clock_to_race(
+    client, seeded_db, auth_header, no_embeds
+):
+    """Timing someone against a round the host ends by hand would score the
+    host's attention span, not the player's speed."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header, pacing="host")
+    await _guest(client, code)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+    state = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+
+    resp = await client.post(
+        f"/api/games/{code}/answer", headers=auth_header,
+        json={"scanned_species": state["current_clue"]["plant_name_nl"]})
+
+    assert resp.json()["speed_bonus"] == 0
+    assert resp.json()["points_awarded"] == 150

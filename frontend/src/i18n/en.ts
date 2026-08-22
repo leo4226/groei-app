@@ -2322,6 +2322,7 @@ export const en: Translations = {
     pacingHostHint: 'You tap "next round" yourself. Nice for a small group.',
     roundLength: 'Round length',
     sitOut: "I'm not playing myself",
+    speedBonus: 'including +{points} speed bonus \u26a1',
     joinIn: 'Play along after all',
     forfeitSectionLabel: 'Forfeit for the loser (optional)',
     forfeitPlaceholder: 'e.g. a shot of Hierbas',

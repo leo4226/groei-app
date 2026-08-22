@@ -464,7 +464,11 @@ export default function GameHostPage() {
             ? t.common.loading
             : roundNum === totalRounds
               ? t.game.endGame
-              : state.session.pacing === 'race'
+              // "Overslaan" means giving up on a plant you have not found.
+              // Once you HAVE found it — or are not playing at all — the same
+              // button is simply moving everyone on, and calling that skipping
+              // reads as if your own correct answer is about to be thrown away.
+              : state.session.pacing === 'race' && hostIsPlaying && !hostAnswered
                 ? t.game.skipRound
                 : t.game.nextRound}
         </button>
