@@ -52,6 +52,12 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   const [pacing, setPacing] = useState<'host' | 'race'>('race')
   const [roundSeconds, setRoundSeconds] = useState(180)
   const [roundCount, setRoundCount] = useState<number | null>(null)
+  // Remembered per device: a host running hunts all evening should type the
+  // forfeit once, not before every game. Wrapped because storage throws in
+  // private windows and a missing convenience must not cost them the sheet.
+  const [forfeit, setForfeit] = useState(() => {
+    try { return localStorage.getItem('floreren-game-forfeit') ?? '' } catch { return '' }
+  })
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -206,7 +212,10 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     setCreating(true)
     setError(null)
     try {
-      const { join_code } = await gameApi.create({ mapIds: [...selectedMaps], ...opts })
+      try { localStorage.setItem('floreren-game-forfeit', forfeit.trim()) } catch { /* private window */ }
+      const { join_code } = await gameApi.create({
+        mapIds: [...selectedMaps], forfeit: forfeit.trim() || undefined, ...opts,
+      })
       navigate(`/game/${join_code}/host`)
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error)
@@ -398,6 +407,22 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
               </div>
             </div>
           )}
+
+          {/* Forfeit — the host's words, not ours. What a loser owes is a
+              party's business, and a plant-care app should not be picking
+              anyone's penalty (or their drink) for them. */}
+          <div>
+            <p className="text-xs text-text-muted mb-2">{t.game.forfeitSectionLabel}</p>
+            <input
+              type="text"
+              value={forfeit}
+              maxLength={80}
+              onChange={(e) => setForfeit(e.target.value)}
+              placeholder={t.game.forfeitPlaceholder}
+              className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-sm text-text placeholder:text-text-muted/60"
+            />
+            <p className="text-xs text-text-muted mt-1.5">{t.game.forfeitHint}</p>
+          </div>
 
           {/* Warnings */}
           <div className="space-y-2">

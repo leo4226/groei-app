@@ -7,6 +7,7 @@ import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
 import GameRoundHeader from '../components/game/GameRoundHeader'
+import GameNameClue from '../components/game/GameNameClue'
 import Glyph from '../components/ui/Glyph'
 import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
 import { useCapabilities } from '../hooks/useCapabilities'
@@ -339,12 +340,8 @@ export default function GameHostPage() {
               </div>
             )
           ) : (
-            <div className="bg-surface rounded-2xl border border-border p-5 flex flex-col items-center gap-2">
-              <Glyph name="leaf" size={32} className="text-primary" />
-              <p className="text-xl font-bold text-text text-center">{clueName}</p>
-              {altName && altName !== clueName && (
-                <p className="text-xs text-text-muted text-center italic">{altName}</p>
-              )}
+            <div className="flex flex-col items-center gap-2">
+              <GameNameClue clue={clue} compact />
               {state.session.maps.length > 1 && clue.map_name && (
                 <p className="text-xs text-primary inline-flex items-center gap-1">
                   <Glyph name={clue.map_type === 'indoor' ? 'home' : 'sprout'} size={12} />

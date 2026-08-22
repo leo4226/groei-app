@@ -7,6 +7,7 @@ import { IdentifyCamera } from '../components/identify/IdentifyCamera'
 import GameLeaderboard from '../components/game/GameLeaderboard'
 import GameQuizRound from '../components/game/GameQuizRound'
 import GameRoundHeader from '../components/game/GameRoundHeader'
+import GameNameClue from '../components/game/GameNameClue'
 import Glyph from '../components/ui/Glyph'
 import ReadOnlyWritePage from '../components/ui/ReadOnlyWritePage'
 import { useCapabilities } from '../hooks/useCapabilities'
@@ -210,25 +211,41 @@ export default function GamePlayerPage() {
     )
   }
 
+  // ── Locked out of this plant ───────────────────────────────────────────────
+  //
+  // Read from the STATE, not from the last scan response, so closing the app
+  // and reopening it does not put the scan button back in front of someone who
+  // has already used their attempts.
+  if (state.my_answer?.locked && !state.my_answer.is_correct) {
+    return (
+      <div className="min-h-dvh bg-bg flex flex-col">
+        <GameRoundHeader state={state} foundCount={foundCount} />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+          <div className="text-red-500"><Glyph name="x" size={48} /></div>
+          <p className="text-2xl font-black tracking-wide text-red-500 uppercase">
+            {t.game.lockedOutTitle}
+          </p>
+          <p className="text-sm text-text-muted max-w-xs">{t.game.lockedOutBody}</p>
+          {state.session.forfeit && (
+            <p className="text-sm font-semibold text-amber-600 max-w-xs">
+              {t.game.forfeitLine.replace('{forfeit}', state.session.forfeit)}
+            </p>
+          )}
+          <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
+        </div>
+      </div>
+    )
+  }
+
   // ── Clue → scan ────────────────────────────────────────────────────────────
   if (step === 'clue' && !state.my_answer?.is_correct) {
-    const isEN = t.locale?.startsWith('en') ?? false
-    const clueName = isEN && clue?.plant_name_en ? clue.plant_name_en : clue?.plant_name_nl
-    const altName = isEN ? clue?.plant_name_nl : clue?.plant_name_en
-
     return (
       <div className="min-h-dvh bg-bg flex flex-col">
         <GameRoundHeader state={state} foundCount={foundCount} />
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
-          {state.session.clue_mode === 'name' ? (
-            <div className="w-full max-w-xs bg-surface rounded-2xl border border-border p-6 flex flex-col items-center gap-3 shadow-lg">
-              <Glyph name="leaf" size={44} className="text-primary" />
-              <p className="text-2xl font-bold text-text text-center">{clueName}</p>
-              {altName && altName !== clueName && (
-                <p className="text-sm text-text-muted text-center italic">{altName}</p>
-              )}
-            </div>
+          {state.session.clue_mode === 'name' && clue ? (
+            <GameNameClue clue={clue} />
           ) : clue?.clue_photo_url ? (
             <div className="w-full max-w-xs aspect-square rounded-2xl overflow-hidden shadow-lg">
               <img src={clue.clue_photo_url} alt="" className="w-full h-full object-cover" />
@@ -316,26 +333,53 @@ export default function GamePlayerPage() {
             </button>
           </>
         ) : (
-          <>
-            <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
-            <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
-            {/* Naming what the identifier saw turns a dead end into a hint. */}
-            {scanResult.candidates && scanResult.candidates.length > 0 && (
-              <p className="text-sm text-text-muted italic">
-                {t.game.weSaw.replace('{name}', scanResult.candidates[0])}
+          scanResult.locked ? (
+            /* Out of scans for this plant. Loud on purpose — the round is over
+               for this player and "try again" would be a lie. */
+            <>
+              <div className="text-red-500"><Glyph name="x" size={48} /></div>
+              <p className="text-2xl font-black tracking-wide text-red-500 uppercase">
+                {t.game.lockedOutTitle}
               </p>
-            )}
-            {state.session.clue_mode !== 'logbook' ? (
-              <button
-                onClick={() => setStep('camera')}
-                className="mt-4 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
-              >
-                {t.game.tryAgain}
-              </button>
-            ) : (
+              <p className="text-sm text-text-muted max-w-xs">{t.game.lockedOutBody}</p>
+              {state.session.forfeit && (
+                <p className="text-sm font-semibold text-amber-600 max-w-xs">
+                  {t.game.forfeitLine.replace('{forfeit}', state.session.forfeit)}
+                </p>
+              )}
               <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
-            )}
-          </>
+            </>
+          ) : (
+            <>
+              <div className="text-text-muted/60"><Glyph name="leaf" size={44} /></div>
+              <p className="text-lg font-semibold text-text">{t.game.wrongScan}</p>
+              {/* Naming what the identifier saw turns a dead end into a hint. */}
+              {scanResult.candidates && scanResult.candidates.length > 0 && (
+                <p className="text-sm text-text-muted italic">
+                  {t.game.weSaw.replace('{name}', scanResult.candidates[0])}
+                </p>
+              )}
+              {/* Say how many scans are left BEFORE they are gone — being cut
+                  off without warning reads as a bug, not a rule. */}
+              {typeof scanResult.attempts_left === 'number' && (
+                <p className="text-sm font-semibold text-amber-600">
+                  {scanResult.attempts_left === 1
+                    ? t.game.oneAttemptLeft
+                    : t.game.attemptsLeft.replace('{count}', String(scanResult.attempts_left))}
+                </p>
+              )}
+              {state.session.clue_mode !== 'logbook' ? (
+                <button
+                  onClick={() => setStep('camera')}
+                  className="mt-4 px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
+                >
+                  {t.game.tryAgain}
+                </button>
+              ) : (
+                <p className="text-text-muted text-sm">{t.game.waitingForNextRound}</p>
+              )}
+            </>
+          )
         )}
       </div>
     )

@@ -105,6 +105,22 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
         })}
       </div>
 
+      {/* The forfeit, in the host's words. Shown to everyone rather than only
+          the loser: half the fun is the table knowing who owes it. Only when
+          there is more than one player — a solo hunt has no loser. */}
+      {state.session.forfeit && sorted.length > 1 && (
+        <div className="w-full rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center">
+          <p className="text-xs font-mono uppercase tracking-widest text-amber-600/80">
+            {t.game.forfeitLabel}
+          </p>
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-500 mt-0.5">
+            {t.game.forfeitLoser
+              .replace('{name}', sorted[sorted.length - 1].player_name)
+              .replace('{forfeit}', state.session.forfeit)}
+          </p>
+        </div>
+      )}
+
       {myRank > 0 && (
         <p className="text-sm text-text-muted -mt-2">
           {isEN

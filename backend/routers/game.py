@@ -59,6 +59,14 @@ _EMBED_THRESHOLD = float(os.environ.get("GAME_EMBED_THRESHOLD", "0.74"))
 # (the two real scans measured so far sat at 0.71 and 0.88), while a photo of a
 # different plant scores far below it.
 _NEAR_MISS_RATIO = float(os.environ.get("GAME_NEAR_MISS_RATIO", "0.85"))
+# How many wrong plants a player may photograph in one round before it closes
+# for them. Without a limit a guest can walk the border scanning everything
+# until something sticks, which is not a hunt — it is an inventory. Two leaves
+# room for one honest mistake (the lookalike next to it) and no more.
+MAX_WRONG_ATTEMPTS = int(os.environ.get("GAME_MAX_WRONG_ATTEMPTS", "2"))
+# The host types the loser's forfeit; the app supplies the mechanic, not the
+# penalty. Bounded so it stays a caption rather than an essay.
+MAX_FORFEIT_LEN = 80
 
 # How many stored photos of a plant we keep as visual references per round.
 _MAX_REFERENCES = 8
@@ -226,6 +234,7 @@ class GameCreateRequest(BaseModel):
     pacing: str = "host"               # "host" | "race"
     round_seconds: int | None = None   # race mode only
     round_count: int | None = None
+    forfeit: str | None = None         # what the loser has to do; host's words
 
 
 class GuestJoinRequest(BaseModel):
@@ -397,14 +406,23 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
 
     rounds_rows = await db.execute_fetchall(
         """SELECT gr.id, gr.round_index, gr.plant_name_nl, gr.plant_name_en,
-                  gr.clue_photo_url, gr.clue_hint_nl, gr.clue_hint_en,
-                  gr.ends_at, gr.map_id, m.name AS map_name, m.map_type
+                  gr.target_species, gr.clue_photo_url, gr.clue_hint_nl,
+                  gr.clue_hint_en, gr.ends_at, gr.map_id,
+                  m.name AS map_name, m.map_type
            FROM game_rounds gr
            LEFT JOIN maps m ON m.id = gr.map_id
            WHERE gr.session_id = ? ORDER BY gr.round_index""",
         (session["id"],),
     )
     rounds = [dict(r) for r in rounds_rows]
+
+    # The Latin name is part of the clue when the clue IS a name — a guest who
+    # knows "Monstera deliciosa" but neither common name can still play. In
+    # photo and logbook modes the species name is the ANSWER, so shipping it
+    # would hand every player the round for free.
+    if session.get("clue_mode") != "name":
+        for r in rounds:
+            r.pop("target_species", None)
 
     current_round_id = None
     if rounds and session["status"] == "active":
@@ -431,12 +449,20 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
     my_answer = None
     if my_player_id and current_round_id:
         my_rows = await db.execute_fetchall(
-            "SELECT is_correct, points_awarded, answered_at, finish_rank "
-            "FROM game_answers WHERE round_id = ? AND player_id = ?",
+            "SELECT is_correct, points_awarded, answered_at, finish_rank, "
+            "wrong_attempts FROM game_answers WHERE round_id = ? AND player_id = ?",
             (current_round_id, my_player_id),
         )
         if my_rows:
             my_answer = dict(my_rows[0])
+            # Carried in the state, not just in the scan response: otherwise
+            # reloading the page — or reopening the PWA — hands a locked-out
+            # player their attempts back.
+            used = int(my_answer.get("wrong_attempts") or 0)
+            my_answer["attempts_left"] = max(0, MAX_WRONG_ATTEMPTS - used)
+            my_answer["locked"] = (
+                not my_answer["is_correct"] and used >= MAX_WRONG_ATTEMPTS
+            )
 
     current_clue = None
     if rounds and session["status"] in ("active", "finished"):
@@ -515,6 +541,10 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
             "pacing": session.get("pacing", "host"),
             "round_seconds": session.get("round_seconds"),
             "seconds_remaining": seconds_remaining,
+            "forfeit": session.get("forfeit"),
+            # Sent so a player's screen can count down "2 tries left" without
+            # hard-coding the server's limit in the client.
+            "max_wrong_attempts": MAX_WRONG_ATTEMPTS,
         },
         "players": players,
         "current_clue": current_clue,
@@ -650,12 +680,17 @@ async def create_game(
     else:
         raise HTTPException(500, "Could not generate unique join code")
 
+    # Blank and whitespace-only both mean "no forfeit"; storing '' would make
+    # the UI render an empty penalty line.
+    forfeit = (body.forfeit or "").strip()[:MAX_FORFEIT_LEN] or None
+
     await db.execute(
         """INSERT INTO game_sessions
            (join_code, host_account_id, map_id, status, current_round, created_at,
-            clue_mode, pacing, round_seconds)
-           VALUES (?, ?, ?, 'waiting', 0, ?, ?, ?, ?)""",
-        (code, actor["account_id"], map_ids[0], _now(), clue_mode, pacing, round_seconds),
+            clue_mode, pacing, round_seconds, forfeit)
+           VALUES (?, ?, ?, 'waiting', 0, ?, ?, ?, ?, ?)""",
+        (code, actor["account_id"], map_ids[0], _now(), clue_mode, pacing,
+         round_seconds, forfeit),
     )
     session_rows = await db.execute_fetchall(
         "SELECT id FROM game_sessions WHERE join_code = ?", (code,)
@@ -914,7 +949,8 @@ async def award_player(
         raise HTTPException(404, "Player not found")
 
     result = await _record_answer(
-        db, session, round_id, player_id, "host-override", is_correct=True
+        db, session, round_id, player_id, "host-override", is_correct=True,
+        host_override=True,
     )
     await db.commit()
     return result
@@ -936,15 +972,38 @@ async def delete_game(
 async def _record_answer(
     db, session: dict, round_id: int, player_id: int,
     scanned: str, is_correct: bool, match_kind: str | None = None,
+    *, host_override: bool = False,
 ) -> dict:
-    """Write the answer, award points, and return the player-facing result."""
+    """Write the answer, award points, and return the player-facing result.
+
+    Wrong guesses are counted, and past MAX_WRONG_ATTEMPTS the round closes for
+    that player: a hunt where you can photograph every plant in the garden
+    until one sticks is an inventory, not a hunt.
+
+    The host override deliberately ignores the lock. It is the escape hatch for
+    a guest whose phone will not focus or whose plant has no usable reference
+    photos, and a locked-out player is exactly who most needs waving through.
+    """
     existing_rows = await db.execute_fetchall(
-        "SELECT id, is_correct FROM game_answers WHERE round_id = ? AND player_id = ?",
+        "SELECT id, is_correct, wrong_attempts FROM game_answers "
+        "WHERE round_id = ? AND player_id = ?",
         (round_id, player_id),
     )
     existing = dict(existing_rows[0]) if existing_rows else None
     if existing and existing["is_correct"]:
         raise HTTPException(400, "Already answered correctly")
+
+    wrong_attempts = int(existing["wrong_attempts"] or 0) if existing else 0
+    if not host_override and wrong_attempts >= MAX_WRONG_ATTEMPTS:
+        # Not an error: the player did nothing wrong by asking, and the client
+        # needs a normal result it can render as the locked-out screen.
+        return {
+            "is_correct": False, "points_awarded": 0, "finish_rank": None,
+            "match_kind": None, "wrong_attempts": wrong_attempts,
+            "attempts_left": 0, "locked": True,
+        }
+    if not is_correct:
+        wrong_attempts += 1
 
     points = 0
     finish_rank = None
@@ -963,18 +1022,18 @@ async def _record_answer(
     if existing:
         await db.execute(
             "UPDATE game_answers SET scanned_species = ?, is_correct = ?, "
-            "points_awarded = ?, answered_at = ?, finish_rank = ?, match_kind = ? "
-            "WHERE round_id = ? AND player_id = ?",
+            "points_awarded = ?, answered_at = ?, finish_rank = ?, match_kind = ?, "
+            "wrong_attempts = ? WHERE round_id = ? AND player_id = ?",
             (scanned, is_correct, points, now, finish_rank, match_kind,
-             round_id, player_id),
+             wrong_attempts, round_id, player_id),
         )
     else:
         await db.execute(
             "INSERT INTO game_answers (round_id, player_id, scanned_species, "
-            "is_correct, points_awarded, answered_at, finish_rank, match_kind) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "is_correct, points_awarded, answered_at, finish_rank, match_kind, "
+            "wrong_attempts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (round_id, player_id, scanned, is_correct, points, now, finish_rank,
-             match_kind),
+             match_kind, wrong_attempts),
         )
 
     if is_correct:
@@ -982,11 +1041,17 @@ async def _record_answer(
             "UPDATE game_players SET score = score + ? WHERE id = ?", (points, player_id)
         )
 
+    attempts_left = max(0, MAX_WRONG_ATTEMPTS - wrong_attempts)
     return {
         "is_correct": is_correct,
         "points_awarded": points,
         "finish_rank": finish_rank,
         "match_kind": match_kind,
+        "wrong_attempts": wrong_attempts,
+        "attempts_left": attempts_left,
+        # A correct answer is never a lockout, however many wrong ones came
+        # before it.
+        "locked": (not is_correct) and attempts_left == 0,
     }
 
 

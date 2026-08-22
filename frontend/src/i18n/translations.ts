@@ -2299,6 +2299,16 @@ export type Translations = {
     pacingRaceHint: string
     pacingHostHint: string
     roundLength: string
+    forfeitSectionLabel: string
+    forfeitPlaceholder: string
+    forfeitHint: string
+    forfeitLabel: string
+    forfeitLoser: string
+    forfeitLine: string
+    lockedOutTitle: string
+    lockedOutBody: string
+    attemptsLeft: string
+    oneAttemptLeft: string
     quickTitle: string
     quickSubtitle: string
     quickStart: string

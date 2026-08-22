@@ -98,6 +98,7 @@ function fixtures({ players, rounds }) {
       total_rounds: rounds, map_name: 'Tuin', map_slug: 'tuin', host_name: 'Leon',
       clue_mode: 'name', pacing: 'race', round_seconds: 120, seconds_remaining: 47,
       maps: [{ id: 1, name: 'Tuin', map_type: 'outdoor' }],
+      forfeit: 'een shotje Hierbas', max_wrong_attempts: 2,
       ...(over.session || {}),
     },
     players: PLAYERS, current_clue: CLUE, rounds: [CLUE],
@@ -124,7 +125,17 @@ function scenes(cfg) {
     ['player · clue',       '/game/AB12CD',      state({ is_host: false, my_player_id: 2 })],
     ['player · answered',   '/game/AB12CD',      state({
       is_host: false, my_player_id: 2,
-      my_answer: { is_correct: true, points_awarded: 150, answered_at: '2026-08-22T09:00:00', finish_rank: 1 },
+      my_answer: {
+        is_correct: true, points_awarded: 150, answered_at: '2026-08-22T09:00:00',
+        finish_rank: 1, wrong_attempts: 0, attempts_left: 2, locked: false,
+      },
+    })],
+    ['player · locked out', '/game/AB12CD',      state({
+      is_host: false, my_player_id: 2,
+      my_answer: {
+        is_correct: false, points_awarded: 0, answered_at: '2026-08-22T09:00:00',
+        finish_rank: null, wrong_attempts: 2, attempts_left: 0, locked: true,
+      },
     })],
     ['join screen',         '/game?code=AB12CD', null],
   ]
