@@ -151,10 +151,30 @@ const PROBE = () => {
   const acts = Array.from(document.querySelectorAll('button, a[href]'))
     .filter((b) => !(nav && nav.contains(b)) && b.offsetParent !== null
       && b.getBoundingClientRect().height >= 28)
-    .map((b) => ({
-      label: (b.textContent || '').trim().slice(0, 26) || '(icon)',
-      bottom: Math.round(b.getBoundingClientRect().bottom),
-    }))
+    .map((b) => {
+      const box = b.getBoundingClientRect()
+      // Being inside the viewport is not the same as being REACHABLE. The
+      // bottom nav is a fixed overlay ~70px tall, so a button ending at 636px
+      // on a 660px screen measures as fitting and is still sitting underneath
+      // it, untappable. That is the bug this check missed the first time:
+      // excluding the nav from the list of actions is not the same as
+      // accounting for the nav covering one.
+      const x = Math.round(box.left + box.width / 2)
+      const y = Math.round(box.top + box.height / 2)
+      const hit = document.elementFromPoint(x, y)
+      return {
+        label: (b.textContent || '').trim().slice(0, 26) || '(icon)',
+        bottom: Math.round(box.bottom),
+        covered: !!hit && hit !== b && !b.contains(hit),
+        coveredBy: (() => {
+          if (!hit || hit === b || b.contains(hit)) return null
+          const el = hit.closest('nav') || hit
+          const cls = typeof el.className === 'string' && el.className
+            ? '.' + el.className.trim().split(/\s+/)[0] : ''
+          return `${el.tagName.toLowerCase()}${cls}`
+        })(),
+      }
+    })
   return {
     acts,
     crashed: (document.body.innerText || '').includes('kon niet geladen')
@@ -238,13 +258,17 @@ for (const cfg of PARTIES) {
         failures.push(`${tag}\n    the page crashed — fixture no longer matches the component`)
         console.log(`FAIL  ${tag} (crashed)`)
       } else {
-        const cut = acts.filter((a) => a.bottom > height)
+        const cut = acts.filter((a) => a.bottom > height || a.covered)
         if (cut.length) {
           failures.push(`${tag}\n    ` + cut
-            .map((a) => `"${a.label}" ends at ${a.bottom}px, ${a.bottom - height}px below the fold`)
+            .map((a) => (a.covered
+              ? `"${a.label}" is covered by ${a.coveredBy} — on screen but untappable`
+              : `"${a.label}" ends at ${a.bottom}px, ${a.bottom - height}px below the fold`))
             .join('\n    '))
           console.log(`FAIL  ${tag}`)
-          cut.forEach((a) => console.log(`      "${a.label}" ${a.bottom}px > ${height}px`))
+          cut.forEach((a) => console.log(a.covered
+            ? `      "${a.label}" covered by ${a.coveredBy}`
+            : `      "${a.label}" ${a.bottom}px > ${height}px`))
         } else {
           console.log(`ok    ${tag}`)
         }

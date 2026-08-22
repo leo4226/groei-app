@@ -30,15 +30,15 @@ const ROUND_SECONDS_CHOICES = [60, 120, 180, 300]
 /** Rounds in a quick game. The backend floor is 3, so this is also the minimum. */
 const QUICK_ROUNDS = 3
 /**
- * Quick-game round length, by where the hunt runs.
+ * Quick-game round length — the host's choice, not a guess from the map type.
  *
- * Indoors everything is a few steps away and 60s is generous. In the garden the
- * walking IS the game — the far end is a good half-minute away — so a 60s round
- * there is a sprint or a shrug, not an introduction. A mixed selection gets the
- * outdoor budget, since any round could be the far corner.
+ * That guess landed on two minutes outdoors, which is a long time to stand
+ * around after everyone has already found the plant. How far apart the plants
+ * actually are, and how fast this particular crowd moves, is something only
+ * the person running the party knows.
  */
-const QUICK_SECONDS_INDOOR = 60
-const QUICK_SECONDS_OUTDOOR = 120
+const QUICK_SECONDS_CHOICES = [30, 60, 120]
+const QUICK_SECONDS_DEFAULT = 60
 
 export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true }: Props) {
   const t = useT()
@@ -57,6 +57,15 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   // private windows and a missing convenience must not cost them the sheet.
   const [forfeit, setForfeit] = useState(() => {
     try { return localStorage.getItem('floreren-game-forfeit') ?? '' } catch { return '' }
+  })
+  // Host's choice, remembered like the forfeit. The old rule guessed from the
+  // map type and landed on two minutes outdoors, which is a long time to stand
+  // around once everyone has found the plant.
+  const [quickSeconds, setQuickSeconds] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem('floreren-game-quick-seconds'))
+      return QUICK_SECONDS_CHOICES.includes(v) ? v : QUICK_SECONDS_DEFAULT
+    } catch { return QUICK_SECONDS_DEFAULT }
   })
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -142,7 +151,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   )
 
   /**
-   * The 60-second introduction: hand someone the QR, they photograph three
+   * The quick introduction: hand someone the QR, they photograph three
    * plants against the clock.
    *
    * It picks only plants we hold photographs of, which is the whole reason it
@@ -153,9 +162,6 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
    */
   function startQuickGame() {
     if (readyPlants.length < QUICK_ROUNDS || creating) return
-    const chosenMaps = allMaps.filter((m) => selectedMaps.has(m.id))
-    const allIndoor = chosenMaps.length > 0
-      && chosenMaps.every((m) => m.map_type === 'indoor')
     // The backend rejects more than MAX_SELECTABLE (50) plants, and a garden
     // can hold more ready ones than that. Shuffle before trimming so repeat
     // games draw from the whole collection instead of the same first fifty.
@@ -176,7 +182,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
       // A photo clue also gives away the answer to anyone who recognises it.
       clueMode: 'name',
       pacing: 'race',
-      roundSeconds: allIndoor ? QUICK_SECONDS_INDOOR : QUICK_SECONDS_OUTDOOR,
+      roundSeconds: quickSeconds,
       roundCount: QUICK_ROUNDS,
     })
   }
@@ -216,7 +222,10 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     setCreating(true)
     setError(null)
     try {
-      try { localStorage.setItem('floreren-game-forfeit', forfeit.trim()) } catch { /* private window */ }
+      try {
+        localStorage.setItem('floreren-game-forfeit', forfeit.trim())
+        localStorage.setItem('floreren-game-quick-seconds', String(quickSeconds))
+      } catch { /* private window */ }
       const { join_code } = await gameApi.create({
         mapIds: [...selectedMaps], forfeit: forfeit.trim() || undefined, ...opts,
       })
@@ -330,6 +339,24 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
                   : t.game.quickNotEnough.replace('{count}', String(QUICK_ROUNDS))}
               </p>
             )}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-text-muted">{t.game.roundLength}</p>
+              <div className="flex gap-1.5">
+                {QUICK_SECONDS_CHOICES.map((sec) => (
+                  <button
+                    key={sec}
+                    onClick={() => setQuickSeconds(sec)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                      quickSeconds === sec
+                        ? 'bg-primary text-white border-primary'
+                        : 'border-border text-text-muted'
+                    }`}
+                  >
+                    {sec < 60 ? `${sec}s` : `${sec / 60}m`}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={startQuickGame}
               // Same gate as the manual create button: POST /games is an
