@@ -417,3 +417,146 @@ async def test_a_host_paced_round_has_no_clock_to_race(
 
     assert resp.json()["speed_bonus"] == 0
     assert resp.json()["points_awarded"] == 150
+
+
+# ── Variety and speed ────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_a_new_game_avoids_the_plants_the_last_one_used(
+    client, seeded_db, auth_header, no_embeds
+):
+    """`random.sample` has no memory. With eight photo-ready plants and three
+    rounds the chance of a repeat next game is 82% — fair dice that still feel
+    broken. Six plants, two games: the second must reuse none of the first."""
+    await create_game_schema(seeded_db)
+    await seed_map(seeded_db, 10, "Garden", "outdoor")
+    await seed_plants(seeded_db, 10, [101, 102, 103, 104, 105, 106])
+    ids = [101, 102, 103, 104, 105, 106]
+
+    async def play() -> set[str]:
+        resp = await client.post("/api/games", headers=auth_header, json={
+            "map_ids": [10], "plant_ids": ids, "clue_mode": "name", "round_count": 3})
+        code = resp.json()["join_code"]
+        state = (await client.get(f"/api/games/{code}", headers=auth_header)).json()
+        return {r["plant_name_nl"] for r in state["rounds"]}
+
+    first = await play()
+    second = await play()
+
+    assert len(first) == 3 and len(second) == 3
+    assert first & second == set(), "the previous hunt's plants should sit this one out"
+
+
+@pytest.mark.asyncio
+async def test_a_pool_too_small_to_avoid_repeats_still_starts(
+    client, seeded_db, auth_header, no_embeds
+):
+    """A repeat is a mild disappointment; refusing to start ends the party."""
+    await _world(seeded_db)  # exactly three plants
+    ids = [101, 102, 103]
+
+    for _ in range(2):
+        resp = await client.post("/api/games", headers=auth_header, json={
+            "map_ids": [10], "plant_ids": ids, "clue_mode": "name"})
+        assert resp.status_code == 201, resp.text
+
+
+@pytest.mark.asyncio
+async def test_a_scan_embeds_the_photo_once_not_twice(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """The worker returns an embedding for the photo it just identified. Posting
+    the same image back to /embed-image made the GPU do it again — and both
+    calls queue behind one lock, so it doubled every guest's wait."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+
+    from routers.plant_id import IdentifyResponse
+
+    async def fake_identify(images, db, lang="nl", household_id=None):
+        return IdentifyResponse(
+            candidates=[], confidence="no_match", low_confidence=True,
+            source="bioclip", query_embedding_bytes=b"\x00" * 2048,
+        )
+
+    extra_embeds = []
+
+    async def loud_embed(_b):
+        extra_embeds.append("embed")
+        return None
+
+    monkeypatch.setattr("routers.plant_id._bioclip_identify", fake_identify)
+    monkeypatch.setattr(game_router, "_embed_bytes", loud_embed)
+
+    resp = await client.post(
+        f"/api/games/{code}/scan", headers=auth_header,
+        files={"image": ("x.jpg", b"jpegbytes", "image/jpeg")},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert extra_embeds == [], "identify already paid for this embedding"
+
+
+@pytest.mark.asyncio
+async def test_the_second_embed_still_happens_when_identify_gives_nothing(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """The optimisation must not cost us the embedding on the PlantNet path or
+    against a worker too old to send one."""
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+
+    async def no_identify(images, db, lang="nl", household_id=None):
+        return None
+
+    called = []
+
+    async def counting_embed(_b):
+        called.append("embed")
+        return None
+
+    monkeypatch.setattr("routers.plant_id._bioclip_identify", no_identify)
+    monkeypatch.setattr(game_router, "_embed_bytes", counting_embed)
+
+    await client.post(
+        f"/api/games/{code}/scan", headers=auth_header,
+        files={"image": ("x.jpg", b"jpegbytes", "image/jpeg")},
+    )
+
+    assert called == ["embed"], "no embedding from identify means we must fetch one"
+
+
+@pytest.mark.asyncio
+async def test_missing_references_are_embedded_concurrently(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """Fifteen plants with no stored embedding used to mean fifteen worker
+    round-trips one after another while the host watched a spinner."""
+    import asyncio as aio
+
+    await _world(seeded_db)
+    in_flight = 0
+    peak = 0
+
+    async def slow_embed(_url):
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await aio.sleep(0.02)
+        in_flight -= 1
+        return None
+
+    monkeypatch.setattr(game_router, "_embed_url", slow_embed)
+    monkeypatch.setattr(game_router, "_embed_bytes", lambda _b: _none())
+
+    resp = await client.post("/api/games", headers=auth_header, json={
+        "map_ids": [10], "plant_ids": [101, 102, 103], "clue_mode": "name"})
+
+    assert resp.status_code == 201, resp.text
+    assert peak > 1, "the live embeds should overlap, not queue"
+
+
+async def _none():
+    return None

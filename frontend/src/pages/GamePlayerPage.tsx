@@ -64,13 +64,31 @@ export default function GamePlayerPage() {
     }
   }, [code])
 
+  // Poll only while someone is looking. A guest walking the garden with the
+  // phone in a pocket kept asking for game state every two seconds; across a
+  // party that is most of the backend's load coming from screens nobody can
+  // see. Coming back polls once immediately, so you never sit a round behind.
   useEffect(() => {
-    poll()
     // Race rounds turn over on a deadline, so poll a little faster than the
     // host-paced game needs — the transition should feel immediate.
     const interval = state?.session.pacing === 'race' ? 2000 : 3000
-    const id = setInterval(poll, interval)
-    return () => clearInterval(id)
+    let id: number | undefined
+    const stop = () => {
+      if (id !== undefined) window.clearInterval(id)
+      id = undefined
+    }
+    const start = () => {
+      stop()
+      poll()
+      id = window.setInterval(poll, interval)
+    }
+    const onVisibility = () => (document.hidden ? stop() : start())
+    start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [poll, state?.session.pacing])
 
   async function handleCapture(blob: Blob) {

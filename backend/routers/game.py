@@ -12,6 +12,7 @@ identify path a guest can reach. Grading is deliberately forgiving; see
 `services/game_matching.py` for why.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -290,6 +291,59 @@ async def _gather_references(db, plant: dict) -> list[str]:
             encoded.append(encode_vector(live))
 
     return encoded
+
+
+async def _stored_references(db, plant: dict) -> list[str]:
+    """The DB half of `_gather_references` — no worker call, no HTTP.
+
+    Split out because the two halves have opposite constraints. The queries
+    must stay sequential: a request holds ONE asyncpg connection, and asyncpg
+    raises "another operation is in progress" if two queries share it. The live
+    embed is HTTP and is the slow part, so it wants to run concurrently. Mixing
+    them in one coroutine makes the fast half hostage to the slow one.
+    """
+    encoded: list[str] = []
+    anchor_rows = await db.execute_fetchall(
+        "SELECT embedding FROM user_confirmed_embeddings WHERE source_plant_id = ?",
+        (plant["id"],),
+    )
+    photo_rows = await db.execute_fetchall(
+        "SELECT embedding FROM plant_photos WHERE plant_id = ? AND embedding IS NOT NULL "
+        "ORDER BY taken_at DESC",
+        (plant["id"],),
+    )
+    for row in [*anchor_rows, *photo_rows]:
+        raw = dict(row).get("embedding")
+        if isinstance(raw, memoryview):
+            raw = bytes(raw)
+        if as_vector(raw) is not None:
+            encoded.append(encode_vector(raw))
+        if len(encoded) >= _MAX_REFERENCES:
+            break
+    return encoded
+
+
+async def _references_for_all(db, plants: list[dict]) -> dict[int, list[str]]:
+    """References for every plant in one pass: DB first, then the live embeds
+    for whatever came back empty — all of those at once.
+
+    A fifteen-round hunt whose plants have never been photographed used to make
+    fifteen worker round-trips one after another while the host stared at a
+    spinner. They are independent requests; nothing was gaining from the queue.
+    """
+    refs = {p["id"]: await _stored_references(db, p) for p in plants}
+
+    missing = [p for p in plants if not refs[p["id"]]]
+    if missing:
+        live = await asyncio.gather(
+            *(_embed_url(p.get("photo_path") or "") for p in missing),
+            return_exceptions=True,
+        )
+        for plant, vector in zip(missing, live):
+            if isinstance(vector, BaseException) or not vector:
+                continue
+            refs[plant["id"]] = [encode_vector(vector)]
+    return refs
 
 
 # ── Session state ────────────────────────────────────────────────────────────
@@ -673,7 +727,24 @@ async def create_game(
 
     k = min(body.round_count or len(valid_plants), MAX_ROUNDS, len(valid_plants))
     k = max(k, 3)
-    chosen = random.sample(valid_plants, k)
+    # Variety. `random.sample` has no memory, so with a small pool of
+    # photo-ready plants the same handful kept coming back: at eight eligible
+    # plants and three rounds, the chance of a repeat next game is 82%. That is
+    # the dice being fair, and it still feels broken.
+    recent_rows = await db.execute_fetchall(
+        """SELECT gr.plant_id
+             FROM game_rounds gr
+             JOIN game_sessions gs ON gs.id = gr.session_id
+            WHERE gs.host_account_id = ?
+            ORDER BY gs.created_at DESC, gr.round_index
+            LIMIT ?""",
+        (actor["account_id"], k * 2),
+    )
+    recent = {dict(r)["plant_id"] for r in recent_rows}
+    fresh = [p for p in valid_plants if p["id"] not in recent]
+    # Fall back the moment the pool is too small to fill a game. A repeat is a
+    # mild disappointment; refusing to start is the end of the party.
+    chosen = random.sample(fresh if len(fresh) >= k else valid_plants, k)
 
     for _ in range(10):
         code = _make_code()
@@ -715,6 +786,12 @@ async def create_game(
         (session_id, actor["account_id"]),
     )
 
+    # Gathered up front so the live embeds (HTTP, and the slow part) run
+    # concurrently instead of once per round in sequence.
+    all_references = (
+        {} if clue_mode == "logbook" else await _references_for_all(db, chosen)
+    )
+
     for i, p in enumerate(chosen):
         target = p.get("latin_name") or p.get("common_name_nl") or p["name"]
         name_nl = p.get("common_name_nl") or p["name"]
@@ -733,7 +810,7 @@ async def create_game(
         # references — skip the (slow) embedding gather entirely.
         references: list[str] = []
         if clue_mode != "logbook":
-            references = await _gather_references(db, p)
+            references = all_references.get(p["id"], [])
 
         await db.execute(
             """INSERT INTO game_rounds
@@ -1318,6 +1395,9 @@ async def scan_answer(
     # the round on its own, so a BioCLIP worker outage still leaves name
     # matching working and vice versa.
     candidates: list[str] = []
+    # Bound before the try: the except below swallows the failure, and reading
+    # an unbound local afterwards would turn a worker hiccup into a 500.
+    result = None
     try:
         from routers.plant_id import _bioclip_identify
         result = await _bioclip_identify([image_bytes], db, lang)
@@ -1334,7 +1414,15 @@ async def scan_answer(
         except Exception as exc:
             logger.warning("Game scan PlantNet fallback failed: %s", exc)
 
-    scan_embedding = await _embed_bytes(image_bytes)
+    # The worker already computed an embedding for this exact photo during
+    # /identify and sends it back; re-posting the image to /embed-image made it
+    # do the same GPU work twice. Both calls queue behind one lock on the
+    # worker, so at a party that doubled everyone's wait. Fall back to the
+    # second call only when identify produced nothing (PlantNet path, or a
+    # worker too old to send the embedding).
+    scan_embedding = getattr(result, "query_embedding_bytes", None) if result else None
+    if scan_embedding is None:
+        scan_embedding = await _embed_bytes(image_bytes)
 
     is_correct, kind = await _grade(db, rnd, candidates, scan_embedding)
     result = await _record_answer(
