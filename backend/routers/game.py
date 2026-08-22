@@ -969,6 +969,28 @@ async def delete_game(
 
 # ── Answering ────────────────────────────────────────────────────────────────
 
+async def _locked_out(db, round_id: int, player_id: int) -> bool:
+    """Has this player used up their scans on this plant?
+
+    Checked BEFORE any identification work, not just inside `_record_answer`.
+    A refused scan is cheap to answer and expensive to compute: the identify
+    path runs a GPU inference on the BioCLIP worker (serialized behind one
+    lock, so it queues behind every other guest's legitimate scan), may fall
+    back to PlantNet's rate-limited API, and then embeds the image a second
+    time. At a party, a handful of locked-out guests retrying would slow the
+    hunt down for everyone still playing.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT is_correct, wrong_attempts FROM game_answers "
+        "WHERE round_id = ? AND player_id = ?",
+        (round_id, player_id),
+    )
+    if not rows:
+        return False
+    row = dict(rows[0])
+    return (not row["is_correct"]) and int(row["wrong_attempts"] or 0) >= MAX_WRONG_ATTEMPTS
+
+
 async def _record_answer(
     db, session: dict, round_id: int, player_id: int,
     scanned: str, is_correct: bool, match_kind: str | None = None,
@@ -1212,6 +1234,16 @@ async def scan_answer(
         raise HTTPException(400, "Unknown image format")
 
     rnd = await _current_round(db, session)
+
+    # Refuse before identifying anything — see `_locked_out`. The client
+    # already hides the camera from a locked player, but a stale tab or a
+    # reopened PWA can still reach this, and the cost lands on the shared GPU.
+    if await _locked_out(db, rnd["id"], me["id"]):
+        return {
+            "is_correct": False, "points_awarded": 0, "finish_rank": None,
+            "match_kind": None, "wrong_attempts": MAX_WRONG_ATTEMPTS,
+            "attempts_left": 0, "locked": True, "candidates": [],
+        }
 
     # Two independent signals, gathered in whatever order succeeds: the
     # identifier's species guess, and the raw photo embedding. Either can carry

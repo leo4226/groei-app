@@ -245,3 +245,41 @@ async def test_a_photo_clue_never_ships_the_species_name(
 
     assert "target_species" not in state["current_clue"]
     assert "Monstera deliciosa" not in str(state["rounds"])
+
+
+@pytest.mark.asyncio
+async def test_a_locked_scan_never_reaches_the_identifier(
+    client, seeded_db, auth_header, monkeypatch
+):
+    """The refusal has to come BEFORE the identify call, not after.
+
+    Identifying costs a GPU inference on the BioCLIP worker, which serializes
+    every request behind one lock, plus a possible PlantNet call against a
+    rate-limited quota. At a party a few locked-out guests retrying would queue
+    up in front of everyone still legitimately playing.
+    """
+    await _world(seeded_db)
+    code = await _create(client, auth_header)
+    guest = await _guest(client, code)
+    await client.post(f"/api/games/{code}/start", headers=auth_header)
+
+    for name in ("Mis", "Mis nog eens"):
+        await client.post(f"/api/games/{code}/answer", headers=guest,
+                          json={"scanned_species": name})
+
+    called = []
+
+    async def loud_embed(_b):
+        called.append("embed")
+        return None
+
+    monkeypatch.setattr(game_router, "_embed_bytes", loud_embed)
+
+    resp = await client.post(
+        f"/api/games/{code}/scan", headers=guest,
+        files={"image": ("x.jpg", b"jpegbytes", "image/jpeg")},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["locked"] is True
+    assert called == [], "a locked player's photo must not reach the GPU at all"
