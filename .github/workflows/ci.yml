@@ -103,6 +103,11 @@ jobs:
       - run: npm run build
       - name: Layout guard (320 / 360 / 393 / 430 / desktop)
         run: node tests/visual/layout-check.mjs
+      # Widths were only half the story: the game screens fitted across, and
+      # ran off the BOTTOM of an iPhone, so the host had to scroll to reach
+      # "Ronde overslaan" with empty space above it.
+      - name: Game vertical-fit guard (iPhone heights)
+        run: node tests/visual/game-fit-check.mjs
 
   migrations:
     name: Backend · migrations

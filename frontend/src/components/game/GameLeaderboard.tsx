@@ -71,7 +71,13 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 max-w-sm mx-auto space-y-6">
+    // Same shape as the lobby, and for the same reason: the scoreboard and the
+    // per-round breakdown both grow with the size of the game, so a ten-round
+    // hunt with six players pushes "Nieuw spel starten" off the bottom. The
+    // results may scroll; the way out of the screen may not.
+    <div className="h-dvh bg-bg flex flex-col p-6 max-w-sm mx-auto">
+     <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+      <div className="min-h-full flex flex-col items-center justify-center space-y-6">
       <div className="text-center space-y-1">
         <div className="flex justify-center mb-2 text-amber-500"><Glyph name="trophy" size={44} /></div>
         <h1 className="text-2xl font-bold text-text">{t.game.gameOver}</h1>
@@ -132,7 +138,10 @@ export default function GameLeaderboard({ state, isHost, onPlayAgain, onBackToMa
         </div>
       )}
 
-      <div className="w-full space-y-3">
+      </div>
+     </div>
+
+      <div className="w-full space-y-3 flex-shrink-0 pt-4">
         <button
           onClick={shareText}
           className="w-full py-2.5 rounded-xl border border-border text-sm text-text-muted hover:bg-surface transition-colors flex items-center justify-center gap-2"
