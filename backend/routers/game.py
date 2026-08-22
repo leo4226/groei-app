@@ -526,6 +526,60 @@ async def _build_state(db, code: str, actor: GameActor) -> dict:
     }
 
 
+# ── Readiness ────────────────────────────────────────────────────────────────
+
+# NOTE: this lettered path must stay ABOVE `GET /games/{code}` or FastAPI
+# matches the parameter route first and answers "Game not found" — the same
+# trap that made `POST /plants/bulk-archive` return 405 (see CLAUDE.md).
+@router.get("/games/plant-readiness")
+async def plant_readiness(
+    map_ids: str = Query("", description="Comma-separated map ids"),
+    db=Depends(db_dep),
+    actor: GameActor = Depends(game_mutation_actor),
+):
+    """Which plants on these maps can be graded by their own photographs.
+
+    A plant is "ready" when we hold at least one stored embedding for it —
+    exactly the two sources `_gather_references` reads first, and deliberately
+    NOT its profile photo: that path needs a live embed from the BioCLIP
+    worker, so it is unavailable precisely when the worker is asleep, which is
+    when a party is most likely to be happening.
+
+    Readiness matters because grading falls back to species-name matching for a
+    plant with no references, and name matching cannot tell two plants of a
+    species apart — the failure that graded a red climber as a Scindapsus. A
+    hunt built only from ready plants is decided by photographs every round.
+    """
+    if actor["is_guest"]:
+        raise HTTPException(403, "Guests cannot inspect the catalog")
+
+    try:
+        wanted = [int(v) for v in map_ids.split(",") if v.strip()]
+    except ValueError:
+        raise HTTPException(400, "map_ids must be comma-separated integers")
+    if not wanted:
+        return {"ready_plant_ids": [], "total": 0}
+
+    placeholders = ",".join("?" for _ in wanted)
+    rows = await db.execute_fetchall(
+        f"""SELECT DISTINCT p.id
+              FROM plants p
+              JOIN maps m ON m.id = p.map_id
+             WHERE p.map_id IN ({placeholders})
+               AND m.household_id = ?
+               AND p.is_active = 1
+               AND (
+                   EXISTS (SELECT 1 FROM user_confirmed_embeddings uce
+                            WHERE uce.source_plant_id = p.id)
+                OR EXISTS (SELECT 1 FROM plant_photos ph
+                            WHERE ph.plant_id = p.id AND ph.embedding IS NOT NULL)
+               )""",
+        (*wanted, actor["household_id"]),
+    )
+    ready = [dict(r)["id"] for r in rows]
+    return {"ready_plant_ids": ready, "total": len(ready)}
+
+
 # ── Create ───────────────────────────────────────────────────────────────────
 
 @router.post("/games", status_code=201)

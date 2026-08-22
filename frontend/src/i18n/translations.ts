@@ -2299,6 +2299,12 @@ export type Translations = {
     pacingRaceHint: string
     pacingHostHint: string
     roundLength: string
+    quickTitle: string
+    quickSubtitle: string
+    quickStart: string
+    quickReadyCount: string
+    quickNotEnough: string
+    photoReady: string
     clueModeNameHint: string
     clueModePhotoHint: string
     clueModeLogbookHint: string

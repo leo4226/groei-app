@@ -205,6 +205,15 @@ export const gameApi = {
       },
     }),
 
+  /**
+   * Which plants on these maps have stored photo embeddings, and so can be
+   * graded on their own photographs rather than on a species-name guess.
+   */
+  plantReadiness: (mapIds: number[]) =>
+    gameFetch<{ ready_plant_ids: number[]; total: number }>(
+      'GET', `/games/plant-readiness?map_ids=${mapIds.join(',')}`,
+    ),
+
   /** Unauthenticated peek, so the join screen can name the game before signup. */
   preview: (code: string) =>
     gameFetch<GamePreview>('GET', `/games/${code}/preview`, { auth: false }),
