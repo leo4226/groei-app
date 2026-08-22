@@ -57,7 +57,14 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   const [error, setError] = useState<string | null>(null)
   // Plants we hold photo embeddings for. Null while unknown — an empty Set
   // would claim "none are ready", which is a different and alarming statement.
-  const [readyIds, setReadyIds] = useState<Set<number> | null>(null)
+  // Plants we hold photo embeddings for, tagged with the map selection they
+  // describe. Carrying the tag rather than a bare Set is what makes a stale
+  // answer unusable instead of merely unlikely: toggling a map leaves the old
+  // ids in state until a second request lands, and acting on them would build
+  // a hunt whose plants no longer belong to the maps being submitted.
+  const [ready, setReady] = useState<{ key: string; ids: Set<number> } | null>(null)
+  const mapKey = useMemo(() => [...selectedMaps].sort((a, b) => a - b).join(','), [selectedMaps])
+  const readyIds = ready?.key === mapKey ? ready.ids : null
 
   // Which maps are available to pull plants from.
   useEffect(() => {
@@ -106,6 +113,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   useEffect(() => {
     const ids = [...selectedMaps]
     if (ids.length === 0) return
+    const key = mapKey
     let cancelled = false
     // Readiness is an enhancement, so nothing it does may take the sheet down
     // with it. `.catch()` alone is not enough — it only covers a REJECTED
@@ -114,11 +122,13 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     // That is not theoretical: it rendered this sheet as an empty box.
     Promise.resolve()
       .then(() => gameApi.plantReadiness(ids))
-      .then((r) => { if (!cancelled) setReadyIds(new Set(r.ready_plant_ids)) })
+      .then((r) => {
+        if (!cancelled) setReady({ key, ids: new Set(r.ready_plant_ids) })
+      })
       // null means "unknown", and every badge and hint below says nothing then.
-      .catch(() => { if (!cancelled) setReadyIds(null) })
+      .catch(() => { if (!cancelled) setReady(null) })
     return () => { cancelled = true }
-  }, [selectedMaps])
+  }, [selectedMaps, mapKey])
 
   const readyPlants = useMemo(
     () => (readyIds ? plants.filter((p) => readyIds.has(p.id)) : []),
@@ -298,7 +308,9 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
                 </p>
               </div>
             </div>
-            {readyIds !== null && (
+            {/* Silent while either dataset is in flight — a count drawn from a
+                half-refreshed selection would be a wrong number, not a stale one. */}
+            {readyIds !== null && !loading && (
               <p className="text-xs text-text-muted">
                 {readyPlants.length >= QUICK_ROUNDS
                   ? t.game.quickReadyCount.replace('{count}', String(readyPlants.length))
@@ -309,7 +321,10 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
               onClick={startQuickGame}
               // Same gate as the manual create button: POST /games is an
               // editor write, so a viewer must not get a one-tap path past it.
-              disabled={creating || readyPlants.length < QUICK_ROUNDS || writeDisabled}
+              // `loading` matters as much as the count: the plant list and the
+              // readiness answer arrive from two independent requests, and
+              // starting between them submits the new maps with the old pool.
+              disabled={creating || loading || readyPlants.length < QUICK_ROUNDS || writeDisabled}
               title={writeDisabled ? t.settings.onlyEditorsCanChange : undefined}
               className="w-full py-2.5 rounded-lg bg-primary text-white font-semibold text-sm disabled:opacity-40 transition-opacity"
             >
