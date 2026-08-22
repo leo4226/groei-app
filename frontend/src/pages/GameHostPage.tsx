@@ -51,11 +51,29 @@ export default function GameHostPage() {
     }
   }, [code])
 
+  // Poll only while someone is looking. A phone face-down on the terrace kept
+  // asking for game state every two seconds; with nine players that is most of
+  // the load on the backend coming from screens nobody can see. Coming back
+  // polls once immediately, so you never sit a round behind.
   useEffect(() => {
-    poll()
     const interval = state?.session.pacing === 'race' ? 2000 : 3000
-    const id = setInterval(poll, interval)
-    return () => clearInterval(id)
+    let id: number | undefined
+    const start = () => {
+      stop()
+      poll()
+      id = window.setInterval(poll, interval)
+    }
+    const stop = () => {
+      if (id !== undefined) window.clearInterval(id)
+      id = undefined
+    }
+    const onVisibility = () => (document.hidden ? stop() : start())
+    start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [poll, state?.session.pacing])
 
   const joinUrl = `${window.location.origin}/game?code=${code}`

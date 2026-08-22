@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../context/LanguageContext'
 import { maps as mapsApi } from '../../api/client'
@@ -70,14 +70,15 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Plants we hold photo embeddings for. Null while unknown — an empty Set
-  // would claim "none are ready", which is a different and alarming statement.
   // Plants we hold photo embeddings for, tagged with the map selection they
   // describe. Carrying the tag rather than a bare Set is what makes a stale
   // answer unusable instead of merely unlikely: toggling a map leaves the old
   // ids in state until a second request lands, and acting on them would build
   // a hunt whose plants no longer belong to the maps being submitted.
   const [ready, setReady] = useState<{ key: string; ids: Set<number> } | null>(null)
+  // Per-map plant lists, kept for the lifetime of the sheet. A ref, not state:
+  // writing it must not itself trigger the effect that fills it.
+  const plantCache = useRef(new Map<number, GamePlant[]>())
   const mapKey = useMemo(() => [...selectedMaps].sort((a, b) => a - b).join(','), [selectedMaps])
   const readyIds = ready?.key === mapKey ? ready.ids : null
 
@@ -88,8 +89,12 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
       .catch(() => setAllMaps([]))
   }, [])
 
-  // Load plants for every selected map. Maps are few and the payloads small,
-  // so re-fetching the whole selection on each toggle keeps this simple.
+  // Load plants for every selected map, fetching each map at most once.
+  //
+  // It used to re-fetch the WHOLE selection on every toggle, so ticking a
+  // second map re-downloaded the first, and unticking it re-downloaded it again
+  // on the way back. With a few hundred plants that is a visible stall on the
+  // one screen a host uses while guests are waiting.
   useEffect(() => {
     const chosen = allMaps.filter((m) => selectedMaps.has(m.id))
     // Before the map list arrives, fall back to the map we were opened from.
@@ -98,9 +103,11 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
       : [{ id: mapId, slug: mapSlug, name: '', map_type: 'outdoor' as const }]
 
     let cancelled = false
-    setLoading(true)
+    const missing = targets.filter((m) => !plantCache.current.has(m.id))
+    // Only show the spinner when something actually has to travel.
+    if (missing.length > 0) setLoading(true)
     Promise.all(
-      targets.map((m) =>
+      missing.map((m) =>
         mapsApi.plants(m.slug)
           .then((ps) => ps
             .filter((p) => p.photo_path)
@@ -110,11 +117,14 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
               mapName: m.name,
               mapType: (m.map_type ?? 'outdoor') as 'outdoor' | 'indoor',
             })))
+          // A failed map is cached as empty on purpose: retrying it on every
+          // toggle would hammer a broken endpoint for the whole session.
           .catch(() => [] as GamePlant[]),
       ),
     ).then((results) => {
       if (cancelled) return
-      const merged = results.flat()
+      missing.forEach((m, i) => plantCache.current.set(m.id, results[i]))
+      const merged = targets.flatMap((m) => plantCache.current.get(m.id) ?? [])
       setPlants(merged)
       // Drop selections whose map was just deselected.
       const available = new Set(merged.map((p) => p.id))

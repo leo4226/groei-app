@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from services.deferred import fire_and_forget
@@ -339,6 +339,11 @@ class IdentifyResponse(BaseModel):
     # we can record what the user actually kept (#866 phase 3). None when the
     # log write failed — never a reason to fail the identify itself.
     identify_id: int | None = None
+    # The raw float32[512] the worker computed for THIS photo, when it sent one.
+    # Excluded from the HTTP response — 2KB of no use to a browser — but kept on
+    # the object so an in-process caller need not ask the GPU to embed the same
+    # image a second time. The game's scan path was doing exactly that.
+    query_embedding_bytes: bytes | None = Field(default=None, exclude=True)
 
 
 def _clean_common_names(names: list[str]) -> list[str]:
@@ -598,6 +603,11 @@ async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl",
     user_ref_ms = 0.0
     worker_url = _BIOCLIP_WORKER_URL
     matches = None
+    # Initialised here, not only inside the branch that decodes it: an older
+    # worker (or the local fallback) sends no embedding, and reading an unbound
+    # local at the return would turn a missing optimisation into a NameError on
+    # every identify.
+    query_embedding = None
 
     if worker_url:
         # Remote worker: POST image(s), get species_id + confidence back
@@ -784,6 +794,9 @@ async def _bioclip_identify(image_bytes_list: list[bytes], db, lang: str = "nl",
         confidence=confidence,
         low_confidence=(confidence != "high"),
         source="bioclip",
+        query_embedding_bytes=(
+            query_embedding.tobytes() if query_embedding is not None else None
+        ),
     )
 
 
