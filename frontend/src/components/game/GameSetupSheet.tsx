@@ -107,10 +107,15 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
     const ids = [...selectedMaps]
     if (ids.length === 0) return
     let cancelled = false
-    gameApi.plantReadiness(ids)
+    // Readiness is an enhancement, so nothing it does may take the sheet down
+    // with it. `.catch()` alone is not enough — it only covers a REJECTED
+    // promise, and a call that throws synchronously (a stubbed client, a
+    // module that failed to load) escapes the effect and unmounts the tree.
+    // That is not theoretical: it rendered this sheet as an empty box.
+    Promise.resolve()
+      .then(() => gameApi.plantReadiness(ids))
       .then((r) => { if (!cancelled) setReadyIds(new Set(r.ready_plant_ids)) })
-      // A failed readiness call must not block the sheet: null means "unknown",
-      // and every badge and hint below is written to say nothing in that case.
+      // null means "unknown", and every badge and hint below says nothing then.
       .catch(() => { if (!cancelled) setReadyIds(null) })
     return () => { cancelled = true }
   }, [selectedMaps])
