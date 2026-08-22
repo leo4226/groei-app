@@ -31,6 +31,7 @@ export default function GameHostPage() {
   const [answerRevealed, setAnswerRevealed] = useState(false)
   const [quizSubmitting, setQuizSubmitting] = useState(false)
   const [awarding, setAwarding] = useState<number | null>(null)
+  const [togglingPlaying, setTogglingPlaying] = useState(false)
   const activeLang = useFloreren((s) => {
     const user = s.users.find((u) => u.id === s.activeUserId)
     return user?.language === 'en' ? 'en' : 'nl'
@@ -89,6 +90,20 @@ export default function GameHostPage() {
       // Already-correct players 400 here; the poll below resyncs regardless.
     } finally {
       setAwarding(null)
+    }
+  }
+
+  async function togglePlaying() {
+    if (!code || togglingPlaying) return
+    setTogglingPlaying(true)
+    try {
+      const playing = state?.my_player_id != null
+      setState(playing ? await gameApi.leave(code) : await gameApi.join(code))
+    } catch {
+      // The server refuses to empty a game; the next poll resyncs either way.
+      await poll()
+    } finally {
+      setTogglingPlaying(false)
     }
   }
 
@@ -214,6 +229,21 @@ export default function GameHostPage() {
           ))}
         </div>
 
+        {/* Running the party is not the same as playing it: a host holding the
+            QR phone can see the answer behind the peek toggle, so being on the
+            scoreboard is neither fair nor interesting. Only offered once
+            someone else has joined — a hunt with nobody in it has nothing to
+            grade, and the server refuses it anyway. */}
+        {state.players.length > 1 && (
+          <button
+            onClick={togglePlaying}
+            disabled={togglingPlaying}
+            className="text-xs text-text-muted underline underline-offset-4 disabled:opacity-50"
+          >
+            {state.my_player_id != null ? t.game.sitOut : t.game.joinIn}
+          </button>
+        )}
+
         {/* Latecomers can join after the start, so this is a nudge, not a gate. */}
         {state.players.length < 2 && (
           <p className="text-xs text-text-muted text-center max-w-xs">
@@ -260,6 +290,10 @@ export default function GameHostPage() {
   const totalRounds = state.session.total_rounds
   const foundCount = state.players.filter((p) => p.answered_current_round).length
   const hostAnswered = Boolean(state.my_answer?.is_correct)
+  // A host who has stepped out has no player row, so every control that would
+  // scan or score on their behalf has to disappear with it — otherwise the
+  // scan button 403s with "You have not joined this game".
+  const hostIsPlaying = state.my_player_id != null
   const photoMode = state.session.clue_mode === 'photo'
   const logbookMode = state.session.clue_mode === 'logbook'
   const isEN = t.locale?.startsWith('en') ?? false
@@ -353,7 +387,7 @@ export default function GameHostPage() {
         )}
 
         {/* Host scan — the host plays too (scan modes only) */}
-        {logbookMode ? null : hostAnswered ? (
+        {logbookMode || !hostIsPlaying ? null : hostAnswered ? (
           <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-500/10 text-green-600 text-sm font-semibold">
             <Glyph name="check" size={16} strokeWidth={2.4} /> {t.game.correctScan}
           </div>

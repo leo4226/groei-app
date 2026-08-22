@@ -241,6 +241,9 @@ export const gameApi = {
 
   join: (code: string) => gameFetch<GameState>('POST', `/games/${code}/join`, { code }),
 
+  /** Step out of the hunt while staying its host. Reversed by `join`. */
+  leave: (code: string) => gameFetch<GameState>('POST', `/games/${code}/leave`, { code }),
+
   joinAsGuest: (code: string, name: string) =>
     gameFetch<GuestJoinResult>('POST', `/games/${code}/join-guest`, {
       body: { name },

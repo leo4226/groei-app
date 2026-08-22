@@ -2299,6 +2299,8 @@ export type Translations = {
     pacingRaceHint: string
     pacingHostHint: string
     roundLength: string
+    sitOut: string
+    joinIn: string
     forfeitSectionLabel: string
     forfeitPlaceholder: string
     forfeitHint: string
