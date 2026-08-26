@@ -10,9 +10,12 @@ import {
 } from './quickSheetCareChips'
 
 const NOW = new Date(2026, 7, 14, 10, 0)
-const iso = (offsetDays: number) =>
-  new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() + offsetDays)
-    .toISOString().slice(0, 10)
+const iso = (offsetDays: number) => {
+  const date = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() + offsetDays)
+  // next_due is a calendar-date field. Serializing a local midnight as UTC
+  // moves it to the previous date in time zones east of Greenwich.
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+}
 
 const sched = (care_type: string, dueIn: number, is_active = true) =>
   ({ care_type, next_due: iso(dueIn), is_active }) as never
