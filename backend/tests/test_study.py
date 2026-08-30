@@ -236,3 +236,58 @@ async def test_learning_is_personal_not_shared(client, study_db, auth_header):
 
     assert dict(rows[0])["account_id"] == 1
     assert dict(rows[0])["box"] == 1
+
+
+# ── Review findings (Codex, PR #970) ─────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_a_keystroke_does_not_promote_a_card(client, study_db, auth_header):
+    """The quiz's matcher accepts any substring and token prefix — verified: it
+    says "g" is Gatenplant, and so is "ant". In a quiz that is a generous mark
+    on a one-shot question. In a schedule it moves a card to a longer interval
+    on the strength of one keystroke, which makes the schedule a lie."""
+    card_id = (await _next(client, auth_header))["card"]["card_id"]
+
+    for stab in ("g", "gr", "gro", "ant"):
+        resp = await client.post("/api/study/answer", headers=auth_header,
+                                 json={"card_id": card_id, "answer": stab})
+        assert resp.json()["correct"] is False, f"{stab!r} identifies nothing"
+        assert resp.json()["box"] == 0
+
+
+@pytest.mark.asyncio
+async def test_a_genus_on_its_own_is_still_a_real_answer(
+    client, study_db, auth_header
+):
+    """The floor must not swallow good answers: naming the genus of a plant
+    whose full name is 'Monstera deliciosa' is knowing the plant."""
+    await study_db.execute("DELETE FROM plant_discoveries")
+    await study_db.commit()
+
+    card_id = (await _next(client, auth_header))["card"]["card_id"]
+    resp = await client.post("/api/study/answer", headers=auth_header,
+                             json={"card_id": card_id, "answer": "monstera"})
+
+    assert resp.json()["correct"] is True
+
+
+@pytest.mark.asyncio
+async def test_two_overlapping_first_visits_do_not_500(
+    client, study_db, auth_header
+):
+    """The field guide asks for stats while the learner taps through to Study,
+    so both requests can find the same card missing and both insert it. The
+    unique constraint used to turn the loser into a 500 on a screen nobody did
+    anything wrong to reach."""
+    import asyncio as aio
+
+    stats, nxt = await aio.gather(
+        client.get("/api/study/stats", headers=auth_header),
+        client.get("/api/study/next", headers=auth_header),
+    )
+
+    assert stats.status_code == 200, stats.text
+    assert nxt.status_code == 200, nxt.text
+    rows = await study_db.execute_fetchall(
+        "SELECT COUNT(*) AS n FROM study_cards")
+    assert dict(rows[0])["n"] == 4, "one card per item, not two"

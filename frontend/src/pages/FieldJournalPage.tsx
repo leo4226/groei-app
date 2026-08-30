@@ -43,14 +43,21 @@ export default function FieldJournalPage() {
           accent={t.discovery.guideAccent}
           lede={t.discovery.guideLede}
           stats={mastheadStats}
-          actions={canEdit ? (
+          actions={(
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => navigate('/identify')}
-                className="cursor-pointer rounded-full border border-primary bg-primary px-4 py-2 text-[13px] font-medium text-white transition-all hover:bg-primary-dark"
-              >
-                + {t.discovery.identifyWild}
-              </button>
+              {/* Identifying a wild plant writes a discovery, so it stays
+                  editor-only. Learning does not: study progress is per
+                  account and all three study endpoints admit a viewer, so
+                  gating the only link to it behind canEdit would have hidden
+                  the feature from exactly the people it costs nothing. */}
+              {canEdit && (
+                <button
+                  onClick={() => navigate('/identify')}
+                  className="cursor-pointer rounded-full border border-primary bg-primary px-4 py-2 text-[13px] font-medium text-white transition-all hover:bg-primary-dark"
+                >
+                  + {t.discovery.identifyWild}
+                </button>
+              )}
               {/* Recording a find and learning its name are different acts, and
                   the field guide is where you notice you cannot remember. The
                   count is the hook: "7 te herhalen" is a reason to tap. */}
@@ -65,7 +72,7 @@ export default function FieldJournalPage() {
                   : t.study.entryTitle}
               </button>
             </div>
-          ) : undefined}
+          )}
         />
         <div className="px-4 pt-6 sm:px-6">
           <DiscoveriesSection onStats={handleStats} />
