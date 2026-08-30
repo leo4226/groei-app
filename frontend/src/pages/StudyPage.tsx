@@ -22,6 +22,7 @@ export default function StudyPage() {
   const [typed, setTyped] = useState('')
   const [result, setResult] = useState<StudyResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [advancing, setAdvancing] = useState(false)
   const [failed, setFailed] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -38,7 +39,7 @@ export default function StudyPage() {
 
   async function submit(answer: string) {
     const card = state?.card
-    if (!card || submitting) return
+    if (!card || submitting || advancing) return
     setSubmitting(true)
     try {
       setResult(await studyApi.answer(card.card_id, answer))
@@ -50,9 +51,18 @@ export default function StudyPage() {
   }
 
   async function nextCard() {
-    setResult(null)
+    // Clearing `result` before the next card lands would put the OLD card's
+    // controls back on screen — `state` still holds it — so a tap during a
+    // slow request answers the same card_id twice, counting it twice and
+    // promoting it twice. Drop the card first, then the result.
+    setAdvancing(true)
     setTyped('')
-    await load()
+    try {
+      await load()
+      setResult(null)
+    } finally {
+      setAdvancing(false)
+    }
     // Typing mode is useless without focus, and a card at a time means the
     // keyboard should never need a second tap.
     requestAnimationFrame(() => inputRef.current?.focus())
@@ -179,7 +189,9 @@ export default function StudyPage() {
       </div>
 
       <div className="p-6 pt-3 flex-shrink-0">
-        {result ? (
+        {advancing ? (
+          <p className="text-center text-sm text-text-muted py-3">{t.common.loading}</p>
+        ) : result ? (
           <button
             onClick={nextCard}
             className="w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-base"

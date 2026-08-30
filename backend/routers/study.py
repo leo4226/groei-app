@@ -138,9 +138,15 @@ async def _ensure_cards(db, account_id: int, items: list[dict]) -> dict[tuple, d
         key = (item["source"], item["ref_id"])
         if key in cards:
             continue
+        # Two overlapping requests — the field guide's stats call still in
+        # flight when Study opens — both see the card missing and both insert.
+        # The unique constraint then 500s one of them, on a screen the learner
+        # did nothing wrong to reach. Losing the race is fine; the row exists
+        # either way and the refetch below picks it up.
         await db.execute(
             "INSERT INTO study_cards (account_id, source, ref_id, box, due_at) "
-            "VALUES (?, ?, ?, 0, ?)",
+            "VALUES (?, ?, ?, 0, ?) ON CONFLICT (account_id, source, ref_id) "
+            "DO NOTHING",
             (account_id, item["source"], item["ref_id"], now),
         )
     if len(cards) != len(items):
@@ -311,6 +317,12 @@ async def answer_card(
     }
 
 
+# A typed answer must be at least this long, and cover at least this much of
+# the shortest name, before the matcher's verdict is trusted.
+_MIN_ANSWER_CHARS = 4
+_MIN_ANSWER_RATIO = 0.5
+
+
 def _is_correct(given: str, names: dict) -> bool:
     """Forgiving on spelling, strict on which plant.
 
@@ -318,12 +330,30 @@ def _is_correct(given: str, names: dict) -> bool:
     "monstera deliciosa" and is told it is right on one screen must not be told
     it is wrong on the other. An empty answer is "I don't know" — a legitimate
     thing to say, graded as wrong with no spelling argument.
+
+    But that matcher accepts any substring and any token prefix, which is right
+    for a quiz — one shot, points, answer revealed — and wrong here. Verified:
+    it accepts "g" for "Gatenplant", and "ant" too. In a quiz that is a
+    generous mark; in a schedule it promotes a card to a longer interval on the
+    strength of a keystroke, which makes the whole schedule a lie.
+
+    So a length floor comes first: enough characters to be a name, and enough
+    of the shortest accepted name to be THAT name. "monstera" still passes for
+    "Monstera deliciosa" — a genus is a real answer — while "g" and "grote" do
+    not.
     """
-    if not (given or "").strip():
+    said = (given or "").strip()
+    if not said:
         return False
     accepted = [n for n in (names.get("name_nl"), names.get("name_en"),
                             names.get("latin")) if n]
-    return _name_matches(given, accepted)
+    if not accepted:
+        return False
+
+    shortest = min(len(n) for n in accepted)
+    if len(said) < max(_MIN_ANSWER_CHARS, shortest * _MIN_ANSWER_RATIO):
+        return False
+    return _name_matches(said, accepted)
 
 
 @router.get("/study/stats")
