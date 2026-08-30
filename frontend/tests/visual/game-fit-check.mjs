@@ -138,6 +138,11 @@ function scenes(cfg) {
       },
     })],
     ['join screen',         '/game?code=AB12CD', null],
+    // The study page is the same shape — full height, pinned action — so it
+    // has the same way of going wrong. Two states, because the card view and
+    // the caught-up view have very different heights.
+    ['study · card',        '/study',            null],
+    ['study · caught up',   '/study?caught_up=1', null],
   ]
 }
 
@@ -190,7 +195,9 @@ const PROBE = () => {
 async function assertNoViewportUnits() {
   const dir = join(SRC, 'pages')
   const gameFiles = [
-    ...(await readdir(dir)).filter((f) => f.startsWith('Game')).map((f) => join(dir, f)),
+    ...(await readdir(dir))
+      .filter((f) => f.startsWith('Game') || f === 'StudyPage.tsx')
+      .map((f) => join(dir, f)),
     join(SRC, 'components/game/GameLeaderboard.tsx'),
   ]
   const bad = []
@@ -234,6 +241,21 @@ for (const cfg of PARTIES) {
         if (P.startsWith('/api/games/') && P.endsWith('/preview')) {
           body = { status: 'waiting', map_name: 'Tuin', host_name: 'Leon', player_count: cfg.players }
         } else if (P.startsWith('/api/games/') && st) body = st
+        else if (P === '/api/study/next') {
+          body = u.search.includes('caught_up')
+            ? { card: null, reason: 'all_caught_up', next_due_at: '2026-08-23T09:00:00',
+                stats: { total: 12, due: 0, new: 0, learned: 4 } }
+            : {
+                card: {
+                  card_id: 1, photo_url: null, box: 0, mode: 'choose',
+                  options: ['Grote weegbree', 'Paardenbloem', 'Madeliefje', 'Gatenplant'],
+                },
+                stats: { total: 12, due: 3, new: 9, learned: 0 },
+              }
+        }
+        else if (P === '/api/study/stats') {
+          body = { total: 12, due: 3, new: 9, learned: 0 }
+        }
         else if (P === '/api/users') body = [{ id: 1, name: 'Leon', language: 'nl' }]
         else if (P === '/api/auth/me') {
           body = {

@@ -39,6 +39,7 @@ const MapSettingsPage = lazy(() => import('./pages/MapSettingsPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const LogboekPage = lazy(() => import('./pages/LogboekPage'))
 const GameJoinPage = lazy(() => import('./pages/GameJoinPage'))
+const StudyPage = lazy(() => import('./pages/StudyPage'))
 const GameHostPage = lazy(() => import('./pages/GameHostPage'))
 const GamePlayerPage = lazy(() => import('./pages/GamePlayerPage'))
 const DiscoveryCard = lazy(() => import('./pages/DiscoveryCard'))
@@ -209,6 +210,10 @@ export default function App() {
   // it was covering "Ronde overslaan" outright — and mid-round it only offers
   // a guest ways to wander off into the calendar.
   const isGamePage = location.pathname.startsWith('/game')
+  // Same reasoning as the game: a full-height card with a pinned action, on a
+  // screen where the nav's ~70px is exactly what pushes the button out of
+  // reach. Studying is also a focused mode — you are not navigating mid-card.
+  const isStudyPage = location.pathname.startsWith('/study')
 
   // Load initial data: on mount (token from previous session) AND after login
   // (navigate from /login → protected route). Skip if already loading or loaded.
@@ -423,6 +428,14 @@ export default function App() {
                   </RequireAuth>
                 }
               />
+              <Route
+                path="/study"
+                element={
+                  <RequireAuth>
+                    <StudyPage />
+                  </RequireAuth>
+                }
+              />
               <Route path="/game" element={<GameJoinPage />} />
               <Route
                 path="/game/:code/host"
@@ -446,15 +459,15 @@ export default function App() {
         </PullToRefresh>
       </main>
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && (
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && !isStudyPage && (
         <div className={`relative z-[70] ${isMapPage ? 'landscape-mobile-hide' : ''}`}>
           <BottomNav />
         </div>
       )}
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && <InstallNudge />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isEditorPage && !isGamePage && !isStudyPage && <InstallNudge />}
 
-      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && !isGamePage && <HelpAssistant />}
+      {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && !isAdminPage && !isIdentifyPage && !isEditorPage && !isGamePage && !isStudyPage && <HelpAssistant />}
 
       {!isPublicHome && !isTourPage && !isLoginPage && !isDemoPage && <UpdateToast />}
 

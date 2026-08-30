@@ -2096,6 +2096,7 @@ export type Translations = {
     delete: string
     back: string
     error: string
+    retry: string
     saving: string       // "Saving..." / "Opslaan..."
     saved: string        // "Saved" / "Opgeslagen"
     deleting: string     // "Deleting..." / "Verwijderen..."
@@ -2194,6 +2195,26 @@ export type Translations = {
     exportCsv: string
   }
 
+  study: {
+    title: string
+    entryTitle: string
+    entryBody: string
+    entryStart: string
+    dueCount: string
+    correct: string
+    wrong: string
+    check: string
+    dontKnow: string
+    next: string
+    back: string
+    typePlaceholder: string
+    typeHint: string
+    caughtUpTitle: string
+    caughtUpBody: string
+    learnedCount: string
+    noMaterialTitle: string
+    noMaterialBody: string
+  }
   game: {
     // Setup
     newGame: string
