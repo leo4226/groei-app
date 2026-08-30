@@ -19,6 +19,10 @@ WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 EDITOR_REQUIRED = "editor-or-owner"
 OWNER_REQUIRED = "owner-only household administration"
 VIEWER_READ_ACTION = "viewer-allowed authenticated read-only action"
+# Writes, but only to the caller's OWN progress. A viewer may learn the
+# names of plants they are allowed to look at; nothing here touches
+# household data, so require_editor would be gatekeeping for its own sake.
+VIEWER_PERSONAL_PROGRESS = "viewer-allowed write to the caller's own learning progress"
 GUEST_OR_PUBLIC = "public or guest-token action"
 PLATFORM_ADMIN = "platform-admin or internal-secret operation"
 GAME_ACCOUNT_OR_GUEST = "editor account or valid game guest"
@@ -141,6 +145,11 @@ POLICY_ENTRIES = (
         ("POST", "/api/games/{code}/start"),
     ),
     *_policies(
+        VIEWER_PERSONAL_PROGRESS,
+        "Records only this account's own spaced-repetition state; no household data is written.",
+        ("POST", "/api/study/answer"),
+    ),
+    *_policies(
         VIEWER_READ_ACTION,
         "Authenticated calculation or download only; it does not persist data or spend a paid/external resource.",
         ("POST", "/api/calendar/export.ics"),
@@ -248,7 +257,7 @@ def test_complete_mounted_write_route_inventory_has_one_policy_and_correct_depen
         elif category == GAME_ACCOUNT_OR_GUEST:
             assert game_mutation_actor is not None
             assert _has_dependency(route, game_mutation_actor), (method, path)
-        elif category == VIEWER_READ_ACTION:
+        elif category in (VIEWER_READ_ACTION, VIEWER_PERSONAL_PROGRESS):
             assert _has_dependency(route, get_current_account), (method, path)
             assert not _has_dependency(route, require_editor), (method, path)
         elif category == PLATFORM_ADMIN:
