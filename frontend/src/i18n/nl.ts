@@ -2134,6 +2134,7 @@ export const nl: Translations = {
     delete: 'Verwijderen',
     back: 'Terug',
     error: 'Er is iets misgegaan',
+    retry: 'Opnieuw proberen',
     saving: 'Opslaan...',
     saved: 'Opgeslagen',
     deleting: 'Verwijderen...',

@@ -2132,6 +2132,7 @@ export const en: Translations = {
     delete: 'Delete',
     back: 'Back',
     error: 'Something went wrong',
+    retry: 'Try again',
     saving: 'Saving...',
     saved: 'Saved',
     deleting: 'Deleting...',

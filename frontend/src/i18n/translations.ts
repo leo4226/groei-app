@@ -2096,6 +2096,7 @@ export type Translations = {
     delete: string
     back: string
     error: string
+    retry: string
     saving: string       // "Saving..." / "Opslaan..."
     saved: string        // "Saved" / "Opgeslagen"
     deleting: string     // "Deleting..." / "Verwijderen..."
