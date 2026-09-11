@@ -22,7 +22,11 @@ from services.weather_task_service import (
 )
 from services.weather_warning_state import weather_warning_states_for_account
 from services.weather_forecast import get_map_forecast
-from services.water_pressure import WeatherDay, calculate_water_pressure
+from services.water_pressure import (
+    WeatherDay,
+    calculate_water_pressure,
+    exposure_from_sun_hours,
+)
 from services.moisture_check_service import sync_moisture_checks
 from care_types import CARE_TYPES, WEATHER_COLDHEAT_COLORS, normalize_care_type
 from services.local_time import GARDEN_TZ, local_today
@@ -63,22 +67,10 @@ def _pressure_weather_days(forecast: dict, *, usable: bool) -> list[WeatherDay]:
     ]
 
 
-# Unified light thresholds shared with the sun model: >= 4h full sun, 2-4h
-# partial shade, < 2h shade (#811). `measured_sun_hours` is per-plant measured
-# direct sun hours; missing measurement means exposure is unknown and the
-# pressure engine stays neutral (#800).
-def _exposure_from_sun_hours(measured_sun_hours) -> str | None:
-    if measured_sun_hours is None:
-        return None
-    try:
-        hours = float(measured_sun_hours)
-    except (TypeError, ValueError):
-        return None
-    if hours >= 4.0:
-        return "sun"
-    if hours >= 2.0:
-        return "partial"
-    return "shade"
+# Moved to services.water_pressure so the still-moist assessment reads exposure
+# the same way this outlook does. Re-exported under the old private name because
+# it is the name the outlook test pins the thresholds through.
+_exposure_from_sun_hours = exposure_from_sun_hours
 
 
 async def build_water_outlook(db, *, household_id: int) -> dict:

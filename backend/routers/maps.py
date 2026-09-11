@@ -11,6 +11,7 @@ from database import db_dep
 from auth import get_current_account, require_editor
 from models import MapOut, MapDetailOut, MapPlantOut, MapObjectOut, MapItemsOut, MapCreate, MapUpdate, GardenSuggestionsOut, PlantRecommendationOut
 from services.environment import get_rain_data, get_temp_data
+from services.weather_forecast import get_usable_forecast_days
 from services.garden_log import get_last_garden_watered, get_last_garden_fertilized
 from services.svg_renderer import render_canvas_data, render_thumbnail
 from services.plant_reader import enrich_plants
@@ -338,7 +339,7 @@ async def get_streek_suggestions(
 @router.get("/maps/{slug}/plants", response_model=list[MapPlantOut])
 async def get_map_plants(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
     map_row = await db.execute_fetchall(
-        "SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"])
+        "SELECT id, map_type, lat, lon FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"])
     )
     if not map_row:
         raise HTTPException(404, "Map not found")
@@ -350,6 +351,7 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
                   p.container_id, p.ground_zone_id, p.display_radius_cm,
                   p.sun_requirement, p.plant_type, p.icon_key, p.species_id,
                   p.is_locked, p.quantity, p.care_thresholds, p.care_profile,
+                  p.mulch, p.measured_sun_hours,
                   s.phenology_json,
                   s.common_name_nl AS species_common_name_nl,
                   s.common_name_en AS species_common_name_en
@@ -363,14 +365,15 @@ async def get_map_plants(slug: str, account = Depends(get_current_account), db =
     rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered(account["household_id"])
     last_fertilized = await get_last_garden_fertilized(account["household_id"])
-    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
+    forecast_days = await get_usable_forecast_days(map_row[0]["lat"], map_row[0]["lon"])
+    return await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
 
 
 
 
 @router.get("/maps/{slug}/items", response_model=MapItemsOut)
 async def get_map_items(slug: str, account = Depends(get_current_account), db = Depends(db_dep)):
-    map_row = await db.execute_fetchall("SELECT id, map_type FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"]))
+    map_row = await db.execute_fetchall("SELECT id, map_type, lat, lon FROM maps WHERE slug = ? AND household_id = ?", (slug, account["household_id"]))
     if not map_row:
         raise HTTPException(404, "Map not found")
     map_id = map_row[0]["id"]
@@ -380,12 +383,13 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
     rain_data = await get_rain_data()
     last_watered = await get_last_garden_watered(account["household_id"])
     last_fertilized = await get_last_garden_fertilized(account["household_id"])
+    forecast_days = await get_usable_forecast_days(map_row[0]["lat"], map_row[0]["lon"])
 
     # Free-standing + ground-zone plants (not inside a container)
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                   p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
-                  p.measured_sun_hours,
+                  p.measured_sun_hours, p.mulch,
                   p.plant_type, p.icon_key, p.species_id, p.is_locked, p.quantity, p.care_thresholds,
                   p.care_profile, s.phenology_json,
                   s.common_name_nl AS species_common_name_nl,
@@ -396,7 +400,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
              AND p.container_id IS NULL""",
         (map_id,),
     )
-    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
+    plants = await enrich_plants(db, plant_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
 
     # Objects on this map
     obj_rows = await db.execute_fetchall(
@@ -410,7 +414,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
         contained_rows = await db.execute_fetchall(
             """SELECT p.id, p.name, p.species, p.map_x, p.map_y, p.photo_path,
                       p.container_id, p.ground_zone_id, p.display_radius_cm, p.sun_requirement,
-                      p.measured_sun_hours,
+                      p.measured_sun_hours, p.mulch,
                       p.plant_type, p.icon_key, p.species_id, p.is_locked, p.quantity, p.care_thresholds,
                       p.care_profile, s.phenology_json,
                       s.common_name_nl AS species_common_name_nl,
@@ -420,7 +424,7 @@ async def get_map_items(slug: str, account = Depends(get_current_account), db = 
                WHERE p.container_id = ? AND p.is_active = 1""",
             (obj["id"],),
         )
-        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, map_type=map_type)
+        contained = await enrich_plants(db, contained_rows, today, temp_data=temp_data, rain_data=rain_data, last_watered=last_watered, last_fertilized=last_fertilized, forecast_days=forecast_days, map_type=map_type)
         for p in contained:
             p["map_x"] = p["map_x"] or 0
             p["map_y"] = p["map_y"] or 0

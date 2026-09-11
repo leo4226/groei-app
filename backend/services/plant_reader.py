@@ -101,6 +101,7 @@ async def enrich_plants(
     rain_data=None,
     last_watered=None,
     last_fertilized=None,
+    forecast_days=None,
     map_type="outdoor",
     *,
     include_schedules=False,
@@ -147,8 +148,15 @@ async def enrich_plants(
 
     # Build weather dict for the unified warning pipeline.
     weather = None
-    if include_alerts and (temp_data or rain_data or last_watered):
-        weather = {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
+    if include_alerts and (temp_data or rain_data or last_watered or forecast_days):
+        weather = {
+            "temp": temp_data,
+            "rain": rain_data,
+            "last_watered": last_watered,
+            # Per-day rain/ET0/soil-moisture rows. Only the still-moist
+            # assessment reads them, and only to hold a due watering back.
+            "forecast_days": forecast_days or [],
+        }
 
     for plant in plants:
         pid = plant["id"]
@@ -223,6 +231,10 @@ async def enrich_plants(
                     "ground_zone_id": plant.get("ground_zone_id"),
                     "care_profile": plant.get("care_profile"),
                     "care_thresholds": care_thresholds,
+                    # Both feed the still-moist assessment; absent on the map
+                    # queries that do not select them, which reads as neutral.
+                    "mulch": plant.get("mulch"),
+                    "measured_sun_hours": plant.get("measured_sun_hours"),
                 }
                 today_date = date.fromisoformat(today) if isinstance(today, str) else today
                 result = compute_plant_warnings(warn_plant, schedules, weather=weather, today=today_date)
@@ -243,6 +255,9 @@ def _care_warning_to_dict(w):
     """Convert a CareWarning dataclass to a plain dict for JSON serialization."""
     return {
         "care_type": w.care_type,
+        # Tells two opposite water warnings apart without reading their prose:
+        # 'water_drought', 'water_waterlog', 'water_still_moist'.
+        "code": w.code,
         "severity": w.severity,
         "trigger": w.trigger,
         "days_overdue": w.days_overdue,

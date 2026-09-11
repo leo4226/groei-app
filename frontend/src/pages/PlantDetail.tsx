@@ -130,8 +130,14 @@ function PlantCareSignals({ plantId, phenology, waterSchedule }: {
                   ago · 0 mm since · 1 day overdue" is why THIS plant is listed.
                   Waterlogging warnings are care_type 'water' too but mean the
                   opposite — "3 days overdue" under "check drainage" would
-                  contradict the action — so they keep their own reason. */}
-              {w.care_type === 'water' && w.code !== 'water_waterlog' && waterSchedule ? (
+                  contradict the action — so they keep their own reason. Same
+                  for "still moist": its reason IS the evidence ("11mm of rain
+                  against 4mm of evaporation"), and that reading is the only
+                  thing that makes holding a due watering back believable. */}
+              {w.care_type === 'water'
+                && w.code !== 'water_waterlog'
+                && w.code !== 'water_still_moist'
+                && waterSchedule ? (
                 <p className="text-xs text-text-muted mt-1">
                   <PlantWaterEvidence schedule={waterSchedule} />
                 </p>

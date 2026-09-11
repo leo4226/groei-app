@@ -180,24 +180,77 @@ class WarningSummaryOut(BaseModel):
     weather_warnings: list[WeatherWarningGroupOut] = Field(default_factory=list)
 
 
-async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dict | None:
-    """Fetch cached weather data, returning a weather dict shaped for
-    `compute_plant_warnings`. Degrades to None on any error so the endpoint
-    keeps working when the weather cache is unavailable (e.g. tests, offline).
+async def _household_forecast_days(db, household_id: int | None) -> list[dict]:
+    """Per-day rainfall, evapotranspiration and soil moisture for this household.
+
+    The still-moist assessment needs the daily rows, not the garden-wide totals
+    `get_rain_data` returns: whether a pot is still wet depends on the order the
+    rain and the heat arrived in. Keyed to the household's first outdoor map,
+    which is where its coordinates live, and cached for an hour upstream.
+
+    Returns [] for anything less than a fresh forecast. Empty means "no
+    evidence", and no watering warning is ever suppressed on no evidence.
+    """
+    if household_id is None:
+        return []
+    from services.weather_forecast import get_usable_forecast_days
+
+    rows = await db.execute_fetchall(
+        """SELECT lat, lon FROM maps
+           WHERE household_id = ? AND map_type = 'outdoor'
+             AND lat IS NOT NULL AND lon IS NOT NULL
+           ORDER BY id LIMIT 1""",
+        (household_id,),
+    )
+    if not rows:
+        return []
+    return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+
+
+async def _or_none(label: str, household_id: int | None, coroutine):
+    """Await one weather source, or log why it is missing and carry on.
+
+    Each source degrades on its own. Sharing one `except` meant a stale
+    `weather_cache` row took the daily forecast rows down with it, and the
+    warnings silently fell back to the calendar — which is the failure this
+    whole feature exists to stop. `exc_info` because "no weather" and "weather
+    is broken" look identical in a log line without it.
     """
     try:
-        from services.environment import get_rain_data, get_temp_data
-        from services.garden_log import get_last_garden_watered
-
-        temp_data = await get_temp_data(db)
-        rain_data = await get_rain_data(db)
-        last_watered = await get_last_garden_watered(household_id) if household_id is not None else None
-        if not temp_data and not rain_data and not last_watered:
-            return None
-        return {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
+        return await coroutine
     except Exception:
-        logger.warning("Weather context fetch failed for household %s", household_id)
+        logger.warning(
+            "Weather source %s failed for household %s", label, household_id,
+            exc_info=True,
+        )
         return None
+
+
+async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dict | None:
+    """Fetch cached weather data, returning a weather dict shaped for
+    `compute_plant_warnings`. Returns None when every source is empty, so the
+    endpoint keeps working offline or with an unavailable weather cache.
+    """
+    from services.environment import get_rain_data, get_temp_data
+    from services.garden_log import get_last_garden_watered
+
+    temp_data = await _or_none("temp", household_id, get_temp_data(db))
+    rain_data = await _or_none("rain", household_id, get_rain_data(db))
+    last_watered = (
+        await _or_none("last_watered", household_id, get_last_garden_watered(household_id))
+        if household_id is not None else None
+    )
+    forecast_days = await _or_none(
+        "forecast_days", household_id, _household_forecast_days(db, household_id)
+    )
+    if not temp_data and not rain_data and not last_watered and not forecast_days:
+        return None
+    return {
+        "temp": temp_data,
+        "rain": rain_data,
+        "last_watered": last_watered,
+        "forecast_days": forecast_days or [],
+    }
 
 
 @router.get("/plants/{plant_id}/warnings", response_model=PlantWarningStateOut)
@@ -211,7 +264,7 @@ async def get_plant_warnings(
 
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id, p.care_thresholds,
-                  p.care_profile,
+                  p.care_profile, p.mulch, p.measured_sun_hours,
                   m.map_type
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
@@ -281,6 +334,7 @@ async def _compute_warning_summary(
     plant_rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id,
                   p.care_thresholds, p.care_profile, p.name, p.icon_key AS icon_variant,
+                  p.mulch, p.measured_sun_hours,
                   m.map_type, m.name as map_name
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id

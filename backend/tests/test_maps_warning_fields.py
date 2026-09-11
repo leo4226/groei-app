@@ -8,10 +8,16 @@ class FakeDb:
         self.with_object = with_object
 
     async def execute_fetchall(self, query, params=()):
-        if 'SELECT id, map_type FROM maps WHERE slug' in query:
-            return [{'id': 1, 'map_type': 'outdoor'}]
+        if 'SELECT id, map_type, lat, lon FROM maps WHERE slug' in query:
+            # lat/lon are selected so the map can ask whether a plant is still
+            # wet enough to skip a due watering.
+            return [{'id': 1, 'map_type': 'outdoor', 'lat': 52.37, 'lon': 4.85}]
         if 'FROM plants p' in query:
             assert 'p.care_profile' in query
+            # Both feed the still-moist assessment: mulch slows evaporation and
+            # measured sun hours say how exposed the plant is.
+            assert 'p.mulch' in query
+            assert 'p.measured_sun_hours' in query
             assert 's.common_name_nl AS species_common_name_nl' in query
             assert 's.common_name_en AS species_common_name_en' in query
             return []
@@ -32,12 +38,17 @@ async def _no_last_log(*args, **kwargs):
     return None
 
 
+async def _no_forecast(*args, **kwargs):
+    return []
+
+
 @pytest.mark.asyncio
 async def test_map_plants_selects_care_profile_for_warning_pipeline(monkeypatch):
     monkeypatch.setattr(maps_router, 'get_temp_data', _empty_weather)
     monkeypatch.setattr(maps_router, 'get_rain_data', _empty_weather)
     monkeypatch.setattr(maps_router, 'get_last_garden_watered', _no_last_log)
     monkeypatch.setattr(maps_router, 'get_last_garden_fertilized', _no_last_log)
+    monkeypatch.setattr(maps_router, 'get_usable_forecast_days', _no_forecast)
 
     async def fake_enrich(*args, **kwargs):
         return []
@@ -53,6 +64,7 @@ async def test_map_items_selects_care_profile_for_free_and_contained_plants(monk
     monkeypatch.setattr(maps_router, 'get_rain_data', _empty_weather)
     monkeypatch.setattr(maps_router, 'get_last_garden_watered', _no_last_log)
     monkeypatch.setattr(maps_router, 'get_last_garden_fertilized', _no_last_log)
+    monkeypatch.setattr(maps_router, 'get_usable_forecast_days', _no_forecast)
 
     async def fake_enrich(*args, **kwargs):
         return []
