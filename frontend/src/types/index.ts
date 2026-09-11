@@ -562,7 +562,9 @@ export interface PhotoRoundPlant {
 
 export interface CareWarningOut {
   care_type: string
-  /** Discriminator within a care_type: 'water_drought' | 'water_waterlog'. */
+  /** Discriminator within a care_type. Three water warnings share care_type
+   *  'water' and mean different things: 'water_drought', 'water_waterlog', and
+   *  'water_still_moist' (the schedule is due but the soil is not dry yet). */
   code?: string | null
   severity: string
   trigger: string

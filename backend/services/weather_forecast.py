@@ -167,3 +167,26 @@ async def get_map_forecast(
 
     _cache[key] = {"fetched_at": observed_at, "data": data}
     return data
+
+
+async def get_usable_forecast_days(
+    lat: float | None,
+    lon: float | None,
+) -> list[dict]:
+    """Return per-day rows only when the forecast is fresh, else [].
+
+    The single definition of "good enough to act on" for callers that use the
+    daily rows to hold a care warning back. Stale or unavailable collapses to an
+    empty list, because a suppressed warning must rest on current readings —
+    yesterday's rain is not evidence that today's soil is wet.
+    """
+    if lat is None or lon is None:
+        return []
+    try:
+        forecast = await get_map_forecast(float(lat), float(lon))
+    except Exception:
+        logger.warning("Usable forecast fetch failed for %s,%s", lat, lon)
+        return []
+    if not forecast.get("available") or forecast.get("stale"):
+        return []
+    return forecast.get("days") or []

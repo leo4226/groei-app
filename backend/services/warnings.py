@@ -5,7 +5,7 @@ care profile, schedules, and current weather. All UI surfaces consume the
 output of `compute_plant_warnings()` — no consumer re-derives priority.
 """
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 import hashlib
 from typing import Literal
 
@@ -19,6 +19,12 @@ def _as_date(val):
 from services.care_profile import (
     environment_for_plant as _environment_for_plant,
     load_care_profile as _load_care_profile,
+)
+from services.water_pressure import (
+    MoistureAssessment,
+    WeatherDay,
+    assess_moisture,
+    exposure_from_sun_hours,
 )
 
 from care_types import (
@@ -167,6 +173,8 @@ DROUGHT_ACTION_NL = "Controleer de grond; geef extra water als de bovenlaag droo
 DROUGHT_ACTION_EN = "Check the soil; water extra if the top layer is dry."
 WATERLOG_ACTION_NL = "Controleer drainage en geef nu geen extra water."
 WATERLOG_ACTION_EN = "Check drainage and do not add extra water right now."
+STILL_MOIST_ACTION_NL = "Voel eerst aan de grond; geef pas water als de bovenlaag droog aanvoelt."
+STILL_MOIST_ACTION_EN = "Feel the soil first; water only once the top layer feels dry."
 _MANUAL_WATER_DAYS = 3
 
 
@@ -368,6 +376,83 @@ def _rain_warnings_for_plant(
         ))
 
     return warnings
+
+
+def _as_watering_date(value) -> date | None:
+    """Coerce a `care_schedules.last_done` to a plain date.
+
+    That column is a TIMESTAMP, so asyncpg hands back a datetime — which passes
+    `isinstance(x, date)` and then never equals any calendar day in the window.
+    A watering that silently matches nothing would read as "never watered", so
+    it is worth its own coercion rather than a shared one.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def _moisture_weather_days(weather_payload: dict) -> list[WeatherDay]:
+    """Read the per-day forecast rows the still-moist assessment needs.
+
+    Absent for callers that only pass the legacy `temp`/`rain` aggregates, which
+    is why a missing key has to mean "no evidence" and never "dry".
+    """
+    days: list[WeatherDay] = []
+    for raw in weather_payload.get("forecast_days") or []:
+        try:
+            days.append(WeatherDay(
+                date=_as_date(raw["date"]),
+                max_temp_c=float(raw.get("max_temp_c") or 0.0),
+                precipitation_mm=float(raw.get("precipitation_mm") or 0.0),
+                et0_mm=float(raw.get("et0_mm") or 0.0),
+                humidity_pct=raw.get("humidity_pct"),
+                soil_moisture_pct=raw.get("soil_moisture_pct"),
+            ))
+        except (KeyError, TypeError, ValueError):
+            # One malformed row must not cost the whole assessment; a short
+            # window simply ends up as "unknown" and nothing is suppressed.
+            continue
+    return days
+
+
+def _still_moist_warning(
+    assessment: MoistureAssessment, *, days_overdue: int,
+) -> CareWarning:
+    """Turn a due watering into the reason it can wait.
+
+    Inverted rather than hidden. A plant that silently drops off the list looks
+    like a bug; a plant that says why it is not on the list is the app doing the
+    checking the reader would otherwise have to do themselves — and the day it
+    dries out, the same line turns back into "water it", which is what makes the
+    warning worth reading at all.
+    """
+    return CareWarning(
+        care_type="water",
+        code="water_still_moist",
+        severity="info",
+        # Weather is what overrode the schedule, and ("weather_event", "info")
+        # is the lowest priority bucket there is: this must never outrank a
+        # real warning, or displace a plant into the dashboard's urgent column.
+        trigger="weather_event",
+        days_overdue=days_overdue,
+        message_nl="Nog niet gieten — grond is nog vochtig",
+        message_en="No need to water yet — the soil is still moist",
+        icon=CARE_TYPES["water"]["icon"],
+        color=SEVERITY_COLORS["info"],
+        reason_nl=assessment.reason_nl,
+        reason_en=assessment.reason_en,
+        action_nl=STILL_MOIST_ACTION_NL,
+        action_en=STILL_MOIST_ACTION_EN,
+        weather_metric="root_zone_store_fraction",
+        weather_value_c=assessment.store_fraction,
+    )
 
 
 def _weather_warnings_for_plant(
@@ -605,6 +690,25 @@ def compute_plant_warnings(
     by_type: dict[str, dict] = {
         normalize_care_type(s["care_type"]): dict(s) for s in schedules
     }
+
+    # Is this plant's soil still wet enough that a due watering can wait? Asked
+    # once, before the loop, because the answer also silences the drought
+    # warning: "very little rain" and "still moist" on the same plant is exactly
+    # the kind of contradiction that teaches people to ignore both.
+    weather_payload = weather or {}
+    water_schedule = by_type.get("water") or {}
+    moisture = assess_moisture(
+        environment=environment,
+        today=today,
+        last_watered=_as_watering_date(
+            water_schedule.get("last_done") or weather_payload.get("last_watered")
+        ),
+        weather_days=_moisture_weather_days(weather_payload),
+        mulch=plant.get("mulch"),
+        exposure=exposure_from_sun_hours(plant.get("measured_sun_hours")),
+    )
+    still_moist = moisture.verdict == "moist"
+
     for care_type in active_care_types:
         if care_type not in CARE_TYPES:
             continue
@@ -620,21 +724,26 @@ def compute_plant_warnings(
             # so we don't recompute next_due here — we trust the stored value.
             w = _schedule_warning_for_type(care_type, next_due=next_due, today=today)
             if w is not None:
+                if care_type == "water" and still_moist:
+                    w = _still_moist_warning(moisture, days_overdue=w.days_overdue or 0)
                 schedule_warnings.append(w)
 
     # Weather warnings
-    weather_payload = weather or {}
     temp_data = weather_payload.get("temp")
     rain_data = weather_payload.get("rain")
     last_watered = weather_payload.get("last_watered")
     weather_warnings = _weather_warnings_for_plant(profile, temp_data=temp_data, today=today, environment=environment)
-    weather_warnings.extend(_rain_warnings_for_plant(
+    rain_warnings = _rain_warnings_for_plant(
         profile,
         rain_data=rain_data,
         today=today,
         last_watered=last_watered,
         environment=environment,
-    ))
+    )
+    if still_moist:
+        # Garden-wide rainfall totals cannot outvote this plant's own balance.
+        rain_warnings = [w for w in rain_warnings if w.code != "water_drought"]
+    weather_warnings.extend(rain_warnings)
 
     all_warnings = _sort_warnings(schedule_warnings + weather_warnings)
     top = all_warnings[0] if all_warnings else None
