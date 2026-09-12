@@ -5,6 +5,7 @@ import json
 import pytest
 
 from care_types import normalize_care_type
+from services.local_time import local_today
 
 
 @pytest.mark.parametrize(
@@ -93,7 +94,7 @@ async def test_feed_done_uses_default_interval_when_schedule_interval_invalid(
     schedule = (await seeded_db.execute_fetchall(
         "SELECT next_due, last_done FROM care_schedules WHERE plant_id = 45"
     ))[0]
-    assert schedule["next_due"] > date.today().isoformat()
+    assert schedule["next_due"] > local_today().isoformat()
     assert schedule["last_done"] is not None
 
 
@@ -203,7 +204,7 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
     )
     await seeded_db.commit()
 
-    weather = {"days": [{"date": date.today().isoformat(), "min": 10.0, "max": 31.0}]}
+    weather = {"days": [{"date": local_today().isoformat(), "min": 10.0, "max": 31.0}]}
     weather_calls = 0
 
     async def fake_temp_data(*args, **kwargs):
@@ -212,7 +213,7 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
         return weather
 
     monkeypatch.setattr("services.environment.get_temp_data", fake_temp_data)
-    today = date.today().isoformat()
+    today = local_today().isoformat()
 
     hot = await client.get(
         "/api/calendar/events",
@@ -230,7 +231,7 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
     assert heat_events[0]["weather_value_c"] == 31.0
     assert heat_events[0]["forecast_day_label_en"] == "today"
 
-    weather["days"] = [{"date": date.today().isoformat(), "min": -2.0, "max": 20.0}]
+    weather["days"] = [{"date": local_today().isoformat(), "min": -2.0, "max": 20.0}]
     cold = await client.get(
         "/api/calendar/events",
         params={"from": today, "to": today},
@@ -246,7 +247,7 @@ async def test_calendar_refreshes_weather_tasks_from_canonical_profile(
     assert frost_events[0]["weather_value_c"] == -2.0
     assert frost_events[0]["forecast_day_label_en"] == "tonight"
 
-    weather["days"] = [{"date": date.today().isoformat(), "min": 10.0, "max": 20.0}]
+    weather["days"] = [{"date": local_today().isoformat(), "min": 10.0, "max": 20.0}]
     mild = await client.get(
         "/api/calendar/events",
         params={"from": today, "to": today},
@@ -274,7 +275,7 @@ async def test_calendar_weather_refresh_fails_open(
         """INSERT INTO care_schedules
            (plant_id, care_type, interval_days, next_due, is_active)
            VALUES (43, 'repot', 180, ?, 1)""",
-        (date.today().isoformat(),),
+        (local_today().isoformat(),),
     )
     await seeded_db.commit()
 
@@ -284,7 +285,7 @@ async def test_calendar_weather_refresh_fails_open(
     monkeypatch.setattr(
         "services.weather_task_service._get_cached_weather", weather_failure
     )
-    today = date.today().isoformat()
+    today = local_today().isoformat()
     response = await client.get(
         "/api/calendar/events",
         params={"from": today, "to": today},

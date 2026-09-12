@@ -5,6 +5,7 @@ import pytest
 import pytest_asyncio
 
 from routers.plants import _care_schedule_lock_clause
+from services.local_time import local_today
 
 
 def test_postgres_row_lock_targets_only_the_owned_plant_table():
@@ -69,8 +70,8 @@ async def test_sync_creates_updates_reactivates_and_disables_atomically(
     assert returned["water"]["notes"] == "keep me"
     assert returned["water"]["season_adjust"] == '{"summer": 1}'
     assert returned["water"]["interval_source"] == "manual"
-    assert returned["fertilize"]["next_due"] == str(date.today() + timedelta(days=21))
-    assert returned["pest_check"]["next_due"] == str(date.today() + timedelta(days=30))
+    assert returned["fertilize"]["next_due"] == str(local_today() + timedelta(days=21))
+    assert returned["pest_check"]["next_due"] == str(local_today() + timedelta(days=30))
 
     rows = await schedule_sync_db.execute_fetchall(
         "SELECT care_type, interval_days, next_due, is_active, is_ephemeral "

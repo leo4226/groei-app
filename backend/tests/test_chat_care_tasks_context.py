@@ -3,6 +3,7 @@ import datetime as dt
 import pytest
 
 from routers import chat as chat_router
+from services.local_time import local_today
 
 
 async def _prepare_chat_db(seeded_db):
@@ -68,7 +69,7 @@ async def test_chat_context_adds_canonical_care_tasks_ordered_by_urgency(
     monkeypatch,
 ):
     await _prepare_chat_db(seeded_db)
-    today = dt.date.today()
+    today = local_today()
     await seeded_db.executemany(
         """INSERT INTO plants
            (id, name, location_id, map_id, is_active, household_id, care_profile)

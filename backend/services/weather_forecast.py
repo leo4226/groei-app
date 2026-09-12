@@ -61,6 +61,22 @@ def _optional_value(values: list, index: int) -> float | None:
     return float(values[index])
 
 
+def _soil_moisture_pct(values: list, index: int) -> float | None:
+    """Open-Meteo reports soil moisture in m³/m³ (0-1); downstream wants percent.
+
+    Verified against the live API: `daily_units.soil_moisture_0_to_7cm_mean` is
+    "m³/m³" and an Amsterdam reading in a wet September comes back as 0.609, not
+    60.9. Every consumer compares it against a percentage threshold (25 for the
+    pressure engine's wet-soil damping, 30 for the still-moist assessment), so a
+    fraction could never clear either one — both branches were dead from the day
+    they were written, in every weather. Converting here rather than moving the
+    thresholds keeps one meaning for the field: the name says percent, so the
+    value is percent, everywhere.
+    """
+    raw = _optional_value(values, index)
+    return None if raw is None else raw * 100.0
+
+
 def _normalize(
     raw: dict,
     *,
@@ -86,7 +102,7 @@ def _normalize(
             "et0_mm": _value(et0, index),
             "cloud_cover_mean_pct": _value(cloud_cover, index),
             "humidity_pct": _optional_value(humidity, index),
-            "soil_moisture_pct": _optional_value(soil_moisture, index),
+            "soil_moisture_pct": _soil_moisture_pct(soil_moisture, index),
         }
         for index, day in enumerate(times)
     ]

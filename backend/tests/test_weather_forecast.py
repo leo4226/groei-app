@@ -49,7 +49,11 @@ class FakeClient:
         }
         if not self.omit_humidity_soil:
             daily["relative_humidity_2m_max"] = [60.0, 55.0, 70.0]
-            daily["soil_moisture_0_to_7cm_mean"] = [35.0, 32.0, 40.0]
+            # Real Open-Meteo units: m³/m³, a fraction between 0 and 1. The fixture
+            # used to feed percentages here, which is how a unit mismatch
+            # survived — every consumer compares against a percentage
+            # threshold, so the real 0.32 never cleared any of them.
+            daily["soil_moisture_0_to_7cm_mean"] = [0.35, 0.32, 0.40]
         return FakeResponse({
             "current": {
                 "temperature_2m": 24.0,
@@ -102,6 +106,7 @@ async def test_fetches_history_forecast_precipitation_temperature_and_et0_per_ma
         "et0_mm": 3.5,
         "cloud_cover_mean_pct": 15.0,
         "humidity_pct": 55.0,
+        # 0.32 m³/m³ in, 32% out: the field is named percent, so it is percent.
         "soil_moisture_pct": 32.0,
     }
     assert first["daily"]["time"][0] == "2026-07-16"

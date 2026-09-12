@@ -10,6 +10,7 @@ JWT_SECRET — no login required to unsubscribe).
 """
 import hashlib
 import hmac
+import logging
 import os
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -27,6 +28,8 @@ from services.weather_warning_state import (
     mark_weather_warning_push_sent,
     weather_warning_push_is_suppressed,
 )
+
+logger = logging.getLogger(__name__)
 
 AMSTERDAM = GARDEN_TZ
 
@@ -460,6 +463,91 @@ def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = Non
     return payload
 
 
+async def _forecast_days_for(db, household_id: int) -> list:
+    """This household's daily rain/ET0/soil rows, or [] when unavailable."""
+    from services.weather_forecast import get_usable_forecast_days
+
+    rows = await db.execute_fetchall(
+        """SELECT lat, lon FROM maps
+           WHERE household_id = ? AND map_type = 'outdoor'
+             AND lat IS NOT NULL AND lon IS NOT NULL
+           ORDER BY id LIMIT 1""",
+        (household_id,),
+    )
+    if not rows:
+        return []
+    return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+
+
+async def hold_still_moist_water_rows(db, household_id: int, due_rows: list[dict],
+                                      today: date) -> list[dict]:
+    """Drop watering reminders for plants whose soil is still wet.
+
+    The screens learned to say "nog niet gieten" before the phone did, and a
+    push that contradicts the plant page is worse than either alone. This is the
+    same `assess_moisture` the warning pipeline uses, so the two agree by
+    construction.
+
+    Held, not cancelled: a dropped row is never stamped with `notified_for_due`,
+    so it stays eligible and pings on the first run after the soil dries. The
+    only thing that changes is which day the phone buzzes.
+    """
+    from services.warnings import _as_watering_date
+    from services.water_pressure import (
+        assess_moisture, exposure_from_sun_hours, WeatherDay,
+    )
+
+    def _environment(row: dict) -> str:
+        if row.get("map_type") == "indoor":
+            return "indoor"
+        return "outdoor_container" if row.get("container_id") is not None else "outdoor_ground"
+
+    # Indoors has no moisture signal, so an all-indoor household must not pay
+    # for a forecast fetch that could only ever return "unknown".
+    candidates = [
+        row for row in due_rows
+        if row.get("care_type") == "water"
+        and not row.get("is_ephemeral")
+        and _environment(row) != "indoor"
+    ]
+    if not candidates:
+        return due_rows
+
+    raw_days = await _forecast_days_for(db, household_id)
+    if not raw_days:
+        return due_rows
+    weather_days = [
+        WeatherDay(
+            date=date.fromisoformat(str(day["date"])[:10]),
+            max_temp_c=float(day.get("max_temp_c") or 0.0),
+            precipitation_mm=float(day.get("precipitation_mm") or 0.0),
+            et0_mm=float(day.get("et0_mm") or 0.0),
+            humidity_pct=day.get("humidity_pct"),
+            soil_moisture_pct=day.get("soil_moisture_pct"),
+        )
+        for day in raw_days
+    ]
+
+    held_ids = set()
+    for row in candidates:
+        verdict = assess_moisture(
+            environment=_environment(row),
+            today=today,
+            last_watered=_as_watering_date(row.get("last_done")),
+            weather_days=weather_days,
+            mulch=row.get("mulch"),
+            exposure=exposure_from_sun_hours(row.get("measured_sun_hours")),
+        ).verdict
+        if verdict == "moist":
+            held_ids.add(row["id"])
+    if held_ids:
+        logger.info(
+            "Holding %d still-moist water push(es) for household %s",
+            len(held_ids), household_id,
+        )
+    return [row for row in due_rows if row["id"] not in held_ids]
+
+
 async def send_due_care_pushes(db) -> dict:
     """Push a reminder the moment a care task becomes due, once per due cycle.
 
@@ -497,9 +585,12 @@ async def send_due_care_pushes(db) -> dict:
         due_rows = await db.execute_fetchall(
             """
             SELECT cs.id, cs.next_due, cs.care_type, cs.notes,
-                   cs.is_ephemeral, p.name AS plant_name
+                   cs.is_ephemeral, cs.last_done, p.name AS plant_name,
+                   p.container_id, p.ground_zone_id, p.mulch, p.measured_sun_hours,
+                   m.map_type
             FROM care_schedules cs
             JOIN plants p ON cs.plant_id = p.id
+            LEFT JOIN maps m ON m.id = p.map_id
             WHERE cs.is_active = 1 AND p.is_active = 1 AND p.household_id = ?
               AND cs.next_due <= ?
               AND (cs.snoozed_until IS NULL OR cs.snoozed_until <= ?)
@@ -528,6 +619,21 @@ async def send_due_care_pushes(db) -> dict:
                 row["_weather_warning"] = metadata
             account_due_rows.append(row)
         due_rows = account_due_rows
+        if not due_rows:
+            continue
+
+        try:
+            due_rows = await hold_still_moist_water_rows(
+                db, acc["household_id"], due_rows, today,
+            )
+        except Exception:
+            # A broken forecast must never cost someone a watering reminder, so
+            # this fails towards sending. Logged, because silence here would
+            # look exactly like weather that says the soil is dry.
+            logger.warning(
+                "Still-moist push hold failed for household %s",
+                acc["household_id"], exc_info=True,
+            )
         if not due_rows:
             continue
         push_checked += 1

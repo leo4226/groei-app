@@ -12,6 +12,7 @@ from services.care_rhythm import (
     propose_preferred_weekdays,
     undo_care_rhythm,
 )
+from services.local_time import local_today
 
 
 def _row(schedule_id: int, due: date, *, map_type: str = "outdoor") -> dict:
@@ -260,7 +261,7 @@ def _next_weekday(today: date, iso_weekday: int) -> date:
 
 @pytest_asyncio.fixture
 async def rhythm_db(seeded_db):
-    today = date.today()
+    today = local_today()
     monday = _next_weekday(today, 1)
     await seeded_db.executescript(CARE_RHYTHM_SCHEMA)
     await seeded_db.executescript("""
@@ -417,7 +418,7 @@ async def test_get_saved_config_does_not_write_to_db(rhythm_db):
 async def test_preview_endpoint_is_side_effect_free_and_household_scoped(
     client, rhythm_db, auth_header,
 ):
-    today = date.today()
+    today = local_today()
     monday = _next_weekday(today, 1)
     before = await rhythm_db.execute_fetchall(
         "SELECT id, next_due FROM care_schedules ORDER BY id"
@@ -549,7 +550,7 @@ async def test_onboarding_preview_uses_saved_effective_map_routine(
     preview = await _preview(client, auth_header, config)
     applied = await _apply(client, auth_header, config, preview["preview_hash"])
     assert applied.status_code == 200
-    today = date.today()
+    today = local_today()
     next_tuesday = _next_weekday(today, 2)
     interval_days = (next_tuesday - today).days
 
@@ -653,7 +654,7 @@ async def test_apply_rejects_stale_preview_without_writes(client, rhythm_db, aut
     preview = await _preview(client, auth_header, config)
     await rhythm_db.execute(
         "UPDATE care_schedules SET next_due = ? WHERE id = 201",
-        (date.today() + timedelta(days=30),),
+        (local_today() + timedelta(days=30),),
     )
     await rhythm_db.commit()
 
@@ -788,7 +789,7 @@ async def test_preference_only_undo_ignores_later_manual_schedule_change(
     preview = await _preview(client, auth_header, config)
     applied = await _apply(client, auth_header, config, preview["preview_hash"])
     operation_id = applied.json()["operation_id"]
-    changed_due = date.today() + timedelta(days=40)
+    changed_due = local_today() + timedelta(days=40)
     await rhythm_db.execute(
         """UPDATE care_schedules
            SET next_due = ?, rhythm_opt_out = 1, rhythm_operation_id = NULL
