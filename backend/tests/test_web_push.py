@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import pytest_asyncio
+from services.local_time import local_today
 
 AMS = ZoneInfo("Europe/Amsterdam")
 
@@ -369,10 +370,10 @@ async def _seed_outdoor_plant_with_threshold(
 @pytest.fixture
 def at_send_hour_today(monkeypatch):
     """Freeze the dispatch clock to a send hour *on the real current date*, so
-    the ephemeral schedule's next_due (date.today()) counts as due."""
+    the ephemeral schedule's next_due (local_today()) counts as due."""
     import services.digest as digest
     monkeypatch.setattr(
-        digest, "_now", lambda: datetime.combine(date.today(), time(8, 30), tzinfo=AMS)
+        digest, "_now", lambda: datetime.combine(local_today(), time(8, 30), tzinfo=AMS)
     )
 
 
@@ -433,14 +434,14 @@ async def test_acknowledged_weather_warning_suppresses_account_push(
     warning_id = canonical_weather_warning_id_for_fields(
         1,
         "frost_protect",
-        date.today(),
+        local_today(),
         "warning",
     )
     acknowledged = await client.post(
         f"/api/weather-warnings/{warning_id}/acknowledgment",
         json={
             "care_type": "frost_protect",
-            "forecast_date": date.today().isoformat(),
+            "forecast_date": local_today().isoformat(),
             "severity": "warning",
         },
         headers=auth_header,
