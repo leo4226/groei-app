@@ -591,6 +591,20 @@ async def list_calendar_events(
     except Exception:
         logger.warning("sync_ephemeral_schedules failed in calendar endpoint")
 
+    # The calendar is the fifth surface reading these warnings, and it would
+    # otherwise be the one still saying "water" for a plant every other screen
+    # has stood down. The event DATES already follow `next_due`, which the rain
+    # credit moves; this is what lets the annotation agree with them.
+    try:
+        from services.weather_forecast import forecast_days_by_map
+
+        by_map = await forecast_days_by_map(db, account["household_id"])
+        if by_map:
+            warning_weather = {**(warning_weather or {}),
+                               "forecast_days_by_map": by_map}
+    except Exception:
+        logger.warning("Per-map forecast unavailable in calendar endpoint")
+
     try:
         pressure_outlook = await build_water_outlook(
             db, household_id=account["household_id"],
@@ -608,7 +622,7 @@ async def list_calendar_events(
 
     plants = await db.execute_fetchall(
         "SELECT p.id, p.name, p.species_id, p.map_id, m.name AS map_name, m.map_type, p.container_id, p.ground_zone_id, "
-        "p.care_profile, p.care_thresholds, p.icon_key "
+        "p.care_profile, p.care_thresholds, p.icon_key, p.mulch, p.measured_sun_hours "
         "FROM plants p LEFT JOIN maps m ON p.map_id = m.id "
         "WHERE p.household_id = ? AND p.is_active = 1",
         plant_params,
@@ -712,6 +726,10 @@ async def list_calendar_events(
             "care_type": normalize_care_type(r["type"]),
             "next_due": r["due_date"],
             "last_done": r["last_done"],
+            # Both are what tells a rain-credited schedule apart from one that
+            # is simply not due yet.
+            "interval_days": r["interval_days"],
+            "season_adjust": r["season_adjust"],
         })
 
     enrichment_cache: dict[tuple[int, str], dict] = {}
@@ -721,11 +739,14 @@ async def list_calendar_events(
             continue
         warn_plant = {
             "id": pid,
+            "map_id": plant.get("map_id"),
             "map_type": plant.get("map_type"),
             "container_id": plant.get("container_id"),
             "ground_zone_id": plant.get("ground_zone_id"),
             "care_profile": plant.get("care_profile"),
             "care_thresholds": plant.get("care_thresholds"),
+            "mulch": plant.get("mulch"),
+            "measured_sun_hours": plant.get("measured_sun_hours"),
         }
         try:
             state = compute_plant_warnings(

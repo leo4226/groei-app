@@ -463,20 +463,15 @@ def build_care_push_payload(due_rows: list[dict], snooze_token: str | None = Non
     return payload
 
 
-async def _forecast_days_for(db, household_id: int) -> list:
-    """This household's daily rain/ET0/soil rows, or [] when unavailable."""
-    from services.weather_forecast import get_usable_forecast_days
+async def _forecast_days_for(db, household_id: int) -> dict:
+    """Daily rain/ET0/soil rows keyed by map, or {} when unavailable.
 
-    rows = await db.execute_fetchall(
-        """SELECT lat, lon FROM maps
-           WHERE household_id = ? AND map_type = 'outdoor'
-             AND lat IS NOT NULL AND lon IS NOT NULL
-           ORDER BY id LIMIT 1""",
-        (household_id,),
-    )
-    if not rows:
-        return []
-    return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+    Per map rather than per household: rain over one garden must not hold back a
+    reminder for another that is dry.
+    """
+    from services.weather_forecast import forecast_days_by_map
+
+    return await forecast_days_by_map(db, household_id)
 
 
 async def hold_still_moist_water_rows(db, household_id: int, due_rows: list[dict],
@@ -513,23 +508,30 @@ async def hold_still_moist_water_rows(db, household_id: int, due_rows: list[dict
     if not candidates:
         return due_rows
 
-    raw_days = await _forecast_days_for(db, household_id)
-    if not raw_days:
+    raw_by_map = await _forecast_days_for(db, household_id)
+    if not raw_by_map:
         return due_rows
-    weather_days = [
-        WeatherDay(
-            date=date.fromisoformat(str(day["date"])[:10]),
-            max_temp_c=float(day.get("max_temp_c") or 0.0),
-            precipitation_mm=float(day.get("precipitation_mm") or 0.0),
-            et0_mm=float(day.get("et0_mm") or 0.0),
-            humidity_pct=day.get("humidity_pct"),
-            soil_moisture_pct=day.get("soil_moisture_pct"),
-        )
-        for day in raw_days
-    ]
+
+    def _weather_days(rows) -> list[WeatherDay]:
+        return [
+            WeatherDay(
+                date=date.fromisoformat(str(day["date"])[:10]),
+                max_temp_c=float(day.get("max_temp_c") or 0.0),
+                precipitation_mm=float(day.get("precipitation_mm") or 0.0),
+                et0_mm=float(day.get("et0_mm") or 0.0),
+                humidity_pct=day.get("humidity_pct"),
+                soil_moisture_pct=day.get("soil_moisture_pct"),
+            )
+            for day in rows
+        ]
+
+    days_by_map = {map_id: _weather_days(rows) for map_id, rows in raw_by_map.items()}
 
     held_ids = set()
     for row in candidates:
+        weather_days = days_by_map.get(row.get("map_id"))
+        if not weather_days:
+            continue
         verdict = assess_moisture(
             environment=_environment(row),
             today=today,
@@ -586,8 +588,8 @@ async def send_due_care_pushes(db) -> dict:
             """
             SELECT cs.id, cs.next_due, cs.care_type, cs.notes,
                    cs.is_ephemeral, cs.last_done, p.name AS plant_name,
-                   p.container_id, p.ground_zone_id, p.mulch, p.measured_sun_hours,
-                   m.map_type
+                   p.map_id, p.container_id, p.ground_zone_id, p.mulch,
+                   p.measured_sun_hours, m.map_type
             FROM care_schedules cs
             JOIN plants p ON cs.plant_id = p.id
             LEFT JOIN maps m ON m.id = p.map_id

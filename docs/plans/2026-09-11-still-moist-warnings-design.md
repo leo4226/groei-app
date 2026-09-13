@@ -68,24 +68,58 @@ it" the day the soil dries, which is what makes it worth reading.
   `drying`, never like `moist`.
 - **It does not move the deadline.** Read-side only. `care_summary` still says
   the plant is overdue, and no schedule row is rewritten, so one wet week cannot
-  quietly push a plant a week out.
+  quietly push a plant a week out. *(Superseded two days later — see "Rain
+  credits the schedule" below, which moves the deadline on purpose and explains
+  why suppression alone was not enough.)*
 - **It never outranks a real warning.** `("weather_event", "info")` is the
   lowest priority bucket there is.
+
+## Rain credits the schedule (2026-09-13)
+
+Suppression alone left two answers on screen: a calm line saying the soil is
+wet, next to a counter climbing past "14 dagen te laat". Both true, together
+nonsense — and every surface had to learn the suppression separately. The plant
+page did. The map badge did not, and kept drawing a watering droplet under a
+line that said not to water.
+
+So `services/rain_credit.py` moves the deadline instead. When the root zone
+still holds water, `next_due` goes forward by the days the model says are left.
+Nothing downstream needs to know: badge, push, dashboard and digest all read
+`next_due` and all go quiet at once, because the plant is not due.
+
+Its limits are the interesting part:
+
+- **Never writes `care_log`, never touches `last_done`.** Those record what a
+  person did. A log saying Leon watered on a day he did not is worse than any
+  reminder it saves him.
+- **Capped at one interval from today**, so a wet fortnight cannot turn a 5-day
+  blueberry into a monthly one.
+- **Only credits a deadline that has already arrived.** A forecast does not get
+  to reschedule a plant that was not asking for anything.
+- **Clears `notified_for_due`.** That column records the deadline a push went
+  out for; left stale, the reminder for the new date is swallowed as a duplicate.
+- **Indoor and ephemeral schedules are untouched.**
+
+The still-moist line survives as the explanation. `compute_plant_warnings`
+recognises a credited schedule by derivation — its own rhythm (`last_done` plus
+`interval_days`) says it was due by now, but `next_due` sits in the future — so
+no column and no migration. A plant that was overdue yesterday and silent today
+would otherwise look like something got missed.
 
 ## Surfaces
 
 Wired through `compute_plant_warnings`, so the plant page, the dashboard
-summary and the map's warning fields all agree. The map's coloured halo comes
-from the older `care_status` / `alerts` pipeline, which is still schedule-only
-and unchanged here.
+summary, the legacy alert endpoints and the map's warning fields all agree. The
+canvas badge skips `info` warnings, since a badge is drawn from `care_type`
+alone and an advisory would otherwise render the same icon as an alarm. The
+map's coloured halo still comes from the older `care_status`/`alerts` pipeline,
+which is schedule-only and unchanged here.
 
 ## Still open
 
-- A moisture check the user resolves as "still moist" (`moisture_check_service`)
-  does not feed back into this estimate. Their finger in the soil is better
-  evidence than the model and should probably win for a day or two.
+- A moisture check the user resolves as "still moist" does not feed back into
+  the estimate. Their finger in the soil is better evidence than the model.
 - Indoors remains schedule-only. The honest fixes are a real sensor, or letting
-  "still moist" push the next due date out.
+  a "still moist" answer push the next due date out.
 - The container capture rate assumes a pot stands in the rain. A pot under an
-  overhang is modelled as wetter than it is; there is no data today that says
-  which.
+  overhang is modelled as wetter than it is; no data today says which is which.

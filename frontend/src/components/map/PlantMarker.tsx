@@ -83,9 +83,16 @@ export function markerBadgesForPlant(
  * The single most-urgent badge to render on the canvas — `top_warning` first,
  * falling back to the first warning. The full list lives in the tap sheet and
  * CareNeedsList; capping the canvas to one badge keeps a dense map legible.
+ *
+ * `info` warnings are advisory and earn no badge. A badge is drawn from
+ * `care_type` alone, so "nog niet gieten — grond is nog vochtig" rendered the
+ * same watering droplet as "3 dagen te laat", in a slightly different colour.
+ * A marker that says "do something" when the text says "don't" is the wrong
+ * half of the message, and the map is the half people glance at.
  */
 export function topMarkerBadge(plant: MapPlant, showWeatherWarnings = false): MarkerBadge | null {
-  const w = visibleMarkerWarnings(plant, showWeatherWarnings)[0] ?? null
+  const w = visibleMarkerWarnings(plant, showWeatherWarnings)
+    .find((warning) => warning.severity !== 'info') ?? null
   if (!w) return null
   return { alert_type: `${w.care_type}-${w.trigger}`, severity: w.severity, icon: w.icon, care_type: w.care_type }
 }

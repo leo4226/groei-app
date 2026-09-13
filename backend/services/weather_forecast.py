@@ -206,3 +206,49 @@ async def get_usable_forecast_days(
     if not forecast.get("available") or forecast.get("stale"):
         return []
     return forecast.get("days") or []
+
+
+async def forecast_days_by_map(db, household_id: int) -> dict[int, list[dict]]:
+    """Fresh daily rows per map for one household, keyed by map id.
+
+    Two gardens can be far enough apart to have different weather, and a wet
+    forecast at one must never postpone watering at the other. Picking the
+    household's first outdoor map and applying it to everything looked correct
+    on a single-garden household and silently went wrong on any other.
+
+    Indoor maps take the first outdoor map's coordinates as a proxy, matching
+    the water outlook. It costs nothing either way: every indoor assessment
+    answers "unknown" regardless of the weather handed to it.
+
+    One fetch per distinct coordinate, cached for an hour upstream. A map with
+    no usable forecast is absent from the result, which reads as no evidence.
+    """
+    rows = await db.execute_fetchall(
+        "SELECT id, map_type, lat, lon FROM maps WHERE household_id = ? ORDER BY id",
+        (household_id,),
+    )
+    if not rows:
+        return {}
+
+    proxy = next(
+        ((float(r["lat"]), float(r["lon"])) for r in rows
+         if r["map_type"] == "outdoor" and r["lat"] is not None and r["lon"] is not None),
+        None,
+    )
+
+    coordinates_by_map: dict[int, tuple[float, float]] = {}
+    for row in rows:
+        if row["lat"] is not None and row["lon"] is not None:
+            coordinates_by_map[row["id"]] = (float(row["lat"]), float(row["lon"]))
+        elif row["map_type"] == "indoor" and proxy is not None:
+            coordinates_by_map[row["id"]] = proxy
+
+    by_coordinate: dict[tuple[float, float], list[dict]] = {}
+    for coordinates in dict.fromkeys(coordinates_by_map.values()):
+        by_coordinate[coordinates] = await get_usable_forecast_days(*coordinates)
+
+    return {
+        map_id: by_coordinate[coordinates]
+        for map_id, coordinates in coordinates_by_map.items()
+        if by_coordinate.get(coordinates)
+    }

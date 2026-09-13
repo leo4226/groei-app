@@ -5,7 +5,7 @@ care profile, schedules, and current weather. All UI surfaces consume the
 output of `compute_plant_warnings()` — no consumer re-derives priority.
 """
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import hashlib
 from typing import Literal
 
@@ -16,6 +16,7 @@ def _as_date(val):
     return date.fromisoformat(val)
 
 
+from services.scheduling import calculate_effective_interval
 from services.care_profile import (
     environment_for_plant as _environment_for_plant,
     load_care_profile as _load_care_profile,
@@ -398,14 +399,26 @@ def _as_watering_date(value) -> date | None:
         return None
 
 
-def _moisture_weather_days(weather_payload: dict) -> list[WeatherDay]:
+def _moisture_weather_days(weather_payload: dict, map_id=None) -> list[WeatherDay]:
     """Read the per-day forecast rows the still-moist assessment needs.
 
     Absent for callers that only pass the legacy `temp`/`rain` aggregates, which
     is why a missing key has to mean "no evidence" and never "dry".
+
+    `forecast_days_by_map` wins over the flat `forecast_days` when the plant has
+    a map: two gardens can be far enough apart to have different weather, and
+    rain over one must never stand down a warning in the other. The flat key
+    stays for the map endpoints, which already fetch their own map's forecast
+    and have exactly one to hand.
     """
+    by_map = weather_payload.get("forecast_days_by_map") or {}
+    rows = by_map.get(map_id) if map_id is not None and by_map else None
+    if rows is None and by_map and map_id is not None:
+        # The plant's own map has no usable forecast. Another map's would be the
+        # wrong weather, so this is no evidence rather than someone else's.
+        rows = []
     days: list[WeatherDay] = []
-    for raw in weather_payload.get("forecast_days") or []:
+    for raw in (rows if rows is not None else weather_payload.get("forecast_days")) or []:
         try:
             days.append(WeatherDay(
                 date=_as_date(raw["date"]),
@@ -420,6 +433,34 @@ def _moisture_weather_days(weather_payload: dict) -> list[WeatherDay]:
             # window simply ends up as "unknown" and nothing is suppressed.
             continue
     return days
+
+
+def _was_credited(sched: dict, *, today: date) -> bool:
+    """True when rain has already pushed this schedule's deadline past today.
+
+    Derived, not stored: a schedule whose own rhythm says it was due by now
+    (`last_done` plus its interval) but whose `next_due` sits in the future got
+    there because something moved it. No column and no migration — the two dates
+    disagreeing is the whole signal.
+
+    The rhythm has to be computed the way the scheduler computes it, seasonal
+    adjustment included. `calculate_next_due` lengthens the interval in the
+    seasons that call for it, so comparing against the raw `interval_days` makes
+    every ordinary schedule look credited for exactly those extra days — and
+    puts a "nog niet gieten" line on a plant nothing has happened to.
+    """
+    last_done = _as_watering_date(sched.get("last_done"))
+    interval = sched.get("interval_days")
+    next_due = sched.get("next_due")
+    if last_done is None or not interval or next_due is None:
+        return False
+    try:
+        effective = calculate_effective_interval(
+            int(interval), sched.get("season_adjust"), last_done,
+        )
+    except (TypeError, ValueError):
+        return False
+    return last_done + timedelta(days=effective) <= today < _as_date(next_due)
 
 
 def _still_moist_warning(
@@ -703,7 +744,7 @@ def compute_plant_warnings(
         last_watered=_as_watering_date(
             water_schedule.get("last_done") or weather_payload.get("last_watered")
         ),
-        weather_days=_moisture_weather_days(weather_payload),
+        weather_days=_moisture_weather_days(weather_payload, plant.get("map_id")),
         mulch=plant.get("mulch"),
         exposure=exposure_from_sun_hours(plant.get("measured_sun_hours")),
     )
@@ -727,6 +768,13 @@ def compute_plant_warnings(
                 if care_type == "water" and still_moist:
                     w = _still_moist_warning(moisture, days_overdue=w.days_overdue or 0)
                 schedule_warnings.append(w)
+            elif care_type == "water" and still_moist and _was_credited(sched, today=today):
+                # Not due — because rain already moved the deadline. Say so, or
+                # a plant that was overdue yesterday just silently drops off the
+                # list and the reader is left to wonder whether they missed it.
+                schedule_warnings.append(
+                    _still_moist_warning(moisture, days_overdue=0)
+                )
 
     # Weather warnings
     temp_data = weather_payload.get("temp")
