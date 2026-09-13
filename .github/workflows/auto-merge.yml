@@ -82,15 +82,70 @@ jobs:
         # Seconds later the same call succeeds. Without the retry every PR
         # lands a red X and needs auto-merge enabling by hand, which is the
         # friction this workflow exists to remove.
+        #
+        # The second failure mode is quota, not timing, and the retries above
+        # cannot clear it:
+        #   GraphQL: API rate limit already exceeded for user ID <id>.
+        # `gh pr merge --auto` is GraphQL-only (GitHub exposes no REST endpoint
+        # for enabling auto-merge) and the token's GraphQL budget is hourly, so
+        # "already exceeded" means it was spent before this run asked — several
+        # agent PRs firing together will do that. The window only rolls over at
+        # a fixed time, so 45 seconds of retrying is guaranteed to fail; every
+        # time this has fired the PR landed a red X and had to be merged by
+        # hand. REST has a SEPARATE budget, so ask REST when the GraphQL window
+        # ends and wait it out.
         run: |
+          # REST on purpose: it still answers while the GraphQL budget is spent.
+          pr_state() {
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.state' 2>/dev/null || echo unknown
+          }
+
           for attempt in 1 2 3; do
-            if gh pr merge --auto --squash "$PR_URL"; then
+            if err=$(gh pr merge --auto --squash "$PR_URL" 2>&1); then
+              exit 0
+            fi
+            echo "$err"
+            # A concurrent merge (another run, or Leon in the browser) leaves
+            # nothing to enable — that is success, not a red X.
+            if [ "$(pr_state)" != "open" ]; then
+              echo "PR is no longer open; there is nothing to enable. Done."
               exit 0
             fi
             if [ "$attempt" -lt 3 ]; then sleep $((attempt * 15)); fi
           done
+
+          if printf '%s\n' "$err" | grep -q "rate limit already exceeded"; then
+            reset=$(gh api rate_limit --jq '.resources.graphql.reset' 2>/dev/null) || reset=0
+            case "$reset" in ''|*[!0-9]*) reset=0 ;; esac
+            wait_s=$((reset - $(date -u +%s) + 10))
+            # Capped at the longest a window can be. Past that, fail loudly
+            # rather than idle a runner: runner minutes are free on a public
+            # repo, but one red X per PR is exactly what this workflow removes.
+            # A reset that has already passed (wait_s <= 0) means the window
+            # rolled over while the retries above were sleeping — the budget is
+            # back, so just retry.
+            if [ "$reset" -gt 0 ] && [ "$wait_s" -le 3600 ]; then
+              if [ "$wait_s" -gt 0 ]; then
+                echo "GraphQL budget for this token is spent; the window resets in ${wait_s}s. Waiting, then retrying."
+                sleep "$wait_s"
+              else
+                echo "GraphQL budget for this token was spent; the window has already rolled over. Retrying now."
+              fi
+              if gh pr merge --auto --squash "$PR_URL"; then
+                exit 0
+              fi
+              if [ "$(pr_state)" != "open" ]; then
+                echo "PR is no longer open; there is nothing to enable. Done."
+                exit 0
+              fi
+            else
+              echo "GraphQL budget is spent and does not reset within the hour (reset=${reset}); not waiting."
+            fi
+          fi
+
           echo "::error::Could not enable auto-merge after 3 attempts — see the error above. Merge the PR by hand once its checks are green."
           exit 1
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.DEPLOY_PAT || secrets.GITHUB_TOKEN }}
