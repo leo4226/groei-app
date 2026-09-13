@@ -180,31 +180,23 @@ class WarningSummaryOut(BaseModel):
     weather_warnings: list[WeatherWarningGroupOut] = Field(default_factory=list)
 
 
-async def _household_forecast_days(db, household_id: int | None) -> list[dict]:
-    """Per-day rainfall, evapotranspiration and soil moisture for this household.
+async def _household_forecast_days(db, household_id: int | None) -> dict:
+    """Per-map daily rainfall, evapotranspiration and soil moisture.
 
     The still-moist assessment needs the daily rows, not the garden-wide totals
     `get_rain_data` returns: whether a pot is still wet depends on the order the
-    rain and the heat arrived in. Keyed to the household's first outdoor map,
-    which is where its coordinates live, and cached for an hour upstream.
+    rain and the heat arrived in.
 
-    Returns [] for anything less than a fresh forecast. Empty means "no
-    evidence", and no watering warning is ever suppressed on no evidence.
+    Keyed by map, because a household can have two gardens far enough apart to
+    have different weather, and rain over one must never stand a warning down in
+    the other. A map with no fresh forecast is simply absent, which reads as no
+    evidence — and no watering warning is ever suppressed on no evidence.
     """
     if household_id is None:
-        return []
-    from services.weather_forecast import get_usable_forecast_days
+        return {}
+    from services.weather_forecast import forecast_days_by_map
 
-    rows = await db.execute_fetchall(
-        """SELECT lat, lon FROM maps
-           WHERE household_id = ? AND map_type = 'outdoor'
-             AND lat IS NOT NULL AND lon IS NOT NULL
-           ORDER BY id LIMIT 1""",
-        (household_id,),
-    )
-    if not rows:
-        return []
-    return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+    return await forecast_days_by_map(db, household_id)
 
 
 async def _or_none(label: str, household_id: int | None, coroutine):
@@ -240,16 +232,16 @@ async def _fetch_weather_safely(db=None, household_id: int | None = None) -> dic
         await _or_none("last_watered", household_id, get_last_garden_watered(household_id))
         if household_id is not None else None
     )
-    forecast_days = await _or_none(
+    forecast_days_by_map = await _or_none(
         "forecast_days", household_id, _household_forecast_days(db, household_id)
     )
-    if not temp_data and not rain_data and not last_watered and not forecast_days:
+    if not temp_data and not rain_data and not last_watered and not forecast_days_by_map:
         return None
     return {
         "temp": temp_data,
         "rain": rain_data,
         "last_watered": last_watered,
-        "forecast_days": forecast_days or [],
+        "forecast_days_by_map": forecast_days_by_map or {},
     }
 
 
@@ -276,7 +268,7 @@ async def get_plant_warnings(
     plant = dict(plant_rows[0])
 
     schedules_rows = await db.execute_fetchall(
-        """SELECT care_type, next_due, last_done, interval_days
+        """SELECT care_type, next_due, last_done, interval_days, season_adjust
            FROM care_schedules
            WHERE plant_id = ? AND is_active = 1""",
         (plant_id,),
@@ -364,7 +356,7 @@ async def _compute_warning_summary(
     placeholders = ",".join("?" * len(plant_ids))
     schedule_rows = await db.execute_fetchall(
         f"""SELECT cs.id as schedule_id, cs.plant_id, cs.care_type, cs.next_due,
-                   cs.last_done, cs.interval_days
+                   cs.last_done, cs.interval_days, cs.season_adjust
             FROM care_schedules cs
             WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1""",
         plant_ids,

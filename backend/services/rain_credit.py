@@ -24,6 +24,13 @@ What it deliberately does not do:
   are credited; an early forecast does not get to reschedule anything.
 - **Never touches indoor plants**, where there is no moisture signal at all, or
   ephemeral schedules, which belong to the moisture-check flow.
+- **Never credits a schedule that has never been completed.** Without a
+  last-watered date the reservoir starts empty and runs on rain alone, which is
+  the weakest evidence there is. Such a plant keeps its deadline and gets the
+  read-side "nog niet gieten" line instead, which says the same thing without
+  moving anything.
+- **Never applies one map's weather to another.** Two gardens can be far enough
+  apart to have different weather, and the forecast is read per map.
 
 The still-moist warning stays as the explanation: `compute_plant_warnings`
 recognises a credited schedule (its natural deadline has passed but `next_due`
@@ -81,6 +88,14 @@ def credited_next_due(
     if environment_for_row(row) == "indoor":
         return None
 
+    # A schedule that has never been completed has no rhythm to move: its
+    # `next_due` came from seeding, not from a watering. Crediting it would also
+    # strand it — `compute_plant_warnings` recognises a credited schedule by
+    # comparing `last_done` plus the interval against `next_due`, so a plant with
+    # no `last_done` would go quiet with nothing left to explain why.
+    if _as_date(row.get("last_done")) is None:
+        return None
+
     interval = row.get("interval_days")
     if not interval or int(interval) < 1:
         return None
@@ -131,14 +146,14 @@ def weather_days_from_rows(rows: list[dict]) -> list[WeatherDay]:
 
 async def apply_rain_credit(db, *, household_id: int, today: date | None = None) -> dict:
     """Move every due watering deadline that the rain has already covered."""
-    from services.weather_forecast import get_usable_forecast_days
+    from services.weather_forecast import forecast_days_by_map
 
     today = today or local_today()
 
     due_rows = await db.execute_fetchall(
         """SELECT cs.id, cs.next_due, cs.last_done, cs.interval_days, cs.season_adjust,
-                  p.container_id, p.ground_zone_id, p.mulch, p.measured_sun_hours,
-                  m.map_type
+                  p.map_id, p.container_id, p.ground_zone_id, p.mulch,
+                  p.measured_sun_hours, m.map_type
            FROM care_schedules cs
            JOIN plants p ON p.id = cs.plant_id
            LEFT JOIN maps m ON m.id = p.map_id
@@ -152,23 +167,20 @@ async def apply_rain_credit(db, *, household_id: int, today: date | None = None)
     if not outdoor:
         return {"credited": 0, "considered": 0}
 
-    coordinates = await db.execute_fetchall(
-        """SELECT lat, lon FROM maps
-           WHERE household_id = ? AND map_type = 'outdoor'
-             AND lat IS NOT NULL AND lon IS NOT NULL
-           ORDER BY id LIMIT 1""",
-        (household_id,),
-    )
-    if not coordinates:
-        return {"credited": 0, "considered": len(outdoor)}
-    weather_days = weather_days_from_rows(
-        await get_usable_forecast_days(coordinates[0]["lat"], coordinates[0]["lon"])
-    )
-    if not weather_days:
+    # Per map, not per household: a wet forecast over one garden must never
+    # postpone watering in another that is dry.
+    raw_by_map = await forecast_days_by_map(db, household_id)
+    days_by_map = {
+        map_id: weather_days_from_rows(rows) for map_id, rows in raw_by_map.items()
+    }
+    if not days_by_map:
         return {"credited": 0, "considered": len(outdoor)}
 
     credited = 0
     for row in outdoor:
+        weather_days = days_by_map.get(row.get("map_id"))
+        if not weather_days:
+            continue
         new_due = credited_next_due(row=row, today=today, weather_days=weather_days)
         if new_due is None:
             continue

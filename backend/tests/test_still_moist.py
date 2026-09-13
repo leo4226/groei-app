@@ -15,12 +15,17 @@ from services.water_pressure import WeatherDay, assess_moisture
 TODAY = date(2026, 6, 20)
 
 
-def _days(specs: list[dict]) -> list[WeatherDay]:
-    """Build a window ending today; specs are listed oldest first."""
+def _days(specs: list[dict], anchor: date = TODAY) -> list[WeatherDay]:
+    """Build a window ending on `anchor`; specs are listed oldest first.
+
+    The anchor matters: `assess_moisture` returns "unknown" unless the readings
+    reach the day being asked about, so a window built around the wrong date
+    makes a test pass for the wrong reason.
+    """
     count = len(specs)
     return [
         WeatherDay(
-            date=TODAY - timedelta(days=count - 1 - index),
+            date=anchor - timedelta(days=count - 1 - index),
             max_temp_c=spec.get("max_temp_c", 18.0),
             precipitation_mm=spec.get("rain", 0.0),
             et0_mm=spec.get("et0", 3.0),
@@ -168,7 +173,7 @@ def _plant(**overrides) -> dict:
     }
 
 
-def _weather(specs, **extra) -> dict:
+def _weather(specs, anchor: date = TODAY, **extra) -> dict:
     return {
         "forecast_days": [
             {
@@ -179,7 +184,7 @@ def _weather(specs, **extra) -> dict:
                 "humidity_pct": day.humidity_pct,
                 "soil_moisture_pct": day.soil_moisture_pct,
             }
-            for day in _days(specs)
+            for day in _days(specs, anchor)
         ],
         **extra,
     }
@@ -321,7 +326,11 @@ class _ForecastDb:
 
     async def execute_fetchall(self, query, params=()):
         if "FROM maps" in query:
-            return [{"lat": 52.3715, "lon": 4.8499}] if self.has_coordinates else []
+            return [{
+                "id": 1, "map_type": "outdoor",
+                "lat": 52.3715 if self.has_coordinates else None,
+                "lon": 4.8499 if self.has_coordinates else None,
+            }]
         return []
 
 
@@ -338,6 +347,7 @@ def _due_row(row_id: int, **overrides) -> dict:
         "mulch": None,
         "measured_sun_hours": None,
         "map_type": "outdoor",
+        "map_id": 1,
         **overrides,
     }
 
@@ -456,7 +466,8 @@ async def test_a_held_push_is_deferred_not_cancelled(monkeypatch):
             if "FROM care_schedules cs" in query:
                 return [wet, dry]
             if "FROM maps" in query:
-                return [{"lat": 52.3715, "lon": 4.8499}]
+                return [{"id": 1, "map_type": "outdoor",
+                         "lat": 52.3715, "lon": 4.8499}]
             if "FROM push_subscriptions WHERE" in query:
                 return [{"id": 7, "endpoint": "https://push.example/x",
                          "p256dh": "k", "auth": "a"}]
@@ -601,3 +612,63 @@ def test_a_credited_plant_that_has_dried_out_is_due_again():
 
     assert not [w for w in state.warnings if w.care_type == "water"], (
         "not due today either way — but no moisture claim is made about it")
+
+
+def test_a_lengthened_winter_interval_is_not_mistaken_for_a_rain_credit():
+    """`next_due` is written from the SEASON-ADJUSTED interval. Comparing it
+    against the raw `interval_days` makes every ordinary schedule look credited
+    for exactly the extra seasonal days, and puts "nog niet gieten — grond is
+    nog vochtig" on a plant nothing has happened to. A claim the app invents
+    about soil it never looked at is the same failure as the warning that was
+    wrong, pointed the other way."""
+    # 10-day base doubled by a winter multiplier: the scheduler wrote next_due
+    # 20 days out, so on day 12 this plant is simply not due yet.
+    last_done = date(2026, 1, 1)
+    schedule = [{
+        "care_type": "water",
+        "next_due": last_done + timedelta(days=20),
+        "last_done": last_done,
+        "interval_days": 10,
+        "season_adjust": '{"winter": 2.0}',
+    }]
+    twelve_days_later = last_done + timedelta(days=12)
+
+    state = compute_plant_warnings(
+        _plant(), schedule,
+        weather=_weather(WET_WEEK, anchor=twelve_days_later),
+        today=twelve_days_later,
+    )
+
+    assert not [w for w in state.warnings if w.care_type == "water"]
+
+
+def test_rain_over_one_garden_does_not_quiet_a_warning_in_another():
+    """The read side has the same trap as the write side: one household, two
+    gardens, and only one of them wet."""
+    schedule = _water_schedule(2)
+    weather = {
+        "forecast_days_by_map": {
+            1: _weather(WET_WEEK)["forecast_days"],
+            2: _weather(DRY_WEEK)["forecast_days"],
+        }
+    }
+
+    wet = compute_plant_warnings(
+        _plant(map_id=1), schedule, weather=weather, today=TODAY)
+    dry = compute_plant_warnings(
+        _plant(map_id=2), schedule, weather=weather, today=TODAY)
+
+    assert [w.code for w in wet.warnings if w.care_type == "water"] == ["water_still_moist"]
+    assert [w.code for w in dry.warnings if w.care_type == "water"] == [None]
+
+
+def test_a_plant_whose_own_map_has_no_forecast_gets_no_one_elses():
+    """Absent weather for this map is no evidence. Falling back to another
+    map's would be someone else's sky."""
+    weather = {"forecast_days_by_map": {1: _weather(WET_WEEK)["forecast_days"]}}
+
+    state = compute_plant_warnings(
+        _plant(map_id=2), _water_schedule(2), weather=weather, today=TODAY)
+
+    water = [w for w in state.warnings if w.care_type == "water"]
+    assert water[0].code is None, "still a real watering warning"

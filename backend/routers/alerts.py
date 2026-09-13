@@ -47,27 +47,19 @@ async def _warning_weather(db, household_id: int) -> dict:
         "temp": temp_data,
         "rain": rain_data,
         "last_watered": last_watered,
-        "forecast_days": await _forecast_days(db, household_id),
+        "forecast_days_by_map": await _forecast_days(db, household_id),
     }
 
 
-async def _forecast_days(db, household_id: int) -> list[dict]:
-    from services.weather_forecast import get_usable_forecast_days
+async def _forecast_days(db, household_id: int) -> dict:
+    """Daily forecast rows keyed by map — never one map's weather for another."""
+    from services.weather_forecast import forecast_days_by_map
 
-    rows = await db.execute_fetchall(
-        """SELECT lat, lon FROM maps
-           WHERE household_id = ? AND map_type = 'outdoor'
-             AND lat IS NOT NULL AND lon IS NOT NULL
-           ORDER BY id LIMIT 1""",
-        (household_id,),
-    )
-    if not rows:
-        return []
     try:
-        return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+        return await forecast_days_by_map(db, household_id)
     except Exception:
         logger.warning("Forecast days unavailable for household %s", household_id)
-        return []
+        return {}
 
 
 async def _plant_warning_state(db, plant_id: int, household_id: int, today: date, weather: dict | None = None):
@@ -84,7 +76,7 @@ async def _plant_warning_state(db, plant_id: int, household_id: int, today: date
         raise HTTPException(status_code=404, detail="Plant not found")
 
     schedule_rows = await db.execute_fetchall(
-        """SELECT care_type, next_due, last_done, interval_days
+        """SELECT care_type, next_due, last_done, interval_days, season_adjust
            FROM care_schedules
            WHERE plant_id = ? AND is_active = 1""",
         (plant_id,),

@@ -45,6 +45,7 @@ def _row(**overrides):
         "mulch": None,
         "measured_sun_hours": None,
         "map_type": "outdoor",
+        "map_id": 1,
         **overrides,
     }
 
@@ -95,6 +96,11 @@ def test_no_weather_means_no_credit():
 # ── Against the database ─────────────────────────────────────────────────────
 
 class _Db:
+    """Two gardens by default, so the per-map path is the one under test."""
+
+    AMSTERDAM = (52.3715, 4.8499)
+    GRONINGEN = (53.2194, 6.5665)
+
     def __init__(self, rows, *, coordinates=True):
         self.rows = rows
         self.coordinates = coordinates
@@ -103,7 +109,14 @@ class _Db:
 
     async def execute_fetchall(self, query, params=()):
         if "FROM maps" in query and "care_schedules" not in query:
-            return [{"lat": 52.3715, "lon": 4.8499}] if self.coordinates else []
+            if not self.coordinates:
+                return [{"id": 1, "map_type": "outdoor", "lat": None, "lon": None}]
+            return [
+                {"id": 1, "map_type": "outdoor",
+                 "lat": self.AMSTERDAM[0], "lon": self.AMSTERDAM[1]},
+                {"id": 2, "map_type": "outdoor",
+                 "lat": self.GRONINGEN[0], "lon": self.GRONINGEN[1]},
+            ]
         if "FROM care_schedules cs" in query:
             return self.rows
         return []
@@ -115,16 +128,29 @@ class _Db:
         self.commits += 1
 
 
+def _rows(specs):
+    return [
+        {"date": day.date.isoformat(), "max_temp_c": day.max_temp_c,
+         "precipitation_mm": day.precipitation_mm, "et0_mm": day.et0_mm,
+         "humidity_pct": None, "soil_moisture_pct": None}
+        for day in _days(specs)
+    ]
+
+
+def _patch_weather(monkeypatch, by_coordinate):
+    """Patch the real per-coordinate fetch, so `forecast_days_by_map` does its
+    own grouping — the thing that was wrong is the grouping, not the fetch."""
+    async def fake(lat, lon):
+        return by_coordinate.get((round(lat, 4), round(lon, 4)), [])
+    monkeypatch.setattr("services.weather_forecast.get_usable_forecast_days", fake)
+
+
 @pytest.fixture
 def wet_forecast(monkeypatch):
-    async def fake(lat, lon):
-        return [
-            {"date": day.date.isoformat(), "max_temp_c": day.max_temp_c,
-             "precipitation_mm": day.precipitation_mm, "et0_mm": day.et0_mm,
-             "humidity_pct": None, "soil_moisture_pct": None}
-            for day in _days(WET)
-        ]
-    monkeypatch.setattr("services.weather_forecast.get_usable_forecast_days", fake)
+    _patch_weather(monkeypatch, {
+        _Db.AMSTERDAM: _rows(WET),
+        _Db.GRONINGEN: _rows(WET),
+    })
 
 
 @pytest.mark.asyncio
@@ -183,3 +209,46 @@ async def test_an_all_indoor_household_never_fetches_a_forecast(monkeypatch):
 
     assert calls == []
     assert db.writes == []
+
+
+@pytest.mark.asyncio
+async def test_rain_over_one_garden_does_not_postpone_watering_in_another(monkeypatch):
+    """A household can have two gardens far enough apart to have different
+    weather. Reading the first map's forecast and applying it to every plant
+    would let a downpour over one silently stop the reminders for the other —
+    the failure mode where nobody waters a dry garden for a fortnight."""
+    _patch_weather(monkeypatch, {
+        _Db.AMSTERDAM: _rows(WET),
+        _Db.GRONINGEN: _rows(DRY),
+    })
+    wet_garden = _row(id=1, map_id=1)
+    dry_garden = _row(id=2, map_id=2)
+    db = _Db([wet_garden, dry_garden])
+
+    result = await apply_rain_credit(db, household_id=1, today=TODAY)
+
+    assert result["credited"] == 1
+    assert [params[-1] for _, params in db.writes] == [1], (
+        "only the plant standing in the rain")
+
+
+@pytest.mark.asyncio
+async def test_a_map_with_no_forecast_is_left_alone(monkeypatch):
+    """Absent weather is no evidence, and no deadline moves on no evidence —
+    least of all using a different garden's sky."""
+    _patch_weather(monkeypatch, {_Db.AMSTERDAM: _rows(WET)})
+    db = _Db([_row(id=2, map_id=2)])
+
+    result = await apply_rain_credit(db, household_id=1, today=TODAY)
+
+    assert result["credited"] == 0
+    assert db.writes == []
+
+
+@pytest.mark.asyncio
+async def test_a_schedule_never_completed_is_not_credited():
+    """Without a last-watered date the reservoir starts empty and runs on rain
+    alone. It is also the case `compute_plant_warnings` cannot recognise as
+    credited, so the plant would go quiet with nothing left to explain why."""
+    assert credited_next_due(
+        row=_row(last_done=None), today=TODAY, weather_days=_days(WET)) is None
