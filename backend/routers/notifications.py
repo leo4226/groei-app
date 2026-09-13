@@ -291,9 +291,34 @@ async def send_digests(
     # Two independent channels, same hourly trigger: the daily email digest
     # (fires at each account's chosen hour) and real-time care pushes (fire
     # the hour a task becomes due). Counts only — never account data.
+    # Let rain move watering deadlines it has already covered, BEFORE the
+    # channels read them. Run after the weather sync and before the dispatch, so
+    # a credited plant is simply not due rather than being filtered out of every
+    # surface separately.
+    credit_counts = {"rain_credited": 0}
+    try:
+        credit_counts = {"rain_credited": await _apply_rain_credit_all(db)}
+    except Exception:  # noqa: BLE001 — best-effort; a reminder held back by a
+        # broken forecast is worse than one that arrives a day early.
+        logger.warning("Rain credit pass failed (non-fatal)", exc_info=True)
     email_counts = await send_due_digests(db)
     push_counts = await send_due_care_pushes(db)
-    return {**weather_counts, **email_counts, **push_counts}
+    return {**weather_counts, **credit_counts, **email_counts, **push_counts}
+
+
+async def _apply_rain_credit_all(db) -> int:
+    """Run the rain credit for every household that has plants."""
+    from services.rain_credit import apply_rain_credit
+
+    rows = await db.execute_fetchall(
+        "SELECT DISTINCT household_id FROM plants WHERE is_active = 1"
+    )
+    credited = 0
+    for row in rows:
+        credited += (await apply_rain_credit(
+            db, household_id=row["household_id"]
+        ))["credited"]
+    return credited
 
 
 @router.post("/notifications/snooze")

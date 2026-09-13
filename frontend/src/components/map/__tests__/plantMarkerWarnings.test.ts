@@ -69,6 +69,31 @@ describe('topMarkerBadge (canvas cap)', () => {
     expect(topMarkerBadge(plant([], []))).toBeNull()
   })
 
+  it('draws no badge for an advisory warning', () => {
+    // "Nog niet gieten — grond is nog vochtig" is care_type 'water', and a
+    // badge is drawn from care_type alone. Unfiltered it rendered the same
+    // droplet as "3 dagen te laat", which is the opposite of what it says.
+    const stillMoist: CareWarningOut = {
+      ...warning('water', '💧'),
+      code: 'water_still_moist',
+      severity: 'info',
+      trigger: 'weather_event',
+      message_nl: 'Nog niet gieten — grond is nog vochtig',
+      message_en: 'No need to water yet — the soil is still moist',
+    }
+
+    expect(topMarkerBadge(plant([stillMoist], []))).toBeNull()
+  })
+
+  it('still badges a real warning that sits behind an advisory one', () => {
+    const stillMoist: CareWarningOut = {
+      ...warning('water', '💧'), code: 'water_still_moist', severity: 'info',
+    }
+    const p = plant([stillMoist, warning('prune', '✂️')], [])
+
+    expect(topMarkerBadge(p)?.icon).toBe('✂️')
+  })
+
   it('falls through a weather top warning unless highlight mode is active', () => {
     const p = plant([warning('heat_protect', '🔥'), warning('water', '💧')], [])
 

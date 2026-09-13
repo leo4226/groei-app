@@ -5,7 +5,7 @@ care profile, schedules, and current weather. All UI surfaces consume the
 output of `compute_plant_warnings()` — no consumer re-derives priority.
 """
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import hashlib
 from typing import Literal
 
@@ -422,6 +422,26 @@ def _moisture_weather_days(weather_payload: dict) -> list[WeatherDay]:
     return days
 
 
+def _was_credited(sched: dict, *, today: date) -> bool:
+    """True when rain has already pushed this schedule's deadline past today.
+
+    Derived, not stored: a schedule whose own rhythm says it was due by now
+    (`last_done` plus its interval) but whose `next_due` sits in the future got
+    there because something moved it. No column and no migration — the two dates
+    disagreeing is the whole signal.
+    """
+    last_done = _as_watering_date(sched.get("last_done"))
+    interval = sched.get("interval_days")
+    next_due = sched.get("next_due")
+    if last_done is None or not interval or next_due is None:
+        return False
+    try:
+        natural_due = last_done + timedelta(days=int(interval))
+    except (TypeError, ValueError):
+        return False
+    return natural_due <= today < _as_date(next_due)
+
+
 def _still_moist_warning(
     assessment: MoistureAssessment, *, days_overdue: int,
 ) -> CareWarning:
@@ -727,6 +747,13 @@ def compute_plant_warnings(
                 if care_type == "water" and still_moist:
                     w = _still_moist_warning(moisture, days_overdue=w.days_overdue or 0)
                 schedule_warnings.append(w)
+            elif care_type == "water" and still_moist and _was_credited(sched, today=today):
+                # Not due — because rain already moved the deadline. Say so, or
+                # a plant that was overdue yesterday just silently drops off the
+                # list and the reader is left to wonder whether they missed it.
+                schedule_warnings.append(
+                    _still_moist_warning(moisture, days_overdue=0)
+                )
 
     # Weather warnings
     temp_data = weather_payload.get("temp")

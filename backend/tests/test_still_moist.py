@@ -541,3 +541,63 @@ async def test_a_real_soil_reading_survives_the_trip_from_open_meteo(monkeypatch
 
     assert result.verdict == "moist"
     assert result.factors["source"] == "soil_measurement"
+
+
+# ── After rain moved the deadline ────────────────────────────────────────────
+
+def test_a_rain_credited_plant_still_says_why_it_is_not_on_the_list():
+    """Once rain moves `next_due` into the future the plant simply is not due,
+    and every surface goes quiet for the ordinary reason. But a plant that was
+    overdue yesterday and is silent today looks like something was missed, so
+    the explanation has to outlive the warning it replaced."""
+    schedule = [{
+        "care_type": "water",
+        # Its own rhythm says it was due two days ago; the deadline now sits in
+        # the future, which only happens because something moved it.
+        "next_due": TODAY + timedelta(days=2),
+        "last_done": TODAY - timedelta(days=7),
+        "interval_days": 5,
+    }]
+
+    state = compute_plant_warnings(
+        _plant(), schedule, weather=_weather(WET_WEEK), today=TODAY,
+    )
+
+    water = [w for w in state.warnings if w.care_type == "water"]
+    assert [w.code for w in water] == ["water_still_moist"]
+    assert water[0].days_overdue == 0, "nothing is late any more"
+
+
+def test_a_plant_that_is_simply_not_due_says_nothing():
+    """The line is for a deadline rain moved, not for every wet outdoor plant.
+    A standing "nog niet gieten" on everything all autumn is just noise."""
+    schedule = [{
+        "care_type": "water",
+        "next_due": TODAY + timedelta(days=2),
+        "last_done": TODAY - timedelta(days=3),
+        "interval_days": 5,
+    }]
+
+    state = compute_plant_warnings(
+        _plant(), schedule, weather=_weather(WET_WEEK), today=TODAY,
+    )
+
+    assert not [w for w in state.warnings if w.care_type == "water"]
+
+
+def test_a_credited_plant_that_has_dried_out_is_due_again():
+    """The credit is not permanent. Once the soil dries the schedule is back in
+    charge, and a deadline in the future is just a deadline in the future."""
+    schedule = [{
+        "care_type": "water",
+        "next_due": TODAY + timedelta(days=2),
+        "last_done": TODAY - timedelta(days=7),
+        "interval_days": 5,
+    }]
+
+    state = compute_plant_warnings(
+        _plant(), schedule, weather=_weather(DRY_WEEK), today=TODAY,
+    )
+
+    assert not [w for w in state.warnings if w.care_type == "water"], (
+        "not due today either way — but no moisture claim is made about it")

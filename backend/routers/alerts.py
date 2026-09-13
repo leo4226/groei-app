@@ -6,6 +6,7 @@ pipeline and produced contradictory plant-detail advice. Keep these routes for
 old clients, but derive their payload from `compute_plant_warnings()`.
 """
 
+import logging
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -16,6 +17,8 @@ from services.environment import get_rain_data, get_temp_data
 from services.garden_log import get_last_garden_watered
 from services.warnings import compute_plant_warnings
 from services.local_time import local_today
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["alerts"])
 
@@ -36,13 +39,42 @@ async def _warning_weather(db, household_id: int) -> dict:
     temp_data = await get_temp_data(db)
     rain_data = await get_rain_data(db)
     last_watered = await get_last_garden_watered(household_id)
-    return {"temp": temp_data, "rain": rain_data, "last_watered": last_watered}
+    # The daily rows, not just the garden-wide totals: without them
+    # `compute_plant_warnings` cannot tell whether a due plant is still wet, and
+    # these endpoints would keep reporting a watering the other surfaces have
+    # already stood down.
+    return {
+        "temp": temp_data,
+        "rain": rain_data,
+        "last_watered": last_watered,
+        "forecast_days": await _forecast_days(db, household_id),
+    }
+
+
+async def _forecast_days(db, household_id: int) -> list[dict]:
+    from services.weather_forecast import get_usable_forecast_days
+
+    rows = await db.execute_fetchall(
+        """SELECT lat, lon FROM maps
+           WHERE household_id = ? AND map_type = 'outdoor'
+             AND lat IS NOT NULL AND lon IS NOT NULL
+           ORDER BY id LIMIT 1""",
+        (household_id,),
+    )
+    if not rows:
+        return []
+    try:
+        return await get_usable_forecast_days(rows[0]["lat"], rows[0]["lon"])
+    except Exception:
+        logger.warning("Forecast days unavailable for household %s", household_id)
+        return []
 
 
 async def _plant_warning_state(db, plant_id: int, household_id: int, today: date, weather: dict | None = None):
     rows = await db.execute_fetchall(
         """SELECT p.id, p.map_id, p.container_id, p.ground_zone_id,
-                  p.care_thresholds, p.care_profile, m.map_type
+                  p.care_thresholds, p.care_profile, m.map_type,
+                  p.mulch, p.measured_sun_hours
            FROM plants p
            LEFT JOIN maps m ON p.map_id = m.id
            WHERE p.id = ? AND p.household_id = ? AND p.is_active = 1""",
@@ -52,7 +84,7 @@ async def _plant_warning_state(db, plant_id: int, household_id: int, today: date
         raise HTTPException(status_code=404, detail="Plant not found")
 
     schedule_rows = await db.execute_fetchall(
-        """SELECT care_type, next_due, last_done
+        """SELECT care_type, next_due, last_done, interval_days
            FROM care_schedules
            WHERE plant_id = ? AND is_active = 1""",
         (plant_id,),
