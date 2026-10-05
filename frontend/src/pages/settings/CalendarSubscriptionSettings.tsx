@@ -40,12 +40,14 @@ export function providerSubscribeLinks(created: CalendarSubscriptionCreated, cal
   }
 }
 
+// Names start hidden, matching the backend default: the feed link is a bearer
+// secret, and anyone it leaks to should see "Water · 3 plants", not the garden.
 const DEFAULT_CONFIG: CalendarSubscriptionConfig = {
   environment: 'all',
   map_ids: [],
   care_types: [],
   include_context: false,
-  privacy: false,
+  privacy: true,
 }
 
 export default function CalendarSubscriptionSettings({ canEdit = true }: { canEdit?: boolean }) {

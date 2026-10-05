@@ -82,7 +82,7 @@ describe('CalendarSubscriptionSettings', () => {
         map_ids: [],
         care_types: [],
         include_context: false,
-        privacy: false,
+        privacy: true,
       },
     })
     vi.mocked(calendarSubscription.update).mockResolvedValue({
@@ -122,8 +122,8 @@ describe('CalendarSubscriptionSettings', () => {
     const privacyToggle = [...container.querySelectorAll('label')]
       .find((label) => label.textContent?.includes('Hide plant and space names'))
       ?.querySelector('input') as HTMLInputElement
-    expect(privacyToggle.checked).toBe(false)
-    expect(container.textContent).toContain('Fertilize · Strawberry')
+    expect(privacyToggle.checked).toBe(true)
+    expect(container.textContent).toContain('Fertilize · 7 plants')
     expect(container.textContent).toContain('For timely weather alerts, use push notifications below')
     expect(container.querySelector('fieldset[aria-label="Spaces"]')).not.toBeNull()
     expect(container.querySelector('fieldset[aria-label="Care types"]')).not.toBeNull()
@@ -145,7 +145,7 @@ describe('CalendarSubscriptionSettings', () => {
 
     expect(calendarSubscription.create).toHaveBeenCalledWith(expect.objectContaining({
       include_context: false,
-      privacy: false,
+      privacy: true,
     }))
     expect(container.textContent).toContain('Save this link now')
     expect((container.querySelector('input[readonly]') as HTMLInputElement | null)?.value)
