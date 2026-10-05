@@ -318,10 +318,9 @@ def collect_neon(api_key, env_file):
         cons["compute_available"] = not compute_unmeasured
         if compute_unmeasured:
             cons["compute_note"] = (
-                "compute usage niet beschikbaar via API op Free: V2 consumption is "
-                "Launch+ (403) en de project summary rapporteert 0 CU-h terwijl de "
-                "endpoints actief zijn (metrics kunnen tot ~1h achterlopen). Check de "
-                "Neon console voor live verbruik. Storage hieronder is wél gemeten."
+                "the V2 consumption API is Launch+ only (403) and the project summary "
+                "reports 0 CU-h while endpoints are active (metrics can lag up to ~1h). "
+                "Check the Neon console for live usage. Storage below is measured."
             )
     else:
         cons["compute_available"] = True
@@ -545,18 +544,61 @@ def _fmt_usd(x):
     return f"${x:.2f}"
 
 
+KNOWN_NEON_ENDPOINTS = {
+    "ep-weathered-lake-al5q450z": ("production", "br-steep-dawn-al8xci32"),
+    "ep-crimson-darkness-alvzvh16": ("dev", "br-bitter-cherry-alfvn8c2"),
+}
+
+
+def needs_attention(results):
+    """Things Leon should act on. An empty list means nothing does."""
+    out = []
+    labels = {"neon": "Neon", "cloudflare": "Cloudflare", "fly": "Fly.io"}
+    for key, label in labels.items():
+        section = results.get(key) or {"status": "not_configured", "error": "not attempted"}
+        if section.get("status") == "not_configured":
+            out.append(f"{label} is not configured: {section.get('error')}")
+        elif section.get("status") == "error":
+            out.append(f"{label} could not be read: {section.get('error')}")
+
+    neon = results.get("neon") or {}
+    if neon.get("status") == "ok":
+        if neon["usage"]["total_cost"] > 0:
+            out.append(f"Neon overage this month: {_fmt_usd(neon['usage']['total_cost'])}")
+        for e in neon["inventory"]["endpoints"]:
+            if e["id"] not in KNOWN_NEON_ENDPOINTS:
+                out.append(
+                    f"Unknown Neon endpoint `{e['id']}` (branch `{e['branch_id']}`, state "
+                    f"`{e['current_state']}`): an endpoint that is not production or dev can burn compute"
+                )
+    cf = results.get("cloudflare") or {}
+    if cf.get("status") == "ok" and cf["paygo_usage"]["total_cost_usd"] > 0:
+        out.append(f"Cloudflare usage this month: {_fmt_usd(cf['paygo_usage']['total_cost_usd'])}")
+    fly = results.get("fly") or {}
+    if fly.get("status") == "ok":
+        rel = fly["releases"].get("floreren-api") or {}
+        status = str(rel.get("latest_status") or "").lower()
+        if status and status not in ("complete", "completed", "succeeded", "success"):
+            out.append(
+                f"The latest floreren-api release v{rel.get('latest_version')} is `{rel.get('latest_status')}` "
+                f"({rel.get('latest_date')}): production may not run the newest code"
+            )
+    return out
+
+
 def format_report(results, since, since_explicit=False):
     lines = []
-    lines.append(f"📊 **Floreren Cloud Cost Monitor** — vanaf `{since[:10]}`")
+    lines.append(f"📊 **Floreren Cloud Cost Monitor**, from `{since[:10]}`")
     lines.append("")
 
     # ---------------- Neon ----------------
     lines.append("=== Neon ===")
     neon = results.get("neon")
+    neon_compute_measured = True
     if not neon or neon.get("status") == "not_configured":
-        lines.append("⚠️ Neon: niet geconfigureerd (NEON_API_KEY ontbreekt)")
+        lines.append("⚠️ Neon: not configured (NEON_API_KEY missing)")
     elif neon.get("status") == "error":
-        lines.append(f"⚠️ Neon: fout — {neon['error']}")
+        lines.append(f"⚠️ Neon: error: {neon['error']}")
     else:
         cons = neon["consumption"]
         src = cons.get("source", "")
@@ -565,68 +607,75 @@ def format_report(results, since, since_explicit=False):
             p_start = (periods[0].get("period_start") or since)[:10] if periods else since[:10]
             p_end = (periods[-1].get("period_end") or "")[:10] if periods else ""
             plan_label = periods[0].get("period_plan") if periods else None
-            lines.append(f"`{p_start}` → `{p_end}` (bron: V2 Consumption API, plan `{plan_label or '?'}`)")
+            lines.append(f"`{p_start}` to `{p_end}` (source: V2 Consumption API, plan `{plan_label or '?'}`)")
         else:
             p_start = (cons.get("consumption_period_start") or "")[:10]
             p_end = (cons.get("consumption_period_end") or "")[:10]
             if p_start:
-                lines.append(f"`{p_start}` → `{p_end}` (bron: project usage summary)")
+                lines.append(f"`{p_start}` to `{p_end}` (source: project usage summary)")
             else:
-                lines.append("(periode: onbekend — project usage summary toont geen verbruiksperiode)")
+                lines.append("(period unknown: the project usage summary shows no consumption period)")
             if since_explicit:
                 lines.append(
-                    f"ℹ️ `--since {since[:10]}` is niet van toepassing op de project "
-                    "usage summary — die rapporteert altijd de huidige verbruiksperiode van Neon."
+                    f"ℹ️ `--since {since[:10]}` does not apply to the project usage summary, which "
+                    "always reports Neon's current consumption period."
                 )
             if cons.get("v2_note"):
                 lines.append(f"ℹ️ {cons['v2_note']}")
 
         u = neon["usage"]
         a = neon["allowances"]
-        lines.append(f"Plan: **{neon['plan']}** — {a['compute_hours']:.0f} CU-h / {a['storage_gb']:.2f} GB / {a['extra_branches']:.0f} branches inbegrepen, autoscale max {a['autoscale_max_cu']:.0f} CU, scale-to-zero na {a['scale_to_zero_min']} min")
+        lines.append(
+            f"Plan: **{neon['plan']}**: {a['compute_hours']:.0f} CU-h / {a['storage_gb']:.2f} GB / "
+            f"{a['extra_branches']:.0f} branches included, autoscale up to {a['autoscale_max_cu']:.0f} CU, "
+            f"scale to zero after {a['scale_to_zero_min']} min"
+        )
         if cons.get("compute_available") is False:
-            lines.append(
-                f"Compute: ⚠️ **niet meetbaar via API op Free** — {cons.get('compute_note', 'zie Neon console')}"
-            )
+            neon_compute_measured = False
+            lines.append(f"Compute: ⚠️ **not measurable through the API on Free**: {cons.get('compute_note', 'see the Neon console')}")
         else:
-            lines.append(f"Compute: `{u['cu_hours']:.2f}` CU-h gebruikt (inclusief {a['compute_hours']:.0f}) → overage `{u['overage_cu_hours']:.2f}` CU-h ({_fmt_usd(u['compute_cost'])})")
-        lines.append(f"Storage: `{u['storage_gb']:.4f}` GB gebruikt (inclusief {a['storage_gb']:.2f}) → overage `{u['overage_storage_gb']:.4f}` GB ({_fmt_usd(u['storage_cost'])})")
-        lines.append(f"Extra branches: `{u['branch_months']:.3f}` branch-maanden (inclusief {a['extra_branches']:.0f}) → overage `{u['overage_branches']:.3f}` ({_fmt_usd(u['branch_cost'])})")
-        lines.append(f"Neon totaal: **{_fmt_usd(u['total_cost'])}** (onder tier → $0.00)")
+            lines.append(
+                f"Compute: `{u['cu_hours']:.2f}` CU-h used ({a['compute_hours']:.0f} included), overage "
+                f"`{u['overage_cu_hours']:.2f}` CU-h ({_fmt_usd(u['compute_cost'])})"
+            )
+        lines.append(
+            f"Storage: `{u['storage_gb']:.4f}` GB used ({a['storage_gb']:.2f} included), overage "
+            f"`{u['overage_storage_gb']:.4f}` GB ({_fmt_usd(u['storage_cost'])})"
+        )
+        lines.append(
+            f"Extra branches: `{u['branch_months']:.3f}` branch-months ({a['extra_branches']:.0f} included), "
+            f"overage `{u['overage_branches']:.3f}` ({_fmt_usd(u['branch_cost'])})"
+        )
+        lines.append(f"Neon total: **{_fmt_usd(u['total_cost'])}** (within the plan is $0.00)")
 
-        # endpoint inventory
         inv = neon["inventory"]
-        known = {
-            "ep-weathered-lake-al5q450z": ("production", "br-steep-dawn-al8xci32"),
-            "ep-crimson-darkness-alvzvh16": ("dev", "br-bitter-cherry-alfvn8c2"),
-        }
         lines.append("Endpoints:")
         for e in inv["endpoints"]:
-            label = known.get(e["id"], e["id"])
+            label = KNOWN_NEON_ENDPOINTS.get(e["id"], ("unknown", None))[0]
             lines.append(
-                f"  • `{e['id']}` ({label[0] if isinstance(label, tuple) else '?'}, branch `{e['branch_id']}`) "
-                f"— state `{e['current_state']}`, autoscale {e['autoscaling_limit_min_cu']}–{e['autoscaling_limit_max_cu']} CU"
+                f"  • `{e['id']}` ({label}, branch `{e['branch_id']}`): state `{e['current_state']}`, "
+                f"autoscale {e['autoscaling_limit_min_cu']} to {e['autoscaling_limit_max_cu']} CU"
             )
         for b in inv["branches"]:
             if not b.get("has_endpoint", True):
-                lines.append(
-                    f"  • branch `{b['id']}` (`{b['name']}`) — GEEN endpoint (endpoint was deleted; data remains)"
-                )
+                lines.append(f"  • branch `{b['id']}` (`{b['name']}`): no endpoint (deleted; the data remains)")
     lines.append("")
 
     # ---------------- Cloudflare ----------------
     lines.append("=== Cloudflare ===")
     cf = results.get("cloudflare")
     if not cf or cf.get("status") == "not_configured":
-        lines.append("⚠️ Cloudflare: niet geconfigureerd (CLOUDFLARE_API_TOKEN ontbreekt)")
+        lines.append("⚠️ Cloudflare: not configured (CLOUDFLARE_API_TOKEN missing)")
     elif cf.get("status") == "error":
-        lines.append(f"⚠️ Cloudflare: fout — {cf['error']}")
+        lines.append(f"⚠️ Cloudflare: error: {cf['error']}")
     else:
         for b in cf["buckets"]:
             lines.append(f"R2 bucket: `{b['name']}` (created {b['creation_date'][:10]}, {b.get('location') or 'region n/a'})")
         pu = cf["paygo_usage"]
-        lines.append(f"PayGo usage: {pu['line_items']} line items, totaal **{_fmt_usd(pu['total_cost_usd'])}** "
-                     f"(periode {pu['charge_period_start']} → {pu['charge_period_end']})")
+        lines.append(
+            f"PayGo usage: {pu['line_items']} line items, total **{_fmt_usd(pu['total_cost_usd'])}** "
+            f"(period {pu['charge_period_start']} to {pu['charge_period_end']})"
+        )
         for g in pu["grouped"]:
             lines.append(f"  • {g['service_family']} | {g['service_name']} | {g['items']} items | {_fmt_usd(g['cost_usd'])}")
         lines.append(f"⚠️ {pu['limitation']}")
@@ -636,24 +685,24 @@ def format_report(results, since, since_explicit=False):
     lines.append("=== Fly.io ===")
     fly = results.get("fly")
     if not fly or fly.get("status") == "not_configured":
-        lines.append("⚠️ Fly.io: niet geconfigureerd (FLY_API_TOKEN ontbreekt / ~/.fly/config.yml)")
+        lines.append("⚠️ Fly.io: not configured (FLY_API_TOKEN missing / ~/.fly/config.yml)")
     elif fly.get("status") == "error":
-        lines.append(f"⚠️ Fly.io: fout — {fly['error']}")
+        lines.append(f"⚠️ Fly.io: error: {fly['error']}")
     else:
         for app in fly["apps"]:
             lines.append(f"App: `{app['name']}` (platform {app['platform']}{', state ' + app['state'] if app.get('state') else ''})")
         for app_name, ms in fly["machines"].items():
             if not ms:
-                lines.append(f"  {app_name}: geen machines")
+                lines.append(f"  {app_name}: no machines")
                 continue
             lines.append(f"  {app_name}:")
             for m in ms:
                 guest = m.get("guest") or {}
                 spec = f"{guest.get('cpu_kind', '?')}-{guest.get('cpus', '?')}x:{guest.get('memory_mb', '?')}MB" if guest else "spec n/a"
-                lines.append(f"    • `{m['id']}` `{m['name']}` — {m['state']} ({m['region']}, {spec})")
+                lines.append(f"    • `{m['id']}` `{m['name']}`: {m['state']} ({m['region']}, {spec})")
         rel = fly["releases"].get("floreren-api")
         if rel and "note" not in rel:
-            lines.append(f"  floreren-api releases: {rel['count']} — latest v{rel['latest_version']} {rel['latest_status']} {rel['latest_date']}")
+            lines.append(f"  floreren-api releases: {rel['count']}, latest v{rel['latest_version']} {rel['latest_status']} {rel['latest_date']}")
         lines.append(f"⚠️ {fly['billing']['limitation']}")
     lines.append("")
 
@@ -664,13 +713,24 @@ def format_report(results, since, since_explicit=False):
     cf_total = 0.0
     if results.get("cloudflare") and results["cloudflare"].get("status") == "ok":
         cf_total = results["cloudflare"]["paygo_usage"]["total_cost_usd"]
-    total = neon_total + cf_total
-    lines.append(f"**Estimated monthly cost: {_fmt_usd(total)}**")
+    not_measured = ["Fly.io (no billing API: see the Fly dashboard, CostExplorer)"]
+    if not neon_compute_measured:
+        not_measured.append("Neon compute (not available through the API on the Free plan: see the Neon console)")
+    lines.append(f"**Measured this month: {_fmt_usd(neon_total + cf_total)}**")
     lines.append(f"  ├ Neon overage: {_fmt_usd(neon_total)}")
-    lines.append(f"  ├ Cloudflare usage: {_fmt_usd(cf_total)}")
-    lines.append("  └ Fly.io: dashboard-only (fly.io CostExplorer) — geen publieke billing API")
+    lines.append(f"  └ Cloudflare usage: {_fmt_usd(cf_total)}")
+    lines.append("**Not measured:** " + "; ".join(not_measured) + ".")
     lines.append("")
-    lines.append("_Bronnen: Neon API v2 + project summary, Cloudflare PayGo usage, flyctl (read-only)_")
+    lines.append("_Sources: Neon API v2 + project summary, Cloudflare PayGo usage, flyctl (read-only)_")
+    lines.append("")
+
+    lines.append("## Needs attention")
+    lines.append("")
+    attention = needs_attention(results)
+    if attention:
+        lines.extend(f"- {a}" for a in attention)
+    else:
+        lines.append("Nothing needs attention.")
     return "\n".join(lines)
 
 
