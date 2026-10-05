@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from database import db_dep
+from services.calendar_feed_cache import forget_account_feeds
 from models import (
     InviteInput, InviteOutput, JoinInput, AuthResponse, HouseholdUpdate,
     HouseholdMemberOut, HouseholdMemberUpdate, RoleChangeInput,
@@ -421,6 +422,8 @@ async def remove_member(
         await db.execute("DELETE FROM accounts WHERE id = ?", (account_to_delete,))
 
     await db.commit()
+    if account_to_delete:
+        forget_account_feeds(account_to_delete)
 
 @router.patch("", status_code=200)
 async def rename_household(

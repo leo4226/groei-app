@@ -182,9 +182,10 @@ def serialize_calendar(
         "METHOD:PUBLISH",
         f"NAME:{_escape_text(name)}",
         f"X-WR-CALNAME:{_escape_text(name)}",
-        # RFC 7986 refresh hint plus the older Outlook/Apple spelling.
-        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
-        "X-PUBLISHED-TTL:PT1H",
+        # RFC 7986 refresh hint plus the older Outlook/Apple spelling. Care is
+        # planned per day, and each poll can wake Neon, so 3 hours is plenty.
+        "REFRESH-INTERVAL;VALUE=DURATION:PT3H",
+        "X-PUBLISHED-TTL:PT3H",
     ]
 
     for event in events:

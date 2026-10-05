@@ -6,7 +6,15 @@ import pytest
 from icalendar import Calendar
 
 from routers import calendar_subscription
+from services import calendar_feed_cache
 from services.calendar_ics import serialize_calendar
+
+
+@pytest.fixture(autouse=True)
+def _empty_feed_cache():
+    calendar_feed_cache.clear_feed_cache()
+    yield
+    calendar_feed_cache.clear_feed_cache()
 
 
 def _raw_token(feed_url: str) -> str:
@@ -446,3 +454,113 @@ async def test_feed_reaches_a_bounded_horizon_and_answers_head(
     assert head.headers["content-type"].startswith("text/calendar")
     assert head.headers["etag"] == feed.headers["etag"]
     assert head.content == b""
+
+
+async def _subscribe_with_counted_events(client, auth_header, monkeypatch):
+    calls = []
+
+    async def fake_events(**kwargs):
+        calls.append(kwargs)
+        return _calendar_events()
+
+    monkeypatch.setattr(calendar_subscription, "list_calendar_events", fake_events)
+    created = await client.post(
+        "/api/calendar/subscription",
+        headers=auth_header,
+        json={"privacy": True},
+    )
+    return urlparse(created.json()["feed_url"]).path, calls
+
+
+@pytest.mark.asyncio
+async def test_cached_feed_is_served_without_touching_the_database(
+    client, seeded_db, auth_header, monkeypatch
+):
+    feed_path, calls = await _subscribe_with_counted_events(client, auth_header, monkeypatch)
+
+    first = await client.get(feed_path)
+    # Remove the row behind the API's back: a hit must not even look it up,
+    # which is what keeps a calendar app's poll from waking Neon.
+    await seeded_db.execute("DELETE FROM calendar_subscriptions")
+    await seeded_db.commit()
+    second = await client.get(feed_path)
+
+    assert second.status_code == 200
+    assert second.content == first.content
+    assert second.headers["etag"] == first.headers["etag"]
+    assert len(calls) == 1
+    cached = await client.get(feed_path, headers={"If-None-Match": first.headers["etag"]})
+    assert cached.status_code == 304
+
+
+@pytest.mark.asyncio
+async def test_editing_or_revoking_clears_the_cached_feed(
+    client, seeded_db, auth_header, monkeypatch
+):
+    feed_path, calls = await _subscribe_with_counted_events(client, auth_header, monkeypatch)
+    assert "Tomato" not in (await client.get(feed_path)).text
+
+    await client.patch(
+        "/api/calendar/subscription",
+        headers=auth_header,
+        json={"privacy": False},
+    )
+    assert "Tomato" in (await client.get(feed_path)).text
+    assert len(calls) == 2
+
+    await client.delete("/api/calendar/subscription", headers=auth_header)
+    assert (await client.get(feed_path)).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_cached_feed_is_rebuilt_on_a_new_day(
+    client, seeded_db, auth_header, monkeypatch
+):
+    feed_path, calls = await _subscribe_with_counted_events(client, auth_header, monkeypatch)
+    await client.get(feed_path)
+
+    tomorrow = calendar_subscription._amsterdam_today() + timedelta(days=1)
+    monkeypatch.setattr(calendar_subscription, "_amsterdam_today", lambda: tomorrow)
+    await client.get(feed_path)
+
+    assert len(calls) == 2
+    assert calls[1]["from_"] == tomorrow.isoformat()
+
+
+def test_cached_feed_expires_after_the_ttl(monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr(calendar_feed_cache.time, "monotonic", lambda: now[0])
+    today = date(2026, 10, 5)
+    calendar_feed_cache.store_feed(
+        "hash", b"ics", account_id=1, today=today,
+        generation=calendar_feed_cache.cache_generation(),
+    )
+
+    now[0] += calendar_feed_cache.FEED_CACHE_TTL_S - 1
+    assert calendar_feed_cache.get_cached_feed("hash", today=today) == b"ics"
+    now[0] += 1
+    assert calendar_feed_cache.get_cached_feed("hash", today=today) is None
+
+
+def test_feed_built_across_a_revocation_is_not_cached():
+    today = date(2026, 10, 5)
+    generation = calendar_feed_cache.cache_generation()
+    # The link is revoked while this feed was still being built.
+    calendar_feed_cache.forget_account_feeds(1)
+    calendar_feed_cache.store_feed(
+        "hash", b"ics", account_id=1, today=today, generation=generation,
+    )
+
+    assert calendar_feed_cache.get_cached_feed("hash", today=today) is None
+
+
+def test_feed_cache_is_bounded():
+    today = date(2026, 10, 5)
+    for index in range(calendar_feed_cache.FEED_CACHE_MAX_ENTRIES + 5):
+        calendar_feed_cache.store_feed(
+            f"hash-{index}", b"ics", account_id=index, today=today,
+            generation=calendar_feed_cache.cache_generation(),
+        )
+
+    assert len(calendar_feed_cache._entries) == calendar_feed_cache.FEED_CACHE_MAX_ENTRIES
+    assert calendar_feed_cache.get_cached_feed("hash-0", today=today) is None

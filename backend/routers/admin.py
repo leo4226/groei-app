@@ -12,6 +12,7 @@ from services.icon_catalog import load_catalog
 import logging
 logger = logging.getLogger(__name__)
 from services.admin_audit import log_admin_action
+from services.calendar_feed_cache import forget_account_feeds
 
 # Every /admin/* route requires the admin account — never add an unprotected route here.
 router = APIRouter(tags=["admin"], dependencies=[Depends(require_admin)])
@@ -303,6 +304,8 @@ async def bulk_delete_accounts(
             households_cleared += 1
 
     await db.commit()
+    for t in targets:
+        forget_account_feeds(t["id"])
 
     names = [t["name"] for t in targets]
     result = {"status": "deleted", "account_ids": ids, "names": names, "households_cleared": households_cleared}
@@ -325,6 +328,7 @@ async def delete_account(account_id: int, account = Depends(get_current_account)
     await _delete_account(db, target_row)
     household_deleted = await _delete_household_if_empty(db, household_id)
     await db.commit()
+    forget_account_feeds(account_id)
 
     result = {"status": "deleted", "account_id": account_id, "name": target_row["name"], "household_deleted": household_deleted}
     await log_admin_action(db, account, "delete_account", target=f"{target_row['name']} (id={account_id})", detail={"household_deleted": household_deleted})
