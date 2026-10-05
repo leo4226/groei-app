@@ -128,7 +128,7 @@ describe('CalendarSubscriptionSettings', () => {
     expect(container.querySelector('fieldset[aria-label="Spaces"]')).not.toBeNull()
     expect(container.querySelector('fieldset[aria-label="Care types"]')).not.toBeNull()
     expect(container.querySelector('details')?.textContent).toContain('One-time snapshot')
-    expect(container.textContent).toContain('On a computer, open Google Calendar')
+    expect(container.textContent).toContain('Adding it by hand? Outlook: Add calendar → Subscribe from web')
     expect(button(container, 'Create private subscription')).not.toBeNull()
   })
 
@@ -157,6 +157,17 @@ describe('CalendarSubscriptionSettings', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       'https://api.floreren.app/api/calendar/feed/one-time-secret.ics',
     )
+    const subscribeLinks = Object.fromEntries(
+      [...container.querySelectorAll('[data-calendar-subscribe-links] a')]
+        .map((anchor) => [anchor.textContent, anchor.getAttribute('href')]),
+    )
+    const feed = encodeURIComponent('https://api.floreren.app/api/calendar/feed/one-time-secret.ics')
+    expect(subscribeLinks).toEqual({
+      'Outlook.com': `https://outlook.live.com/calendar/0/addfromweb?url=${feed}&name=Floreren%20care`,
+      'Outlook (work or school)': `https://outlook.office.com/calendar/0/addfromweb?url=${feed}&name=Floreren%20care`,
+      'Google Calendar': `https://calendar.google.com/calendar/r?cid=${encodeURIComponent('webcal://api.floreren.app/api/calendar/feed/one-time-secret.ics')}`,
+      'Apple Calendar': 'webcal://api.floreren.app/api/calendar/feed/one-time-secret.ics',
+    })
     expect(button(container, 'Revoke link')).not.toBeNull()
 
     const privacyToggle = [...container.querySelectorAll('label')]
@@ -165,7 +176,9 @@ describe('CalendarSubscriptionSettings', () => {
     await act(async () => {
       privacyToggle.click()
     })
-    expect(container.querySelector('input[readonly]')).toBeNull()
+    // Editing settings keeps the same private link, so it stays on screen.
+    expect((container.querySelector('input[readonly]') as HTMLInputElement | null)?.value)
+      .toBe('https://api.floreren.app/api/calendar/feed/one-time-secret.ics')
 
     await act(async () => {
       button(container, 'Revoke link').click()

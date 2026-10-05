@@ -24,6 +24,22 @@ const CARE_TYPES: readonly CalendarGroupingCareType[] = [
 const PRIMARY_BUTTON_CLASS = 'inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50'
 const SECONDARY_BUTTON_CLASS = 'inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text transition-colors hover:border-primary/50 disabled:opacity-50'
 
+/**
+ * One-click subscribe links. Each provider's own "subscribe from web" screen
+ * takes the feed URL, so nobody has to find that menu by hand — and nobody
+ * ends up importing the file, which never refreshes.
+ */
+export function providerSubscribeLinks(created: CalendarSubscriptionCreated, calendarName: string) {
+  const url = encodeURIComponent(created.feed_url)
+  const name = encodeURIComponent(calendarName)
+  return {
+    outlookPersonal: `https://outlook.live.com/calendar/0/addfromweb?url=${url}&name=${name}`,
+    outlookWork: `https://outlook.office.com/calendar/0/addfromweb?url=${url}&name=${name}`,
+    google: `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(created.webcal_url)}`,
+    apple: created.webcal_url,
+  }
+}
+
 const DEFAULT_CONFIG: CalendarSubscriptionConfig = {
   environment: 'all',
   map_ids: [],
@@ -67,14 +83,20 @@ export default function CalendarSubscriptionSettings({ canEdit = true }: { canEd
     return () => { cancelled = true }
   }, [])
 
+  const subscribeLinks = useMemo(
+    () => (created ? providerSubscribeLinks(created, t.settings.calendarSubscriptionCalendarName) : null),
+    [created, t.settings.calendarSubscriptionCalendarName],
+  )
+
   const visibleMaps = useMemo(() => maps.filter((map) => (
     config.environment === 'all'
       || (config.environment === 'indoor' ? map.map_type === 'indoor' : map.map_type !== 'indoor')
   )), [maps, config.environment])
 
+  // The private link survives config edits (only regenerating changes it), so
+  // keep showing it: hiding it here left no way back except regenerating, which
+  // breaks every calendar already subscribed.
   function updateConfig(update: (current: CalendarSubscriptionConfig) => CalendarSubscriptionConfig) {
-    setCreated(null)
-    setCopied(false)
     setConfig(update)
   }
 
@@ -345,6 +367,25 @@ export default function CalendarSubscriptionSettings({ canEdit = true }: { canEd
                 <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => void copyLink()}>
                   {copied ? t.settings.calendarSubscriptionCopied : t.settings.calendarSubscriptionCopy}
                 </button>
+              </div>
+              <p className="mt-3 text-xs font-medium text-text-muted">{t.settings.calendarSubscriptionAddTo}</p>
+              <div className="mt-2 flex flex-wrap gap-2" data-calendar-subscribe-links>
+                {([
+                  ['outlookPersonal', t.settings.calendarSubscriptionOutlookPersonal],
+                  ['outlookWork', t.settings.calendarSubscriptionOutlookWork],
+                  ['google', t.settings.calendarSubscriptionGoogle],
+                  ['apple', t.settings.calendarSubscriptionApple],
+                ] as const).map(([provider, label]) => (
+                  <a
+                    key={provider}
+                    href={subscribeLinks?.[provider]}
+                    target={provider === 'apple' ? undefined : '_blank'}
+                    rel="noopener noreferrer"
+                    className={SECONDARY_BUTTON_CLASS}
+                  >
+                    {label}
+                  </a>
+                ))}
               </div>
             </div>
           )}

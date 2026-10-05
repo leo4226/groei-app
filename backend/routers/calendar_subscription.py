@@ -21,6 +21,13 @@ from services.calendar_ics import serialize_calendar
 
 router = APIRouter(prefix="/calendar", tags=["calendar-subscription"])
 
+# How far ahead the feed reaches. Recurrences further out are speculative (they
+# shift as soon as an earlier one is done) and a year of them made the feed
+# ~1 MB for a 35-plant household: at Google's size cap, and large enough that
+# Outlook is known to show only part of a feed. Subscribers keep refreshing, so
+# later work appears as it comes into range.
+FEED_HORIZON_DAYS = 56
+
 
 class CalendarSubscriptionConfig(BaseModel):
     environment: Literal["all", "outdoor", "indoor"] = "all"
@@ -100,16 +107,23 @@ def _filter_events(events: list, config: CalendarSubscriptionConfig) -> list:
 
 
 def _aggregate_external_events(events: list) -> list[dict]:
-    """Group external work by date, care type and map, regardless of app preferences."""
-    grouped: dict[tuple[str, str, int | None], dict] = {}
-    member_ids: dict[tuple[str, str, int | None], set[str]] = {}
-    plant_names: dict[tuple[str, str, int | None], list[str]] = {}
+    """Group external work by date, care type and map, regardless of app preferences.
+
+    Weather-triggered work stays apart from routine work of the same type: a
+    heat-driven extra watering must not be absorbed into (or relabel) the
+    regular watering round on the same day.
+    """
+    GroupKey = tuple[str, str, int | None, bool]
+    grouped: dict[GroupKey, dict] = {}
+    member_ids: dict[GroupKey, set[str]] = {}
+    plant_names: dict[GroupKey, list[str]] = {}
 
     for event in events:
         event_date = str(_event_value(event, "date"))
         care_type = str(_event_value(event, "type", _event_value(event, "care_type", "")))
         map_id = _event_value(event, "map_id")
-        key = (event_date, care_type, map_id)
+        weather_triggered = bool(_event_value(event, "weather_triggered", False))
+        key = (event_date, care_type, map_id, weather_triggered)
         if key not in grouped:
             grouped[key] = dict(event) if isinstance(event, dict) else event.model_dump()
             member_ids[key] = set()
@@ -134,11 +148,19 @@ def _aggregate_external_events(events: list) -> list[dict]:
                 plant_names[key].append(name)
 
     result = []
-    for (event_date, care_type, map_id), event in grouped.items():
-        ids = sorted(member_ids[(event_date, care_type, map_id)])
-        names = plant_names[(event_date, care_type, map_id)]
+    for key, event in grouped.items():
+        event_date, care_type, map_id, weather_triggered = key
+        ids = sorted(member_ids[key])
+        names = plant_names[key]
+        map_part = "map:" + str(map_id) if map_id is not None else "unmapped"
+        # Routine keys keep their original shape so existing subscribers'
+        # event UIDs survive this change.
+        uid_key = f"{event_date}|{care_type}|{map_part}"
+        if weather_triggered:
+            uid_key += "|weather"
         event.update({
-            "id": f"external:{event_date}:{care_type}:{map_id if map_id is not None else 'none'}",
+            "id": f"external:{event_date}:{care_type}:{map_id if map_id is not None else 'none'}"
+                  + (":weather" if weather_triggered else ""),
             "plant_id": _event_value(event, "plant_id") if len(ids) == 1 else None,
             "plant_name": names[0] if len(names) == 1 else None,
             "plant_names": names,
@@ -146,10 +168,8 @@ def _aggregate_external_events(events: list) -> list[dict]:
             "group_count": len(ids),
             "group_member_event_ids": ids,
             "group_members": None,
-            "external_uid_key": (
-                f"{event_date}|{care_type}|"
-                f"{'map:' + str(map_id) if map_id is not None else 'unmapped'}"
-            ),
+            "weather_triggered": weather_triggered,
+            "external_uid_key": uid_key,
         })
         result.append(event)
     return result
@@ -160,7 +180,7 @@ async def _project_events(db, account: dict, config: CalendarSubscriptionConfig)
     today = _amsterdam_today()
     events = await list_calendar_events(
         from_=today.isoformat(),
-        to=(today + timedelta(days=366)).isoformat(),
+        to=(today + timedelta(days=FEED_HORIZON_DAYS)).isoformat(),
         env=environment,
         group_outdoor=True,
         pin_overdue=True,
@@ -317,7 +337,9 @@ async def revoke_subscription(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/feed/{token}.ics")
+# HEAD is answered too: some calendar services probe a URL with HEAD before
+# subscribing, and FastAPI does not derive HEAD from GET on its own.
+@router.api_route("/feed/{token}.ics", methods=["GET", "HEAD"])
 async def public_calendar_feed(
     token: str,
     request: Request,

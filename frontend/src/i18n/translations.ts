@@ -581,6 +581,10 @@ export type Translations = {
     calendarSubscriptionGoogle: string
     calendarSubscriptionOutlook: string
     calendarSubscriptionApple: string
+    calendarSubscriptionAddTo: string
+    calendarSubscriptionOutlookPersonal: string
+    calendarSubscriptionOutlookWork: string
+    calendarSubscriptionCalendarName: string
     calendarSubscriptionProviderHint: string
     calendarSubscriptionRefreshHint: string
     calendarSubscriptionLoadError: string

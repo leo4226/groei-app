@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from hashlib import sha256
 from urllib.parse import urlparse
 
@@ -5,6 +6,7 @@ import pytest
 from icalendar import Calendar
 
 from routers import calendar_subscription
+from services.calendar_ics import serialize_calendar
 
 
 def _raw_token(feed_url: str) -> str:
@@ -365,3 +367,82 @@ async def test_authenticated_snapshot_is_english_private_and_needs_no_token(
     assert "Tomato" not in response.text
     rows = await seeded_db.execute_fetchall("SELECT account_id FROM calendar_subscriptions")
     assert rows == []
+
+def test_heat_extra_watering_is_not_absorbed_into_regular_round():
+    """A heat warning and the routine round on the same map/day stay two events."""
+    regular = {
+        "id": "garden:4:water:2026-07-20",
+        "date": "2026-07-20",
+        "type": "water",
+        "map_id": 4,
+        "map_name": "Back garden",
+        "group_member_event_ids": ["schedule:10:water:2026-07-20"],
+        "weather_triggered": False,
+    }
+    heat = {
+        "id": "heat-water:4:2026-07-20",
+        "date": "2026-07-20",
+        "type": "water",
+        "map_id": 4,
+        "map_name": "Back garden",
+        "group_member_event_ids": ["schedule:20:water", "schedule:21:water"],
+        "weather_triggered": True,
+        "reason_nl": "Extra water geven vanwege hitte — max 32°C",
+    }
+
+    for ordering in ([regular, heat], [heat, regular]):
+        aggregated = calendar_subscription._aggregate_external_events(ordering)
+        assert len(aggregated) == 2
+        by_kind = {event["weather_triggered"]: event for event in aggregated}
+        assert by_kind[False]["group_count"] == 1
+        assert by_kind[True]["group_count"] == 2
+        # The routine UID key is unchanged so existing subscribers keep it.
+        assert by_kind[False]["external_uid_key"] == "2026-07-20|water|map:4"
+        assert by_kind[True]["external_uid_key"] == "2026-07-20|water|map:4|weather"
+
+    payload = serialize_calendar(aggregated, language="nl", privacy=False)
+    events = [
+        item for item in Calendar.from_ical(payload).walk()
+        if item.name == "VEVENT"
+    ]
+    summaries = sorted(str(event["SUMMARY"]) for event in events)
+    assert summaries == [
+        "Water geven (extra) · Back garden",
+        "Water geven · Back garden",
+    ]
+    assert len({str(event["UID"]) for event in events}) == 2
+    assert "hitte" in next(
+        str(event["DESCRIPTION"]) for event in events
+        if "(extra)" in str(event["SUMMARY"])
+    )
+
+
+@pytest.mark.asyncio
+async def test_feed_reaches_a_bounded_horizon_and_answers_head(
+    client, seeded_db, auth_header, monkeypatch
+):
+    seen = {}
+
+    async def fake_events(**kwargs):
+        seen.update(kwargs)
+        return _calendar_events()
+
+    monkeypatch.setattr(calendar_subscription, "list_calendar_events", fake_events)
+    created = await client.post(
+        "/api/calendar/subscription",
+        headers=auth_header,
+        json={"privacy": True},
+    )
+    feed_path = urlparse(created.json()["feed_url"]).path
+
+    feed = await client.get(feed_path)
+    today = date.fromisoformat(seen["from_"])
+    assert date.fromisoformat(seen["to"]) - today == timedelta(
+        days=calendar_subscription.FEED_HORIZON_DAYS
+    )
+
+    head = await client.head(feed_path)
+    assert head.status_code == 200
+    assert head.headers["content-type"].startswith("text/calendar")
+    assert head.headers["etag"] == feed.headers["etag"]
+    assert head.content == b""
