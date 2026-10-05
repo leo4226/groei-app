@@ -45,7 +45,8 @@ def test_serialize_calendar_is_parser_valid_localized_and_all_day():
 
     assert str(parsed["X-WR-CALNAME"]) == "Floreren verzorging"
     assert str(parsed["NAME"]) == "Floreren verzorging"
-    assert b"REFRESH-INTERVAL;VALUE=DURATION:PT1H" in payload
+    assert b"REFRESH-INTERVAL;VALUE=DURATION:PT3H" in payload
+    assert b"X-PUBLISHED-TTL:PT3H" in payload
     assert event.decoded("DTSTART") == date(2026, 7, 18)
     assert event.decoded("DTEND") == date(2026, 7, 19)
     assert "Water geven" in str(event["SUMMARY"])

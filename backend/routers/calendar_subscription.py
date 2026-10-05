@@ -18,6 +18,12 @@ from care_types import CARE_TYPES
 from database import db_dep
 from routers.calendar import list_calendar_events
 from services.calendar_ics import serialize_calendar
+from services.calendar_feed_cache import (
+    cache_generation,
+    forget_account_feeds,
+    get_cached_feed,
+    store_feed,
+)
 
 router = APIRouter(prefix="/calendar", tags=["calendar-subscription"])
 
@@ -280,6 +286,7 @@ async def update_subscription_config(
         ),
     )
     await db.commit()
+    forget_account_feeds(account["account_id"])
     return await get_subscription_status(db=db, account=account)
 
 
@@ -314,6 +321,7 @@ async def create_or_regenerate_subscription(
         ),
     )
     await db.commit()
+    forget_account_feeds(account["account_id"])
     url = _feed_url(raw)
     return CalendarSubscriptionCreated(
         feed_url=url,
@@ -334,6 +342,7 @@ async def revoke_subscription(
         (account["account_id"],),
     )
     await db.commit()
+    forget_account_feeds(account["account_id"])
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -345,12 +354,20 @@ async def public_calendar_feed(
     request: Request,
     db=Depends(db_dep),
 ):
+    token_hash = _hash_token(token)
+    today = _amsterdam_today()
+    # A hit is served without a single query, so a calendar app's poll does
+    # not wake Neon (see services/calendar_feed_cache.py for the trade-off).
+    cached = get_cached_feed(token_hash, today=today)
+    if cached is not None:
+        return _feed_response(cached, request)
+    generation = cache_generation()
     rows = await db.execute_fetchall(
         """SELECT s.household_id, s.account_id, s.config_json, a.language
            FROM calendar_subscriptions s
            JOIN accounts a ON a.id = s.account_id AND a.household_id = s.household_id
            WHERE s.token_hash = ? AND s.revoked_at IS NULL""",
-        (_hash_token(token),),
+        (token_hash,),
     )
     if not rows:
         raise HTTPException(status_code=404, detail={"code": "calendar_feed_not_found"})
@@ -370,8 +387,19 @@ async def public_calendar_feed(
         events,
         language=language,
         privacy=config.privacy,
-        generated_at=_amsterdam_today(),
+        generated_at=today,
     )
+    store_feed(
+        token_hash,
+        payload,
+        account_id=int(row["account_id"]),
+        today=today,
+        generation=generation,
+    )
+    return _feed_response(payload, request)
+
+
+def _feed_response(payload: bytes, request: Request) -> Response:
     return _calendar_response(
         payload,
         disposition="inline",
