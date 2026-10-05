@@ -29,16 +29,18 @@ interface Props {
   year: number
   month1: number
   onMonthChange(year: number, month1: number): void
+  /** Day to select on mount (from a `?date=` deep link); defaults to today. */
+  initialSelectedIso?: string
 }
 
 export default function MonthView({
   onSetView, env, environmentFilter, viewNavigation,
-  year, month1, onMonthChange,
+  year, month1, onMonthChange, initialSelectedIso,
 }: Props) {
   const now = new Date()
   const todayIso = isoDate(now)
   const showingCurrentMonth = year === now.getFullYear() && month1 === now.getMonth() + 1
-  const [selectedIso, setSelectedIso] = useState(todayIso)
+  const [selectedIso, setSelectedIso] = useState(initialSelectedIso ?? todayIso)
   const { canEdit } = useCapabilities()
   const readOnly = !canEdit
 

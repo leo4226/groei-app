@@ -7,7 +7,7 @@ import WorkAgendaView from './WorkAgendaView'
 import CalendarViewToggle from './CalendarViewToggle'
 import CalendarMoonMini from './CalendarMoonMini'
 import CalendarFieldNote from './CalendarFieldNote'
-import { defaultCalendarView, type CalendarViewMode } from './calendarViewModel'
+import { deepLinkedDate, defaultCalendarView, type CalendarViewMode } from './calendarViewModel'
 import { useIsNarrow } from './useIsNarrow'
 import './calendar.css'
 
@@ -106,10 +106,14 @@ export default function PlanningCalendarPage() {
   const today = new Date()
   const [view, setView] = useState<CalendarViewMode>(() => defaultCalendarView(isNarrow))
   const [env, setEnv] = useState('all')
-  const [displayedMonth, setDisplayedMonth] = useState(() => ({
-    year: today.getFullYear(),
-    month1: today.getMonth() + 1,
-  }))
+  // Events in the personal-calendar feed link to `/calendar?date=…`.
+  const [deepLink] = useState(() => deepLinkedDate(window.location.search))
+  const [displayedMonth, setDisplayedMonth] = useState(() => (
+    deepLink ? { year: deepLink.year, month1: deepLink.month1 } : {
+      year: today.getFullYear(),
+      month1: today.getMonth() + 1,
+    }
+  ))
   const availableModes = isNarrow ? NARROW_CALENDAR_MODES : WIDE_CALENDAR_MODES
 
   useEffect(() => {
@@ -140,6 +144,7 @@ export default function PlanningCalendarPage() {
           viewNavigation={viewNavigation}
           year={displayedMonth.year}
           month1={displayedMonth.month1}
+          initialSelectedIso={deepLink?.iso}
           onMonthChange={(year, month1) => setDisplayedMonth({ year, month1 })}
         />
       ) : (

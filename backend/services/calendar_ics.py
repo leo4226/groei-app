@@ -180,7 +180,10 @@ def serialize_calendar(
         "PRODID:-//Floreren//Personal Care Calendar//NL",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+        f"NAME:{_escape_text(name)}",
         f"X-WR-CALNAME:{_escape_text(name)}",
+        # RFC 7986 refresh hint plus the older Outlook/Apple spelling.
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
         "X-PUBLISHED-TTL:PT1H",
     ]
 
