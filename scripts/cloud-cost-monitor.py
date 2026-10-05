@@ -578,7 +578,9 @@ def needs_attention(results):
     if fly.get("status") == "ok":
         rel = fly["releases"].get("floreren-api") or {}
         status = str(rel.get("latest_status") or "").lower()
-        if status and status not in ("complete", "completed", "succeeded", "success"):
+        # A release that is still rolling out is not a problem; only an unfinished one is.
+        if status and status not in ("complete", "completed", "succeeded", "success",
+                                     "running", "pending", "in_progress"):
             out.append(
                 f"The latest floreren-api release v{rel.get('latest_version')} is `{rel.get('latest_status')}` "
                 f"({rel.get('latest_date')}): production may not run the newest code"
