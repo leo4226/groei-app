@@ -27,6 +27,7 @@ from jose import JWTError
 from pydantic import BaseModel, Field
 
 from database import db_dep
+from services.rate_limit import rate_limit
 from auth import (
     create_guest_token,
     decode_guest_token,
@@ -130,7 +131,9 @@ async def _embed_url(url: str) -> bytes | None:
 
 
 def _make_code() -> str:
-    return "".join(random.choices(_CODE_CHARS, k=6))
+    # `secrets`, not `random`: the code is the only key to a game, and
+    # Mersenne Twister output can be predicted from earlier codes.
+    return "".join(secrets.choice(_CODE_CHARS) for _ in range(6))
 
 
 def _now() -> datetime:
@@ -854,7 +857,10 @@ async def preview_game(code: str, db=Depends(db_dep)):
     }
 
 
-@router.post("/games/{code}/join-guest")
+@router.post(
+    "/games/{code}/join-guest",
+    dependencies=[Depends(rate_limit("game-join-guest", limit=30, window_s=900))],
+)
 async def join_as_guest(code: str, body: GuestJoinRequest, db=Depends(db_dep)):
     """Name-only join. No account, no email — the party path.
 

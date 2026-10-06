@@ -39,7 +39,7 @@ async def _create_species_table(db):
 
 
 @pytest.mark.asyncio
-async def test_species_ecology_endpoint_returns_cached_profile(client, seeded_db):
+async def test_species_ecology_endpoint_returns_cached_profile(client, seeded_db, auth_header):
     """A species with cached ecology data is returned without re-enrichment."""
     await _create_species_table(seeded_db)
     await seeded_db.execute(
@@ -52,7 +52,7 @@ async def test_species_ecology_endpoint_returns_cached_profile(client, seeded_db
     )
     await seeded_db.commit()
 
-    resp = await client.get(f"{BASE}/species/10/ecology")
+    resp = await client.get(f"{BASE}/species/10/ecology", headers=auth_header)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["native_to_nl"] is True
@@ -71,9 +71,62 @@ async def test_species_ecology_endpoint_returns_cached_profile(client, seeded_db
 
 
 @pytest.mark.asyncio
-async def test_species_ecology_endpoint_404_for_missing_species(client, seeded_db):
+async def test_species_ecology_endpoint_404_for_missing_species(client, seeded_db, auth_header):
     """A non-existent species id yields 404 (table exists, row does not)."""
     await _create_species_table(seeded_db)
 
-    resp = await client.get(f"{BASE}/species/999/ecology")
+    resp = await client.get(f"{BASE}/species/999/ecology", headers=auth_header)
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_paid_species_lookups_require_a_session(client, seeded_db):
+    """Ecology and fun facts can trigger paid LLM calls on first read."""
+    for path in ("/api/species/10/ecology", "/api/species/10/fun-fact"):
+        response = await client.get(path)
+        assert response.status_code in (401, 403), path
+
+
+@pytest.mark.asyncio
+async def test_weather_proxy_requires_a_session(client, seeded_db):
+    response = await client.get("/api/weather", params={"lat": 1.0, "lon": 2.0})
+    assert response.status_code in (401, 403)
+
+
+def test_forecast_cache_is_bounded(monkeypatch):
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+    from services import weather_forecast
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(weather_forecast.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(weather_forecast, "_normalize", lambda payload, **kw: {"ok": True})
+    weather_forecast.clear_forecast_cache()
+    start = datetime(2026, 10, 6, tzinfo=timezone.utc)
+    for index in range(weather_forecast._CACHE_MAX_ENTRIES + 20):
+        asyncio.run(weather_forecast.get_map_forecast(
+            index / 100, 4.0, now=start + timedelta(seconds=index),
+        ))
+
+    assert len(weather_forecast._cache) == weather_forecast._CACHE_MAX_ENTRIES
+    assert weather_forecast.forecast_cache_key(0.0, 4.0) not in weather_forecast._cache
+    weather_forecast.clear_forecast_cache()

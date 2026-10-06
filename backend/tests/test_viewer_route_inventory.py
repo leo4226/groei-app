@@ -186,6 +186,7 @@ POLICY_ENTRIES = (
     ("POST", "/api/internal/watchdog/check", PLATFORM_ADMIN, "The watchdog endpoint validates its own internal shared secret."),
     ("POST", "/api/internal/watchdog/heartbeat", PLATFORM_ADMIN, "The watchdog endpoint validates its own internal shared secret."),
     ("POST", "/api/notifications/snooze", GUEST_OR_PUBLIC, "A signed email capability token authorizes a limited push-snooze action."),
+    ("POST", "/api/notifications/unsubscribe", GUEST_OR_PUBLIC, "A signed email capability token switches off that account's digest (confirm button or RFC 8058 one-click)."),
 )
 
 

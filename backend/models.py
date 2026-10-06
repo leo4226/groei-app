@@ -918,6 +918,15 @@ class RegisterInput(BaseModel):
     def _valid_email(cls, v: str) -> str:
         return _validate_email(v)
 
+    @field_validator("name")
+    @classmethod
+    def _non_blank_name(cls, v: str) -> str:
+        # Shown on every care entry and member list; whitespace is no name.
+        cleaned = (v or "").strip()
+        if not cleaned:
+            raise ValueError("name must not be blank")
+        return cleaned
+
 
 class LoginInput(BaseModel):
     email: str
@@ -971,6 +980,15 @@ class JoinInput(BaseModel):
     @classmethod
     def _valid_email(cls, v: str) -> str:
         return _validate_email(v)
+
+    @field_validator("name")
+    @classmethod
+    def _non_blank_name(cls, v: str) -> str:
+        # Shown on every care entry and member list; whitespace is no name.
+        cleaned = (v or "").strip()
+        if not cleaned:
+            raise ValueError("name must not be blank")
+        return cleaned
 
 
 class AccountCapabilities(BaseModel):
