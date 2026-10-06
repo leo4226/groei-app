@@ -41,7 +41,7 @@ async def test_upload_underlay_returns_url(client, underlay_db, auth_header):
         files={"file": ("bg.png", PNG, "image/png")},
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["url"].startswith("https://cdn.test/maps/garden/underlay-")
+    assert resp.json()["url"].startswith("https://cdn.test/maps/garden/underlay/")
     assert len(fake.puts) == 1
     assert fake.puts[0][2] == "image/png"
 

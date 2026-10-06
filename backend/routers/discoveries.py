@@ -20,6 +20,7 @@ from database import db_dep
 from services.phenology import parse_phenology
 from services.geocode import reverse_geocode
 from services.storage import Storage, build_storage_from_env
+from services.uploads import decode_image_data_url, extension_for, storage_key
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/discover", tags=["discoveries"])
@@ -288,28 +289,13 @@ def _get_storage() -> Storage | None:
         return None
 
 
-def _decode_photo_data(photo_data: str) -> tuple[bytes, str] | None:
-    if not photo_data:
-        return None
-    content_type = "image/jpeg"
-    if "," in photo_data:
-        header, photo_data = photo_data.split(",", 1)
-        if header.startswith("data:") and ";" in header:
-            content_type = header[5:].split(";", 1)[0] or content_type
-    try:
-        return base64.b64decode(photo_data), content_type
-    except Exception:
-        return None
-
-
 def _store_thumbnail(photo_data: str) -> str | None:
     storage = _get_storage()
-    decoded = _decode_photo_data(photo_data)
+    decoded = decode_image_data_url(photo_data)
     if not storage or not decoded:
         return None
     data, content_type = decoded
-    extension = "png" if content_type == "image/png" else "jpg"
-    key = f"field-journal/{int(time.time() * 1000)}.{extension}"
+    key = storage_key("field-journal", extension_for(content_type))
     try:
         return storage.put(key, data, content_type)
     except Exception:

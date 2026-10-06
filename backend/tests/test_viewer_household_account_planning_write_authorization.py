@@ -192,7 +192,7 @@ async def household_account_planning_db(seeded_db):
           (account_id, digest_enabled, digest_time, push_enabled)
         VALUES (1, 0, '08:00', 0);
         INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
-        VALUES (1, 'https://push.test/original', 'original-key', 'original-auth');
+        VALUES (1, 'https://fcm.googleapis.com/fcm/send/original', 'original-key', 'original-auth');
         INSERT INTO calendar_subscriptions
           (account_id, household_id, token_hash, config_json, revoked_at)
         VALUES (1, 1, 'original-token-hash', '{"environment":"all","map_ids":[],"care_types":[],"include_context":false,"privacy":true}', NULL);
@@ -284,7 +284,7 @@ async def test_viewer_mutations_are_rejected_before_account_household_and_planni
         ),
         client.post(
             "/api/push/subscription",
-            json={"endpoint": "https://push.test/blocked", "keys": {"p256dh": "key", "auth": "auth"}},
+            json={"endpoint": "https://fcm.googleapis.com/fcm/send/blocked", "keys": {"p256dh": "key", "auth": "auth"}},
             headers=_header(),
         ),
         client.delete("/api/calendar/subscription", headers=_header()),

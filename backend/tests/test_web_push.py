@@ -13,7 +13,7 @@ from services.local_time import local_today
 AMS = ZoneInfo("Europe/Amsterdam")
 
 SUB = {
-    "endpoint": "https://push.example/abc123",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/abc123",
     "keys": {"p256dh": "key-p256dh", "auth": "key-auth"},
 }
 
@@ -145,13 +145,13 @@ async def test_unsubscribe_cannot_delete_foreign_subscription(client, seeded_db,
         INSERT INTO accounts (id, household_id, email, name, password_hash)
         VALUES (2, 2, 'other@example.com', 'Other', 'x');
         INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth)
-        VALUES (2, 'https://push.example/foreign', 'k', 'a');
+        VALUES (2, 'https://fcm.googleapis.com/fcm/send/foreign', 'k', 'a');
     """)
     await seeded_db.commit()
 
     res = await client.request(
         "DELETE", "/api/push/subscription",
-        json={"endpoint": "https://push.example/foreign"}, headers=auth_header,
+        json={"endpoint": "https://fcm.googleapis.com/fcm/send/foreign"}, headers=auth_header,
     )
     assert res.status_code == 200  # idempotent response shape
     rows = await seeded_db.execute_fetchall("SELECT account_id FROM push_subscriptions")
@@ -686,7 +686,7 @@ async def test_every_household_member_gets_the_care_push(
     await client.post("/api/push/subscription", json=SUB, headers=auth_header)
     await seeded_db.execute(
         "INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth) "
-        "VALUES (2, 'https://push.example/lisbeth', 'k', 'a')"
+        "VALUES (2, 'https://fcm.googleapis.com/fcm/send/lisbeth', 'k', 'a')"
     )
     await seeded_db.commit()
 
@@ -694,7 +694,7 @@ async def test_every_household_member_gets_the_care_push(
 
     assert res.json()["push_sent"] == 2
     assert sorted(push["endpoint"] for push in sent_pushes) == [
-        "https://push.example/abc123", "https://push.example/lisbeth",
+        "https://fcm.googleapis.com/fcm/send/abc123", "https://fcm.googleapis.com/fcm/send/lisbeth",
     ]
     # Then the cycle is spent for both: no second round of pings.
     again = await client.post("/api/internal/send-digests", headers=cron_secret)
@@ -717,13 +717,13 @@ async def test_a_member_who_muted_watering_does_not_cost_the_other_one_the_push(
     await client.post("/api/push/subscription", json=SUB, headers=auth_header)
     await seeded_db.execute(
         "INSERT INTO push_subscriptions (account_id, endpoint, p256dh, auth) "
-        "VALUES (2, 'https://push.example/lisbeth', 'k', 'a')"
+        "VALUES (2, 'https://fcm.googleapis.com/fcm/send/lisbeth', 'k', 'a')"
     )
     await seeded_db.commit()
 
     await client.post("/api/internal/send-digests", headers=cron_secret)
 
-    assert [push["endpoint"] for push in sent_pushes] == ["https://push.example/lisbeth"]
+    assert [push["endpoint"] for push in sent_pushes] == ["https://fcm.googleapis.com/fcm/send/lisbeth"]
 
 
 @pytest.mark.parametrize("endpoint", [
@@ -733,6 +733,8 @@ async def test_a_member_who_muted_watering_does_not_cost_the_other_one_the_push(
     "https://floreren-api.internal:8000/admin",
     "https://localhost/x",
     "https://intranet/x",
+    # Public, but not a push service: could resolve or redirect anywhere.
+    "https://evil.example/hook",
 ])
 async def test_push_endpoint_must_be_a_public_https_host(
     client, seeded_db, auth_header, endpoint,
@@ -784,3 +786,22 @@ def test_send_push_lets_the_service_hold_the_message_and_never_hangs(monkeypatch
     assert outcome == "ok"
     assert captured["ttl"] >= 3600
     assert captured["timeout"] is not None
+    # A redirect could lead somewhere the endpoint check never saw.
+    assert captured["requests_session"].max_redirects == 0
+
+
+def test_send_push_refuses_a_stored_endpoint_that_is_not_a_push_service(monkeypatch):
+    import pywebpush
+    from services import push
+
+    calls = []
+    monkeypatch.setenv("VAPID_PRIVATE_KEY", "test-key")
+    monkeypatch.setattr(pywebpush, "webpush", lambda **kwargs: calls.append(kwargs))
+
+    outcome = push.send_push(
+        {"endpoint": "https://floreren-api.internal:8000/x", "p256dh": "k", "auth": "a"},
+        {"title": "Water"},
+    )
+
+    assert outcome == "error"
+    assert calls == []

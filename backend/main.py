@@ -1,7 +1,7 @@
 import logging
 import traceback
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -112,6 +112,54 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Floreren", version="0.1.0", lifespan=lifespan)
+
+# Every upload endpoint read the whole body into memory before checking its
+# size, and nothing in front of the app caps it, so one large request could
+# exhaust a 256 MB machine. The largest legitimate body is an identify call
+# with three 5 MB photos (or a 12 MB map underlay); 25 MB leaves headroom.
+MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024
+
+
+class BodySizeLimitMiddleware:
+    """Refuse oversized request bodies with 413 before a handler reads them:
+    by Content-Length when it is sent, by counting the stream when it is not."""
+
+    def __init__(self, app, max_bytes: int = MAX_REQUEST_BODY_BYTES):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        for name, value in scope.get("headers", []):
+            if name == b"content-length":
+                try:
+                    too_big = int(value) > self.max_bytes
+                except ValueError:
+                    too_big = False
+                if too_big:
+                    await JSONResponse(
+                        status_code=413, content={"detail": {"code": "request_too_large"}},
+                    )(scope, receive, send)
+                    return
+                break
+
+        received = 0
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    raise HTTPException(status_code=413, detail={"code": "request_too_large"})
+            return message
+
+        await self.app(scope, limited_receive, send)
+
+
+app.add_middleware(BodySizeLimitMiddleware)
 
 _origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(

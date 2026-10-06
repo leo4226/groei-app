@@ -15,6 +15,7 @@ from services.photo_check import check_photo
 from services.scheduling import calculate_next_due
 from services.storage import build_storage_from_env
 from services.local_time import local_today
+from services.uploads import storage_key
 
 router = APIRouter(tags=["plant-photos"])
 
@@ -173,7 +174,7 @@ async def upload_plant_photo(
     if len(data) > MAX_BYTES:
         raise HTTPException(413, "Image too large (max 10 MB)")
 
-    key = f"photos/{account['household_id']}/{plant_id}/{int(time.time() * 1000)}.jpg"
+    key = storage_key(f"photos/{account['household_id']}/{plant_id}")
     storage = build_storage_from_env()
     try:
         url = storage.put(key, data, content_type=file.content_type or "image/jpeg")

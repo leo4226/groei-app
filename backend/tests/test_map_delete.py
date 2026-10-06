@@ -92,3 +92,70 @@ async def test_soil_zone_sync_never_touches_another_maps_zone(seeded_db):
     assert "zone_4_444" not in rows
     plant = await db.execute_fetchall("SELECT ground_zone_id FROM plants WHERE id = 8")
     assert plant[0]["ground_zone_id"] is None
+
+
+class _FakeStorage:
+    def put(self, key, data, content_type):
+        return f"https://cdn.test/{key}"
+
+
+async def _full_map_table(db):
+    for column in (
+        "slug TEXT", "svg_file TEXT", "viewbox TEXT", "scale_info TEXT", "sort_order INTEGER",
+        "canvas_data TEXT", "lat REAL", "lon REAL", "bearing REAL", "thumbnail_file TEXT",
+        "streek_slug TEXT", "streek_source TEXT", "is_public BOOLEAN", "photos_public BOOLEAN",
+        "place_name TEXT", "country_code TEXT",
+    ):
+        await db.execute(f"ALTER TABLE maps ADD COLUMN {column}")
+    await db.executescript("""
+        CREATE TABLE IF NOT EXISTS ground_zones (
+            id TEXT PRIMARY KEY, map_id INTEGER NOT NULL, name TEXT,
+            zone_type TEXT, polygon TEXT, soil_note TEXT
+        );
+        INSERT INTO maps (id, name, map_type, slug, household_id, svg_file, viewbox, sort_order,
+                          bearing, streek_source, is_public, photos_public)
+        VALUES (7, 'Garden', 'outdoor', 'garden', 1, 'maps/garden.svg', '0 0 680 680', 1,
+                0, 'auto', 0, 0);
+        INSERT INTO ground_zones (id, map_id, name, zone_type, polygon)
+        VALUES ('zone_old', 7, 'Old bed', 'soil', '[]');
+    """)
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_a_malformed_zone_does_not_fail_the_layout_save(client, seeded_db, auth_header, monkeypatch):
+    import json
+    import routers.maps as maps_router
+
+    monkeypatch.setattr(maps_router, "build_storage_from_env", lambda: _FakeStorage())
+    await _full_map_table(seeded_db)
+    canvas = json.dumps({"zones": [{"id": "broken", "type": "soil"}]})
+
+    response = await client.put("/api/maps/7", json={"canvas_data": canvas}, headers=auth_header)
+
+    assert response.status_code == 200, response.text
+    saved = await seeded_db.execute_fetchall("SELECT canvas_data FROM maps WHERE id = 7")
+    assert saved[0]["canvas_data"] == canvas
+
+
+@pytest.mark.asyncio
+async def test_zone_sync_rolls_back_with_a_failed_map_update(client, seeded_db, auth_header, monkeypatch):
+    """The sync deletes zones and unassigns plants; if the map row itself then
+    fails to save, those deletions must not stick."""
+    import json
+    import routers.maps as maps_router
+
+    monkeypatch.setattr(maps_router, "build_storage_from_env", lambda: _FakeStorage())
+    await _full_map_table(seeded_db)
+    await seeded_db.execute(
+        "CREATE TRIGGER refuse_map_update BEFORE UPDATE ON maps "
+        "BEGIN SELECT RAISE(ABORT, 'map update refused'); END"
+    )
+    await seeded_db.commit()
+    canvas = json.dumps({"zones": []})  # removing every bed
+
+    with pytest.raises(Exception):
+        await client.put("/api/maps/7", json={"canvas_data": canvas}, headers=auth_header)
+
+    zones = await seeded_db.execute_fetchall("SELECT id FROM ground_zones WHERE map_id = 7")
+    assert [row["id"] for row in zones] == ["zone_old"]
