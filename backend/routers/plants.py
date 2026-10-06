@@ -212,6 +212,32 @@ async def _assert_owned_plant(db, plant_id: int, household_id: int) -> None:
         raise HTTPException(status_code=404, detail="Plant not found")
 
 
+async def _assert_owned_references(
+    db, household_id: int, *, map_id: int | None = None, location_id: int | None = None,
+) -> None:
+    """422 unless a map/location the client names belongs to this household.
+
+    Map views list plants by map_id alone, so a plant created or moved onto
+    another household's map id (they are sequential) appeared in *their*
+    garden — and in the public atlas if that map is shared. A foreign
+    location_id leaked that household's location name through the plant list.
+    """
+    if map_id is not None:
+        rows = await db.execute_fetchall(
+            "SELECT id FROM maps WHERE id = ? AND household_id = ?",
+            (map_id, household_id),
+        )
+        if not rows:
+            raise HTTPException(status_code=422, detail={"code": "invalid_map"})
+    if location_id is not None:
+        rows = await db.execute_fetchall(
+            "SELECT id FROM locations WHERE id = ? AND household_id = ?",
+            (location_id, household_id),
+        )
+        if not rows:
+            raise HTTPException(status_code=422, detail={"code": "invalid_location"})
+
+
 async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> str:
     """Create or refine the initial Water schedule from species thresholds.
 
@@ -248,11 +274,14 @@ async def _seed_care_schedules(db, plant_id: int, thresholds_json: str) -> str:
     if not existing:
         # Use ? placeholders (qm_to_pg translates these); the $1/$2 form is
         # not translated and breaks under dev SQLite.
+        # Due today in the garden's own date: CURRENT_DATE is the database's
+        # (UTC on Neon), which made a plant added after local midnight start
+        # out overdue.
         await db.execute(
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, next_due, interval_source)
-               VALUES (?, 'water', ?, CURRENT_DATE, 'species')""",
-            (plant_id, water_interval),
+               VALUES (?, 'water', ?, ?, 'species')""",
+            (plant_id, water_interval, local_today()),
         )
     else:
         row = dict(existing[0])
@@ -353,6 +382,9 @@ async def get_plant(plant_id: int, db = Depends(db_dep), account = Depends(get_c
 
 @router.post("/plants", response_model=PlantOut)
 async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depends(require_editor)):
+    await _assert_owned_references(
+        db, account["household_id"], map_id=data.map_id, location_id=data.location_id,
+    )
     quantity = max(1, int(data.quantity or 1))
     # pot_size_cm stays the canonical container size (it drives the potted/bare
     # icon variant); the form asks for a diameter, so fall back to that.
@@ -397,8 +429,9 @@ async def create_plant(data: PlantCreate, db = Depends(db_dep), account = Depend
             continue
         if not is_care_type_valid_for_env(sched.care_type, environment):
             continue
-        from datetime import date as _date_today
-        next_due = sched.next_due or _date_today.today()
+        # The garden's date: date.today() is the server's (UTC) and was a
+        # day behind just after local midnight.
+        next_due = sched.next_due or local_today()
         await db.execute(
             """INSERT INTO care_schedules
                (plant_id, care_type, interval_days, season_adjust, next_due, notes,
@@ -592,6 +625,10 @@ async def update_plant(plant_id: int, data: PlantUpdate, db = Depends(db_dep), a
     await _assert_owned_plant(db, plant_id, account["household_id"])
 
     updates = dict(data.model_dump(exclude_unset=True))
+    await _assert_owned_references(
+        db, account["household_id"],
+        map_id=updates.get("map_id"), location_id=updates.get("location_id"),
+    )
 
     # A species rename is a re-identification, not a text edit: the plant is now
     # a different species and everything derived from species_id must follow.

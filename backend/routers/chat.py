@@ -481,7 +481,7 @@ async def _fetch_plants_packet(
 
     plant_ids = [r["id"] for r in rows]
     care_rows = await db.execute_fetchall(
-        f"""SELECT cs.plant_id, cs.care_type, cs.next_due, cs.last_done
+        f"""SELECT cs.plant_id, cs.care_type, cs.next_due, cs.last_done, cs.is_ephemeral
             FROM care_schedules cs
             WHERE cs.plant_id IN ({','.join('?' for _ in plant_ids)})
               AND cs.is_active = 1

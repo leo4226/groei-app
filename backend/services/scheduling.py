@@ -27,9 +27,15 @@ def get_season_multiplier(season_adjust: str | None, d: date | None = None) -> f
         adjustments = json.loads(season_adjust)
     except (json.JSONDecodeError, TypeError):
         return 1.0
+    if not isinstance(adjustments, dict):
+        return 1.0
 
-    season = get_current_season(d)
-    return adjustments.get(season, 1.0)
+    # Stored JSON is free-form: a null, a string or a non-positive number for
+    # this season must not turn completing care into a 500.
+    value = adjustments.get(get_current_season(d), 1.0)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        return 1.0
+    return float(value)
 
 
 def calculate_effective_interval(base_days: int, season_adjust: str | None = None, d: date | None = None) -> int:

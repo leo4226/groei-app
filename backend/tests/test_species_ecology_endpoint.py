@@ -130,3 +130,19 @@ def test_forecast_cache_is_bounded(monkeypatch):
     assert len(weather_forecast._cache) == weather_forecast._CACHE_MAX_ENTRIES
     assert weather_forecast.forecast_cache_key(0.0, 4.0) not in weather_forecast._cache
     weather_forecast.clear_forecast_cache()
+
+
+@pytest.mark.asyncio
+async def test_weather_proxy_serves_a_signed_in_caller(client, seeded_db, auth_header, monkeypatch):
+    import routers.weather as weather_router
+
+    async def fake_forecast(lat, lon):
+        return {"current": {"temperature_2m": 12}, "lat": lat, "lon": lon}
+
+    monkeypatch.setattr(weather_router, "get_map_forecast", fake_forecast)
+    response = await client.get(
+        "/api/weather", params={"lat": 52.37, "lon": 4.85}, headers=auth_header,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["lat"] == 52.37

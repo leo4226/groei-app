@@ -76,7 +76,8 @@ async def _plant_warning_state(db, plant_id: int, household_id: int, today: date
         raise HTTPException(status_code=404, detail="Plant not found")
 
     schedule_rows = await db.execute_fetchall(
-        """SELECT care_type, next_due, last_done, interval_days, season_adjust
+        """SELECT care_type, next_due, last_done, interval_days, season_adjust,
+                  is_ephemeral
            FROM care_schedules
            WHERE plant_id = ? AND is_active = 1""",
         (plant_id,),
