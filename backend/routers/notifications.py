@@ -8,13 +8,14 @@
 """
 import asyncio
 import html
+import ipaddress
 import os
 import secrets
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import services.digest as digest
 import logging
@@ -144,9 +145,37 @@ class PushKeys(BaseModel):
     auth: str
 
 
+_INTERNAL_HOST_SUFFIXES = (".internal", ".local", ".localhost", ".flycast", ".lan")
+
+
+def _validate_push_endpoint(value: str) -> str:
+    """A push endpoint is a public https URL run by a browser vendor.
+
+    The server POSTs to whatever is stored here on every care push, so an
+    arbitrary URL turned the dispatcher into a request proxy aimed wherever a
+    client liked — Fly's private .internal network included.
+    """
+    parsed = urlparse((value or "").strip())
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme != "https" or not host:
+        raise ValueError("push endpoint must be an https URL")
+    if host == "localhost" or host.endswith(_INTERNAL_HOST_SUFFIXES) or "." not in host:
+        raise ValueError("push endpoint must be a public host")
+    try:
+        ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return value.strip()
+    raise ValueError("push endpoint must be a hostname, not an IP address")
+
+
 class PushSubscriptionIn(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=2048)
     keys: PushKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def _public_https_endpoint(cls, value: str) -> str:
+        return _validate_push_endpoint(value)
 
 
 class PushUnsubscribeIn(BaseModel):

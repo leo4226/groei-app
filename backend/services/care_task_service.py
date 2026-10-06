@@ -31,7 +31,11 @@ _SCHEDULE_SELECT_SQL = """
         cs.last_done_by,
         u.name as last_done_by_name,
         cs.last_done as last_done_at,
-        cs.is_ephemeral
+        cs.is_ephemeral,
+        p.map_id,
+        p.container_id,
+        p.mulch,
+        p.measured_sun_hours
     FROM care_schedules cs
     JOIN plants p ON cs.plant_id = p.id
     LEFT JOIN locations l ON p.location_id = l.id

@@ -14,6 +14,14 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# How long the push service may hold a message for an unreachable device.
+# pywebpush defaults to 0, which tells the service to drop the message unless
+# the phone is reachable that very instant — a phone in battery saver or on a
+# flaky connection simply never heard about the watering. Half a day keeps a
+# reminder useful without delivering yesterday's news.
+PUSH_TTL_S = 12 * 3600
+PUSH_TIMEOUT_S = 10
+
 
 def send_push(subscription: dict, payload: dict) -> str:
     """subscription: a push_subscriptions row (endpoint/p256dh/auth)."""
@@ -37,6 +45,10 @@ def send_push(subscription: dict, payload: dict) -> str:
             data=json.dumps(payload),
             vapid_private_key=private_key,
             vapid_claims={"sub": os.environ.get("VAPID_SUBJECT", "mailto:noreply@floreren.app")},
+            ttl=PUSH_TTL_S,
+            # requests waits forever by default; one stalled push service must
+            # not hold up the whole dispatch run.
+            timeout=PUSH_TIMEOUT_S,
         )
         return "ok"
     except WebPushException as exc:

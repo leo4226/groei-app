@@ -334,6 +334,7 @@ async def send_due_digests(db) -> dict:
         checked += 1
 
         rows = await fetch_household_schedule_rows(db, pref["household_id"])
+        rows = await _hold_still_moist_digest_rows(db, pref["household_id"], rows, today)
         overdue, due_today, _ = classify_care_tasks(rows, today=today)
 
         if not overdue and not due_today:
@@ -554,6 +555,26 @@ async def hold_still_moist_water_rows(db, household_id: int, due_rows: list[dict
     return [row for row in due_rows if row["id"] not in held_ids]
 
 
+async def _hold_still_moist_digest_rows(db, household_id: int, rows, today: date) -> list:
+    """The email follows the same still-moist hold as the push and the plant
+    page: a mail saying "water the hydrangea" next to a screen saying "not
+    yet, the soil is still wet" teaches people to ignore both."""
+    shaped = []
+    for row in rows:
+        item = dict(row)
+        item["id"] = item.get("schedule_id")
+        item["last_done"] = item.get("last_done_at")
+        shaped.append(item)
+    try:
+        return await hold_still_moist_water_rows(db, household_id, shaped, today)
+    except Exception:
+        # Fail towards telling: a broken forecast must not hide a watering.
+        logger.warning(
+            "Still-moist digest hold failed for household %s", household_id, exc_info=True,
+        )
+        return shaped
+
+
 async def send_due_care_pushes(db) -> dict:
     """Push a reminder the moment a care task becomes due, once per due cycle.
 
@@ -581,11 +602,22 @@ async def send_due_care_pushes(db) -> dict:
         LEFT JOIN notification_preferences np ON np.account_id = ps.account_id
         """
     )
+    # Grouped per household. `notified_for_due` lives on the schedule, which
+    # the whole household shares, so it may only be stamped once every member
+    # has had their chance: stamping after the first member's push used to
+    # leave every other member of the household with nothing.
+    households: dict[int, list[dict]] = {}
+    for acc in accounts:
+        households.setdefault(acc["household_id"], []).append(dict(acc))
 
     push_checked = push_sent = push_failed = push_pruned = 0
-    for acc in accounts:
-        # Hold during the account's quiet window (default overnight).
-        if _in_quiet_hours(now, acc["quiet_start"], acc["quiet_end"]):
+    for household_id, members in households.items():
+        # Hold during each member's quiet window (default overnight).
+        awake = [
+            acc for acc in members
+            if not _in_quiet_hours(now, acc["quiet_start"], acc["quiet_end"])
+        ]
+        if not awake:
             continue
 
         due_rows = await db.execute_fetchall(
@@ -604,33 +636,16 @@ async def send_due_care_pushes(db) -> dict:
                    OR cs.snoozed_until IS NOT NULL)
             ORDER BY cs.next_due ASC
             """,
-            (acc["household_id"], today, now_utc),
+            (household_id, today, now_utc),
         )
         due_rows = [dict(row) for row in due_rows]
-        # Skip care types this account has muted.
-        muted = set(parse_muted_care_types(acc["muted_care_types"]))
-        if muted:
-            due_rows = [r for r in due_rows if r["care_type"] not in muted]
-
-        account_due_rows = []
-        for row in due_rows:
-            metadata = weather_task_metadata(row.get("notes"))
-            if metadata:
-                if await weather_warning_push_is_suppressed(
-                    db,
-                    account_id=acc["account_id"],
-                    warning_id=metadata["weather_warning_id"],
-                ):
-                    continue
-                row["_weather_warning"] = metadata
-            account_due_rows.append(row)
-        due_rows = account_due_rows
         if not due_rows:
             continue
 
+        # Soil moisture is the same for every member, so it is judged once.
         try:
             due_rows = await hold_still_moist_water_rows(
-                db, acc["household_id"], due_rows, today,
+                db, household_id, due_rows, today,
             )
         except Exception:
             # A broken forecast must never cost someone a watering reminder, so
@@ -638,41 +653,64 @@ async def send_due_care_pushes(db) -> dict:
             # look exactly like weather that says the soil is dry.
             logger.warning(
                 "Still-moist push hold failed for household %s",
-                acc["household_id"], exc_info=True,
+                household_id, exc_info=True,
             )
         if not due_rows:
             continue
-        push_checked += 1
 
-        subs = await db.execute_fetchall(
-            "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
-            (acc["account_id"],),
-        )
-        if not subs:
-            continue
-
-        payload = build_care_push_payload(
-            due_rows,
-            snooze_token=make_snooze_token(acc["household_id"]),
-            language=acc.get("language") or "nl",
-        )
-        delivered = False
-        for sub in subs:
-            outcome = await asyncio.to_thread(send_push, dict(sub), payload)
-            if outcome == "ok":
-                delivered = True
-            elif outcome == "gone":
-                await db.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],))
-                await db.commit()
-                push_pruned += 1
-
-        if delivered:
-            # Stamp each due schedule with the due date we just notified for, so
-            # it won't re-ping until completion advances next_due. Only on a
-            # real delivery — a transient failure stays eligible next hour.
+        # Schedules some member was actually told about this run.
+        delivered_schedules: dict[int, dict] = {}
+        for acc in awake:
+            # Skip care types this member has muted.
+            muted = set(parse_muted_care_types(acc["muted_care_types"]))
+            account_rows = []
             for row in due_rows:
+                if row["care_type"] in muted:
+                    continue
+                metadata = weather_task_metadata(row.get("notes"))
+                if metadata:
+                    if await weather_warning_push_is_suppressed(
+                        db,
+                        account_id=acc["account_id"],
+                        warning_id=metadata["weather_warning_id"],
+                    ):
+                        continue
+                    row = {**row, "_weather_warning": metadata}
+                account_rows.append(row)
+            if not account_rows:
+                continue
+            push_checked += 1
+
+            subs = await db.execute_fetchall(
+                "SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE account_id = ?",
+                (acc["account_id"],),
+            )
+            if not subs:
+                continue
+
+            payload = build_care_push_payload(
+                account_rows,
+                snooze_token=make_snooze_token(household_id),
+                language=acc.get("language") or "nl",
+            )
+            delivered = False
+            for sub in subs:
+                outcome = await asyncio.to_thread(send_push, dict(sub), payload)
+                if outcome == "ok":
+                    delivered = True
+                elif outcome == "gone":
+                    await db.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub["id"],))
+                    await db.commit()
+                    push_pruned += 1
+
+            if not delivered:
+                push_failed += 1
+                continue
+            push_sent += 1
+            for row in account_rows:
                 metadata = row.get("_weather_warning")
                 if metadata:
+                    # Weather pushes keep their own per-account state.
                     await mark_weather_warning_push_sent(
                         db,
                         account_id=acc["account_id"],
@@ -681,20 +719,25 @@ async def send_due_care_pushes(db) -> dict:
                         forecast_date=date.fromisoformat(metadata["forecast_date"]),
                         severity=metadata["severity"],
                     )
-                    continue
-                due = row["next_due"]
-                if isinstance(due, str):
-                    due = date.fromisoformat(due[:10])
-                # Clear any (now-elapsed) snooze as we re-notify, so the same
-                # due cycle doesn't immediately re-ping on the next run.
-                await db.execute(
-                    "UPDATE care_schedules SET notified_for_due = ?, snoozed_until = NULL WHERE id = ?",
-                    (due, row["id"]),
-                )
+                else:
+                    delivered_schedules[row["id"]] = row
             await db.commit()
-            push_sent += 1
-        else:
-            push_failed += 1
+
+        # Stamp each delivered schedule with the due date it was notified for,
+        # so it won't re-ping until completion advances next_due. Only after a
+        # real delivery — a transient failure stays eligible next run.
+        for row in delivered_schedules.values():
+            due = row["next_due"]
+            if isinstance(due, str):
+                due = date.fromisoformat(due[:10])
+            # Clear any (now-elapsed) snooze as we re-notify, so the same due
+            # cycle doesn't immediately re-ping on the next run.
+            await db.execute(
+                "UPDATE care_schedules SET notified_for_due = ?, snoozed_until = NULL WHERE id = ?",
+                (due, row["id"]),
+            )
+        if delivered_schedules:
+            await db.commit()
 
     return {"push_checked": push_checked, "push_sent": push_sent,
             "push_failed": push_failed, "push_pruned": push_pruned}

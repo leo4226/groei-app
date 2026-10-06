@@ -84,9 +84,16 @@ self.addEventListener('notificationclick', (event) => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const client of clients) {
       if ('focus' in client) {
-        await client.focus()
-        if ('navigate' in client) await client.navigate(url)
-        return
+        try {
+          await client.focus()
+          // navigate() rejects for a window this worker does not control
+          // (matchAll includes uncontrolled ones); fall through and open a
+          // fresh window rather than leaving the tap doing nothing.
+          if ('navigate' in client) await client.navigate(url)
+          return
+        } catch {
+          break
+        }
       }
     }
     await self.clients.openWindow(url)
