@@ -35,6 +35,7 @@ import {
   editableCareTypesForEnvironment,
 } from './editPlantCareSchedules'
 import type { EditableCareType, ScheduleEditorState } from './editPlantCareSchedules'
+import { userFacingError } from '../utils/userFacingError'
 
 export default function EditPlant() {
   const { id } = useParams<{ id: string }>()
@@ -363,7 +364,7 @@ export default function EditPlant() {
       navigate(-1)
     } catch (e) {
       // Surface the failure instead of leaving the button silently stuck.
-      setSaveError(e instanceof Error && e.message ? e.message : t.editPlant.saveFailed)
+      setSaveError(userFacingError(e, t.editPlant.saveFailed))
     } finally {
       setSubmitting(false)
     }

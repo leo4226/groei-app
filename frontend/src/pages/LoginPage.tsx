@@ -7,6 +7,7 @@ import PageDecor from '../components/PageDecor'
 import Glyph from '../components/ui/Glyph'
 import { resolveIconUrl } from '../utils/icons'
 import { DEMO_BIODIVERSITY, DEMO_SUGGESTIONS } from '../demo/demoGarden'
+import { authErrorMessage, type AuthMode } from './authErrors'
 
 // This page is shown BEFORE there is an account language, so it cannot use the
 // account-driven translation catalog (useT). It carries its own bilingual copy
@@ -67,6 +68,14 @@ interface LandingCopy {
   submitJoin: string
   submitForgot: string
   genericError: string
+  networkError: string
+  invalidCredentials: string
+  tooManyAttempts: string
+  emailTaken: string
+  nameTaken: string
+  inviteInvalid: string
+  inviteExpired: string
+  checkFields: string
   previewKicker: string
   previewTitle: string
   previewText: string
@@ -91,7 +100,7 @@ interface LandingCopy {
   tourIntro: string
 }
 
-const COPY: Record<Lang, LandingCopy> = {
+export const COPY: Record<Lang, LandingCopy> = {
   nl: {
     kicker: 'Veldgids & plantenzorg',
     heroTitle: 'Stop met gokken waar een plant moet staan.',
@@ -152,6 +161,14 @@ const COPY: Record<Lang, LandingCopy> = {
     submitJoin: 'Tuin toetreden',
     submitForgot: 'Verstuur herstellink',
     genericError: 'Er ging iets mis',
+    networkError: 'Kan Floreren niet bereiken. Controleer je verbinding en probeer het opnieuw.',
+    invalidCredentials: 'Onbekend e-mailadres of verkeerd wachtwoord.',
+    tooManyAttempts: 'Te veel pogingen. Wacht even en probeer het dan opnieuw.',
+    emailTaken: 'Er bestaat al een account met dit e-mailadres. Log in of herstel je wachtwoord.',
+    nameTaken: 'Deze naam is al in gebruik in deze tuin. Kies een andere naam.',
+    inviteInvalid: 'Deze uitnodigingscode bestaat niet. Controleer de code.',
+    inviteExpired: 'Deze uitnodigingscode is verlopen of al gebruikt. Vraag om een nieuwe.',
+    checkFields: 'Controleer je gegevens: een geldig e-mailadres, een naam en een wachtwoord van minstens 8 tekens.',
     previewKicker: 'De zonnekaart',
     previewTitle: 'Zie je tuin in zon en schaduw',
     previewText:
@@ -241,6 +258,14 @@ const COPY: Record<Lang, LandingCopy> = {
     submitJoin: 'Join garden',
     submitForgot: 'Send reset link',
     genericError: 'Something went wrong',
+    networkError: "Can't reach Floreren. Check your connection and try again.",
+    invalidCredentials: 'Unknown email address or wrong password.',
+    tooManyAttempts: 'Too many attempts. Wait a moment and try again.',
+    emailTaken: 'An account with this email already exists. Log in or reset your password.',
+    nameTaken: 'This name is already used in this garden. Pick another one.',
+    inviteInvalid: "This invite code doesn't exist. Check the code.",
+    inviteExpired: 'This invite code has expired or was already used. Ask for a new one.',
+    checkFields: 'Check your details: a valid email address, a name and a password of at least 8 characters.',
     previewKicker: 'The sun heatmap',
     previewTitle: 'See your garden in sun and shade',
     previewText:
@@ -748,10 +773,12 @@ export function LandingTour() {
 export default function LoginPage({ publicHome = false }: { publicHome?: boolean }) {
   const [lang, setLang] = useState<Lang>(initialLang)
   // ?mode=register opens the register tab directly (the demo garden's
-  // "create your own garden" CTA links here).
-  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>(() =>
-    new URLSearchParams(window.location.search).get('mode') === 'register' ? 'register' : 'login',
-  )
+  // "create your own garden" CTA links here); ?mode=forgot is where an
+  // expired reset link sends you for a new one.
+  const [mode, setMode] = useState<AuthMode>(() => {
+    const requested = new URLSearchParams(window.location.search).get('mode')
+    return requested === 'register' || requested === 'forgot' ? requested : 'login'
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -812,7 +839,7 @@ export default function LoginPage({ publicHome = false }: { publicHome?: boolean
         setForgotSent(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.genericError)
+      setError(authErrorMessage(err, mode, t))
     } finally {
       setLoading(false)
     }

@@ -4,6 +4,7 @@ import { dataExport } from '../../api/client'
 import Glyph from '../../components/ui/Glyph'
 import { resetAssistant } from '../../components/HelpAssistant'
 import { localIsoDate } from '../../utils/dateFormat'
+import { userFacingError } from '../../utils/userFacingError'
 
 interface Props {
   onInstallClick: () => void
@@ -51,7 +52,7 @@ export default function AppDataPanel({ onInstallClick }: Props) {
       setReady(true)
       setTimeout(() => setReady(false), 2500)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.settings.downloadError)
+      setError(userFacingError(e, t.settings.downloadError))
     } finally {
       setBusy(null)
     }

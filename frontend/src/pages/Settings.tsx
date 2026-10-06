@@ -20,6 +20,7 @@ import AppDataPanel from './settings/AppDataPanel'
 import CalendarGroupingSettings from './settings/CalendarGroupingSettings'
 import CareRhythmSettings from './settings/CareRhythmSettings'
 import CalendarSubscriptionSettings from './settings/CalendarSubscriptionSettings'
+import { userFacingError } from '../utils/userFacingError'
 
 // Must match the boot script in index.html, which applies the theme before
 // React loads to avoid a flash of the wrong theme.
@@ -114,7 +115,7 @@ export default function Settings() {
     try {
       setSyncResult(await icons.sync())
     } catch (e) {
-      setSyncError(e instanceof Error ? e.message : t.common.error)
+      setSyncError(userFacingError(e, t.common.error))
     } finally {
       setSyncing(false)
     }

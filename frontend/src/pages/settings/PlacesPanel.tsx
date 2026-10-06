@@ -5,6 +5,7 @@ import { apiRequest, users as usersApi } from '../../api/client'
 import type { Location } from '../../types'
 import Glyph from '../../components/ui/Glyph'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { userFacingError } from '../../utils/userFacingError'
 
 /** Reorder arrows, hoisted out of the render body so React keeps the instance. */
 function OrderButtons({ loc, locations, onReorder, upLabel, downLabel, disabled = false }: {
@@ -74,7 +75,7 @@ export default function PlacesPanel({ canEdit = true }: { canEdit?: boolean }) {
       setEditingId(null)
       void useFloreren.getState().load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.error)
+      setError(userFacingError(e, t.common.error))
     }
   }
 
@@ -90,7 +91,7 @@ export default function PlacesPanel({ canEdit = true }: { canEdit?: boolean }) {
       await apiRequest('POST', '/locations', { body })
       void useFloreren.getState().load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.error)
+      setError(userFacingError(e, t.common.error))
     }
   }
 
@@ -122,7 +123,7 @@ export default function PlacesPanel({ canEdit = true }: { canEdit?: boolean }) {
       await usersApi.updateLocation(loc.id, { sort_order: newOrder })
       void useFloreren.getState().load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.error)
+      setError(userFacingError(e, t.common.error))
     }
   }
 

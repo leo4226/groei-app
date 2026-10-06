@@ -7,6 +7,7 @@ import type { MapInfo, MapPlant } from '../../types'
 import { plantDisplayName } from '../../utils/plantDisplayName'
 import Glyph from '../ui/Glyph'
 import ReadOnlyBanner from '../ui/ReadOnlyBanner'
+import { userFacingError } from '../../utils/userFacingError'
 
 interface Props {
   mapId: number
@@ -241,7 +242,7 @@ export default function GameSetupSheet({ mapId, mapSlug, onClose, canEdit = true
       })
       navigate(`/game/${join_code}/host`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.error)
+      setError(userFacingError(e, t.common.error))
       setCreating(false)
     }
   }

@@ -29,10 +29,16 @@ async function postPublic<T>(path: string, body: unknown, fallbackError: string)
         signal: controller.signal,
       })
       if (!res.ok) {
-        const detail = await res.json().catch(() => ({}))
-        // Carry the status so callers can branch on it instead of matching
-        // (language-dependent) message text.
-        throw Object.assign(new Error(detail.detail ?? fallbackError), { status: res.status })
+        const body = await res.json().catch(() => ({}))
+        const detail = body?.detail
+        // A detail can be prose, a {code} object (429, 409) or FastAPI's
+        // validation list (422). `new Error(object)` printed "[object Object]",
+        // so only prose becomes the message. Callers word errors by status and
+        // code, never by message text (#795).
+        throw Object.assign(
+          new Error(typeof detail === 'string' ? detail : fallbackError),
+          { status: res.status, code: typeof detail?.code === 'string' ? detail.code : undefined },
+        )
       }
       return res.json() as Promise<T>
     } catch (e) {

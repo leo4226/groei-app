@@ -34,17 +34,19 @@ async function ensureOk(res: Response, fallback: string): Promise<void> {
   if (res.ok) return
   let msg = fallback
   let code: OutageCode | undefined
+  let detailCode: string | undefined
   try {
     const body = await res.json()
     if (body.detail) msg = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
+    if (typeof body.detail?.code === 'string') detailCode = body.detail.code
     if (res.status === 503 && OUTAGE_CODES.includes(body.detail)) {
       code = body.detail as OutageCode
       outageListener?.(code)
     }
   } catch { /* keep fallback */ }
-  // Carry the HTTP status so callers can branch on it instead of matching
-  // (language-dependent) detail strings.
-  throw Object.assign(new Error(msg), { status: res.status, outage: code })
+  // Carry the HTTP status (and a machine code when the API sends one) so
+  // callers can branch on them instead of matching language-dependent text.
+  throw Object.assign(new Error(msg), { status: res.status, outage: code, code: detailCode })
 }
 
 function buildUrl(path: string, params?: Record<string, string>) {
