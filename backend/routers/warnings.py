@@ -268,7 +268,8 @@ async def get_plant_warnings(
     plant = dict(plant_rows[0])
 
     schedules_rows = await db.execute_fetchall(
-        """SELECT care_type, next_due, last_done, interval_days, season_adjust
+        """SELECT care_type, next_due, last_done, interval_days, season_adjust,
+                  is_ephemeral
            FROM care_schedules
            WHERE plant_id = ? AND is_active = 1""",
         (plant_id,),
@@ -356,7 +357,7 @@ async def _compute_warning_summary(
     placeholders = ",".join("?" * len(plant_ids))
     schedule_rows = await db.execute_fetchall(
         f"""SELECT cs.id as schedule_id, cs.plant_id, cs.care_type, cs.next_due,
-                   cs.last_done, cs.interval_days, cs.season_adjust
+                   cs.last_done, cs.interval_days, cs.season_adjust, cs.is_ephemeral
             FROM care_schedules cs
             WHERE cs.plant_id IN ({placeholders}) AND cs.is_active = 1""",
         plant_ids,

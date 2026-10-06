@@ -110,8 +110,8 @@ def _schedule_warning_for_type(
     elif days_overdue >= 1:
         severity = "warning"
         trigger = "schedule_overdue"
-        message_nl = f"{label_nl} — {days_overdue} dag(en) te laat"
-        message_en = f"{label_en} — {days_overdue} day(s) overdue"
+        message_nl = f"{label_nl} — {days_overdue} {'dag' if days_overdue == 1 else 'dagen'} te laat"
+        message_en = f"{label_en} — {days_overdue} {'day' if days_overdue == 1 else 'days'} overdue"
     else:
         severity = "warning"
         trigger = "schedule_due_today"
@@ -694,6 +694,34 @@ def _sort_warnings(warnings: list[CareWarning]) -> list[CareWarning]:
     return sorted(warnings, key=key)
 
 
+def _schedule_per_type(schedules: list[dict]) -> dict[str, dict]:
+    """One schedule per care type: the regular one, and the most urgent if
+    there are several.
+
+    A plant can hold two active `water` rows: its regular schedule and a
+    heat-triggered one-shot extra (is_ephemeral). Keying a dict by care type
+    kept whichever row the database happened to return last, so on a hot day an
+    overdue watering could vanish behind a one-shot dated later. One-shots are
+    Calendar extras, never the schedule a plant is judged by.
+    """
+    chosen: dict[str, dict] = {}
+    for raw in schedules:
+        row = dict(raw)
+        care_type = normalize_care_type(row["care_type"])
+        current = chosen.get(care_type)
+        if current is None or _schedule_rank(row) < _schedule_rank(current):
+            chosen[care_type] = row
+    return chosen
+
+
+def _schedule_rank(row: dict) -> tuple[int, date]:
+    next_due = row.get("next_due")
+    return (
+        1 if row.get("is_ephemeral") else 0,
+        _as_date(next_due) if next_due else date.max,
+    )
+
+
 def compute_plant_warnings(
     plant: dict,
     schedules: list[dict],
@@ -728,9 +756,7 @@ def compute_plant_warnings(
 
     # Schedule warnings
     schedule_warnings: list[CareWarning] = []
-    by_type: dict[str, dict] = {
-        normalize_care_type(s["care_type"]): dict(s) for s in schedules
-    }
+    by_type = _schedule_per_type(schedules)
 
     # Is this plant's soil still wet enough that a due watering can wait? Asked
     # once, before the loop, because the answer also silences the drought

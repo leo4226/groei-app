@@ -277,9 +277,14 @@ async def get_garden_fertilize_status(db = Depends(db_dep), account = Depends(ge
     pending = await db.execute_fetchall(
         """SELECT COUNT(*) as cnt FROM care_schedules cs
            JOIN plants p ON cs.plant_id = p.id
+           LEFT JOIN maps m ON m.id = p.map_id
            WHERE cs.care_type = 'fertilize' AND cs.is_active = 1
-           AND p.is_active = 1 AND p.household_id = ? AND cs.next_due <= CURRENT_DATE""",
-        (household_id,),
+           AND cs.is_ephemeral = 0
+           AND p.is_active = 1 AND p.household_id = ? AND cs.next_due <= ?
+           -- Same scope as the garden-wide log it counts towards: outdoors.
+           AND COALESCE(m.map_type, 'outdoor') <> 'indoor'""",
+        # The garden's date, not the database's: CURRENT_DATE is UTC on Neon.
+        (household_id, local_today()),
     )
     return {
         "fertilized_at": last.isoformat() if last else None,

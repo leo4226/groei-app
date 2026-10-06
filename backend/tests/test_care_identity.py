@@ -178,3 +178,42 @@ async def test_garden_fertilize_log_leaves_houseplants_alone(seeded_db):
     )
     assert str(rows[0]["last_done"]).startswith("2026-06-05")
     assert rows[1]["last_done"] is None
+
+
+def test_season_multiplier_ignores_malformed_adjustments():
+    from services.scheduling import calculate_effective_interval
+
+    summer = date(2026, 7, 1)
+    for raw in ('{"summer": null}', '{"summer": "fast"}', '{"summer": -1}', '[0.5]', '"x"'):
+        assert calculate_effective_interval(10, raw, summer) == 10, raw
+    assert calculate_effective_interval(10, '{"summer": 0.5}', summer) == 5
+
+
+@pytest.mark.asyncio
+async def test_plants_cannot_be_planted_into_another_households_map(
+    client, household_db, auth_header,
+):
+    await household_db.executescript("""
+        INSERT INTO maps (id, name, map_type, household_id) VALUES
+          (40, 'Our garden', 'outdoor', 1), (41, 'Neighbour garden', 'outdoor', 2);
+        INSERT INTO locations (id, name, household_id) VALUES (50, 'Their shed', 2);
+    """)
+    foreign_map = await client.post(
+        "/api/plants",
+        json={"name": "Graffiti", "map_id": 41, "map_x": 10, "map_y": 10},
+        headers=auth_header,
+    )
+    foreign_location = await client.post(
+        "/api/plants", json={"name": "Snoop", "location_id": 50}, headers=auth_header,
+    )
+    assert foreign_map.status_code == 422
+    assert foreign_location.status_code == 422
+
+    moved = await client.put(
+        "/api/plants/1", json={"map_id": 41, "map_x": 1, "map_y": 1}, headers=auth_header,
+    )
+    assert moved.status_code == 422
+    rows = await household_db.execute_fetchall("SELECT map_id FROM plants WHERE id = 1")
+    assert rows[0]["map_id"] is None
+    names = await household_db.execute_fetchall("SELECT name FROM plants ORDER BY id")
+    assert [row["name"] for row in names] == ["Monstera"]

@@ -86,7 +86,7 @@ def _db_cache():
                 zone_type TEXT, polygon TEXT, soil_note TEXT, created_at TEXT
             );
             INSERT INTO users (id, name) VALUES (1, 'Test User');
-            INSERT INTO locations (id, name) VALUES (1, 'Test Location');
+            INSERT INTO locations (id, name, household_id) VALUES (1, 'Test Location', 1);
         """)
         await db.commit()
         return db

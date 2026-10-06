@@ -730,6 +730,7 @@ async def list_calendar_events(
             # is simply not due yet.
             "interval_days": r["interval_days"],
             "season_adjust": r["season_adjust"],
+            "is_ephemeral": r.get("is_ephemeral"),
         })
 
     enrichment_cache: dict[tuple[int, str], dict] = {}
