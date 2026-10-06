@@ -5,6 +5,7 @@ import { useT } from '../../context/LanguageContext'
 import { maps as mapsApi } from '../../api/client'
 import { buildStarterCanvas } from '../../demo/starterCanvas'
 import Glyph from '../ui/Glyph'
+import { userFacingError } from '../../utils/userFacingError'
 
 interface Props {
   open: boolean
@@ -80,7 +81,7 @@ export default function NewMapModal({ open, onClose }: Props) {
       if (useTemplate) navigate(`/map/${map.slug}`)
       else navigate(`/maps/${map.id}/edit-layout`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.maps.failedCreate)
+      setError(userFacingError(e, t.maps.failedCreate))
     } finally {
       setCreating(false)
     }

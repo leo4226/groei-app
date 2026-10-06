@@ -140,7 +140,7 @@ async def join_household(
         (body.email.lower(),),
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail={"code": "email_taken"})
 
     # 3-5. Claim the invite and create the account as one unit. The claim is
     # a conditional UPDATE so two people racing with one code cannot both
@@ -173,12 +173,10 @@ async def join_household(
     except asyncpg.exceptions.UniqueViolationError as exc:
         # The email raced past the check above, or the name is taken in this
         # household; the transaction already undid the account and the claim.
+        # Codes, not prose: the join screen words them in the reader's language.
         if "email" in str(exc).lower():
-            raise HTTPException(status_code=409, detail="Email already registered")
-        raise HTTPException(
-            status_code=409,
-            detail="Deze gebruikersnaam is al in gebruik. Kies een andere naam.",
-        )
+            raise HTTPException(status_code=409, detail={"code": "email_taken"})
+        raise HTTPException(status_code=409, detail={"code": "name_taken"})
 
     token = create_token(account_id=account_id, household_id=household_id)
     return AuthResponse(

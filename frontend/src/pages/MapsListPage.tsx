@@ -8,6 +8,7 @@ import AppLoadingView from '../components/ui/AppLoadingView'
 import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
 import { useCapabilities } from '../hooks/useCapabilities'
 import type { MapInfo } from '../types'
+import { userFacingError } from '../utils/userFacingError'
 
 function MapThumbnail({ map }: { map: MapInfo }) {
   const isOutdoor = map.map_type === 'outdoor' || (map.map_type as string) === 'garden'
@@ -69,7 +70,7 @@ export default function MapsListPage() {
       setNewName('')
       navigate(`/maps/${map.id}/edit-layout`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.maps.failedCreate)
+      setError(userFacingError(e, t.maps.failedCreate))
     } finally {
       setCreating(false)
     }
@@ -81,7 +82,7 @@ export default function MapsListPage() {
     try {
       await deleteMap(map.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.maps.failedDelete)
+      setError(userFacingError(e, t.maps.failedDelete))
     }
   }
 

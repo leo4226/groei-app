@@ -46,6 +46,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   return <LanguageContext.Provider value={PACKS[lang]}>{children}</LanguageContext.Provider>
 }
 
+/** The catalog for an explicit language, for pages opened from a link that
+ * says which language it was sent in (e.g. a password-reset email). */
+export function translationsFor(lang: string | null | undefined): Translations | null {
+  return lang === 'en' || lang === 'nl' ? PACKS[lang] : null
+}
+
 export function useT(): Translations {
   return useContext(LanguageContext)
 }

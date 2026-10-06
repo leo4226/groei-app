@@ -182,6 +182,7 @@ function MapRedirect() {
 const PULL_REFRESH_ROUTES = new Set(['/plants', '/field-journal', '/calendar', '/log'])
 
 export default function App() {
+  const t = useT()
   const load = useFloreren((s) => s.load)
   const refreshAll = useFloreren((s) => s.refreshAll)
   const isLoading = useFloreren((s) => s.isLoading)
@@ -265,7 +266,8 @@ export default function App() {
       <div className="flex flex-col h-dvh bg-bg overflow-hidden">
       {!isPublicHome && error && (
         <div className="bg-overdue/10 text-overdue px-4 py-2 text-sm flex justify-between items-center">
-          <span>{error}</span>
+          {/* The store keeps the raw message for the console; people get it in their language. */}
+          <span title={error}>{t.common.loadErrorBanner}</span>
           <button onClick={clearError} className="font-bold ml-2 inline-flex items-center"><Glyph name="x" size={15} /></button>
         </div>
       )}

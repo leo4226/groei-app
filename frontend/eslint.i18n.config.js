@@ -70,7 +70,6 @@ export default [
       // an NL/EN toggle (Dutch default) — permanent exemption.
       'src/pages/LoginPage.tsx',
 
-      'src/pages/ResetPasswordPage.tsx',
       'src/pages/calendar/CalendarAlmanac.tsx',
       'src/pages/calendar/CalendarGrid.tsx',
     ],

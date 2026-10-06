@@ -1,35 +1,36 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { resetPassword } from '../api/auth'
+import { translationsFor, useT } from '../context/LanguageContext'
+import { resetErrorMessage } from './authErrors'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token') ?? ''
+  // The email says which language it was written in; this device may never
+  // have been logged in, so its stored language would just be the default.
+  const contextT = useT()
+  const t = (translationsFor(searchParams.get('lang')) ?? contextT).resetPassword
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [linkDead, setLinkDead] = useState(false)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!token) {
-      setError('Missing reset token. Please use the link from your email.')
-    }
-  }, [token])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
 
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters')
+      setError(t.tooShort)
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t.mismatch)
       return
     }
 
@@ -38,7 +39,10 @@ export default function ResetPasswordPage() {
       await resetPassword(token, newPassword)
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const status = (err as { status?: number } | null)?.status
+      const code = (err as { code?: string } | null)?.code
+      setLinkDead(status === 400 && code !== 'password_too_short')
+      setError(resetErrorMessage(err, t))
     } finally {
       setLoading(false)
     }
@@ -73,7 +77,7 @@ export default function ResetPasswordPage() {
           </h1>
           <div className="card" style={{ padding: '24px' }}>
             <p style={{ color: 'var(--color-overdue)', margin: '0 0 20px', fontSize: '0.95rem' }}>
-              {error || 'Invalid reset link.'}
+              {t.missingToken}
             </p>
             <Link
               to="/login"
@@ -84,7 +88,7 @@ export default function ResetPasswordPage() {
                 fontSize: '0.9rem',
               }}
             >
-              ← Back to log in
+              {t.backToLogin}
             </Link>
           </div>
         </div>
@@ -106,10 +110,10 @@ export default function ResetPasswordPage() {
           {success ? (
             <div style={{ textAlign: 'center' }}>
               <p style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '1.1rem', margin: '0 0 8px' }}>
-                Password updated!
+                {t.successTitle}
               </p>
               <p style={{ color: 'var(--color-text)', fontSize: '0.9rem', margin: '0 0 20px' }}>
-                Your password has been reset successfully.
+                {t.successBody}
               </p>
               <button
                 type="button"
@@ -126,40 +130,50 @@ export default function ResetPasswordPage() {
                   fontFamily: 'inherit',
                 }}
               >
-                Log in
+                {t.logIn}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={labelStyle}>New password</label>
+                <label htmlFor="reset-new-password" style={labelStyle}>{t.newPassword}</label>
                 <input
+                  id="reset-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   minLength={8}
                   autoComplete="new-password"
-                  placeholder="Min. 8 characters"
+                  placeholder={t.newPasswordPlaceholder}
                   style={inputStyle}
                 />
               </div>
               <div>
-                <label style={labelStyle}>Confirm password</label>
+                <label htmlFor="reset-confirm-password" style={labelStyle}>{t.confirmPassword}</label>
                 <input
+                  id="reset-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  placeholder="Re-enter your password"
+                  placeholder={t.confirmPasswordPlaceholder}
                   style={inputStyle}
                 />
               </div>
 
               {error && (
-                <p style={{ color: 'var(--color-overdue)', fontSize: '0.85rem', margin: 0 }}>
+                <p role="alert" style={{ color: 'var(--color-overdue)', fontSize: '0.85rem', margin: 0 }}>
                   {error}
+                  {linkDead && (
+                    <>
+                      {' '}
+                      <Link to="/login?mode=forgot" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                        {t.requestNewLink}
+                      </Link>
+                    </>
+                  )}
                 </p>
               )}
 
@@ -180,7 +194,7 @@ export default function ResetPasswordPage() {
                   marginTop: '4px',
                 }}
               >
-                {loading ? '…' : 'Reset password'}
+                {loading ? '…' : t.submit}
               </button>
             </form>
           )}

@@ -8,6 +8,7 @@ import { useFloreren } from '../store/useFloreren'
 import PageMasthead from '../components/ui/PageMasthead'
 import ReadOnlyBanner from '../components/ui/ReadOnlyBanner'
 import { useCapabilities } from '../hooks/useCapabilities'
+import { userFacingError } from '../utils/userFacingError'
 
 export default function MapSettingsPage() {
   const { id } = useParams<{ id: string }>()
@@ -152,7 +153,7 @@ export default function MapSettingsPage() {
       await deleteMap(mapId)
       navigate('/maps', { replace: true })
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.mapSettings.deleteFailed)
+      setError(userFacingError(e, t.mapSettings.deleteFailed))
       setDeleting(false)
       setDeleteConfirm(false)
     }

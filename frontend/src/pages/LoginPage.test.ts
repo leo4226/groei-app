@@ -3,7 +3,8 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import LoginPage, { LandingTour } from './LoginPage'
+import LoginPage, { COPY, LandingTour } from './LoginPage'
+import { authErrorMessage } from './authErrors'
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const originalMatchMedia = window.matchMedia
@@ -188,5 +189,32 @@ describe('public landing page', () => {
     })
 
     expect(container.querySelector('[data-testid="landing-sun-proof"] video')).toBeNull()
+  })
+})
+
+describe('authErrorMessage', () => {
+  const nl = COPY.nl
+  const en = COPY.en
+  const err = (status?: number, code?: string) => Object.assign(new Error('server text'), { status, code })
+
+  it('words failures in the reader’s language instead of echoing the server', () => {
+    expect(authErrorMessage(err(401), 'login', nl)).toBe(nl.invalidCredentials)
+    expect(authErrorMessage(err(401), 'login', en)).toBe(en.invalidCredentials)
+  })
+
+  it('never shows "[object Object]" for a rate limit or a validation list', () => {
+    expect(authErrorMessage(err(429, 'rate_limited'), 'join', en)).toBe(en.tooManyAttempts)
+    expect(authErrorMessage(err(422), 'register', nl)).toBe(nl.checkFields)
+  })
+
+  it('tells a taken email from a taken name, and a bad invite from a stale one', () => {
+    expect(authErrorMessage(err(409, 'email_taken'), 'join', en)).toBe(en.emailTaken)
+    expect(authErrorMessage(err(409, 'name_taken'), 'join', en)).toBe(en.nameTaken)
+    expect(authErrorMessage(err(404), 'join', nl)).toBe(nl.inviteInvalid)
+    expect(authErrorMessage(err(410), 'join', nl)).toBe(nl.inviteExpired)
+  })
+
+  it('treats a failure without a status as a connection problem', () => {
+    expect(authErrorMessage(new TypeError('Failed to fetch'), 'login', en)).toBe(en.networkError)
   })
 })

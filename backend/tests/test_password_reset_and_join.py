@@ -168,3 +168,21 @@ async def test_blank_names_are_refused_at_signup_and_join(client, seeded_db):
 
     assert signup.status_code == 422
     assert join.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_reset_link_carries_the_email_language_and_errors_are_codes(client, reset_db):
+    db, sent = reset_db
+    await db.execute("UPDATE accounts SET language = 'en' WHERE id = 1")
+    await db.commit()
+    await client.post("/api/auth/forgot-password", json={"email": "leon@example.com"})
+
+    assert "/reset-password?lang=en&token=" in sent[0]
+    bogus = await client.post(
+        "/api/auth/reset-password", json={"token": "nope", "new_password": "long-enough-1"},
+    )
+    short = await client.post(
+        "/api/auth/reset-password", json={"token": "nope", "new_password": "short"},
+    )
+    assert bogus.json()["detail"] == {"code": "reset_link_invalid"}
+    assert short.json()["detail"] == {"code": "password_too_short"}

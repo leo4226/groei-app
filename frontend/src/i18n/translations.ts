@@ -2105,6 +2105,7 @@ export type Translations = {
     back: string
     error: string
     retry: string
+    loadErrorBanner: string  // app-wide banner when a background refresh fails
     saving: string       // "Saving..." / "Opslaan..."
     saved: string        // "Saved" / "Opgeslagen"
     deleting: string     // "Deleting..." / "Verwijderen..."
@@ -2382,5 +2383,25 @@ export type Translations = {
     gardenName: string  // "Voorbeeldtuin"
     cta: string         // "Maak je eigen tuin"
     hint: string        // sun-mode explainer shown on the public demo garden
+  }
+
+  resetPassword: {
+    missingToken: string      // link opened without its token
+    invalidLink: string       // token unknown, used or expired (HTTP 400)
+    tooShort: string
+    mismatch: string
+    tooManyAttempts: string
+    networkError: string
+    genericError: string
+    successTitle: string
+    successBody: string
+    logIn: string
+    backToLogin: string
+    newPassword: string
+    newPasswordPlaceholder: string
+    confirmPassword: string
+    confirmPasswordPlaceholder: string
+    submit: string
+    requestNewLink: string
   }
 }

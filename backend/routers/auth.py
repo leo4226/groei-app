@@ -63,7 +63,7 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
         "SELECT id FROM accounts WHERE email = ?", (body.email.lower(),)
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail={"code": "email_taken"})
 
     household_name = body.household_name.strip() or f"{body.name.strip()}'s Garden"
     pw_hash = hash_password(body.password)
@@ -100,7 +100,7 @@ async def register(body: RegisterInput, db=Depends(db_dep)):
                 )
     except asyncpg.exceptions.UniqueViolationError:
         # Two signups for one address raced past the check above.
-        raise HTTPException(status_code=409, detail="Email already registered")
+        raise HTTPException(status_code=409, detail={"code": "email_taken"})
 
     token = create_token(account_id=account_id, household_id=household_id)
     return AuthResponse(token=token, account_id=account_id, household_id=household_id, name=body.name.strip())
@@ -155,12 +155,15 @@ async def forgot_password(body: ForgotPasswordInput, db=Depends(db_dep)):
         await db.commit()
 
         app_url = os.environ.get("APP_URL", "http://localhost:5173")
-        reset_link = f"{app_url}/reset-password?token={token}"
+        lang = account[0]["language"] if account[0]["language"] in ("nl", "en") else "nl"
+        # The page renders in the email's language: the device that opens the
+        # link may never have been signed in, so it has nothing stored.
+        reset_link = f"{app_url}/reset-password?lang={lang}&token={token}"
         # Resend's client is synchronous HTTP; off the event loop it goes.
         await run_in_threadpool(
             send_password_reset,
             body.email.lower().strip(), reset_link,
-            lang=account[0]["language"] or "nl",
+            lang=lang,
         )
 
     return {"message": "If that email exists, a reset link has been sent."}
@@ -176,7 +179,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
 
     # Validate password length before spending the token
     if len(body.new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        raise HTTPException(status_code=400, detail={"code": "password_too_short"})
 
     rows = await db.execute_fetchall(
         """SELECT id, account_id, expires_at, used_at
@@ -186,7 +189,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
     )
     if not rows:
         raise HTTPException(
-            status_code=400, detail="Reset link is invalid or has expired"
+            status_code=400, detail={"code": "reset_link_invalid"}
         )
 
     token_row = dict(rows[0])
@@ -196,7 +199,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
         expires = datetime.fromisoformat(expires)
     if token_row.get("used_at") is not None or now > expires:
         raise HTTPException(
-            status_code=400, detail="Reset link is invalid or has expired"
+            status_code=400, detail={"code": "reset_link_invalid"}
         )
 
     pw_hash = hash_password(body.new_password)
@@ -209,7 +212,7 @@ async def reset_password(body: ResetPasswordInput, db=Depends(db_dep)):
         )
         if claimed.rowcount != 1:
             raise HTTPException(
-                status_code=400, detail="Reset link is invalid or has expired"
+                status_code=400, detail={"code": "reset_link_invalid"}
             )
         await db.execute(
             "UPDATE accounts SET password_hash = ? WHERE id = ?",
@@ -244,7 +247,7 @@ async def change_password(body: ChangePasswordInput, current=Depends(require_edi
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     if len(body.new_password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+        raise HTTPException(status_code=400, detail={"code": "password_too_short"})
 
     pw_hash = hash_password(body.new_password)
     await db.execute(
