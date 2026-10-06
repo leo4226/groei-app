@@ -91,7 +91,7 @@ async def test_generate_fun_fact_reads_reasoning_when_content_is_empty(monkeypat
 
 @pytest.mark.asyncio
 async def test_fun_fact_endpoint_falls_back_to_phenology_when_cache_columns_absent(
-    client, seeded_db, monkeypatch
+    client, seeded_db, auth_header, monkeypatch
 ):
     """Prod can lag/miss fun_fact_* columns; don't raw-500 when phenology has facts."""
     await seeded_db.execute(_PLANT_SPECIES_WITHOUT_FUN_FACT_COLUMNS)
@@ -123,7 +123,7 @@ async def test_fun_fact_endpoint_falls_back_to_phenology_when_cache_columns_abse
 
     monkeypatch.setattr("routers.species._generate_fun_fact", fake_generate)
 
-    res = await client.get("/api/species/7/fun-fact")
+    res = await client.get("/api/species/7/fun-fact", headers=auth_header)
 
     assert res.status_code == 200, res.text
     assert generate_called is False
@@ -135,7 +135,7 @@ async def test_fun_fact_endpoint_falls_back_to_phenology_when_cache_columns_abse
 
 @pytest.mark.asyncio
 async def test_fun_fact_endpoint_backfills_missing_language_from_available_fact(
-    client, seeded_db, monkeypatch
+    client, seeded_db, auth_header, monkeypatch
 ):
     await seeded_db.execute(_PLANT_SPECIES_WITHOUT_FUN_FACT_COLUMNS)
     await seeded_db.execute(
@@ -157,7 +157,7 @@ async def test_fun_fact_endpoint_backfills_missing_language_from_available_fact(
 
     monkeypatch.setattr("routers.species._generate_fun_fact", fake_generate)
 
-    res = await client.get("/api/species/8/fun-fact")
+    res = await client.get("/api/species/8/fun-fact", headers=auth_header)
 
     assert res.status_code == 200, res.text
     assert res.json() == {
@@ -180,7 +180,7 @@ _PLANT_SPECIES_WITH_FUN_FACT_COLUMNS = """
 
 @pytest.mark.asyncio
 async def test_fun_fact_endpoint_generates_missing_language_for_half_filled_cache(
-    client, seeded_db, monkeypatch
+    client, seeded_db, auth_header, monkeypatch
 ):
     """A cache with only a Dutch fact used to be cross-filled silently, showing
     Dutch facts in the English UI. It must instead generate the missing language
@@ -199,7 +199,7 @@ async def test_fun_fact_endpoint_generates_missing_language_for_half_filled_cach
 
     monkeypatch.setattr("routers.species._generate_fun_fact", fake_generate)
 
-    res = await client.get("/api/species/9/fun-fact")
+    res = await client.get("/api/species/9/fun-fact", headers=auth_header)
 
     assert res.status_code == 200, res.text
     assert res.json() == {
@@ -215,7 +215,7 @@ async def test_fun_fact_endpoint_generates_missing_language_for_half_filled_cach
 
 
 @pytest.mark.asyncio
-async def test_fun_fact_endpoint_complete_cache_short_circuits(client, seeded_db, monkeypatch):
+async def test_fun_fact_endpoint_complete_cache_short_circuits(client, seeded_db, auth_header, monkeypatch):
     """Both languages cached → no LLM call."""
     await seeded_db.execute(_PLANT_SPECIES_WITH_FUN_FACT_COLUMNS)
     await seeded_db.execute(
@@ -231,7 +231,7 @@ async def test_fun_fact_endpoint_complete_cache_short_circuits(client, seeded_db
 
     monkeypatch.setattr("routers.species._generate_fun_fact", fake_generate)
 
-    res = await client.get("/api/species/10/fun-fact")
+    res = await client.get("/api/species/10/fun-fact", headers=auth_header)
 
     assert res.status_code == 200, res.text
     assert res.json() == {

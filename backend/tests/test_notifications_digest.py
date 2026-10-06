@@ -244,10 +244,39 @@ async def test_unsubscribe_endpoint_disables_digest(client, seeded_db):
 
     await _enable_digest(seeded_db)
     token = make_unsubscribe_token(1)
-    res = await client.get(f"/api/notifications/unsubscribe?token={token}")
+
+    # Opening the link (or a scanner opening it) only shows a confirm button.
+    page = await client.get(f"/api/notifications/unsubscribe?token={token}")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert '<form method="post"' in page.text
+    row = await (await seeded_db.execute(
+        "SELECT digest_enabled FROM notification_preferences WHERE account_id = 1"
+    )).fetchone()
+    assert row["digest_enabled"]
+
+    res = await client.post(f"/api/notifications/unsubscribe?token={token}")
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
+    row = await (await seeded_db.execute(
+        "SELECT digest_enabled FROM notification_preferences WHERE account_id = 1"
+    )).fetchone()
+    assert not row["digest_enabled"]
 
+
+async def test_one_click_unsubscribe_from_the_mail_client(client, seeded_db):
+    """RFC 8058: the client POSTs `List-Unsubscribe=One-Click` to the URL."""
+    from services.digest import make_unsubscribe_token
+
+    await _enable_digest(seeded_db)
+    token = make_unsubscribe_token(1)
+    res = await client.post(
+        f"/api/notifications/unsubscribe?token={token}",
+        content="List-Unsubscribe=One-Click",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+
+    assert res.status_code == 200
     row = await (await seeded_db.execute(
         "SELECT digest_enabled FROM notification_preferences WHERE account_id = 1"
     )).fetchone()
@@ -256,6 +285,8 @@ async def test_unsubscribe_endpoint_disables_digest(client, seeded_db):
 
 async def test_unsubscribe_endpoint_rejects_bad_token(client, seeded_db):
     res = await client.get("/api/notifications/unsubscribe?token=not-a-token")
+    assert res.status_code == 400
+    res = await client.post("/api/notifications/unsubscribe?token=not-a-token")
     assert res.status_code == 400
 
 

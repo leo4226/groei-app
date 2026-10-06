@@ -2,12 +2,15 @@
 
 - GET/PUT /settings/notifications — per-account digest prefs (auth required)
 - POST /internal/send-digests — cron trigger, X-Digest-Secret shared secret
-- GET /notifications/unsubscribe — signed-token opt-out, no login required
+- GET /notifications/unsubscribe — confirm page for the signed-token opt-out
+- POST /notifications/unsubscribe — the opt-out itself (button or RFC 8058 one-click)
 - POST /notifications/snooze — signed-token care-push snooze, no login required
 """
 import asyncio
+import html
 import os
 import secrets
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -353,8 +356,73 @@ async def snooze_care_pushes(
     return {"ok": True, "for": kind, "snoozed_until": until.isoformat() + "Z"}
 
 
+_UNSUBSCRIBE_COPY = {
+    # The page was hardcoded Dutch, so an English reader unsubscribing from an
+    # English email landed on a Dutch confirmation (#889).
+    "nl": {
+        "title": "Afmelden — Floreren",
+        "confirm": "Wil je de dagelijkse mail van Floreren uitzetten?",
+        "button": "Ja, zet de mail uit",
+        "done_title": "Afgemeld — Floreren",
+        "done": "Je dagelijkse mail is uitgeschakeld.",
+        "note": "Je kunt hem altijd weer aanzetten in de app, onder Instellingen.",
+    },
+    "en": {
+        "title": "Unsubscribe — Floreren",
+        "confirm": "Switch off the daily Floreren email?",
+        "button": "Yes, switch it off",
+        "done_title": "Unsubscribed — Floreren",
+        "done": "Your daily email is switched off.",
+        "note": "You can turn it back on any time in the app, under Settings.",
+    },
+}
+
+
+async def _account_language(db, account_id: int) -> str:
+    rows = await db.execute_fetchall(
+        "SELECT language FROM accounts WHERE id = ?", (account_id,)
+    )
+    return "en" if rows and rows[0]["language"] == "en" else "nl"
+
+
+def _page(lang: str, title: str, body: str) -> HTMLResponse:
+    return HTMLResponse(
+        tpl.render_email(lang=lang, preheader="", body_html=body)
+        .replace("</head>", f"<title>{html.escape(title)}</title></head>", 1)
+    )
+
+
 @router.get("/notifications/unsubscribe")
+async def unsubscribe_confirm(token: str = "", db=Depends(db_dep)):
+    """Ask before switching anything off.
+
+    This used to unsubscribe on GET. Link scanners (Outlook Safe Links,
+    Defender, mail gateways) open every link in an email, so the digest
+    switched itself off for anyone whose inbox is scanned. A GET must be safe;
+    the change happens on the POST below.
+    """
+    account_id = verify_unsubscribe_token(token)
+    if account_id is None:
+        raise HTTPException(status_code=400, detail="Invalid unsubscribe link")
+    lang = await _account_language(db, account_id)
+    copy = _UNSUBSCRIBE_COPY[lang]
+    action = f"?token={quote(token, safe='')}"
+    form = (
+        f'<form method="post" action="{html.escape(action, quote=True)}" '
+        'style="margin:26px 0 0;text-align:center;">'
+        f'<button type="submit" style="background:{tpl.PRIMARY};color:#FFFEF9;'
+        'border:0;border-radius:12px;padding:14px 34px;font-size:16px;'
+        f'font-weight:700;font-family:{tpl.BODY_FONT};cursor:pointer;">'
+        f'{html.escape(copy["button"])}</button></form>'
+    )
+    return _page(lang, copy["title"], tpl.paragraph(copy["confirm"]) + form)
+
+
+@router.post("/notifications/unsubscribe")
 async def unsubscribe(token: str = "", db=Depends(db_dep)):
+    """Switch the digest off: the confirm button above, or a mail client's
+    one-click unsubscribe (RFC 8058 POSTs `List-Unsubscribe=One-Click` to the
+    List-Unsubscribe URL, which our emails advertise)."""
     account_id = verify_unsubscribe_token(token)
     if account_id is None:
         raise HTTPException(status_code=400, detail="Invalid unsubscribe link")
@@ -370,32 +438,11 @@ async def unsubscribe(token: str = "", db=Depends(db_dep)):
     await cur.fetchall()
     await db.commit()
 
-    # The page was hardcoded Dutch, so an English reader unsubscribing from an
-    # English email landed on a Dutch confirmation (#889).
-    lang_rows = await db.execute_fetchall(
-        "SELECT language FROM accounts WHERE id = ?", (account_id,)
-    )
-    row_lang = lang_rows[0]["language"] if lang_rows else "nl"
-    lang = "en" if (row_lang or "nl") == "en" else "nl"
-    copy = {
-        "nl": {
-            "title": "Afgemeld — Floreren",
-            "done": "Je dagelijkse mail is uitgeschakeld.",
-            "note": "Je kunt hem altijd weer aanzetten in de app, onder Instellingen.",
-        },
-        "en": {
-            "title": "Unsubscribed — Floreren",
-            "done": "Your daily email is switched off.",
-            "note": "You can turn it back on any time in the app, under Settings.",
-        },
-    }[lang]
+    lang = await _account_language(db, account_id)
+    copy = _UNSUBSCRIBE_COPY[lang]
     body = (
         tpl.paragraph(f'{copy["done"]} ✅')
         + tpl.paragraph(copy["note"], muted=True, size=14)
         + tpl.button("Floreren", APP_URL)
     )
-    return HTMLResponse(
-        tpl.render_email(lang=lang, preheader="", body_html=body)
-        .replace("<title>", "<title>")
-        .replace("</head>", f"<title>{copy['title']}</title></head>", 1)
-    )
+    return _page(lang, copy["done_title"], body)

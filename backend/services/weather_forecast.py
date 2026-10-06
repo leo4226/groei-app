@@ -39,6 +39,9 @@ _EMPTY_DAILY = {
 _cache: dict[str, dict[str, Any]] = {}
 
 
+_CACHE_MAX_ENTRIES = 512
+
+
 def forecast_cache_key(lat: float, lon: float) -> str:
     """Group negligible GPS jitter without mixing distinct garden locations."""
     return f"{lat:.4f}:{lon:.4f}"
@@ -182,6 +185,10 @@ async def get_map_forecast(
         return _unavailable(lat, lon)
 
     _cache[key] = {"fetched_at": observed_at, "data": data}
+    # Bounded: one entry per distinct garden location is the steady state, so a
+    # cap far above that only ever trims stale coordinates (oldest first).
+    while len(_cache) > _CACHE_MAX_ENTRIES:
+        _cache.pop(min(_cache, key=lambda k: _cache[k]["fetched_at"]), None)
     return data
 
 

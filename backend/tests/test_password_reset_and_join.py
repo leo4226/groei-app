@@ -156,3 +156,15 @@ async def test_guessing_invite_codes_is_rate_limited(client, seeded_db):
 
     assert statuses[:10] == [404] * 10
     assert statuses[10] == 429
+
+
+@pytest.mark.asyncio
+async def test_blank_names_are_refused_at_signup_and_join(client, seeded_db):
+    await _invite(seeded_db, "BLANKS")
+    signup = await client.post("/api/auth/register", json={
+        "email": "blank@example.com", "password": "long-enough-1", "name": "   ",
+    })
+    join = await client.post("/api/household/join", json=_join("BLANKS", "j@example.com", "  "))
+
+    assert signup.status_code == 422
+    assert join.status_code == 422

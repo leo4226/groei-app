@@ -1,4 +1,20 @@
 import { useState, useEffect } from 'react'
+import { apiRequest } from '../api/client'
+
+// The proxied Open-Meteo payload; only the fields read below are typed.
+type WeatherApiResponse = {
+  current: { temperature_2m: number; relative_humidity_2m: number; weather_code: number } | null
+  daily: {
+    time: string[]
+    temperature_2m_max: number[]
+    temperature_2m_min: number[]
+    weather_code: number[]
+    sunrise: string[]
+    sunset: string[]
+    precipitation_sum: (number | null)[]
+    wind_speed_10m_max: (number | null)[]
+  } | null
+}
 
 const WMO_NL: Record<number, string> = {
   0: 'helder',
@@ -75,11 +91,11 @@ export function useWeather(lat: number | null, lon: number | null): {
     setLoading(true)
     setError(null)
 
-    fetch(`/api/weather?lat=${resolvedLat}&lon=${resolvedLon}`)
-      .then(r => {
-        if (!r.ok) throw new Error(`Weer-API: ${r.status}`)
-        return r.json()
-      })
+    // Through the API client so the request carries the session: the
+    // weather proxy is signed-in only (each coordinate is an upstream call).
+    apiRequest<WeatherApiResponse>('GET', '/weather', {
+      params: { lat: String(resolvedLat), lon: String(resolvedLon) },
+    })
       .then(data => {
         if (cancelled) return
         const cur = data.current
@@ -96,7 +112,7 @@ export function useWeather(lat: number | null, lon: number | null): {
           return
         }
 
-        const forecast: WeatherDay[] = (daily.time as string[]).map((d, i) => ({
+        const forecast: WeatherDay[] = daily.time.map((d, i) => ({
           date: d,
           maxTemp: Math.round(daily.temperature_2m_max[i]),
           minTemp: Math.round(daily.temperature_2m_min[i]),

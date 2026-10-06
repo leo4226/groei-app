@@ -80,6 +80,7 @@ EXEMPT_WRITE_ROUTES = {
     ("POST", "/api/household/join"),
     ("POST", "/api/internal/send-digests"),
     ("POST", "/api/notifications/snooze"),
+    ("POST", "/api/notifications/unsubscribe"),
     ("POST", "/api/calendar/export.ics"),
     ("POST", "/api/care-rhythm/preview"),
     ("POST", "/api/care-rhythm/onboarding-preview"),
