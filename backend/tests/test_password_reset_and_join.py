@@ -250,3 +250,24 @@ async def test_tokens_from_before_session_versions_still_work(client, reset_db):
     )
     me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {legacy}"})
     assert me.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_guessing_the_current_password_is_rate_limited(client, reset_db):
+    token = (await client.post(
+        "/api/auth/login", json={"email": "leon@example.com", "password": "old-password"},
+    )).json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    statuses = [
+        (await client.post(
+            "/api/auth/change-password",
+            json={"current_password": f"guess-{index}", "new_password": "new-password-1"},
+            headers=headers,
+        )).status_code
+        for index in range(6)
+    ]
+
+    assert statuses == [400] * 5 + [429]
+    # The guesses changed nothing: the session is still valid.
+    assert (await client.get("/api/auth/me", headers=headers)).status_code == 200
