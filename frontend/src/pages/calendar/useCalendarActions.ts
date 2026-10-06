@@ -4,6 +4,7 @@ import { useT } from '../../context/LanguageContext'
 import { useFloreren } from '../../store/useFloreren'
 import type { CalendarEvent } from './calendarTypes'
 import { agendaPlantName } from './workAgendaModel'
+import { localIsoDate } from '../../utils/dateFormat'
 
 export type CalendarCompletion =
   | { kind: 'plant'; plantId: number; plantName: string | null; careLogId: number | null }
@@ -47,7 +48,7 @@ export function useCalendarActions(
     setSaving(event.id)
     setUndoMsg(null)
     try {
-      const completedAt = new Date().toISOString().slice(0, 10)
+      const completedAt = localIsoDate()
       const result = await gardenCare.complete(
         event.type,
         activeUserId,
@@ -166,7 +167,7 @@ export function useCalendarActions(
         pendingMoistureCheck.map_id,
         scheduleIds,
         outcome,
-        new Date().toISOString().slice(0, 10),
+        localIsoDate(),
         activeUserId,
       )
       setDoneIds(previous => new Set([...previous, pendingMoistureCheck.id]))

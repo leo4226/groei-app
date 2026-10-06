@@ -201,7 +201,7 @@ async def test_language_switch_reaches_the_push_channel(client, seeded_db, auth_
     same user's emails switched correctly (#889).
     """
     await seeded_db.execute(
-        "INSERT INTO users (id, name, household_id, language) VALUES (9, 'Test', 1, 'nl')"
+        "INSERT INTO users (id, name, household_id, language, account_id) VALUES (9, 'Test', 1, 'nl', 1)"
     )
     await seeded_db.execute("UPDATE accounts SET language = 'nl' WHERE id = 1")
     await seeded_db.commit()

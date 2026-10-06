@@ -73,7 +73,7 @@ async def care_db(seeded_db):
     await db.executescript(EXTRA_SCHEMA)
     await db.executescript("""
         INSERT INTO plants (id, name, household_id) VALUES (1, 'Monstera', 1);
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Test', 1, 1);
         INSERT INTO care_schedules (plant_id, care_type, interval_days, next_due, is_active)
         VALUES (1, 'water', 7, '2026-06-10', 1);
     """)

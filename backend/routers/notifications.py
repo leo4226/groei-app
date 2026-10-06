@@ -5,6 +5,7 @@
 - GET /notifications/unsubscribe — signed-token opt-out, no login required
 - POST /notifications/snooze — signed-token care-push snooze, no login required
 """
+import asyncio
 import os
 import secrets
 
@@ -239,7 +240,7 @@ async def send_test_push(db=Depends(db_dep), account=Depends(require_editor)):
     }
     delivered = failed = pruned = 0
     for sub in subs:
-        outcome = send_push(dict(sub), payload)
+        outcome = await asyncio.to_thread(send_push, dict(sub), payload)
         if outcome == "ok":
             delivered += 1
         elif outcome == "gone":

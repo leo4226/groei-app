@@ -3,6 +3,7 @@ import { useT } from '../../context/LanguageContext'
 import { dataExport } from '../../api/client'
 import Glyph from '../../components/ui/Glyph'
 import { resetAssistant } from '../../components/HelpAssistant'
+import { localIsoDate } from '../../utils/dateFormat'
 
 interface Props {
   onInstallClick: () => void
@@ -42,7 +43,7 @@ export default function AppDataPanel({ onInstallClick }: Props) {
       const blob = kind === 'json'
         ? await dataExport.bundle()
         : await dataExport.careLogCsv()
-      const day = new Date().toISOString().slice(0, 10)
+      const day = localIsoDate()
       downloadBlob(
         blob,
         kind === 'json' ? `floreren-export-${day}.json` : `floreren-care-log-${day}.csv`,

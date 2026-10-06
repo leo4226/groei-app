@@ -192,7 +192,7 @@ async def core_write_db(seeded_db, monkeypatch):
         VALUES (1, '{"water_interval_days": 7}', '{}', 'Test plant', 'Test plant');
         INSERT INTO plants (id, name, household_id, species_id, is_active)
         VALUES (1, 'Original plant', 1, 1, TRUE);
-        INSERT INTO users (id, name, household_id) VALUES (1, 'Test', 1);
+        INSERT INTO users (id, name, household_id, account_id) VALUES (1, 'Test', 1, 1);
         INSERT INTO care_schedules
           (id, plant_id, care_type, interval_days, next_due, is_active)
         VALUES (1, 1, 'water', 7, '2026-08-01', TRUE);

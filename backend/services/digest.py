@@ -8,6 +8,7 @@ Europe/Amsterdam, builds a task summary email from the same data as
 Also owns the signed unsubscribe token (HMAC of the account_id, keyed with
 JWT_SECRET — no login required to unsubscribe).
 """
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -347,7 +348,10 @@ async def send_due_digests(db) -> dict:
         subject, html = build_digest_email(
             pref["name"], overdue, due_today, unsubscribe_url, lang=lang
         )
-        if send_email(pref["email"], subject, html, unsubscribe_url=unsubscribe_url):
+        # Resend's client is blocking HTTP; a digest run sends many in a row.
+        if await asyncio.to_thread(
+            send_email, pref["email"], subject, html, unsubscribe_url=unsubscribe_url,
+        ):
             await _stamp(db, pref["account_id"], today, "last_digest_sent_on")
             sent += 1
         else:
@@ -654,7 +658,7 @@ async def send_due_care_pushes(db) -> dict:
         )
         delivered = False
         for sub in subs:
-            outcome = send_push(dict(sub), payload)
+            outcome = await asyncio.to_thread(send_push, dict(sub), payload)
             if outcome == "ok":
                 delivered = True
             elif outcome == "gone":

@@ -24,6 +24,7 @@ from services.moisture_check_service import (
 from datetime import date, datetime, timedelta
 from auth import get_current_account, require_editor
 from services.local_time import local_today
+from services.identity import caller_user_id
 
 router = APIRouter(tags=["care"])
 
@@ -128,13 +129,14 @@ async def complete_map_watering_round(
         household_id=account["household_id"],
     )
     completed_at = body.completed_at or local_today()
+    user_id = await caller_user_id(db, account)
     try:
         result = await complete_outdoor_care(
             db,
             household_id=account["household_id"],
             care_type="water",
             completed_at=completed_at,
-            user_id=body.user_id,
+            user_id=user_id,
             map_id=map_id,
             schedule_ids=body.schedule_ids,
             completion_mode="map_round",
@@ -180,6 +182,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     if not schedule:
         raise HTTPException(status_code=404, detail="No active schedule found")
 
+    user_id = await caller_user_id(db, account)
     now = datetime.now()
     today = local_today()
 
@@ -187,7 +190,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
     cursor = await db.execute(
         """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
            VALUES (?, ?, ?, ?, ?, FALSE)""",
-        (action.plant_id, action.care_type, action.user_id, now, action.notes),
+        (action.plant_id, action.care_type, user_id, now, action.notes),
     )
     care_log_id = cursor.lastrowid
 
@@ -210,7 +213,7 @@ async def mark_care_done(action: CareAction, db = Depends(db_dep),
         """UPDATE care_schedules
            SET last_done = ?, last_done_by = ?, next_due = ?
            WHERE id = ?""",
-        (now, action.user_id, next_due, schedule["id"]),
+        (now, user_id, next_due, schedule["id"]),
     )
 
     await db.commit()
@@ -238,6 +241,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
     if not schedule:
         raise HTTPException(status_code=404, detail="No active schedule found")
 
+    user_id = await caller_user_id(db, account)
     now = datetime.now()
     today = local_today()
 
@@ -245,7 +249,7 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
     await db.execute(
         """INSERT INTO care_log (plant_id, care_type, done_by, done_at, notes, skipped)
            VALUES (?, ?, ?, ?, ?, TRUE)""",
-        (action.plant_id, action.care_type, action.user_id, now, action.notes),
+        (action.plant_id, action.care_type, user_id, now, action.notes),
     )
 
     # Advance next_due
@@ -271,13 +275,14 @@ async def skip_care(action: CareAction, db = Depends(db_dep),
 async def complete_garden_care(body: GardenCareCompleteIn, db=Depends(db_dep),
                                account=Depends(require_editor)):
     completed_at = body.completed_at or local_today()
+    user_id = await caller_user_id(db, account)
     try:
         result = await complete_outdoor_care(
             db,
             household_id=account["household_id"],
             care_type=body.care_type,
             completed_at=completed_at,
-            user_id=body.user_id,
+            user_id=user_id,
             map_id=body.map_id,
             schedule_ids=body.schedule_ids,
         )
@@ -306,6 +311,7 @@ async def resolve_moisture_check_session(
     account=Depends(require_editor),
     db=Depends(db_dep),
 ):
+    user_id = await caller_user_id(db, account)
     try:
         return await resolve_moisture_checks(
             db,
@@ -314,7 +320,7 @@ async def resolve_moisture_check_session(
             check_schedule_ids=body.check_schedule_ids,
             outcome=body.outcome,
             completed_at=body.completed_at,
-            user_id=body.user_id,
+            user_id=user_id,
         )
     except MoistureCheckSelectionError as exc:
         raise HTTPException(
@@ -436,11 +442,21 @@ async def undo_care_done(action: CareUndo, db = Depends(db_dep),
     # active schedule exists. Quick-logged care on a schedule-less plant has
     # nothing to restore; the log entry is deleted either way (#791).
     if schedule:
+        # The previous attribution comes back from the client; only restore it
+        # when it names a profile in this household.
+        previous_last_done_by = action.previous_last_done_by
+        if previous_last_done_by is not None:
+            owned = await db.execute_fetchall(
+                "SELECT id FROM users WHERE id = ? AND household_id = ?",
+                (previous_last_done_by, account["household_id"]),
+            )
+            if not owned:
+                previous_last_done_by = None
         await db.execute(
             """UPDATE care_schedules
                SET last_done = ?, last_done_by = ?, next_due = ?
                WHERE id = ?""",
-            (action.previous_last_done, action.previous_last_done_by,
+            (action.previous_last_done, previous_last_done_by,
              action.previous_next_due, schedule["id"]),
         )
 

@@ -36,6 +36,7 @@ router = APIRouter()
 
 from llm_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
 from services.local_time import local_today
+from services.identity import find_caller_user_id
 
 _grow_here_cache: dict = {}  # key: (sun_hours_rounded, month) → response dict
 
@@ -195,7 +196,7 @@ async def get_temperature_context(db = Depends(db_dep)):
 # ── Garden water log ─────────────────────────────────────────────────────────
 
 class WaterLogCreate(BaseModel):
-    watered_by: int | None = None
+    watered_by: int | None = None  # ignored: attributed to the caller
     watered_at: date | None = None
     water_amount: float | None = None  # ml
 
@@ -204,7 +205,8 @@ class WaterLogCreate(BaseModel):
 async def log_garden_watering(body: WaterLogCreate, db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     watered_at = body.watered_at or local_today()
-    updated = await log_garden_water(db, watered_at, body.watered_by, body.water_amount, household_id)
+    watered_by = await find_caller_user_id(db, account)
+    updated = await log_garden_water(db, watered_at, watered_by, body.water_amount, household_id)
     await db.commit()
     return {"watered_at": watered_at, "schedules_updated": updated, "water_amount": body.water_amount}
 
@@ -253,7 +255,7 @@ async def delete_latest_garden_watering(db = Depends(db_dep), account = Depends(
 # ── Garden fertilize log ──────────────────────────────────────────────────────
 
 class FertilizeLogCreate(BaseModel):
-    fertilized_by: int | None = None
+    fertilized_by: int | None = None  # ignored: attributed to the caller
     fertilized_at: date | None = None
 
 
@@ -261,7 +263,8 @@ class FertilizeLogCreate(BaseModel):
 async def log_garden_fertilizing(body: FertilizeLogCreate, db = Depends(db_dep), account = Depends(require_editor)):
     household_id = account["household_id"]
     fertilized_at = body.fertilized_at or local_today()
-    updated = await log_garden_fertilize(db, fertilized_at, body.fertilized_by, household_id)
+    fertilized_by = await find_caller_user_id(db, account)
+    updated = await log_garden_fertilize(db, fertilized_at, fertilized_by, household_id)
     await db.commit()
     return {"fertilized_at": fertilized_at, "schedules_updated": updated}
 
